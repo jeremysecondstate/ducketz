@@ -108,6 +108,50 @@ def test_preserves_passive_spot_dust_and_marks_spot_basis_as_opening_value():
     assert result["metadata"]["live_updates_after_seed"] is False
 
 
+def test_mirror_keeps_historical_basis_with_separate_opening_stop_reference():
+    result = mirror()
+    positions = {(p["account"], p["kind"]): p for p in result["initial_positions"]}
+    short = positions["alex", "perp"]
+    long = positions["jeremy", "perp"]
+    assert (short["average_entry"], long["average_entry"]) == (50, 80)
+    assert short["entry_source"] == long["entry_source"] == "historical_exchange_entry"
+    assert short["risk_reference_price"] == long["risk_reference_price"] == 100
+    assert all(p["risk_reference_source"] == "opening_mark" for p in positions.values())
+    assert result["metadata"]["inherited_stop_reference"] == "opening_mark"
+    # A new risk origin changes neither collateral nor the mirrored valuation.
+    assert result["initial_cash"] == {"alex": 1000, "jeremy": 1200, "clearpond": 300}
+
+
+def test_snapshot_retains_each_public_read_window_and_quote_provenance():
+    import itertools
+    import json
+    import threading
+    counter = itertools.count()
+    lock = threading.Lock()
+    def clock():
+        with lock:
+            return NOW + next(counter) / 1000
+    reader = Reader()
+    reader.snapshots["alex"]["clearinghouseState"]["time"] = int(NOW * 1000)
+    result = mirror(reader=reader, env=values(use_agents=True), clock=clock)
+    metadata = result["metadata"]
+    start = pd.Timestamp(metadata["snapshot_started_at_utc"])
+    finish = pd.Timestamp(metadata["snapshot_completed_at_utc"])
+    quotes = metadata["quote_observation"]
+    for account in metadata["accounts"].values():
+        reads = account["read_observations"]
+        assert set(reads) == READ_TYPES
+        for read in reads.values():
+            assert start <= pd.Timestamp(read["started_at_utc"]) < pd.Timestamp(read["completed_at_utc"]) < finish
+            assert pd.Timestamp(read["completed_at_utc"]) < pd.Timestamp(quotes["started_at_utc"])
+    assert metadata["accounts"]["alex"]["read_observations"]["clearinghouseState"]["exchange_time_ms"] == int(NOW * 1000)
+    assert pd.Timestamp(quotes["started_at_utc"]) < pd.Timestamp(quotes["completed_at_utc"]) < finish
+    assert quotes["markets"]["perp:BTC"]["mark"] == result["initial_marks"]["perp:BTC"]
+    assert result["now"] == metadata["snapshot_completed_at_utc"]
+    assert metadata["snapshot_not_atomic_across_accounts"] is True
+    assert all(address not in json.dumps(metadata) for address in [*OWNERS.values(), *AGENTS.values()])
+
+
 @pytest.mark.parametrize("token, coin", [("UBTC", "BTC"), ("UETH", "ETH"), ("UZEC", "ZEC")])
 def test_spot_token_aliases_resolve_to_the_shared_market_symbol(token, coin):
     source = data()

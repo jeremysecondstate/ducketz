@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 import pandas as pd
 import pytest
@@ -71,13 +72,14 @@ def test_role_restrictions_and_no_short_spot(ledger, bad_order):
 
 
 def test_transaction_rolls_back_fills_transfers_and_decisions(ledger):
+    before = {table: ledger.history(table) for table in ("fills", "transfers", "decisions", "cycles", "events", "equity")}
     with pytest.raises(ValueError):
         cycle(ledger, "bad", [order(), order(account="alex", quantity=1)],
               transfers=[{"from_account": "clearpond", "to_account": "jeremy", "amount": 100}],
               decisions=[{"action": "skip", "reason": "example"}])
     assert ledger.state(MARKS)["pooled"]["cash"] == 30000
-    for table in ("fills", "transfers", "decisions", "cycles", "events", "equity"):
-        assert ledger.history(table) == []
+    for table, rows in before.items():
+        assert ledger.history(table) == rows
 
 
 def test_persistent_cycle_identity_prevents_duplicate_execution(tmp_path):
@@ -89,6 +91,18 @@ def test_persistent_cycle_identity_prevents_duplicate_execution(tmp_path):
         assert result == {**original, "duplicate": True}
         assert len(ledger.history("fills")) == 1
         assert ledger.state(MARKS)["accounts"]["jeremy"]["positions"][0]["quantity"] == 10
+
+
+def test_unexecuted_cycle_evidence_is_bounded_and_rejects_any_side_effect(ledger):
+    assert ledger.unexecuted_cycle_decisions("missing") is None
+    decisions = [{"account": "jeremy", "coin": "BTC", "action": "skip", "reason": "book unavailable"}] * 8
+    cycle(ledger, "many", decisions=decisions)
+    assert len(ledger.unexecuted_cycle_decisions("many")) == 4
+    cycle(ledger, "filled", [order()], decisions=decisions)
+    cycle(ledger, "transferred", transfers=[{"from_account": "clearpond", "to_account": "alex", "amount": 20}], decisions=decisions)
+    cycle(ledger, "funded", funding=[{"funding_id": "funding-one", "account": "jeremy", "coin": "BTC", "amount": 1}], decisions=decisions)
+    for key in ("filled", "transferred", "funded"):
+        assert ledger.unexecuted_cycle_decisions(key) is None
 
 
 def test_virtual_transfer_is_zero_sum_and_does_not_change_performance(ledger):
@@ -172,7 +186,7 @@ def test_exports_are_inspectable_and_include_skip_decisions(ledger, tmp_path):
     cycle(ledger, "one", [order()], decisions=[{"account": "alex", "coin": "BTC", "action": "skip", "reason": "no short signal"}])
     paths = ledger.export(tmp_path / "exports")
     assert len(pd.read_parquet(paths["fills"])) == 1
-    assert len(pd.read_parquet(paths["equity"])) == 4
+    assert len(pd.read_parquet(paths["equity"])) == 8
     assert pd.read_parquet(paths["decisions"])["reason"].tolist() == ["no short signal"]
     assert json.loads(ledger.history("fills")[0]["details_json"])["forecast_id"] == "forecast-1"
 
@@ -181,7 +195,7 @@ def test_exports_are_inspectable_and_include_skip_decisions(ledger, tmp_path):
 def test_all_numeric_inputs_must_be_finite(ledger, value):
     with pytest.raises(ValueError):
         cycle(ledger, "bad", [order(quantity=value)])
-    assert ledger.history("cycles") == []
+    assert [row["cycle_id"] for row in ledger.history("cycles")] == ["opening"]
 
 
 def test_missing_held_mark_rolls_back_and_timestamp_requires_timezone(ledger):
@@ -225,7 +239,8 @@ def test_inventory_includes_new_markets_until_the_position_is_closed(ledger):
     marks = {**MARKS, "perp:ETH": 20}
     assert ledger.inventory() == []
     cycle(ledger, "open-new", [order(coin="ETH", quantity=3, price=20)], marks=marks)
-    assert ledger.inventory() == [{"account": "jeremy", "coin": "ETH", "kind": "perp", "quantity": 3.0, "avg_entry": 20.0}]
+    assert ledger.inventory() == [{"account": "jeremy", "coin": "ETH", "kind": "perp", "quantity": 3.0,
+                                   "avg_entry": 20.0, "risk_reference_price": 20.0, "risk_reference_source": "fill_price"}]
     cycle(ledger, "reduce-new", [order(coin="ETH", quantity=-1, price=20)], marks=marks)
     assert ledger.inventory()[0]["quantity"] == 2
     cycle(ledger, "close-new", [order(coin="ETH", quantity=-2, price=20)], marks=marks)
@@ -246,3 +261,80 @@ def test_has_cycle_uses_persistent_identity_and_excludes_rolled_back_cycles(tmp_
         assert not ledger.has_cycle("rolled-back")
         with pytest.raises(ValueError):
             ledger.has_cycle("")
+
+
+def test_opening_observation_is_atomic_zero_cost_and_retains_historical_basis(tmp_path):
+    path = tmp_path / "fresh.sqlite"
+    cash = {account: 1000 for account in ("alex", "jeremy", "clearpond")}
+    positions = [{"account": "alex", "coin": "BTC", "kind": "perp", "quantity": -2,
+                  "average_entry": 80, "risk_reference_price": 100, "risk_reference_source": "opening_mark"}]
+    with PaperLedger(path, cash, initial_positions=positions, initial_marks=MARKS, now=NOW) as ledger:
+        opening = ledger.latest_observation()
+        assert opening["cycle_id"] == "opening" and opening["observation_kind"] == "opening_snapshot"
+        assert opening["timestamp_utc"] == NOW
+        pool = opening["state"]["pooled"]
+        assert pool["initial_equity"] == pool["equity"] == 2960
+        assert pool["total_pnl"] == pool["fees"] == pool["funding"] == 0
+        assert pool["unrealized_pnl"] == -40
+        assert all(ledger.history(table) == [] for table in ("fills", "decisions", "transfers", "funding"))
+        assert {row["account"] for row in ledger.history("equity")} == {"alex", "jeremy", "clearpond", "pooled"}
+        assert ledger.inventory()[0]["avg_entry"] == 80
+        assert ledger.inventory()[0]["risk_reference_price"] == 100
+    with PaperLedger(path, open_existing=True) as ledger:
+        assert ledger.latest_observation() == opening
+        assert len(ledger.history("equity")) == 4
+    incomplete = tmp_path / "incomplete-opening.sqlite"
+    with pytest.raises(ValueError, match="risk reference"):
+        PaperLedger(incomplete, cash, initial_positions=[{**positions[0], "risk_reference_price": 0}], initial_marks=MARKS, now=NOW)
+    with sqlite3.connect(incomplete) as connection:
+        for table in ("accounts", "seed", "positions", "initial_positions", "cycles", "events", "equity"):
+            assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("account,sign", [("alex", -1), ("jeremy", 1), ("clearpond", 1)])
+def test_risk_reference_survives_reduction_weights_addition_and_resets_after_close(tmp_path, account, sign):
+    path = tmp_path / f"{account}.sqlite"
+    initial = {"account": account, "coin": "BTC", "kind": "spot" if account == "clearpond" else "perp",
+               "quantity": 4 * sign, "average_entry": 80, "risk_reference_price": 100, "risk_reference_source": "opening_mark"}
+    with PaperLedger(path, initial_positions=[initial], initial_marks=MARKS, now=NOW) as ledger:
+        cycle(ledger, "trim", [order(account=account, quantity=-sign, price=110)])
+        position = ledger.inventory()[0]
+        assert position["quantity"] == 3 * sign
+        assert position["avg_entry"] == 80 and position["risk_reference_price"] == 100
+        assert position["risk_reference_source"] == "opening_mark"
+    with PaperLedger(path, open_existing=True) as ledger:
+        cycle(ledger, "add", [order(account=account, quantity=sign, price=120)])
+        position = ledger.inventory()[0]
+        assert position["avg_entry"] == 90 and position["risk_reference_price"] == 105
+        assert position["risk_reference_source"] == "weighted_entry"
+        cycle(ledger, "close", [order(account=account, quantity=-4 * sign, price=110)])
+        assert ledger.inventory() == []
+        cycle(ledger, "reopen", [order(account=account, quantity=sign, price=112)])
+        position = ledger.inventory()[0]
+        assert position["avg_entry"] == position["risk_reference_price"] == 112
+        assert position["risk_reference_source"] == "fill_price"
+
+
+def test_legacy_schema_resume_retains_entry_stop_and_does_not_rewrite_seed_or_history(tmp_path):
+    path = tmp_path / "legacy.sqlite"
+    initial = {"account": "alex", "coin": "BTC", "kind": "perp", "quantity": -2, "average_entry": 80}
+    with PaperLedger(path, initial_positions=[initial], initial_marks=MARKS, now=NOW) as ledger:
+        seed = ledger.seed()
+        for position in seed["positions"]:
+            position.pop("risk_reference_price")
+            position.pop("risk_reference_source")
+        # Build a synthetic previous-schema fixture, never a current datastore.
+        ledger.connection.execute("UPDATE seed SET details_json=?", (json.dumps(seed),))
+        for table in ("equity", "cycles", "events"):
+            ledger.connection.execute(f"DELETE FROM {table}")
+        ledger.connection.execute("ALTER TABLE positions DROP COLUMN risk_reference_price")
+        ledger.connection.execute("ALTER TABLE positions DROP COLUMN risk_reference_source")
+    with PaperLedger(path, open_existing=True) as ledger:
+        assert ledger.seed() == seed
+        assert ledger.inventory()[0]["risk_reference_price"] == 80
+        assert ledger.inventory()[0]["risk_reference_source"] == "legacy_avg_entry"
+        assert ledger.history("cycles") == ledger.history("equity") == ledger.history("events") == []
+        assert ledger.state(MARKS)["pooled"]["total_pnl"] == 0
+    with PaperLedger(path, open_existing=True) as ledger:
+        assert ledger.inventory()[0]["risk_reference_price"] == 80
+        assert ledger.seed() == seed

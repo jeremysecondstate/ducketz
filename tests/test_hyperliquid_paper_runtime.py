@@ -153,7 +153,7 @@ def test_fresh_forecast_fills_from_actual_spot_and_perp_books_and_preserves_role
     assert {row["account"] for row in fills} == {"jeremy", "clearpond"}
     assert all(row["quantity"] > 0 for row in fills)
     for fill in fills:
-        expected = (market.price[fill["kind"]] + 0.1) * 1.0002
+        expected = market.price[fill["kind"]] + 0.1
         assert fill["price"] == pytest.approx(expected)
         assert fill["price"] != 77
         details = json.loads(fill["details_json"])
@@ -164,6 +164,74 @@ def test_fresh_forecast_fills_from_actual_spot_and_perp_books_and_preserves_role
     assert pooled["equity"] == pytest.approx(30000 - execution_loss)
     assert pooled["fees"] == pytest.approx(sum(row["fee"] for row in fills))
     assert pooled["net_transfers"] == pytest.approx(0)
+
+
+def test_partial_taker_buys_and_sells_use_book_vwap_and_reconcile_cash_fees_and_inventory(runner, monkeypatch):
+    instance, clock, market, data = runner
+    original_snapshot = market.snapshot
+
+    def limited_multilevel_snapshot(symbols):
+        observation = original_snapshot(symbols)
+        for book in observation["markets"].values():
+            mark = book["mark"]
+            book["asks"] = [[mark + 0.1, 1], [mark + 0.2, 1]]
+            book["bids"] = [[mark - 0.1, 0.5], [mark - 0.2, 0.75]]
+        return observation
+
+    monkeypatch.setattr(market, "snapshot", limited_multilevel_snapshot)
+    forecast(data, p=0.65)
+    opened = instance.tick()["portfolio"]
+    buys = {row["account"]: row for row in instance.ledger.history("fills")}
+    assert set(buys) == {"jeremy", "clearpond"}
+    for account, kind, fee_rate in (("jeremy", "perp", 0.00045), ("clearpond", "spot", 0.0007)):
+        fill = buys[account]
+        details = json.loads(fill["details_json"])
+        notional = 2 * market.price[kind] + 0.3
+        fee = notional * fee_rate
+        assert fill["quantity"] == 2
+        assert fill["price"] == details["raw_book_vwap"] == pytest.approx(notional / 2)
+        assert fill["notional"] == pytest.approx(notional)
+        assert fill["fee"] == pytest.approx(fee)
+        assert details["fee_rate"] == fee_rate
+        assert details["extra_slippage_bps"] == 0
+        assert details["levels_consumed"] == 2
+        assert details["status"] == "partial" and details["unfilled_quantity"] > 0
+        values = opened["accounts"][account]
+        assert values["positions"][0]["quantity"] == 2
+        assert values["cash"] == pytest.approx(10000 - fee - (notional if kind == "spot" else 0))
+        assert values["equity"] == pytest.approx(10000 - 0.3 - fee)
+        assert values["net_transfers"] == 0
+
+    clock.now = BASE + 930
+    forecast(data, identity="forecast-2", decision=BASE + 900, p=0.5)
+    reduced = instance.tick()["portfolio"]
+    sells = {row["account"]: row for row in instance.ledger.history("fills")
+             if row["forecast_id"] == "forecast-2"}
+    assert set(sells) == set(buys)
+    for account, kind, fee_rate in (("jeremy", "perp", 0.00045), ("clearpond", "spot", 0.0007)):
+        fill = sells[account]
+        details = json.loads(fill["details_json"])
+        notional = 1.25 * market.price[kind] - 0.2
+        fee = notional * fee_rate
+        realized = 1.25 * (notional / 1.25 - buys[account]["price"])
+        assert fill["quantity"] == -1.25
+        assert fill["price"] == details["raw_book_vwap"] == pytest.approx(notional / 1.25)
+        assert fill["notional"] == pytest.approx(notional)
+        assert fill["fee"] == pytest.approx(fee)
+        assert fill["realized_pnl"] == pytest.approx(realized)
+        assert details["fee_rate"] == fee_rate
+        assert details["extra_slippage_bps"] == 0
+        assert details["levels_consumed"] == 2
+        assert details["status"] == "partial" and details["unfilled_quantity"] == -0.75
+        values = reduced["accounts"][account]
+        assert values["positions"][0]["quantity"] == 0.75
+        assert values["positions"][0]["avg_entry"] == buys[account]["price"]
+        cash_delta = (notional if kind == "spot" else realized) - fee
+        assert values["cash"] == pytest.approx(opened["accounts"][account]["cash"] + cash_delta)
+        assert values["fees"] == pytest.approx(buys[account]["fee"] + fee)
+        assert values["equity"] == pytest.approx(opened["accounts"][account]["equity"] - 0.2 - fee)
+        assert values["total_pnl"] == pytest.approx(values["equity"] - 10000)
+    assert reduced["pooled"]["net_transfers"] == 0
 
 
 def test_same_forecast_is_not_filled_again_after_poll_or_restart(runner):
@@ -507,6 +575,188 @@ def test_book_before_forecast_stale_or_future_cannot_create_fills(runner, offset
         assert row["reason"] == ("Executable book predates the forecast." if offset < 0
                                  else "Executable book is stale or future-dated.")
         assert "decision_checks" in json.loads(row["details_json"])
+
+
+def test_quote_retries_are_bounded_durable_and_fill_once_after_restart(qualified_runner, monkeypatch):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    sleeps = []
+    monkeypatch.setattr(runtime_module.time, "sleep", sleeps.append)
+    market.book_offset = -26
+    instance.tick()
+    assert len(market.snapshot_calls) == 3 and sleeps == [.1, .2]
+    assert not instance.ledger.has_cycle("forecast:forecast-1")
+    assert instance.ledger.has_cycle("forecast-wait:forecast-1")
+    original = instance.ledger.history("decisions")
+    assert len(original) == 3
+    assert all(json.loads(row["details_json"])["retry_pending"] for row in original)
+    instance.tick()
+    assert instance.ledger.history("decisions") == original
+    instance.ledger.close()
+    restarted = runtime_module.PaperRuntime(instance.config_path, market=market, clock=clock)
+    try:
+        restarted.initialize()
+        market.book_offset = 0
+        restarted.tick()
+        fills = restarted.ledger.history("fills")
+        assert len(fills) == 2
+        assert restarted.ledger.has_cycle("forecast:forecast-1")
+        restarted.tick()
+        assert restarted.ledger.history("fills") == fills
+    finally:
+        restarted.ledger.close()
+
+
+def test_second_snapshot_can_fill_frozen_forecast_without_consuming_bad_quotes(qualified_runner, monkeypatch):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    original_snapshot = market.snapshot
+    def snapshot(symbols):
+        market.book_offset = -26 if not market.snapshot_calls else 0
+        return original_snapshot(symbols)
+    monkeypatch.setattr(market, "snapshot", snapshot)
+    monkeypatch.setattr(runtime_module.time, "sleep", lambda _: None)
+    instance.tick()
+    assert len(market.snapshot_calls) == 2
+    assert len(instance.ledger.history("fills")) == 2
+    assert not instance.ledger.has_cycle("forecast-wait:forecast-1")
+    assert all(json.loads(row["details_json"])["decision_checks"]["quote_attempt_count"] == 2
+               for row in instance.ledger.history("decisions"))
+
+
+def test_forecast_published_during_snapshot_waits_until_next_tick(qualified_runner, monkeypatch):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    original_snapshot = market.snapshot
+    def snapshot(symbols):
+        forecast(data, qualified=True, identity="forecast-2", p=.35)
+        return original_snapshot(symbols)
+    monkeypatch.setattr(market, "snapshot", snapshot)
+    instance.tick()
+    assert {row["forecast_id"] for row in instance.ledger.history("fills")} == {"forecast-1"}
+    clock.now += 30
+    instance.tick()
+    assert {row["forecast_id"] for row in instance.ledger.history("fills")} == {"forecast-1", "forecast-2"}
+
+
+def test_forecast_expiring_during_snapshot_is_not_executed(qualified_runner, monkeypatch):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    original_snapshot = market.snapshot
+    def snapshot(symbols):
+        clock.now = BASE + 3601
+        return original_snapshot(symbols)
+    monkeypatch.setattr(market, "snapshot", snapshot)
+    result = instance.tick()
+    assert instance.ledger.history("fills") == []
+    assert "expired while fetching" in result["errors"]["BTC"]
+    assert not instance.ledger.has_cycle("forecast:forecast-1")
+
+
+def test_cached_seed_quote_is_never_used_for_trading(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    market.book_offset = -26
+    instance._seed_quotes = market.snapshot(("BTC",))
+    market.book_offset = 0
+    forecast(data, qualified=True)
+    seed = instance.ledger.seed()
+    instance.tick()
+    assert len(instance.ledger.history("fills")) == 2
+    assert len(market.snapshot_calls) == 2
+    assert instance.ledger.seed() == seed
+
+
+def test_legacy_all_quote_skip_is_recovered_append_only_once(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    prediction = forecast(data, qualified=True)
+    marks = {"perp:BTC": 100, "spot:BTC": 102}
+    decisions = [{"account": account, "coin": "BTC", "forecast_id": prediction["prediction_id"],
+                  "action": "skip", "reason": "Executable book predates the forecast."}
+                 for account in runtime_module.ACCOUNTS]
+    instance._execute("forecast:forecast-1", marks, decisions=decisions)
+    original = instance.ledger.history("decisions")
+    cycle = next(row for row in instance.ledger.history("cycles") if row["cycle_id"] == "forecast:forecast-1")
+    instance.tick()
+    fills = instance.ledger.history("fills")
+    assert len(fills) == 2
+    assert {row["cycle_id"] for row in fills} == {"forecast-retry:forecast-1"}
+    assert instance.ledger.history("decisions")[:3] == original
+    assert next(row for row in instance.ledger.history("cycles") if row["cycle_id"] == "forecast:forecast-1") == cycle
+    instance.tick()
+    assert instance.ledger.history("fills") == fills
+
+
+def test_legacy_recovery_can_wait_across_restart_and_respects_stop_cooldown(qualified_runner, monkeypatch):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    marks = {"perp:BTC": 100, "spot:BTC": 102}
+    instance._execute("setup", marks, orders=[{
+        "account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 1, "price": 100,
+    }])
+    instance._execute("forecast:forecast-1", marks, decisions=[{
+        "account": account, "coin": "BTC", "forecast_id": "forecast-1", "action": "skip",
+        "reason": "Executable book predates the forecast.",
+    } for account in runtime_module.ACCOUNTS])
+    market.book_offset = -26
+    monkeypatch.setattr(runtime_module.time, "sleep", lambda _: None)
+    instance.tick()
+    assert instance.ledger.has_cycle("forecast-wait:forecast-1")
+    assert not instance.ledger.has_cycle("forecast-retry:forecast-1")
+    instance.ledger.close()
+    restarted = runtime_module.PaperRuntime(instance.config_path, market=market, clock=clock)
+    try:
+        restarted.initialize()
+        market.book_offset = 0
+        market.price["perp"] = 94
+        restarted.tick()
+        assert restarted.ledger.has_cycle("forecast-retry:forecast-1")
+        assert not restarted.ledger.state({"perp:BTC": 94, "spot:BTC": 102})["accounts"]["jeremy"]["positions"]
+        fills = restarted.ledger.history("fills")
+        assert any(row["reason"] == "stop_loss" for row in fills)
+        clock.now += 30
+        restarted.tick()
+        assert restarted.ledger.history("fills") == fills
+    finally:
+        restarted.ledger.close()
+
+
+def test_new_publication_supersedes_quote_pending_forecast(qualified_runner, monkeypatch):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    market.book_offset = -26
+    monkeypatch.setattr(runtime_module.time, "sleep", lambda _: None)
+    instance.tick()
+    market.book_offset = 0
+    forecast(data, qualified=True, identity="new-publication", p=.35)
+    instance.tick()
+    assert {row["forecast_id"] for row in instance.ledger.history("fills")} == {"new-publication"}
+    assert not instance.ledger.has_cycle("forecast:forecast-1")
+    assert not instance.ledger.has_cycle("forecast-retry:forecast-1")
+
+
+@pytest.mark.parametrize("mutation", ["hold", "depth", "missing", "transfer", "fill"])
+def test_legacy_mixed_or_executed_cycles_are_never_recovered(qualified_runner, mutation):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    decisions = [{"account": account, "coin": "BTC", "forecast_id": "forecast-1",
+                  "action": "skip", "reason": "Executable book predates the forecast."}
+                 for account in runtime_module.ACCOUNTS]
+    kwargs = {}
+    if mutation == "hold":
+        decisions[0].update(action="hold", reason="target_unchanged")
+    elif mutation == "depth":
+        decisions[0]["reason"] = "insufficient_depth"
+    elif mutation == "missing":
+        decisions.pop()
+    elif mutation == "transfer":
+        kwargs["transfers"] = [{"from_account": "clearpond", "to_account": "jeremy", "amount": 20}]
+    else:
+        kwargs["orders"] = [{"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 1, "price": 100}]
+    instance._execute("forecast:forecast-1", {"perp:BTC": 100, "spot:BTC": 102}, decisions=decisions, **kwargs)
+    before = instance.ledger.history("fills")
+    instance.tick()
+    assert instance.ledger.history("fills") == before
+    assert not instance.ledger.has_cycle("forecast-retry:forecast-1")
 
 
 @pytest.mark.parametrize("overrides", [
@@ -951,3 +1201,265 @@ def test_simulation_skip_uses_saved_execution_cause(qualified_runner, depth):
         assert detail["decision_checks"]["execution_reason"] == row["reason"]
         assert detail["decision_checks"]["execution_status"] == "unfilled"
     assert instance.ledger.history("fills") == []
+
+
+def install_opening_risk_mirror(monkeypatch, *, include_long=True):
+    calls = []
+
+    def mirror(provider, symbols, *, clock):
+        calls.append(tuple(symbols))
+        quotes = provider.snapshot(symbols)
+        positions = [{"account": "alex", "coin": "BTC", "kind": "perp", "quantity": -10,
+                      "average_entry": 80, "risk_reference_price": 100, "risk_reference_source": "opening_mark"}]
+        if include_long:
+            positions.append({"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 10,
+                              "average_entry": 120, "risk_reference_price": 100, "risk_reference_source": "opening_mark"})
+        return {"initial_cash": {a: 10000 for a in ("alex", "jeremy", "clearpond")},
+                "initial_positions": positions, "initial_marks": {key: row["mark"] for key, row in quotes["markets"].items()},
+                "now": clock(), "metadata": {"seed_mode": "mirror"}, "quotes": quotes}
+
+    monkeypatch.setattr(runtime_module, "mirror_accounts", mirror)
+    return calls
+
+
+def test_fresh_mirror_opening_is_published_before_qualified_first_cycle_without_historical_stops(tmp_path, monkeypatch):
+    config, data = configurations(tmp_path, seed_mode="mirror", symbols=("BTC", "ETH"),
+                                  require_qualified_forecasts=True, entry_band=.04)
+    clock = Clock()
+    market = FakeMarket(clock)
+    install_opening_risk_mirror(monkeypatch)
+    forecast(data, coin="BTC", p=.43, qualified=True)
+    forecast(data, coin="ETH", identity="eth-1", p=.455, qualified=True)
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    instance.initialize()
+    try:
+        opening = instance.ledger.latest_observation()
+        assert opening["state"]["pooled"]["equity"] == 29600
+        for name in ("performance.json", "_runtime/status.json"):
+            published = json.loads((data / "_paper" / name).read_text())
+            assert published["portfolio"]["pooled"]["equity"] == 29600
+            assert published["portfolio"]["pooled"]["total_pnl"] == published["portfolio"]["pooled"]["fees"] == 0
+            assert len(published["portfolio"]["pooled"]["positions"]) == 2
+        assert pd.read_parquet(data / "_paper" / "fills.parquet").empty
+        assert len(pd.read_parquet(data / "_paper" / "equity.parquet")) == 4
+        state = instance.tick()["portfolio"]
+        fills = instance.ledger.history("fills")
+        assert {row["coin"] for row in fills} == {"BTC", "ETH"}
+        assert all(row["reason"] == "signal_rebalance" for row in fills)
+        assert all(json.loads(row["details_json"])["qualified"] is True for row in fills)
+        assert instance._stops == {}
+        btc = next(p for p in state["pooled"]["positions"] if p["coin"] == "BTC")
+        assert btc["account"] == "alex" and btc["quantity"] < 0
+        assert btc["avg_entry"] == 80 and btc["risk_reference_price"] == 100
+        for row in instance.ledger.history("decisions"):
+            if row["coin"] == "BTC" and row["account"] in {"alex", "jeremy"}:
+                checks = json.loads(row["details_json"])["decision_checks"]
+                assert checks["historical_entry_price"] == {"alex": 80, "jeremy": 120}[row["account"]]
+                assert checks["risk_reference_price"] == 100 and checks["risk_reference_source"] == "opening_mark"
+                assert checks["stop_return_fraction"] == 0 and checks["cooldown_remaining_seconds"] == 0
+        costs = sum(row["quantity"] * (row["price"] - market.price[row["kind"]]) + row["fee"] for row in fills)
+        assert costs > 0
+        assert state["pooled"]["equity"] == pytest.approx(29600 - costs)
+        assert state["pooled"]["total_pnl"] == pytest.approx(-costs)
+        assert instance.ledger.history("cycles")[0]["cycle_id"] == "opening"
+    finally:
+        instance.ledger.close()
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_fresh_mirror_missing_or_research_signal_holds_until_new_experiment_stop(tmp_path, monkeypatch, missing):
+    config, data = configurations(tmp_path, seed_mode="mirror", require_qualified_forecasts=True)
+    clock = Clock()
+    market = FakeMarket(clock)
+    install_opening_risk_mirror(monkeypatch, include_long=False)
+    if not missing:
+        forecast(data, qualified=False, p=.1)
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    instance.initialize()
+    instance.tick()
+    assert instance.ledger.history("fills") == []
+    assert instance._stops == {}
+    original_seed = instance.ledger.seed()
+    instance.ledger.close()
+    clock.now += 31
+    market.price["perp"] = 103
+    reopened = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    reopened.initialize()
+    try:
+        reopened.tick()
+        fills = reopened.ledger.history("fills")
+        assert len(fills) == 1 and fills[0]["reason"] == "stop_loss"
+        assert fills[0]["quantity"] == 10 and fills[0]["forecast_id"] is None
+        checks = json.loads(reopened.ledger.history("decisions")[-3]["details_json"])["decision_checks"]
+        assert checks["risk_reference_price"] == 100
+        assert checks["stop_return_fraction"] == pytest.approx(-.03)
+        assert reopened.ledger.seed() == original_seed
+        assert reopened._stops[("alex", "BTC")] == clock()
+    finally:
+        reopened.ledger.close()
+
+
+def test_prepare_only_preserves_seed_and_stop_request_without_trading_then_resume_uses_fresh_quotes(tmp_path, monkeypatch):
+    config, data = configurations(tmp_path, seed_mode="mirror", require_qualified_forecasts=True)
+    clock = Clock()
+    market = FakeMarket(clock)
+    calls = install_opening_risk_mirror(monkeypatch, include_long=False)
+    forecast(data, qualified=True, p=.43)
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    marker = instance.control / "stop.request"
+    marker.write_text('{"reason":"intentional maintenance"}')
+    result = instance.run(prepare_only=True)
+    assert result["status"] == "stopped" and result["stop_reason"] == "prepare_only"
+    assert result["prepare_only"] and result["lifecycle_phase"] == "opening_prepared"
+    assert marker.read_text() == '{"reason":"intentional maintenance"}'
+    assert result["portfolio"]["pooled"]["total_pnl"] == result["portfolio"]["pooled"]["fees"] == 0
+    assert not runtime_module.read_status(data)["running"]
+    assert pd.read_parquet(data / "_paper" / "fills.parquet").empty
+    opening = json.loads((data / "_paper" / "opening_snapshot.json").read_text())
+    # Only the caller who established maintenance clears its request.
+    marker.unlink()
+    clock.now += 31
+    market.price["perp"] = 101
+    resumed = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    resumed.run(once=True)
+    assert calls == [("BTC",)]
+    assert market.snapshot_calls == [("BTC",), ("BTC",)]
+    assert json.loads((data / "_paper" / "opening_snapshot.json").read_text()) == opening
+    fills = pd.read_parquet(data / "_paper" / "fills.parquet")
+    assert not fills.empty and set(fills.reason) == {"signal_rebalance"}
+    assert all(fills.price > 101)
+
+
+def test_prepare_only_cli_is_mutually_exclusive_with_once(tmp_path):
+    with pytest.raises(SystemExit) as error:
+        runtime_module.main(["--prepare-only", "--once"])
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize("probability,inside,accounts", [
+    (.51, .509999, {"jeremy", "clearpond"}),
+    (.49, .490001, {"alex"}),
+])
+def test_shared_entry_exit_threshold_fills_at_boundary_and_exits_inside(
+    tmp_path, probability, inside, accounts,
+):
+    config, data = configurations(tmp_path, require_qualified_forecasts=True,
+                                  entry_band=.01, exit_band=.01)
+    clock = Clock()
+    market = FakeMarket(clock)
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    instance.initialize()
+    try:
+        forecast(data, qualified=True, p=probability)
+        opened = instance.tick()["portfolio"]
+        fills = instance.ledger.history("fills")
+        assert {row["account"] for row in fills} == accounts
+        assert all(row["notional"] >= instance.config.min_trade_notional for row in fills)
+        assert {row["account"] for row in opened["pooled"]["positions"]} == accounts
+        for row in instance.ledger.history("decisions"):
+            detail = json.loads(row["details_json"])
+            assert detail["policy"]["confidence"] == pytest.approx(.01 / .15)
+            checks = detail["decision_checks"]
+            assert checks["entry_probability_long"] == checks["exit_probability_long"] == .51
+            assert checks["entry_probability_short"] == checks["exit_probability_short"] == .49
+
+        # The same inclusive boundary retains an existing position as well as
+        # allowing a flat account to enter; there is no hidden hysteresis gap.
+        clock.now = BASE + 930
+        forecast(data, qualified=True, identity="boundary-held", decision=BASE + 900, p=probability)
+        held = instance.tick()["portfolio"]
+        assert {row["account"] for row in held["pooled"]["positions"]} == accounts
+        assert instance.ledger.history("fills") == fills
+
+        clock.now = BASE + 1830
+        forecast(data, qualified=True, identity="inside-threshold", decision=BASE + 1800, p=inside)
+        closed = instance.tick()["portfolio"]
+        assert closed["pooled"]["positions"] == []
+        exits = [row for row in instance.ledger.history("fills")
+                 if row["forecast_id"] == "inside-threshold"]
+        assert {row["account"] for row in exits} == accounts
+        assert all(row["reason"] == "signal_rebalance" for row in exits)
+        assert instance._stops == {}
+    finally:
+        instance.ledger.close()
+
+
+def test_shared_threshold_policy_resume_preserves_mirror_history_dedupe_and_cooldown(tmp_path, monkeypatch):
+    config, data = configurations(tmp_path, seed_mode="mirror", require_qualified_forecasts=True,
+                                  entry_band=.04, exit_band=.02)
+    clock = Clock()
+    market = FakeMarket(clock)
+    mirror_calls = install_opening_risk_mirror(monkeypatch)
+    first = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    first.initialize()
+    try:
+        seed = first.ledger.seed()
+        forecast(data, qualified=True, p=.65)
+        first.tick()
+        clock.now += 31
+        market.price["perp"] = 94
+        first.tick()
+        assert first._stops == {("jeremy", "BTC"): clock()}
+        inventory = first.ledger.inventory()
+        assert len(inventory) == 1 and inventory[0]["account"] == "clearpond"
+        histories = {table: first.ledger.history(table) for table in (
+            "initial_positions", "cycles", "fills", "decisions", "equity", "transfers", "funding", "events",
+        )}
+        old_policy_id = first.policy_id
+        old_policy_path = data / "_paper" / "policies" / f"{old_policy_id}.json"
+        old_policy_bytes = old_policy_path.read_bytes()
+        stops = dict(first._stops)
+    finally:
+        first.ledger.close()
+
+    values = json.loads(config.read_text())
+    values.update(entry_band=.01, exit_band=.01)
+    config.write_text(json.dumps(values))
+    market.price["perp"] = 100
+    clock.now += 31
+    resumed = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    resumed.initialize()
+    try:
+        assert mirror_calls == [("BTC",)]
+        assert resumed.ledger.seed() == seed
+        assert resumed.ledger.inventory() == inventory
+        assert resumed._stops == stops
+        assert resumed.policy_id != old_policy_id
+        assert old_policy_path.read_bytes() == old_policy_bytes
+        assert (data / "_paper" / "policies" / f"{resumed.policy_id}.json").is_file()
+        for table, rows in histories.items():
+            assert resumed.ledger.history(table) == rows
+
+        # A changed policy must not replay an already consumed forecast.
+        resumed.tick()
+        assert resumed.ledger.inventory() == inventory
+        assert resumed.ledger.history("fills") == histories["fills"]
+        assert resumed.ledger.history("decisions") == histories["decisions"]
+
+        clock.now = BASE + 930
+        forecast(data, qualified=True, identity="shared-threshold-new", decision=BASE + 900, p=.51)
+        resumed.tick()
+        fresh = [row for row in resumed.ledger.history("decisions")
+                 if row["forecast_id"] == "shared-threshold-new"]
+        assert {row["account"] for row in fresh} == {"alex", "jeremy", "clearpond"}
+        for row in fresh:
+            detail = json.loads(row["details_json"])
+            assert detail["policy_id"] == resumed.policy_id
+            checks = detail["decision_checks"]
+            assert checks["entry_probability_long"] == checks["exit_probability_long"] == .51
+            assert checks["entry_probability_short"] == checks["exit_probability_short"] == .49
+            if row["account"] == "jeremy":
+                assert row["action"] == "hold" and row["reason"] == "stop_cooldown"
+                assert checks["cooldown_blocks_target"] and checks["cooldown_remaining_seconds"] > 0
+        remaining = resumed.ledger.inventory()
+        assert len(remaining) == 1 and remaining[0]["account"] == "clearpond"
+        assert 0 < remaining[0]["quantity"] < inventory[0]["quantity"]
+        for name in ("avg_entry", "risk_reference_price", "risk_reference_source"):
+            assert remaining[0][name] == inventory[0][name]
+        assert resumed.ledger.seed() == seed
+        assert resumed._stops == stops
+        for table, rows in histories.items():
+            assert resumed.ledger.history(table)[:len(rows)] == rows
+        assert old_policy_path.read_bytes() == old_policy_bytes
+    finally:
+        resumed.ledger.close()

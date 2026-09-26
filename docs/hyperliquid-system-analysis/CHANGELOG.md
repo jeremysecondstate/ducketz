@@ -3,6 +3,118 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-09-26 — Bounded retries for forecast/book timing failures
+
+Fixed a race where Paper fetched books before reading a newly published forecast,
+then permanently consumed that forecast on a quote-only skip. Ticks now freeze
+forecasts first, fetch fresh books with up to three bounded attempts, and recheck
+forecast expiry afterward. Pending quote-only attempts persist across polling
+and restarts. A narrowly verified historical cycle with three quote-error skips
+and no monetary effects can finish through one append-only recovery key.
+Completed/partial/mixed outcomes retain their deduplication protection.
+
+Policy **1d260fb385aec9de** records execution version
+`forecast_first_bounded_quote_retry_v1`. The current experiment, seed, 49%/51%
+thresholds, fees, zero extra slippage and risk gates are unchanged. A graceful
+worker reload recovered the13:15 ETH/HYPE/ZEC forecasts while valid: ETH/HYPE
+filled; ZEC held for account capacity. Historical skips remain unchanged.
+Independent accounting and history-prefix checks passed. **330 tests passed**;
+Operations Watch now follows contractv9. See the
+[timing/retry audit](audits/2026-09-26-paper-quote-retry.md).
+
+## 2026-09-26 — Shared 49%/51% Paper entry and exit thresholds
+
+At the user's direction, the active Paper experiment now uses
+`entry_band=exit_band=0.01`: longs are eligible at or above 51%, shorts at or
+below 49%, regardless of whether the position already exists. Longs exit below
+51% and shorts above 49%. There is no entry/exit hysteresis gap. Equal bands are
+now valid; shared-band conviction uses absolute edge divided by saturation to
+give eligible boundary signals nonzero target size. Unequal historical policies
+retain their existing sizing and hysteresis. Fees, zero extra slippage,
+qualification, minimum trades, caps and stop cooldowns are unchanged.
+
+Paper reads config at startup, so the worker was gracefully stopped and resumed
+on the existing **20260926T123436Z-book-vwap** ledger. Opening, signed holdings,
+cash, historical journals, stop references and the old policy were preserved.
+New policy **747825fed0f17c1c** applies to new forecast publications; processed
+forecasts were not replayed. **316 tests passed**, including shared-boundary
+execution, exits and policy-change resume. Operations Watch **v8** records the
+new policy and worker without changing the experiment baseline. See the
+[policy-change audit](audits/2026-09-26-shared-49-51-paper.md).
+
+## 2026-09-26 — Book-VWAP Paper fills without added slippage
+
+Removed the configured two-basis-point fill-price adjustment at the user's
+request. The active config and simulation defaults now use zero extra slippage.
+Fills use fetched executable-depth VWAP, with separate configured taker fees:
+0.045% perpetuals and 0.070% spot. Explicit historical nonzero scenarios remain
+supported; prior fill evidence is unchanged. Strategy and risk rules are unchanged.
+
+Preserved the preceding 12:00:59 run intact and prepared a fresh public-account
+mirror, **20260926T123436Z-book-vwap**, opening at **$42,088.24361973616** with
+nine positions and zero fills, fees and P/L. Subcent source-valuation differences
+are documented rather than hidden through artificial cash adjustments. Resumed
+Paper after opening verification. Its first seven fills equal raw book VWAP and
+charged $26.9140638455 in applicable taker fees, with zero added slippage.
+Independent replay reconciles cash, inventory, historical basis, risk references
+and marked equity. **311 scoped tests passed** across market, policy, runtime and
+ledger tests, including partial-depth buys/sells and distinct spot/perp accounting.
+
+Operations Watch contract **v7** adopts policy `2c8197e2cbe140d6`, the new seed,
+Paper config hash and worker identity. Data and models continued; Powder remains
+inactive. See the [restart audit](audits/2026-09-26-book-vwap-paper.md).
+
+## 2026-09-26 — Auditable fresh mirror before trading and separate stop references
+
+Reconstructed the disputed 11:30:32 Paper opening independently. Its inventory
+and equity reconciled, but seven executions within 0.66 seconds reduced the
+inherited positions to dust and cost $40.902009: $28.268292 fees plus $12.633716
+execution drag. Historical-entry stops, Qualified neutral/opposite signals and
+sequential exposure-cap enforcement explained the adjustments. The first equity
+journal point already followed a sale. See the
+[forensic audit](audits/2026-09-26-paper-restart-reconstruction.md).
+
+Fresh mirrors now commit an atomic opening observation before strategy fills,
+with zero experiment P/L, fills and fees. A prepare-only lifecycle exports that
+untouched mirror for verification; normal resume opens the same seed and uses
+fresh market quotes without recreating the opening. H.Y.P.E.R. keeps the opening
+baseline and signed inherited inventory visible alongside the current portfolio.
+Public account-read windows and available exchange timestamps are retained.
+
+Historical perpetual entry remains the accounting/display basis. A separate
+persisted opening-mark reference makes the 3% stop measure the fresh experiment;
+reductions retain it, additions weight it, and a new position starts at fill
+price. Legacy positions migrate to their existing entry references, preserving
+their prior stop semantics and immutable history. Qualified-only forecasts,
+54%/46% entries, exposure limits, execution fees/slippage and uncapped model
+training remain unchanged. Risk actions remain separately explained.
+
+The user authorized a current-account mirror followed by trading, with a
+temporary maintenance pause for the refresh. Preserved the disputed run intact
+at `_paper_archives/20260926T113032Z-fresh-entry-4pp-disputed`, documented by
+`_operations/paper-restart-20260926-preservation.json`; its unchanged eligibility
+metadata is not acceptance of that baseline. The permanently excluded earlier
+sample remains excluded and was not reconstructed.
+
+New experiment **`20260926T120059Z-fresh-mirror-opening`** opened at
+**12:00:59.251769781 UTC** with equity **$42,100.730843905156** and nine inherited
+positions. Before trading, verification found one opening cycle, four equity
+rows, zero fills/decisions/transfers/funding, and zero P/L/fees. The proof is
+`_operations/paper-restart-20260926-opening-verification.json`. Policy ID is
+**`6b404ac74a142e9f`**; configuration hashes are unchanged. Data and models stayed
+running; Powder stayed inactive. Continuous Paper was launched after the
+untouched opening was captured; post-start cycle verification is recorded in
+the [completed opening/first-cycle audit](audits/2026-09-26-corrected-paper-mirror.md),
+including independent cash/holdings/fees/marks replay and advancing worker checks.
+
+**491 broad relevant tests passed**, followed by **80 focused UI tests**; these
+are verification runs, not an additive count of unique tests. Regression coverage
+includes opening atomicity/idempotence, historical basis versus fresh stops,
+legacy migration, prepare/resume, real later costs, signal/risk behavior and
+opening-chart/UI visibility. Updated Operations Watch to **contract v6** with
+the fresh baseline, preserved disputed evidence and intentional prepare-only
+stop handling. Automation prompt/memory are maintained through the app workflow.
+
 ## 2026-09-26 — Excluded prior sample and fresh 54%/46% mirror
 
 At the user's direction, removed the 10:35:59 UTC Paper sample from active and

@@ -219,17 +219,32 @@ def test_transport_retries_transient_failure_but_not_auth_failure(monkeypatch):
 
 
 def test_buy_and_sell_fill_walk_correct_depth_with_adverse_slippage():
-    buy = simulate_fill(market(), 2, now=NOW)
+    buy = simulate_fill(market(), 2, extra_slippage_bps=2, now=NOW)
     assert buy["quantity"] == 2
     assert buy["raw_book_vwap"] == 101.5
     assert buy["price"] == pytest.approx(101.5 * 1.0002)
     assert buy["notional"] == pytest.approx(2 * buy["price"])
     assert buy["levels_consumed"] == 2
-    sell = simulate_fill(market(), -3, now=NOW)
+    sell = simulate_fill(market(), -3, extra_slippage_bps=2, now=NOW)
     assert sell["quantity"] == -3
     assert sell["raw_book_vwap"] == pytest.approx((99 * 2 + 98) / 3)
     assert sell["price"] < sell["raw_book_vwap"]
     assert sell["unfilled_quantity"] == 0
+
+
+@pytest.mark.parametrize(("quantity", "filled", "notional", "levels"), [
+    (2, 2, 203, 2), (-3, -3, 296, 2),
+    (5, 3, 305, 2), (-9, -5, 492, 2),
+])
+def test_default_taker_fill_uses_only_visible_depth_vwap(quantity, filled, notional, levels):
+    fill = simulate_fill(market(), quantity, now=NOW)
+    assert fill["extra_slippage_bps"] == 0
+    assert fill["quantity"] == filled
+    assert fill["notional"] == pytest.approx(notional)
+    assert fill["price"] == fill["raw_book_vwap"] == pytest.approx(notional / abs(filled))
+    assert fill["levels_consumed"] == levels
+    assert fill["unfilled_quantity"] == quantity - filled
+    assert fill["status"] == ("filled" if quantity == filled else "partial")
 
 
 def test_partial_fill_is_capped_by_visible_depth_and_remainder_preserves_sign():
@@ -254,7 +269,7 @@ def test_consuming_fills_shares_visible_depth_between_accounts_without_mutating_
     second = simulate_fill(remaining, 2, now=NOW)
     assert second["quantity"] == 1.0
     assert second["unfilled_quantity"] == 1.0
-    assert second["price"] == pytest.approx(102 * 1.0002)
+    assert second["price"] == 102
     empty = consume_fill(remaining, second)
     assert empty["asks"] == []
     assert simulate_fill(empty, 1, now=NOW)["quantity"] == 0

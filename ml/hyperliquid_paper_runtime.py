@@ -47,6 +47,27 @@ def current_positions(state, coin):
     return result
 
 
+def _quote_issue(book, kind, coin, prediction, now, max_age):
+    if book is None:
+        return f"No executable {kind} book for {coin}."
+    if prediction and stamp(book["book_time_utc"]) < stamp(prediction["created_at_utc"]):
+        return "Executable book predates the forecast."
+    if not -5 <= now - stamp(book["book_time_utc"]) <= max_age:
+        return "Executable book is stale or future-dated."
+    return None
+
+
+def _all_quote_skips(decisions, coin, forecast_id):
+    if not decisions or len(decisions) != len(ACCOUNTS) or {row.get("account") for row in decisions} != set(ACCOUNTS):
+        return False
+    return all(row.get("coin") == coin and row.get("forecast_id") == forecast_id
+               and row.get("action") == "skip" and row.get("reason") in {
+                   "Executable book predates the forecast.",
+                   "Executable book is stale or future-dated.",
+                   f"No executable {'spot' if row['account'] == 'clearpond' else 'perp'} book for {coin}.",
+               } for row in decisions)
+
+
 def _policy_checks(config, details):
     """Saved decision evidence only; these values never choose an order."""
     return {
@@ -111,6 +132,7 @@ class PaperRuntime:
         self._funding_errors = {}
         self._stopped = threading.Event()
         self._seed_quotes = None
+        self._quote_attempt_count = 0
         self._state = {"mode": "paper", "status": "starting", "pid": os.getpid(), "config_path": str(self.config_path)}
 
     def initialize(self):
@@ -128,6 +150,8 @@ class PaperRuntime:
         settings = {key: str(value) if isinstance(value, Path) else value for key, value in asdict(self.config).items()}
         settings["recipe_version"] = ("direction-volatility-v2-qualified-hold" if self.config.require_qualified_forecasts
                                       else "direction-volatility-v1")
+        settings["stop_reference_policy"] = "persisted_position_risk_reference_v1"
+        settings["quote_execution_policy"] = "forecast_first_bounded_quote_retry_v1"
         self.policy_id = hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:16]
         policy_path = self.directory / "policies" / f"{self.policy_id}.json"
         policy_path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,6 +164,19 @@ class PaperRuntime:
                 self._stops[(row["account"], row["coin"])] = stamp(row["timestamp_utc"])
         path = self.control / "funding_cursor.json"
         self.funding_cursor = json.loads(path.read_text()) if path.exists() else {}
+        observation = self.ledger.latest_observation()
+        # Legacy ledgers may have been seeded without an opening observation.
+        # Publish their current baseline only if no cycle has ever run; never
+        # revalue a resumed portfolio using opening marks.
+        state = observation["state"] if observation else self.ledger.state(self.ledger.seed()["marks"])
+        observed_at = observation["timestamp_utc"] if observation else self.ledger.seed()["timestamp_utc"]
+        self._state.update(status="starting", updated_at_utc=observed_at, last_error=None,
+                           portfolio=state, simulated=True, poll_seconds=self.config.poll_seconds,
+                           horizon_bars=self.horizon,
+                           lifecycle_phase="opening_prepared" if not observation or observation["cycle_id"] == "opening" else "resuming")
+        self.ledger.export(self.directory)
+        self.report(state, as_of_utc=observed_at)
+        _atomic_json(self.control / "status.json", self._state)
 
     def _execute(self, key, marks, *, orders=(), transfers=(), funding=(), decisions=()):
         def versioned(rows):
@@ -160,6 +197,18 @@ class PaperRuntime:
     def _forecast(self, coin, now):
         return read_forecast(coin, now, self.config, self.interval, self.horizon,
                              feature_loader=self._features)
+
+    def _forecast_completion(self, coin, forecast_id):
+        """Choose one durable completion key without altering historical skips."""
+        canonical = f"forecast:{forecast_id}"
+        recovery = f"forecast-retry:{forecast_id}"
+        if self.ledger.has_cycle(recovery):
+            return recovery, True
+        if not self.ledger.has_cycle(canonical):
+            return canonical, False
+        if _all_quote_skips(self.ledger.unexecuted_cycle_decisions(canonical), coin, forecast_id):
+            return recovery, False
+        return canonical, True
 
     def _funding(self, marks, now):
         # Use realized exchange rates with the exact completed-candle close as
@@ -255,8 +304,9 @@ class PaperRuntime:
         signal_prediction = None if excluded_forecast else prediction
         hold_without_signal = cfg.require_qualified_forecasts and signal_prediction is None
         key = f"forecast:{forecast_id}" if prediction else f"stale:{coin}:{int(now // 900)}"
-        stop_accounts = [a for a, p in positions.items() if p and
-                         p["quantity"] * (marks[p["market"]] - p["avg_entry"]) / (abs(p["quantity"]) * p["avg_entry"]) <= -cfg.stop_loss_fraction]
+        stop_returns = {a: (math.copysign(1.0, p["quantity"]) * (marks[p["market"]] / p["risk_reference_price"] - 1)
+                            if p else None) for a, p in positions.items()}
+        stop_accounts = [a for a, value in stop_returns.items() if value is not None and value <= -cfg.stop_loss_fraction]
         cooldown = self.horizon * INTERVAL_MS[self.interval] / 1000
         cooldown_accounts = {a for a in ACCOUNTS if current[a] and now - self._stops.get((a, coin), -math.inf) < cooldown}
         over_limit = any(v["gross_exposure"] > max(0, v["equity"]) for a, v in state["accounts"].items() if a != "clearpond")
@@ -270,7 +320,11 @@ class PaperRuntime:
             over_limit = (managed_gross > gross_capacity + 1e-8 or any(
                 v["gross_exposure"] > max(0.0, v["equity"]) * cfg.account_utilization + 1e-8
                 for v in state["accounts"].values()))
-        already_done = self.ledger.has_cycle(key)
+        if prediction:
+            key, already_done = self._forecast_completion(coin, forecast_id)
+        else:
+            already_done = self.ledger.has_cycle(key)
+        recovery_of = f"forecast:{forecast_id}" if key.startswith("forecast-retry:") else None
         if already_done and not stop_accounts and not over_limit and not (cfg.require_qualified_forecasts and cooldown_accounts):
             return False
         if prediction and not excluded_forecast:
@@ -316,13 +370,7 @@ class PaperRuntime:
         for account in ACCOUNTS:
             kind = "spot" if account == "clearpond" else "perp"
             book = quotes.get(f"{kind}:{coin}")
-            issue = None
-            if book is None:
-                issue = f"No executable {kind} book for {coin}."
-            elif signal_prediction and stamp(book["book_time_utc"]) < stamp(signal_prediction["created_at_utc"]):
-                issue = "Executable book predates the forecast."
-            elif not -5 <= now - stamp(book["book_time_utc"]) <= cfg.max_quote_age_seconds:
-                issue = "Executable book is stale or future-dated."
+            issue = _quote_issue(book, kind, coin, signal_prediction, now, cfg.max_quote_age_seconds)
             if issue:
                 quote_issues[account] = issue
                 unavailable_reduction |= abs(targets[account]) < abs(current[account])
@@ -370,6 +418,10 @@ class PaperRuntime:
             rebalance = should_rebalance(current[account], target, cfg, force_reduce=force_reduce)
             checks = {
                 **_policy_checks(cfg, details), "trigger_reason": reason,
+                "historical_entry_price": positions[account]["avg_entry"] if positions[account] else None,
+                "risk_reference_price": positions[account]["risk_reference_price"] if positions[account] else None,
+                "risk_reference_source": positions[account]["risk_reference_source"] if positions[account] else None,
+                "stop_return_fraction": stop_returns[account], "stop_loss_fraction": cfg.stop_loss_fraction,
                 "account_role": {"alex": "short_perp", "jeremy": "long_perp", "clearpond": "long_spot"}[account],
                 "delta_notional": target - current[account],
                 "proposed_target_notional": proposed_targets[account],
@@ -381,6 +433,10 @@ class PaperRuntime:
                 "cooldown_remaining_seconds": cooldown_remaining,
                 "cooldown_blocks_target": bool(cooldown_remaining and proposed_targets[account] and target == 0),
                 "rebalance_required": rebalance, "rebalance_forced": force_reduce,
+                "book_time_utc": quotes.get(f"{kind}:{coin}", {}).get("book_time_utc"),
+                "forecast_created_at_utc": signal_prediction["created_at_utc"] if signal_prediction else None,
+                "quote_attempt_count": self._quote_attempt_count,
+                "recovery_of_cycle_id": recovery_of,
             }
             common = {"account": account, "coin": coin, "kind": kind,
                       "forecast_id": signal_prediction["prediction_id"] if signal_prediction else None,
@@ -422,6 +478,17 @@ class PaperRuntime:
                                   "reason": _hold_reason(reason, checks, current[account], target)})
         # Risk reductions are processed first; each account retains its own cash.
         orders.sort(key=lambda order: 0 if current[order["account"]] * order["quantity"] < 0 else 1)
+        if (prediction and not already_done and not orders and not transfers
+                and _all_quote_skips(decisions, coin, forecast_id)):
+            # An unavailable quote is not a consumed forecast. Keep one durable
+            # diagnostic and retry the latest valid publication on later polls.
+            wait_key = f"forecast-wait:{forecast_id}"
+            if not self.ledger.has_cycle(wait_key):
+                self._execute(wait_key, marks, decisions=[{
+                    **decision, "retry_pending": True,
+                    "decision_checks": {**decision["decision_checks"], "retry_pending": True},
+                } for decision in decisions])
+            return False
         self._execute(key, marks, orders=orders, transfers=transfers, decisions=decisions)
         for order in orders:
             if order["reason"] == "stop_loss":
@@ -434,24 +501,48 @@ class PaperRuntime:
         inherited = {p["coin"] for p in self.ledger.history("initial_positions")}
         held = {p["coin"] for p in self.ledger.inventory()}
         symbols = sorted(set(self.markets_config.symbols) | inherited | held)
-        observation = self._seed_quotes or self.market.snapshot(symbols)
+        # Freeze publications before requesting executable books. A forecast
+        # published while HTTP requests are in flight belongs to the next tick.
+        forecasts, errors = {}, {}
+        for coin in symbols:
+            try:
+                if coin not in self.markets_config.symbols:
+                    raise ValueError("Market removed from the configured strategy universe.")
+                prediction, sigma = self._forecast(coin, self.clock())
+                forecasts[coin] = (prediction, sigma, None)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                forecasts[coin] = (None, None, str(exc))
+        # Seed quotes describe the immutable opening, never a later execution.
         self._seed_quotes = None
+        for attempt in range(3):
+            if attempt:
+                time.sleep(.1 * attempt)
+            observation = self.market.snapshot(symbols)
+            self._quote_attempt_count = attempt + 1
+            now = self.clock()
+            needs_retry = False
+            for coin, (prediction, _, _) in forecasts.items():
+                if (prediction is None or now >= prediction["_valid_until_epoch"]
+                        or self.config.require_qualified_forecasts and not prediction["qualified"]
+                        or self._forecast_completion(coin, prediction["prediction_id"])[1]):
+                    continue
+                needs_retry |= any(_quote_issue(observation["markets"].get(f"{kind}:{coin}"), kind, coin,
+                                               prediction, now, self.config.max_quote_age_seconds)
+                                   for kind in ("perp", "spot"))
+            if not needs_retry:
+                break
         quotes = observation["markets"]
         marks = {key: value["mark"] for key, value in quotes.items()}
         now = self.clock()
         # Missing held-asset marks cannot silently disappear from pool risk/P&L.
         self.ledger.state(marks)
         self._funding(marks, now)
-        changes, errors = False, {}
+        changes = False
         for coin in symbols:
             try:
-                try:
-                    if coin not in self.markets_config.symbols:
-                        raise ValueError("Market removed from the configured strategy universe.")
-                    prediction, sigma = self._forecast(coin, now)
-                    error = None
-                except (OSError, ValueError, KeyError, TypeError) as exc:
-                    prediction, sigma, error = None, None, str(exc)
+                prediction, sigma, error = forecasts[coin]
+                if prediction and self.clock() >= prediction["_valid_until_epoch"]:
+                    prediction, sigma, error = None, None, "Forecast expired while fetching executable books."
                 changed = self._trade_coin(coin, quotes, marks, prediction, sigma, error)
                 changes = changes or changed
                 if error:
@@ -461,9 +552,11 @@ class PaperRuntime:
         self._execute(f"mark:{int(now // self.config.poll_seconds)}", marks)
         state = self.ledger.state(marks)
         self._state.update(status="running", updated_at_utc=_utc(self.clock()), last_error=None,
+                           lifecycle_phase="trading",
                            errors=errors, quote_errors=observation["errors"], funding_errors=self._funding_errors,
                            portfolio=state, simulated=True, funding_valuation="realized_rate/candle_close_proxy",
                            poll_seconds=self.config.poll_seconds, horizon_bars=self.horizon)
+        self._state["quote_attempt_count"] = self._quote_attempt_count
         _atomic_json(self.control / "status.json", self._state)
         if changes or now - self._last_export >= 900:
             self.ledger.export(self.directory)
@@ -471,7 +564,7 @@ class PaperRuntime:
             self.report(state)
         return self._state
 
-    def report(self, state):
+    def report(self, state, *, as_of_utc=None):
         fills = self.ledger.history("fills")
         equity = pd.DataFrame(self.ledger.history("equity"))
         drawdown = 0.0
@@ -482,7 +575,7 @@ class PaperRuntime:
             baseline = state["pooled"]["initial_equity"]
             peak = curve.cummax().clip(lower=baseline)
             drawdown = float(((curve / peak - 1).min()))
-        result = {"as_of_utc": _utc(self.clock()), "mode": "paper", "portfolio": state,
+        result = {"as_of_utc": as_of_utc or _utc(self.clock()), "mode": "paper", "portfolio": state,
                   "fill_count": len(fills), "transfer_count": len(self.ledger.history("transfers")),
                   "turnover": sum(row["notional"] for row in fills), "max_drawdown_fraction": drawdown,
                   "fees": state["pooled"]["fees"], "funding": state["pooled"]["funding"],
@@ -495,12 +588,12 @@ class PaperRuntime:
         _atomic_json(self.directory / "performance.json", result)
         return result
 
-    def run(self, once=False):
+    def run(self, once=False, *, prepare_only=False):
         lock = FileLock(str(self.control / ".paper.lock"), timeout=0)
         with lock:
             self.initialize()
             try:
-                while not self._stopped.is_set() and not (self.control / "stop.request").exists():
+                while not prepare_only and not self._stopped.is_set() and not (self.control / "stop.request").exists():
                     try:
                         self.tick()
                     except Exception as exc:
@@ -511,8 +604,12 @@ class PaperRuntime:
                     self._stopped.wait(self.config.poll_seconds)
             finally:
                 self._state["status"] = "stopped" if not self._state.get("last_error") else "failed"
+                self._state["prepare_only"] = prepare_only
+                if prepare_only:
+                    self._state["stop_reason"] = "prepare_only"
                 _atomic_json(self.control / "status.json", self._state)
-                (self.control / "stop.request").unlink(missing_ok=True)
+                if not prepare_only:
+                    (self.control / "stop.request").unlink(missing_ok=True)
                 self.ledger.export(self.directory)
                 self.ledger.close()
         return self._state
@@ -534,8 +631,10 @@ def read_status(root):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=DEFAULT_PAPER_CONFIG_PATH)
-    parser.add_argument("--once", action="store_true")
     controls = parser.add_mutually_exclusive_group()
+    controls.add_argument("--once", action="store_true")
+    controls.add_argument("--prepare-only", action="store_true",
+                          help="Persist and export the opening portfolio, then stop without trading. Existing ledgers are never reseeded.")
     controls.add_argument("--status", action="store_true")
     controls.add_argument("--stop", action="store_true")
     args = parser.parse_args(argv)
@@ -554,7 +653,7 @@ def main(argv=None):
         runtime = PaperRuntime(args.config)
         signal.signal(signal.SIGINT, lambda *_: runtime._stopped.set())
         signal.signal(signal.SIGTERM, lambda *_: runtime._stopped.set())
-        result = runtime.run(once=args.once)
+        result = runtime.run(once=args.once, prepare_only=args.prepare_only)
     print(json.dumps(result, indent=2))
     return 1 if result.get("status") == "failed" else 0
 

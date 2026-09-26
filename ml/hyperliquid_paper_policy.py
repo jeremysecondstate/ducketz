@@ -53,7 +53,8 @@ class PaperConfig:
     rebalance_min_delta_fraction: float = 0.10
     perp_fee_rate: float = 0.00045
     spot_fee_rate: float = 0.0007
-    slippage_bps: float = 2.0
+    # Fills use the executable book VWAP; extra modeled slippage is opt-in.
+    slippage_bps: float = 0.0
     stop_loss_fraction: float = 0.03
     max_forecast_age_seconds: float = 900.0
     max_model_age_seconds: float = 86400.0
@@ -105,8 +106,8 @@ class PaperConfig:
             raise ValueError("stop_loss_fraction must be in (0, 1).")
         for name in ("entry_band", "exit_band", "saturation_band"):
             _finite(getattr(self, name), name)
-        if not 0 <= self.exit_band < self.entry_band < self.saturation_band <= 0.5:
-            raise ValueError("Require 0 <= exit_band < entry_band < saturation_band <= 0.5.")
+        if not 0 <= self.exit_band <= self.entry_band < self.saturation_band <= 0.5:
+            raise ValueError("Require 0 <= exit_band <= entry_band < saturation_band <= 0.5.")
 
     @property
     def paper_root(self) -> Path:
@@ -194,14 +195,23 @@ def target_notionals(
     reason = "neutral_band"
     if equity <= 0:
         reason = "nonpositive_pool_equity"
+    elif direction and config.exit_band == config.entry_band:
+        # A shared boundary has no hysteresis: flat and held positions use
+        # the same inclusive threshold, avoiding an entry/exit alternation.
+        active = edge + 1e-12 >= config.entry_band
+        reason = "entry_threshold_met" if active else "exit_band" if matching_gross else "entry_deadband"
     elif direction and matching_gross > 0:
         active = edge > config.exit_band + 1e-12
         reason = "hold_with_hysteresis" if active else "exit_band"
     elif direction:
         active = edge + 1e-12 >= config.entry_band
         reason = "entry_threshold_met" if active else "entry_deadband"
+    # In shared-threshold mode, size conviction from neutral. Subtracting
+    # that same threshold would assign zero size to an eligible boundary.
+    # Preserve the existing sizing curve for every unequal-band policy.
+    confidence_floor = 0.0 if config.exit_band == config.entry_band else config.exit_band
     confidence = (
-        min(1.0, max(0.0, (edge - config.exit_band) / (config.saturation_band - config.exit_band)))
+        min(1.0, max(0.0, (edge - confidence_floor) / (config.saturation_band - confidence_floor)))
         if active else 0.0
     )
     effective_sigma = max(volatility, config.sigma_floor)
@@ -233,6 +243,7 @@ def target_notionals(
             "direction": "long" if direction > 0 and gross > 0 else "short" if direction < 0 and gross > 0 else "flat",
             "absolute_probability_edge": edge,
             "confidence": confidence,
+            "confidence_floor_band": confidence_floor,
             "existing_matching_gross": matching_gross,
             "existing_opposing_gross_to_reduce": opposing_gross,
             "current_coin_gross": positive_gross + negative_gross,

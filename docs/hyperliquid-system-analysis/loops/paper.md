@@ -39,7 +39,12 @@ does not create a signing client. The ledger itself performs no network calls.
 4. Publish the persisted opening snapshot and policy settings. Hash settings plus
    recipe `direction-volatility-v2-qualified-hold` into `policy_id` when
    qualification is required; legacy mixed mode retains `direction-volatility-v1`.
+   Settings also version the persisted-position stop-reference semantics.
 5. Reconstruct stop cooldowns from prior `stop_loss` fills; read funding cursor.
+   Fresh creation has already committed a zero-cost `opening` observation. Publish
+   the current committed observation before trading; `--prepare-only` exits here
+   without a tick, allowing direct opening verification. Existing seeds resume
+   unchanged, and legacy positions retain their historical stop references.
 6. Run the tick below, then wait the configured 30 seconds. Actual start-to-start
    duration includes tick work and network waits. `--once` also mutates Paper;
    it is not a read-only diagnostic.
@@ -56,22 +61,27 @@ copies opening inventory/cash before any first-cycle risk or allocation changes.
 
 1. Read configured, inherited and currently held symbols. Their union keeps
    removed-but-held assets visible for valuation/reduction.
-2. Fetch public spot/perp observations (or reuse first initialization's seed
-   quotes). Build marks only from usable returned markets.
-3. Value the entire ledger. Missing held-asset marks raise before further tick
+2. Read and freeze each symbol's forecast and exact source feature before fetching
+   executable books. Opening seed quotes are not reused for trading.
+3. Fetch fresh public spot/perp observations. Timing/missing-book failures get
+   up to three snapshot attempts in the tick, with short bounded backoff.
+   Build marks only from usable returned markets and recheck frozen-forecast
+   validity after fetching; never trade an expired forecast or swap in a newer
+   publication after selecting books.
+4. Value the entire ledger. Missing held-asset marks raise before further tick
    work; there is no automatic substitution of last-known marks.
-4. If the five-minute funding check is due, reconstruct settlement quantities,
+5. If the five-minute funding check is due, reconstruct settlement quantities,
    request published rates and commit deduplicated estimated funding events.
-5. For each symbol, validate its forecast and exact source feature. Current
+6. Process each symbol's frozen forecast. Current
    qualified-only mode holds exposure when evidence is missing/invalid/stale or
    Research; that absence cannot create signal exposure or transfers.
-6. Calculate current managed quantities, entry-based stops and collateral
+7. Calculate current managed quantities, persisted-reference stops and collateral
    excess; check the cycle key before ordinary processing.
-7. Derive pool targets, apply stop cooldowns, reject unusable executable quotes,
+8. Derive pool targets, apply stop cooldowns, reject unusable executable quotes,
    plan virtual transfers and apply local account capacity limits.
-8. Simulate reductions before increases, reserving consumed book depth. Commit
+9. Simulate reductions before increases, reserving consumed book depth. Commit
    transfers, fills, decisions and valuations as one ledger cycle.
-9. Commit a separate polling-bucket mark cycle, update status with portfolio and
+10. Commit a separate polling-bucket mark cycle, update status with portfolio and
    per-symbol/quote/funding errors, then export/report if trades/transfers changed
    or 900 seconds have elapsed since the previous export.
 
@@ -92,7 +102,7 @@ Published `status=running` may still have nonempty `errors`, `quote_errors` or
 | Qualification | Current config requires `qualified=true`, `role=active` and matching record `eligible=true`; Research cannot allocate. |
 | No accepted forecast | Keep current target, then apply stops, persisted cooldown and account/symbol/pool exposure caps; legacy `require_qualified_forecasts=false` keeps zero-target fallback. |
 | Book | Valid separate market book, no earlier than an accepted signal's publication; 45-second age and 5-second future tolerance also apply to no-signal risk reductions. |
-| Fill | Market precision, visible depth, adverse slippage and $10 minimum; a zero/partial fill is not the desired position. |
+| Fill | Market precision, fetched visible-depth VWAP, zero added slippage and $10 minimum; a zero/partial fill is not the desired position. Separate spot/perp taker fees remain. |
 
 The public market layer independently enforces a fixed 45-second book age.
 If a required risk-reduction book is unavailable, the account keeps its target
@@ -111,6 +121,8 @@ allocation. Model publication itself still permits a labeled Research fallback.
 | Key | Scope |
 | --- | --- |
 | `forecast:<prediction-id>` | Ordinary processing once for a saved forecast |
+| `forecast-wait:<prediction-id>` | Durable diagnostic for a quote-only deferred attempt; does not consume the forecast |
+| `forecast-retry:<prediction-id>` | One append-only completion after a narrowly verified legacy quote-only skip |
 | `stale:<coin>:<floor(now/900)>` | No-forecast processing once per 15-minute bucket |
 | `risk:<coin>:<floor(now/poll_seconds)>` | Revisit an already processed key when stops/over-limit risk require it |
 | `mark:<floor(now/poll_seconds)>` | Separate portfolio valuation bucket |
@@ -121,19 +133,24 @@ for duplicates, and rolls the whole cycle back on failure. A crash after commit
 but before status/export publication leaves recoverable committed truth.
 Funding replay remains deduplicated if its JSON cursor lags that commit.
 
-Ordinary processed keys also suppress repeated partial-fill/unfilled attempts;
-retry on every 30-second poll is not guaranteed. New forecasts, later stale
-buckets or the qualifying risk path create another opportunity. Stops are
+Quote-only attempts with no fills, transfers or funding remain pending after
+the bounded in-tick retries and can retry on subsequent polls while the forecast
+is valid. An old consumed cycle is recoverable only if its three expected account
+decisions were all explicit quote-error skips and it had no side effects. Original
+history is preserved; a fixed recovery key prevents duplicate completions.
+Ordinary completed keys still suppress repeated partial-fill/unfilled attempts;
+mixed outcomes or cycles with side effects are not replayed. New forecasts, later
+stale buckets or the qualifying risk path create another opportunity. Stops are
 polled entry-loss reductions, not resting exchange orders. One-horizon cooldown
 is restored from the last committed stop fill for each account/coin.
 
 Every new account decision saves `decision_checks` explaining the applicable
 entry/exit probabilities, account role, target delta and adjustment/size gates.
 Cooldown metadata also covers flat accounts whose proposed exposure is blocked.
-The retry path still treats only held cooldown exposure as a risk-reduction
-reason; diagnostic metadata does not add repeated executions or reset a
-forecast's committed identity. Hold/Skip reasons now report the blocking check;
-fill attribution and execution policy are unchanged. See the
+The risk path still treats only held cooldown exposure as a risk-reduction
+reason. Retry diagnostics retain book/forecast timestamps and attempt counts;
+completed executions retain their identities. Hold/Skip reasons report the
+blocking check. See the
 [gate investigation](../audits/2026-09-26-paper-decision-gates.md).
 
 Sources: [runtime methods](../../../ml/hyperliquid_paper_runtime.py),

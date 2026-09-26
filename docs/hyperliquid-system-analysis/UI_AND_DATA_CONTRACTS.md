@@ -26,8 +26,9 @@ horizons as a contract change, including the adapter, labels and filters.
 | Latest Paper portfolio | `_paper/ledger.sqlite3`, latest committed cycle and corresponding equity rows | Read one SQLite transaction; avoid combining different marked observations. |
 | Pool equity / P/L / fees / gross exposure | Recorded pooled state and equity | Select the pool once. P/L is `total_pnl`, not `net_realized_pnl`. |
 | Account cards | Recorded account state/equity with opening baseline | Account P/L already adjusts for net virtual transfers. |
+| Opening baseline / Opening inventory | Immutable ledger seed metadata and initial inventory | Timestamp, initial equity and zero experiment P/L/seed fees remain visible independently of current trading. Historical entry and fresh stop reference are distinct. |
 | Positions | Ledger inventory plus matching marked cycle positions | Reuse a mark only when inventory quantity and entry match that observation. Missing marks remain missing. |
-| Equity / P/L / drawdown chart | Ledger `equity` history | Select one account or `pooled`; last observation per bucket, never sum valuations. |
+| Equity / P/L / drawdown chart | Ledger `equity` history | Select one account or `pooled`; preserve first/last observations through sampling, never sum valuations. New ledgers have an explicit zero-P/L opening; old histories are not rewritten. |
 | Historical drawdown curve | Adapter projection of opening baseline + `total_pnl` | Running peaks precede sampling; internal transfers cannot manufacture an account drawdown. |
 | Headline worst drawdown | `_paper/performance.json` | Display the export's own `as_of_utc`; it can lag the ledger/chart. |
 | Decisions / fills / transfers | Corresponding SQLite journals and decoded `details_json` | Latest 500 rows per journal by default; preserve recorded IDs and execution quantities. |
@@ -126,10 +127,12 @@ model fitting the last candidate publication, model polling the runtime
 observation, Paper the quote/risk/valuation observation, and the UI its local
 read time. The status strip's most degraded source state must remain visible.
 
-The current UI marks performance exports stale after about ten minutes, while
-an unchanged Paper runtime may wait fifteen minutes before its next periodic
-export. That alert can therefore be normal export lag. Check the ledger and
-runtime separately; it is not a command to restart a healthy process.
+Performance freshness follows the runtime's fifteen-minute periodic export
+cadence (also exported after trading), rather than the former five-minute
+assumption that produced a stale warning at ten minutes. The worst-drawdown card
+is labeled as an export with its own observation time. Current equity, costs,
+positions and charts remain ledger observations; export age cannot explain a
+real ledger loss. Check these clocks separately before diagnosing worker failure.
 
 Operations presents measured data/model durations without replacing those source
 ages. Data publication is not independently timed in every record: an available

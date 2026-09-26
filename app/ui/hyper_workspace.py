@@ -90,6 +90,12 @@ def _decision_check_lines(row):
         lines.append("Sizing reason: " + REASONS.get(checks["policy_reason"], str(checks["policy_reason"])))
     if checks.get("trigger_reason") and checks["trigger_reason"] != row.get("reason"):
         lines.append("Trade trigger: " + REASONS.get(checks["trigger_reason"], str(checks["trigger_reason"])))
+    if number(checks.get("risk_reference_price")) is not None:
+        lines.append(f"Stop reference {money(checks['risk_reference_price'])} · {checks.get('risk_reference_source', 'source unavailable')}")
+        if number(checks.get("historical_entry_price")) is not None:
+            lines.append("Retained accounting entry: " + money(checks["historical_entry_price"]))
+        if number(checks.get("stop_return_fraction")) is not None:
+            lines.append(f"Return from stop reference {pct(checks['stop_return_fraction'])} · loss threshold {pct(checks.get('stop_loss_fraction'))}")
     if any(number(checks.get(k)) is not None for k in ("entry_probability_long", "entry_probability_short")):
         lines.append(f"Eligible signal entry P(not-down): long ≥ {pct(checks.get('entry_probability_long'))}; short ≤ {pct(checks.get('entry_probability_short'))}")
     if any(number(checks.get(k)) is not None for k in ("exit_probability_long", "exit_probability_short")):
@@ -181,6 +187,19 @@ def age_text(seconds):
     if value < 3600:
         return f"{int(value / 60)}m ago"
     return f"{value / 3600:.1f}h ago"
+
+
+def opening_baseline_summary(seed):
+    """Describe the immutable seed separately from current portfolio marks."""
+    baselines = seed.get("baseline_equity") if isinstance(seed, dict) else None
+    if not isinstance(baselines, dict) or any(number(baselines.get(key)) is None for key in ACCOUNTS):
+        return "Opening baseline unavailable"
+    equity = sum(number(baselines[key]) for key in ACCOUNTS)
+    positions = seed.get("positions")
+    count = len(positions) if isinstance(positions, list) else None
+    return (f"Opening baseline · {local_time(seed.get('timestamp_utc'), date=True)} · {money(equity)}"
+            f"\nExperiment P/L $0.00 · Seed fees $0.00"
+            + (f" · {count} inherited position{'s' if count != 1 else ''}" if count is not None else ""))
 
 
 def label(parent, text="", *, size=10, color=TEXT, bold=False, **kwargs):
@@ -326,6 +345,14 @@ class HyperWorkspace:
         self._body_window = self.canvas.create_window(0, 0, window=self.body, anchor="nw")
         self.body.bind("<Configure>", lambda _: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", self._resize)
+        self.opening_panel = card(self.body)
+        self.opening_panel.pack(fill="x", padx=14, pady=(2, 7))
+        self.opening_button = ttk.Button(self.opening_panel, text="Opening inventory", command=self._show_opening,
+                                        style="HYPER.TButton")
+        self.opening_button.pack(side="right", padx=12, pady=8)
+        self.opening_label = label(self.opening_panel, "Opening baseline unavailable", size=9, justify="left")
+        self.opening_label.pack(side="left", fill="x", expand=True, padx=12, pady=7)
+        self.opening_label.bind("<Configure>", lambda event: self.opening_label.configure(wraplength=max(200, event.width)))
         self.metrics = tk.Frame(self.body, bg=PAGE)
         self.metrics.pack(fill="x", padx=14, pady=(2, 9))
         self.metric_values, self.metric_captions, self.metric_titles, self.metric_cards = {}, {}, {}, []
@@ -342,7 +369,9 @@ class HyperWorkspace:
             self.metric_captions[key].pack(anchor="w", padx=12, pady=(0, 8))
             self.metric_cards.append(panel)
         Tooltip(self.metric_cards[1], lambda: "Change from paper opening marked equity, including costs. Inherited gains/losses are excluded; account P/L is adjusted for internal transfers." if self.mode.get() == "Paper" else "Powder does not calculate P/L from balance changes: cashflows, actual funding and non-USDC fees need full accounting first.")
-        Tooltip(self.metric_cards[4], lambda: "Performance export as of: " + str((self.snapshot.performance if self.snapshot else {}).get("as_of_utc", "unavailable")))
+        Tooltip(self.metric_cards[4], lambda: "Worst drawdown in the point-in-time performance export as of: "
+                + str((self.snapshot.performance if self.snapshot else {}).get("as_of_utc", "unavailable"))
+                + "\nExport schedule: every 15 minutes or after trading changes. The chart reads committed ledger observations.")
         self.workspace = tk.Frame(self.body, bg=PAGE)
         self.workspace.pack(fill="both", expand=True, padx=14, pady=(0, 10))
         self.accounts_rail = card(self.workspace)
@@ -695,6 +724,10 @@ class HyperWorkspace:
             status = worst.state.capitalize() if worst else "Unavailable"
             if key == "paper" and worst and worst.state == "fresh" and snap:
                 status = str(snap.runtime.get("status", "fresh")).capitalize()
+            prepared = (key == "paper" and paper and snap and snap.runtime.get("stop_reason") == "prepare_only"
+                        and snap.runtime.get("lifecycle_phase") == "opening_prepared")
+            if prepared:
+                status, cadence = "Opening prepared", "Awaiting strategy start"
             ages = [s.age_seconds for s in group if s.age_seconds is not None]
             if self._error:
                 ages = [(datetime.now(timezone.utc) - timestamp(s.observed_at_utc)).total_seconds()
@@ -718,6 +751,14 @@ class HyperWorkspace:
                               "Actual exchange observations · read-only view" if connected else "Not connected · shared forecasts are a preview; execution history is empty"),
                              fg=WARNING if warnings or not paper else MUTED_TEXT)
         self.metric_titles["pnl"].configure(text="Paper P/L since start" if paper else "P/L since activation")
+        self.metric_titles["drawdown"].configure(text="Worst drawdown · export" if paper else "Worst drawdown")
+        if paper:
+            if not self.opening_panel.winfo_manager():
+                self.opening_panel.pack(fill="x", padx=14, pady=(2, 7), before=self.metrics)
+            self.opening_label.configure(text=opening_baseline_summary(snap.seed if snap else {}))
+            self.opening_button.configure(state="normal" if snap and snap.seed else "disabled")
+        else:
+            self.opening_panel.pack_forget()
         values = {"equity": money(pooled.get("equity")), "pnl": money(pooled.get("total_pnl"), True),
                   "exposure": money(pooled.get("gross_exposure")), "fees": money(pooled.get("fees")),
                   "drawdown": pct(abs(number(snap.performance.get("max_drawdown_fraction"))))
@@ -731,7 +772,7 @@ class HyperWorkspace:
         self.metric_captions["exposure"].configure(text=f"{pct(exposure / equity)} of equity" if exposure is not None and equity else "No exposure observation")
         self.metric_captions["fees"].configure(text="Cumulative simulated fill fees" if paper else "Actual fees listed per fill")
         perf_stamp = snap.performance.get("as_of_utc") if snap and paper else None
-        self.metric_captions["drawdown"].configure(text="Export " + local_time(perf_stamp) if perf_stamp else "No performance export")
+        self.metric_captions["drawdown"].configure(text="As of " + local_time(perf_stamp) if perf_stamp else "No performance export")
         for key, widgets in self.account_values.items():
             account = snap.accounts.get(key, {}) if snap else {}
             widgets["equity"].configure(text=money(account.get("equity")))
@@ -801,12 +842,14 @@ class HyperWorkspace:
             end = timestamp(self.snapshot.portfolio_observed_at_utc) or series[-1][0]
             series = [point for point in series if point[0] >= end - timedelta(hours=hours)]
         if len(series) > 350:
-            # Last observation per time bucket: valuation snapshots are never summed.
+            # Keep the first recorded baseline and last observation. Interior
+            # snapshots are never summed; a near-immediate fill must not replace
+            # the opening point just because it shares the first time bucket.
             start, end = series[0][0].timestamp(), series[-1][0].timestamp()
             buckets = {}
-            for point in series:
-                buckets[min(349, int((point[0].timestamp() - start) / max(1, end - start) * 350))] = point
-            series = list(buckets.values())
+            for point in series[1:-1]:
+                buckets[min(347, int((point[0].timestamp() - start) / max(1, end - start) * 348))] = point
+            series = [series[0], *buckets.values(), series[-1]]
         return series
 
     def _draw_chart(self):
@@ -1071,6 +1114,8 @@ class HyperWorkspace:
             elif view == "Positions":
                 add("POSITION", "section")
                 add(f"{data.get('kind', '—').title()} · {data.get('side', '—').title()} · {quantity(data.get('quantity'))}\nEntry {money(data.get('avg_entry'))}  →  Mark {money(data.get('mark_price'))}\nGross {money(data.get('notional'))}\nUnrealized P/L {money(data.get('unrealized_pnl'), True)}")
+                if number(data.get("risk_reference_price")) is not None:
+                    add(f"Stop reference {money(data['risk_reference_price'])} · {data.get('risk_reference_source', 'source unavailable')}")
                 if data.get("passive"):
                     add("Inherited · unmanaged", "title")
                 add("Unrealized P/L uses the retained entry and may include gains or losses from before paper opening. Account headline P/L uses the paper opening baseline." if self.mode.get() == "Paper" else
@@ -1150,6 +1195,48 @@ class HyperWorkspace:
             self.detail.insert("end", text, tag)
         self.detail.configure(state="disabled")
         self.detail.yview_moveto(previous_scroll)
+
+    def _show_opening(self):
+        """Display seed evidence without replacing current positions or history."""
+        if self.mode.get() != "Paper" or not self.snapshot or not self.snapshot.seed:
+            return
+        seed = self.snapshot.seed
+        window = tk.Toplevel(self.root)
+        window.title("H.Y.P.E.R. · immutable Paper opening")
+        window.geometry("880x650")
+        window.configure(bg=PAGE)
+        label(window, "Paper opening inventory", size=16, bold=True).pack(anchor="w", padx=16, pady=(12, 3))
+        label(window, "Recorded before strategy fills · inherited entry prices remain accounting history.",
+              size=10, color=MUTED_TEXT).pack(anchor="w", padx=16, pady=(0, 10))
+        body = tk.Frame(window, bg=PAGE)
+        body.pack(fill="both", expand=True, padx=16, pady=(0, 16))
+        text = tk.Text(body, bg=INSET, fg=TEXT, wrap="word", relief="flat", font=("Consolas", 10), padx=12, pady=10)
+        text.pack(side="left", fill="both", expand=True)
+        bar = ttk.Scrollbar(body, orient="vertical", command=text.yview)
+        bar.pack(side="right", fill="y")
+        text.configure(yscrollcommand=bar.set)
+        lines = [opening_baseline_summary(seed), "Opening UTC: " + str(seed.get("timestamp_utc", "unavailable")),
+                 "", "Opening P/L is zero by definition. Subsequent fills, fees, funding and market changes remain in current P/L."]
+        baselines = seed.get("baseline_equity") if isinstance(seed.get("baseline_equity"), dict) else {}
+        cash = seed.get("cash") if isinstance(seed.get("cash"), dict) else {}
+        positions = seed.get("positions") if isinstance(seed.get("positions"), list) else []
+        for account, (name, _, _) in ACCOUNTS.items():
+            lines.extend((f"\n{name} · Opening equity {money(baselines.get(account))} · Cash/collateral {money(cash.get(account))}",
+                          "Signed quantity · retained entry · opening mark · stop reference"))
+            inventory = [row for row in positions if isinstance(row, dict) and row.get("account") == account]
+            for row in inventory:
+                entry = row.get("avg_entry", row.get("average_entry"))
+                lines.append(f"{row.get('kind', '—')} {row.get('coin', '—')} · {quantity(row.get('quantity'))}"
+                             f" · {quantity(entry)} · {quantity(row.get('mark_price'))}"
+                             f" · {quantity(row.get('risk_reference_price'))} ({row.get('risk_reference_source', 'not recorded')})")
+            if not inventory:
+                lines.append("No inherited positions recorded.")
+        metadata = seed.get("metadata") if isinstance(seed.get("metadata"), dict) else {}
+        if metadata.get("snapshot_not_atomic_across_accounts"):
+            lines.extend(("", "Account reads were sequential; this opening is not an atomic exchange portfolio snapshot."))
+        lines.extend(("\nIMMUTABLE SEED RECORD", json.dumps(seed, indent=2, ensure_ascii=False, default=str)))
+        text.insert("1.0", "\n".join(lines))
+        text.configure(state="disabled")
 
     def _show_operations(self):
         window = tk.Toplevel(self.root)

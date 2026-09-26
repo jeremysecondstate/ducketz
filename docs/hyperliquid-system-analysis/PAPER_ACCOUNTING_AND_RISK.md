@@ -1,7 +1,7 @@
 # Paper accounting and risk
 
 Verified against repository code and the checked-in configuration on **2026-09-25**.
-Qualification and no-signal behavior updated for the **2026-09-26** experiment.
+Qualification, fresh-opening and stop-reference behavior updated **2026-09-26**.
 The numbers below describe this configuration snapshot, not permanent strategy
 rules or a statement about a running process's loaded settings. Compare its
 `_paper/policy.json` and event `policy_id` with the checked-in configuration.
@@ -31,6 +31,19 @@ subtracts reported perpetual unrealized P/L from base cash so local valuation do
 not count it twice. Invalid account roles or missing inherited-asset valuations
 fail initialization; the manual cash examples are never a mirror fallback.
 Real open orders are counted in seed metadata but are not imported as paper orders.
+
+Fresh creation commits an `opening` cycle and account/pooled equity observations
+at the exact seed marks in the seed transaction. Experiment P/L, fees and funding
+are zero; there are no synthetic fills. Initialization publishes that baseline
+before trading. `--prepare-only` creates/publishes it and exits without a trading
+cycle; if a ledger already exists it only opens/publishes the existing experiment.
+This provides an inspectable boundary before the normal worker begins decisions.
+The UI retains a separate opening summary and full saved inventory after trading.
+
+Each new public account request records local start/completion timestamps and any
+exchange timestamp provided; quote timing/marks are retained separately. This
+documents sequential-read valuation differences without inventing atomicity.
+Historical seeds lacking this information cannot be retrospectively timestamped.
 
 After seeding, real account changes do not update the paper accounts. An existing
 database opens with `open_existing=True`; a missing completed seed is an error,
@@ -93,16 +106,16 @@ Values verified in [hyperliquid-paper.json](../../configs/hyperliquid-paper.json
 | --- | --- | --- |
 | `require_qualified_forecasts` | `true` | Only fresh Qualified signals allocate; without one, hold current exposure subject to risk reductions |
 | `poll_seconds` | 30 seconds | Wait after each loop iteration, not guaranteed start-to-start latency |
-| `entry_band` / `exit_band` / `saturation_band` | 0.04 / 0.02 / 0.15 | Absolute distance of P(not-down) from 0.5; entry broadened for the current evaluation phase |
+| `entry_band` / `exit_band` / `saturation_band` | 0.01 / 0.01 / 0.15 | Absolute distance of P(not-down) from 0.5; shared 49%/51% entry and exit thresholds |
 | `volatility_budget_fraction` / `sigma_floor` | 0.001 / 0.005 | Dollar-volatility sizing budget and horizon-volatility floor |
 | `per_symbol_gross_fraction` / `pool_gross_fraction` | 0.15 / 0.60 | Desired gross limits relative to pooled equity |
 | `bullish_spot_fraction` | 0.60 | Bullish allocation share assigned to Clear Pond |
 | `account_utilization` / `reserve_cash_fraction` | 0.80 / 0.10 | Account exposure ceiling and reserve relative to opening equity |
 | `min_trade_notional` / `rebalance_min_delta_fraction` | $25 / 0.10 | Normal adjustment threshold |
 | `transfer_min_amount` | $100 | Minimum planned virtual transfer |
-| `stop_loss_fraction` | 0.03 | Adverse move from entry that requests reduction |
+| `stop_loss_fraction` | 0.03 | Adverse move from the persisted stop reference that requests reduction |
 | `perp_fee_rate` / `spot_fee_rate` | 0.00045 / 0.00070 | Fixed simulated taker fee fractions |
-| `slippage_bps` | 2 | Adverse price adjustment after visible-book VWAP |
+| `slippage_bps` | 0 | No added price penalty: fills use fetched visible-book VWAP |
 | Forecast / model / quote maximum ages | 900 / 86,400 / 45 seconds | Eligibility boundaries, detailed below |
 
 The runtime takes the first configured model horizon: currently four 15-minute
@@ -110,19 +123,25 @@ bars, or one hour. Horizon volatility is the forecast's exact source-row
 `volatility_log_return_20 × sqrt(horizon_bars)`.
 
 Let `p=P(not-down)`, `e=abs(p−0.5)`, `E=max(pooled_equity,0)`, and `O` be other
-gross exposure. A fresh direction enters at `e≥0.04`; existing exposure matching
-that direction remains eligible only at `e>0.02` (with small floating-point
-tolerances). Matching and opposing legs are examined separately, not netted.
+gross exposure. Flat and existing matching exposure use the same inclusive
+threshold `e≥0.01` (with small floating-point tolerance). There is no hysteresis
+gap in the current policy. Matching and opposing legs are examined separately, not netted.
 Neutral/failed eligibility produces zero desired exposure.
 
 ```text
-confidence = clip((e − exit_band) / (saturation_band − exit_band), 0, 1)
+confidence = clip(e / saturation_band, 0, 1)  # shared entry/exit threshold
              when active; otherwise 0
 effective_sigma = max(horizon_sigma, sigma_floor)
 uncapped_gross = E × volatility_budget_fraction × confidence / effective_sigma
 desired_gross = min(uncapped_gross, E × per_symbol_gross_fraction,
                     max(0, E × pool_gross_fraction − O))
 ```
+
+Shared thresholds use conviction measured from neutral, giving nonzero size at
+the eligible boundary without inventing a minimum target. This changes sizing
+as well as activation. For historical unequal bands, existing matching exposure
+still requires `e>exit_band`, flat entries require `e≥entry_band`, and confidence
+remains `clip((e-exit_band)/(saturation_band-exit_band),0,1)`.
 
 Bullish desired gross is split 60% Clear Pond spot / 40% Jeremy long perps;
 Alex's target is zero. Bearish gross becomes Alex's negative target; both long
@@ -144,17 +163,17 @@ decisions; three Qualified rows do not mean three independent opportunities.
 
 | Check | Current behavior |
 | --- | --- |
-| New long direction | P(not-down) at least 54%; allocated to Jeremy/Clear Pond |
-| New short direction | P(not-down) at most 46%; allocated to Alex |
-| Existing matching direction | Remains eligible beyond 52% for longs or below 48% for shorts; sizing can still change |
+| New long direction | P(not-down) at least 51%; allocated to Jeremy/Clear Pond |
+| New short direction | P(not-down) at most 49%; allocated to Alex |
+| Existing matching direction | Uses the same boundary: longs exit below 51%, shorts exit above 49%; sizing can still change |
 | Account role | Alex cannot open longs; Jeremy/Clear Pond cannot open shorts |
 | After a stop fill | That account/coin cannot re-enter for one forecast horizon: currently 3,600 seconds |
 | Normal adjustment | Difference must meet the greater of $25 or 10% of the final target |
 | Complete exit/risk reduction | Bypasses the normal adjustment threshold, but still needs executable precision/depth and the separate $10 fill minimum |
 | Already at target | Hold; there is no quantity to execute |
 
-For example, a Qualified 45.46% forecast failed the old 45% short-entry cutoff
-and passes the new 46% cutoff. A 40% forecast can request an Alex short while Jeremy remains flat;
+For example, a Qualified 48.5% forecast failed the previous 46% short-entry cutoff
+and passes the current 49% cutoff. A 40% forecast can request an Alex short while Jeremy remains flat;
 Alex can still Hold if its stop cooldown is active. An attempted $0.08 dust exit
 can Skip because rounding leaves zero quantity, without any missing fill record.
 
@@ -204,7 +223,7 @@ Sources: [PaperRuntime._plan_transfers and _trade_coin](../../ml/hyperliquid_pap
 | --- | --- |
 | Quote selection | Buy visible asks; sell visible bids. Candle/model prices are never substituted for execution. |
 | Book eligibility | Identity, finite levels, uncrossed/unlocked prices, ≤45 seconds old and ≤5 seconds future-dated; forecast-driven books must be at least as recent as forecast publication. |
-| Fill price | Walk visible depth, compute raw VWAP, then apply adverse 2 bps. No queue position or latency model. |
+| Fill price | Walk fetched visible depth and use its executed-quantity VWAP. No added slippage; no queue position or latency model. |
 | Fill size | Floor to market precision; limited depth yields partial fills; below-$10 executable notional is skipped. Requested, rounded, executed and remainder quantities are distinct. |
 | Fees | `abs(executed_quantity) × fill_price × configured_fee_rate`; no automatic real-account tier/discount inference. |
 | Spot routes | Exact base/USDC metadata routing; BTC/ETH/ZEC map to UBTC/UETH/UZEC. Ambiguous routes fail rather than being guessed. |
@@ -212,8 +231,13 @@ Sources: [PaperRuntime._plan_transfers and _trade_coin](../../ml/hyperliquid_pap
 
 A `filled` simulator status means the rounded request was filled; precision dust
 can still make the original requested quantity differ from executed quantity.
-Consumed raw levels are preserved; the slippage adjustment does not manufacture
-extra depth. New public observations provide fresh depth next time.
+Consumed raw levels are preserved, including partial fills across levels. A buy
+can consume several asks and a sell several bids; that measured book-price
+difference remains in the average fill price. The separate taker fee is charged
+on actual simulated filled notional: 0.045% for perps and 0.070% for spot in the
+checked-in configuration. No guessed spread/impact penalty is added afterward.
+Historical records retain their original explicit slippage settings. New public
+observations provide fresh depth next time.
 
 Funding is checked no more often than every 300 seconds. For each historical
 settlement, quantity is reconstructed from initial perpetual inventory plus
@@ -252,8 +276,24 @@ result. Active stop, cooldown or over-limit paths can use a 30-second risk key.
 A 30-second polling cadence does not guarantee that every desired adjustment
 will be retried or filled on every tick.
 
-Stops request zero targets after a 3% entry-based adverse move, using inherited
-entry for mirrored perps. They are polled, can gap, and can fail to fill. After a
+Fresh mirrored positions preserve historical perpetual `avg_entry` for accounting
+and display, and separately persist `risk_reference_price` at the opening mark.
+Stops request zero targets after a 3% adverse move from that risk reference.
+Partial reductions preserve it; same-direction additions weight it with the new
+fill price; a closed and reopened position starts at the new fill price. This
+prevents pre-experiment losses from immediately triggering a new experiment stop.
+Existing ledgers without this field retain their legacy entry reference on resume;
+opening or restarting the UI never rebases a running experiment. Saved decisions
+record both entry and risk-reference evidence, and the policy identity versions
+the reference semantics. No costs or cash values are adjusted to offset losses.
+
+Qualified neutral/opposite signals and all account/symbol/pool caps still apply
+from the first trading cycle. An over-cap inherited portfolio can therefore be
+reduced immediately, even with Research/missing forecasts. Coin processing is
+sequential: earlier reductions change capacity for later coins; a blocked ordinary
+forecast is not automatically reconsidered after later coins release capacity.
+These remain strategy/risk decisions, distinct from the untouched opening.
+Stops are polled, can gap, and can fail to fill. After a
 stop fill, that account/coin targets zero for one forecast horizon from the last
 stop fill; restart reconstructs this cooldown from committed fills.
 

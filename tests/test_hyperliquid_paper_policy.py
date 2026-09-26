@@ -28,26 +28,53 @@ def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_re
     assert config.require_qualified_forecasts is True
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
-    assert config == PaperConfig(require_qualified_forecasts=True, entry_band=0.04)
+    assert config == PaperConfig(require_qualified_forecasts=True, entry_band=0.01, exit_band=0.01)
 
 
-@pytest.mark.parametrize("probability,account", [(0.54, "jeremy"), (0.46, "alex")])
-def test_evaluation_entry_band_opens_added_direction_without_changing_old_default(probability, account):
+def test_defaults_and_active_config_use_book_prices_and_distinct_taker_fee_rates(tmp_path):
+    for config in (PaperConfig(), load_config(write_config(tmp_path)),
+                   load_config(DEFAULT_PAPER_CONFIG_PATH)):
+        assert config.slippage_bps == 0
+        assert config.perp_fee_rate == 0.00045
+        assert config.spot_fee_rate == 0.0007
+
+
+@pytest.mark.parametrize("probability,account", [(0.51, "jeremy"), (0.49, "alex")])
+def test_evaluation_shared_band_opens_added_direction(probability, account):
     current = load_config(DEFAULT_PAPER_CONFIG_PATH)
-    previous = replace(current, entry_band=0.05)
+    previous = replace(current, entry_band=0.04, exit_band=0.02)
     assert plan(probability=probability, config=previous)["targets"][account] == 0
     result = plan(probability=probability, config=current)
     assert abs(result["targets"][account]) > 0
     assert result["details"]["reason"] == "entry_threshold_met"
-    assert current.exit_band == previous.exit_band == 0.02
+    assert current.exit_band == current.entry_band == 0.01
     assert current.require_qualified_forecasts is True
 
 
-@pytest.mark.parametrize("probability", [0.539, 0.461])
+@pytest.mark.parametrize("probability", [0.509999, 0.490001])
 def test_evaluation_entry_band_still_has_a_neutral_region(probability):
     result = plan(probability=probability, config=load_config(DEFAULT_PAPER_CONFIG_PATH))
     assert not any(result["targets"].values())
     assert result["details"]["reason"] == "entry_deadband"
+
+
+@pytest.mark.parametrize("account,quantity,boundary,exit_probability", [
+    ("jeremy", 500, .51, .509999),
+    ("alex", -500, .49, .490001),
+])
+def test_active_policy_uses_same_inclusive_boundary_for_flat_and_held_positions(
+    account, quantity, boundary, exit_probability,
+):
+    config = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    flat = plan(probability=boundary, config=config)
+    held = plan(probability=boundary, current={account: quantity}, config=config)
+    assert held["targets"] == flat["targets"]
+    assert abs(held["targets"][account]) > config.min_trade_notional
+    assert held["details"]["reason"] == "entry_threshold_met"
+    assert held["details"]["confidence_floor_band"] == 0
+    closed = plan(probability=exit_probability, current={account: quantity}, config=config)
+    assert not any(closed["targets"].values())
+    assert closed["details"]["reason"] == "exit_band"
 
 
 def test_minimal_config_does_not_read_a_missing_model_file_and_resolves_relative_paths(tmp_path, monkeypatch):
@@ -116,7 +143,7 @@ def test_config_requires_finite_positive_settings(field, value):
 
 
 @pytest.mark.parametrize("changes", [
-    {"entry_band": 0.02}, {"exit_band": 0.05}, {"exit_band": -0.01},
+    {"entry_band": 0.019}, {"exit_band": 0.051}, {"exit_band": -0.01},
     {"saturation_band": 0.05}, {"saturation_band": 0.51}, {"entry_band": float("nan")},
     {"bullish_spot_fraction": 1.1}, {"pool_gross_fraction": -0.1},
     {"per_symbol_gross_fraction": 1.1}, {"account_utilization": 1.1},

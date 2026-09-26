@@ -131,8 +131,9 @@ class HyperliquidPaperViewService:
     """Read-only service; construct freely and call load_snapshot off the UI thread.
 
     Journals retain the most recent ``journal_limit`` records. Equity covers the
-    full available period, using the last observation in each time bucket when
-    necessary. Every SQLite operation shares a time budget and read transaction.
+    full available period, preserving the first and last recorded observations
+    and sampling interior time buckets when necessary. Every SQLite operation
+    shares a time budget and read transaction.
     """
 
     def __init__(self, data_root=DEFAULT_DATA_ROOT, *, history_limit=6000,
@@ -188,7 +189,10 @@ class HyperliquidPaperViewService:
         if error is None:
             if reported in {"stopped", "not_started", "failed"} or alive is False:
                 state = "stopped"
-                detail = detail or ("Runtime process is absent" if alive is False else str(reported))
+                prepared = (key == "paper" and payload.get("stop_reason") == "prepare_only"
+                            and payload.get("lifecycle_phase") == "opening_prepared")
+                detail = detail or ("Opening prepared; stopped intentionally before strategy cycles" if prepared else
+                                    "Runtime process is absent" if alive is False else str(reported))
             elif reported in {"degraded", "error"} or detail or any(payload.get(k) for k in ("errors", "quote_errors", "funding_errors")):
                 state = "partial"
                 detail = detail or "Runtime reports source errors; inspect operation details"
@@ -340,7 +344,8 @@ class HyperliquidPaperViewService:
             bounds = query("equity", "SELECT COUNT(*) AS n, MIN(julianday(timestamp_utc)) AS first, MAX(julianday(timestamp_utc)) AS last FROM equity")
             if bounds and bounds[0]["n"] and bounds[0]["first"] is not None and bounds[0]["last"] is not None:
                 count = bounds[0]["n"]
-                bucket = max((bounds[0]["last"] - bounds[0]["first"]) / max(1, self.history_limit // 4 - 1), 1 / 86400000)
+                interior_slots = max(0, self.history_limit // 4 - 2)
+                bucket = max((bounds[0]["last"] - bounds[0]["first"]) / max(1, interior_slots), 1 / 86400000)
                 snapshot.history_sampled = count > self.history_limit
                 # Drawdown uses transfer-adjusted opening equity + total_pnl. The
                 # running peak is calculated BEFORE sampling, so omitted peaks
@@ -351,15 +356,20 @@ class HyperliquidPaperViewService:
                     FROM equity e LEFT JOIN accounts a ON a.account=e.account
                 ), peaks AS (
                     SELECT *,MAX(baseline,MAX(baseline+total_pnl) OVER
-                      (PARTITION BY account ORDER BY observation_id ROWS UNBOUNDED PRECEDING)) AS peak
+                      (PARTITION BY account ORDER BY observation_id ROWS UNBOUNDED PRECEDING)) AS peak,
+                      ROW_NUMBER() OVER (PARTITION BY account ORDER BY observation_id) AS first_rank,
+                      ROW_NUMBER() OVER (PARTITION BY account ORDER BY observation_id DESC) AS last_rank
                     FROM curve
                 ), ranked AS (
                     SELECT *,CASE WHEN peak>0 THEN (baseline+total_pnl)/peak-1 END AS drawdown_fraction,
-                      ROW_NUMBER() OVER (PARTITION BY account,CASE WHEN ? THEN CAST((julianday(timestamp_utc)-?)/? AS INTEGER)
-                        ELSE observation_id END ORDER BY observation_id DESC) AS bucket_rank
+                      ROW_NUMBER() OVER (PARTITION BY account,CASE WHEN first_rank=1 OR last_rank=1 THEN -1
+                        ELSE MIN(?-1,CAST((julianday(timestamp_utc)-?)/? AS INTEGER)) END
+                        ORDER BY observation_id DESC) AS bucket_rank
                     FROM peaks
-                ) SELECT * FROM ranked WHERE bucket_rank=1 ORDER BY observation_id"""
-                snapshot.equity_history = query("equity", curve_sql, (snapshot.history_sampled, bounds[0]["first"], bucket))
+                ) SELECT * FROM ranked WHERE ?=0 OR first_rank=1 OR last_rank=1 OR (? > 0 AND bucket_rank=1)
+                  ORDER BY observation_id"""
+                snapshot.equity_history = query("equity", curve_sql,
+                    (interior_slots, bounds[0]["first"], bucket, snapshot.history_sampled, interior_slots))
             if not snapshot.pooled:
                 ledger_warnings.append("No committed portfolio valuation is available")
             if any(key not in snapshot.accounts for key in ACCOUNT_ROLES):
@@ -533,7 +543,8 @@ class HyperliquidPaperViewService:
         snapshot.policy, _ = self._json(paper / "policy.json", warnings, optional=True)
         snapshot.performance, error = self._json(paper / "performance.json", warnings, optional=True)
         snapshot.sources["performance"] = self._source("performance", snapshot.performance.get("as_of_utc"),
-            now, 300, state=error, detail="Point-in-time export; may lag the authoritative ledger")
+            now, 900, state=error,
+            detail="Point-in-time export: every 15 minutes or after trading changes. Current balances and chart read the ledger.")
         self._markets(snapshot, now, warnings)
         snapshot.warnings = tuple(dict.fromkeys(warnings))
         return snapshot

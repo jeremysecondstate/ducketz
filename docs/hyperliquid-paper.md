@@ -51,6 +51,18 @@ The opening inventory and cash mirror the observed real accounts one-for-one;
 they are not resized to the model allocation during seeding. The first trading
 cycle can immediately change them through stop/cap reductions or an accepted
 Qualified forecast, so a later portfolio need not match the opening snapshot.
+New ledgers commit an explicit opening observation with zero experiment P/L and
+zero fees before any fills. H.Y.P.E.R. retains this opening and its full inventory
+separately from the evolving portfolio. Fresh mirrored stops use the opening mark
+as a separate risk reference, preserving historical perpetual entry for accounting.
+Losses before the experiment cannot immediately trigger its new 3% stop.
+
+`python -m ml.hyperliquid_paper_runtime --config configs/hyperliquid-paper.json --prepare-only`
+creates and publishes the opening without trading, then exits. If the ledger
+already exists, it publishes that existing experiment and never refreshes its
+balances. A normal launch resumes from it. This is a mutating preparation command,
+not a health check; coordinate intentional replacement with Operations Watch and
+preserve the previous experiment before creating a different mirror.
 
 Account information and quotes are collected over several requests, so the
 opening snapshot is not an atomic exchange snapshot. Unified-account balances
@@ -71,7 +83,7 @@ resumes it. Changing seed settings does not replace existing paper balances.
 
 ## Cadence and forecast eligibility
 
-- Models retrain hourly under the current model configuration.
+- Models retrain every 15 minutes under the current model configuration.
 - A new one-hour forecast is recorded on each completed 15-minute candle.
 - The paper runtime polls every 30 seconds for quotes, new forecasts, and risk
   checks. A polling tick does not automatically create a new trade.
@@ -104,27 +116,32 @@ evidence; this hold-versus-zero choice belongs to the Paper consumer.
 ## Starting signal and sizing rules
 
 Let `p` be the ensemble's probability of not-down and `e = abs(p - 0.5)`.
-The current Paper evaluation phase requires `p >= 0.54` for new bullish
-exposure and `p <= 0.46` for new bearish exposure. This broadens the original
-55%/45% entry gate to collect more executed Qualified signals. Existing exposure in the matching direction can persist while
-`e > 0.02`. This narrower exit band reduces trading around the entry threshold.
+The current Paper evaluation phase uses the same thresholds for entry and exit:
+`p >= 0.51` for bullish exposure and `p <= 0.49` for bearish exposure. Existing
+longs exit below 51%; existing shorts exit above 49%. Flat and held positions
+use the same inclusive boundary, with no hysteresis gap.
 There is no directional position at an exactly neutral probability.
 
 The phase change retains the same seed/ledger and records a new policy ID;
 it does not reset prior results or demonstrate improved profitability. See the
 [decision-gate investigation](hyperliquid-system-analysis/audits/2026-09-26-paper-decision-gates.md).
 The `PaperConfig` constructor's legacy default remains 0.05; the checked-in
-runtime configuration explicitly selects `entry_band=0.04`.
+runtime configuration explicitly selects `entry_band=exit_band=0.01`.
 
 Once the signal is active, confidence is:
 
 ```text
-confidence = clip((e - 0.02) / (0.15 - 0.02), 0, 1)
+confidence = clip(e / 0.15, 0, 1)  # active shared-threshold policy
 ```
 
 The confidence reaches one at `p >= 0.65` or `p <= 0.35`. It scales a dollar
 volatility budget rather than treating a classification probability as an
 expected return or a Kelly betting fraction.
+Shared thresholds size conviction from neutral so an eligible 49%/51% boundary
+has a nonzero target. This changes target sizes as well as activation. Unequal
+entry/exit policies retain their historical hysteresis and sizing formula,
+`clip((e-exit_band)/(saturation_band-exit_band), 0, 1)`. Existing minimum trade
+sizes, exposure limits, qualification and cooldowns continue to apply.
 
 For the initial one-hour horizon:
 
@@ -183,13 +200,16 @@ The ledger debits the donor and credits the receiver in the same transaction.
 These virtual transfers have zero fees and no settlement delay; this is an
 explicit paper assumption, not a promise about real withdrawal mechanics.
 
-Stops initially trigger after a 3% adverse price move from the position's
-average entry. They are checked on polling ticks, not by an exchange-hosted
+Stops trigger after a 3% adverse price move from the persisted risk reference:
+the opening mark for a fresh inherited position, or its fill price for a new
+position. Reductions preserve this reference; additions weight it with the
+new fill. Historical average entry remains separate for accounting. Existing
+legacy experiments retain their original entry-based reference on resume.
+Stops are checked on polling ticks, not by an exchange-hosted
 stop order. A risk reduction can therefore execute later at a worse
 price, or remain partially unfilled. This runtime does not reproduce the
-exchange's liquidation engine. Stops on inherited perpetual positions use
-their inherited entry price; the performance baseline still begins at opening
-paper equity.
+exchange's liquidation engine. The performance baseline begins at opening
+paper equity, with an explicit zero-cost opening observation before trading.
 After a simulated stop fill, that account and symbol are kept at a zero target
 for one forecast horizon, initially one hour. The cooldown is reconstructed
 from committed fills after a restart.
@@ -197,8 +217,9 @@ from committed fills after a restart.
 ## Executable quotes and fill assumptions
 
 Paper buys consume visible asks; sells consume visible bids. The simulator
-walks available levels, calculates their volume-weighted price, and applies
-an additional adverse two basis points of slippage. Quantity is rounded down
+walks fetched available levels and uses their executed-quantity volume-weighted
+price with **zero additional slippage**. Separate configured taker fees are
+0.045% for perps and 0.070% for spot, charged on filled notional. Quantity is rounded down
 to the market's size precision. Insufficient depth yields a partial fill;
 unfilled quantity is recorded. A rounded visible fill below $10 is skipped.
 
@@ -208,11 +229,20 @@ are rejected. A strategy fill must use a book timestamp after its forecast
 became available. The historical candle close or a model's `decision_price`
 is never substituted for an execution quote.
 
+Each tick freezes the forecasts before requesting books. A timing or missing-book
+failure gets up to three snapshot attempts with short backoff; the frozen forecast
+is checked again for expiry after fetching. A quote-only attempt with no monetary
+side effects remains pending for later polls while its forecast is still valid.
+Completed and partial executions are not replayed. Historical all-account
+quote-only skips can finish through one append-only recovery cycle; their original
+rows remain intact. Opening quotes are kept as baseline evidence and fresh books
+are fetched for the first trading tick.
+
 Each fill records its consumed raw price levels. `consume_fill(market, fill)`
 returns a copy with that liquidity removed, allowing orders from multiple
-paper accounts in the same cycle to share the same finite book depth. Adverse
-slippage affects the simulated execution price, not which raw levels are
-removed. A newly fetched public book starts the next observation.
+paper accounts in the same cycle to share the same finite book depth. The current
+zero-slippage policy uses those levels directly for its average execution price.
+A newly fetched public book starts the next observation.
 
 Spot routes are resolved from metadata by exact base asset and USDC quote.
 BTC, ETH, and ZEC display names map to UBTC, UETH, and UZEC respectively; HYPE

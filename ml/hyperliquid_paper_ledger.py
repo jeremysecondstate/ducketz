@@ -87,6 +87,7 @@ class PaperLedger:
             CREATE TABLE IF NOT EXISTS positions (
                 account TEXT NOT NULL REFERENCES accounts(account), coin TEXT NOT NULL,
                 kind TEXT NOT NULL, quantity REAL NOT NULL, avg_entry REAL NOT NULL,
+                risk_reference_price REAL NOT NULL, risk_reference_source TEXT NOT NULL,
                 PRIMARY KEY (account,coin,kind)
             );
             CREATE TABLE IF NOT EXISTS cycles (
@@ -114,6 +115,7 @@ class PaperLedger:
                 account TEXT, coin TEXT, action TEXT, reason TEXT, forecast_id TEXT,
                 model_id TEXT, details_json TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS decisions_cycle_id ON decisions(cycle_id);
             CREATE TABLE IF NOT EXISTS equity (
                 cycle_id TEXT NOT NULL, timestamp_utc TEXT NOT NULL, account TEXT NOT NULL,
                 cash REAL NOT NULL, equity REAL NOT NULL, free_cash REAL NOT NULL,
@@ -137,6 +139,13 @@ class PaperLedger:
         """)
         self.connection.execute("BEGIN IMMEDIATE")
         try:
+            # Existing experiments keep their original stop semantics. Never
+            # rebase them to today's mark or rewrite their immutable seed.
+            position_columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(positions)")}
+            if "risk_reference_price" not in position_columns:
+                self.connection.execute("ALTER TABLE positions ADD COLUMN risk_reference_price REAL")
+                self.connection.execute("ALTER TABLE positions ADD COLUMN risk_reference_source TEXT")
+                self.connection.execute("UPDATE positions SET risk_reference_price=avg_entry, risk_reference_source='legacy_avg_entry'")
             existing = self.connection.execute("SELECT account, initial_cash FROM accounts").fetchall()
             seed_exists = self.connection.execute("SELECT 1 FROM seed WHERE singleton=1").fetchone()
             if open_existing and (not existing or not seed_exists):
@@ -156,14 +165,20 @@ class PaperLedger:
                     account, coin, kind = _account(item["account"]), _coin(item["coin"]), item["kind"]
                     quantity = _number(item["quantity"], "initial quantity")
                     entry = _number(item.get("average_entry", item.get("avg_entry")), "initial entry", positive=True)
+                    risk_reference = _number(item.get("risk_reference_price", entry), "initial risk reference", positive=True)
+                    risk_source = item.get("risk_reference_source", "historical_entry")
+                    if not isinstance(risk_source, str) or not risk_source.strip():
+                        raise ValueError("Initial risk reference requires a nonempty source.")
                     if kind not in ("spot", "perp") or abs(quantity) <= _EPS:
                         raise ValueError("Initial positions require a supported kind and nonzero quantity.")
                     if (kind == "spot" and quantity < 0 or kind == "perp" and
                             (account == "clearpond" or account == "alex" and quantity > 0 or account == "jeremy" and quantity < 0)):
                         raise ValueError("Initial position violates the account direction.")
                     mark = seed_marks[f"{kind}:{coin}"]
-                    self.connection.execute("INSERT INTO positions VALUES (?,?,?,?,?)", (account, coin, kind, quantity, entry))
+                    self.connection.execute("INSERT INTO positions VALUES (?,?,?,?,?,?,?)",
+                                            (account, coin, kind, quantity, entry, risk_reference, risk_source))
                     position = {**item, "quantity": quantity, "avg_entry": entry, "mark_price": mark,
+                                "risk_reference_price": risk_reference, "risk_reference_source": risk_source,
                                 "timestamp_utc": seed_time, "passive": kind == "spot" and account != "clearpond"}
                     self.connection.execute("INSERT INTO initial_positions VALUES (?,?,?,?,?,?,?,?)",
                                             (account, coin, kind, quantity, entry, mark, seed_time, _json(position)))
@@ -177,6 +192,18 @@ class PaperLedger:
                     "marks": seed_marks, "metadata": metadata or {},
                     "baseline_equity": {account: values["equity"] for account, values in seeded_state["accounts"].items()},
                 }),))
+                # The opening portfolio is itself an auditable observation,
+                # committed atomically with its seed before any strategy fill.
+                opening_state = self.state(seed_marks)
+                self._record_equity("opening", seed_time, opening_state)
+                result = {"cycle_id": "opening", "timestamp_utc": seed_time, "duplicate": False,
+                          "observation_kind": "opening_snapshot", "fills": [], "transfers": [],
+                          "funding": [], "state": opening_state}
+                self._event("opening", seed_time, "opening_snapshot", {
+                    "pooled_equity": opening_state["pooled"]["equity"], "fill_count": 0,
+                    "position_count": len(seeded_positions),
+                })
+                self.connection.execute("INSERT INTO cycles VALUES (?,?,?)", ("opening", seed_time, _json(result)))
             self.connection.commit()
         except Exception:
             self.connection.rollback()
@@ -254,14 +281,35 @@ class PaperLedger:
     def inventory(self):
         """Return currently held quantities, including markets removed from config."""
         return [dict(row) for row in self.connection.execute(
-            "SELECT account,coin,kind,quantity,avg_entry FROM positions ORDER BY account,kind,coin"
+            "SELECT * FROM positions ORDER BY account,kind,coin"
         )]
+
+    def latest_observation(self):
+        """Return the last committed portfolio without revaluing at old marks."""
+        row = self.connection.execute("SELECT result_json FROM cycles ORDER BY rowid DESC LIMIT 1").fetchone()
+        return json.loads(row["result_json"]) if row else None
 
     def has_cycle(self, cycle_id):
         """Check the primary key without loading historical cycle JSON payloads."""
         if not isinstance(cycle_id, str) or not cycle_id:
             raise ValueError("A cycle requires a stable nonempty identity.")
         return self.connection.execute("SELECT 1 FROM cycles WHERE cycle_id=?", (cycle_id,)).fetchone() is not None
+
+    def unexecuted_cycle_decisions(self, cycle_id):
+        """Return bounded decision evidence only for a committed, effect-free cycle.
+
+        Callers must separately validate why the cycle did not execute. Four
+        rows are sufficient to reject anything other than three account rows.
+        """
+        row = self.connection.execute("SELECT result_json FROM cycles WHERE cycle_id=?", (cycle_id,)).fetchone()
+        if row is None:
+            return None
+        result = json.loads(row["result_json"])
+        if any(result.get(name) != [] for name in ("fills", "transfers", "funding")):
+            return None
+        return [dict(row) for row in self.connection.execute(
+            "SELECT account,coin,forecast_id,action,reason FROM decisions WHERE cycle_id=? LIMIT 4", (cycle_id,)
+        )]
 
     def seed(self):
         """Return the immutable initial inventory and performance baseline."""
@@ -288,6 +336,7 @@ class PaperLedger:
                                            (account, coin, kind)).fetchone()
         old_quantity = previous["quantity"] if previous else 0.0
         old_entry = previous["avg_entry"] if previous else 0.0
+        old_risk_reference = previous["risk_reference_price"] if previous else 0.0
         new_quantity = old_quantity + quantity
         if abs(new_quantity) <= _EPS:
             new_quantity = 0.0
@@ -296,9 +345,13 @@ class PaperLedger:
         realized = 0.0
         if old_quantity == 0 or old_quantity * quantity > 0:
             avg_entry = (abs(old_quantity) * old_entry + abs(quantity) * price) / abs(new_quantity)
+            risk_reference = (abs(old_quantity) * old_risk_reference + abs(quantity) * price) / abs(new_quantity)
+            risk_source = "weighted_entry" if old_quantity else "fill_price"
         else:
             realized = min(abs(old_quantity), abs(quantity)) * (price - old_entry) * (1 if old_quantity > 0 else -1)
             avg_entry = old_entry
+            risk_reference = old_risk_reference
+            risk_source = previous["risk_reference_source"]
         fee = abs(quantity) * price * fee_rate
         cash_delta = realized - fee if kind == "perp" else -quantity * price - fee
         self.connection.execute("UPDATE accounts SET cash=cash+?, realized_pnl=realized_pnl+?, fees=fees+? WHERE account=?",
@@ -306,13 +359,16 @@ class PaperLedger:
         if new_quantity == 0:
             self.connection.execute("DELETE FROM positions WHERE account=? AND coin=? AND kind=?", (account, coin, kind))
         else:
-            self.connection.execute("INSERT INTO positions VALUES (?,?,?,?,?) ON CONFLICT(account,coin,kind) "
-                                    "DO UPDATE SET quantity=excluded.quantity,avg_entry=excluded.avg_entry",
-                                    (account, coin, kind, new_quantity, avg_entry))
+            self.connection.execute("INSERT INTO positions VALUES (?,?,?,?,?,?,?) ON CONFLICT(account,coin,kind) "
+                                    "DO UPDATE SET quantity=excluded.quantity,avg_entry=excluded.avg_entry,"
+                                    "risk_reference_price=excluded.risk_reference_price,risk_reference_source=excluded.risk_reference_source",
+                                    (account, coin, kind, new_quantity, avg_entry, risk_reference, risk_source))
         result = {**order, "fill_id": uuid4().hex, "cycle_id": cycle_id, "timestamp_utc": now,
                   "quantity": quantity, "price": price, "notional": abs(quantity) * price,
                   "fee": fee, "realized_pnl": realized, "quantity_after": new_quantity,
-                  "avg_entry_after": avg_entry if new_quantity else None}
+                  "avg_entry_after": avg_entry if new_quantity else None,
+                  "risk_reference_price_after": risk_reference if new_quantity else None,
+                  "risk_reference_source_after": risk_source if new_quantity else None}
         self.connection.execute("INSERT INTO fills VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             result["fill_id"], cycle_id, now, account, coin, kind, quantity, price,
             result["notional"], fee, realized, order.get("forecast_id"), order.get("model_id"),
@@ -415,12 +471,7 @@ class PaperLedger:
                 if (account_fills and account["role"] != "spot" and not reductions_only
                         and account["gross_exposure"] > account["equity"] * self.max_gross_leverage + _EPS):
                     raise ValueError("A perpetual account exceeds its gross exposure/collateral limit.")
-            for account, values in [*state["accounts"].items(), ("pooled", state["pooled"])]:
-                self.connection.execute("INSERT INTO equity VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
-                    cycle_id, now, account, values["cash"], values["equity"], values["free_cash"],
-                    values["realized_pnl"], values["unrealized_pnl"], values["fees"], values["funding"],
-                    values["total_pnl"], values["gross_exposure"],
-                ))
+            self._record_equity(cycle_id, now, state)
             result = {"cycle_id": cycle_id, "timestamp_utc": now, "duplicate": False,
                       "fills": fills, "transfers": transfers_rows, "funding": funding_rows, "state": state}
             self._event(cycle_id, now, "cycle", {"fill_count": len(fills), "transfer_count": len(transfers_rows),
@@ -431,6 +482,14 @@ class PaperLedger:
         except Exception:
             self.connection.rollback()
             raise
+
+    def _record_equity(self, cycle_id, now, state):
+        for account, values in [*state["accounts"].items(), ("pooled", state["pooled"])]:
+            self.connection.execute("INSERT INTO equity VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                cycle_id, now, account, values["cash"], values["equity"], values["free_cash"],
+                values["realized_pnl"], values["unrealized_pnl"], values["fees"], values["funding"],
+                values["total_pnl"], values["gross_exposure"],
+            ))
 
     def export(self, directory):
         """Write inspectable projections; an export failure cannot undo the ledger."""

@@ -322,13 +322,15 @@ class PublicPaperMarket:
         return [by_time[stamp] for stamp in sorted(by_time)]
 
 
-def simulate_fill(market: dict, signed_quantity: float, extra_slippage_bps=2,
+def simulate_fill(market: dict, signed_quantity: float, extra_slippage_bps=0,
                   min_notional=10, *, now=None) -> dict:
-    """Consume current visible depth with adverse slippage and lot-size flooring.
+    """Price taker fills at current visible-depth VWAP with lot-size flooring.
 
     Returned quantity and unfilled_quantity use the requested sign. A missing,
     stale, crossed, or below-minimum executable quote produces a zero fill; no
-    historic candle or mark price is substituted for a book price.
+    historic candle or mark price is substituted for a book price. An optional
+    explicit extra-slippage assumption supports historical simulations; the
+    default adds no price penalty beyond executable book levels.
     """
     if not isinstance(market, dict):
         raise ValueError("market must be a normalized market object.")

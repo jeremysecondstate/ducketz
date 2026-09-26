@@ -5,6 +5,7 @@ import time
 import traceback
 import tkinter as tk
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from tkinter import ttk
 
 import pytest
@@ -90,6 +91,75 @@ def test_headline_uses_opening_baseline_pnl_and_preserves_inherited_position(wor
     inherited = next(row for row in rows if row.get("passive"))
     assert inherited["account"] == "alex"
     assert inherited["kind"] == "spot"
+
+
+def test_immutable_opening_stays_visible_beside_postfill_portfolio_and_inventory(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    seed = {"timestamp_utc": "2026-09-26T11:30:32+00:00",
+            "baseline_equity": {"alex": 5879.21, "jeremy": 6151.79, "clearpond": 30068.53},
+            "cash": {"alex": 6200, "jeremy": 5500, "clearpond": 30000},
+            "positions": [{"account": "alex", "coin": "HYPE", "kind": "perp", "quantity": -25,
+                           "avg_entry": 45, "mark_price": 47, "risk_reference_price": 47,
+                           "risk_reference_source": "opening_mark"}],
+            "metadata": {"snapshot_not_atomic_across_accounts": True}}
+    view.show_snapshot(replace(snapshot, seed=seed))
+    text = view.opening_label.cget("text")
+    assert "04:30:32 PT" in text and "$42,099.53" in text
+    assert "Experiment P/L $0.00" in text and "Seed fees $0.00" in text
+    assert "1 inherited position" in text
+    assert "42,112.86" in view.metric_values["equity"].cget("text")
+    assert "34.58" in view.metric_values["pnl"].cget("text")
+    assert "export" in view.metric_titles["drawdown"].cget("text")
+    assert view.metric_captions["drawdown"].cget("text").startswith("As of ")
+    before = set(view.root.winfo_children())
+    view.opening_button.invoke()
+    window.update()
+    dialog = next(child for child in view.root.winfo_children() if child not in before and isinstance(child, tk.Toplevel))
+    try:
+        def texts(widget):
+            return ([widget.get("1.0", "end")] if isinstance(widget, tk.Text) else []) + [
+                value for child in widget.winfo_children() for value in texts(child)]
+        evidence = "\n".join(texts(dialog))
+        assert "perp HYPE · -25 · 45 · 47 · 47 (opening_mark)" in evidence
+        assert "Account reads were sequential" in evidence
+        assert "IMMUTABLE SEED RECORD" in evidence
+    finally:
+        dialog.destroy()
+    view.mode.set("Powder")
+    assert not view.opening_panel.winfo_manager()
+    view.mode.set("Paper")
+    assert view.opening_panel.winfo_manager() == "pack"
+    assert view.opening_label.cget("text") == text
+
+
+def test_opening_does_not_invent_baseline_from_current_equity(workspace):
+    view, _, _ = workspace
+    view.show_snapshot(replace(_snapshot(), seed={}))
+    assert view.opening_label.cget("text") == "Opening baseline unavailable"
+    assert str(view.opening_button.cget("state")) == "disabled"
+
+
+def test_zero_cost_opening_renders_before_strategy_fills(workspace):
+    view, _, _ = workspace
+    start = "2026-09-26T11:30:32+00:00"
+    accounts = {key: {"equity": 1000, "initial_equity": 1000, "total_pnl": 0,
+                      "free_cash": 1000, "gross_exposure": 0, "fees": 0} for key in ("alex", "jeremy", "clearpond")}
+    pooled = {"equity": 3000, "initial_equity": 3000, "total_pnl": 0, "gross_exposure": 0, "fees": 0}
+    view.show_snapshot(PaperViewSnapshot(observed_at_utc=start, portfolio_observed_at_utc=start,
+        accounts=accounts, pooled=pooled,
+        seed={"timestamp_utc": start, "baseline_equity": {key: 1000 for key in accounts}, "positions": []},
+        equity_history=[{"account": "pooled", "timestamp_utc": start, "equity": 3000, "total_pnl": 0}],
+        performance={"as_of_utc": start, "max_drawdown_fraction": 0},
+        runtime={"status": "stopped", "stop_reason": "prepare_only", "lifecycle_phase": "opening_prepared"},
+        sources={"paper": SourceState("Paper", "stopped")}))
+    assert view.metric_values["equity"].cget("text") == "$3,000.00"
+    assert view.metric_values["pnl"].cget("text") == "$0.00"
+    assert view.metric_values["fees"].cget("text") == "$0.00"
+    assert len(view._chart_series()) == 1
+    assert not view.tree.get_children()
+    assert "Opening prepared" in view.source_labels["paper"][0].cget("text")
+    assert "Awaiting strategy start" in view.source_labels["paper"][1].cget("text")
 
 
 def test_refresh_retains_filters_and_stable_row_selection(workspace):
@@ -500,6 +570,22 @@ def test_drawdown_chart_uses_transfer_adjusted_presampling_drawdown(workspace):
     assert [value for _, value, _ in view._chart_series()] == [0, -2.5]
     view.chart_metric.set("P/L")
     assert [value for _, value, _ in view._chart_series()] == [0, 0]
+
+
+def test_chart_sampling_keeps_recorded_opening_before_immediate_fills(workspace):
+    view, _, _ = workspace
+    start = datetime(2026, 9, 26, 3, 0, tzinfo=timezone.utc)
+    history = [{"account": "pooled", "timestamp_utc": (start + timedelta(milliseconds=i)).isoformat(),
+                "equity": 3000-i, "total_pnl": -i} for i in range(400)]
+    view.show_snapshot(replace(_snapshot(), equity_history=history,
+                              portfolio_observed_at_utc=history[-1]["timestamp_utc"]))
+    view.chart_range.set("All")
+    view.chart_metric.set("P/L")
+    series = view._chart_series()
+    assert len(series) <= 350
+    assert series[0][2] == history[0]
+    assert series[0][1] == 0
+    assert series[-1][2] == history[-1]
 
 
 class BlockingService:

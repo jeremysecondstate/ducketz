@@ -37,7 +37,6 @@ def paper_root(tmp_path):
                      initial_positions=[{"account": "alex", "coin": "BTC", "kind": "perp",
                                          "quantity": -2, "avg_entry": 120}],
                      initial_marks={"perp:BTC": 100}, now=NOW-600) as ledger:
-        ledger.execute_cycle("opening", NOW-600, {"perp:BTC": 100}, [])
         common = {"account": "alex", "coin": "BTC", "kind": "perp", "qualified": False,
                   "p_not_down": .6, "current_notional": -200, "target_notional": 0,
                   "reason": "signal_rebalance", "forecast_id": "forecast1", "model_id": "model1"}
@@ -93,6 +92,54 @@ def test_ledger_is_authoritative_pooled_not_double_counted_and_pnl_excludes_inhe
     assert snapshot.portfolio_observed_at_utc == utc(NOW-1)
     assert snapshot.policy["policy_id"] == "saved_policy"
     assert snapshot.seed["timestamp_utc"] == utc(NOW-600)
+
+
+def test_seeded_portfolio_is_visible_before_any_strategy_cycle(tmp_path):
+    database = tmp_path / "_paper" / "ledger.sqlite3"
+    with PaperLedger(database, {"alex": 1000, "jeremy": 1000, "clearpond": 1000},
+                     initial_positions=[{"account": "alex", "coin": "BTC", "kind": "perp",
+                                         "quantity": -2, "avg_entry": 120}],
+                     initial_marks={"perp:BTC": 100}, now=NOW) as ledger:
+        seed = ledger.seed()
+    snapshot = service(tmp_path).load_snapshot()
+    assert snapshot.portfolio_observed_at_utc == utc()
+    assert snapshot.pooled["equity"] == 3040
+    assert snapshot.pooled["total_pnl"] == 0
+    assert snapshot.pooled["fees"] == 0
+    assert snapshot.positions[0]["avg_entry"] == 120
+    assert snapshot.positions[0]["mark_price"] == 100
+    assert snapshot.positions[0]["quantity"] == -2
+    assert not snapshot.fills and not snapshot.decisions and not snapshot.transfers
+    assert len(snapshot.equity_history) == 4
+    assert snapshot.seed == seed
+
+
+def test_legacy_seed_remains_auditable_without_fabricating_chart_observations(paper_root):
+    database = paper_root / "_paper" / "ledger.sqlite3"
+    # Model an older ledger that recorded only the first post-fill valuation.
+    with sqlite3.connect(database) as connection:
+        connection.execute("DELETE FROM equity WHERE cycle_id != 'latest'")
+        connection.execute("DELETE FROM cycles WHERE cycle_id != 'latest'")
+    snapshot = service(paper_root).load_snapshot()
+    assert sum(snapshot.seed["baseline_equity"].values()) == 3040
+    assert snapshot.seed["positions"][0]["quantity"] == -2
+    assert snapshot.pooled["equity"] == 3039
+    assert snapshot.pooled["total_pnl"] == -1
+    assert {row["cycle_id"] for row in snapshot.equity_history} == {"latest"}
+    assert {row["timestamp_utc"] for row in snapshot.equity_history} == {utc(NOW-1)}
+
+
+@pytest.mark.parametrize("age,state", [(601, "fresh"), (1799, "fresh"), (1801, "stale")])
+def test_performance_export_freshness_matches_fifteen_minute_schedule(paper_root, age, state):
+    write_json(paper_root / "_paper" / "performance.json",
+               {"as_of_utc": utc(NOW-age), "max_drawdown_fraction": -.5})
+    snapshot = service(paper_root).load_snapshot()
+    source = snapshot.sources["performance"]
+    assert source.cadence_seconds == 900
+    assert source.state == state
+    assert "every 15 minutes" in source.detail
+    assert snapshot.pooled["equity"] == 3039
+    assert snapshot.equity_history[-1]["equity"] == 3039
 
 
 @pytest.mark.parametrize("cadence,expected_cadence,expected_state", [
@@ -166,6 +213,16 @@ def test_dead_process_and_unknown_process_are_not_reported_running(paper_root):
     assert unknown.runtime["process_alive"] is None
 
 
+def test_prepared_opening_reports_intentional_stop_without_claiming_running(paper_root):
+    write_json(paper_root / "_paper" / "_runtime" / "status.json",
+               {"status": "stopped", "pid": 1234, "updated_at_utc": utc(),
+                "prepare_only": True, "stop_reason": "prepare_only", "lifecycle_phase": "opening_prepared"})
+    snapshot = HyperliquidPaperViewService(paper_root, clock=lambda: NOW,
+                                          process_probe=lambda *_: False).load_snapshot()
+    assert snapshot.runtime["status"] == "stopped"
+    assert snapshot.sources["paper"].detail == "Opening prepared; stopped intentionally before strategy cycles"
+
+
 def test_partial_json_and_source_errors_preserve_valid_ledger(paper_root):
     (paper_root / "_models" / "BTC" / "15m" / "h4" / "latest_prediction.json").write_text('{"partial":', encoding="utf-8")
     write_json(paper_root / "_paper" / "_runtime" / "status.json", {
@@ -182,7 +239,7 @@ def test_partial_json_and_source_errors_preserve_valid_ledger(paper_root):
 def test_partial_ledger_can_show_recorded_equity_without_inventing_marks(paper_root):
     with sqlite3.connect(paper_root / "_paper" / "ledger.sqlite3") as connection:
         connection.execute("DROP TABLE cycles")
-        connection.execute("INSERT INTO positions VALUES ('jeremy','ETH','perp',1,200)")
+        connection.execute("INSERT INTO positions VALUES ('jeremy','ETH','perp',1,200,200,'fill_price')")
     snapshot = service(paper_root).load_snapshot()
     assert snapshot.pooled["equity"] == pytest.approx(3039)
     assert snapshot.sources["ledger"].state == "partial"
@@ -244,6 +301,25 @@ def test_history_sampling_covers_full_period_and_keeps_last_observation(paper_ro
     assert pool[-1]["equity"] == 3079
     assert pool[-1]["total_pnl"] == 39
     assert all(row["equity"] <= 3079 for row in pool)
+
+
+@pytest.mark.parametrize("limit", [8, 12, 20])
+def test_history_sampling_preserves_opening_before_near_immediate_loss(tmp_path, limit):
+    database = tmp_path / "_paper" / "ledger.sqlite3"
+    with PaperLedger(database, {"alex": 1000, "jeremy": 1000, "clearpond": 1000}, now=NOW) as ledger:
+        for index in range(1, 31):
+            ledger.execute_cycle(str(index), NOW + index / 100, {}, [],
+                                 funding=[{"funding_id": f"f{index}", "account": "alex", "coin": "BTC", "amount": -1}])
+    snapshot = service(tmp_path, history_limit=limit).load_snapshot()
+    assert snapshot.history_sampled
+    assert len(snapshot.equity_history) <= limit
+    for account in ("alex", "jeremy", "clearpond", "pooled"):
+        rows = [row for row in snapshot.equity_history if row["account"] == account]
+        assert rows[0]["timestamp_utc"] == utc()
+        assert rows[0]["total_pnl"] == 0
+        assert rows[-1]["timestamp_utc"] == utc(NOW+.3)
+    pooled = [row for row in snapshot.equity_history if row["account"] == "pooled"]
+    assert pooled[-1]["drawdown_fraction"] == pytest.approx(-30 / 3000)
 
 
 def test_journal_limit_is_bounded_and_keeps_newest(paper_root):
@@ -316,8 +392,8 @@ def test_mismatched_cycle_and_fallback_equity_never_mix_position_marks(paper_roo
         # to later, post-transfer equity rows. Reuse the same position quantity
         # to ensure quantity matching cannot accidentally justify an old mark.
         connection.execute("DELETE FROM cycles WHERE cycle_id='latest'")
-        connection.execute("DELETE FROM equity WHERE cycle_id='opening'")
-        connection.execute("INSERT INTO positions VALUES ('alex','BTC','perp',-2,120)")
+        connection.execute("DELETE FROM equity WHERE cycle_id!='latest'")
+        connection.execute("INSERT INTO positions VALUES ('alex','BTC','perp',-2,120,120,'legacy_avg_entry')")
     snapshot = service(paper_root).load_snapshot()
     assert snapshot.portfolio_observed_at_utc == utc(NOW-1)
     assert snapshot.pooled["equity"] == pytest.approx(3039)

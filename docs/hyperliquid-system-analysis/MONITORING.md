@@ -141,9 +141,10 @@ Adapter age thresholds are display heuristics: data/forecast sources allow
 other sources normally twice their declared cadence. Paper's decision-candle
 eligibility limit is **900s**, so a
 forecast can fail Paper validation before its UI age badge becomes stale.
-The adapter assigns performance exports a 300s cadence and flags age above
-600s, while unchanged Paper cycles may wait 900s before exporting. That lag
-alert alone is expected in this interval and does not prove a worker fault.
+The adapter assigns performance exports the runtime's 900s cadence and flags
+age above 1,800s. The previous 300s assumption caused normal quiet-cycle exports
+to be labeled stale at 600s. Export age is separate from the latest committed
+portfolio; an export-only delay does not prove a worker fault.
 Missing/future timestamps or explicit errors can override age-only status.
 The [September 26 rollover audit](audits/2026-09-26-paper-forecast-rollover.md)
 found stale-forecast reductions followed by reentries around 32 seconds later.
