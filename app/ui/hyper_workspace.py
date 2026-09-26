@@ -27,12 +27,103 @@ ACCOUNTS = {"alex": ("Alex", "Short perps", "AL"),
             "jeremy": ("Jeremy", "Long perps", "JE"),
             "clearpond": ("Clear Pond", "Spot", "CP")}
 ACCOUNT_KEYS = {label: key for key, (label, _, _) in ACCOUNTS.items()}
-REASONS = {"entry_deadband": "Below entry threshold", "hold_with_hysteresis": "Hold within exit band",
+REASONS = {"entry_deadband": "Below entry threshold", "hold_with_hysteresis": "Existing direction retained",
            "signal_rebalance": "Adjust to forecast target", "entry_based_stop": "Entry-based stop",
            "stop_loss": "Stop loss", "stop_cooldown": "Stop cooldown", "risk_cap": "Exposure limit",
            "unqualified_forecast_excluded": "Research signal excluded",
            "qualified_forecast_unavailable": "Qualified forecast unavailable",
-           "paper_target_collateral_allocation": "Fund target collateral", "no_change": "Target already met"}
+           "paper_target_collateral_allocation": "Fund target collateral", "no_change": "Recorded target unchanged",
+           "exit_band": "Inside exit band", "below_size_precision": "Below size precision",
+           "below_min_notional": "Below venue minimum", "execution_unfilled": "No executable fill",
+           "decision_check_unrecorded": "Blocking check not recorded",
+           "neutral_band": "Neutral signal", "nonpositive_pool_equity": "No positive pool equity",
+           "gross_capacity_exhausted": "No gross exposure capacity", "opposite_account_direction": "Signal is for the opposite account role",
+           "target_unchanged": "Recorded target unchanged", "below_rebalance_threshold": "Below rebalance threshold",
+           "account_capacity": "Account capacity limit", "insufficient_cash": "Insufficient available cash",
+           "entry_threshold_met": "Entry threshold met",
+           "opposing_reduction_unavailable": "Opposing exit has no executable book"}
+
+
+def _paper_decision_reason(row):
+    """Explain older nonfills only from their saved evidence, never today's policy."""
+    reason = row.get("reason")
+    if row.get("action") not in {"hold", "skip"} or reason not in {None, "", "signal_rebalance"}:
+        return reason
+    execution = row.get("execution") if isinstance(row.get("execution"), dict) else {}
+    if execution.get("reason"):
+        return execution["reason"]
+    policy = row.get("policy") if isinstance(row.get("policy"), dict) else {}
+    if policy.get("reason") in {"entry_deadband", "exit_band", "neutral_band", "nonpositive_pool_equity",
+                              "gross_capacity_exhausted", "unqualified_forecast_excluded"}:
+        return policy["reason"]
+    current, target = number(row.get("current_notional")), number(row.get("target_notional"))
+    if current is not None and target is not None and current == target:
+        return "no_change"
+    if execution.get("status") == "unfilled":
+        return "execution_unfilled"
+    return "decision_check_unrecorded"
+
+
+def _decision_check_lines(row):
+    checks = row.get("decision_checks") if isinstance(row.get("decision_checks"), dict) else {}
+    current, target = number(row.get("current_notional")), number(row.get("target_notional"))
+    exit_note = ("Complete exits bypass the ordinary rebalance threshold; venue size and minimum still apply."
+                 if current is not None and current != 0 and target == 0 else None)
+    if not checks:
+        lines = ["Detailed checks were not recorded for this decision; historical cooldown and thresholds are unavailable."]
+        policy = row.get("policy") if isinstance(row.get("policy"), dict) else {}
+        if policy.get("reason"):
+            lines.append("Saved sizing reason: " + REASONS.get(policy["reason"], str(policy["reason"])))
+        if current is not None and target is not None:
+            lines.append("Signed delta from saved targets: " + money(target-current, True))
+        if exit_note:
+            lines.append(exit_note)
+        return lines
+    lines = []
+    role = {"short_perp": "Short perps · signed target ≤ 0", "long_perp": "Long perps · signed target ≥ 0",
+            "long_spot": "Long spot · signed target ≥ 0"}.get(checks.get("account_role"))
+    if role:
+        lines.append("Account role: " + role)
+    if checks.get("strategy_direction"):
+        lines.append("Strategy direction: " + str(checks["strategy_direction"]).capitalize())
+    if checks.get("policy_reason"):
+        lines.append("Sizing reason: " + REASONS.get(checks["policy_reason"], str(checks["policy_reason"])))
+    if checks.get("trigger_reason") and checks["trigger_reason"] != row.get("reason"):
+        lines.append("Trade trigger: " + REASONS.get(checks["trigger_reason"], str(checks["trigger_reason"])))
+    if any(number(checks.get(k)) is not None for k in ("entry_probability_long", "entry_probability_short")):
+        lines.append(f"Eligible signal entry P(not-down): long ≥ {pct(checks.get('entry_probability_long'))}; short ≤ {pct(checks.get('entry_probability_short'))}")
+    if any(number(checks.get(k)) is not None for k in ("exit_probability_long", "exit_probability_short")):
+        lines.append(f"Eligible signal retention: long > {pct(checks.get('exit_probability_long'))}; short < {pct(checks.get('exit_probability_short'))}. Otherwise target zero.")
+    delta = number(checks.get("delta_notional"))
+    if delta is not None:
+        lines.append(f"Signed target delta {money(delta, True)} · absolute delta {money(abs(delta))}")
+    if "rebalance_threshold_notional" in checks:
+        lines.append(f"Rebalance threshold {money(checks.get('rebalance_threshold_notional'))}: max({money(checks.get('minimum_trade_notional'))} trade minimum, {pct(checks.get('rebalance_min_delta_fraction'))} of absolute target)")
+    if checks.get("rebalance_forced") is True:
+        lines.append("Risk reduction bypasses the ordinary rebalance threshold.")
+    if exit_note:
+        lines.append(exit_note)
+    if checks.get("rebalance_required") in (True, False):
+        lines.append("Rebalance required: " + ("Yes" if checks["rebalance_required"] else "No"))
+    if "venue_minimum_fill_notional" in checks:
+        lines.append("Venue minimum applies to the actual fill: " + money(checks["venue_minimum_fill_notional"]))
+    if "proposed_target_notional" in checks:
+        lines.append("Proposed target before account checks: " + money(checks["proposed_target_notional"]))
+    if "account_capacity_notional" in checks or "available_cash" in checks:
+        lines.append(f"Account capacity {money(checks.get('account_capacity_notional'))} · available cash {money(checks.get('available_cash'))}")
+    remaining = number(checks.get("cooldown_remaining_seconds"))
+    if checks.get("cooldown_until_utc"):
+        lines.append("Cooldown until " + local_time(checks["cooldown_until_utc"], date=True)
+                     + (f" · {quantity(remaining)} seconds remaining at decision" if remaining is not None else ""))
+    elif remaining == 0:
+        lines.append("No active cooldown at decision.")
+    if checks.get("cooldown_blocks_target") is True:
+        lines.append("Cooldown blocks the proposed target.")
+    elif checks.get("cooldown_blocks_target") is False and checks.get("cooldown_until_utc"):
+        lines.append("Cooldown did not change the proposed target.")
+    if checks.get("execution_reason"):
+        lines.append("Execution check: " + REASONS.get(checks["execution_reason"], str(checks["execution_reason"])))
+    return lines
 
 
 def number(value):
@@ -667,7 +758,10 @@ class HyperWorkspace:
         recipe = config.get("recipe_version", policy.get("recipe_version"))
         if config.get("require_qualified_forecasts") is True and recipe == "direction-volatility-v2-qualified-hold":
             qualification_policy = "Only qualified signals. Hold without an eligible signal; risk checks continue."
-        self.policy_label.configure(text=(f"Paper policy · {pct(config.get('per_symbol_gross_fraction'))} / symbol · {pct(config.get('pool_gross_fraction'))} pool cap\n{qualification_policy}" if paper else
+        entry_band = number(config.get("entry_band"))
+        entry_policy = (f"\nEntry P(not-down): long ≥ {pct(.5+entry_band)} · short ≤ {pct(.5-entry_band)}"
+                        if entry_band is not None and 0 <= entry_band <= .5 else "")
+        self.policy_label.configure(text=(f"Paper policy · {pct(config.get('per_symbol_gross_fraction'))} / symbol · {pct(config.get('pool_gross_fraction'))} pool cap{entry_policy}\n{qualification_policy}" if paper else
                                          "User command starts Powder. Switching tabs only changes this read-only view.\nSee docs/hyperliquid-system-analysis/POWDER_ACTIVATION.md"))
         self.footer.configure(text=("H.Y.P.E.R. / " + self.mode.get() + "   ·   " + ("View refreshed " + local_time(snap.observed_at_utc, date=True) if snap else "No local snapshot") + "   ·   Read-only · times PT"))
         self._draw_chart()
@@ -872,6 +966,8 @@ class HyperWorkspace:
                 return "Risk exit" if row.get("reason") == "stop_loss" else "No forecast"
             return str(value or "unavailable").capitalize()
         if key == "reason":
+            if self.mode.get() == "Paper" and view == "Decisions":
+                value = _paper_decision_reason(row)
             return REASONS.get(value, value or "—")
         if key == "status" and view == "Transfers":
             return "Committed"
@@ -963,6 +1059,8 @@ class HyperWorkspace:
             account = ACCOUNTS.get(data.get("account"), (data.get("account", "Shared model"),))[0]
             add(f"{account} · {data.get('coin', data.get('symbol', 'USDC'))}", "title")
             reason = data.get("reason")
+            if self.mode.get() == "Paper" and view == "Decisions":
+                reason = _paper_decision_reason(data)
             add((str(data.get("action", "")).capitalize()+" · " if data.get("action") else "") + REASONS.get(reason, reason or view.rstrip("s")))
             if view == "Transfers":
                 add("VIRTUAL TRANSFER", "section")
@@ -994,6 +1092,8 @@ class HyperWorkspace:
                     add("No forecast attributed to this record.")
                 else:
                     add(f"P(not-down) {pct(p)}    P(down) {pct(p_down)}\n{horizon}")
+                if self.mode.get() == "Paper" and view == "Decisions":
+                    add("Qualified describes model validation. Direction, size and risk checks determine whether a trade occurs.")
                 if data.get("source_state") and data["source_state"] != "fresh":
                     add("Forecast source: " + data["source_state"])
                 for model, probability in (data.get("per_model") or {}).items():
@@ -1011,6 +1111,10 @@ class HyperWorkspace:
                     add(f"Confidence {pct(policy.get('confidence'))} · Horizon volatility {pct(policy.get('effective_horizon_sigma'))}")
                     if policy.get("account_cash_constraints_applied"):
                         add("Policy-stage account cash constraint applied")
+                if self.mode.get() == "Paper" and view == "Decisions":
+                    add("DECISION CHECKS", "section")
+                    for line in _decision_check_lines(data):
+                        add(line)
                 if self.mode.get() == "Powder" and view == "Decisions":
                     add("ORDER INTENT", "section")
                     request = data.get("request", {})

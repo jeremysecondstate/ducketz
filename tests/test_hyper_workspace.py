@@ -189,6 +189,95 @@ def test_hold_reason_is_explained_without_an_execution_claim(workspace):
     assert "SIMULATED EXECUTION" not in description
 
 
+def test_historical_nonfill_reasons_use_saved_facts_without_inventing_cooldown(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    base = {"timestamp_utc": "2026-09-26T08:30:39+00:00", "account": "alex", "coin": "ZEC",
+            "kind": "perp", "qualified": True, "qualification": "qualified", "model_id": "old-model",
+            "forecast_id": "old-forecast", "reason": "signal_rebalance", "action": "hold",
+            "current_notional": 0, "target_notional": 0}
+    rows = [
+        {**base, "decision_id": "deadband", "p_not_down": .503, "policy": {"reason": "entry_deadband"}},
+        {**base, "decision_id": "precision", "account": "clearpond", "kind": "spot", "action": "skip",
+         "p_not_down": .40, "current_notional": .08, "policy": {"reason": "entry_threshold_met"},
+         "execution": {"reason": "below_size_precision", "status": "unfilled", "quantity": 0,
+                       "requested_quantity": -.00005, "unfilled_quantity": -.00005}},
+        {**base, "decision_id": "unrecorded", "p_not_down": .40,
+         "policy": {"reason": "entry_threshold_met", "target_gross": 5157.51}},
+    ]
+    view.show_snapshot(replace(snapshot, decisions=rows, policy={"entry_band": .04, "exit_band": .02}))
+    view.view.set("Decisions")
+    view._render()
+    assert view.tree.set("deadband", "reason") == "Below entry threshold"
+    assert view.tree.set("precision", "reason") == "Below size precision"
+    assert view.tree.set("unrecorded", "reason") == "Recorded target unchanged"
+    view.tree.selection_set("precision")
+    view.tree.event_generate("<<TreeviewSelect>>")
+    window.update()
+    assert "Complete exits bypass the ordinary rebalance threshold" in view.detail.get("1.0", "end")
+    view.tree.selection_set("unrecorded")
+    view.tree.event_generate("<<TreeviewSelect>>")
+    window.update()
+    description = view.detail.get("1.0", "end").split("SAVED RECORD")[0]
+    assert "Detailed checks were not recorded" in description
+    assert "Saved sizing reason: Entry threshold met" in description
+    assert "Stop cooldown" not in description and "Cooldown until" not in description
+    assert "Complete exits bypass" not in description
+    assert all(value not in description for value in ("55.00%", "54.00%", "46.00%", "52.00%"))
+    # A skipped zero fill stays a decision; the actual fill journal is unchanged.
+    view.view.set("Fills")
+    view._render()
+    assert len(view.tree.get_children()) == len(snapshot.fills)
+    assert {row["fill_id"] for row in _visible_rows(view)} == {row["fill_id"] for row in snapshot.fills}
+
+
+@pytest.mark.parametrize("cooldown", [False, True])
+@pytest.mark.parametrize("long_entry,short_entry,entry_text", [
+    (.55, .45, "long ≥ 55.00%; short ≤ 45.00%"),
+    (.54, .46, "long ≥ 54.00%; short ≤ 46.00%"),
+])
+def test_saved_decision_checks_explain_thresholds_roles_and_cooldown_at_decision(workspace, cooldown, long_entry, short_entry, entry_text):
+    view, window, _ = workspace
+    checks = {"policy_reason": "entry_threshold_met", "entry_probability_long": long_entry,
+              "entry_probability_short": short_entry, "exit_probability_long": .52, "exit_probability_short": .48,
+              "minimum_trade_notional": 25, "rebalance_min_delta_fraction": .10,
+              "rebalance_threshold_notional": 25, "delta_notional": 0 if cooldown else -15,
+              "venue_minimum_fill_notional": 10, "proposed_target_notional": -100,
+              "account_capacity_notional": 800, "available_cash": 900, "account_role": "short_perp",
+              "strategy_direction": "short", "cooldown_until_utc": "2026-09-26T09:00:00+00:00" if cooldown else None,
+              "cooldown_remaining_seconds": 1800 if cooldown else 0, "cooldown_blocks_target": cooldown,
+              "rebalance_required": False, "rebalance_forced": False}
+    row = {"decision_id": "checked-hold", "timestamp_utc": "2026-09-26T08:30:00+00:00",
+           "account": "alex", "coin": "ZEC", "kind": "perp", "action": "hold",
+           "reason": "stop_cooldown" if cooldown else "below_rebalance_threshold",
+           "current_notional": 0 if cooldown else -85, "target_notional": 0 if cooldown else -100,
+           "p_not_down": .40, "qualified": True, "qualification": "qualified",
+           "model_id": "recorded-model", "forecast_id": "recorded-forecast", "decision_checks": checks}
+    # Today's policy must never replace the policy recorded on an older row.
+    view.show_snapshot(replace(_snapshot(), decisions=[row], policy={"entry_band": .08, "exit_band": .03}))
+    view.view.set("Decisions")
+    view._render()
+    window.update()
+    assert view.tree.set("checked-hold", "qualification") == "Qualified"
+    assert view.tree.set("checked-hold", "action") == "Hold"
+    assert view.tree.set("checked-hold", "reason") == ("Stop cooldown" if cooldown else "Below rebalance threshold")
+    description = view.detail.get("1.0", "end").split("SAVED RECORD")[0]
+    assert "Qualified describes model validation" in description
+    assert "Account role: Short perps · signed target ≤ 0" in description
+    assert "Eligible signal entry P(not-down): " + entry_text in description
+    assert "Eligible signal retention: long > 52.00%; short < 48.00%" in description
+    assert "58.00%" not in description and "42.00%" not in description and "53.00%" not in description
+    assert "max($25.00 trade minimum, 10.00% of absolute target)" in description
+    assert "Venue minimum applies to the actual fill: $10.00" in description
+    assert "SIMULATED EXECUTION" not in description
+    if cooldown:
+        assert "1,800 seconds remaining at decision" in description
+        assert "Cooldown blocks the proposed target" in description
+    else:
+        assert "Signed target delta −$15.00" in description
+        assert "No active cooldown at decision" in description
+
+
 @pytest.mark.parametrize("journal", ["Decisions", "Fills"])
 @pytest.mark.parametrize("reason,model_label,reason_label", [
     ("qualified_forecast_unavailable", "No forecast", "Qualified forecast unavailable"),
@@ -229,6 +318,34 @@ def test_qualified_policy_hold_text_matches_recorded_recipe(workspace, recipe, h
     text = view.policy_label.cget("text")
     assert ("Hold without an eligible signal; risk checks continue." in text) is holds
     assert ("Only qualified signals." if holds else "Only qualified forecasts participate.") in text
+
+
+def test_policy_footer_uses_saved_entry_band_and_complete_exit_check_remains_visible(workspace):
+    view, window, _ = workspace
+    row = {"decision_id": "guarded-exit", "timestamp_utc": "2026-09-26T08:30:00+00:00",
+           "account": "jeremy", "coin": "HYPE", "kind": "perp", "action": "skip",
+           "reason": "below_min_notional", "current_notional": 5, "target_notional": 0,
+           "decision_checks": {"rebalance_forced": False, "rebalance_required": True,
+                               "minimum_trade_notional": 25, "rebalance_threshold_notional": 25,
+                               "rebalance_min_delta_fraction": .1, "venue_minimum_fill_notional": 10}}
+    blocked = {**row, "decision_id": "blocked-increase", "account": "alex", "action": "hold",
+               "current_notional": 0, "target_notional": 0, "reason": "opposing_reduction_unavailable",
+               "decision_checks": {}}
+    snapshot = replace(_snapshot(), decisions=[row, blocked], policy={"entry_band": .04})
+    view.show_snapshot(snapshot)
+    assert "long ≥ 54.00% · short ≤ 46.00%" in view.policy_label.cget("text")
+    view.view.set("Decisions")
+    view._render()
+    window.update()
+    assert view.tree.set("blocked-increase", "reason") == "Opposing exit has no executable book"
+    assert view.tree.set("guarded-exit", "reason") == "Below venue minimum"
+    description = view.detail.get("1.0", "end").split("SAVED RECORD")[0]
+    assert "Complete exits bypass the ordinary rebalance threshold" in description
+    assert "venue size and minimum still apply" in description
+    assert "Risk reduction bypasses" not in description
+    assert "54.00%" not in description and "46.00%" not in description
+    view.show_snapshot(replace(snapshot, policy={"entry_band": .05}))
+    assert "long ≥ 55.00% · short ≤ 45.00%" in view.policy_label.cget("text")
 
 
 @pytest.mark.parametrize("account,key,expected_count", [("Alex", "alex", 2), ("Jeremy", "jeremy", 1)])

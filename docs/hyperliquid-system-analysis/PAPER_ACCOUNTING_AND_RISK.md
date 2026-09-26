@@ -93,7 +93,7 @@ Values verified in [hyperliquid-paper.json](../../configs/hyperliquid-paper.json
 | --- | --- | --- |
 | `require_qualified_forecasts` | `true` | Only fresh Qualified signals allocate; without one, hold current exposure subject to risk reductions |
 | `poll_seconds` | 30 seconds | Wait after each loop iteration, not guaranteed start-to-start latency |
-| `entry_band` / `exit_band` / `saturation_band` | 0.05 / 0.02 / 0.15 | Absolute distance of P(not-down) from 0.5 |
+| `entry_band` / `exit_band` / `saturation_band` | 0.04 / 0.02 / 0.15 | Absolute distance of P(not-down) from 0.5; entry broadened for the current evaluation phase |
 | `volatility_budget_fraction` / `sigma_floor` | 0.001 / 0.005 | Dollar-volatility sizing budget and horizon-volatility floor |
 | `per_symbol_gross_fraction` / `pool_gross_fraction` | 0.15 / 0.60 | Desired gross limits relative to pooled equity |
 | `bullish_spot_fraction` | 0.60 | Bullish allocation share assigned to Clear Pond |
@@ -110,7 +110,7 @@ bars, or one hour. Horizon volatility is the forecast's exact source-row
 `volatility_log_return_20 × sqrt(horizon_bars)`.
 
 Let `p=P(not-down)`, `e=abs(p−0.5)`, `E=max(pooled_equity,0)`, and `O` be other
-gross exposure. A fresh direction enters at `e≥0.05`; existing exposure matching
+gross exposure. A fresh direction enters at `e≥0.04`; existing exposure matching
 that direction remains eligible only at `e>0.02` (with small floating-point
 tolerances). Matching and opposing legs are examined separately, not netted.
 Neutral/failed eligibility produces zero desired exposure.
@@ -134,6 +134,37 @@ A full exit or forced reduction bypasses this policy threshold; executable
 quantity precision and the simulator's separate $10 fill minimum still apply.
 
 Source: [target_notionals and should_rebalance](../../ml/hyperliquid_paper_policy.py).
+
+### Why a Qualified decision can Hold or Skip
+
+Qualification is a retrospective probability-quality gate on the model. It is
+not a buy/sell instruction, an expected-return estimate or proof that a
+particular trade clears costs. Each shared forecast produces account-specific
+decisions; three Qualified rows do not mean three independent opportunities.
+
+| Check | Current behavior |
+| --- | --- |
+| New long direction | P(not-down) at least 54%; allocated to Jeremy/Clear Pond |
+| New short direction | P(not-down) at most 46%; allocated to Alex |
+| Existing matching direction | Remains eligible beyond 52% for longs or below 48% for shorts; sizing can still change |
+| Account role | Alex cannot open longs; Jeremy/Clear Pond cannot open shorts |
+| After a stop fill | That account/coin cannot re-enter for one forecast horizon: currently 3,600 seconds |
+| Normal adjustment | Difference must meet the greater of $25 or 10% of the final target |
+| Complete exit/risk reduction | Bypasses the normal adjustment threshold, but still needs executable precision/depth and the separate $10 fill minimum |
+| Already at target | Hold; there is no quantity to execute |
+
+For example, a Qualified 45.46% forecast failed the old 45% short-entry cutoff
+and passes the new 46% cutoff. A 40% forecast can request an Alex short while Jeremy remains flat;
+Alex can still Hold if its stop cooldown is active. An attempted $0.08 dust exit
+can Skip because rounding leaves zero quantity, without any missing fill record.
+
+New decision records include `decision_checks` with the actual entry/exit
+thresholds, proposed/final target delta, adjustment threshold, execution minimum,
+account role/capacity and cooldown expiry/remaining time at that decision.
+Hold/Skip reasons identify the blocking check; actual fills retain their
+execution attribution. Historical records are not rewritten, and missing old
+checks must not be inferred from current settings. See the
+[decision-gate audit](audits/2026-09-26-paper-decision-gates.md).
 
 ## From desired exposure to an executable change
 

@@ -1,6 +1,6 @@
 # H.Y.P.E.R. UI and data contracts
 
-Last updated: **2026-09-26** for qualified-only Paper provenance and resize handling. [Index](README.md) ·
+Last updated: **2026-09-26** for Paper decision checks and resize handling. [Index](README.md) ·
 [Accounting](PAPER_ACCOUNTING_AND_RISK.md) · [Operations](MONITORING.md)
 
 ## Entry points and ownership
@@ -70,6 +70,20 @@ subject to risk limits. A rejected Research publication is inspectable under
 IDs, qualification and probability stay null. The **Reason** column distinguishes
 exclusion, unavailable forecast and risk-exit decisions. A saved rejected model
 is audit context, not an execution signal.
+
+For Paper Hold/Skip rows, **Reason** identifies the actual recorded entry band,
+cooldown, account direction, unchanged target, adjustment-size check or failed
+execution check. **Decision checks** shows thresholds and cooldown time from
+that saved decision, not today's configuration. The model's Qualified label is
+preserved because qualification and order eligibility are separate facts.
+Filled/partial quantities and the fill journal are never synthesized from a
+Qualified label.
+
+Older generic `signal_rebalance` records can display a more precise explanation
+only from their saved nested execution or policy details. Missing historical
+cooldown/threshold evidence remains unavailable. The original saved record and
+ledger history are unchanged. A restart of the UI loads the new presentation;
+its five-second data refresh does not reload Python code.
 
 ## Interaction and refresh contract
 

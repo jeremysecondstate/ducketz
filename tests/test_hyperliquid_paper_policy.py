@@ -28,7 +28,26 @@ def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_re
     assert config.require_qualified_forecasts is True
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
-    assert config == PaperConfig(require_qualified_forecasts=True)
+    assert config == PaperConfig(require_qualified_forecasts=True, entry_band=0.04)
+
+
+@pytest.mark.parametrize("probability,account", [(0.54, "jeremy"), (0.46, "alex")])
+def test_evaluation_entry_band_opens_added_direction_without_changing_old_default(probability, account):
+    current = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    previous = replace(current, entry_band=0.05)
+    assert plan(probability=probability, config=previous)["targets"][account] == 0
+    result = plan(probability=probability, config=current)
+    assert abs(result["targets"][account]) > 0
+    assert result["details"]["reason"] == "entry_threshold_met"
+    assert current.exit_band == previous.exit_band == 0.02
+    assert current.require_qualified_forecasts is True
+
+
+@pytest.mark.parametrize("probability", [0.539, 0.461])
+def test_evaluation_entry_band_still_has_a_neutral_region(probability):
+    result = plan(probability=probability, config=load_config(DEFAULT_PAPER_CONFIG_PATH))
+    assert not any(result["targets"].values())
+    assert result["details"]["reason"] == "entry_deadband"
 
 
 def test_minimal_config_does_not_read_a_missing_model_file_and_resolves_relative_paths(tmp_path, monkeypatch):

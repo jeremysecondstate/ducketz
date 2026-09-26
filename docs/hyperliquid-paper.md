@@ -104,10 +104,17 @@ evidence; this hold-versus-zero choice belongs to the Paper consumer.
 ## Starting signal and sizing rules
 
 Let `p` be the ensemble's probability of not-down and `e = abs(p - 0.5)`.
-New bullish exposure requires `p >= 0.55`; new bearish exposure requires
-`p <= 0.45`. Existing exposure in the matching direction can persist while
+The current Paper evaluation phase requires `p >= 0.54` for new bullish
+exposure and `p <= 0.46` for new bearish exposure. This broadens the original
+55%/45% entry gate to collect more executed Qualified signals. Existing exposure in the matching direction can persist while
 `e > 0.02`. This narrower exit band reduces trading around the entry threshold.
 There is no directional position at an exactly neutral probability.
+
+The phase change retains the same seed/ledger and records a new policy ID;
+it does not reset prior results or demonstrate improved profitability. See the
+[decision-gate investigation](hyperliquid-system-analysis/audits/2026-09-26-paper-decision-gates.md).
+The `PaperConfig` constructor's legacy default remains 0.05; the checked-in
+runtime configuration explicitly selects `entry_band=0.04`.
 
 Once the signal is active, confidence is:
 

@@ -3,6 +3,19 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-09-26 — Broader Paper entries and recorded decision checks
+
+Changed the active Paper entry band from five to four percentage points
+(55%/45% to 54%/46%) under the user's forward-evaluation direction. Qualified
+models, risk limits, costs and training cadence remain required; the existing
+ledger/seed continue with a new policy ID. No fabricated fills or reset.
+
+Fixed misleading generic Hold/Skip explanations. New decisions save exact
+entry/exit, account, size, execution and cooldown checks; flat cooldown holds
+now identify the actual blocker without changing retry behavior. The UI reads
+those saved checks and uses only available historical facts for older rows.
+See the [decision-gate audit](audits/2026-09-26-paper-decision-gates.md).
+
 ## 2026-09-26 — Bounded model comparison and Paper refresh
 
 Archived the previous qualified-only Paper ledger and model history, ending at

@@ -260,9 +260,18 @@ def test_reductions_below_exchange_minimum_are_reported_as_unfilled_dust(runner)
     market.price["perp"] = 90
     result = instance.tick()
     assert result["portfolio"]["accounts"]["jeremy"]["positions"][0]["quantity"] == 0.05
-    stop = [json.loads(row["details_json"]) for row in instance.ledger.history("decisions") if row["reason"] == "stop_loss"]
+    stop = [json.loads(row["details_json"]) for row in instance.ledger.history("decisions")
+            if row["account"] == "jeremy"]
     assert stop and stop[0]["action"] == "skip"
+    assert stop[0]["reason"] == "below_min_notional"
     assert stop[0]["execution"]["reason"] == "below_min_notional"
+    checks = stop[0]["decision_checks"]
+    assert checks["trigger_reason"] == "stop_loss"
+    assert checks["execution_status"] == "unfilled"
+    assert checks["rebalance_required"] and checks["rebalance_forced"]
+    assert checks["venue_minimum_fill_notional"] == 10
+    assert checks["delta_notional"] == pytest.approx(-4.5)
+    assert ("jeremy", "BTC") not in instance._stops  # No stop fill was invented.
 
 
 @pytest.mark.parametrize("probability", [0.35, 0.65])
@@ -493,6 +502,11 @@ def test_book_before_forecast_stale_or_future_cannot_create_fills(runner, offset
     market.book_offset = offset
     instance.tick()
     assert instance.ledger.history("fills") == []
+    for row in instance.ledger.history("decisions"):
+        assert row["action"] == "skip"
+        assert row["reason"] == ("Executable book predates the forecast." if offset < 0
+                                 else "Executable book is stale or future-dated.")
+        assert "decision_checks" in json.loads(row["details_json"])
 
 
 @pytest.mark.parametrize("overrides", [
@@ -732,3 +746,208 @@ def test_paper_and_model_datastores_cannot_diverge(tmp_path):
     config.write_text(json.dumps(values))
     with pytest.raises(ValueError, match="same datastore"):
         runtime_module.PaperRuntime(config, market=FakeMarket(Clock()), clock=Clock())
+
+
+@pytest.mark.parametrize("entry_band,probability,hold_reason,fill_accounts", [
+    (.05, .5, "neutral_band", set()),
+    (.05, .549999, "entry_deadband", set()),
+    (.05, .450001, "entry_deadband", set()),
+    (.05, .55, "opposite_account_direction", {"jeremy", "clearpond"}),
+    (.05, .45, "opposite_account_direction", {"alex"}),
+    (.04, .539999, "entry_deadband", set()),
+    (.04, .54, "opposite_account_direction", {"jeremy", "clearpond"}),
+    (.04, .46, "opposite_account_direction", {"alex"}),
+])
+def test_saved_entry_checks_explain_holds_without_changing_entries(
+    qualified_runner, entry_band, probability, hold_reason, fill_accounts,
+):
+    instance, _, market, data = qualified_runner
+    instance.config = replace(instance.config, entry_band=entry_band)
+    forecast(data, qualified=True, p=probability)
+    instance.tick()
+    fills = instance.ledger.history("fills")
+    assert {row["account"] for row in fills} == fill_accounts
+    for row in instance.ledger.history("decisions"):
+        decision = json.loads(row["details_json"])
+        checks = decision["decision_checks"]
+        assert checks["entry_probability_long"] == pytest.approx(.5 + entry_band)
+        assert checks["entry_probability_short"] == pytest.approx(.5 - entry_band)
+        assert checks["exit_probability_long"] == .52
+        assert checks["exit_probability_short"] == .48
+        assert checks["minimum_trade_notional"] == 25
+        assert checks["rebalance_min_delta_fraction"] == .1
+        assert checks["cooldown_until_utc"] is None
+        assert checks["cooldown_remaining_seconds"] == 0
+        assert checks["account_role"] == {"alex": "short_perp", "jeremy": "long_perp", "clearpond": "long_spot"}[row["account"]]
+        if row["account"] not in fill_accounts:
+            assert row["action"] == "hold" and row["reason"] == hold_reason
+            assert decision["current_notional"] == decision["target_notional"] == 0
+            assert not checks["rebalance_required"]
+        else:
+            assert row["action"] == "fill" and row["reason"] == "signal_rebalance"
+            fill = next(fill for fill in fills if fill["account"] == row["account"])
+            # The diagnostic payload stays out of order/fill records entirely.
+            assert "decision_checks" not in json.loads(fill["details_json"])
+            gross = 1500 * ((abs(probability-.5) - .02) / .13)
+            share = {"alex": -1, "jeremy": .4, "clearpond": .6}[row["account"]]
+            assert decision["target_notional"] == pytest.approx(gross * share)
+            mark = market.price[fill["kind"]]
+            assert abs(fill["quantity"] * mark - decision["target_notional"]) < mark * 1e-6
+    assert instance.ledger.history("transfers") == []
+
+
+@pytest.mark.parametrize("current,target,expected", [
+    (100, 100, "target_unchanged"),
+    (100, 124.999, "below_rebalance_threshold"),
+    (100, 125, "signal_rebalance"),
+    (900, 999.99, "below_rebalance_threshold"),
+    (900, 1000, "signal_rebalance"),
+])
+def test_saved_rebalance_checks_match_actual_boundary_gate(qualified_runner, monkeypatch, current, target, expected):
+    instance, clock, _, data = qualified_runner
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": current/100, "price": 100},
+    ])
+    # Isolate the runtime's rebalance gate from changing policy target sizes.
+    monkeypatch.setattr(runtime_module, "target_notionals", lambda *args: {
+        "targets": {"alex": 0.0, "jeremy": target, "clearpond": 0.0},
+        "details": {"reason": "hold_with_hysteresis", "direction": "long"},
+    })
+    forecast(data, qualified=True)
+    instance.tick()
+    row = next(row for row in instance.ledger.history("decisions") if row["account"] == "jeremy")
+    detail = json.loads(row["details_json"])
+    checks = detail["decision_checks"]
+    assert row["reason"] == expected
+    assert checks["delta_notional"] == pytest.approx(target-current)
+    assert checks["rebalance_threshold_notional"] == max(25, .1 * target)
+    assert checks["rebalance_required"] is (expected == "signal_rebalance")
+    assert not checks["rebalance_forced"]
+    new_fills = [fill for fill in instance.ledger.history("fills") if fill["forecast_id"]]
+    if expected == "signal_rebalance":
+        assert len(new_fills) == 1
+        assert new_fills[0]["quantity"] == pytest.approx((target-current)/100)
+        assert new_fills[0]["reason"] == "signal_rebalance"
+    else:
+        assert new_fills == []
+    assert instance.ledger.history("transfers") == []
+
+
+@pytest.mark.parametrize("probability,policy_reason,jeremy_action,jeremy_reason", [
+    (.52, "exit_band", "fill", "signal_rebalance"),
+    (.54, "hold_with_hysteresis", "hold", "below_rebalance_threshold"),
+])
+def test_hysteresis_checks_distinguish_exit_from_small_adjustment(
+    qualified_runner, probability, policy_reason, jeremy_action, jeremy_reason,
+):
+    instance, clock, _, data = qualified_runner
+    instance._execute("inherited", {"perp:BTC": 100.0, "spot:BTC": 102.0}, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 1, "price": 100},
+    ])
+    forecast(data, qualified=True, p=probability)
+    instance.tick()
+    decisions = {row["account"]: json.loads(row["details_json"]) for row in instance.ledger.history("decisions")}
+    assert decisions["jeremy"]["decision_checks"]["policy_reason"] == policy_reason
+    assert decisions["jeremy"]["action"] == jeremy_action
+    assert decisions["jeremy"]["reason"] == jeremy_reason
+    if probability == .52:
+        assert decisions["alex"]["reason"] == decisions["clearpond"]["reason"] == "exit_band"
+        assert instance.ledger.history("fills")[-1]["quantity"] == -1
+
+
+def test_flat_stop_cooldown_is_explained_without_enabling_retries(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    instance.tick()
+    clock.now += 31
+    market.price = {"perp": 94.0, "spot": 95.0}
+    instance.tick()
+    stopped_at = clock()
+    assert not instance.ledger.inventory()
+    stopped_fills = instance.ledger.history("fills")
+    assert all(row["reason"] == "stop_loss" for row in stopped_fills[-2:])
+
+    clock.now = BASE + 930
+    market.price = {"perp": 100.0, "spot": 102.0}
+    forecast(data, qualified=True, identity="forecast-2", decision=BASE+900)
+    instance.tick()
+    rows = [row for row in instance.ledger.history("decisions") if row["forecast_id"] == "forecast-2"]
+    for row in rows:
+        detail = json.loads(row["details_json"])
+        checks = detail["decision_checks"]
+        if row["account"] == "alex":
+            assert row["reason"] == "opposite_account_direction"
+            continue
+        assert row["reason"] == "stop_cooldown" and row["action"] == "hold"
+        assert detail["current_notional"] == detail["target_notional"] == 0
+        assert checks["proposed_target_notional"] > 0
+        assert checks["cooldown_blocks_target"]
+        assert runtime_module.stamp(checks["cooldown_until_utc"]) == stopped_at + 3600
+        assert checks["cooldown_remaining_seconds"] == stopped_at + 3600-clock()
+        assert not checks["rebalance_required"] and not checks["rebalance_forced"]
+    before = instance.ledger.history("decisions")
+    clock.now += 31
+    instance.tick()
+    assert instance.ledger.history("decisions") == before
+    assert instance.ledger.history("fills") == stopped_fills
+
+    # Even a new fresh signal is blocked immediately before expiry.
+    clock.now = stopped_at + 3599
+    forecast(data, qualified=True, identity="forecast-3", decision=BASE+3600)
+    instance.tick()
+    assert instance.ledger.history("fills") == stopped_fills
+    assert all(json.loads(row["details_json"])["decision_checks"]["cooldown_remaining_seconds"] == 1
+               for row in instance.ledger.history("decisions") if row["forecast_id"] == "forecast-3" and row["account"] != "alex")
+    clock.now += 1
+    forecast(data, qualified=True, identity="forecast-4", decision=BASE+3600)
+    instance.tick()
+    new_fills = instance.ledger.history("fills")[len(stopped_fills):]
+    assert {row["account"] for row in new_fills} == {"jeremy", "clearpond"}
+    assert all(row["reason"] == "signal_rebalance" for row in new_fills)
+    for row in instance.ledger.history("decisions"):
+        if row["forecast_id"] == "forecast-4":
+            checks = json.loads(row["details_json"])["decision_checks"]
+            assert not checks["cooldown_blocks_target"]
+            assert checks["cooldown_until_utc"] is None and checks["cooldown_remaining_seconds"] == 0
+
+
+@pytest.mark.parametrize("cause", ["cash", "capacity"])
+def test_hold_names_the_account_constraint_that_prevents_entry(qualified_runner, cause):
+    instance, _, _, data = qualified_runner
+    if cause == "cash":
+        # Reserve all spot cash, with no donor able to release cash.
+        instance.config = replace(instance.config, reserve_cash_fraction=1)
+    else:
+        instance.config = replace(instance.config, account_utilization=.001, transfer_min_amount=1e9)
+    forecast(data, qualified=True)
+    instance.tick()
+    account = "clearpond" if cause == "cash" else "jeremy"
+    row = next(row for row in instance.ledger.history("decisions") if row["account"] == account)
+    checks = json.loads(row["details_json"])["decision_checks"]
+    assert row["action"] == "hold"
+    assert row["reason"] == ("insufficient_cash" if cause == "cash" else "account_capacity")
+    assert checks["cash_limited" if cause == "cash" else "capacity_limited"]
+    assert not checks["rebalance_required"]
+    assert all(fill["account"] != account for fill in instance.ledger.history("fills"))
+    assert instance.ledger.history("transfers") == []
+
+
+@pytest.mark.parametrize("depth", [0, .000001])
+def test_simulation_skip_uses_saved_execution_cause(qualified_runner, depth):
+    instance, _, market, data = qualified_runner
+    forecast(data, qualified=True)
+    market.depth = depth
+    instance.tick()
+    rows = [row for row in instance.ledger.history("decisions") if row["account"] != "alex"]
+    for row in rows:
+        detail = json.loads(row["details_json"])
+        assert row["action"] == "skip"
+        assert row["reason"] == detail["execution"]["reason"]
+        if depth:
+            assert row["reason"] == "below_min_notional"
+        else:
+            assert row["reason"]  # Keep the simulator's exact validation message.
+        assert detail["decision_checks"]["execution_reason"] == row["reason"]
+        assert detail["decision_checks"]["execution_status"] == "unfilled"
+    assert instance.ledger.history("fills") == []

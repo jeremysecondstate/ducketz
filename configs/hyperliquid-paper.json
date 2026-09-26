@@ -7,7 +7,7 @@
   "initial_cash": {"alex": 10000, "jeremy": 10000, "clearpond": 10000},
   "require_qualified_forecasts": true,
   "poll_seconds": 30,
-  "entry_band": 0.05,
+  "entry_band": 0.04,
   "exit_band": 0.02,
   "saturation_band": 0.15,
   "volatility_budget_fraction": 0.001,

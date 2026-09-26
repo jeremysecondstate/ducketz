@@ -47,6 +47,48 @@ def current_positions(state, coin):
     return result
 
 
+def _policy_checks(config, details):
+    """Saved decision evidence only; these values never choose an order."""
+    return {
+        "policy_reason": details.get("reason"),
+        "entry_probability_long": .5 + config.entry_band,
+        "entry_probability_short": .5 - config.entry_band,
+        "exit_probability_long": .5 + config.exit_band,
+        "exit_probability_short": .5 - config.exit_band,
+        "minimum_trade_notional": config.min_trade_notional,
+        "rebalance_min_delta_fraction": config.rebalance_min_delta_fraction,
+        "venue_minimum_fill_notional": 10.0,
+        "strategy_direction": details.get("direction"),
+    }
+
+
+def _hold_reason(reason, checks, current, target):
+    """Explain an already chosen hold without changing policy or risk gates."""
+    if reason in {"stop_loss", "stop_cooldown", "risk_cap"}:
+        return reason
+    if checks["cooldown_blocks_target"]:
+        return "stop_cooldown"
+    if reason != "signal_rebalance":
+        return reason
+    if checks["policy_reason"] in {
+        "entry_deadband", "neutral_band", "exit_band",
+        "nonpositive_pool_equity", "gross_capacity_exhausted",
+    }:
+        return checks["policy_reason"]
+    if checks["opposing_reduction_unavailable"]:
+        return "opposing_reduction_unavailable"
+    if current == target == 0 and (
+        checks["strategy_direction"] == "long" and checks["account_role"] == "short_perp"
+        or checks["strategy_direction"] == "short" and checks["account_role"] != "short_perp"
+    ):
+        return "opposite_account_direction"
+    if checks["cash_limited"]:
+        return "insufficient_cash"
+    if checks["capacity_limited"]:
+        return "account_capacity"
+    return "target_unchanged" if current == target else "below_rebalance_threshold"
+
+
 class PaperRuntime:
     def __init__(self, config_path=DEFAULT_PAPER_CONFIG_PATH, *, market=None, clock=time.time):
         self.config_path = Path(config_path).resolve()
@@ -244,6 +286,7 @@ class PaperRuntime:
                 # Keep the rejected publication for audit without presenting it
                 # as the source of a policy-driven reduction or hold decision.
                 details["rejected_forecast"] = dict(prediction)
+        proposed_targets = dict(targets)
         for account in stop_accounts:
             targets[account] = 0.0
         for account in ACCOUNTS:
@@ -264,7 +307,8 @@ class PaperRuntime:
         if not prediction and not any(current.values()):
             if not self.ledger.has_cycle(key):
                 self._execute(key, marks, decisions=[{"coin": coin, "action": "skip",
-                    "reason": "qualified_forecast_unavailable" if hold_without_signal else error, "policy": details}])
+                    "reason": "qualified_forecast_unavailable" if hold_without_signal else error, "policy": details,
+                    "decision_checks": _policy_checks(cfg, details)}])
             return False
         # Only books observed after forecast availability can supply fills.
         quote_issues = {}
@@ -283,9 +327,11 @@ class PaperRuntime:
                 quote_issues[account] = issue
                 unavailable_reduction |= abs(targets[account]) < abs(current[account])
                 targets[account] = current[account]
+        suppressed_increases = set()
         if unavailable_reduction:
             # Do not assume an unavailable opposing leg has been closed when
             # budgeting a new leg. Other executable reductions can proceed.
+            suppressed_increases = {a for a, t in targets.items() if abs(t) > abs(current[a])}
             targets = {a: current[a] if abs(t) > abs(current[a]) else t for a, t in targets.items()}
         transfers, available, extra = self._plan_transfers(state, coin, targets, marks)
         orders, decisions = [], []
@@ -295,13 +341,18 @@ class PaperRuntime:
             kind = "spot" if account == "clearpond" else "perp"
             values = state["accounts"][account]
             target = targets[account]
+            cash_limited = False
             if kind == "spot":
                 target = min(target, current[account] + available[account] / (1 + cfg.spot_fee_rate + .002))
+                cash_limited = target < targets[account]
                 other = values["gross_exposure"] - abs(current[account])
-                target = min(target, max(0, (values["equity"] + extra[account]) * cfg.account_utilization - other))
+                capacity = max(0, (values["equity"] + extra[account]) * cfg.account_utilization - other)
+                capacity_limited = target > capacity
+                target = min(target, capacity)
             else:
                 other = values["gross_exposure"] - abs(current[account])
                 capacity = max(0, (values["equity"] + extra[account]) * cfg.account_utilization - other)
+                capacity_limited = abs(target) > capacity
                 target = math.copysign(min(abs(target), capacity), target)
             if cfg.require_qualified_forecasts and abs(target) < abs(current[account]) and abs(target) < abs(targets[account]):
                 cap_accounts.add(account)
@@ -310,6 +361,27 @@ class PaperRuntime:
                       "risk_cap" if account in cap_accounts else
                       "unqualified_forecast_excluded" if excluded_forecast else
                       "qualified_forecast_unavailable" if hold_without_signal else error or "signal_rebalance")
+            # Flat accounts remain excluded from cooldown_accounts above: that
+            # set controls risk retries. Diagnose their blocked entry separately.
+            cooldown_end = self._stops.get((account, coin), -math.inf) + cooldown
+            cooldown_remaining = max(0.0, cooldown_end - now)
+            force_reduce = (account in stop_accounts or over_limit
+                            or cfg.require_qualified_forecasts and account in cooldown_accounts)
+            rebalance = should_rebalance(current[account], target, cfg, force_reduce=force_reduce)
+            checks = {
+                **_policy_checks(cfg, details), "trigger_reason": reason,
+                "account_role": {"alex": "short_perp", "jeremy": "long_perp", "clearpond": "long_spot"}[account],
+                "delta_notional": target - current[account],
+                "proposed_target_notional": proposed_targets[account],
+                "rebalance_threshold_notional": max(cfg.min_trade_notional, cfg.rebalance_min_delta_fraction * abs(target)),
+                "account_capacity_notional": capacity, "available_cash": available[account],
+                "cash_limited": cash_limited, "capacity_limited": capacity_limited,
+                "opposing_reduction_unavailable": account in suppressed_increases,
+                "cooldown_until_utc": _utc(cooldown_end) if cooldown_remaining else None,
+                "cooldown_remaining_seconds": cooldown_remaining,
+                "cooldown_blocks_target": bool(cooldown_remaining and proposed_targets[account] and target == 0),
+                "rebalance_required": rebalance, "rebalance_forced": force_reduce,
+            }
             common = {"account": account, "coin": coin, "kind": kind,
                       "forecast_id": signal_prediction["prediction_id"] if signal_prediction else None,
                       "model_id": signal_prediction["model_id"] if signal_prediction else None,
@@ -319,11 +391,11 @@ class PaperRuntime:
                       "p_not_down": signal_prediction["p_not_down"] if signal_prediction else None,
                       "current_notional": current[account], "target_notional": target,
                       "reason": reason, "policy": details}
+            decision = {**common, "decision_checks": checks}
             if account in quote_issues:
-                decisions.append({**common, "action": "skip", "reason": quote_issues[account]})
+                decisions.append({**decision, "action": "skip", "reason": quote_issues[account]})
                 continue
-            if should_rebalance(current[account], target, cfg, force_reduce=(account in stop_accounts or over_limit
-                    or cfg.require_qualified_forecasts and account in cooldown_accounts)):
+            if rebalance:
                 delta = (target - current[account]) / marks[f"{kind}:{coin}"]
                 fill = simulate_fill(available_books[f"{kind}:{coin}"], delta, cfg.slippage_bps,
                                      min_notional=10, now=now)
@@ -337,14 +409,17 @@ class PaperRuntime:
                     if abs(fill["quantity"]) > maximum_addition:
                         fill = simulate_fill(available_books[f"{kind}:{coin}"], side * maximum_addition,
                                              cfg.slippage_bps, min_notional=10, now=now)
-                decisions.append({**common, "action": "fill" if fill["quantity"] else "skip",
+                checks.update(execution_status=fill["status"], execution_reason=fill.get("reason"))
+                decisions.append({**decision, "action": "fill" if fill["quantity"] else "skip",
+                                  "reason": reason if fill["quantity"] else fill.get("reason") or fill["status"],
                                   "execution": fill})
                 if fill["quantity"]:
                     available_books[f"{kind}:{coin}"] = consume_fill(available_books[f"{kind}:{coin}"], fill)
                     orders.append({**common, **fill, "fee_rate": cfg.spot_fee_rate if kind == "spot" else cfg.perp_fee_rate,
                                    "reason": reason})
             else:
-                decisions.append({**common, "action": "hold"})
+                decisions.append({**decision, "action": "hold",
+                                  "reason": _hold_reason(reason, checks, current[account], target)})
         # Risk reductions are processed first; each account retains its own cash.
         orders.sort(key=lambda order: 0 if current[order["account"]] * order["quantity"] < 0 else 1)
         self._execute(key, marks, orders=orders, transfers=transfers, decisions=decisions)

@@ -127,6 +127,15 @@ buckets or the qualifying risk path create another opportunity. Stops are
 polled entry-loss reductions, not resting exchange orders. One-horizon cooldown
 is restored from the last committed stop fill for each account/coin.
 
+Every new account decision saves `decision_checks` explaining the applicable
+entry/exit probabilities, account role, target delta and adjustment/size gates.
+Cooldown metadata also covers flat accounts whose proposed exposure is blocked.
+The retry path still treats only held cooldown exposure as a risk-reduction
+reason; diagnostic metadata does not add repeated executions or reset a
+forecast's committed identity. Hold/Skip reasons now report the blocking check;
+fill attribution and execution policy are unchanged. See the
+[gate investigation](../audits/2026-09-26-paper-decision-gates.md).
+
 Sources: [runtime methods](../../../ml/hyperliquid_paper_runtime.py),
 [transactional ledger](../../../ml/hyperliquid_paper_ledger.py),
 [policy](../../../ml/hyperliquid_paper_policy.py).
