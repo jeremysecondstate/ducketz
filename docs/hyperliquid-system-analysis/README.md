@@ -126,9 +126,11 @@ behavioral change; see [Maintenance](MAINTENANCE.md).
 
 ## Source entry points
 
-Latest experiment: [September 26 model comparison and Paper refresh](audits/2026-09-26-model-comparison-and-paper-refresh.md).
-The tested training alternatives were rejected; the fresh mirror retains the
-current recipe. Earlier run evidence remains archived.
+Latest experiment: [September 26 fresh 54%/46% Paper mirror](audits/2026-09-26-fresh-entry-4pp-paper.md).
+The preceding Paper sample is permanently excluded from analysis and recovery.
+The user completed deletion; absence of its cleanup directory was verified at
+**2026-09-26 11:36:32 UTC**. Independent model research and still-earlier archives
+remain separate and preserved.
 
 - [Market configuration](../../configs/hyperliquid-markets.json),
   [model configuration](../../configs/hyperliquid-models.json),

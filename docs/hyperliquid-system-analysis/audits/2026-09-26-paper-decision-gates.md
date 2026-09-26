@@ -1,31 +1,35 @@
 # Qualified forecasts and Paper execution gates
 
 Investigation of the user's **03:45 PT** decision screenshot on 2026-09-26.
-The active Paper ledger was seeded at 10:35:59.867633343 UTC with
-$42,091.465038572365. This change preserves that experiment and its history.
 
-## What the screenshot actually recorded
+**Excluded Paper sample, deletion completed:** the user subsequently directed
+that the run seeded at **2026-09-26T10:35:59.867633343Z** be deleted without an
+archive or analytical use. Automatic approval review initially blocked recursive
+deletion; the user then completed it. The temporary cleanup directory
+`C:/DATASTORE/hyperliquid/_pending_deletion/20260926T103559Z-excluded-paper` was
+verified absent at **2026-09-26 11:36:32 UTC**. It was not an analytical archive.
+The sample remains permanently excluded from analysis and recovery. Its
+screenshot-derived observations, balances, fills, performance
+and deployment evidence are excluded here. This is a user-chosen evaluation
+exclusion, not proof that every Hold was a defect. This audit retains the code
+explanation, software verification and clearly separate earlier-archive analysis.
 
-Read-only SQLite inspection of the 10:45:32 UTC forecast cycles found:
+## What Qualified and Hold mean in the code
 
-| Forecast | Account/action | Actual check |
-| --- | --- | --- |
-| ETH, P(not-down) 45.458679% | Flat accounts Hold | New short requires at most 45%; saved policy reason `entry_deadband` |
-| HYPE, 49.127839% | Alex/Jeremy Hold | Signal inside the new-entry band |
-| HYPE, 49.127839% | Clear Pond Skip, $0.104317 current | Attempted dust exit rounds below quantity precision |
-| ZEC, 39.996146% | Alex Hold | A 10:36:00.505351 stop fill imposed cooldown until 11:36:00.505351 UTC (04:36 PT) |
-| ZEC, 39.996146% | Jeremy Hold | Short signal belongs to Alex; Jeremy is long-only and already flat |
-| ZEC, 39.996146% | Clear Pond Skip, $0.084650 current | Attempted dust exit rounds below quantity precision |
-| BTC, Research excluded | Three Holds | Qualified-only signal gate, correctly recorded |
+Qualified describes the published model's eligibility; it does not bypass entry
+probability, account direction, cooldown, sizing or execution gates. A shared
+forecast can yield three account rows with different actions. Alex permits short
+perpetual exposure, Jeremy long perpetual exposure, and Clear Pond long spot
+exposure. Research forecasts are excluded from signal allocation.
 
-The screenshot's Qualified status was correct. The generic top-level
-`signal_rebalance` reason was not a useful account-level explanation. A further
-diagnostic bug omitted flat accounts from cooldown attribution even though the
-runtime correctly suppressed their new targets during cooldown.
+Inside the entry deadband an otherwise eligible forecast can correctly produce
+a Hold. Active cooldown can block an entry, and a requested dust exit can round
+below quantity precision or the simulated fill minimum. A decision is not an
+order, and a zero-quantity simulated attempt is not a fill.
 
-No missing successful execution was found: a decision is not an order, and a
-zero-quantity simulated attempt is not a fill. Every shared forecast can yield
-three account rows with different allowed directions and risk constraints.
+The generic top-level `signal_rebalance` reason did not explain those account
+checks. The diagnostic path also omitted flat accounts from cooldown attribution
+even though the runtime already suppressed their new targets during cooldown.
 
 ## Diagnostic repair
 
@@ -55,24 +59,27 @@ preserved. Lowering entry thresholds does not activate Research forecasts or
 make a zero-quantity attempt a fill. The dataclass legacy default stays 0.05;
 the deployed JSON explicitly selects 0.04.
 
-The same opening seed, cash, positions and journals continue. A new persisted
-policy ID identifies the phase; decisions/fills keep their policy/forecast/model
-IDs and timestamps. Compare new direction entries in the additional 4–5
-percentage-point band separately from old-rule entries, retained-position
+The original same-ledger phase is superseded by the user's exclusion/reset request.
+The replacement experiment must begin from its own fresh mirror and retain its
+own policy/forecast/model IDs and timestamps. Within that new sample, identify
+direction entries in the additional 4–5 percentage-point band separately from
+entries that also meet the prior threshold, retained-position
 rebalances, stop/cap exits and initialization costs. Existing matching positions
 use exit hysteresis, so probability alone cannot identify an additional entry.
 Costs and realized outcomes belong to actual executed quantities, not desired
-targets. A before/after phase comparison is descriptive, not a simultaneous
-controlled estimate of performance.
+targets. Any comparison against the separate earlier archive is descriptive,
+not a simultaneous controlled estimate of performance. The excluded sample
+must not supply a comparison period.
 
 No Powder runtime is activated. Its future activation reads the shared policy
 configuration and will therefore see this entry setting unless changed later.
 
-## Evaluation and deployment evidence
+## Independent earlier-archive analysis
 
-Current fresh model history had eight forecasts, six Qualified, and no matured
-one-hour outcomes at inspection. Archived forward journals contained 128 matured
-forecasts (32 per market), 65 Qualified at publication. Simple flat-entry
+The separate earlier archive
+`C:/DATASTORE/hyperliquid/_paper_archives/20260926T102933Z-qualified-15m-v1`
+was not targeted by the deletion request. Its forward journals contained 128
+matured forecasts (32 per market), 65 Qualified at publication. Simple flat-entry
 eligibility at 4 versus 5 percentage points rose from 38 to 44: five additional
 ETH forecasts and one ZEC forecast. These are eligible forecasts, not six
 promised fills; account holdings, cooldowns, sizing and direction still matter.
@@ -84,41 +91,17 @@ selected, overlapping sample omits spread, funding, actual execution, size and
 the real strategy's variable holding periods. It supports an exploratory
 forward phase, not a conclusion that quality or profitability improves.
 
-The original gate already executed an Alex short at 11:00:24 UTC when ETH's
-down probability reached 56.5778%: 1.1022 ETH, $2,960.91 notional, $1.33 fee.
-The execution path was working before this change. At the screenshot's earlier
-45.46% P(not-down), the broader gate would have permitted that direction sooner,
-subject to the other checks.
+These observations come from that earlier archive, not the excluded sample.
 
-## Activation and preserved evidence
-
-Gracefully stopped Paper PID 70028, verified it exited and saved a SQLite
-backup, old policy/experiment/status/funding records and journal-prefix hashes.
-The phase evidence lives at:
-`C:/DATASTORE/hyperliquid/_experiments/20260926T103559Z-qualified-refresh/policy-phases/20260926T110630Z-entry-4pp`.
-
-Resumed the same ledger as Paper PID 45828; first running observation was
-11:06:46 UTC. Active policy is **993e26589020a5a0**, replacing
-**60b7f962240a0857**. The only policy-value change is entry_band 0.05 to 0.04.
-All 72 prior cycles, 46 decisions, eight fills, 288 equity rows and empty
-funding/transfer journals matched their saved prefix hashes. The complete
-opening snapshot was identical. New forecast IDs use the new gate; historical
-decisions and already processed forecasts are not replayed to manufacture fills.
+## Software verification
 
 **412 relevant tests passed:** 75 runtime, 32 workspace, and 305 across policy,
 market simulation, ledger, view adapter and Powder runtime compatibility. Tests
 cover the added entry band, retained neutral region, saved versus current UI
 thresholds, actual skip reasons, cooldown expiry and unchanged execution/retry
 behavior. Independent source review found no execution change in the diagnostic
-repair. The scheduled watch follows operating contract v4 and the new policy
-while preserving the same original seed.
-
-Verification at 11:08:37 UTC found all 17 sources fresh with no errors, warnings,
-competing owners or Powder process. Committed observations advanced from
-11:07:17.810688 to 11:08:21.643888 UTC, cycles 74 to 76. Paper's venv launcher
-57800 and hidden cmd parent 63780 were outside Windows jobs, with a WMI ancestor.
-The original stop-fill timestamps persisted, preserving the approximately
-11:36 UTC cooldown deadlines. New diagnostic decisions had not yet appeared
-because the existing forecast IDs remained deduplicated; the next publication
-normally follows the next 15-minute candle. Runtime tests cover their payloads.
-Evidence: `C:/DATASTORE/hyperliquid/_operations/entry-4pp-verification.json`.
+repair. Those tests establish implementation behavior, not a return estimate.
+The excluded run's backups and phase artifacts were included in the user-completed
+deletion. Its permanent exclusion from evaluation and recovery remains in force.
+Replacement-run activation and watch evidence belong to the fresh experiment's
+separate record.

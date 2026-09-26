@@ -1,6 +1,6 @@
 # Hyperliquid Operations Watch
 
-Operating contract: **2026-09-26 / v4**. Companion to [Monitoring and recovery](MONITORING.md).
+Operating contract: **2026-09-26 / v5**. Companion to [Monitoring and recovery](MONITORING.md).
 
 ## Schedule and scope
 
@@ -118,18 +118,25 @@ Interpret observations using [Monitoring](MONITORING.md):
 ## Recovery of an interrupted Paper session
 
 The current baseline is data + models + qualified-only Paper intended running,
-Powder off. Both earlier Paper runs are archived. The latest user-authorized
-mirror opened at 2026-09-26T10:35:59.867633343Z with opening equity
-42091.46503857236 and nine positions; see the
-[comparison and refresh record](audits/2026-09-26-model-comparison-and-paper-refresh.md).
+Powder off. The latest user-authorized mirror opened at
+2026-09-26T11:30:32.118497133Z with opening equity 42099.529976985854 and nine
+positions; see the [fresh-run record](audits/2026-09-26-fresh-entry-4pp-paper.md).
+The run seeded at 10:35:59 UTC is explicitly excluded from every evaluation and
+recovery use. Automatic policy review initially rejected recursive removal; the
+user completed deletion, and `_pending_deletion/20260926T103559Z-excluded-paper`
+was verified absent at **2026-09-26 11:36:32 UTC**. Never reintroduce its sample
+for analysis or restore it as a recovery target. `_operations/excluded-paper-runs.json`
+records this permanent exclusion. Both still-earlier archived runs and independent
+model research are separate and preserved. Cleanup completion leaves contract v5
+unchanged.
 The tested training changes were rejected: retain uncapped fitting, calibration
 192, assessment 288 and 900-second retraining. `max_train_rows` is an available
 but unused setting. Use the latest seed from automation memory. Older seeds are
 historical, not recovery targets.
-The same ledger now continues under the user-authorized broader-entry phase:
+The fresh ledger uses the user-authorized broader-entry policy from its start:
 `entry_band=0.04`, policy `993e26589020a5a0` (54% long / 46% short). Model
 qualification and risk limits remain unchanged. Updated content hashes and
-worker identities in memory supersede those from the original seed launch.
+worker identities in memory supersede those from all prior seeds.
 Hold/Skip decisions now save specific checks; they are expected outcomes, not
 missing fills or grounds for recovery. See the
 [phase record](audits/2026-09-26-paper-decision-gates.md).

@@ -3,12 +3,29 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-09-26 — Excluded prior sample and fresh 54%/46% mirror
+
+At the user's direction, removed the 10:35:59 UTC Paper sample from active and
+analysis locations. Automatic policy review initially blocked recursive deletion.
+The user subsequently deleted the temporary cleanup directory, including the
+checkpoint copy; `_pending_deletion/20260926T103559Z-excluded-paper` was verified
+absent at **11:36:32 UTC**. The sample remains permanently excluded from analysis
+and recovery. No new analytical archive was created. Independent model-comparison evidence moved to
+`_model_research/20260926T103000Z-window-comparison`.
+
+A new 1:1 public mirror opened at 11:30:32 UTC with $42,099.529977 and nine
+inherited positions. Entry 54%/46%, Qualified-only models and existing risk
+rules apply from the start. Updated watch baseline to contract v5. See the
+[fresh-run record](audits/2026-09-26-fresh-entry-4pp-paper.md).
+Deletion completion does not change that operating contract.
+
 ## 2026-09-26 — Broader Paper entries and recorded decision checks
 
 Changed the active Paper entry band from five to four percentage points
 (55%/45% to 54%/46%) under the user's forward-evaluation direction. Qualified
 models, risk limits, costs and training cadence remain required; the existing
-ledger/seed continue with a new policy ID. No fabricated fills or reset.
+ledger/seed initially continued with a new policy ID. That sample was later
+excluded under the fresh-run entry above; its outcomes are not evaluation data.
 
 Fixed misleading generic Hold/Skip explanations. New decisions save exact
 entry/exit, account, size, execution and cooldown checks; flat cooldown holds
@@ -25,10 +42,10 @@ counts but worsened mean Brier/log loss; neither was promoted. Added a tested,
 optional fitting-window cap with an uncapped default; active training settings
 remain unchanged.
 
-The user-requested fresh public mirror opened at 10:35:59 UTC with $42,091.465039
-and nine inherited positions. Qualified-only Paper and 15-minute model fitting
-continue. Updated watch baseline to contract v3, preserving archive evidence and
-intentional-stop rules. **359 relevant tests passed**. See the
+The subsequent 10:35:59 UTC Paper sample was later excluded at the user's
+direction; its outcomes are not retained here as evaluation evidence. Model
+research remains independently reproducible. **359 relevant tests passed** for
+that implementation. See the
 [comparison and refresh audit](audits/2026-09-26-model-comparison-and-paper-refresh.md).
 
 ## 2026-09-26 — Model retraining on each 15-minute candle
