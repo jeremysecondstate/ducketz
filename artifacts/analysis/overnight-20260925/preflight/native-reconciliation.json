@@ -1,0 +1,514 @@
+{
+  "started_at": "2026-09-25T04:16:55.439312+00:00",
+  "status": "RECONCILED",
+  "supervision_owner": "5c3cea33-8624-4dcc-9fa8-68928af785b1",
+  "native_reconcile_called": true,
+  "orders_submitted": 0,
+  "orders_cancelled": 0,
+  "orders_replaced": 0,
+  "broker_data_http_methods": [
+    "GET"
+  ],
+  "execution_budgets": "ZERO",
+  "backup_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\preflight\\holdings-before-reconciliation.sqlite3",
+  "backup_sha256": "2ddc378ccecf2b56bd5696392bcc822289e1524562ef1cd41c29c786cdce8759",
+  "before_logical_sha256": "b01315b22afb888b1545ea68802bf39988861dc244505d6006182d1a54b44f06",
+  "broker_state_capture": {
+    "schema_version": "stock-trader-broker-state-capture-v1",
+    "status": "CURRENT",
+    "attempts": 1,
+    "transient_failures": 0,
+    "retry_delay_seconds": 3.0,
+    "retry_wait_seconds": 0.0,
+    "maximum_retry_seconds": 60.0,
+    "elapsed_seconds": 18.847083000000566,
+    "last_error_type": null,
+    "last_error_operation": null
+  },
+  "order_evidence": [
+    {
+      "evidence_id": "schwab-order:a737ae1cc31d2d56b9cc4324f98cb5ce3df803137dd4b5758704e03a31dd684f",
+      "reservation_id": "2c95ea8cd81a5e1d582e3d4aa83467571fee3514a07d3f84a0877b4670d77a5f",
+      "account_fingerprint": "85dc27ef421228b44aa818e0b541306fa5d6cc5cc7448a2bc5a09f99f746258c",
+      "observed_at": "2026-09-25T04:16:57.579429+00:00",
+      "broker_order_id": "1008059251341",
+      "status": "CANCELLED",
+      "order_quantity": 51,
+      "cumulative_filled_quantity": 0,
+      "remaining_quantity": 0,
+      "fills": [],
+      "broker_status": "EXPIRED"
+    },
+    {
+      "evidence_id": "schwab-order:9bd7e60b4264254527daff62ba60982ae4497c3151731833aebcd04df4200de4",
+      "reservation_id": "3a8eef47a3724e731efe837182dee8f0ca8d68bd1db7ba66882ea756daa91944",
+      "account_fingerprint": "85dc27ef421228b44aa818e0b541306fa5d6cc5cc7448a2bc5a09f99f746258c",
+      "observed_at": "2026-09-25T04:16:57.579429+00:00",
+      "broker_order_id": "1008060230299",
+      "status": "CANCELLED",
+      "order_quantity": 16,
+      "cumulative_filled_quantity": 0,
+      "remaining_quantity": 0,
+      "fills": [],
+      "broker_status": "CANCELED"
+    },
+    {
+      "evidence_id": "schwab-order:e16fbf88edbc6b963c14ec4404f52889970e9b5d5da2995acf9371f9798f40a3",
+      "reservation_id": "4d9588be71befe6d0ae1990e60e4e06c99a3ce080a09c5efbe57fb7cd7082eca",
+      "account_fingerprint": "85dc27ef421228b44aa818e0b541306fa5d6cc5cc7448a2bc5a09f99f746258c",
+      "observed_at": "2026-09-25T04:16:57.579429+00:00",
+      "broker_order_id": "1008060230302",
+      "status": "CANCELLED",
+      "order_quantity": 10,
+      "cumulative_filled_quantity": 4,
+      "remaining_quantity": 0,
+      "fills": [
+        {
+          "fill_id": "schwab-fill:15b9d8cb6df745f36d1113f5e50f016ddb3b987f81cb36e0144e8c74cdd86752",
+          "quantity": 4,
+          "price": "183.79",
+          "executed_at": "2026-09-24T23:26:00+00:00"
+        }
+      ],
+      "broker_status": "CANCELED"
+    },
+    {
+      "evidence_id": "schwab-order:72cb80de9f402ed35211172373c240d9a2fbd1182061bb0ddedc8bc2305a33ec",
+      "reservation_id": "fcc3cbc6fc101c1a014a4ab981a37623c37ec4f76d9631e5c5b0c507dbd6da57",
+      "account_fingerprint": "85dc27ef421228b44aa818e0b541306fa5d6cc5cc7448a2bc5a09f99f746258c",
+      "observed_at": "2026-09-25T04:16:57.579429+00:00",
+      "broker_order_id": "1008060230294",
+      "status": "CANCELLED",
+      "order_quantity": 32,
+      "cumulative_filled_quantity": 0,
+      "remaining_quantity": 0,
+      "fills": [],
+      "broker_status": "CANCELED"
+    }
+  ],
+  "portfolio": {
+    "observed_at": "2026-09-25T04:16:57.580024+00:00",
+    "account_equity": 133660.69,
+    "available_cash": 47346.43,
+    "gross_exposure": 86314.26,
+    "daily_pnl": 32883.68,
+    "held_shares": {
+      "AAPL": 21.0,
+      "AMZN": 40.0,
+      "GOOG": 16.0,
+      "MU": 5.0,
+      "NVDA": 40.0,
+      "SNDK": 2.0,
+      "COST": 4.0,
+      "CROX": 51.0,
+      "PATH": 316.0,
+      "TWST": 76.0,
+      "IONQ": 103.0
+    },
+    "symbol_exposure": {
+      "AAPL": 7036.89,
+      "AMZN": 10024.8,
+      "GOOG": 5421.92,
+      "MU": 5431.45,
+      "NVDA": 8981.6,
+      "SNDK": 3556.78,
+      "COST": 3586.6,
+      "CROX": 6295.44,
+      "PATH": 4000.56,
+      "TWST": 13986.28,
+      "IONQ": 4612.34
+    },
+    "pending_buy_shares": {
+      "AAPL": 0.0,
+      "AMZN": 0.0,
+      "GOOG": 0.0,
+      "MU": 0.0,
+      "NVDA": 0.0,
+      "SNDK": 0.0,
+      "COST": 0.0,
+      "CROX": 0.0,
+      "PATH": 0.0,
+      "TWST": 0.0,
+      "IONQ": 0.0
+    },
+    "pending_sell_shares": {
+      "AAPL": 0.0,
+      "AMZN": 0.0,
+      "GOOG": 0.0,
+      "MU": 0.0,
+      "NVDA": 0.0,
+      "SNDK": 0.0,
+      "COST": 0.0,
+      "CROX": 0.0,
+      "PATH": 0.0,
+      "TWST": 0.0,
+      "IONQ": 0.0
+    },
+    "working_order_count": 0,
+    "quotes": {
+      "AAPL": {
+        "symbol": "AAPL",
+        "bid": 335.75,
+        "ask": 335.94,
+        "last": 335.91,
+        "mark": 335.92,
+        "volume": 24733098.0,
+        "observed_at": "2026-09-24T23:59:58.002000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "AMZN": {
+        "symbol": "AMZN",
+        "bid": 248.69,
+        "ask": 249.1,
+        "last": 248.895,
+        "mark": 249.1,
+        "volume": 33040052.0,
+        "observed_at": "2026-09-24T23:59:27.069000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "GOOG": {
+        "symbol": "GOOG",
+        "bid": 337.7,
+        "ask": 337.89,
+        "last": 337.7,
+        "mark": 337.89,
+        "volume": 15964993.0,
+        "observed_at": "2026-09-24T23:59:49.243000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "MU": {
+        "symbol": "MU",
+        "bid": 1075.3,
+        "ask": 1075.8,
+        "last": 1075.7551,
+        "mark": 1075.8,
+        "volume": 22069916.0,
+        "observed_at": "2026-09-24T23:59:59.450000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "NVDA": {
+        "symbol": "NVDA",
+        "bid": 223.82,
+        "ask": 223.85,
+        "last": 223.82,
+        "mark": 223.85,
+        "volume": 77469856.0,
+        "observed_at": "2026-09-24T23:59:58.179000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "SNDK": {
+        "symbol": "SNDK",
+        "bid": 1753.0,
+        "ask": 1754.0,
+        "last": 1754.0,
+        "mark": 1753.62,
+        "volume": 8231652.0,
+        "observed_at": "2026-09-24T23:59:51.442000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "COST": {
+        "symbol": "COST",
+        "bid": 898.0,
+        "ask": 898.29,
+        "last": 898.0,
+        "mark": 898.0,
+        "volume": 2893294.0,
+        "observed_at": "2026-09-24T23:59:55.822000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "CROX": {
+        "symbol": "CROX",
+        "bid": 122.0,
+        "ask": 128.51,
+        "last": 123.4,
+        "mark": 123.44,
+        "volume": 1005625.0,
+        "observed_at": "2026-09-24T23:50:10.066000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "PATH": {
+        "symbol": "PATH",
+        "bid": 12.62,
+        "ask": 12.65,
+        "last": 12.6209,
+        "mark": 12.62,
+        "volume": 48915731.0,
+        "observed_at": "2026-09-24T23:59:29.461000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "TWST": {
+        "symbol": "TWST",
+        "bid": 182.8,
+        "ask": 184.5,
+        "last": 184.0,
+        "mark": 184.03,
+        "volume": 3535194.0,
+        "observed_at": "2026-09-24T23:54:31.726000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      },
+      "IONQ": {
+        "symbol": "IONQ",
+        "bid": 44.58,
+        "ask": 44.59,
+        "last": 44.59,
+        "mark": 44.59,
+        "volume": 43226833.0,
+        "observed_at": "2026-09-25T00:00:00.444000+00:00",
+        "received_at": "2026-09-25T04:16:57.962087+00:00",
+        "realtime": true,
+        "quote_type": "NBBO"
+      }
+    },
+    "source_fingerprint": "a8b4b62c6b91b43b5a374d80864fab50d675bbbacefc14730888a27e795bfdd1",
+    "broker_identity_fingerprint": "7c78d0f47dab65c4fa7e7101f9b4b810f9668437405ff2d48e160db62494b379"
+  },
+  "verified_changes": {
+    "new_fills": 0,
+    "new_assignment_releases": 0,
+    "owned_share_deltas_by_allocation": {}
+  },
+  "rehearsal_logical_sha256": "d8943cd462dc5ddf278e8e0386caf8255976d2758fd3475ac3c64b8290ff8ea6",
+  "result": {
+    "snapshot_id": "0e0dce1523705aef11c240a34f9691c79d3cfc60364b2d4434162ff6744ad3b2",
+    "ready": true,
+    "reasons": []
+  },
+  "after_logical_sha256": "d8943cd462dc5ddf278e8e0386caf8255976d2758fd3475ac3c64b8290ff8ea6",
+  "ownership": {
+    "status": "OBSERVED_CONSISTENT",
+    "safe_for_planning": true,
+    "account_matches": true,
+    "active_allocations": [
+      {
+        "symbol": "AAPL",
+        "horizon": "1h",
+        "owned_shares": 10,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AAPL",
+        "horizon": "4h",
+        "owned_shares": 11,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AMZN",
+        "horizon": "1h",
+        "owned_shares": 24,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T21:00:00+00:00",
+        "target_end": "2026-09-24T22:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AMZN",
+        "horizon": "4h",
+        "owned_shares": 16,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "COST",
+        "horizon": "4h",
+        "owned_shares": 4,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "CROX",
+        "horizon": "1h",
+        "owned_shares": 51,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T15:00:00+00:00",
+        "target_end": "2026-09-24T16:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "GOOG",
+        "horizon": "1h",
+        "owned_shares": 5,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "GOOG",
+        "horizon": "4h",
+        "owned_shares": 11,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1h",
+        "owned_shares": 88,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1w",
+        "owned_shares": 15,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "4h",
+        "owned_shares": 3,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "1h",
+        "owned_shares": 22,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T12:00:00+00:00",
+        "target_end": "2026-09-24T13:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "1w",
+        "owned_shares": 1,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-16T11:00:00+00:00",
+        "target_end": "2026-09-23T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "4h",
+        "owned_shares": 17,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "PATH",
+        "horizon": "4h",
+        "owned_shares": 316,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "SNDK",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1h",
+        "owned_shares": 37,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T15:00:00+00:00",
+        "target_end": "2026-09-24T16:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1w",
+        "owned_shares": 39,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      }
+    ],
+    "blocked_symbols": [],
+    "owned_shares": {
+      "AAPL": 21,
+      "AMZN": 40,
+      "GOOG": 16,
+      "MU": 5,
+      "NVDA": 40,
+      "SNDK": 2,
+      "COST": 4,
+      "CROX": 51,
+      "PATH": 316,
+      "TWST": 76,
+      "IONQ": 103
+    },
+    "reason_codes": [],
+    "last_saved_reconciliation_at": "2026-09-25T04:16:57.580024+00:00",
+    "last_saved_reconciliation_ready": true,
+    "current_broker_reconciliation_performed": false
+  },
+  "controls_session_and_entry_claims_preserved": true,
+  "finished_at": "2026-09-25T04:17:16.523463+00:00"
+}

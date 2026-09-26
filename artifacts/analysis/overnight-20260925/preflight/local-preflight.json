@@ -1,0 +1,700 @@
+{
+  "reviewed_at": "2026-09-25T04:11:50.680118+00:00",
+  "scope": "LOCAL_READ_ONLY_PRECHECK_NO_PROVIDER_OR_BROKER_CALLS_NO_PRODUCTION_WRITES",
+  "status": "LOCAL_PLANNING_RECONCILIATION_BLOCKER",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "expected_forecasts": 264,
+  "expected_intents": 264,
+  "expected_production_opra_cursors": 33,
+  "batches": [
+    {
+      "registry": "C:\\DATASTORE\\state\\research-onboarding\\df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487.json",
+      "activation": "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\activation.json",
+      "selected_symbols": [
+        "CROX",
+        "PATH",
+        "TWST",
+        "IONQ"
+      ],
+      "status": "ACTIVE",
+      "activated_at": "2026-09-14T11:21:43.562305+00:00",
+      "progress": {
+        "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+        "stage": "finalize",
+        "status": "COMPLETE",
+        "updated_at": "2026-09-14T11:21:01.864187+00:00",
+        "owner_pid": 6372,
+        "completed_at": "2026-09-14T11:21:43.597615+00:00"
+      },
+      "checks": {
+        "watchlist_matches_activation": true,
+        "selected_symbols_in_production": true,
+        "gameplan_receipt": true,
+        "trade_plan_receipt": true,
+        "overnight_receipt": true
+      },
+      "unfinished": false
+    }
+  ],
+  "unfinished_authorized_batches": [],
+  "terminal_session": {
+    "action_date": "2026-09-24",
+    "calls": 1483,
+    "closes_at": "2026-09-24T17:00:00-07:00",
+    "consecutive_failures": 0,
+    "execute": true,
+    "failed_cycles": 62,
+    "heartbeat_at": "2026-09-25T00:00:00.000313+00:00",
+    "last_cycle": {
+      "activation_active": true,
+      "broker_state_capture": {
+        "attempts": 1,
+        "elapsed_seconds": 3.370279499911703,
+        "last_error_operation": null,
+        "last_error_type": null,
+        "maximum_retry_seconds": 0.0,
+        "quote_refresh": {
+          "refreshes": 0,
+          "status": "NOT_NEEDED",
+          "unavailable_symbols": []
+        },
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 0.0,
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT",
+        "transient_failures": 0
+      },
+      "duplicate_suppressions": 0,
+      "error": null,
+      "execution_requested": true,
+      "prediction_handoff_status": null,
+      "run_directory": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T235958.789395Z",
+      "selected_orders": 0,
+      "status": "NO_ORDERS_SUBMITTED",
+      "stopped_after_error": false,
+      "submitted_orders": 0,
+      "target_window_start": null
+    },
+    "late_opening_date": null,
+    "orders_submitted": 102,
+    "pid": 45180,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-24T12:02:43.853795+00:00",
+    "status": "FINISHED",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-24T04:00:00-07:00"
+  },
+  "matching_trader_processes": [],
+  "last_decision_receipt_checks": {
+    "manifest": true,
+    "decisions": true
+  },
+  "last_decision_inventory_reconciliation": {
+    "ready": true,
+    "reasons": []
+  },
+  "latest_saved_ownership_reconciliation": {
+    "id": "aab76ea7f930a576aad1d2ea240c25c3752f42f3d350981955c86b2638876f1d",
+    "observed_at": "2026-09-24T23:59:56.524535+00:00",
+    "ready": 1,
+    "reasons": [],
+    "owned": {
+      "AAPL": 21,
+      "AMZN": 40,
+      "COST": 4,
+      "CROX": 51,
+      "GOOG": 16,
+      "IONQ": 103,
+      "MU": 5,
+      "NVDA": 40,
+      "PATH": 316,
+      "SNDK": 2,
+      "TWST": 76
+    }
+  },
+  "saved_held_shares": {
+    "AAPL": "21.0",
+    "AMZN": "40.0",
+    "COST": "4.0",
+    "CROX": "51.0",
+    "GOOG": "16.0",
+    "IONQ": "103.0",
+    "MU": "5.0",
+    "NVDA": "40.0",
+    "PATH": "316.0",
+    "SNDK": "2.0",
+    "TWST": "76.0"
+  },
+  "reservation_status_counts": [
+    {
+      "status": "CANCELLED",
+      "count": 12
+    },
+    {
+      "status": "FILLED",
+      "count": 346
+    },
+    {
+      "status": "PARTIAL",
+      "count": 1
+    },
+    {
+      "status": "WORKING",
+      "count": 3
+    }
+  ],
+  "pending_reservations": [
+    {
+      "symbol": "CROX",
+      "horizon": "1h",
+      "side": "SELL",
+      "quantity": 51,
+      "filled": 0,
+      "remaining": 51,
+      "status": "WORKING",
+      "last_evidence_at": "2026-09-24T23:59:56.523912+00:00",
+      "start": "2026-09-24T15:00:00+00:00",
+      "end": "2026-09-24T16:00:00+00:00"
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 16,
+      "filled": 0,
+      "remaining": 16,
+      "status": "WORKING",
+      "last_evidence_at": "2026-09-24T23:59:56.523912+00:00",
+      "start": "2026-09-24T15:00:00+00:00",
+      "end": "2026-09-24T16:00:00+00:00"
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "4h",
+      "side": "BUY",
+      "quantity": 32,
+      "filled": 0,
+      "remaining": 32,
+      "status": "WORKING",
+      "last_evidence_at": "2026-09-24T23:59:56.523912+00:00",
+      "start": "2026-09-24T23:00:00+00:00",
+      "end": "2026-09-25T14:00:00+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 10,
+      "filled": 4,
+      "remaining": 6,
+      "status": "PARTIAL",
+      "last_evidence_at": "2026-09-24T23:59:56.523912+00:00",
+      "start": "2026-09-24T15:00:00+00:00",
+      "end": "2026-09-24T16:00:00+00:00"
+    }
+  ],
+  "persistent_blocks": [],
+  "planning_ownership_check_using_saved_snapshot": {
+    "status": "REVIEW_REQUIRED",
+    "safe_for_planning": false,
+    "account_matches": true,
+    "active_allocations": [
+      {
+        "symbol": "AAPL",
+        "horizon": "1h",
+        "owned_shares": 10,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AAPL",
+        "horizon": "4h",
+        "owned_shares": 11,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AMZN",
+        "horizon": "1h",
+        "owned_shares": 24,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T21:00:00+00:00",
+        "target_end": "2026-09-24T22:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AMZN",
+        "horizon": "4h",
+        "owned_shares": 16,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "COST",
+        "horizon": "4h",
+        "owned_shares": 4,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "CROX",
+        "horizon": "1h",
+        "owned_shares": 51,
+        "reserved_buy_shares": 16,
+        "reserved_sell_shares": 51,
+        "target_start": "2026-09-24T15:00:00+00:00",
+        "target_end": "2026-09-24T16:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "CROX",
+        "horizon": "4h",
+        "owned_shares": 0,
+        "reserved_buy_shares": 32,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "GOOG",
+        "horizon": "1h",
+        "owned_shares": 5,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "GOOG",
+        "horizon": "4h",
+        "owned_shares": 11,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1h",
+        "owned_shares": 88,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1w",
+        "owned_shares": 15,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "4h",
+        "owned_shares": 3,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "1h",
+        "owned_shares": 22,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T12:00:00+00:00",
+        "target_end": "2026-09-24T13:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "1w",
+        "owned_shares": 1,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-16T11:00:00+00:00",
+        "target_end": "2026-09-23T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "4h",
+        "owned_shares": 17,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "PATH",
+        "horizon": "4h",
+        "owned_shares": 316,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T23:00:00+00:00",
+        "target_end": "2026-09-25T14:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "SNDK",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T22:00:00+00:00",
+        "target_end": "2026-09-24T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1h",
+        "owned_shares": 37,
+        "reserved_buy_shares": 6,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-24T15:00:00+00:00",
+        "target_end": "2026-09-24T16:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1w",
+        "owned_shares": 39,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      }
+    ],
+    "blocked_symbols": [],
+    "owned_shares": {
+      "AAPL": 21,
+      "AMZN": 40,
+      "GOOG": 16,
+      "MU": 5,
+      "NVDA": 40,
+      "SNDK": 2,
+      "COST": 4,
+      "CROX": 51,
+      "PATH": 316,
+      "TWST": 76,
+      "IONQ": 103
+    },
+    "reason_codes": [
+      "PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION"
+    ],
+    "last_saved_reconciliation_at": "2026-09-24T23:59:56.524535+00:00",
+    "last_saved_reconciliation_ready": true,
+    "current_broker_reconciliation_performed": false
+  },
+  "cme": {
+    "selected_nonsecret_configuration": {
+      "DATABENTO_CME_CONTEXT_SYMBOLS": {
+        "line": 101,
+        "value": [
+          "ES.v.0",
+          "NQ.v.0",
+          "RTY.v.0",
+          "CL.v.0",
+          "GC.v.0"
+        ]
+      },
+      "DATABENTO_CME_CONTEXT_STYPE_IN": {
+        "line": 102,
+        "value": "continuous"
+      },
+      "DATABENTO_CME_CONTRACT_SYMBOLS": {
+        "line": 105,
+        "value": [
+          "ESZ6",
+          "NQZ6",
+          "CLX6",
+          "GCZ6"
+        ]
+      },
+      "DATABENTO_CME_CONTRACT_STYPE_IN": {
+        "line": 106,
+        "value": "raw_symbol"
+      }
+    },
+    "process_overrides": {
+      "DATABENTO_CME_CONTEXT_SYMBOLS": "[\"ES.v.0\", \"NQ.v.0\", \"RTY.v.0\", \"CL.v.0\", \"GC.v.0\"]",
+      "DATABENTO_CME_CONTEXT_STYPE_IN": "continuous",
+      "DATABENTO_CME_CONTRACT_SYMBOLS": "[\"ESZ6\", \"NQZ6\", \"CLX6\", \"GCZ6\"]",
+      "DATABENTO_CME_CONTRACT_STYPE_IN": "raw_symbol"
+    },
+    "captures": [
+      {
+        "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\raw\\CME_CONTEXT_cme_context_bbo-1m_raw.parquet",
+        "sha256": "859068594665bc8e5f3c2dd74d4e21bc393fe0d7fdea0ed1c93d501fa55f1410",
+        "rows": 4430,
+        "latest_observed_utc_date": "2026-09-24",
+        "latest_date_groups": [
+          {
+            "symbol": "CL.v.0",
+            "instrument_ids": [
+              301334
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:59.379277963+00:00",
+            "last_event": "2026-09-24T04:38:36.451154369+00:00",
+            "provider_stypes": [
+              "continuous"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "ES.v.0",
+            "instrument_ids": [
+              10252
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:59.265441221+00:00",
+            "last_event": "2026-09-24T04:38:59.292601805+00:00",
+            "provider_stypes": [
+              "continuous"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "GC.v.0",
+            "instrument_ids": [
+              41271
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:58.068858847+00:00",
+            "last_event": "2026-09-24T04:38:54.308434045+00:00",
+            "provider_stypes": [
+              "continuous"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "NQ.v.0",
+            "instrument_ids": [
+              261401
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:45.181898991+00:00",
+            "last_event": "2026-09-24T04:38:59.073899185+00:00",
+            "provider_stypes": [
+              "continuous"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "RTY.v.0",
+            "instrument_ids": [
+              42012034
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:09.105756981+00:00",
+            "last_event": "2026-09-24T04:38:59.081341581+00:00",
+            "provider_stypes": [
+              "continuous"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\raw\\CME_CONTRACTS_cme_contracts_bbo-1m_raw.parquet",
+        "sha256": "176e0b2e6b6b25245420976cd59ca205bd4f46998ed009f5a2681c5c8ac52b72",
+        "rows": 3092,
+        "latest_observed_utc_date": "2026-09-24",
+        "latest_date_groups": [
+          {
+            "symbol": "CLX6",
+            "instrument_ids": [
+              301334
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:59.379277963+00:00",
+            "last_event": "2026-09-24T04:38:36.451154369+00:00",
+            "provider_stypes": [
+              "raw_symbol"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "ESZ6",
+            "instrument_ids": [
+              10252
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:59.265441221+00:00",
+            "last_event": "2026-09-24T04:38:59.292601805+00:00",
+            "provider_stypes": [
+              "raw_symbol"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "GCZ6",
+            "instrument_ids": [
+              41271
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:58.068858847+00:00",
+            "last_event": "2026-09-24T04:38:54.308434045+00:00",
+            "provider_stypes": [
+              "raw_symbol"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          },
+          {
+            "symbol": "NQZ6",
+            "instrument_ids": [
+              261401
+            ],
+            "rows": 100,
+            "first_event": "2026-09-24T02:59:45.181898991+00:00",
+            "last_event": "2026-09-24T04:38:59.073899185+00:00",
+            "provider_stypes": [
+              "raw_symbol"
+            ],
+            "provider_datasets": [
+              "GLBX.MDP3"
+            ]
+          }
+        ]
+      }
+    ],
+    "same_capture_instrument_pairs": [
+      {
+        "continuous": "ES.v.0",
+        "raw": "ESZ6",
+        "instrument_ids_match_in_latest_saved_capture": true,
+        "continuous_last_event": "2026-09-24T04:38:59.292601805+00:00",
+        "raw_last_event": "2026-09-24T04:38:59.292601805+00:00",
+        "instrument_ids": [
+          10252
+        ]
+      },
+      {
+        "continuous": "NQ.v.0",
+        "raw": "NQZ6",
+        "instrument_ids_match_in_latest_saved_capture": true,
+        "continuous_last_event": "2026-09-24T04:38:59.073899185+00:00",
+        "raw_last_event": "2026-09-24T04:38:59.073899185+00:00",
+        "instrument_ids": [
+          261401
+        ]
+      },
+      {
+        "continuous": "CL.v.0",
+        "raw": "CLX6",
+        "instrument_ids_match_in_latest_saved_capture": true,
+        "continuous_last_event": "2026-09-24T04:38:36.451154369+00:00",
+        "raw_last_event": "2026-09-24T04:38:36.451154369+00:00",
+        "instrument_ids": [
+          301334
+        ]
+      },
+      {
+        "continuous": "GC.v.0",
+        "raw": "GCZ6",
+        "instrument_ids_match_in_latest_saved_capture": true,
+        "continuous_last_event": "2026-09-24T04:38:54.308434045+00:00",
+        "raw_last_event": "2026-09-24T04:38:54.308434045+00:00",
+        "instrument_ids": [
+          41271
+        ]
+      }
+    ],
+    "retained_GCZ6_definition": {
+      "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\definition\\GC.V.0\\windows\\2026-05-07_to_2026-08-15",
+      "checks": {
+        "manifest": true,
+        "raw": true,
+        "normalized": true
+      },
+      "records": [
+        {
+          "raw_symbol": "GCZ6",
+          "instrument_id": 41271,
+          "expiration": "2026-12-29 18:30:00+00:00",
+          "activation": "2020-12-30 22:30:00+00:00"
+        }
+      ]
+    },
+    "limitation": "Saved latest captures verify instrument identity at their recorded times. They do not prove tonight native acquisition completion or a future roll."
+  },
+  "source_sha256": {
+    "C:\\dev\\ducketz\\datafetching\\watchlist.txt": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+    "C:\\DATASTORE\\state\\research-onboarding\\df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487.json": "2835dcd77bae4f680d48e7a1a57e420f56649603e63b9521b877942639b03f7d",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\activation.json": "d9ebc672034b7af269c136666e3c5c6b590603dff89ef24d6c9e52eef6823d28",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\progress.json": "f4b23c70a9b154711eeff487febfcc68ab2ae3d3ddbd06368b610f33c6d5ea2c",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json": "8220093633a0ab2d788e45e643108593f3a54230f009f2fd4c6db16af1f27098",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T235958.789395Z\\receipt.json": "6030d336cdeccaf3271518013f99c4dbf7a604f760b265c56b96ac075d926a85",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T235958.789395Z\\manifest.json": "dab30b103d30c37d65b07aec8e23505ec3a2a193eaf774ab6cbc53ca959dd620",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T235958.789395Z\\decisions.json": "4a988729290e67de8825d8bff5bd1e8df27e72c665e9a15822c3f243abce271f"
+  },
+  "broker_status_now": "UNKNOWN_NO_PROVIDER_CALLS",
+  "next_step": "Root supervisor should inspect exact current terminal order evidence and a newer matching-account portfolio snapshot through the documented locked native reconciliation path before trade planning. Preserve unresolved reservations; do not infer cancellations."
+}

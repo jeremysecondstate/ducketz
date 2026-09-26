@@ -1,0 +1,8 @@
+
+## Verified post-close ownership reconciliation
+
+2026-09-25T04:17:16Z: Root supervisor executed the reviewed source-bound native reconciliation helper under the existing supervision lease, native session lock then cycle lock, after verifying the September 24 trader terminal and absent. Preserved a ledger backup and rehearsed the native reconcile on a separate copy before the production call. Matching-account broker data reads were GET-only: exact tracked order history followed by a newer coherent portfolio snapshot; no submit, cancel, replace, trader start or execution budget was introduced.
+
+Broker terminal evidence resolved four local reservations: CROX 1h SELL 51 expired with zero fills; CROX BUY 16 (1h) and 32 (4h) canceled with zero fills; TWST 1h BUY 10 canceled with its existing four actual fills preserved. No new fill, assignment, assignment release or owned-share delta occurred. Current native ledger has zero pending reservations/blocks and read-only planning ownership is safe. Native trade planning still obtains its own fresh account snapshot.
+
+Independent local verification passed 384 checks: backup/receipt/logical hashes, production equality to the verified native rehearsal, all 360 reservation records, unchanged actual fills/owned allocations, preserved controls, session records and entry/recovery claims. Native broker and horizon-ledger tests passed 86/86 before application (artifacts/analysis/overnight-20260925/native-reconciliation-tests.txt). No production code change or pipeline restart was required. Evidence: C:/dev/ducketz/artifacts/analysis/overnight-20260925/preflight/native-reconciliation.json and native-reconciliation-verification.json; immutable backup and rehearsal copies remain beside them.

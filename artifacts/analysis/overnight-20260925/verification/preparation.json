@@ -1,0 +1,70 @@
+{
+  "prepared_at": "2026-09-25T04:13:02.273879+00:00",
+  "status": "PREPARED_NOT_EXECUTED",
+  "native_original_run": "C:/DATASTORE/ml/overnight-runs/20260925T040822.112032Z",
+  "source_session": "2026-09-24",
+  "action_date": "2026-09-25",
+  "deadline_at": "2026-09-25T11:00:00Z",
+  "expected_loop_a_cycle": "20260925T040822.974281Z-pid22132",
+  "baseline_publication": "C:/DATASTORE/ml/nightly-gameplan-runs/20260924T062615.050242Z",
+  "syntax_validation": "ALL_SIX_AST_PARSE",
+  "files": [
+    {
+      "name": "verify_completed_run.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\verify_completed_run.py",
+      "original_sha256": "ec568a44ba8f026267d9f2fe773441c12af3ffc2424606d5d65225784fba6a0b",
+      "adapted_sha256": "991ff1fdb801accbce144023b4c65611abe40782d3249eb60154fa4114e15b98"
+    },
+    {
+      "name": "verify_yg_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\verify_yg_completion.py",
+      "original_sha256": "7cb21d7917813393da5fc7b15a3058a1a0d4a9bc004c6b6795b9d01415f9429c",
+      "adapted_sha256": "9cb85453dd59a157ce3c4f5b690c563eead14f62bc5ee2104082f01cca1e6158"
+    },
+    {
+      "name": "verify_archive_history.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\verify_archive_history.py",
+      "original_sha256": "8393976c2e4890f7b82a72df7da715ffbc73137d72d55a9b3223b63cd2fc693e",
+      "adapted_sha256": "5b01afe7f687982493ee6ebb8fec4934f6e04f9c501fd3b2c576eb21308a20b3"
+    },
+    {
+      "name": "audit_provider_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\audit_provider_completion.py",
+      "original_sha256": "829bad38c8cca20f5032f87224c7364fd3f4e0daade73275e4b6cc95e46063e2",
+      "adapted_sha256": "21e9c9a4f83bb0546261ee28cf38266dfac95fc83577445f89ee9a7c8219f3f8"
+    },
+    {
+      "name": "provider_advisories.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\provider_advisories.py",
+      "original_sha256": "7bd0b37023d3abe51ebfd5964c6e8ed80f0cf3345281c078b1589b3e8b57419d",
+      "adapted_sha256": "1c7d84d3def0ba3e093e891d5687a7a24ab0f34f9ec7f38d9b2d965f91b7e2a3"
+    },
+    {
+      "name": "review_models.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\review_models.py",
+      "original_sha256": "17db153dd016d20b7a9684d9aff0704bc2c987a8947ccbcf871c5ad0e8ef9c0d",
+      "adapted_sha256": "829c1d4eb2fe77d44d5789c3051a220a7f5909f6d0572866ccc462e158d7426b"
+    }
+  ],
+  "production_mutations": 0,
+  "pipeline_starts": 0,
+  "provider_calls": 0,
+  "orders_placed": 0,
+  "archive_minute_inputs_explicitly_manifest_bound": true,
+  "native_contracts_preserved": {
+    "direction_policy": "stock-direction-50-v2; above/below 0.50",
+    "holding_policy": "signal-driven; no scheduled expiry sales",
+    "reference_completion": "saved v3 sparse-session inputs with max 240 minutes; older policies remain immutable"
+  },
+  "reviewed_at": "2026-09-25T04:21:10.160595+00:00",
+  "helper_review": "helper-review-tests.json",
+  "review_changes": [
+    "Exact stage/report/receipt timing and stage-log inventory, no repeated successful stage, exact resume inheritance",
+    "Every stock-only intent execution field empty and common frozen row values identical",
+    "Manifest-bound current archive sources re-score all 264 frozen probabilities without fitting",
+    "All four directional payloads bound to report/hash/source; calibration and per-route/per-symbol scores/support independently reproduced",
+    "YG supplement no longer claims full native/provider/planning verification",
+    "Original cursor path/semantics/content self-hash verified; native outer snapshot hash absence explicitly disclosed",
+    "Prior provider advisory comparison corrected to actual verified resumed-provider artifact"
+  ]
+}

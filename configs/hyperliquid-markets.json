@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "symbols": ["BTC", "ETH", "HYPE", "ZEC"],
+  "interval": "15m",
+  "output_root": "C:/DATASTORE/hyperliquid",
+  "max_parallel_updates": 2,
+  "close_delay_seconds": 5,
+  "retry_seconds": 15,
+  "max_retry_seconds": 120,
+  "repair_every_cycles": 96
+}

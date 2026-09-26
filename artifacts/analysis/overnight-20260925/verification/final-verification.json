@@ -1,0 +1,67 @@
+{
+  "observed_at": "2026-09-25T06:43:19.048032+00:00",
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "native_run": "C:/DATASTORE/ml/overnight-runs/20260925T040822.112032Z",
+  "errors": [],
+  "evidence": {
+    "completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\completion-audit.json",
+      "sha256": "97abb9c965ef906ac51974f27e9cdd0ac33569e62d7effb1319387903543c92f"
+    },
+    "yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\yg-completion.json",
+      "sha256": "bbf164e32e759157a76bd6ee9a8e5aa877cb0a108903d17eeb2e22326b1ef401"
+    },
+    "provider-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\provider-completion.json",
+      "sha256": "d67c58768fa60bb9691b72d7b63dd50219319c6f5b885e7aa167bfc764c567e1"
+    },
+    "independent-output-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\independent-output-review.json",
+      "sha256": "cdab41e9dc2fd02ac79b41e32c2fab1b02fafab1bfac1b702e2c7bd61df06a12"
+    },
+    "sizing-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\sizing-review.json",
+      "sha256": "8ffb958312e24274b6d88da25dc2d7166979edb2139db1bfedf782420cc17676"
+    },
+    "schedule-final.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\schedule-final.json",
+      "sha256": "4139c1d5e8a07f1e65cb3b21eba2153fc8786300641443c1137190206d5ec4bb"
+    },
+    "supervision-release-final.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\supervision-release-final.json",
+      "sha256": "ce8e2407cdfd2d47f3b7e0caf0dc067ea289fb1f73194a4cb1beb4827b1d32da"
+    },
+    "monitor-summary.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\monitor\\monitor-summary.json",
+      "sha256": "b9c243390077cf53f1f2a101d3ad47b1511ea384ca4653f62a785618b176f306"
+    },
+    "completion-summary.md": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\completion-summary.md",
+      "sha256": "fb7ed6939500d4834676eea0324458930e316660c4cf9ad6f664880a5e9bda70"
+    }
+  },
+  "native_pipeline_exit_code": 0,
+  "completion_audit_exit_code": 0,
+  "yg_audit_exit_code": 0,
+  "provider_audit_exit_code": 0,
+  "production_code_changes": false,
+  "orders_placed": 0,
+  "supervision_closure": {
+    "status": "RELEASED",
+    "owner_token": "5c3cea33-8624-4dcc-9fa8-68928af785b1",
+    "released_at": "2026-09-25T06:45:46.665893+00:00",
+    "monitor_stopped": true,
+    "renewals": 274,
+    "all_renewals_acquired": true,
+    "maximum_renewal_gap_seconds": 34.298959
+  },
+  "peer_review": {
+    "status": "PASS",
+    "material_discrepancies": 0,
+    "absolute_links_checked": 26,
+    "evidence_hashes_checked": 5,
+    "pinned_receipt_hash_checked": true
+  },
+  "updated_at": "2026-09-25T06:46:56.855465+00:00"
+}

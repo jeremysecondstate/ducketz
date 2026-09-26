@@ -1,0 +1,16 @@
+{
+  "audited_at": "2026-09-25T06:42:03.601248+00:00",
+  "status": "PASS_NATIVE_LOOP_A_AND_33_OPRA_SCOPES_COMPLETE",
+  "issues": [],
+  "preflight_count": 33,
+  "current_cursor_count": 33,
+  "current_partition_count": 33,
+  "current_data_files_hashed": 66,
+  "observed_estimated_download_bytes": 4789680808
+}
+{
+  "pending_count": 0,
+  "base_status": "COMPLETE",
+  "symbol_capture_summaries": 11,
+  "native_loop_a_complete": true
+}

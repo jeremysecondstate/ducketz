@@ -1,0 +1,26 @@
+{
+  "observed_at": "2026-09-25T06:45:33.6990392+00:00",
+  "run": "C:/DATASTORE/ml/overnight-runs/20260925T040822.112032Z",
+  "helper_session": 1847,
+  "helper_exit_code": 0,
+  "claim_count": 274,
+  "claim_max_gap_seconds": 34.298959,
+  "non_acquired": 0,
+  "observation_count": 274,
+  "stages": [
+    "loop_a_close_fetch",
+    "loop_b_directional_generation",
+    "stock_target_history",
+    "gameplan_evaluation",
+    "gameplan_publication",
+    "stock_enrichment_training",
+    "gameplan_trade_planning",
+    "gameplan_actuals_review"
+  ],
+  "terminal_status": "COMPLETE",
+  "first_renewal": "2026-09-25T04:09:27.5666970+00:00",
+  "last_renewal": "2026-09-25T06:44:52.6895680+00:00",
+  "monitoring_continues": false,
+  "residual_helper_or_pending_renewal": [],
+  "claim_released_by_helper": false
+}

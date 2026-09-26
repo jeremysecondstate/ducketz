@@ -1,0 +1,31 @@
+{
+  "observed_at": "2026-09-25T04:09:33.7412409+00:00",
+  "supervision_owner": "5c3cea33-8624-4dcc-9fa8-68928af785b1",
+  "run": "C:/DATASTORE/ml/overnight-runs/20260925T040822.112032Z",
+  "previous_completed_run": "C:/DATASTORE/ml/overnight-runs/20260924T064422.315446Z",
+  "source_session": "2026-09-24",
+  "expected_action_date": "2026-09-25",
+  "original_deadline_utc": "2026-09-25T11:00:00Z",
+  "target_completion_pacific": "2026-09-25T03:30:00-07:00",
+  "archive_history": true,
+  "initial_git_status": [
+    "?? artifacts/analysis/overnight-20260925/"
+  ],
+  "startup_process_check": "No live overnight, Loop A/B, trader or onboarding process before fresh start",
+  "configured_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "expected_forecasts": 264,
+  "expected_intents": 264,
+  "expected_opra_cursors": 33
+}

@@ -1,0 +1,68 @@
+{
+  "observed_at": "2026-09-25T11:20:56.334822+00:00",
+  "inspection": "READ_ONLY_LOCAL_ARTIFACTS",
+  "session_status_path": "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json",
+  "session_status_sha256_at_observation": "0c4d3ef4bc136ae0a55271236f3cc3ae3ad0dab6b6ceb863049b2e9837bf878f",
+  "snapshot": {
+    "action_date": "2026-09-25",
+    "calls": 5,
+    "closes_at": "2026-09-25T17:00:00-07:00",
+    "consecutive_failures": 0,
+    "execute": true,
+    "failed_cycles": 0,
+    "heartbeat_at": "2026-09-25T11:20:52.387751+00:00",
+    "last_cycle": {
+      "activation_active": true,
+      "broker_state_capture": {
+        "attempts": 1,
+        "elapsed_seconds": 3.445075200055726,
+        "last_error_operation": null,
+        "last_error_type": null,
+        "maximum_retry_seconds": 120.0,
+        "quote_refresh": {
+          "refreshes": 0,
+          "status": "NOT_NEEDED",
+          "unavailable_symbols": []
+        },
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 0.0,
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT",
+        "transient_failures": 0
+      },
+      "duplicate_suppressions": 0,
+      "error": null,
+      "execution_requested": true,
+      "prediction_handoff_status": null,
+      "run_directory": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260925T112052.248935Z",
+      "selected_orders": 0,
+      "status": "NO_ORDERS_SUBMITTED",
+      "stopped_after_error": false,
+      "submitted_orders": 0,
+      "target_window_start": null
+    },
+    "late_opening_date": null,
+    "orders_submitted": 25,
+    "pid": 74712,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-25T11:18:03.774094+00:00",
+    "status": "RUNNING",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-25T04:00:00-07:00"
+  },
+  "last_receipt_path": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260925T112052.248935Z\\receipt.json",
+  "last_receipt_sha256": "1fbe61f3ad3459b4b39d9dee6fa62755e7756598c5a085ff66fb94c9a9ff9cf6",
+  "source_gameplan_run": "ml/nightly-gameplan-runs/20260925T060654.631426Z",
+  "source_matches_verified_nightly_publication": true,
+  "inventory_reconciliation": {
+    "ready": true,
+    "reasons": []
+  },
+  "submitted_orders_are_not_asserted_fills": true,
+  "trader_started_by": "USER",
+  "inspection_broker_calls": 0,
+  "inspection_order_or_control_mutations": 0
+}

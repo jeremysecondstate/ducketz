@@ -1,0 +1,89 @@
+{
+  "reviewed_at": "2026-09-25T04:21:55.466025+00:00",
+  "status": "PASS_BOUNDED_HELPER_REVIEW",
+  "tests": [
+    {
+      "check": "prior_three_attempt_native_receipts_and_logs",
+      "status": "PASS",
+      "attempt_count": 3,
+      "stages": 8
+    },
+    {
+      "check": "missing_receipt_log_is_rejected",
+      "status": "PASS",
+      "rejection": "Native receipt log inventory omits or adds a run-local log",
+      "mutation_in_memory_only": true
+    },
+    {
+      "check": "changed_log_hash_is_rejected",
+      "status": "PASS",
+      "rejection": "Overnight log evidence differs: gameplan_actuals_review.log",
+      "mutation_in_memory_only": true
+    },
+    {
+      "check": "changed_stage_report_hash_is_rejected",
+      "status": "PASS",
+      "rejection": "Overnight stage report checksum/size differs",
+      "mutation_in_memory_only": true
+    },
+    {
+      "check": "incomplete_complete_stage_grid_is_rejected",
+      "status": "PASS",
+      "rejection": "COMPLETE native report does not contain every recorded successful stage",
+      "mutation_in_memory_only": true
+    },
+    {
+      "check": "missing_successful_stage_inheritance_is_rejected",
+      "status": "PASS",
+      "rejection": "Resume inherited successful-stage evidence differs from its exact ancestry",
+      "mutation_in_memory_only": true
+    },
+    {
+      "check": "model_scores_allow_only_bounded_roundoff",
+      "status": "PASS"
+    },
+    {
+      "check": "missing_score_key_rejected",
+      "status": "PASS",
+      "rejection": "missing_score_key: keys differ"
+    },
+    {
+      "check": "altered_score_rejected",
+      "status": "PASS",
+      "rejection": "altered_score/brier: value differs"
+    }
+  ],
+  "ast_checked_files": [
+    {
+      "file": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\audit_provider_completion.py",
+      "sha256": "21e9c9a4f83bb0546261ee28cf38266dfac95fc83577445f89ee9a7c8219f3f8"
+    },
+    {
+      "file": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\provider_advisories.py",
+      "sha256": "1c7d84d3def0ba3e093e891d5687a7a24ab0f34f9ec7f38d9b2d965f91b7e2a3"
+    },
+    {
+      "file": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\review_models.py",
+      "sha256": "829c1d4eb2fe77d44d5789c3051a220a7f5909f6d0572866ccc462e158d7426b"
+    },
+    {
+      "file": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_archive_history.py",
+      "sha256": "5b01afe7f687982493ee6ebb8fec4934f6e04f9c501fd3b2c576eb21308a20b3"
+    },
+    {
+      "file": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_completed_run.py",
+      "sha256": "991ff1fdb801accbce144023b4c65611abe40782d3249eb60154fa4114e15b98"
+    },
+    {
+      "file": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_yg_completion.py",
+      "sha256": "9cb85453dd59a157ce3c4f5b690c563eead14f62bc5ee2104082f01cca1e6158"
+    }
+  ],
+  "receipt_regression_source": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T064422.315446Z",
+  "current_run_audited": false,
+  "archive_and_estimator_inference": "DEFERRED_TO_FINAL_COMPLETION",
+  "models_fitted": false,
+  "source_mutations": 0,
+  "claims_or_process_actions": 0,
+  "orders_placed": 0
+}

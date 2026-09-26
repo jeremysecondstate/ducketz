@@ -1,0 +1,124 @@
+{
+  "verified_at": "2026-09-25T06:27:53.417728+00:00",
+  "status": "PASS",
+  "checks": 3785,
+  "issues": [],
+  "scope": "Bounded final planning/actuals output checks and guarded controls/ownership/Windows schedule. No heavy source archive hashes, broker/provider calls or production writes. App automation schedule comparison remains with root because this subtask has no pre-run app automation snapshot.",
+  "bindings": {
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260925T061845.719846Z": {
+      "manifest_sha256": "0c9def1272d1661d72d504ab973a6c97023145916fe205e0ea2576339a0bfc1a",
+      "receipt_sha256": "ef5007f88f4b7296c5c2e82f999afb3b8cacf424f07f5eb19190b467c975521f",
+      "outputs_checked": 9
+    },
+    "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260925T062206.766961Z": {
+      "manifest_sha256": "a2e0d3c9c66bf73b4412263c249ad31517e38cc9d1fff22fd38392aae34fed9d",
+      "receipt_sha256": "8676817fa916481dccc31da71b4af72393f81f17704b05b3534332939f780639",
+      "outputs_checked": 4
+    }
+  },
+  "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260925T060654.631426Z",
+  "trade_plan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260925T061845.719846Z",
+  "actuals": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260925T062206.766961Z",
+  "policies": {
+    "direction": "stock-direction-50-v2",
+    "holding": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+    "price_path": "conditional-hourly-planning-price-path-v3",
+    "reference_completion": "sparse-session-planning-reference-completion-v2",
+    "maximum_reference_gap_minutes": 240
+  },
+  "forecast_rows": 264,
+  "price_points": 154,
+  "synthetic_rows": 70,
+  "synthetic_anchors": [
+    {
+      "symbol": "CROX",
+      "price": 123.51,
+      "observed_at": "2026-09-24T23:46:00+00:00",
+      "effective_at": "2026-09-25T00:00:00+00:00",
+      "gap_minutes": 14.0,
+      "fill_count": 14,
+      "reason": "ASSUMED_NO_TRADES"
+    },
+    {
+      "symbol": "PATH",
+      "price": 12.63,
+      "observed_at": "2026-09-24T23:18:00+00:00",
+      "effective_at": "2026-09-25T00:00:00+00:00",
+      "gap_minutes": 42.0,
+      "fill_count": 42,
+      "reason": "ASSUMED_NO_TRADES"
+    },
+    {
+      "symbol": "TWST",
+      "price": 184.44,
+      "observed_at": "2026-09-24T23:46:00+00:00",
+      "effective_at": "2026-09-25T00:00:00+00:00",
+      "gap_minutes": 14.0,
+      "fill_count": 14,
+      "reason": "ASSUMED_NO_TRADES"
+    }
+  ],
+  "cash_snapshot_at": "2026-09-25T06:18:56.975875+00:00",
+  "starting_cash": 47346.43,
+  "cash_summary": {
+    "buy_events": 47,
+    "cash_buffer": 2367.3215,
+    "cash_change_high": -43896.63,
+    "cash_change_low": -44943.45,
+    "direction_buy_rows": 47,
+    "direction_sell_rows": 23,
+    "ending_cash_base": 2925.41,
+    "ending_cash_high": 3449.8,
+    "ending_cash_low": 2402.98,
+    "sell_events": 23,
+    "starting_cash": 47346.43,
+    "trade_events": 70
+  },
+  "actual_forecast_counts": {
+    "EVALUATED": 167,
+    "PENDING_MATURITY": 66,
+    "MATURE_AWAITING_DATA": 31
+  },
+  "actual_price_counts": {
+    "COMPARED": 136,
+    "MATURE_AWAITING_DATA": 18
+  },
+  "actual_direction_counts": {
+    "Pending": 97,
+    "Incorrect": 84,
+    "Correct": 83
+  },
+  "missing_forecast_symbols": {
+    "CROX": 11,
+    "PATH": 9,
+    "TWST": 9,
+    "IONQ": 2
+  },
+  "missing_price_symbols": {
+    "CROX": 7,
+    "TWST": 6,
+    "PATH": 4,
+    "IONQ": 1
+  },
+  "zero_overnight_orders": true,
+  "windows_schedule": {
+    "name": "Ducketz Independent Stock Session",
+    "state": "Disabled",
+    "enabled": false,
+    "actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\dev\\ducketz\\docs\\datafetch-ml\\start_stock_session.ps1\"",
+        "WorkingDirectory": "C:\\dev\\ducketz"
+      }
+    ],
+    "triggers": [
+      {
+        "Enabled": true,
+        "StartBoundary": "2026-09-08T03:55:00",
+        "DaysOfWeek": 62,
+        "WeeksInterval": 1
+      }
+    ]
+  }
+}

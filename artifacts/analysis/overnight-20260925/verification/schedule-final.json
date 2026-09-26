@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-09-25T06:44:20.2687720+00:00",
+  "path": "C:/Users/7980X/.codex/automations/loops-hourly-operations/automation.toml",
+  "sha256": "2a4a97c592c9d6076dbd64d1140b04659f48b26aa38bf3f5b3d7e950fec24833",
+  "active": true,
+  "daily_2105": true,
+  "failed_runs_only": true,
+  "windows_time_zone": "Pacific Standard Time",
+  "schedule_mutations_by_this_task": 0
+}
