@@ -1,0 +1,168 @@
+{
+  "reviewed_at": "2026-09-26T04:09:30.532995+00:00",
+  "scope": "READ_ONLY_LOCAL_CONTROL_AND_SCHEDULE_CAPTURE",
+  "controls_and_launcher_hashes": {
+    "C:\\DATASTORE\\controls\\stock-trader\\operator-intent.txt": {
+      "exists": true,
+      "sha256": "c0f3a622f8f97a062af6b641454f4c63e20542e193fc47dfb7027b60b7af7c84",
+      "value": "CONFIRM_ACTIVE_TRADING=TRUE"
+    },
+    "C:\\DATASTORE\\controls\\gameplan-stock-trader\\operator-intent.txt": {
+      "exists": true,
+      "sha256": "f2a16447372b31a6ef3e2ee462a6e63167d45d1571cf85a6d5eb047383ad9f4b",
+      "value": "CONFIRM_GAMEPLAN_STOCK_TRADING=TRUE"
+    },
+    "C:\\DATASTORE\\controls\\loop-c\\current\\halt-control.json": {
+      "exists": true,
+      "sha256": "2b770863ce342da7fd405808d8d7320e8259496354610293871219800f7e9566"
+    },
+    "C:\\DATASTORE\\controls\\loop-c\\current\\risk-approval.json": {
+      "exists": true,
+      "sha256": "ee2c3823a2f4bc324742ef99e65d676b01d2f7d49c62060401204f7b953e0b28"
+    },
+    "C:\\dev\\ducketz\\.env": {
+      "exists": true,
+      "sha256": "422795841ce713febe7815512a55103a4d9e531c2a0ec0147d9c4a9546f6d852"
+    },
+    "C:\\dev\\ducketz\\Start-Gameplan-Trader.cmd": {
+      "exists": true,
+      "sha256": "07cec07c05d28a0d738915ba7d1eb418fd104d62a67d316384c50421f4cca505"
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\start_stock_session.ps1": {
+      "exists": true,
+      "sha256": "d39e8f06007eb78eab8ad3adf2826b326d2b505c649960cbf001ec74680a15a4"
+    }
+  },
+  "entry_and_recovery_claim_hashes": {
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T170000Z.json": "5b756619fc78c0c08a1426cdd35f3250870ca025439287d58d76b9d298181591",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T180000Z.json": "701620455433d373855f6940d6c3d9efec76aa3ae1701c3c3b69fe4eac484a9a",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T190000Z.json": "1bb13c2a645ca27e1aebea73b42ff48f26aadd896fff41d9d0b2d7da53041159",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T200000Z.json": "ed5d185013f724caa463129480378250edaacdfa267f24309baf14f10ed69a5a",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T210000Z.json": "8dd1fb6009fd1b10a8dacc8fc4da31fd21008aec43a0c5a48e9d5ff617b03ef4",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T220000Z.json": "e63c34d58a3b3b15b5dfeba28687af1404a7258660370fb4dcb5fcc2b4e1bdc0",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T230000Z.json": "45a192a63e568f898894d02925429edb1ba3fb85aab9f26db33cc41b3254c55c",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T110000Z.json": "6e422dc55137813aa2084abd20a0da4849bfdcbd6b17847b227bd126deb49f19",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T120000Z.json": "ea9a32098ab9667291bfc457fee2571a09fbf7f43ccdcf8f43e82482a614be86",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T130000Z.json": "7a2b9fa3537fefc08b6b371657fb98ae2e19b0965c1a138e9f412b875e3fc9d4",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T140000Z.json": "6611b429f7f65384f0cb74fc2c590281af443a58afa79fc82b2def0c20d236d1",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T150000Z.json": "f6e759b395db149ab3912683f3a01abcad728e5c5ca888862c4628df6e25814f",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T160000Z.json": "7e83f448dcb0de4d4a10de8425ce003a593fd863c1487a2c82158c885cfea426",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T170000Z.json": "0740277afe819eb1b1744e15efbca2d52f20c6505795c8a3a50644032bb4e0bb",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T180000Z.json": "af46b2a02811d30ab3f6555dbb4848863e183bbfd51ebe687a371427e609033a",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T190000Z.json": "2d3caf25ebb10caad3c0b06962b9b28be972a995f554aac4b1342a6527bc82a0",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T200000Z.json": "e47447465231ce0582e5e20de5bfb3a4f216516a20112f2c8ffd25b5f055018b",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T210000Z.json": "cf2126d01c7632a464ef047c651528573b85005ec7f5d708b240af9fbc450d93",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T220000Z.json": "aff37784625565f21cd92dd15ef68faa45acf767d3226ae64f9aedabb7cabca1",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T230000Z.json": "631f58032407fb7bf963d696c45d13b7fda33c37eef4bee6f4a00a241a7dd31a",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T110000Z.json": "dc134d7c65fc0a478c495a57573bf8640552719e47dd0d01568cf3cc6d84e64f",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T120000Z.json": "526859a95eb7497308fa9d34de59fb455efed761ae25de542077710c4a3d0811",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T130000Z.json": "9b3800cee4c27c950f56e0695891b65b4ee6a383d823888a5e93c6a9cbb6124c",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T140000Z.json": "fa609bdd6539fb3cc71a2cebe3b84619cfbe6948d4e0cafb26cab5339354ce3a",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T150000Z.json": "1a73a7950840682ad96c111f7b863f0b85883f45a0227520531ab6b9fcc89f11",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T160000Z.json": "57cf8f395f239ea1a295fad3ed31e1cccdedfc83bcb1213550a43d73d9b29947",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T170000Z.json": "a4fe962ca05116edef80f987543c2838989be7c0bf6312f4938519a831d144a3",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T180000Z.json": "e257da0b50edfc8c78bc864df1fca9101c37a0cef64579df132a4ca816653ec0",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T190000Z.json": "477801b5fac1b83fc7afa6696fb64f9f616e83719c9e4de4157ab27032bae40a",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T200000Z.json": "71d8e10c9aa819dcf79a9a238380481305871d68d2370f89e3b272b65849f1bb",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T210000Z.json": "118ebed617468f089c05fbcae8d1c23217d813d3622e13f5ce34362646fbf03f",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T220000Z.json": "4c88d71f3940fab2804e79acf1a47972ba7f63e07554fb5dfbe86c9615b36a4d",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T230000Z.json": "9b304516e3380b429cadb9b4b12935468aa589ad81c6c71af616eef84f5c9fbe",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T110000Z.json": "3c386b7a4237e1e41b51866479e14763636a2e3db7d22ddd846a00ec367147b4",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T120000Z.json": "cb46780eb1a654ca901bfb63b2a8cb7b2fe186b1f25fd6824e6ef477fad1585c",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T130000Z.json": "4bc1ddb1a8b0895e78acdf2a0d77105280875fe61852f5c1ef7a7d20dd0f8bec",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T140000Z.json": "97c96752ce94d704441eb52b310660af2ebefc1050142ac7020544f6e2f61405",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T150000Z.json": "6048dbd6e10b8a41a572f0da6f779f49b533a900d6b0ec2fb968af04d8e495b9",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T160000Z.json": "9a3775893509a7ca4a08e32bcc51a479435e051057992aae28d4c7544eb04b97",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T170000Z.json": "387e8b934d5d008f0d1107da7ef9447b1875b050d98ef256390ebee89a682d79",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T180000Z.json": "f84934da9915ec91bd5946442b90335b9f186873d675d309574910d91cf2ad10",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T190000Z.json": "1212c40ce0aec97fa946b65c3ead4e3f2b2d11efe7fefa0c85d6b051d1c90a31",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T200000Z.json": "f7356809eeee93c9f7a6f3e5c62ad639506b99e30bcdcac4e74749312eab66cc",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T210000Z.json": "7acd956718c96e6b89118e1bcb1d95a444d7db330ff4cf2d03285540fbd78188",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T220000Z.json": "38ccd2c9d6cfa5a19354de9aaac2acd3ecd89ceb5d0f0563753b378f03662637",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T230000Z.json": "7f9e30d26de807d1a09e3682ede16f32fc2443339bc698aa23c5d44ea73f8a3e",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T110000Z.json": "8be6119fd10bf8148663af787bf33b0d371966d4f02fe0f851cf1ab6a1839b08",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T120000Z.json": "3c0298aa0a39ffcde3f5328dfdec47986036f09409f249316f35723f75cb6eba",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T130000Z.json": "82320cc32f1ce885622c7feeec873251a0cfb474451182b848dd006aa12c8146",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T140000Z.json": "642a9f4adeef237a92124b8848673d9320e2e99a36758c1968b4f471b3bb4ab4",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\quote-recovery-slots\\87c0cbe725dcab43e35f17e58430a6a7bae308705ddc6dec2b38f08fd273ba1b.json": "496a110c17776392118da0977743895fb826bff4d11380eb7277d7bc8c64cfa6"
+  },
+  "automations": [
+    {
+      "id": "loop-c-weekly-operator-review",
+      "kind": "cron",
+      "name": "Loops Gameplan Weekly Review",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=SA;BYHOUR=9;BYMINUTE=0",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "medium",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loop-c-weekly-operator-review\\automation.toml",
+      "sha256": "b58b83544a6f8cde04c5f9a5866dd2971754226711db61f780893d3b2124be20"
+    },
+    {
+      "id": "loops-hourly-operations",
+      "kind": "cron",
+      "name": "Loops Overnight Gameplan",
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "notification_policy": "failed_runs_only",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-hourly-operations\\automation.toml",
+      "sha256": "2a4a97c592c9d6076dbd64d1140b04659f48b26aa38bf3f5b3d7e950fec24833"
+    },
+    {
+      "id": "loops-options-strategy-paper-tracking",
+      "kind": "cron",
+      "name": "Loops Options Strategy Paper Tracking",
+      "status": "PAUSED",
+      "rrule": "FREQ=WEEKLY;BYDAY=TU,WE,TH,FR,SA;BYHOUR=0;BYMINUTE=17",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "max",
+      "notification_policy": "failed_runs_only",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-options-strategy-paper-tracking\\automation.toml",
+      "sha256": "3fe7ef5782083140d1e80e8ef8a25570abc737397a618352997f1df10c1e8e70"
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "kind": "cron",
+      "name": "Loops Operations Watch",
+      "status": "ACTIVE",
+      "rrule": "FREQ=MINUTELY;INTERVAL=90;BYSECOND=0",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-stock-trader-daily-adaptation\\automation.toml",
+      "sha256": "10b456a0b04ef8b463fc34f78a4a3dc518b461c7af007e669d284d88ce018cc4"
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "kind": "cron",
+      "name": "Loops Stock Trader \u00e2\u20ac\u201d Daytime Supervision",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-stock-trader-live-shadow\\automation.toml",
+      "sha256": "223f6f5456889f8283113186519a3ce4a94cba52f66f1786329e834a349e7e4c"
+    },
+    {
+      "id": "loops-weekly-opportunity-research",
+      "kind": "heartbeat",
+      "name": "Loops Weekly Opportunity Research",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=SU;BYHOUR=9;BYMINUTE=0",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-weekly-opportunity-research\\automation.toml",
+      "sha256": "1b06aa33e35e3d20e9a64f766bbc543228e2c180fc070c11c38b0829590f214d"
+    },
+    {
+      "id": "september-9-gameplan-review",
+      "kind": "heartbeat",
+      "name": "September 9 Gameplan review",
+      "status": "PAUSED",
+      "rrule": "FREQ=MINUTELY;INTERVAL=30",
+      "path": "C:\\Users\\7980X\\.codex\\automations\\september-9-gameplan-review\\automation.toml",
+      "sha256": "c690dea832705326f4b7440fd3951065b44e5d912079e6e0a242c150687fd146"
+    }
+  ],
+  "windows_schedule_evidence": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\preflight\\windows-schedules.json",
+  "windows_schedule_sha256": "96d4fa86ad268e3b9beda4a106818e6f513faf13586ee695d389d749685f82d2"
+}

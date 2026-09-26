@@ -1,0 +1,57 @@
+{
+  "prepared_at": "2026-09-26T04:10:46.132486+00:00",
+  "status": "PREPARED_NOT_EXECUTED",
+  "native_original_run": "C:/DATASTORE/ml/overnight-runs/20260926T040723.834511Z",
+  "source_session": "2026-09-25",
+  "action_date": "2026-09-28",
+  "provider_exclusive_end": "2026-09-26",
+  "deadline_at": "2026-09-28T11:00:00Z",
+  "target_completion_pacific": "2026-09-26T03:30:00-07:00",
+  "expected_loop_a_cycle": "20260926T040724.729021Z-pid46624",
+  "baseline_publication": "C:/DATASTORE/ml/nightly-gameplan-runs/20260925T060654.631426Z",
+  "syntax_validation": "ALL_SIX_AST_PARSE",
+  "files": [
+    {
+      "name": "verify_completed_run.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_completed_run.py",
+      "original_sha256": "991ff1fdb801accbce144023b4c65611abe40782d3249eb60154fa4114e15b98",
+      "adapted_sha256": "38b691062164116dc918aceb03f1df7c0287c54bea2bfca79f6ca3df1f473515"
+    },
+    {
+      "name": "verify_yg_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_yg_completion.py",
+      "original_sha256": "9cb85453dd59a157ce3c4f5b690c563eead14f62bc5ee2104082f01cca1e6158",
+      "adapted_sha256": "56e1b0bfbf6c61bd9af96822bfb38a5c2a25a5ab85adf33218cf600190e41c72"
+    },
+    {
+      "name": "verify_archive_history.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_archive_history.py",
+      "original_sha256": "5b01afe7f687982493ee6ebb8fec4934f6e04f9c501fd3b2c576eb21308a20b3",
+      "adapted_sha256": "5732c66e57750040fee77ba25e48472c23f4769bd41b5a7611d1584250a0099a"
+    },
+    {
+      "name": "audit_provider_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\audit_provider_completion.py",
+      "original_sha256": "21e9c9a4f83bb0546261ee28cf38266dfac95fc83577445f89ee9a7c8219f3f8",
+      "adapted_sha256": "817826798b5c8c3c2bb5d32aaebd5951baa6e7e33d8906560c0c81bc993b560e"
+    },
+    {
+      "name": "provider_advisories.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\provider_advisories.py",
+      "original_sha256": "1c7d84d3def0ba3e093e891d5687a7a24ab0f34f9ec7f38d9b2d965f91b7e2a3",
+      "adapted_sha256": "daa1719654fbe5bcd07db653ae499697a408a3412bd03bfbb482b991b79c463d"
+    },
+    {
+      "name": "review_models.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\review_models.py",
+      "original_sha256": "829c1d4eb2fe77d44d5789c3051a220a7f5909f6d0572866ccc462e158d7426b",
+      "adapted_sha256": "26a933f7ce36754774d75beb8793568869c68a1437c54243e3e20bbd6930866e"
+    }
+  ],
+  "code_inventory_files": 255,
+  "code_drift_policy": "Explicit failure before audit if captured Python/doc/watchlist bytes changed; inspect cause and revise only with evidence. No automatic rebaseline.",
+  "production_mutations": 0,
+  "pipeline_starts": 0,
+  "provider_calls": 0,
+  "orders_placed": 0
+}

@@ -13,6 +13,7 @@ from PIL import Image, ImageTk
 from app.models.portfolio import PortfolioSnapshot
 from app.hyperliquid_accounts import HYPERLIQUID_ACCOUNT_PROFILES
 from app.ui.hyperliquid_workspace import HyperliquidWorkspaceMixin
+from app.ui.hyper_workspace import HyperWorkspace
 from app.services.hyperliquid_markets import display_asset
 from app.services.aggregate import DucketBucketSnapshot
 from app.ui.options_strategies import OptionsStrategiesTab
@@ -520,6 +521,7 @@ class DucketBucketApp:
         strategies_frame = ttk.Frame(notebook)
         schwab_frame = ttk.Frame(notebook)
         hyperliquid_frame = ttk.Frame(notebook)
+        hyper_frame = ttk.Frame(notebook)
         stats_frame = ttk.Frame(notebook)
         gameplan_frame = ttk.Frame(notebook)
 
@@ -527,6 +529,7 @@ class DucketBucketApp:
         notebook.add(strategies_frame, text="Options Strategies")
         notebook.add(schwab_frame, text="Schwab Duckets")
         notebook.add(hyperliquid_frame, text="Hyperliquid Duckets")
+        notebook.add(hyper_frame, text="H.Y.P.E.R.")
         notebook.add(stats_frame, text="Gameplan Stats")
         notebook.add(gameplan_frame, text="Gameplan")
 
@@ -549,6 +552,8 @@ class DucketBucketApp:
             root=self.root,
             parent=hyperliquid_frame,
         )
+
+        HyperWorkspace(root=self.root, parent=hyper_frame)
 
         GameplanStatsTab(root=self.root, parent=stats_frame)
         GameplanTab(root=self.root, parent=gameplan_frame)
