@@ -21,15 +21,16 @@ def write_config(tmp_path: Path, **values) -> Path:
     return path
 
 
-def test_default_file_uses_shared_market_config_and_one_hour_initial_horizon():
+def test_default_file_uses_shared_market_config_and_next_five_minute_horizon():
     settings = load_config(DEFAULT_MODEL_CONFIG_PATH)
     assert settings.markets_config == DEFAULT_MARKETS_CONFIG_PATH
-    assert settings.horizons_bars == (4,)
-    assert settings.retrain_seconds == 900
+    assert settings.horizons_bars == (1,)
+    assert settings.retrain_seconds == 300
     assert settings.model_threads == 2
     assert settings.min_train_rows == 1000
-    assert settings.calibration_rows == 192
-    assert settings.assessment_rows == 288
+    assert settings.split_mode == "fractions"
+    assert (settings.train_fraction, settings.calibration_fraction, settings.assessment_fraction) == (.70, .15, .15)
+    assert settings.max_train_rows is None
     assert settings.max_model_age_seconds == 86400
     assert not hasattr(settings, "symbols")
     with pytest.raises(FrozenInstanceError):
@@ -81,6 +82,15 @@ def test_horizons_are_sorted_and_recipe_factory_passes_only_model_settings(monke
         random_state: int
         model_threads: int
         max_train_rows: int | None
+        split_mode: str
+        train_fraction: float | None
+        calibration_fraction: float | None
+        assessment_fraction: float | None
+        calibration_c: float
+        logistic_weight: float
+        extra_trees_weight: float
+        hist_gradient_boosting_weight: float
+        mlp_weight: float
 
     monkeypatch.setitem(sys.modules, "ml.hyperliquid_models", SimpleNamespace(ModelSettings=Recipe))
     settings = ModelConfig(
@@ -88,7 +98,8 @@ def test_horizons_are_sorted_and_recipe_factory_passes_only_model_settings(monke
         assessment_rows=300, model_threads=3, max_train_rows=2000,
     )
     assert settings.horizons_bars == (1, 4, 16)
-    assert settings.model_settings(4) == Recipe(4, 1500, 200, 300, 42, 3, 2000)
+    assert settings.model_settings(4) == Recipe(4, 1500, 200, 300, 42, 3, 2000, "fixed_rows", None, None, None,
+                                               1.0, 1.0, 1.0, 1.0, 1.0)
     with pytest.raises(ValueError, match="configuration's horizons"):
         settings.model_settings(2)
     with pytest.raises(ValueError, match="configuration's horizons"):
@@ -102,6 +113,42 @@ def test_optional_training_cap_round_trips_to_actual_model_recipe(tmp_path, cap)
     assert recipe.max_train_rows == cap
     assert asdict(recipe)["max_train_rows"] == cap
     assert recipe.min_train_rows == config.min_train_rows == 1000
+
+
+def test_live_and_research_share_approved_fractional_recipe():
+    research = load_config(DEFAULT_MODEL_CONFIG_PATH.with_name("hyperliquid-models-research-70-15-15.json"))
+    live = load_config(DEFAULT_MODEL_CONFIG_PATH)
+    assert live.split_mode == "fractions"
+    assert (live.train_fraction, live.calibration_fraction, live.assessment_fraction) == (.70, .15, .15)
+    assert research.markets_config == live.markets_config
+    assert research.split_mode == "fractions" and research.max_train_rows is None
+    recipe = research.model_settings(1)
+    assert (recipe.train_fraction, recipe.calibration_fraction, recipe.assessment_fraction) == (.70, .15, .15)
+
+
+@pytest.mark.parametrize("change", [
+    {"split_mode": "random"}, {"split_mode": None},
+    {"split_mode": "fractions"},
+    {"train_fraction": .7},
+    {"split_mode": "fractions", "train_fraction": .7, "calibration_fraction": .2, "assessment_fraction": .2},
+    *({"split_mode": "fractions", "train_fraction": value,
+       "calibration_fraction": .15, "assessment_fraction": .15}
+      for value in (None, True, "0.7", 0, 1, -1, float("nan"), float("inf"))),
+])
+def test_invalid_fraction_controls_fail_before_data_reads(tmp_path, change):
+    with pytest.raises(ValueError, match="split_mode|fractions|Fraction"):
+        ModelConfig(**change)
+    with pytest.raises(ValueError):
+        load_config(write_config(tmp_path, **change))
+
+
+def test_fraction_controls_and_explicit_training_cap_round_trip(tmp_path):
+    config = load_config(write_config(tmp_path, split_mode="fractions", train_fraction=.7,
+                                     calibration_fraction=.15, assessment_fraction=.15, max_train_rows=1200))
+    recipe = config.model_settings(4)
+    assert recipe.split_mode == "fractions"
+    assert recipe.max_train_rows == 1200
+    assert asdict(recipe)["calibration_fraction"] == .15
 
 
 @pytest.mark.parametrize("cap", [True, False, 0, -1, 999, 1000.0, "1000"])

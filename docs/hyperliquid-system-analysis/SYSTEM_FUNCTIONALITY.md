@@ -1,6 +1,6 @@
 # System functionality and current limits
 
-Last updated: **2026-09-26** for 15-minute model fitting and qualified-only Paper behavior. [Index](README.md)
+Last updated: **2026-09-28** for `5m/h1`, retained five-minute history and configured UI discovery. [Index](README.md)
 
 ## Implemented capabilities
 
@@ -8,7 +8,8 @@ Last updated: **2026-09-26** for 15-minute model fitting and qualified-only Pape
 | --- | --- | --- |
 | Market maintenance | Independent per-symbol updates, bounded parallel work, completed-candle publications, retained local history and revision catch-up | [Market-data loop](loops/market-data.md) |
 | Features | Shared causal formulas, per-build calculation reuse, separate symbol datasets, explicit warmup/null/gap behavior and feature catalog | [Feature implementation](../../technicals/hyperliquid_features.py) |
-| Model fitting | Separate per-symbol/horizon bundles due every 900s of source-candle progress; unchanged chronological fitting/calibration/assessment and target-maturity exclusions | [Model loop](loops/models.md) |
+| Model fitting | Separate `5m/h1` bundles due every 300s of source-candle progress; chronological 70/15/15 with strict target-maturity purges; logistic/ExtraTrees/HistGradientBoosting/MLP, calibration C=0.1 and weights 40/20/20/20 | [Model loop](loops/models.md) |
+| Offline model research | Bounded twelve-model comparison in the measured environment, including compact CNN/GRU/CNN+GRU and fixed blends; pinned inputs/recipes and isolated `_model_research` output; no automatic publication | [Expanded-model audit](audits/2026-09-26-expanded-models-70-15-15.md) |
 | Qualification | Saved candidate and qualified-active distinction; probability-score comparisons with baselines; fresh active preference and labeled research fallback | [Model artifacts](../../ml/hyperliquid_model_artifacts.py) |
 | Forecast history | Recorded not-down/down probabilities before outcomes, once per symbol/interval/horizon/candle, with matured forward evaluation | [Model loop](loops/models.md) |
 | Opening Paper inventory | Configured mirror of real marked holdings/cash, validated roles, immutable opening baseline, existing-ledger resume | [Paper initialization](../../ml/hyperliquid_paper_seed.py) |
@@ -31,8 +32,8 @@ Last updated: **2026-09-26** for 15-minute model fitting and qualified-only Pape
    and risk. Research forecasts remain recorded and visible, but the current
    Paper policy excludes them from allocation. Qualified publications require
    active role plus an eligible matching model record.
-3. A **forecast** is an observation of a rolling horizon. Four 15-minute bars
-   mean one hour, not four scheduled trades or a mandatory one-hour exit.
+3. A **forecast** is an observation of a rolling horizon. One five-minute bar
+   means the next five minutes, not a mandatory trade or timed position exit.
 4. A **desired target** does not prove cash is available or an executable fill
    exists. A requested simulated quantity can be partly filled or skipped.
 5. An **alive process** can publish stale or degraded data. A saved `running`
@@ -52,12 +53,14 @@ Last updated: **2026-09-26** for 15-minute model fitting and qualified-only Pape
 | No exchange liquidation/maintenance-margin simulation | Paper exposure/collateral checks and polled stops do not establish exchange liquidation protection. |
 | Visible-book simulation | No maker queue, guaranteed future liquidity or full exchange latency model; recorded partial fills remain partial. |
 | Funding uses a completed-perpetual-close proxy | Funding is labeled estimated and unavailable settlements remain pending errors. |
-| Models are evaluated bundles without a final all-data refit | Reserved calibration/assessment data are not silently added to estimator fitting after qualification. The 15-minute cadence does not shorten the reserved-window fit lag or change qualification checks. |
-| Runtime configuration is broader than the current UI | Data/models support configured membership; the Paper view currently discovers BTC/ETH/HYPE/ZEC at `15m/h4`. Universe/interval/horizon changes require a UI/adapter review. |
+| Models are evaluated bundles without a final all-data refit | Reserved calibration/assessment rows are not added to fitting after qualification. With about 5,000 mature five-minute rows, the initial fitting lag was about 5.2 days; exact cutoffs vary and grow with retained history. Five-minute retraining does not remove the reserved-window gap. |
+| Rolling assessment is a promotion holdout | Repeated windows and previously examined history are not a globally untouched final test. Expanded research results do not activate new production ensemble members or establish profitability. |
+| UI follows the configured recipe | The Paper view derives symbols, interval and first horizon from model/market configuration, currently BTC/ETH/HYPE/ZEC at `5m/h1`; malformed or unavailable configuration must remain visible as incomplete evidence. |
 | Paper uses the first configured model horizon | Adding model horizons does not create independent Paper horizon portfolios. |
 | Full snapshot rebuild/publication | Data writes complete changed Parquet snapshots; persistent incremental feature state and automatic snapshot retention are not implemented. |
+| Five-minute base retained; derived intervals not implemented | API onboarding covers about 17.36 days; older local candles accumulate beyond that rolling limit. Ten-minute candles require a separately implemented aggregation and validation path. |
 | Bounded UI journal reads | The current page shows the latest 500 records per journal by default, then filters those loaded rows; it is not an exhaustive historical query browser. |
-| Forward evaluation is not automatic strategy optimization | Paper results and forward model metrics do not automatically retune sizing, ensemble weights or trading policy. |
+| Runtime feedback is separate from scheduled improvement | Forward metrics do not directly retune live workers. Paper Improvement starts with two-hour rounds; a verified win adds one hour, while a loss/tie retains the duration. It compares results, makes justified changes and verifies archived/fresh runs. |
 | Process entry points are not startup registration | Reboot supervision and any external scheduler must be inspected separately. |
 
 ## Future work is recorded as planned

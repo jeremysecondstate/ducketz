@@ -1,0 +1,97 @@
+{
+  "started_at": "2026-09-29T04:18:39.583233+00:00",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z",
+  "status": "STOPPED_REQUIRES_REVIEW",
+  "checks": [
+    {
+      "script": "preliminary_directional_review.py",
+      "started_at": "2026-09-29T06:23:41.576403+00:00",
+      "exit_code": 0,
+      "finished_at": "2026-09-29T06:23:42.324592+00:00"
+    },
+    {
+      "script": "preliminary_sizing_review.py",
+      "started_at": "2026-09-29T06:25:02.345546+00:00",
+      "exit_code": 0,
+      "finished_at": "2026-09-29T06:25:03.598595+00:00"
+    },
+    {
+      "script": "run_final_checks.py",
+      "started_at": "2026-09-29T06:29:23.680895+00:00",
+      "exit_code": 1,
+      "finished_at": "2026-09-29T06:44:43.195503+00:00"
+    }
+  ],
+  "stage_observations": [
+    {
+      "at": "2026-09-29T04:18:39.583400+00:00",
+      "state": [
+        "RUNNING",
+        "loop_a_close_fetch"
+      ]
+    },
+    {
+      "at": "2026-09-29T05:39:00.766392+00:00",
+      "state": [
+        "RUNNING",
+        "loop_b_directional_generation"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:05:01.198321+00:00",
+      "state": [
+        "RUNNING",
+        "stock_target_history"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:07:01.236267+00:00",
+      "state": [
+        "RUNNING",
+        "gameplan_evaluation"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:13:41.393640+00:00",
+      "state": [
+        "RUNNING",
+        "gameplan_publication"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:23:21.573466+00:00",
+      "state": [
+        "RUNNING",
+        "stock_enrichment_training"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:25:02.345499+00:00",
+      "state": [
+        "RUNNING",
+        "gameplan_trade_planning"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:28:43.664376+00:00",
+      "state": [
+        "RUNNING",
+        "gameplan_actuals_review"
+      ]
+    },
+    {
+      "at": "2026-09-29T06:29:23.675959+00:00",
+      "state": [
+        "COMPLETE",
+        null
+      ]
+    }
+  ],
+  "provider_calls": 0,
+  "broker_calls": 0,
+  "production_mutations": 0,
+  "orders_placed": 0,
+  "native_heartbeat_at": "2026-09-29T06:29:23.061257+00:00",
+  "updated_at": "2026-09-29T06:44:43.196549+00:00",
+  "error": "RuntimeError: REVIEW_FAILED run_final_checks.py"
+}

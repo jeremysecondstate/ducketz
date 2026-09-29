@@ -1,0 +1,24 @@
+--- baseline/ml/hyperliquid_paper_policy.py
++++ reviewed/ml/hyperliquid_paper_policy.py
+@@ -169,8 +169,10 @@
+     ``sigma`` is already scaled to the forecast horizon (the initial recipe is
+     volatility_log_return_20 * sqrt(4)). ``other_gross`` sums absolute notionals
+     across every other coin/account; opposing positions never cancel there.
+-    Existing matching exposure determines the hysteresis threshold, not net
+-    exposure. Opposing inherited legs are explicitly targeted for reduction.
++    Existing matching exposure of at least the minimum trade notional determines
++    the hysteresis threshold, not net exposure. Sub-minimum residuals remain in
++    accounting but cannot reopen a direction below its entry threshold.
++    Opposing inherited legs are explicitly targeted for reduction.
+     These are desired targets; the runtime applies actual cash/margin limits.
+     """
+     if not isinstance(config, PaperConfig):
+@@ -200,7 +202,7 @@
+         # the same inclusive threshold, avoiding an entry/exit alternation.
+         active = edge + 1e-12 >= config.entry_band
+         reason = "entry_threshold_met" if active else "exit_band" if matching_gross else "entry_deadband"
+-    elif direction and matching_gross > 0:
++    elif direction and matching_gross + 1e-12 >= config.min_trade_notional:
+         active = edge > config.exit_band + 1e-12
+         reason = "hold_with_hysteresis" if active else "exit_band"
+     elif direction:

@@ -1,13 +1,23 @@
 {
   "version": 1,
   "markets_config": "hyperliquid-markets.json",
-  "horizons_bars": [4],
-  "retrain_seconds": 900,
+  "horizons_bars": [
+    1
+  ],
+  "retrain_seconds": 300,
   "poll_seconds": 5,
   "retry_seconds": 60,
   "model_threads": 2,
   "min_train_rows": 1000,
-  "calibration_rows": 192,
-  "assessment_rows": 288,
-  "max_model_age_seconds": 86400
+  "split_mode": "fractions",
+  "train_fraction": 0.7,
+  "calibration_fraction": 0.15,
+  "assessment_fraction": 0.15,
+  "max_train_rows": null,
+  "max_model_age_seconds": 86400,
+  "calibration_c": 0.1,
+  "logistic_weight": 0.4,
+  "extra_trees_weight": 0.2,
+  "hist_gradient_boosting_weight": 0.2,
+  "mlp_weight": 0.2
 }

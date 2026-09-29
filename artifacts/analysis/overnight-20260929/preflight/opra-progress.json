@@ -1,0 +1,87 @@
+{
+  "at": "2026-09-29T04:32:59.120897+00:00",
+  "fresh_preflights": 6,
+  "current_cursors": 0,
+  "estimated_bytes": 63056896,
+  "errors": [],
+  "rows": [
+    {
+      "symbol": "AAPL",
+      "schema": "ohlcv-1h",
+      "generated_at": "2026-09-29T04:31:13.192200+00:00",
+      "estimated_bytes": 8364608,
+      "checks": {
+        "hash": true,
+        "scope": true,
+        "zero_cost": true,
+        "capacity": true
+      },
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AAPL.OPT\\2026-09-21_to_2026-09-29\\preflight.json"
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "ohlcv-1h",
+      "generated_at": "2026-09-29T04:31:18.107486+00:00",
+      "estimated_bytes": 9470104,
+      "checks": {
+        "hash": true,
+        "scope": true,
+        "zero_cost": true,
+        "capacity": true
+      },
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AMZN.OPT\\2026-09-21_to_2026-09-29\\preflight.json"
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "ohlcv-1h",
+      "generated_at": "2026-09-29T04:31:39.539726+00:00",
+      "estimated_bytes": 6008184,
+      "checks": {
+        "hash": true,
+        "scope": true,
+        "zero_cost": true,
+        "capacity": true
+      },
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\GOOG.OPT\\2026-09-21_to_2026-09-29\\preflight.json"
+    },
+    {
+      "symbol": "MU",
+      "schema": "ohlcv-1h",
+      "generated_at": "2026-09-29T04:32:18.376501+00:00",
+      "estimated_bytes": 17252592,
+      "checks": {
+        "hash": true,
+        "scope": true,
+        "zero_cost": true,
+        "capacity": true
+      },
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\MU.OPT\\2026-09-21_to_2026-09-29\\preflight.json"
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "ohlcv-1h",
+      "generated_at": "2026-09-29T04:32:32.683115+00:00",
+      "estimated_bytes": 13354824,
+      "checks": {
+        "hash": true,
+        "scope": true,
+        "zero_cost": true,
+        "capacity": true
+      },
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\NVDA.OPT\\2026-09-21_to_2026-09-29\\preflight.json"
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "ohlcv-1h",
+      "generated_at": "2026-09-29T04:32:55.731941+00:00",
+      "estimated_bytes": 8606584,
+      "checks": {
+        "hash": true,
+        "scope": true,
+        "zero_cost": true,
+        "capacity": true
+      },
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\SNDK.OPT\\2026-09-21_to_2026-09-29\\preflight.json"
+    }
+  ]
+}

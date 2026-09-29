@@ -1,6 +1,53 @@
 # Hyperliquid Operations Watch
 
-Operating contract: **2026-09-26 / v10**. Companion to [Monitoring and recovery](MONITORING.md).
+Operating contract: **2026-09-28 / v14**. Companion to [Monitoring and recovery](MONITORING.md).
+
+## Current accepted run and improvement handoff
+
+The user authorized a separate [Paper improvement task](PAPER_IMPROVEMENT.md)
+on September 28, 2026. That task now owns adaptive competitive rounds starting
+at two hours, intentional archives,
+fresh account mirrors and model changes. This watch's authority remains health
+observation and narrowly permitted recovery only; it never improves or reseeds.
+
+The improvement task's persistent cadence receipt defines each ending round:
+a verified win adds one hour to the next round; a loss/tie retains its duration.
+Unscored or late results cannot promote it. The prior three-day schedule and
+60-hour guard are historical. This watch keeps its 30-minute schedule, does
+not score/promote rounds or edit improvement timing, and must honor a pending
+user real-account purchase before any explicitly requested fresh mirror.
+
+Read `_operations/paper-maintenance.json` before recovery. `in_progress` means
+an intentional transition, including a prepared/accepted opening awaiting live
+verification. Remain observational throughout any pass that saw maintenance.
+After a completed handoff, `_operations/paper-current-accepted.json` and its
+referenced evidence define the current experiment, seed, opening balances,
+config/source hashes and model membership. Cross-check `_paper/experiment.json`
+and the immutable ledger opening. Missing or inconsistent handoff evidence is
+an investigation, never permission to initialize a new ledger.
+
+Compare immutable opening hashes using the native `seed_info` implementation in
+`ml.hyperliquid_paper_review`, or the independent verifier's matching canonical
+serialization. A custom compact-JSON hash is not comparable to a stored hash
+created with default JSON separators. The September 28 initial-positions alert
+was reconciled to whitespace alone; all four native opening hashes matched.
+
+The latest verified durable handoff supersedes the dated v11 baseline and
+model-policy values below. Those values remain historical context and must not
+be restored over a newer accepted experiment. Use current accepted configuration
+and model reports for parameters, families and qualification; treat changed
+configuration without a verified handoff as a finding. Preserve the existing
+30-minute schedule, GPT-6 Luna / Extra High, and notification settings. The
+improvement task updates compact watch memory after verifying the new run.
+
+The user-authorized September 28 frequency transition selects **5m candles /
+h1 next-five-minute forecasts**, retraining due every 300s of source progress,
+with 30s Paper book/risk polls. Read the newest accepted receipt to determine
+whether that transition is complete. The old 15m ledger/models and a checked
+copy of its candle/coordinator history are archives, never restart targets.
+Keep the 5m candle history across later Paper resets. Longer-bar aggregation
+and simultaneous collection across intervals are future work, not implied by
+changing the trading interval. This watch must not change the interval.
 
 ## Schedule and scope
 
@@ -78,11 +125,14 @@ print(json.dumps({
 '@ | & .\.venv\Scripts\python.exe -B -
 ```
 
-The UI projection currently covers BTC/ETH/HYPE/ZEC at 15m/h4. Compare the four
+The UI projection resolves membership, interval and primary horizon from the
+configured model/market files; the new trial uses BTC/ETH/HYPE/ZEC at 5m/h1.
+Its strict health helper also binds every configured slot to the actual recipe
+and target expiry. Compare the four
 small configuration content hashes against memory each run; JSON `version`
 fields are schema versions and do not detect edited settings. Inspect changed
 configurations and any referenced files before claiming coverage; custom
-membership/root/horizons require matching raw checks before claiming coverage.
+membership/root/horizons still require matching raw checks before claiming coverage.
 The process probe checks module identity, not only PID existence. Before any
 recovery, additionally verify full commands, config/root, process creation time
 and launcher/child relationships using `psutil` or `Win32_Process`. A reused PID
@@ -98,8 +148,10 @@ Interpret observations using [Monitoring](MONITORING.md):
 - Let existing network retries/backoff work while a correctly identified worker
   is alive. Read only a bounded recent log tail for a new failure. No repeated
   public/private endpoint probes during outages.
-- Forecast display grace (1,020s) differs from Paper eligibility (900s). A forecast
-  expiring near a candle boundary requires inspecting publication progress, not
+- Data display grace is the configured candle duration plus 120s. Forecasts
+  become stale at target maturity even inside display age grace. Paper's 5m/h1
+  forecast age limit is 300s and its target expires at the next candle close.
+  A forecast expiring near a candle boundary requires inspecting publication progress, not
   automatically restarting models. No trade, a research forecast and no promotion
   are not failures.
 - The current Paper experiment is qualified-only. Research or missing forecasts
@@ -123,35 +175,53 @@ Interpret observations using [Monitoring](MONITORING.md):
 
 ## Recovery of an interrupted Paper session
 
+The following v11 numerical baseline is dated September 26. Once a v12 durable
+handoff exists, substitute its accepted experiment and configuration throughout
+these recovery checks. All stop/ownership/ledger-preservation conditions remain.
+
 The current baseline is data + models + qualified-only Paper intended running,
 Powder off. The latest user-authorized mirror is
-`20260926T154957Z-rebalance20-fresh-models`, opened at
-**2026-09-26T15:49:57.767916203Z**, with opening equity
-**42081.207237518516** and nine inherited positions. Per-account baselines are
-Alex **5782.635843127269**, Jeremy **6222.39298639688**, and Clear Pond
-**30076.178407994368**. Prepare-only verification confirmed one opening cycle,
+`20260926T180818Z-701515-btc-mirror`, opened at
+**2026-09-26T18:08:18.218420982Z**, with opening equity
+**44083.99583107362** and nine inherited positions. Per-account baselines are
+Alex **5736.898979623619**, Jeremy **6253.81725676128**, and Clear Pond
+**32093.27959468872**. Prepare-only verification confirmed one opening cycle,
 four equity rows, zero fills/decisions/transfers/funding, and zero experiment P/L
-and fees before trading. Source-to-opening valuation differences were Alex
+and fees before trading. Clear Pond's opening BTC is **0.2239149983**, an increase
+of **0.02377618 BTC** from the preceding opening, incorporating the user's added
+inventory. The difference between openings does not identify deposit timing or
+price. Independently retained public source responses reconcile every signed
+quantity, perpetual entry and account cash calculation with the seed.
+Source-to-opening valuation differences were Alex
 -0.006585, Jeremy +0.004615 and Clear Pond 0. Account reads and quotes remain
 non-atomic; do not manufacture cash adjustments to force display equality.
 
-Evidence is under `_operations/paper-retune-20260926/`: `opening.json` and
-`opening-health.json` verify preparation; `first-cycle.json` independently
-replays subsequent accounting against the immutable opening hashes.
-`trading-health.json`, observed **15:51:04 UTC**, verified data **57004**, models
-**49636** (launcher **57304**, hidden cmd **34468**) and Paper **67548** (launcher
-**27672**, hidden cmd **45084**), fresh sources and an advancing Paper observation
-at **15:50:43.117672 UTC**. Powder was disconnected with zero pending intents.
+Evidence is under
+`_operations/20260926T1804020242875Z-fraction701515-btc-remirror/`:
+`opening.json`, `opening-source-verification.json` and `opening-health.json`
+verify preparation and source reconciliation; `model-split-verification.json`
+records the fresh model identities and split sizes. `first-cycle.json`
+independently replays later accounting against the immutable opening hashes.
+`trading-health.json`, observed **18:10:58.439631 UTC**, verified data **57004**,
+models **31624** (launcher **64232**, hidden cmd **57632**) and Paper **57936**
+(launcher **2280**, hidden cmd **48216**), fresh sources and an advancing Paper
+observation at **18:10:42.901325 UTC**, with no reported errors or warnings.
+That observation had eight cycles and seven fills: equity **44053.32172417838**,
+P/L **-30.67410689524** and fees **26.623819045**, with zero funding or transfers.
+These post-opening strategy/risk executions are separate from the verified
+zero-cost opening; they do not alter its baseline. Powder was disconnected
+with zero pending intents.
 Use newer automation memory and actual process identity for recovery; these
 dated observations do not establish permanent health.
 
-Current Paper policy **`fdf124acdc8fc9a6`** raises
-`rebalance_min_delta_fraction` from **0.10 to 0.20**. Ordinary changes must reach
+Current Paper policy **`fdf124acdc8fc9a6`** retains
+`rebalance_min_delta_fraction=0.20`. Ordinary changes must reach
 the greater of $25 or 20% of final target notional; complete exits and required
 risk reductions still bypass that adjustment threshold. The wider threshold
 is a prospective turnover experiment, not evidence of improved returns.
-The Paper configuration hash changed; market/model/Powder configurations did
-not. Compare all four current content hashes against accepted memory.
+This deployment changed the model configuration hash; market/Paper/Powder
+configurations did not change from v10. Compare all four current content hashes
+against accepted memory.
 
 Shared **49%/51% entry and exit** thresholds remain:
 `entry_band=exit_band=0.01`, long eligibility at or above 51% and short eligibility
@@ -163,14 +233,32 @@ slippage**, plus configured taker fees **0.00045** for perps and **0.0007** for 
 Spread, depth and changing marks still affect P/L; no account-specific fee tier
 was inferred.
 
-Fresh models were fitted after preserving the old model tree, using the retained
-training recipe: uncapped fitting, calibration **192**, assessment **288**,
-MLP maximum iterations **100**, and **900-second** retraining. Two regularization
-candidates and an MLP 300-iteration candidate failed the fixed probability-loss
-selection gates; none was deployed. Earlier training-window proposals were also
-rejected, and `max_train_rows` remains unused. See the
-[training comparison](audits/2026-09-26-training-regularization-and-budget.md).
-Fresh model IDs do not imply a changed recipe or a proven forecasting edge.
+The approved live model split is now **70% fitting / 15% calibration / 15%
+assessment**, configured with `split_mode=fractions`, the three explicit
+fractions and `max_train_rows=null`. Fractions allocate mature usable rows
+chronologically before purging: floor fit/calibration counts and place rounding
+remainder in assessment. Labels reaching either next partition's first decision
+are excluded without refilling. Reports distinguish requested fractions from
+actual retained counts, purges and any window omissions. Fixed 192/288-row
+blocks belong to earlier experiments and are no longer the active split.
+
+Production retains the same four model types: logistic regression, Extra Trees,
+histogram gradient boosting and MLP. MLP maximum iterations **100**, minimum
+fit rows **1,000**, horizon **four 15-minute candles** and **900-second** retraining
+remain unchanged. CNN/GRU/CNN-GRU and other expanded comparisons are offline
+research only; the watch must not activate them. Earlier regularization,
+MLP 300-iteration and training-window proposals remain rejected historical
+experiments; see the [training comparison](audits/2026-09-26-training-regularization-and-budget.md).
+
+The final 15% is still the chronological **promotion holdout**, used to qualify
+the returned fitted/calibrated bundle. It is not an untouched final test, and
+there is no refit through assessment afterward. The initial fresh fits therefore
+end **381.75–382.75 hours** behind the input tip; this reported fit cutoff lag is
+expected under the approved split, not a dead worker or stale publication.
+Keep checking publication/model age, current forecast inputs and actual process
+health separately. Fresh fits initially qualified ETH/HYPE, while BTC/ZEC were
+Research; qualifications can change. Split validation and retrospective losses
+do not establish profitability. See the [model guide](../hyperliquid-models.md).
 
 The execution contract remains
 `quote_execution_policy=forecast_first_bounded_quote_retry_v1`: freeze forecasts
@@ -190,6 +278,16 @@ reductions retain the reference; additions weight it with executed entry; a new
 position starts at its fill price. Legacy resumes retain their persisted
 `legacy_avg_entry` reference. Never rebase stops, rewrite the seed or reset
 cooldowns on restart.
+
+The superseded **15:49:57** experiment and its full `_paper` and `_models` trees
+are preserved at
+`_paper_archives/20260926T1804020242875Z-before-fraction701515-btc-remirror`:
+**205 files / 116,086,884 bytes**. Its original files match the SHA-256 manifest
+in the current evidence directory's `preservation-before.json` and
+`preservation-verified.json`; read-only SQLite integrity also passed before the
+move. `operation.json` identifies the preserved predecessor. Data continued;
+models and Paper were intentionally stopped and replaced. That old baseline
+does not contain the latest BTC inventory and is not a recovery target.
 
 The superseded **12:34:36** experiment and its full `_paper` and `_models` trees
 are preserved at `_paper_archives/20260926T154800Z-before-training-retune`:
@@ -216,7 +314,7 @@ completed deletion, and `_pending_deletion/20260926T103559Z-excluded-paper` was
 verified absent at **2026-09-26 11:36:32 UTC**. Never analyze, reconstruct or
 restore that sample. `_operations/excluded-paper-runs.json` records the exclusion.
 Still-earlier archives and independent model research remain separate and
-preserved. These restrictions remain in force under contract v10.
+preserved. These restrictions remain in force under contract v11.
 
 The watch may resume only the current verified seed; no further mirror or ledger
 reset is authorized for the watch. Historical intent never overrides newer

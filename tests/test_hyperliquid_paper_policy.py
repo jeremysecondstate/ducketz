@@ -29,8 +29,8 @@ def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_re
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
     assert config == PaperConfig(
-        require_qualified_forecasts=True, entry_band=0.01, exit_band=0.01,
-        rebalance_min_delta_fraction=0.20,
+        require_qualified_forecasts=True, entry_band=0.03, exit_band=0.01,
+        rebalance_min_delta_fraction=0.60, max_forecast_age_seconds=300,
     )
 
 
@@ -44,7 +44,7 @@ def test_defaults_and_active_config_use_book_prices_and_distinct_taker_fee_rates
 
 @pytest.mark.parametrize("probability,account", [(0.51, "jeremy"), (0.49, "alex")])
 def test_evaluation_shared_band_opens_added_direction(probability, account):
-    current = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    current = replace(load_config(DEFAULT_PAPER_CONFIG_PATH), entry_band=.01, exit_band=.01)
     previous = replace(current, entry_band=0.04, exit_band=0.02)
     assert plan(probability=probability, config=previous)["targets"][account] == 0
     result = plan(probability=probability, config=current)
@@ -54,7 +54,7 @@ def test_evaluation_shared_band_opens_added_direction(probability, account):
     assert current.require_qualified_forecasts is True
 
 
-@pytest.mark.parametrize("probability", [0.509999, 0.490001])
+@pytest.mark.parametrize("probability", [0.529999, 0.470001, 0.51, 0.49])
 def test_evaluation_entry_band_still_has_a_neutral_region(probability):
     result = plan(probability=probability, config=load_config(DEFAULT_PAPER_CONFIG_PATH))
     assert not any(result["targets"].values())
@@ -65,10 +65,10 @@ def test_evaluation_entry_band_still_has_a_neutral_region(probability):
     ("jeremy", 500, .51, .509999),
     ("alex", -500, .49, .490001),
 ])
-def test_active_policy_uses_same_inclusive_boundary_for_flat_and_held_positions(
+def test_shared_policy_uses_same_inclusive_boundary_for_flat_and_held_positions(
     account, quantity, boundary, exit_probability,
 ):
-    config = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    config = replace(load_config(DEFAULT_PAPER_CONFIG_PATH), entry_band=.01, exit_band=.01)
     flat = plan(probability=boundary, config=config)
     held = plan(probability=boundary, current={account: quantity}, config=config)
     assert held["targets"] == flat["targets"]
@@ -78,6 +78,49 @@ def test_active_policy_uses_same_inclusive_boundary_for_flat_and_held_positions(
     closed = plan(probability=exit_probability, current={account: quantity}, config=config)
     assert not any(closed["targets"].values())
     assert closed["details"]["reason"] == "exit_band"
+
+
+@pytest.mark.parametrize("account,quantity,boundary,held_probability,exit_probability", [
+    ("jeremy", 500, .53, .515, .51),
+    ("alex", -500, .47, .485, .49),
+])
+def test_active_policy_requires_wider_entry_but_preserves_held_exit_boundary(
+    account, quantity, boundary, held_probability, exit_probability,
+):
+    config = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    opened = plan(probability=boundary, config=config)
+    assert abs(opened["targets"][account]) > config.min_trade_notional
+    assert opened["details"]["reason"] == "entry_threshold_met"
+    assert opened["details"]["confidence"] == pytest.approx(.02 / .14)
+
+    # Marginal conviction cannot start a position, but may retain its direction.
+    assert not any(plan(probability=held_probability, config=config)["targets"].values())
+    held = plan(probability=held_probability, current={account: quantity}, config=config)
+    assert held["details"]["reason"] == "hold_with_hysteresis"
+    assert held["targets"][account] * quantity > 0
+    for probability in (exit_probability, .5):
+        closed = plan(probability=probability, current={account: quantity}, config=config)
+        assert not any(closed["targets"].values())
+        assert should_rebalance(quantity, 0, config)
+
+
+def test_active_wider_entry_preserves_cost_risk_and_qualification_controls():
+    config = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    previous = replace(config, entry_band=.01)
+    assert config.require_qualified_forecasts
+    assert config.stop_loss_fraction == .03
+    assert config.per_symbol_gross_fraction == .15
+    assert config.pool_gross_fraction == .6
+    assert config.account_utilization == .8
+    assert config.perp_fee_rate == .00045 and config.spot_fee_rate == .0007
+    assert config.slippage_bps == 0
+    for probability in (.47, .49, .51, .53, .60, .65):
+        candidate = plan(probability=probability, config=config)
+        incumbent = plan(probability=probability, config=previous)
+        assert candidate["details"]["target_gross"] <= incumbent["details"]["target_gross"] + 1e-9
+    # The ordinary 60% adjustment floor never blocks a required risk reduction.
+    assert not should_rebalance(1000, 950, config)
+    assert should_rebalance(1000, 950, config, force_reduce=True)
 
 
 def test_minimal_config_does_not_read_a_missing_model_file_and_resolves_relative_paths(tmp_path, monkeypatch):
@@ -184,6 +227,47 @@ def test_hysteresis_holds_existing_direction_inside_flat_entry_deadband():
     assert held["targets"]["jeremy"] > 0
     assert plan(probability=0.52, current={"jeremy": 500})["details"]["direction"] == "flat"
     assert plan(probability=0.48, current={"alex": -500})["details"]["direction"] == "flat"
+
+
+@pytest.mark.parametrize("probability,current", [
+    (.5152342865366013, {"clearpond": .26424723000006484}),
+    (.4847657134633987, {"alex": -.26424723000006484}),
+    (.5152342865366013, {"jeremy": 12, "clearpond": 12.999999}),
+])
+def test_subminimum_residual_cannot_restart_hysteresis_below_entry(probability, current):
+    config = PaperConfig(entry_band=.03, exit_band=.01)
+    result = plan(probability=probability, current=current, config=config)
+    assert result["targets"] == {"alex": 0, "jeremy": 0, "clearpond": 0}
+    assert result["details"]["reason"] == "entry_deadband"
+    # Residual inventory is retained in accounting/risk diagnostics and may exit.
+    assert result["details"]["current_coin_gross"] == pytest.approx(sum(abs(v) for v in current.values()))
+    assert all(should_rebalance(value, 0, config) for value in current.values())
+
+
+@pytest.mark.parametrize("probability,current", [
+    (.5152342865366013, {"clearpond": 25}),
+    (.5152342865366013, {"jeremy": 12, "clearpond": 13}),
+    (.4847657134633987, {"alex": -25}),
+    (.5152342865366013, {"clearpond": 25 - 5e-13}),
+])
+def test_minimum_matching_pool_exposure_retains_hysteresis(probability, current):
+    result = plan(probability=probability, current=current, config=PaperConfig(entry_band=.03, exit_band=.01))
+    assert result["details"]["reason"] == "hold_with_hysteresis"
+    assert result["details"]["target_gross"] > 0
+
+
+@pytest.mark.parametrize("probability,current,account", [
+    (.53, {"clearpond": .26424723000006484}, "jeremy"),
+    (.47, {"alex": -.26424723000006484}, "alex"),
+])
+def test_dust_can_reenter_at_true_entry_threshold(probability, current, account):
+    config = PaperConfig(entry_band=.03, exit_band=.01)
+    result = plan(probability=probability, current=current, config=config)
+    assert result["details"]["reason"] == "entry_threshold_met"
+    assert abs(result["targets"][account]) > config.min_trade_notional
+    shared = replace(config, entry_band=.01)
+    marginal = .51 if probability > .5 else .49
+    assert plan(probability=marginal, current=current, config=shared)["targets"] == plan(probability=marginal, config=shared)["targets"]
 
 
 def test_exact_entry_threshold_is_symmetric_and_neutral_flattens():

@@ -1,0 +1,221 @@
+{
+  "prepared_at": "2026-09-29T04:09:12.186790+00:00",
+  "status": "PREPARED_NOT_EXECUTED",
+  "native_original_run": "C:/DATASTORE/ml/overnight-runs/20260929T040727.779758Z",
+  "expected_loop_a_cycle": "20260929T040728.646690Z-pid62304",
+  "source_session": "2026-09-28",
+  "action_date": "2026-09-29",
+  "provider_exclusive_end": "2026-09-29",
+  "deadline_at": "2026-09-29T11:00:00Z",
+  "target_completion_pacific": "2026-09-29T03:30:00-07:00",
+  "baseline_publication": "C:/DATASTORE/ml/nightly-gameplan-runs/20260926T061604.318956Z",
+  "expected_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "expected_forecasts": 264,
+  "expected_intents": 264,
+  "expected_entry_forecasts": 209,
+  "expected_opra_cursors": 33,
+  "syntax_validation": "ALL_HELPERS_AST_PARSE",
+  "files": [
+    {
+      "name": "verify_completed_run.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_completed_run.py",
+      "original_sha256": "5f3b2eee7e6c66db94589ebb52677360dd14e701d99f4f8d80ee2fd651974dd6",
+      "adapted_sha256": "d48f286ac03b521caf8e03bfc00f1ccfc931f2e59cdba76fd0094104b1a0974b"
+    },
+    {
+      "name": "verify_yg_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_yg_completion.py",
+      "original_sha256": "56e1b0bfbf6c61bd9af96822bfb38a5c2a25a5ab85adf33218cf600190e41c72",
+      "adapted_sha256": "350e710f5269b1c2cf67ab67b25061e43a79a9d20bb385af4938e656849aa4f8"
+    },
+    {
+      "name": "verify_archive_history.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_archive_history.py",
+      "original_sha256": "cdbc37e72bda7504568c018aca0344b678446fc5407a6fbd82e6c740dd98b706",
+      "adapted_sha256": "f452e0084d3aeb04be13983dbbb69764d6ad5c05249737347294d8790d767bad"
+    },
+    {
+      "name": "audit_provider_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit_provider_completion.py",
+      "original_sha256": "817826798b5c8c3c2bb5d32aaebd5951baa6e7e33d8906560c0c81bc993b560e",
+      "adapted_sha256": "665a8593e75431b21f5749b3a01de6aab7dddac9e943df181c534dbabc2f9193"
+    },
+    {
+      "name": "provider_advisories.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\provider_advisories.py",
+      "original_sha256": "daa1719654fbe5bcd07db653ae499697a408a3412bd03bfbb482b991b79c463d",
+      "adapted_sha256": "65511b157758ba702f48cafcacdc6e77c0223bac1dc70b177aca416acd74fc56"
+    },
+    {
+      "name": "review_models.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\review_models.py",
+      "original_sha256": "54e9a8b4195d624c6acdccb4386526879b6331231c02a40c61e84c679d5bb79f",
+      "adapted_sha256": "932c83c3dd32ba762a78c53e345226e51ea6ab4f9f2d184acdbc0a4ee75ea402"
+    },
+    {
+      "name": "audit_environment.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit_environment.py",
+      "original_sha256": "82f57cbfd2f33b76e4a74e5711a69997e74e3710aba04cb99196880aee044a39",
+      "adapted_sha256": "3f9deae4f6849a2ad3c14ddd8be9d34f2a4d87859f7715158eea44839345c91d"
+    },
+    {
+      "name": "run_final_checks.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\run_final_checks.py",
+      "original_sha256": "04cb2674d2ac4cd323bcd2c6cbe57508413281efe50df2876546ad9a62cb567f",
+      "adapted_sha256": "add863fa1f52a8d1d9c2c194adea83d1d6d6d0a77bc462b4fac3476a2b2a6239"
+    },
+    {
+      "name": "validate_helpers.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\validate_helpers.py",
+      "original_sha256": "e154311ee2dab91871cc89895d872e371c2e4e1e8b7dbe578554461e83d22fad",
+      "adapted_sha256": "a3a0b8a9ca2916a259f6ac47d6e998c701a7b2b20924421564f8e5e7a0cf1423"
+    },
+    {
+      "name": "preliminary_directional_review.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\preliminary_directional_review.py",
+      "original_sha256": "010c5c258cb9dda97a845e525095e3b2790756644bca09bc476dbdb1dbc1d79a",
+      "adapted_sha256": "1abcde4e58d3517f8c76f48b2ad727fdc2fc330ad721a23ce5b0602722ab4b03"
+    },
+    {
+      "name": "preliminary_sizing_review.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\preliminary_sizing_review.py",
+      "original_sha256": "43eceb8342ccc02f37f0b0e04f3b067ba10a985416c78a6145d6b0d7ae35187e",
+      "adapted_sha256": "63bc7d63f2369ac775f05b8f7a2207a45bdec34688bd528f599e6075be3e2b0b"
+    },
+    {
+      "name": "audit_optional_pricing.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\preflight\\review_pricing_gate.py",
+      "original_sha256": "2279af961bcfaa48c238994cd65d2b6729490a6995c6c3090386b6231a48bf57",
+      "adapted_sha256": "7330d7fb2fed99bb79f25dac8d3799a15b370609e50ee93f28553ea05dbeae27"
+    }
+  ],
+  "code_inventory_files": 268,
+  "changes_from_prior_environment": [
+    {
+      "path": "ml/hyperliquid_forecast_reader.py",
+      "previous_sha256": null,
+      "current_sha256": "1a6a423ec6669fe06a16fe26088c64c905ca399f138308242bb8b12f47d68738"
+    },
+    {
+      "path": "ml/hyperliquid_model_config.py",
+      "previous_sha256": "82be6075b80a5312438dc60ec7682f02f2776d0b2a58fc6dcda83e504a34627d",
+      "current_sha256": "290138ae9607ca2f0417b775d6de623d226a759d9f03e33ab1144d2ee611753b"
+    },
+    {
+      "path": "ml/hyperliquid_model_research.py",
+      "previous_sha256": null,
+      "current_sha256": "70f5836a6b335c88d20c20f40642e63d16cb0c3aa27347bede6f59edc68df8a2"
+    },
+    {
+      "path": "ml/hyperliquid_models.py",
+      "previous_sha256": "0b3c8c8de131fa6667e655a9d98010a1a74ae4416e5ac85bdfd220e4887b635c",
+      "current_sha256": "84b6f9e489797abe62b79b71f82c686b18561d0d4ce8e0bc3d3a9166491a1337"
+    },
+    {
+      "path": "ml/hyperliquid_paper_cadence.py",
+      "previous_sha256": null,
+      "current_sha256": "58bd8e1858f22aead3de3fc7762cbbcd88e640d90839dfd13dc65ce3fedb0427"
+    },
+    {
+      "path": "ml/hyperliquid_paper_comparison.py",
+      "previous_sha256": null,
+      "current_sha256": "003a34c493f9498c104dd62be907e57a911224efebfc2f7777cf05f6b5bce684"
+    },
+    {
+      "path": "ml/hyperliquid_paper_health.py",
+      "previous_sha256": null,
+      "current_sha256": "a3f2c96fa54ebceb54768c14fb56e96574425c3787ce474f4036d0bc813868e0"
+    },
+    {
+      "path": "ml/hyperliquid_paper_ledger.py",
+      "previous_sha256": "4809fc12406347810732176510acaab85be4071d02a2442afa9a6e4bc93a2f2e",
+      "current_sha256": "be0a775cceac0d9d35f058c85742931d6a5584fe3308bc25744d74ad1d0efc5e"
+    },
+    {
+      "path": "ml/hyperliquid_paper_market.py",
+      "previous_sha256": "ea25da22ff9b8e2fc24e9daa78fb4e4387f5e4adb56995b773ca1d831b83cbee",
+      "current_sha256": "db61a69042739127038d322352d18a7e084678cbcfeb3565ae2bd0d79a5e881d"
+    },
+    {
+      "path": "ml/hyperliquid_paper_policy.py",
+      "previous_sha256": "3a149e18d4674ea4958f981db520e6737a9f27d1e0872fcbff57b14a2f7f8e30",
+      "current_sha256": "a45db62db7895ddf18037e2431484ab5d27dc4ec13f046e12aa622fe18dd3cfc"
+    },
+    {
+      "path": "ml/hyperliquid_paper_review.py",
+      "previous_sha256": null,
+      "current_sha256": "9768fa9e8f3081e81bc3f1975cfd684e3b05769035a96e2a231d0904abb3071c"
+    },
+    {
+      "path": "ml/hyperliquid_paper_runtime.py",
+      "previous_sha256": "2787c857e4c04a43c03f1c04702b385cd37baf901b1cbbd3508f222a83f03df7",
+      "current_sha256": "8af513c1c03481d127b1b08b5c0917e3971280a0692c78b257b8d7c3e4169bfc"
+    },
+    {
+      "path": "ml/hyperliquid_paper_seed.py",
+      "previous_sha256": "e49757fb3452b4551b92af7f8b87ce15ea3563c3398d7f257ee86b628a2f9ce0",
+      "current_sha256": "e3abd2c195dc2bf3a64a874fc563ba8f5fa5de76ce00ade60c39455bd90d2bf2"
+    },
+    {
+      "path": "ml/hyperliquid_paper_verify.py",
+      "previous_sha256": null,
+      "current_sha256": "d1a786c46f57b997c50306866e44356755ae4a5880e28d4a3278e05c7329f25a"
+    },
+    {
+      "path": "ml/hyperliquid_powder_exchange.py",
+      "previous_sha256": null,
+      "current_sha256": "3ebcded4984b4480437c1bc5489776b20fcf43e3000554bd158e1c73c3d460c1"
+    },
+    {
+      "path": "ml/hyperliquid_powder_ledger.py",
+      "previous_sha256": null,
+      "current_sha256": "5f4b399062be1b3122707af23e46c01672290a00dede98c6bfef3b3379c01ae2"
+    },
+    {
+      "path": "ml/hyperliquid_powder_lock.py",
+      "previous_sha256": null,
+      "current_sha256": "cb2a3be78f33a67c790a1ed4cf1263cff4adf4f0e663a23c92f8429eb61e640f"
+    },
+    {
+      "path": "ml/hyperliquid_powder_runtime.py",
+      "previous_sha256": null,
+      "current_sha256": "710e76f820cb19fbf0ec5bc40284e02db2eddd2ef83e9714ab46f8f2b316e5ef"
+    },
+    {
+      "path": "ml/hyperliquid_research_classical.py",
+      "previous_sha256": null,
+      "current_sha256": "9b9ae6c04287a2a57e17696e5ac89381001d873dac36549147bf5d381b01b042"
+    },
+    {
+      "path": "ml/hyperliquid_research_sequences.py",
+      "previous_sha256": null,
+      "current_sha256": "4a65963f86ca904c1823d998efcca52ddf9ee8261e9f6ea2be35918812240772"
+    }
+  ],
+  "code_drift_policy": "Fail on uncaptured source drift; inspect and record exact reviewed bytes before any exception.",
+  "production_mutations": 0,
+  "pipeline_starts": 0,
+  "provider_calls": 0,
+  "orders_placed": 0,
+  "additional_helpers": {
+    "prepare_helpers.py": "ee101601d94147185bf193acff385df5ea3170a234080755a943d1050298bea0",
+    "prepare_optional_pricing.py": "791459c3447f0c340c6d8e07bb9a9c7809a083f8a44ac09e03953b0f202b95d1",
+    "prepare_preliminary_reviews.py": "7764c66ce8245d6341350f0b6c1b819fa11da104e789069302054c414f729c08",
+    "review_loop_b_weekly_prefix.py": "e87e9e88168990b7d689d033955f77fc4c6690dfe6a67cbecb8adf4d9ea4a476",
+    "watch_reviews.py": "43e65c7483bc0f2112fbbfe8a50dc4d797260aca662afe2ac68b7c745e70b82e"
+  },
+  "reviewed_at": "2026-09-29T06:08:23.834217+00:00",
+  "bounded_checks": "helper-review-tests.json"
+}

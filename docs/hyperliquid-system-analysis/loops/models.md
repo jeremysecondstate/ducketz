@@ -1,6 +1,6 @@
 # Models, forecasts and forward evaluation
 
-Last updated 2026-09-26 for 15-minute fitting and the consumer qualification contract; code/config authority.
+Last updated 2026-09-28 for next-five-minute forecasts, 300-second fitting progress and configured research horizons; code/config authority.
 
 One model runtime consumes completed data snapshots, schedules candidate fits,
 publishes forecasts and scores later outcomes. These activities share an
@@ -20,7 +20,7 @@ data or execute trades. Operator commands and artifact examples remain in the
 
 The verified market config supplies BTC, ETH, HYPE and ZEC, interval and
 datastore. Each `(coin, interval, horizon)` has separate fitted estimators,
-preprocessing, reports and predictions below `_models/<coin>/15m/h4`.
+preprocessing, reports and predictions below `_models/<coin>/5m/h1`.
 Shared source code does not mean one pooled cross-coin model.
 
 `_models/_runtime/.runtime.lock` permits one runtime for the datastore. The
@@ -39,14 +39,14 @@ while accepted settings remain in use. A removed market's pending fit can
 finish but is discarded when collected rather than published. Existing
 artifacts remain available for historical review.
 
-The present horizon list is `[4]`: four 15-minute candles, or a one-hour
+The present horizon list is `[1]`: one five-minute candle, or a next-five-minute
 outcome from each decision candle. Candidate fitting normally becomes due
-after 900 seconds (15 minutes) of source-candle progress since the saved candidate's
+after 300 seconds (five minutes) of source-candle progress since the saved candidate's
 input snapshot, with a changed source run. This avoids schedule drift from
 fit duration. Older metadata without source-close evidence falls back to
 publication age. Missing candidates, changed recipe/feature revision, invalid
 candidate timestamps, or explicit bounded force-training can also trigger work.
-The checked-in cadence changed from hourly on September 26; the config loader's
+The checked-in cadence changed from fifteen to five minutes on September 28; the config loader's
 fallback remains 3,600 seconds if `retrain_seconds` is omitted.
 
 A round-robin cursor selects due jobs across the configured keys. Failed
@@ -78,15 +78,27 @@ The forecast exposes `p_not_down` and its complementary `p_down`.
 
 | Partition | Verified config / boundary | Purpose |
 | --- | --- | --- |
-| Fitting | At least 1,000 usable rows before calibration | Fit imputer, optional scaler and estimator |
-| Calibration | 192 later usable rows | Calibrate each estimator's probabilities |
-| Assessment | Last 288 mature usable rows | Measure candidate eligibility; not fit parameters |
+| Fitting | Nominal first 70%; at least 1,000 rows after purging and any cap | Fit imputer, optional scaler and estimator |
+| Calibration | Nominal next 15% | Calibrate each estimator's probabilities |
+| Assessment | Remaining 15%, including rounding remainder | Measure candidate eligibility; not fit parameters |
+
+The live JSON explicitly selects `split_mode="fractions"`, with requested
+fractions 0.70/0.15/0.15. The denominator is mature usable rows before purging
+or a fitting cap. Fit and calibration nominal counts are floored; assessment
+receives the remainder. The Python compatibility default is still
+`fixed_rows`, with 192/288 reserved rows, when fraction controls are omitted.
+Those defaults describe the historical first run, not the current live split.
 
 At both boundaries, the preceding partition keeps only rows whose target
 `label_end_time` is **strictly before** the next partition's first decision
 close. Targets ending exactly at the boundary are excluded as well as those
 crossing it. Fitting must retain both classes. The report records actual
 partition counts, decision cutoffs, label-end cutoffs and purged rows.
+Purging does not refill blocks. Requested and effective fractions are saved
+separately; the latter retain the original denominator and need not sum to
+one. `max_train_rows` remains disabled; when set, it removes only oldest
+fitting rows after purging and does not shorten the holdout periods. See the
+[configuration and report fields](../../hyperliquid-models.md#chronological-fraction-controls).
 
 All four estimators use median imputation fitted only on the fitting block:
 
@@ -99,16 +111,26 @@ All four estimators use median imputation fitted only on the fitting block:
 
 Each member receives a later-block logistic/Platt calibration on raw logits
 when calibration contains both classes. With one calibration class, it retains
-uncalibrated probabilities and records a warning. The ensemble is the equal
-mean of the four member probabilities; there are no learned ensemble weights
-or online weight adjustments. Convergence warnings are retained in the report.
+uncalibrated probabilities and records a warning. Calibration regularization is
+configured separately from the base logistic estimator through `calibration_c`.
+The ensemble uses positive explicit `logistic_weight`, `extra_trees_weight`,
+`hist_gradient_boosting_weight` and `mlp_weight` values, normalized and persisted
+with each bundle for both assessment and prediction. Defaults preserve C=1 and
+equal weighting; older bundles without stored weights retain their equal mean.
+The September 28 trial selected calibration C=0.1 and weights 40/20/20/20 in that
+order. Refer to the current accepted handoff for deployment status. These weights
+are fixed for a bundle, with no online adjustment. Convergence warnings remain
+in the report. See the [Paper improvement workflow](../PAPER_IMPROVEMENT.md).
 
 The exact evaluated bundle is published without refitting on calibration or
 assessment rows. Parameters can therefore lag the latest input candle by days
 while inference uses its newest feature row. Inspect actual report cutoffs;
-15-minute fitting does not shorten this reserved-window gap (123 hours in the
-[first measured run](../../hyperliquid-models.md#first-measured-run)). Do not
-turn that observed lag into a permanent fixed duration.
+five-minute fitting does not shorten this reserved-window gap. At roughly
+5,000 mature five-minute rows, each 15% block reserves about 2.6 days; the
+initial `5m/h1` feasibility fitting lag was 125.17 hours, about 5.2 days.
+The historical fifteen-minute fractional comparison had a 382.5-hour lag;
+the [historical fixed-row first run](../../hyperliquid-models.md#first-measured-run)
+had a 123-hour lag. None is a permanent fixed duration.
 
 ## Qualification and publication
 
@@ -118,13 +140,28 @@ baseline, with the implementation's `1e-9` tolerance. The prior is estimated
 from matured fitting and calibration outcomes. Accuracy and ROC AUC are
 reported but are not the promotion gate.
 
-The assessment block is a promotion holdout, not an untouched final test.
-With regular complete 15-minute input, successive 288-row assessment blocks
-advance by one row and share 287 rows. Gaps or catch-up can change that step.
+The assessment block is a promotion holdout, not a globally untouched final
+test. Successive fractional assessment blocks overlap heavily; their sizes
+grow with usable history and rounding may leave a boundary unchanged on an
+adjacent build. Gaps or catch-up can also change the step.
 The faster cadence retains the same baseline comparisons and does not guarantee
 more Qualified models. Qualification concerns probability scores; it does not
 establish trading profitability after fees or funding.
 Current coin-specific qualification must be read from current records.
+
+The expanded-model comparison is separate from this live loop:
+`python -m ml.hyperliquid_model_research` uses the research 70/15/15 config,
+pins inputs and recipes, and writes only a new `_model_research` directory.
+It accepts the configured native interval and one selected horizon, currently
+`5m/h1`, requires matching labels and uncapped 70/15/15 splits, and retains
+configured calibration strength and weights in split-control comparisons.
+Its twelve available individual candidates include additional classical
+families and compact CNN, GRU and CNN+GRU models; optional CatBoost was absent
+in the measured environment. These candidates and their fixed blends are
+tested offline and are not active production members. There is no automatic
+publication or Paper reset. See the
+[research command and artifacts](../../hyperliquid-models.md#expanded-offline-model-research)
+and [comparison audit](../audits/2026-09-26-expanded-models-70-15-15.md).
 
 | Artifact | Authority and update contract |
 | --- | --- |
@@ -177,7 +214,7 @@ Without an accepted forecast, current Paper holds exposure subject to risk
 reductions and forbids new signal exposure/transfers. Powder remains inactive;
 it shares the qualification setting but retains its own missing-signal
 zero-target behavior. Neither a qualified badge nor a fresh forecast proves a
-fill occurred. Four bars describe the outcome horizon, not a fixed one-hour
+fill occurred. One five-minute bar describes the outcome horizon, not a fixed five-minute
 holding-period exit. See [Paper](paper.md).
 
 ## Failure evidence and maintenance

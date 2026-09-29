@@ -14,7 +14,7 @@ flowchart LR
     MODELS --> FIT["Hourly candidate job<br/>fit / calibrate / assess"]
     FIT --> BUNDLE["Immutable evaluated bundle<br/>candidate / qualified active pointers"]
     BUNDLE --> MODELS
-    MODELS --> PRED["Recorded P(not-down) / P(down)<br/>one-hour horizon<br/>new completed 15m candle"]
+    MODELS --> PRED["Recorded P(not-down) / P(down)<br/>next-five-minute horizon<br/>new completed 5m candle"]
     PRED --> PAPER["Paper portfolio runtime<br/>30-second quote / risk checks"]
     SNAP --> PAPER
     BOOKS["Public spot + perp books"] --> PAPER

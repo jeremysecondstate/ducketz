@@ -1,0 +1,138 @@
+{
+  "closed_at": "2026-09-29T06:58:01.057897+00:00",
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z",
+  "source_session": "2026-09-28",
+  "action_date": "2026-09-29",
+  "orders_placed": 0,
+  "all_eight_native_stages_complete": true,
+  "full_audit_sections_passed": 12,
+  "remaining_audit_commands_exit_zero": 5,
+  "native_restarts": 0,
+  "native_stage_repeats": 0,
+  "errors": [],
+  "supervision": {
+    "owner_token": "29918557-9e94-49dd-b438-9cd2c74337fd",
+    "monitor_renewals": 284,
+    "all_monitor_renewals_acquired": true,
+    "maximum_monitor_renewal_gap_seconds": 36.073351,
+    "first_monitor_renewal_at": "2026-09-29T04:07:51.321370+00:00",
+    "last_monitor_renewal_at": "2026-09-29T06:56:53.669538+00:00",
+    "monitor_stopped": true,
+    "matching_monitor_processes": [],
+    "release": {
+      "status": "RELEASED",
+      "owner_token": "29918557-9e94-49dd-b438-9cd2c74337fd",
+      "updated_at": "2026-09-29T06:57:48.829754+00:00",
+      "expires_at": "2026-09-29T06:57:48.829754+00:00"
+    }
+  },
+  "peer_review": {
+    "status": "PASS_NO_CORRECTIONS",
+    "reviewed_summary_sha256": "c28fc1917af7dca25827e53814833e8f74ccc0f71e9b46753cc498da433d8f7c",
+    "closure_only_summary_edit_after_review": true
+  },
+  "evidence": {
+    "completion-summary.md": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\completion-summary.md",
+      "sha256": "01b6ae2d118f9756c168f93e3e292ff69b12c0145ed1dfb4a348a02bb2a43547"
+    },
+    "verification\\audit-runner.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit-runner.json",
+      "sha256": "620a87872ac8731b8b88fe1756863778872096a8027922d21239766ee1e43aba"
+    },
+    "verification\\audit-runner-continuation.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit-runner-continuation.json",
+      "sha256": "cb21d1c554aee0a45caa17d65eaa17f057239d33cbd77d108d55ce73690bcb1b"
+    },
+    "verification\\completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\completion-audit.json",
+      "sha256": "5e54100c4243a00b815afba15f3b3e0dd9e2e73dcdddba7c4ad173a41f6f5034"
+    },
+    "verification\\yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\yg-completion.json",
+      "sha256": "054babd5677016ede3ed02a07f64f08f708a8adfaa2482cb9f495282943b7e24"
+    },
+    "verification\\provider-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\provider-completion.json",
+      "sha256": "82f0d76b6a4042943d28921b062a59f37355f051cc50ed6b031dc3acb1917fb7"
+    },
+    "verification\\provider-advisory-resolution.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\provider-advisory-resolution.json",
+      "sha256": "07a86f0b5dccc2daf5e1d1ea9d30be353840256cacacc12d273216e32e9d3fca"
+    },
+    "verification\\model-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\model-review.json",
+      "sha256": "697cf82bb081423600cb28810d4676f2d34b05095cac5c54122e1a41b2d81c64"
+    },
+    "verification\\model-metric-summary.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\model-metric-summary.json",
+      "sha256": "ff866f094fa4af757519d062f6caa2f7b7193a8b422fca5ffecc89f9b999b146"
+    },
+    "verification\\pricing-gate-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\pricing-gate-review.json",
+      "sha256": "d3ff255af302da3cb10ee8a49a009156dcd3abbbb7917f262cd8ec7c796fe65c"
+    },
+    "verification\\loop-b-weekly-prefix-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\loop-b-weekly-prefix-review.json",
+      "sha256": "916ea112d89cf88d9b795e2dc30e9fddf4d756d0c1546fa31815b95b4ca43d57"
+    },
+    "verification\\reviewed-isolated-code-drift.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\reviewed-isolated-code-drift.json",
+      "sha256": "66683b8f9733842ac01b5dc55c2b51e03c6050ab91fbbaccb63178f6d8457b29"
+    },
+    "verification\\audit-findings.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit-findings.json",
+      "sha256": "89cd3f2926bf5c49ee6fd32654739f1f0d89879b8b40c9db51ae47c0b1851a6d"
+    },
+    "preflight\\final-output-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\final-output-review.json",
+      "sha256": "62e0801a0ba03fa3c326b262d53f0ffa01dcafa1c32a37c4371d29087d89b2ad"
+    },
+    "preflight\\final-preservation.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\final-preservation.json",
+      "sha256": "f62d92193a44f5b5a2438a9436d915ac5536df074412a35c94adc0da30806263"
+    },
+    "preflight\\actuals-coverage-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\actuals-coverage-review.json",
+      "sha256": "f2197502a86107cf5e14602cb58566a3d0b1df9d265e1843cc0505a29bb4deda"
+    },
+    "preflight\\completion-summary-peer-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\completion-summary-peer-review.json",
+      "sha256": "f0c43a126542714ba6ecf859ba8639d389ef40dc2cd654c810c162d8eff9a6d5"
+    },
+    "preflight\\isolated-code-drift-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\isolated-code-drift-review.json",
+      "sha256": "6041b32b5a1725c79c3472a970e66f783caab82f4566156f794ee10d12a291fe"
+    },
+    "preflight\\native-reconciliation-verification.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\native-reconciliation-verification.json",
+      "sha256": "86e9168aa1b782f71635ead147bfb823974162ff7149b51559cdaa664831cd8f"
+    },
+    "supervision-release.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\supervision-release.json",
+      "sha256": "237d160adccfaf838952c2e76a0201e0e52538ffed9ba9c95f539d1b93cc8527"
+    },
+    "monitor\\monitor-closure.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\monitor\\monitor-closure.json",
+      "sha256": "a429905c1de61bad01a7f680753989f5ee4465c967f9bec51f65ccb2800b250e"
+    },
+    "monitor\\renewals.jsonl": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\monitor\\renewals.jsonl",
+      "sha256": "0bab6e80da077625fad11e4c5921918cdc7840d998bc2095ca6fb170b624fec0"
+    },
+    "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\receipt.json": {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\receipt.json",
+      "sha256": "77520fead00b3e73d093d61d1695362bf0b837e01c3956227579d06a6cbc030d"
+    },
+    "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\stage-report.json": {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\stage-report.json",
+      "sha256": "0b9dbb7cbbe304cbd4293150c62fba2f3ea98ab9ec901e3de7f234104d1fdb1c"
+    },
+    "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\operator-notes.md": {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\operator-notes.md",
+      "sha256": "4e81a75cc19f59ec518a082cfc7307ff5719fe7d4cbadf41410ede4597c127d6"
+    }
+  },
+  "next_action": "Do not rerun completed September 28 source. Preserve 21:05 Pacific schedule and native calendar no-ops."
+}

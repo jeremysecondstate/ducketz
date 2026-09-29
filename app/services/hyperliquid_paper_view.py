@@ -49,6 +49,7 @@ class PaperViewSnapshot:
     policy: dict = field(default_factory=dict)
     seed: dict = field(default_factory=dict)
     runtime: dict = field(default_factory=dict)
+    market_recipe: dict = field(default_factory=dict)
     sources: dict[str, SourceState] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
     history_sampled: bool = False
@@ -413,12 +414,60 @@ class HyperliquidPaperViewService:
             warnings.append(f"Timing journal unavailable: {type(exc).__name__}")
             return []
 
+    def _market_recipe(self, snapshot, now, warnings):
+        """Resolve the displayed experiment without importing an execution runtime."""
+        from datafetching.hyperliquid_candles import INTERVAL_MS
+        from ml.hyperliquid_model_config import DEFAULT_MODEL_CONFIG_PATH, load_config
+
+        models = _mapping(snapshot.runtime.get("models"))
+        coordinator = _mapping(snapshot.runtime.get("coordinator"))
+        config_path = models.get("config_path") or snapshot.policy.get("model_config")
+        if not config_path and self.data_root == DEFAULT_DATA_ROOT.resolve():
+            config_path = DEFAULT_MODEL_CONFIG_PATH
+        try:
+            if config_path:
+                model_config = load_config(config_path)
+                markets = model_config.load_markets()
+                if markets.output_root.resolve() != self.data_root:
+                    raise ValueError("Configured model datastore differs from this workspace")
+                interval, horizon, symbols = markets.interval, model_config.horizons_bars[0], markets.symbols
+            else:
+                # Older saved workspaces have no configuration provenance. Their
+                # reported recipe takes precedence over the original defaults.
+                interval = coordinator.get("interval", "15m")
+                horizons = models.get("horizons_bars", [snapshot.runtime.get("horizon_bars", 4)])
+                if not isinstance(horizons, (list, tuple)) or not horizons:
+                    raise ValueError("Reported forecast horizons are unavailable")
+                horizon = horizons[0]
+                symbols = coordinator.get("symbols", SYMBOLS)
+            if interval not in INTERVAL_MS or type(horizon) is not int or horizon < 1:
+                raise ValueError("Unsupported candle interval or forecast horizon")
+            if (not isinstance(symbols, (list, tuple)) or not symbols
+                    or any(not isinstance(coin, str) or re.fullmatch(r"[A-Z0-9]{1,20}", coin) is None for coin in symbols)):
+                raise ValueError("Configured market symbols are unavailable")
+            seconds = INTERVAL_MS[interval] / 1000
+            snapshot.market_recipe = {"interval": interval, "horizon_bars": horizon,
+                "horizon_minutes": seconds * horizon / 60, "candle_seconds": seconds,
+                "symbols": list(symbols)}
+            return snapshot.market_recipe
+        except (OSError, ValueError, TypeError, KeyError, IndexError) as exc:
+            detail = f"Market configuration unavailable: {exc}"
+            warnings.append(detail)
+            snapshot.sources["market_configuration"] = self._source(
+                "market_configuration", None, now, None, state="partial", detail=detail)
+            return None
+
     def _markets(self, snapshot, now, warnings):
+        recipe = self._market_recipe(snapshot, now, warnings)
+        if recipe is None:
+            return
+        interval, horizon = recipe["interval"], recipe["horizon_bars"]
+        candle_seconds, symbols = recipe["candle_seconds"], recipe["symbols"]
         training_cadence = _number(_mapping(snapshot.runtime.get("models")).get("retrain_seconds"))
         if training_cadence is None or training_cadence <= 0:
             training_cadence = 3600
-        for coin in SYMBOLS:
-            base = self.data_root / coin / "15m"
+        for coin in symbols:
+            base = self.data_root / coin / interval
             loop, error = self._json(base / "loop_status.json", warnings)
             pointer, pointer_error = self._json(base / "latest.json", warnings)
             summary = {}
@@ -435,8 +484,8 @@ class HyperliquidPaperViewService:
                 detail = detail or "Latest feature row is incomplete"
             if loop.get("status") in {"stopped", "failed"}:
                 state = "stopped"
-            snapshot.sources[f"data:{coin}"] = self._source(f"data:{coin}", stamp, now, 900,
-                                                            state=state, detail=detail, grace=1020)
+            snapshot.sources[f"data:{coin}"] = self._source(f"data:{coin}", stamp, now, candle_seconds,
+                                                            state=state, detail=detail, grace=candle_seconds + 120)
             timing = _mapping(loop.get("last_cycle_timing"))
             stages = _mapping(timing.get("timings_seconds"))
             if timing:
@@ -456,10 +505,10 @@ class HyperliquidPaperViewService:
                     "parquet_write_seconds": _number(stages.get("parquet_and_catalog_write")),
                     "before_publish_seconds": _number(stages.get("total_before_publish")),
                     "details": timing})
-            model = self.data_root / "_models" / coin / "15m" / "h4"
+            model = self.data_root / "_models" / coin / interval / f"h{horizon}"
             prediction, prediction_error = self._json(model / "latest_prediction.json", warnings)
-            source = self._source(f"forecast:{coin}", prediction.get("created_at_utc"), now, 900,
-                                 state=prediction_error, grace=1020)
+            source = self._source(f"forecast:{coin}", prediction.get("created_at_utc"), now, candle_seconds,
+                                 state=prediction_error, grace=candle_seconds + 120)
             if prediction:
                 validation_errors = []
                 probability = _number(prediction.get("p_not_down"))
@@ -472,16 +521,19 @@ class HyperliquidPaperViewService:
                     validation_errors.append("Forecast probabilities are invalid or do not sum to one")
                     probability = down = None
                 bars = _number(prediction.get("horizon_bars"))
-                if bars != 4 or prediction.get("interval", "15m") != "15m":
-                    validation_errors.append("Forecast horizon unavailable or inconsistent with the 15m/h4 source")
+                if bars != horizon or prediction.get("interval", interval) != interval:
+                    validation_errors.append(f"Forecast horizon unavailable or inconsistent with the {interval}/h{horizon} source")
                     bars = None
+                target = _timestamp(prediction.get("target_close_utc"))
+                if target is not None and target <= now:
+                    source = replace(source, state="stale", detail="Forecast outcome has already matured")
                 if validation_errors:
                     source = replace(source, state="partial", detail="; ".join(validation_errors))
-                forecast = {**prediction, "coin": coin, "qualification": _qualification(prediction),
+                forecast = {**prediction, "coin": coin, "interval": interval, "qualification": _qualification(prediction),
                             "source": "shared_model", "source_state": source.state,
                             "p_not_down": probability, "p_down": down,
                             "horizon_bars": int(bars) if bars is not None else None,
-                            "horizon_minutes": bars * 15 if bars is not None else None,
+                            "horizon_minutes": bars * candle_seconds / 60 if bars is not None else None,
                             "validation_errors": validation_errors}
                 record, report = {}, {}
                 model_id = prediction.get("model_id")
@@ -506,11 +558,14 @@ class HyperliquidPaperViewService:
         # has not been created yet. Event rows below enrich/replace this fallback.
         for job in snapshot.runtime.get("models", {}).get("completed_jobs", []) or []:
             if isinstance(job, dict) and isinstance(job.get("timing"), dict):
-                coin = str(job.get("market", "")).split("/")[0]
-                if coin in SYMBOLS:
+                identity = str(job.get("market", "")).split("/")
+                coin = identity[0]
+                if coin in symbols and identity[1:] == [interval, f"h{horizon}"]:
                     latest[coin] = {**job, "coin": coin, "at_utc": job["timing"].get("completed_at_utc")}
         for event in events:
-            if event.get("coin") in SYMBOLS and isinstance(event.get("timing"), dict):
+            if (event.get("coin") in symbols and isinstance(event.get("timing"), dict)
+                    and event.get("interval", "15m") == interval
+                    and event.get("horizon_bars", 4) == horizon):
                 latest[event["coin"]] = event
         for coin, event in latest.items():
             timing = event["timing"]

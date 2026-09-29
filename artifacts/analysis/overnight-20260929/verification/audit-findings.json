@@ -1,0 +1,965 @@
+{
+  "created_at": "2026-09-29T06:54:38.642963+00:00",
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z",
+  "action_date": "2026-09-29",
+  "audit_sections": [
+    "actuals_review",
+    "archive_history",
+    "cumulative_evaluation",
+    "enrichment",
+    "fetch_scope_log",
+    "gameplan",
+    "opra_coverage",
+    "overnight",
+    "planning_prices",
+    "reference_completion",
+    "stock_history",
+    "trade_plan"
+  ],
+  "environment": {
+    "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+    "code_files": 268,
+    "baseline_recorded_at": "2026-09-29T04:09:12.120415+00:00",
+    "reviewed_isolated_drift_paths": [
+      "ml/hyperliquid_paper_policy.py"
+    ],
+    "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\reviewed-isolated-code-drift.json"
+  },
+  "archive": {
+    "source_files": 988,
+    "source_bytes": 950452425,
+    "second_minute_partitions": 223,
+    "second_rows": 16443370,
+    "exact_ohlcv_overlap_minutes": 2842334,
+    "second_added_training_rows": 0,
+    "feature_ranges": {
+      "AAPL": {
+        "first_action_date": "2019-09-18",
+        "first_source_session": "2019-09-17",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1684
+      },
+      "AMZN": {
+        "first_action_date": "2019-09-18",
+        "first_source_session": "2019-09-17",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1684
+      },
+      "COST": {
+        "first_action_date": "2019-09-18",
+        "first_source_session": "2019-09-17",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1704
+      },
+      "CROX": {
+        "first_action_date": "2018-05-31",
+        "first_source_session": "2018-05-30",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 2094
+      },
+      "GOOG": {
+        "first_action_date": "2019-09-18",
+        "first_source_session": "2019-09-17",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1684
+      },
+      "IONQ": {
+        "first_action_date": "2021-11-01",
+        "first_source_session": "2021-10-29",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1211
+      },
+      "MU": {
+        "first_action_date": "2019-09-18",
+        "first_source_session": "2019-09-17",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1704
+      },
+      "NVDA": {
+        "first_action_date": "2019-09-18",
+        "first_source_session": "2019-09-17",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1676
+      },
+      "PATH": {
+        "first_action_date": "2021-05-20",
+        "first_source_session": "2021-05-19",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1325
+      },
+      "SNDK": {
+        "first_action_date": "2025-03-25",
+        "first_source_session": "2025-03-24",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 381
+      },
+      "TWST": {
+        "first_action_date": "2018-11-30",
+        "first_source_session": "2018-11-29",
+        "last_action_date": "2026-09-29",
+        "last_source_session": "2026-09-28",
+        "rows": 1966
+      }
+    },
+    "source_ranges": {
+      "AAPL": {
+        "minute_range": {
+          "first": "2019-08-19T08:00:00+00:00",
+          "last": "2026-09-28T23:59:00+00:00"
+        },
+        "minute_rows": 1450372,
+        "second_range": {
+          "first": "2026-08-05T08:00:00+00:00",
+          "last": "2026-08-14T23:59:45+00:00"
+        },
+        "second_rows": 143450,
+        "overlap_minutes": 6971
+      },
+      "AMZN": {
+        "minute_range": {
+          "first": "2019-08-19T08:00:00+00:00",
+          "last": "2026-09-28T23:59:00+00:00"
+        },
+        "minute_rows": 1330958,
+        "second_range": {
+          "first": "2026-08-05T08:00:00+00:00",
+          "last": "2026-08-14T23:59:52+00:00"
+        },
+        "second_rows": 116822,
+        "overlap_minutes": 6822
+      },
+      "COST": {
+        "minute_range": {
+          "first": "2019-08-19T12:02:00+00:00",
+          "last": "2026-09-28T23:54:00+00:00"
+        },
+        "minute_rows": 825556,
+        "second_range": {
+          "first": "2026-08-05T08:01:49+00:00",
+          "last": "2026-08-14T23:51:39+00:00"
+        },
+        "second_rows": 23798,
+        "overlap_minutes": 3755
+      },
+      "CROX": {
+        "minute_range": {
+          "first": "2018-05-01T13:30:00+00:00",
+          "last": "2026-09-28T21:13:00+00:00"
+        },
+        "minute_rows": 806322,
+        "second_range": {
+          "first": "2018-05-01T13:30:00+00:00",
+          "last": "2026-09-11T21:36:51+00:00"
+        },
+        "second_rows": 3619204,
+        "overlap_minutes": 802632
+      },
+      "GOOG": {
+        "minute_range": {
+          "first": "2019-08-19T08:00:00+00:00",
+          "last": "2026-09-28T23:59:00+00:00"
+        },
+        "minute_rows": 1128461,
+        "second_range": {
+          "first": "2026-08-05T08:00:00+00:00",
+          "last": "2026-08-14T23:58:53+00:00"
+        },
+        "second_rows": 93035,
+        "overlap_minutes": 6210
+      },
+      "IONQ": {
+        "minute_range": {
+          "first": "2021-10-01T08:03:00+00:00",
+          "last": "2026-09-28T23:49:00+00:00"
+        },
+        "minute_rows": 778735,
+        "second_range": {
+          "first": "2021-10-01T08:03:58+00:00",
+          "last": "2026-09-11T23:59:40+00:00"
+        },
+        "second_rows": 5817615,
+        "overlap_minutes": 770842
+      },
+      "MU": {
+        "minute_range": {
+          "first": "2019-08-19T08:00:00+00:00",
+          "last": "2026-09-28T23:59:00+00:00"
+        },
+        "minute_rows": 1115630,
+        "second_range": {
+          "first": "2026-08-05T08:00:00+00:00",
+          "last": "2026-08-14T23:59:54+00:00"
+        },
+        "second_rows": 197385,
+        "overlap_minutes": 7652
+      },
+      "NVDA": {
+        "minute_range": {
+          "first": "2019-08-19T08:03:00+00:00",
+          "last": "2026-09-28T23:59:00+00:00"
+        },
+        "minute_rows": 1446806,
+        "second_range": {
+          "first": "2026-08-05T08:00:00+00:00",
+          "last": "2026-08-14T23:59:11+00:00"
+        },
+        "second_rows": 183897,
+        "overlap_minutes": 7242
+      },
+      "PATH": {
+        "minute_range": {
+          "first": "2021-04-21T16:26:00+00:00",
+          "last": "2026-09-28T21:29:00+00:00"
+        },
+        "minute_rows": 603592,
+        "second_range": {
+          "first": "2021-04-21T16:26:00+00:00",
+          "last": "2026-09-11T23:57:50+00:00"
+        },
+        "second_rows": 3782745,
+        "overlap_minutes": 598660
+      },
+      "SNDK": {
+        "minute_range": {
+          "first": "2025-02-24T13:22:00+00:00",
+          "last": "2026-09-28T23:59:00+00:00"
+        },
+        "minute_rows": 269464,
+        "second_range": {
+          "first": "2026-08-05T08:00:04+00:00",
+          "last": "2026-08-14T23:59:56+00:00"
+        },
+        "second_rows": 164988,
+        "overlap_minutes": 7559
+      },
+      "TWST": {
+        "minute_range": {
+          "first": "2018-10-31T15:48:00+00:00",
+          "last": "2026-09-28T22:50:00+00:00"
+        },
+        "minute_rows": 628351,
+        "second_range": {
+          "first": "2018-10-31T15:48:59+00:00",
+          "last": "2026-09-11T23:11:43+00:00"
+        },
+        "second_rows": 2300431,
+        "overlap_minutes": 623989
+      }
+    },
+    "exclusions": {
+      "excluded_intervals": 70,
+      "excluded_undefined_observations": 17,
+      "optional_rows_excluded_future": 0,
+      "optional_rows_excluded_unknown_availability": 0,
+      "quality_resets": 25,
+      "split_boundaries": 26,
+      "target_discontinuity_boundaries": 5
+    },
+    "cohorts": {
+      "1d": {
+        "rows": 29712,
+        "first_action_date": "2019-09-18",
+        "last_action_date": "2026-09-28",
+        "boundary_excluded": 55583,
+        "quality_excluded": 105,
+        "conflicting_minute_rows": 0,
+        "all_rows_exactly_reproduced": true,
+        "by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 5381
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 5217
+          },
+          "COST": {
+            "first_action_date": "2020-03-03",
+            "last_action_date": "2026-09-28",
+            "rows": 1694
+          },
+          "CROX": {
+            "first_action_date": "2020-09-25",
+            "last_action_date": "2026-07-17",
+            "rows": 300
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-30",
+            "last_action_date": "2026-09-28",
+            "rows": 4206
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-09-25",
+            "rows": 1800
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 4078
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 5217
+          },
+          "PATH": {
+            "first_action_date": "2021-05-20",
+            "last_action_date": "2026-09-17",
+            "rows": 954
+          },
+          "SNDK": {
+            "first_action_date": "2025-04-03",
+            "last_action_date": "2026-09-28",
+            "rows": 845
+          },
+          "TWST": {
+            "first_action_date": "2021-03-23",
+            "last_action_date": "2026-08-19",
+            "rows": 20
+          }
+        }
+      },
+      "1h": {
+        "rows": 171897,
+        "first_action_date": "2018-05-31",
+        "last_action_date": "2026-09-28",
+        "boundary_excluded": 67314,
+        "quality_excluded": 217,
+        "conflicting_minute_rows": 0,
+        "all_rows_exactly_reproduced": true,
+        "by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 21845
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 21334
+          },
+          "COST": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 14910
+          },
+          "CROX": {
+            "first_action_date": "2018-05-31",
+            "last_action_date": "2026-09-28",
+            "rows": 14266
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 19343
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-09-28",
+            "rows": 13373
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 18983
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 21379
+          },
+          "PATH": {
+            "first_action_date": "2021-05-20",
+            "last_action_date": "2026-09-28",
+            "rows": 10623
+          },
+          "SNDK": {
+            "first_action_date": "2025-03-25",
+            "last_action_date": "2026-09-28",
+            "rows": 4130
+          },
+          "TWST": {
+            "first_action_date": "2018-11-30",
+            "last_action_date": "2026-09-28",
+            "rows": 11711
+          }
+        }
+      },
+      "1w": {
+        "rows": 5853,
+        "first_action_date": "2019-09-18",
+        "last_action_date": "2026-09-22",
+        "boundary_excluded": 11116,
+        "quality_excluded": 89,
+        "conflicting_minute_rows": 0,
+        "all_rows_exactly_reproduced": true,
+        "by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-19",
+            "last_action_date": "2026-09-22",
+            "rows": 1063
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-20",
+            "last_action_date": "2026-09-22",
+            "rows": 1028
+          },
+          "COST": {
+            "first_action_date": "2019-09-19",
+            "last_action_date": "2026-09-22",
+            "rows": 335
+          },
+          "CROX": {
+            "first_action_date": "2021-04-29",
+            "last_action_date": "2026-07-13",
+            "rows": 62
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-20",
+            "last_action_date": "2026-09-22",
+            "rows": 832
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-09-21",
+            "rows": 356
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-22",
+            "rows": 801
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-20",
+            "last_action_date": "2026-09-22",
+            "rows": 1029
+          },
+          "PATH": {
+            "first_action_date": "2021-05-21",
+            "last_action_date": "2026-09-10",
+            "rows": 170
+          },
+          "SNDK": {
+            "first_action_date": "2025-05-29",
+            "last_action_date": "2026-09-22",
+            "rows": 167
+          },
+          "TWST": {
+            "first_action_date": "2021-03-12",
+            "last_action_date": "2026-08-20",
+            "rows": 10
+          }
+        }
+      },
+      "4h": {
+        "rows": 42965,
+        "first_action_date": "2018-05-31",
+        "last_action_date": "2026-09-28",
+        "boundary_excluded": 25366,
+        "quality_excluded": 66,
+        "conflicting_minute_rows": 0,
+        "all_rows_exactly_reproduced": true,
+        "by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 5867
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 5658
+          },
+          "COST": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 3751
+          },
+          "CROX": {
+            "first_action_date": "2018-05-31",
+            "last_action_date": "2026-09-28",
+            "rows": 2929
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 4971
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-09-28",
+            "rows": 3241
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 4934
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-28",
+            "rows": 5729
+          },
+          "PATH": {
+            "first_action_date": "2021-05-20",
+            "last_action_date": "2026-09-28",
+            "rows": 2654
+          },
+          "SNDK": {
+            "first_action_date": "2025-03-25",
+            "last_action_date": "2026-09-28",
+            "rows": 1076
+          },
+          "TWST": {
+            "first_action_date": "2018-11-30",
+            "last_action_date": "2026-09-28",
+            "rows": 2155
+          }
+        }
+      }
+    },
+    "current_probability_rows_exactly_reproduced": 264,
+    "prefix_acquisition": {
+      "new_acquisition_required": false,
+      "requests": 0
+    }
+  },
+  "directional_models": {
+    "1h": {
+      "fitted_target_rows": 155684,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2504468341500252,
+          "training_rate_baseline": 0.25000011538255673,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.25500011538255674,
+          "actual_baseline_excess": 0.00044671876746847,
+          "margin_to_maximum": 0.00455328123253153,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6940517767826425,
+          "training_rate_baseline": 0.6931474113250805,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7031474113250805,
+          "actual_baseline_excess": 0.000904365457562,
+          "margin_to_maximum": 0.009095634542438,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 154
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "fitted_rows": 1
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 143,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        }
+      }
+    },
+    "4h": {
+      "fitted_target_rows": 38481,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2498752537631933,
+          "training_rate_baseline": 0.25005945002524177,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2550594500252418,
+          "actual_baseline_excess": -0.00018419626204847,
+          "margin_to_maximum": 0.00518419626204847,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6928993652437955,
+          "training_rate_baseline": 0.693266090287389,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.703266090287389,
+          "actual_baseline_excess": -0.0003667250435935,
+          "margin_to_maximum": 0.0103667250435935,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 44
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 24
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 78,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    },
+    "1d": {
+      "fitted_target_rows": 24885,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25066679133323116,
+          "training_rate_baseline": 0.250807636535065,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.255807636535065,
+          "actual_baseline_excess": -0.00014084520183384,
+          "margin_to_maximum": 0.00514084520183384,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6944854408224492,
+          "training_rate_baseline": 0.6947627936898642,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7047627936898642,
+          "actual_baseline_excess": -0.000277352867415,
+          "margin_to_maximum": 0.010277352867415,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 55
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 2
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 11,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        }
+      }
+    },
+    "1w": {
+      "fitted_target_rows": 4847,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25288658094285227,
+          "training_rate_baseline": 0.25135371090241965,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.25635371090241965,
+          "actual_baseline_excess": 0.00153287004043262,
+          "margin_to_maximum": 0.00346712995956738,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6990195396169795,
+          "training_rate_baseline": 0.6958813034947874,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7058813034947874,
+          "actual_baseline_excess": 0.0031382361221921,
+          "margin_to_maximum": 0.0068617638778079,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 11
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 8
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 39,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    }
+  },
+  "sizing_quality": {
+    "1h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 143,
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+      }
+    },
+    "4h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 78,
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      }
+    },
+    "1d": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 11,
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+      }
+    },
+    "1w": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 39,
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      }
+    }
+  },
+  "providers": {
+    "status": "PASS_NATIVE_LOOP_A_AND_33_OPRA_SCOPES_COMPLETE",
+    "issues": [],
+    "current_cursor_count": 33,
+    "current_partition_count": 33,
+    "current_data_files_hashed": 66,
+    "observed_estimated_download_bytes": 4882915488
+  },
+  "optional_provider_disposition": "KNOWN_OPTIONAL_LIMITATIONS_REVERIFIED",
+  "optional_pricing": {
+    "status": "KNOWN_OPTIONAL_PRICING_QUARANTINE_UNCHANGED_AUTHORITY",
+    "failed_route_count": 99,
+    "compact_source_files_matched": 51,
+    "compact_source_bytes_hashed": 10208882,
+    "group_summary": {
+      "constraints": {
+        "routes": 99,
+        "passing_routes": 0,
+        "maximum_complete_fraction": 0.014204545454545454,
+        "maximum_fresh_joined_fraction": 0.014204545454545454,
+        "maximum_distinct_targets": 1
+      },
+      "edge": {
+        "routes": 99,
+        "passing_routes": 0,
+        "maximum_complete_fraction": 0.006024096385542169,
+        "maximum_fresh_joined_fraction": 0.006024096385542169,
+        "maximum_distinct_targets": 1
+      },
+      "fair_value": {
+        "routes": 99,
+        "passing_routes": 0,
+        "maximum_complete_fraction": 0.006024096385542169,
+        "maximum_fresh_joined_fraction": 0.006024096385542169,
+        "maximum_distinct_targets": 1
+      },
+      "interval_calibration": {
+        "routes": 99,
+        "passing_routes": 0,
+        "maximum_complete_fraction": 0,
+        "maximum_fresh_joined_fraction": 0,
+        "maximum_distinct_targets": 0
+      },
+      "liquidity": {
+        "routes": 99,
+        "passing_routes": 0,
+        "maximum_complete_fraction": 0.006024096385542169,
+        "maximum_fresh_joined_fraction": 0.006024096385542169,
+        "maximum_distinct_targets": 1
+      },
+      "uncertainty": {
+        "routes": 99,
+        "passing_routes": 0,
+        "maximum_complete_fraction": 0,
+        "maximum_fresh_joined_fraction": 0,
+        "maximum_distinct_targets": 0
+      }
+    }
+  },
+  "planning": {
+    "rows": 264,
+    "available_cash": 18.14,
+    "hourly_rows": 14,
+    "event_count": 46,
+    "cash_share_conservation": "VERIFIED_BY_NATIVE_RECOMPUTATION_AND_EVENT_ROLLFORWARD",
+    "summary": {
+      "buy_events": 24,
+      "cash_buffer": 0.907,
+      "cash_change_high": 422.27,
+      "cash_change_low": -16.63,
+      "direction_buy_rows": 24,
+      "direction_sell_rows": 22,
+      "ending_cash_base": 219.9,
+      "ending_cash_high": 440.41,
+      "ending_cash_low": 1.51,
+      "sell_events": 22,
+      "starting_cash": 18.14,
+      "trade_events": 46
+    },
+    "synthetic_rows": 395,
+    "synthetic_current_anchors": {
+      "CROX|2026-09-29": {
+        "symbol": "CROX",
+        "gap_minutes": 166.0,
+        "observed_at": "2026-09-28T21:14:00+00:00",
+        "effective_at": "2026-09-29T00:00:00+00:00",
+        "price": 122.61,
+        "reason": "ASSUMED_NO_TRADES"
+      },
+      "IONQ|2026-09-29": {
+        "symbol": "IONQ",
+        "gap_minutes": 10.0,
+        "observed_at": "2026-09-28T23:50:00+00:00",
+        "effective_at": "2026-09-29T00:00:00+00:00",
+        "price": 44.65,
+        "reason": "ASSUMED_NO_TRADES"
+      },
+      "PATH|2026-09-29": {
+        "symbol": "PATH",
+        "gap_minutes": 150.0,
+        "observed_at": "2026-09-28T21:30:00+00:00",
+        "effective_at": "2026-09-29T00:00:00+00:00",
+        "price": 12.21,
+        "reason": "ASSUMED_NO_TRADES"
+      },
+      "TWST|2026-09-29": {
+        "symbol": "TWST",
+        "gap_minutes": 69.0,
+        "observed_at": "2026-09-28T22:51:00+00:00",
+        "effective_at": "2026-09-29T00:00:00+00:00",
+        "price": 180.98,
+        "reason": "ASSUMED_NO_TRADES"
+      }
+    }
+  },
+  "actuals": {
+    "coverage": {
+      "forecast_outcomes": {
+        "EVALUATED": 165,
+        "MATURE_AWAITING_DATA": 33,
+        "PENDING_MATURITY": 66
+      },
+      "same_clock_prices": {
+        "COMPARED": 137,
+        "MATURE_AWAITING_DATA": 17
+      }
+    },
+    "directional_calls_correct": 84,
+    "directional_calls_scored": 165,
+    "direction_accuracy": 0.509090909090909
+  },
+  "cumulative_evaluation": {
+    "publications": 26,
+    "direction_accuracy": 0.5651100134710373,
+    "evaluated": 4454,
+    "forecasts": 5568,
+    "mature_awaiting_data": 949,
+    "mean_brier_score": 0.24180462571776795,
+    "pending_maturity": 165,
+    "raw_direction_accuracy": 0.495703544575725
+  },
+  "evidence": {
+    "audit-runner-continuation.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit-runner-continuation.json",
+      "sha256": "cb21d1c554aee0a45caa17d65eaa17f057239d33cbd77d108d55ce73690bcb1b"
+    },
+    "audit-runner.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit-runner.json",
+      "sha256": "620a87872ac8731b8b88fe1756863778872096a8027922d21239766ee1e43aba"
+    },
+    "completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\completion-audit.json",
+      "sha256": "5e54100c4243a00b815afba15f3b3e0dd9e2e73dcdddba7c4ad173a41f6f5034"
+    },
+    "provider-advisory-resolution.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\provider-advisory-resolution.json",
+      "sha256": "07a86f0b5dccc2daf5e1d1ea9d30be353840256cacacc12d273216e32e9d3fca"
+    },
+    "reviewed-isolated-code-drift.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\reviewed-isolated-code-drift.json",
+      "sha256": "66683b8f9733842ac01b5dc55c2b51e03c6050ab91fbbaccb63178f6d8457b29"
+    },
+    "isolated-code-drift-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\preflight\\isolated-code-drift-review.json",
+      "sha256": "6041b32b5a1725c79c3472a970e66f783caab82f4566156f794ee10d12a291fe"
+    }
+  },
+  "limits": [
+    "Native raw and normalized files and DBN request headers verified; raw second-level DBN records were not independently replayed.",
+    "Saved original production-cursor content hashes and manifest semantics verified, but native receipt has no separate outer checksum of that snapshot file.",
+    "Four directional groups pass saved v2 tolerances; only4h and1d beat both training-rate baselines. Thin exact TWST route evidence is explicit.",
+    "All four sizing groups fitted, zero qualified scopes; no model status was upgraded and no fit/retry performed.",
+    "CME derived stale context and capped MBP, retained FMP clock-skew rows, and99optional Pricing route failures remain excluded/limited.",
+    "Planning synthetic references follow current saved contract only. Actual/training price boundaries stay five minutes; no synthetic actuals.",
+    "Concurrent Hyperliquid paper-policy change admitted only at exact reviewed hash; original guard failure/baseline remain preserved.",
+    "Broker controls, ledgers, schedules, claims and bounded planning/actuals outputs independently audited by preflight."
+  ],
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "production_mutations": 0
+}

@@ -3,6 +3,79 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-09-28 — Two-hour competitive Paper rounds
+
+Changed the existing GPT-6 Astra / Ultra improvement task to start at two-hour
+rounds. A verified after-cost win extends the next round by one hour; a loss or
+tie retains its duration and triggers tuning. The persistent cadence helper
+binds an immutable result to each experiment and advances once after a verified
+fresh mirror; early, late or unrankable evidence cannot earn promotion.
+This supersedes the three-day schedule and 60-hour guard. Operations Watch v14
+retains its 30-minute schedule and narrow monitoring/recovery scope.
+
+After the user confirmed Clear Pond spot purchases, archived the prior 5m run
+with all638files verified and launched a new ten-position mirror at $43,877.58.
+Kept the current four-family recipe for the first scored round. Native opening,
+trading/accounting, health and completion checks passed; the first deadline is
+September28 at21:20:36 PDT. See the
+[competitive-round audit](audits/2026-09-28-two-hour-paper-ladder.md).
+
+## 2026-09-28 — Five-minute forecasts and fresh Paper mirror
+
+Activated the user-approved 5m OHLCV / next-5m h1 trial with 300-second fitting
+progress, interval-aware dashboard/health/research and unchanged four-family
+recipe and risk gates. Preserved the stopped 15m Paper/models and a verified
+copy of its complete candle/coordinator history. The fresh nine-position mirror
+opened at $43,937.02 with zero opening P/L or costs, and live append, forecasting,
+retraining and Paper accounting passed the next five-minute cycle. Operations
+Watch v13 and Paper Improvement v2 preserve the existing schedules/model settings
+and retain five-minute history. See the
+[launch audit](audits/2026-09-28-five-minute-paper-launch.md) for exact evidence,
+subsequent trading costs and the October 1 review.
+
+## 2026-09-28 — Three-day Paper improvement and first verified cycle
+
+Added Hyperliquid Paper Improvement as an ACTIVE local Scheduled task, every
+three days at 14:00 Pacific using GPT-6 Astra / Ultra. The workflow compares
+Paper with the actual Duckets accounts, tests justified changes, requires
+one-for-one replacement for removed deployed model members, archives completed
+results, and verifies a fresh account mirror before resuming simulated Paper.
+The native comparison and staged lifecycle tools preserve source evidence,
+checksums, maintenance ownership and durable accepted-baseline receipts.
+Operations Watch v12 accepts that handoff while retaining its prior scope and
+30-minute GPT-6 Luna / Extra High configuration.
+
+The first cycle preserved 3,358 files / 2,397,877,031 bytes. Closing Paper was
+$43,667.72 versus actual $43,919.15, about $251.41 behind at common marks.
+The new trial uses calibration C=0.1 and 40/20/20/20 logistic/ExtraTrees/HistGB/MLP
+weights, retaining all four families and the existing split, gates and Paper
+policy. A $43,920.98 nine-position opening passed zero-cost and raw-source
+verification; fresh models and Paper were verified running with advancing
+accounting. The next review is scheduled for October 1 at 14:00 PDT. See the
+[first-cycle audit](audits/2026-09-28-self-improvement-first-cycle.md) for evidence,
+test results, later startup costs and limitations of the candidate study.
+
+## 2026-09-26 — Approved 70/15/15 training and BTC-inclusive fresh mirror
+
+Activated chronological 70/15/15 fitting/calibration/assessment with strict
+horizon purges and the existing four estimator families. Additional classical
+and CNN/GRU candidates remain research-only. The exact-production split control
+improved mean Brier on matched timestamps in three markets and worsened ZEC;
+it does not establish after-cost profitability. See the
+[expanded-model comparison](audits/2026-09-26-expanded-models-70-15-15.md).
+
+Preserved the prior Paper/model trees with all 205 files matching their hashes.
+Verified a fresh **$44,083.99583107362** opening with nine inherited positions,
+including **0.2239149983 Clear Pond BTC**, and zero opening P/L, fills and fees.
+Retained raw public-account responses independently reconcile quantities,
+cash/collateral and perpetual entries. Subsequent strategy fills and their
+$26.62 initial fees are recorded separately from the opening proof. The first
+trading and advancing accounting/health checks passed. Maintenance completed
+at 18:16:19 UTC and Operations Watch v11 accepted the baseline with its ACTIVE
+schedule/model/project settings preserved. See the
+[operational receipt](audits/2026-09-26-701515-btc-fresh-mirror.md).
+**468 tests passed, one optional CatBoost test skipped.**
+
 ## 2026-09-26 — Bounded retuning and fresh verified mirror
 
 Tested and rejected three model alternatives on chronological, purged data;

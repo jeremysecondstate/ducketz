@@ -6,7 +6,8 @@ bundle is the bundle returned for publication: there is no hidden final refit.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal
 import json
 from pathlib import Path
 import re
@@ -56,8 +57,22 @@ class ModelSettings:
     random_state: int = 42
     model_threads: int = 2
     max_train_rows: int | None = None
+    split_mode: str = "fixed_rows"
+    train_fraction: float | None = None
+    calibration_fraction: float | None = None
+    assessment_fraction: float | None = None
+    calibration_c: float = 1.0
+    logistic_weight: float = 1.0
+    extra_trees_weight: float = 1.0
+    hist_gradient_boosting_weight: float = 1.0
+    mlp_weight: float = 1.0
 
     def __post_init__(self) -> None:
+        for name in ("calibration_c", "logistic_weight", "extra_trees_weight",
+                     "hist_gradient_boosting_weight", "mlp_weight"):
+            value = getattr(self, name)
+            if type(value) not in (int, float) or not np.isfinite(value) or value <= 0:
+                raise ValueError(f"{name} must be a finite positive number.")
         for name in ("horizon_bars", "min_train_rows", "calibration_rows",
                      "assessment_rows", "model_threads"):
             value = getattr(self, name)
@@ -67,6 +82,16 @@ class ModelSettings:
         if self.max_train_rows is not None and (
                 type(self.max_train_rows) is not int or self.max_train_rows < self.min_train_rows):
             raise ValueError("max_train_rows must be None or an integer >= min_train_rows.")
+        if self.split_mode not in ("fixed_rows", "fractions"):
+            raise ValueError("split_mode must be fixed_rows or fractions.")
+        fractions = (self.train_fraction, self.calibration_fraction, self.assessment_fraction)
+        if self.split_mode == "fixed_rows":
+            if any(value is not None for value in fractions):
+                raise ValueError("Fraction controls require split_mode='fractions'.")
+        elif (any(type(value) not in (int, float) or not np.isfinite(value)
+                  or not 0 < value < 1 for value in fractions)
+              or not np.isclose(sum(fractions), 1.0, rtol=0, atol=1e-12)):
+            raise ValueError("All three split fractions must be finite, between zero and one, and sum to one.")
         if (isinstance(self.random_state, bool)
                 or not isinstance(self.random_state, int)
                 or not 0 <= self.random_state <= 2**32 - 1):
@@ -98,6 +123,7 @@ class ModelBundle:
     source_run_id: str
     calibrated_through_close_utc: str = ""
     fit_label_end_utc: str = ""
+    ensemble_weights: dict[str, float] = field(default_factory=dict)
 
 
 def _market(coin: str, interval: str) -> tuple[str, str]:
@@ -209,25 +235,84 @@ def _training_rows(snapshot: MarketSnapshot, horizon_bars: int) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
-def _split_rows(frame: pd.DataFrame, settings: ModelSettings) -> dict[str, pd.DataFrame]:
-    """Purge partition boundaries, then optionally retain only the latest fit rows."""
-    if len(frame) < settings.assessment_rows:
-        raise ValueError("Not enough mature labels for the assessment block.")
-    assessment = frame.iloc[-settings.assessment_rows:].copy()
-    # Strict inequality intentionally drops boundary labels that finish exactly
-    # at the next block's first decision time, as well as those finishing later.
-    before_assessment = frame.loc[frame["label_end_time"] < assessment["close_time"].iloc[0]]
-    if len(before_assessment) < settings.calibration_rows:
-        raise ValueError("Not enough mature labels for the purged calibration block.")
-    calibration = before_assessment.iloc[-settings.calibration_rows:].copy()
-    fit = frame.loc[frame["label_end_time"] < calibration["close_time"].iloc[0]].copy()
+def _split_rows_with_details(
+    frame: pd.DataFrame, settings: ModelSettings,
+) -> tuple[dict[str, pd.DataFrame], dict]:
+    """Chronological blocks with explicit nominal allocation and purging losses.
+
+    Fractional counts refer to mature usable rows before purging: floor the fit
+    and calibration allocations, then assign rounding remainder to assessment.
+    Purge within those nominal blocks without borrowing replacement rows.
+    The optional training cap is applied only after purging in either mode.
+    """
+    if (frame.empty or not frame["close_time"].is_monotonic_increasing
+            or frame["close_time"].duplicated().any()
+            or frame["close_time"].isna().any() or frame["label_end_time"].isna().any()
+            or (frame["label_end_time"] < frame["close_time"]).any()):
+        raise ValueError("Split rows require unique chronological decisions and valid label end times.")
+    total = len(frame)
+    if settings.split_mode == "fractions":
+        # Respect configured decimal fractions at exact integer boundaries
+        # (e.g. 90 * 0.70 is 63, not a binary-float 62.999... floor).
+        fit_count = int(Decimal(str(settings.train_fraction)) * total)
+        calibration_count = int(Decimal(str(settings.calibration_fraction)) * total)
+        nominal_counts = {"fit": fit_count, "calibration": calibration_count,
+                          "assessment": total - fit_count - calibration_count}
+        if calibration_count < 2 or nominal_counts["assessment"] < 2:
+            raise ValueError("Fractional calibration and assessment blocks each need at least two rows.")
+        fit_nominal = frame.iloc[:fit_count]
+        calibration_nominal = frame.iloc[fit_count:fit_count + calibration_count]
+        assessment = frame.iloc[fit_count + calibration_count:].copy()
+        # Strict inequality excludes labels ending exactly at the next block's
+        # first decision. Use elapsed timestamps, not a fixed number of rows.
+        fit = fit_nominal.loc[fit_nominal["label_end_time"] < calibration_nominal["close_time"].iloc[0]].copy()
+        calibration = calibration_nominal.loc[
+            calibration_nominal["label_end_time"] < assessment["close_time"].iloc[0]].copy()
+        if len(calibration) < 2:
+            raise ValueError("Not enough mature labels for the purged calibration block.")
+        boundary_purged = {"fit_to_calibration": fit_count - len(fit),
+                           "calibration_to_assessment": calibration_count - len(calibration)}
+        requested_counts = nominal_counts
+        requested_fractions = {"fit": settings.train_fraction, "calibration": settings.calibration_fraction,
+                               "assessment": settings.assessment_fraction}
+    else:
+        if total < settings.assessment_rows:
+            raise ValueError("Not enough mature labels for the assessment block.")
+        assessment = frame.iloc[-settings.assessment_rows:].copy()
+        before_assessment = frame.loc[frame["label_end_time"] < assessment["close_time"].iloc[0]]
+        if len(before_assessment) < settings.calibration_rows:
+            raise ValueError("Not enough mature labels for the purged calibration block.")
+        calibration = before_assessment.iloc[-settings.calibration_rows:].copy()
+        fit = frame.loc[frame["label_end_time"] < calibration["close_time"].iloc[0]].copy()
+        boundary_purged = {"fit_to_calibration": len(before_assessment) - len(calibration) - len(fit),
+                           "calibration_to_assessment": total - len(assessment) - len(before_assessment)}
+        requested_counts = {"fit": None, "calibration": settings.calibration_rows,
+                            "assessment": settings.assessment_rows}
+        requested_fractions = None
+    fit_rows_before_window_cap = len(fit)
     if settings.max_train_rows is not None:
         fit = fit.iloc[-settings.max_train_rows:].copy()
     if len(fit) < settings.min_train_rows:
         raise ValueError(f"Only {len(fit)} training rows after horizon purging; need {settings.min_train_rows}.")
     if fit["y_not_down"].nunique() != 2:
         raise ValueError("Training labels must contain both down and not-down outcomes.")
-    return {"fit": fit, "calibration": calibration, "assessment": assessment}
+    blocks = {"fit": fit, "calibration": calibration, "assessment": assessment}
+    effective_counts = {name: len(block) for name, block in blocks.items()}
+    details = {"split_mode": settings.split_mode, "requested_split_fractions": requested_fractions,
+               "requested_split_rows": requested_counts, "effective_split_rows": effective_counts,
+               "effective_split_fractions": {name: count / total for name, count in effective_counts.items()},
+               "split_fraction_denominator": "mature_usable_rows_before_purging_and_window_cap",
+               "fraction_rounding": "floor_fit_and_calibration_remainder_to_assessment" if requested_fractions else None,
+               "fit_rows_before_window_cap": fit_rows_before_window_cap,
+               "training_window_omitted_rows": fit_rows_before_window_cap - len(fit),
+               "purged_rows": sum(boundary_purged.values()), "boundary_purged_rows": boundary_purged,
+               "training_window_policy": "Keep latest max_train_rows after boundary purging; effective fractions may differ from requested fractions."}
+    return blocks, details
+
+
+def _split_rows(frame: pd.DataFrame, settings: ModelSettings) -> dict[str, pd.DataFrame]:
+    """Return chronological, horizon-purged blocks; fixed-row behavior is default."""
+    return _split_rows_with_details(frame, settings)[0]
 
 
 def _make_estimators(settings: ModelSettings) -> dict[str, Pipeline]:
@@ -284,6 +369,27 @@ def _calibrated_probability(bundle: ModelBundle, name: str, values: pd.DataFrame
     return raw if calibrator is None else _positive_probability(calibrator, _logit(raw))
 
 
+def _normalized_weights(weights: dict[str, float]) -> dict[str, float]:
+    values = list(weights.values())
+    if any(type(value) not in (int, float) or not np.isfinite(value) or value <= 0 for value in values):
+        raise ValueError("Ensemble weights must be finite positive numbers.")
+    # Scaling first prevents overflow for otherwise valid large positive weights.
+    scale = max(values)
+    total = sum(value / scale for value in values)
+    return {name: weight / scale / total for name, weight in weights.items()}
+
+
+def _ensemble_probability(predictions: dict[str, np.ndarray], weights: dict[str, float]) -> np.ndarray:
+    """Use the persisted positive weights; old bundles retain their equal mean."""
+    if not weights:
+        return np.mean(np.column_stack(list(predictions.values())), axis=1)
+    if set(weights) != set(predictions):
+        raise ValueError("Ensemble weights must match the estimator names.")
+    normalized = _normalized_weights(weights)
+    return np.average(np.column_stack(list(predictions.values())), axis=1,
+                      weights=[normalized[name] for name in predictions])
+
+
 def _metrics(labels: np.ndarray, probabilities: np.ndarray) -> dict:
     return {
         "rows": len(labels),
@@ -318,10 +424,8 @@ def train_candidate(
     started = perf_counter()
     _validate_snapshot(snapshot)
     frame = _training_rows(snapshot, settings.horizon_bars)
-    blocks = _split_rows(frame, settings)
+    blocks, split_details = _split_rows_with_details(frame, settings)
     fit, calibration, assessment_rows = (blocks[name] for name in ("fit", "calibration", "assessment"))
-    fit_rows_before_window_cap = int((frame["label_end_time"] < calibration["close_time"].iloc[0]).sum())
-    training_window_omitted_rows = fit_rows_before_window_cap - len(fit)
     names = list(snapshot.feature_names)
     x_fit, x_calibration, x_assessment = (block.loc[:, names] for block in (fit, calibration, assessment_rows))
     y_fit, y_calibration, y_assessment = (block["y_not_down"].to_numpy() for block in (fit, calibration, assessment_rows))
@@ -338,6 +442,7 @@ def train_candidate(
         source_run_id=snapshot.run_id,
         calibrated_through_close_utc=calibration["close_time"].iloc[-1].isoformat(),
         fit_label_end_utc=fit["label_end_time"].max().isoformat(),
+        ensemble_weights={name: float(getattr(settings, f"{name}_weight", 1.0)) for name in estimators},
     )
     model_timings: dict[str, dict] = {}
     calibration_methods: dict[str, str] = {}
@@ -352,7 +457,7 @@ def train_candidate(
             cal_started = perf_counter()
             raw_cal = _positive_probability(estimator, x_calibration)
             if len(np.unique(y_calibration)) == 2:
-                calibrator = LogisticRegression(C=1.0, max_iter=200, random_state=settings.random_state)
+                calibrator = LogisticRegression(C=settings.calibration_c, max_iter=200, random_state=settings.random_state)
                 calibrator.fit(_logit(raw_cal), y_calibration)
                 bundle.calibration[name] = calibrator
                 calibration_methods[name] = "platt_logit_on_later_calibration_block"
@@ -369,7 +474,7 @@ def train_candidate(
             "assessment_seconds": perf_counter() - assessment_started,
             "total_seconds": perf_counter() - model_started,
         }
-    ensemble = np.mean(np.column_stack(list(predictions.values())), axis=1)
+    ensemble = _ensemble_probability(predictions, bundle.ensemble_weights)
     # This baseline learns a constant only from observations before assessment.
     prior = float(np.concatenate([y_fit, y_calibration]).mean())
     prior_predictions = np.full(len(y_assessment), prior)
@@ -401,7 +506,9 @@ def train_candidate(
         "data_run_id": snapshot.run_id, "feature_revision": snapshot.feature_revision,
         "feature_names": names, "feature_count": len(names),
         "label_meaning": LABEL_MEANING,
-        "ensemble_method": "equal mean of separately calibrated P(not_down); P(down)=1-P(not_down)",
+        "ensemble_method": "weighted mean of separately calibrated P(not_down); P(down)=1-P(not_down)",
+        "ensemble_weights": _normalized_weights(bundle.ensemble_weights),
+        "calibration_c": settings.calibration_c,
         "model_names": list(estimators), "metrics": metrics,
         "eligible": not failed_comparisons,
         "eligibility": not failed_comparisons,
@@ -416,9 +523,7 @@ def train_candidate(
         "mature_usable_rows": len(frame),
         "unknown_or_featureless_rows": len(snapshot.features) - len(frame),
         "max_train_rows": settings.max_train_rows,
-        "fit_rows_before_window_cap": fit_rows_before_window_cap,
-        "training_window_omitted_rows": training_window_omitted_rows,
-        "purged_rows": len(frame) - sum(len(block) for block in blocks.values()) - training_window_omitted_rows,
+        **split_details,
         "calibration_methods": calibration_methods,
         "prior_baseline_probability": prior,
         "model_timings": model_timings,
@@ -455,7 +560,10 @@ def predict_bundle(bundle: ModelBundle, snapshot: MarketSnapshot) -> dict:
     for name in bundle.estimators:
         p = float(_calibrated_probability(bundle, name, values)[0])
         per_model[name] = {"p_not_down": p, "p_down": 1.0 - p}
-    probability = float(np.mean([values["p_not_down"] for values in per_model.values()]))
+    probability = float(_ensemble_probability(
+        {name: np.asarray([values["p_not_down"]]) for name, values in per_model.items()},
+        getattr(bundle, "ensemble_weights", {}),
+    )[0])
     target_close = latest["close_time"] + pd.Timedelta(milliseconds=INTERVAL_MS[bundle.interval] * bundle.horizon_bars)
     return {
         "coin": bundle.coin, "interval": bundle.interval, "horizon_bars": bundle.horizon_bars,
@@ -472,6 +580,7 @@ def predict_bundle(bundle: ModelBundle, snapshot: MarketSnapshot) -> dict:
         "label_meaning": LABEL_MEANING,
         "p_not_down": probability, "p_down": 1.0 - probability,
         "consensus": probability, "per_model": per_model,
+        "ensemble_weights": _normalized_weights(bundle.ensemble_weights) if getattr(bundle, "ensemble_weights", {}) else {},
         "missing_features_imputed": values.columns[values.iloc[0].isna()].tolist(),
         "model_fit_through_close_utc": bundle.fitted_through_close_utc,
         "calibration_through_close_utc": bundle.calibrated_through_close_utc,

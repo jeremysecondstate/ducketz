@@ -24,7 +24,7 @@ def test_default_config_is_versioned_and_contains_the_requested_four_markets():
     settings = load_config(DEFAULT_CONFIG_PATH)
     assert DEFAULT_CONFIG_PATH.is_absolute()
     assert settings.symbols == ("BTC", "ETH", "HYPE", "ZEC")
-    assert settings.interval == "15m"
+    assert settings.interval == "5m"
     assert settings.max_parallel_updates == 2
     assert settings.output_root == DEFAULT_OUTPUT_ROOT.resolve()
     assert settings.control_dir == settings.output_root / "_coordinator"

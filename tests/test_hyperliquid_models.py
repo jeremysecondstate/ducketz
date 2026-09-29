@@ -157,6 +157,9 @@ def test_training_purges_label_horizons_and_preserves_unknown_tail():
     assert report["max_train_rows"] is None
     assert report["fit_rows_before_window_cap"] == splits["fit"]["rows"]
     assert report["training_window_omitted_rows"] == 0
+    assert report["split_mode"] == "fixed_rows"
+    assert report["requested_split_fractions"] is None
+    assert report["requested_split_rows"] == {"fit": None, "calibration": 50, "assessment": 60}
     assert report["unknown_or_featureless_rows"] == 4
     assert assessment["label_end_time"].max() == source.features["close_time"].iloc[-1]
     assert source.labels["future_return_4bar"].iloc[-4:].isna().all()
@@ -228,13 +231,116 @@ def test_training_cap_does_not_bypass_minimum_mature_fit_history():
         models.train_candidate(snapshot(180), settings(max_train_rows=120), model_factory=logistic_only)
 
 
-def test_fit_preprocessing_does_not_observe_later_features():
+def fractional_settings(**overrides):
+    return settings(split_mode="fractions", train_fraction=.70, calibration_fraction=.15,
+                    assessment_fraction=.15, **overrides)
+
+
+def split_frame(count):
+    close = pd.date_range("2026-01-01", periods=count, freq="15min", tz="UTC")
+    return pd.DataFrame({"close_time": close, "label_end_time": close + pd.Timedelta(hours=1),
+                         "y_not_down": np.arange(count) % 2})
+
+
+def test_fractional_split_purges_fixed_nominal_boundaries_without_refilling():
+    frame = split_frame(101)
+    blocks, report = models._split_rows_with_details(frame, fractional_settings(min_train_rows=2))
+    assert report["requested_split_rows"] == {"fit": 70, "calibration": 15, "assessment": 16}
+    assert report["effective_split_rows"] == {"fit": 66, "calibration": 11, "assessment": 16}
+    assert list(blocks["fit"].index) == list(range(66))
+    assert list(blocks["calibration"].index) == list(range(70, 81))
+    assert list(blocks["assessment"].index) == list(range(85, 101))
+    assert report["boundary_purged_rows"] == {"fit_to_calibration": 4, "calibration_to_assessment": 4}
+    assert report["purged_rows"] == 8
+    assert report["effective_split_fractions"]["fit"] == 66 / 101
+    for earlier, later in (("fit", "calibration"), ("calibration", "assessment")):
+        assert blocks[earlier].label_end_time.max() < blocks[later].close_time.min()
+
+
+def test_fractional_counts_use_decimal_boundaries_and_elapsed_time_across_gaps():
+    _, exact = models._split_rows_with_details(split_frame(90), fractional_settings(min_train_rows=2))
+    assert exact["requested_split_rows"]["fit"] == 63
+    frame = split_frame(100)
+    for first in (70, 85):
+        frame.loc[first:, ["close_time", "label_end_time"]] += pd.Timedelta(days=2)
+    blocks, report = models._split_rows_with_details(frame, fractional_settings(min_train_rows=2))
+    assert report["purged_rows"] == 0
+    assert {name: len(block) for name, block in blocks.items()} == {"fit": 70, "calibration": 15, "assessment": 15}
+
+
+@pytest.mark.parametrize("error", ["reverse", "duplicate", "backward_label", "missing_label"])
+def test_split_rejects_invalid_time_order_or_label_endpoints(error):
+    frame = split_frame(100)
+    if error == "reverse":
+        frame = frame.iloc[::-1]
+    elif error == "duplicate":
+        frame.loc[3, "close_time"] = frame.loc[2, "close_time"]
+    elif error == "backward_label":
+        frame.loc[3, "label_end_time"] = frame.loc[3, "close_time"] - pd.Timedelta(minutes=1)
+    else:
+        frame.loc[3, "label_end_time"] = pd.NaT
+    with pytest.raises(ValueError, match="chronological"):
+        models._split_rows(frame, fractional_settings(min_train_rows=2))
+
+
+def test_fractional_training_report_separates_purging_cap_and_unknown_rows():
     source = snapshot()
-    first = models.train_candidate(source, settings(), model_factory=logistic_only)
+    result = models.train_candidate(source, fractional_settings(max_train_rows=160), model_factory=logistic_only)
+    report = result["report"]
+    assert report["split_mode"] == "fractions"
+    assert report["requested_split_fractions"] == {"fit": .70, "calibration": .15, "assessment": .15}
+    assert report["requested_split_rows"] == {"fit": 249, "calibration": 53, "assessment": 54}
+    assert report["effective_split_rows"] == {"fit": 160, "calibration": 49, "assessment": 54}
+    assert report["fit_rows_before_window_cap"] == 245
+    assert report["training_window_omitted_rows"] == 85
+    assert report["purged_rows"] == 8 and report["unknown_or_featureless_rows"] == 4
+    assert sum(report["effective_split_rows"].values()) + report["purged_rows"] + report["training_window_omitted_rows"] == report["mature_usable_rows"]
+    assert report["effective_split_fractions"]["fit"] == 160 / 356
+    assert "promotion holdout" in report["evaluation_role"]
+    assert "not an untouched final test" in report["evaluation_role"]
+    assert report["refit_after_assessment"] is False
+    json.dumps(report, allow_nan=False)
+
+
+def test_fractional_cap_uses_only_nominal_fit_block_even_with_irregular_label_ends():
+    frame = split_frame(100)
+    # Some calibration labels extend beyond assessment; no earlier block is
+    # refilled and the fit-window omission count is confined to nominal fit.
+    frame.loc[70:74, "label_end_time"] += pd.Timedelta(days=2)
+    blocks, report = models._split_rows_with_details(frame, fractional_settings(min_train_rows=2, max_train_rows=40))
+    assert report["fit_rows_before_window_cap"] == 66
+    assert report["training_window_omitted_rows"] == 26
+    assert blocks["fit"].index.max() == 65
+    assert set(blocks["calibration"].index) == set(range(75, 81))
+    assert report["purged_rows"] == 13
+
+
+@pytest.mark.parametrize("count,minimum,error", [(10, 2, "at least two"), (30, 2, "purged calibration"), (100, 90, "training rows")])
+def test_fractional_blocks_require_enough_rows_after_purging(count, minimum, error):
+    with pytest.raises(ValueError, match=error):
+        models._split_rows(split_frame(count), fractional_settings(min_train_rows=minimum))
+
+
+@pytest.mark.parametrize("change", [
+    {"split_mode": "random"}, {"split_mode": "fractions"}, {"train_fraction": .7},
+    {"split_mode": "fractions", "train_fraction": .7, "calibration_fraction": .15, "assessment_fraction": .2},
+    *({"split_mode": "fractions", "train_fraction": .7, "calibration_fraction": value,
+       "assessment_fraction": .15} for value in (None, True, "0.15", 0, 1, -1, float("nan"), float("inf"))),
+])
+def test_model_settings_validate_fraction_controls(change):
+    with pytest.raises(ValueError, match="split_mode|fractions|Fraction"):
+        settings(**change)
+
+
+@pytest.mark.parametrize("fractional", [False, True])
+def test_fit_preprocessing_does_not_observe_later_features(fractional):
+    source = snapshot()
+    recipe = fractional_settings() if fractional else settings()
+    first = models.train_candidate(source, recipe, model_factory=logistic_only)
     cutoff = pd.Timestamp(first["bundle"].fitted_through_close_utc)
     changed = source.features.copy()
     changed.loc[changed["close_time"] > cutoff, list(models.FEATURE_NAMES)] += 100_000
-    second = models.train_candidate(replace(source, features=changed), settings(), model_factory=logistic_only)
+    second = models.train_candidate(replace(source, features=changed), recipe, model_factory=logistic_only)
     original_pipe = first["bundle"].estimators["logistic"]
     changed_pipe = second["bundle"].estimators["logistic"]
     fit_values = source.features.loc[source.features.close_time <= cutoff, list(models.FEATURE_NAMES)]
@@ -244,15 +350,17 @@ def test_fit_preprocessing_does_not_observe_later_features():
     np.testing.assert_array_equal(original_pipe["model"].coef_, changed_pipe["model"].coef_)
 
 
-def test_assessment_labels_do_not_fit_models_or_calibrators():
+@pytest.mark.parametrize("fractional", [False, True])
+def test_assessment_labels_do_not_fit_models_or_calibrators(fractional):
     source = snapshot()
-    first = models.train_candidate(source, settings(), model_factory=logistic_only)
+    recipe = fractional_settings() if fractional else settings()
+    first = models.train_candidate(source, recipe, model_factory=logistic_only)
     cutoff = pd.Timestamp(first["report"]["splits"]["calibration"]["last_label_end_utc"])
     changed = source.features.copy()
     # Outcomes beyond the calibration label cutoff cannot affect fitting.
     changed.loc[changed.close_time > cutoff, "close"] += 4
     labels = build_labels(changed, interval="15m")
-    second = models.train_candidate(replace(source, features=changed, labels=labels), settings(), model_factory=logistic_only)
+    second = models.train_candidate(replace(source, features=changed, labels=labels), recipe, model_factory=logistic_only)
     for name in first["bundle"].estimators:
         np.testing.assert_array_equal(first["bundle"].estimators[name]["model"].coef_, second["bundle"].estimators[name]["model"].coef_)
         np.testing.assert_array_equal(first["bundle"].calibration[name].coef_, second["bundle"].calibration[name].coef_)

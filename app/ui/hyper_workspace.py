@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 import queue
+import re
 import threading
 import tkinter as tk
 from datetime import datetime, timezone, timedelta
@@ -42,6 +43,25 @@ REASONS = {"entry_deadband": "Below entry threshold", "hold_with_hysteresis": "E
            "account_capacity": "Account capacity limit", "insufficient_cash": "Insufficient available cash",
            "entry_threshold_met": "Entry threshold met",
            "opposing_reduction_unavailable": "Opposing exit has no executable book"}
+
+
+def _forecast_dimensions(row):
+    """Use recorded dimensions; never assign today's recipe to an old trade."""
+    bars, minutes = number(row.get("horizon_bars")), number(row.get("horizon_minutes"))
+    interval = row.get("interval")
+    match = re.fullmatch(r"([1-9][0-9]*)(m|h|d)", interval) if isinstance(interval, str) else None
+    if match and bars is not None and minutes is None:
+        minutes = bars * int(match[1]) * {"m": 1, "h": 60, "d": 1440}[match[2]]
+    if not interval and bars and minutes:
+        interval = f"{minutes / bars:g}m"
+    return interval, bars, minutes
+
+
+def _forecast_horizon(row):
+    interval, bars, minutes = _forecast_dimensions(row)
+    if interval and bars is not None and minutes is not None:
+        return f"{bars:g} × {interval} bars · {minutes:g} minute horizon"
+    return "Forecast horizon unavailable"
 
 
 def _paper_decision_reason(row):
@@ -318,8 +338,8 @@ class HyperWorkspace:
         self.ops = card(self.page)
         self.ops.pack(fill="x", padx=14, pady=(0, 6))
         self.source_labels, self.source_boxes = {}, []
-        for i, (key, title, cadence) in enumerate((("data", "Data / features", "15m candles"),
-                    ("forecasts", "Forecasts", "15m · 1h horizon"), ("models", "Models", "Scheduled fit · 5s poll"),
+        for i, (key, title, cadence) in enumerate((("data", "Data / features", "Candle cadence unavailable"),
+                    ("forecasts", "Forecasts", "Forecast horizon unavailable"), ("models", "Models", "Scheduled fit · 5s poll"),
                     ("paper", "Paper", "30s quote / risk cycle"))):
             self.ops.columnconfigure(i, weight=1, uniform="source")
             box = tk.Frame(self.ops, bg=PANEL)
@@ -497,7 +517,7 @@ class HyperWorkspace:
     def _build_right(self):
         self.forecast_card = card(self.right)
         label(self.forecast_card, "Latest forecasts", size=12, bold=True).pack(anchor="w", padx=12, pady=(10, 1))
-        self.forecast_caption = label(self.forecast_card, "P(not-down) · 4 × 15m = 1 hour", size=8, color=MUTED_TEXT)
+        self.forecast_caption = label(self.forecast_card, "P(not-down) · Forecast horizon unavailable", size=8, color=MUTED_TEXT)
         self.forecast_caption.pack(anchor="w", padx=12, pady=(0, 4))
         self.forecast_canvas = tk.Canvas(self.forecast_card, bg=PANEL, highlightthickness=0, width=100, height=165, cursor="hand2")
         self.forecast_canvas.pack(fill="x", padx=10)
@@ -692,8 +712,21 @@ class HyperWorkspace:
             aliases = ("powder",)
         return [source for name, source in sources.items() if any(word in name.casefold() for word in aliases)]
 
+    def _forecast_recipe(self):
+        if not self.snapshot:
+            return {}
+        return self.snapshot.market_recipe or next(iter(self.snapshot.forecasts), {})
+
+    def _source_cadence(self, key, fallback):
+        interval, _, minutes = _forecast_dimensions(self._forecast_recipe())
+        if key == "data" and interval:
+            return f"{interval} candles"
+        if key == "forecasts" and interval and minutes is not None:
+            return f"{interval} · {minutes:g}m horizon"
+        return fallback
+
     def _source_tooltip(self, key):
-        lines = [self.source_labels[key][3]]
+        lines = [self._source_cadence(key, self.source_labels[key][3])]
         if self._error:
             lines.append("The latest read failed. These are observations from the last successful read.")
         for source in self._source_group(key):
@@ -712,6 +745,7 @@ class HyperWorkspace:
                                          "Awaiting local records" if paper else
                                          "Observed " + local_time(snap.portfolio_observed_at_utc) if connected else "Not connected"), fg=MUTED_TEXT if paper else WARNING)
         for key, (title, state, text, cadence) in self.source_labels.items():
+            cadence = self._source_cadence(key, cadence)
             group = self._source_group(key)
             if key == "paper" and not paper and not connected:
                 title.configure(text="Execution · Not connected", fg=WARNING)
@@ -1027,7 +1061,8 @@ class HyperWorkspace:
         canvas.delete("all")
         width = max(200, canvas.winfo_width())
         paper = self.mode.get() == "Paper"
-        self.forecast_caption.configure(text="P(not-down) · 4 × 15m = 1 hour" if paper else "Shared model forecast preview · 1h horizon")
+        prefix = "P(not-down)" if paper else "Shared model forecast preview"
+        self.forecast_caption.configure(text=f"{prefix} · {_forecast_horizon(self._forecast_recipe())}")
         rows = self.snapshot.forecasts if self.snapshot else []
         args = self._filters()
         args["account"] = "all"
@@ -1095,8 +1130,8 @@ class HyperWorkspace:
                 if data.get("model_id") and forecast.get("model_id") == data["model_id"]:
                     for field in ("model_published_at_utc", "training_cutoff_utc", "training_label_cutoff_utc", "calibration_cutoff_utc"):
                         data.setdefault(field, forecast.get(field))
-                if data.get("forecast_id") and forecast.get("forecast_id") == data["forecast_id"]:
-                    for field in ("target_close_utc", "horizon_bars", "horizon_minutes", "per_model"):
+                if data.get("forecast_id") and data["forecast_id"] in {forecast.get("forecast_id"), forecast.get("prediction_id")}:
+                    for field in ("target_close_utc", "interval", "horizon_bars", "horizon_minutes", "per_model"):
                         data.setdefault(field, forecast.get(field))
             policy = data.get("policy", {}) or {}
             account = ACCOUNTS.get(data.get("account"), (data.get("account", "Shared model"),))[0]
@@ -1129,10 +1164,8 @@ class HyperWorkspace:
             else:
                 add("SIGNAL", "section")
                 p = number(data.get("p_not_down"))
-                bars = data.get('horizon_bars', 4)
-                minutes = data.get('horizon_minutes', number(bars) * 15 if number(bars) is not None else None)
                 p_down = data.get("p_down") if "p_down" in data else 1-p if p is not None else None
-                horizon = f"{bars} × 15m bars · {quantity(minutes)} minute horizon" if bars is not None and minutes is not None else "Forecast horizon unavailable"
+                horizon = _forecast_horizon(data)
                 if self._no_journal_forecast(data, view):
                     add("No forecast attributed to this record.")
                 else:

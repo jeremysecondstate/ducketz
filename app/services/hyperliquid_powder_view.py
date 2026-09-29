@@ -26,6 +26,7 @@ def project_powder(report, *, paper=None, runtime=None, now=None):
     snapshot = PaperViewSnapshot(observed_at_utc=_utc(now))
     if paper:
         snapshot.forecasts = paper.forecasts
+        snapshot.market_recipe = dict(paper.market_recipe)
         snapshot.sources = {key: source for key, source in paper.sources.items()
                             if key != "ledger" and "paper" not in key.lower()}
     snapshot.runtime = dict(runtime or {})

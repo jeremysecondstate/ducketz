@@ -1,6 +1,6 @@
 # Hyperliquid portfolio system analysis
 
-Last updated: **2026-09-26** for qualified-only Paper and 15-minute model retraining.
+Last updated: **2026-09-28** for native five-minute candles, next-five-minute forecasts and adaptive Paper improvement rounds.
 
 This is the maintained system-level reference for the Hyperliquid data,
 forecasting, paper portfolio and H.Y.P.E.R. operations workspace. It follows the
@@ -14,11 +14,16 @@ Three analysis/simulation runtimes and an optional user-activated Powder runner 
 `C:/DATASTORE/hyperliquid`:
 
 1. **Market data:** one coordinator maintains separate BTC, ETH, HYPE and ZEC
-   15-minute candle, feature and label publications using shared code.
+   five-minute candle, feature and label publications using shared code. It
+   retains the growing five-minute history and reconciles every 288 cycles.
 2. **Models:** one runtime consumes completed publications, fits per-market
-   models on a 15-minute source-candle schedule, and records a new one-hour
-   forecast for each completed 15-minute candle. Model polling is five seconds;
-   polling is not fitting or a new forecast.
+   models on a five-minute source-candle schedule, and records a next-five-minute
+   forecast for each completed five-minute candle (`5m/h1`). The live configuration uses
+   chronological 70/15/15 fitting/calibration/assessment with strict horizon
+   purges and retains logistic/ExtraTrees/HistGradientBoosting/MLP at weights
+   40/20/20/20 with calibration C=0.1. Model polling is five seconds; polling is
+   not fitting or a new forecast. Reserved evaluation blocks still create a
+   fitting cutoff lag, about 5.2 days in the initial five-minute measurement.
 3. **Paper portfolio:** one runtime allocates only from fresh, validated Qualified
    forecasts under the current configuration. Without one, it holds current
    exposure subject to stop/cooldown and exposure-cap reductions; rejected
@@ -38,12 +43,29 @@ Paper balances. Actual P/L/funding accounting and automatic transfers remain
 planned. The existing **Hyperliquid Duckets** manual workspace shares account
 ownership locks with Powder so local manual mutations cannot race the runner.
 
+The Paper view derives its market list, candle interval and first model horizon
+from the configured recipe. Ten-minute aggregation is not implemented; retained
+five-minute candles provide a base for future frequency experiments.
+
 The entry points do not install an operating-system startup task. The separately
+configured [Paper Improvement](PAPER_IMPROVEMENT.md) task reviews results against
+the actual accounts in two-hour rounds using GPT-6 Astra / Ultra, increasing
+the next round by one hour after each verified win and retaining the duration
+after a loss/tie. It runs justified
+model experiments, archives the completed run, and verifies a fresh one-for-one
+Paper opening. Its accepted-baseline receipt coordinates with the separately
 configured [Operations Watch](OPERATIONS_WATCH.md) checks local health every
 30 minutes and can recover interrupted Paper operations. Process liveness,
 external scheduler configuration, qualification,
 balances and performance must be checked at the time of operation; this index
 does not declare them permanently current.
+
+The separate [expanded-model research command](../hyperliquid-models.md#expanded-offline-model-research)
+evaluates additional classical models, compact CNN/GRU/CNN+GRU models and fixed
+blends on pinned historical data. It writes only `_model_research` artifacts;
+the twelve available candidates in the measured environment are not twelve
+active production members. See the
+[70/15/15 comparison audit](audits/2026-09-26-expanded-models-70-15-15.md).
 
 ## Read by question
 
@@ -54,6 +76,7 @@ does not declare them permanently current.
 | Which process owns each job, clock and artifact? | [Loop inventory](LOOP_INVENTORY.md) |
 | How do candles and features become a published input? | [Market-data loop](loops/market-data.md) |
 | What do the models fit, qualify and predict? | [Model loop](loops/models.md) |
+| What did the expanded models and 70/15/15 comparison show? | [Expanded-model audit](audits/2026-09-26-expanded-models-70-15-15.md) |
 | What happens during a Paper cycle or restart? | [Paper loop](loops/paper.md) |
 | How do I check, activate, stop or recover real trading? | [Powder activation](POWDER_ACTIVATION.md) |
 | How are P/L, transfers, sizing and risk interpreted? | [Paper accounting and risk](PAPER_ACCOUNTING_AND_RISK.md) |
@@ -126,11 +149,27 @@ behavioral change; see [Maintenance](MAINTENANCE.md).
 
 ## Source entry points
 
-Latest experiment: [September 26 retuning and fresh 1:1 Paper mirror](audits/2026-09-26-paper-retune-fresh-mirror.md).
-The active recipe retains shared 49%/51% thresholds and now requires 20% of the
-target (at least $25) for ordinary rebalances. Tested model alternatives were
-rejected; the retained training recipe was freshly fitted. The accepted opening
-is `20260926T154957Z-rebalance20-fresh-models` at $42,081.207237518516.
+The current accepted opening and worker handoff are recorded in
+`C:/DATASTORE/hyperliquid/_operations/paper-current-accepted.json`; inspect its
+experiment identity and timestamps before interpreting current performance.
+The [Paper improvement workflow](PAPER_IMPROVEMENT.md) defines archive/reset
+verification. Dated openings below are historical, not current balance claims.
+
+Historical September 26 opening: [70/15/15 training and BTC-inclusive fresh mirror](audits/2026-09-26-701515-btc-fresh-mirror.md),
+experiment `20260926T180818Z-701515-btc-mirror`, at **18:08:18 UTC on September 26**.
+The nine-position opening was **$44,083.99583107362**, with zero opening P/L,
+fills and fees; Clear Pond held **0.2239149983 BTC**. Retained raw public-account
+responses independently matched opening inventory, cash/collateral and perpetual
+entries. The current four estimators now use the approved chronological
+70/15/15 split; added classical and sequence families remain research-only.
+Shared 49%/51% thresholds, the 20% ordinary-rebalance threshold (at least $25),
+fees and risk limits are unchanged. First-trading and advancing accounting/health
+checks passed; maintenance completed at **18:16:19 UTC** and Operations Watch v11
+accepted the baseline. The receipt distinguishes later startup fills from the
+unchanged opening and records each health observation's timestamp. Its
+[prior 15:49 experiment](audits/2026-09-26-paper-retune-fresh-mirror.md) was preserved
+intact, and the [research comparison](audits/2026-09-26-expanded-models-70-15-15.md)
+states the mixed per-market results and profitability limits.
 A separate predecessor seeded at 10:35:59 UTC is permanently excluded from analysis and recovery.
 The user completed deletion; absence of its cleanup directory was verified at
 **2026-09-26 11:36:32 UTC**. Independent model research and still-earlier archives

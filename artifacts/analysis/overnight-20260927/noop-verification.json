@@ -1,0 +1,70 @@
+{
+  "checked_at": "2026-09-27T04:08:15.4388046+00:00",
+  "run_path": "C:\\DATASTORE\\ml\\overnight-runs\\20260927T040753.548583Z",
+  "receipt": {
+    "broker_orders_enabled": false,
+    "completed_at": "2026-09-26T21:07:53.648035-07:00",
+    "orders_placed": 0,
+    "prior_gameplan_pointer_preserved": true,
+    "run_path": "ml/overnight-runs/20260927T040753.548583Z",
+    "schema_version": "single-owner-overnight-gameplan-noop-v1",
+    "stage_report_checksum_sha256": "f1c4dd70b18765b0075e9593b99c4281e0fdfb85044a065c023dc2aa1f98bedf",
+    "stage_report_size": 732,
+    "status": "NOOP_NON_SESSION_DATE"
+  },
+  "report": {
+    "broker_orders_enabled": false,
+    "datastore_root": "C:\\DATASTORE",
+    "eligibility": {
+      "calendar": "XNYS",
+      "eligible": false,
+      "is_exchange_session": false,
+      "local_date": "2026-09-26",
+      "next_exchange_session": "2026-09-28",
+      "observed_at": "2026-09-26T21:07:53.548583-07:00",
+      "observed_at_local": "2026-09-26T21:07:53.548583-07:00",
+      "reason": "The scheduled local date is not an XNYS session.",
+      "status": "NOOP_NON_SESSION_DATE"
+    },
+    "orders_placed": 0,
+    "prior_gameplan_pointer_preserved": true,
+    "run_timestamp": "2026-09-26T21:07:53.548583-07:00",
+    "schema_version": "single-owner-overnight-gameplan-noop-v1",
+    "stages": [],
+    "status": "NOOP_NON_SESSION_DATE"
+  },
+  "report_hash_valid": true,
+  "report_size_valid": true,
+  "pointers_watchlist_schedule": [
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+      "sha256": "68A58C0629B436F865BBF3C9579057025604EAC469DB4F66BCAA583B0EC95AC2",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-latest\\run.json",
+      "sha256": "AB8DCC8DFF4F92BECC3F17BE750DB0E65F6DDC9CD53BBBA99F1E93178FF490E8",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-latest\\run.json",
+      "sha256": "28B48FCF49208CA744B4ADB08D52D0856725FF67F0599FE5982139A7BF4F8FFA",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-latest\\run.json",
+      "sha256": "A33432A8134D6A821D30B5DA5E0369B66F3FFC091CD5F7E5A04A1E3C92D35CC6",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+      "sha256": "00637389E03B995AB5BB238B7170A9E6FD282143215C5CCF2C6ED2134C25491F",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-hourly-operations\\automation.toml",
+      "sha256": "2A4A97C592C9D6076DBD64D1140B04659F48B26AA38BF3F5B3D7E950FEC24833",
+      "unchanged": true
+    }
+  ]
+}

@@ -16,27 +16,33 @@ models, or register a scheduled task.
 From `C:/dev/ducketz` in PowerShell:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_pipeline --coin BTC --interval 15m --benchmark
+& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_pipeline --coin BTC --interval 5m --benchmark
 ```
 
 Repeat the command without `--benchmark` to fetch new candles. The public info
 URL follows `HYPERLIQUID_INFO_URL` in the existing `.env`; account keys are not
 used. `--info-url` can override that URL. Existing histories cannot be mixed
 between endpoints. Defaults use the latest 5,000 candles permitted by the
-Hyperliquid candle API; at 15 minutes that is approximately 52 days, potentially
+Hyperliquid candle API; at five minutes that is approximately 17.36 days, potentially
 one fewer completed candle while the current candle is forming. The pipeline
 retains older local history as it grows. It does not claim to fetch exchange
 history outside the API's rolling window.
 
+The current coordinator retains a continuous `5m` base per market, including
+overlap/merge updates after onboarding. Older local candles survive the rolling
+API limit. The previous `15m` histories remain separate historical datasets.
+Ten-minute aggregation and other derived intervals are not implemented; retained
+five-minute history can support a separately reviewed aggregation later.
+
 Other options:
 
 - `--output-root PATH`: use a different datastore directory.
-- `--interval 5m`: build a separate five-minute dataset.
+- `--interval 15m`: build a separate fifteen-minute dataset.
 - `--refresh-history`: refetch the available history window to reconcile older
   revisions, preserving local candles outside that window.
 - `--rebuild`: recompute features even if fetched candles are unchanged.
 - `--horizons 1 4 16`: forward-label horizons in candle counts; defaults are
-  15 minutes, one hour, and four hours for 15-minute input.
+  5, 20 and 80 minutes for five-minute input. The active model consumes horizon 1.
 
 ## Multiple symbols with one coordinator
 
@@ -56,13 +62,13 @@ four perpetual markets:
 {
   "version": 1,
   "symbols": ["BTC", "ETH", "HYPE", "ZEC"],
-  "interval": "15m",
+  "interval": "5m",
   "output_root": "C:/DATASTORE/hyperliquid",
   "max_parallel_updates": 2,
   "close_delay_seconds": 5,
   "retry_seconds": 15,
   "max_retry_seconds": 120,
-  "repair_every_cycles": 96
+  "repair_every_cycles": 288
 }
 ```
 
@@ -134,12 +140,12 @@ indefinitely.
 Run the continuous loop from `C:/dev/ducketz` in PowerShell:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_loop --coin BTC --interval 15m --output-root C:/DATASTORE/hyperliquid
+& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_loop --coin BTC --interval 5m --repair-every-cycles 288 --output-root C:/DATASTORE/hyperliquid
 ```
 
 The loop catches up immediately, then wakes five seconds after each UTC candle
-close. For 15-minute candles, the normal refresh times are `:00:05`, `:15:05`,
-`:30:05`, and `:45:05` each hour. This runs continuously while the process is
+close. For five-minute candles, the normal refresh times are `:00:05`, `:05:05`,
+`:10:05`, and every subsequent five-minute boundary each hour. This runs continuously while the process is
 alive. It does not install an operating-system startup task, register a Codex
 scheduled task, or execute trades.
 
@@ -147,7 +153,8 @@ If a completed candle has not appeared yet, or a request/build fails, the loop
 retries with exponential backoff starting at 15 seconds and capped at 120
 seconds. A failed refresh preserves the previous completed snapshot. The loop
 continues retrying and catches up missed candles rather than creating a queue
-of overlapping refresh jobs. Every 96 cycles it also reconciles the available
+of overlapping refresh jobs. The current coordinator setting reconciles every
+288 cycles across the available
 API history window for older revisions. This is a cycle count, not a fixed
 wall-clock daily guarantee. Missing candles outside the API's latest 5,000
 candles cannot be recovered through that endpoint; gaps are reported rather
@@ -158,24 +165,25 @@ Loop options:
 - `--close-delay-seconds 5`: delay after the UTC candle boundary before fetching.
 - `--retry-seconds 15`: initial retry delay.
 - `--max-retry-seconds 120`: maximum retry delay.
-- `--repair-every-cycles 96`: frequency of reconciliation across the available
-  API history window.
+- `--repair-every-cycles 288`: configured frequency of reconciliation across the
+  API history window, approximately daily at five minutes without retries.
+  The single-loop CLI's compatibility default remains 96 when omitted.
 - `--max-cycles N`: stop after a bounded number of cycles, useful for checks.
 
 Read the saved loop status from another terminal:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_loop --coin BTC --interval 15m --output-root C:/DATASTORE/hyperliquid --status
+& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_loop --coin BTC --interval 5m --output-root C:/DATASTORE/hyperliquid --status
 ```
 
 Stop a foreground loop with `Ctrl+C`, or request a graceful stop from another
 terminal:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_loop --coin BTC --interval 15m --output-root C:/DATASTORE/hyperliquid --stop
+& .\.venv\Scripts\python.exe -m ml.hyperliquid_data_loop --coin BTC --interval 5m --output-root C:/DATASTORE/hyperliquid --stop
 ```
 
-The selected market/interval directory, here `BTC/15m`, contains
+The selected market/interval directory, here `BTC/5m`, contains
 `loop_status.json` for saved status, `loop_events.jsonl` for the event history,
 and `stop.request` when a graceful stop has been requested. A per-market
 `.loop.lock` prevents duplicate loops; the existing `.update.lock` separately
@@ -184,7 +192,7 @@ protects individual publications, including manual one-shot refreshes.
 ## Files
 
 Each completed run is written below `<symbol>/<interval>/runs/<run_id>/`,
-for example `BTC/15m/runs/<run_id>/` or `ETH/15m/runs/<run_id>/`:
+for example `BTC/5m/runs/<run_id>/` or `ETH/5m/runs/<run_id>/`:
 
 | File | Contents |
 | --- | --- |
@@ -194,7 +202,7 @@ for example `BTC/15m/runs/<run_id>/` or `ETH/15m/runs/<run_id>/`:
 | `feature_catalog.json` | Formulas, source provenance, changes, and excluded legacy indicators. |
 | `summary.json` | Coverage, missing values, feature counts, computation reuse, timings and file paths. |
 
-Each symbol/interval has its own `latest.json`, such as `BTC/15m/latest.json`,
+Each symbol/interval has its own `latest.json`, such as `BTC/5m/latest.json`,
 which points to its completed run. It is replaced only after all
 run files have been written; readers pin that run's paths. One short-lived writer
 lock prevents simultaneous publishers. A failed build leaves the previous
@@ -214,6 +222,11 @@ Parquet file. All 38 features are recomputed using the shared calculations.
 These builds were inexpensive in the initial experiment, but runtime grows with
 the accumulated history. Completed run directories are currently retained;
 automatic snapshot retention or cleanup is not implemented.
+
+At five minutes there are three times as many normal publications and new rows
+per day as at fifteen minutes. Full-history build time and retained snapshot
+storage therefore need continued monitoring; the short onboarding benchmark
+does not establish a permanent runtime or storage bound.
 
 ## Shared feature layer
 

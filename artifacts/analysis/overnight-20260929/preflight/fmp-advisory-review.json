@@ -1,0 +1,167 @@
+{
+  "reviewed_at": "2026-09-29T04:29:22.783224+00:00",
+  "status": "KNOWN_RETAINED_CLOCK_SKEW_ADVISORY",
+  "scope": "LOCAL_READ_ONLY_PARQUETS_AND_PURE_IN_MEMORY_CALCULATION_NO_PROVIDER_OR_PRODUCTION_ACTIONS",
+  "cycle_snapshot": {
+    "failure_count": null,
+    "finished_at": null,
+    "generation": "20260929T040728.646690Z-pid62304",
+    "providers": [
+      "databento",
+      "fmp",
+      "fred",
+      "schwab",
+      "sec"
+    ],
+    "schema_version": "loop-a-cycle-v1",
+    "started_at": "2026-09-29T04:07:28.646690Z",
+    "status": "WRITING",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "GOOG",
+      "MU",
+      "NVDA",
+      "SNDK",
+      "COST",
+      "CROX",
+      "PATH",
+      "TWST",
+      "IONQ"
+    ]
+  },
+  "checks": {
+    "current_native_calculation_passes": true,
+    "no_current_cycle_invalid_rows": true,
+    "same_retained_invalid_row_count": true,
+    "same_native_retained_rejection": true,
+    "first_retained_bad_row_unchanged": true,
+    "current_log_records_fmp_advisory": true,
+    "identical_diagnostic_preserves_original_receipt": true,
+    "diagnostic_is_energy_quality_advisory": true
+  },
+  "issues": [],
+  "current_diagnostic": [
+    {
+      "id": "2026-09-02T13:33:58.706546Z",
+      "symbol": "ENERGY_CONTEXT",
+      "source": "fmp",
+      "category": "macro",
+      "request_key": "energy-context",
+      "fetched_at": "2026-09-02 13:33:58.706546+00:00",
+      "severity": "advisory",
+      "advisory_type": "FmpEnergyContextQualityError",
+      "advisory_message": "FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)",
+      "calculation": "energy-context",
+      "input_policy": "persisted_rows_only",
+      "provider_rows_preserved": true
+    }
+  ],
+  "source_rows": 1497,
+  "diagnostic_receipt_is_from_current_cycle": false,
+  "diagnostic_receipt_note": "Identical diagnostic messages are deduplicated by native upsert, excluding fetched_at from comparison; original September 2 receipt time is preserved. Current-cycle log and fresh source subset establish recurrence.",
+  "current_cycle_source_rows": [
+    {
+      "id": "2026-09-29T04:21:55.532450Z",
+      "symbol": "CLUSD",
+      "provider_symbol": "USO",
+      "proxy_fallback_for": "CLUSD",
+      "is_proxy_fallback": true,
+      "fetched_at": "2026-09-29 04:21:55.532450+00:00",
+      "timestamp": "2026-09-28 20:00:00+00:00",
+      "price": 150.01,
+      "available_at": "2026-09-29 04:21:55.532450+00:00"
+    }
+  ],
+  "retained_invalid_rows": [
+    {
+      "id": "2026-09-02T13:33:56.529297Z",
+      "symbol": "CLUSD",
+      "provider_symbol": "USO",
+      "proxy_fallback_for": "CLUSD",
+      "is_proxy_fallback": true,
+      "fetched_at": "2026-09-02 13:33:56.529297+00:00",
+      "timestamp": "2026-09-02 13:34:06+00:00",
+      "price": 139.26,
+      "available_at": "2026-09-02 13:33:56.529297+00:00",
+      "clock_skew_seconds": 9.470703
+    },
+    {
+      "id": "2026-09-02T13:57:16.832938Z",
+      "symbol": "CLUSD",
+      "provider_symbol": "USO",
+      "proxy_fallback_for": "CLUSD",
+      "is_proxy_fallback": true,
+      "fetched_at": "2026-09-02 13:57:16.832938+00:00",
+      "timestamp": "2026-09-02 13:57:26+00:00",
+      "price": 138.94,
+      "available_at": "2026-09-02 13:57:16.832938+00:00",
+      "clock_skew_seconds": 9.167062
+    },
+    {
+      "id": "2026-09-02T14:26:48.014251Z",
+      "symbol": "CLUSD",
+      "provider_symbol": "USO",
+      "proxy_fallback_for": "CLUSD",
+      "is_proxy_fallback": true,
+      "fetched_at": "2026-09-02 14:26:48.014251+00:00",
+      "timestamp": "2026-09-02 14:26:55+00:00",
+      "price": 139.83,
+      "available_at": "2026-09-02 14:26:48.014251+00:00",
+      "clock_skew_seconds": 6.985749
+    },
+    {
+      "id": "2026-09-02T14:33:02.278161Z",
+      "symbol": "CLUSD",
+      "provider_symbol": "USO",
+      "proxy_fallback_for": "CLUSD",
+      "is_proxy_fallback": true,
+      "fetched_at": "2026-09-02 14:33:02.278161+00:00",
+      "timestamp": "2026-09-02 14:33:10+00:00",
+      "price": 139.9595,
+      "available_at": "2026-09-02 14:33:02.278161+00:00",
+      "clock_skew_seconds": 7.721839
+    },
+    {
+      "id": "2026-09-02T14:55:47.561564Z",
+      "symbol": "CLUSD",
+      "provider_symbol": "USO",
+      "proxy_fallback_for": "CLUSD",
+      "is_proxy_fallback": true,
+      "fetched_at": "2026-09-02 14:55:47.561564+00:00",
+      "timestamp": "2026-09-02 14:55:56+00:00",
+      "price": 140.47,
+      "available_at": "2026-09-02 14:55:47.561564+00:00",
+      "clock_skew_seconds": 8.438436
+    }
+  ],
+  "native_full_source_validation": {
+    "status": "ERROR",
+    "error": "FmpEnergyContextQualityError: FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)"
+  },
+  "native_current_source_validation": {
+    "status": "PASS",
+    "derived_rows": 1
+  },
+  "log_summary_lines_observed": [
+    "[AAPL] changed parquet files: 60; blocking provider failures: 0; optional capture failures: 0; local advisories: 2 (databento=1, fmp=1)",
+    "[AMZN] changed parquet files: 33; blocking provider failures: 0; optional capture failures: 0; local advisories: 0",
+    "[GOOG] changed parquet files: 33; blocking provider failures: 0; optional capture failures: 0; local advisories: 0",
+    "[MU] changed parquet files: 33; blocking provider failures: 0; optional capture failures: 0; local advisories: 0",
+    "[NVDA] changed parquet files: 33; blocking provider failures: 0; optional capture failures: 0; local advisories: 0",
+    "[SNDK] changed parquet files: 33; blocking provider failures: 0; optional capture failures: 0; local advisories: 0"
+  ],
+  "evidence_sha256": {
+    "C:\\DATASTORE\\pools\\macro\\ENERGY_CONTEXT\\energy-context\\fmp\\diagnostics\\ENERGY_CONTEXT_energy-context.parquet": "4d709269b4a540747e0a0b90dd4049d4bb0df1547603dadaab17fa073bee2c3f",
+    "C:\\DATASTORE\\pools\\macro\\CLUSD\\quote\\fmp\\normalized\\CLUSD_quote.parquet": "b209aa987315bafde702d1dad632adb25ebc125af7118673f918e7c1d30715cc",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260916\\provider-advisories.json": "bf95e001a28295e0f3d3dcb129339bff5e0089b20531412bc2787a1c461356ef",
+    "C:\\dev\\ducketz\\datafetching\\fmp_fetch.py": "34ccde56ff3ba0bf6b75f51b3643ca1544852ec75ff2a5a8d20607937a10ae24",
+    "C:\\dev\\ducketz\\datafetching\\fmp_energy_context.py": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d",
+    "C:\\dev\\ducketz\\datafetching\\parquet_store.py": "cc444e189e71b23bf8f62f53609bc3ca194f7b5e0e2f2dfb85bbaf3671008216"
+  },
+  "log_path": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z\\loop_a_close_fetch.log",
+  "interpretation": "The optional shared energy derivation rejects preserved September 2 rows; current-cycle quote evidence passes the unchanged five-second gate. No newly actionable defect or provider retry is indicated.",
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "production_writes": 0
+}

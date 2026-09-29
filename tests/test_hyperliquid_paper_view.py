@@ -50,7 +50,8 @@ def paper_root(tmp_path):
     return root
 
 
-def operational(root, *, stamp=NOW-1):
+def operational(root, *, stamp=NOW-1, interval="15m", horizon=4, symbols=("BTC", "ETH", "HYPE", "ZEC")):
+    from datafetching.hyperliquid_candles import INTERVAL_MS
     for path in (root / "_paper" / "_runtime" / "status.json",
                  root / "_models" / "_runtime" / "status.json",
                  root / "_coordinator" / "coordinator_status.json"):
@@ -58,8 +59,8 @@ def operational(root, *, stamp=NOW-1):
                           "portfolio": {"pooled": {"equity": 999999, "total_pnl": 888888}}})
     write_json(root / "_paper" / "performance.json", {"as_of_utc": utc(stamp-60), "max_drawdown_fraction": -.01})
     write_json(root / "_paper" / "policy.json", {"policy_id": "saved_policy", "pool_gross_fraction": .6})
-    for coin in ("BTC", "ETH", "HYPE", "ZEC"):
-        base = root / coin / "15m"
+    for coin in symbols:
+        base = root / coin / interval
         write_json(base / "latest.json", {"run_id": "run1"})
         write_json(base / "runs" / "run1" / "summary.json", {"last_close_utc": utc(stamp)})
         write_json(base / "loop_status.json", {"status": "waiting", "updated_at_utc": utc(stamp),
@@ -67,15 +68,90 @@ def operational(root, *, stamp=NOW-1):
                 "finished_at_utc": utc(stamp), "total_seconds": .5, "queue_wait_seconds": .02,
                 "timings_seconds": {"fetch_and_normalize": .3, "feature_build": .1,
                                     "parquet_and_catalog_write": .04, "total_before_publish": .48}}})
-        model = root / "_models" / coin / "15m" / "h4"
+        model = root / "_models" / coin / interval / f"h{horizon}"
         write_json(model / "latest_prediction.json", {"coin": coin, "model_id": "model1",
             "p_not_down": .6, "p_down": .4, "qualified": coin == "ETH", "created_at_utc": utc(stamp),
-            "horizon_bars": 4, "target_close_utc": utc(stamp+3600)})
+            "interval": interval, "horizon_bars": horizon,
+            "target_close_utc": utc(stamp + horizon * INTERVAL_MS[interval] / 1000)})
         write_json(model / "candidate.json", {"model_id": "model1", "trained_at_utc": utc(stamp-600)})
         write_json(model / "runs" / "model1" / "record.json", {"trained_at_utc": utc(stamp-600)})
         write_json(model / "runs" / "model1" / "report.json", {"splits": {
             "fit": {"last_decision_close_utc": utc(stamp-86400), "last_label_end_utc": utc(stamp-82800)},
             "calibration": {"last_decision_close_utc": utc(stamp-7200)}}})
+
+
+def configure_five_minute(root, *, stamp=NOW-1):
+    operational(root, interval="5m", horizon=1, symbols=("BTC",), stamp=stamp)
+    config = root / "configs" / "models.json"
+    write_json(config, {"version": 1, "markets_config": "markets.json", "horizons_bars": [1]})
+    write_json(config.parent / "markets.json", {"version": 1, "interval": "5m",
+                                               "symbols": ["BTC"], "output_root": str(root)})
+    status = root / "_models" / "_runtime" / "status.json"
+    write_json(status, {**json.loads(status.read_text()), "config_path": str(config), "retrain_seconds": 300})
+    return config
+
+
+def test_configured_five_minute_recipe_reads_new_sources_not_existing_fifteen_minute(paper_root):
+    configure_five_minute(paper_root)
+    snapshot = service(paper_root).load_snapshot()
+    assert snapshot.market_recipe == {"interval": "5m", "horizon_bars": 1, "horizon_minutes": 5,
+                                       "candle_seconds": 300, "symbols": ["BTC"]}
+    assert len(snapshot.forecasts) == 1
+    assert snapshot.forecasts[0]["interval"] == "5m"
+    assert snapshot.forecasts[0]["horizon_minutes"] == 5
+    assert snapshot.sources["data:BTC"].cadence_seconds == 300
+    assert snapshot.sources["forecast:BTC"].cadence_seconds == 300
+    assert "data:ETH" not in snapshot.sources
+    assert snapshot.sources["performance"].cadence_seconds == 900
+    assert not snapshot.warnings
+
+
+@pytest.mark.parametrize("failure", ["missing", "invalid", "wrong_datastore"])
+def test_explicit_unavailable_recipe_never_falls_back_to_old_forecasts(paper_root, failure):
+    config = configure_five_minute(paper_root)
+    if failure == "missing":
+        config.unlink()
+    elif failure == "invalid":
+        config.write_text('{"unfinished":')
+    else:
+        markets = config.parent / "markets.json"
+        write_json(markets, {**json.loads(markets.read_text()), "output_root": str(paper_root / "other")})
+    snapshot = service(paper_root).load_snapshot()
+    assert not snapshot.forecasts and not snapshot.market_recipe
+    assert snapshot.sources["market_configuration"].state == "partial"
+    assert any("Market configuration unavailable" in warning for warning in snapshot.warnings)
+    assert snapshot.pooled["equity"] == 3039
+
+
+def test_five_minute_forecast_is_stale_when_target_matured_even_if_recently_published(paper_root):
+    configure_five_minute(paper_root)
+    path = paper_root / "_models" / "BTC" / "5m" / "h1" / "latest_prediction.json"
+    write_json(path, {**json.loads(path.read_text()), "target_close_utc": utc(NOW)})
+    source = service(paper_root).load_snapshot().sources["forecast:BTC"]
+    assert source.state == "stale"
+    assert "matured" in source.detail
+
+
+def test_five_minute_data_freshness_and_forecast_identity_use_configured_recipe(paper_root):
+    configure_five_minute(paper_root, stamp=NOW-421)
+    path = paper_root / "_models" / "BTC" / "5m" / "h1" / "latest_prediction.json"
+    write_json(path, {**json.loads(path.read_text()), "horizon_bars": 4})
+    snapshot = service(paper_root).load_snapshot()
+    assert snapshot.sources["data:BTC"].state == "stale"
+    assert snapshot.sources["forecast:BTC"].state == "partial"
+    assert snapshot.forecasts[0]["horizon_minutes"] is None
+    assert "5m/h1" in snapshot.forecasts[0]["validation_errors"][0]
+
+
+def test_five_minute_timing_history_excludes_previous_recipe(paper_root):
+    configure_five_minute(paper_root)
+    path = paper_root / "_models" / "_runtime" / "training_events.jsonl"
+    events = [{"coin": "BTC", "interval": interval, "horizon_bars": horizon,
+               "at_utc": utc(), "timing": {"worker_seconds": duration}}
+              for interval, horizon, duration in (("5m", 1, 10), ("15m", 4, 99))]
+    path.write_text("\n".join(json.dumps(event) for event in events))
+    timings = [row for row in service(paper_root).load_snapshot().timings if row["kind"] == "model"]
+    assert len(timings) == 1 and timings[0]["work_seconds"] == 10
 
 
 def test_ledger_is_authoritative_pooled_not_double_counted_and_pnl_excludes_inherited_gains(paper_root):

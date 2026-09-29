@@ -1,0 +1,22 @@
+{
+  "closed_at": "2026-09-29T06:57:41.5543972+00:00",
+  "supervision_uuid": "29918557-9e94-49dd-b438-9cd2c74337fd",
+  "total_monitor_renewals": 284,
+  "all_acquired": true,
+  "first_renewal": "2026-09-28T21:07:52.055183-07:00",
+  "last_renewal": "2026-09-28T23:56:54.397501-07:00",
+  "maximum_renewal_gap_seconds": 36.04642,
+  "stop_file_present": true,
+  "stop_confirmation": "STOP_REQUESTED",
+  "exec_session_id": 50644,
+  "monitor_exit_code": 0,
+  "monitor_launcher_pid": 76496,
+  "monitor_child_pid": 40132,
+  "matching_monitor_processes": [],
+  "original_monitor_process_ids_present": [],
+  "monitor_processes_absent": true,
+  "supervision_claim_released": false,
+  "native_run": "C:/DATASTORE/ml/overnight-runs/20260929T040727.779758Z",
+  "native_status": "COMPLETE",
+  "native_orders_placed": 0
+}

@@ -1,0 +1,1006 @@
+{
+  "checked_at": "2026-09-28T04:10:28.915034+00:00",
+  "status": "PASS_WITH_EXISTING_COVERAGE_NOTES",
+  "scope": "Bounded read-only saved artifact and audit-binding verification; no history replay, fitting, provider or broker calls.",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+  "source_session": "2026-09-25",
+  "action_date": "2026-09-28",
+  "manifest_output_files_verified": 33,
+  "previous_full_audit_evidence_files_verified": 9,
+  "checks_passed": 95,
+  "errors": [],
+  "checks": [
+    {
+      "check": "unchanged_since_previous_wake",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+      "expected_sha256": "68A58C0629B436F865BBF3C9579057025604EAC469DB4F66BCAA583B0EC95AC2",
+      "actual_sha256": "68a58c0629b436f865bbf3c9579057025604eac469db4f66bcaa583b0ec95ac2",
+      "expected_size": null,
+      "actual_size": 451
+    },
+    {
+      "check": "unchanged_since_previous_wake",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-latest\\run.json",
+      "expected_sha256": "AB8DCC8DFF4F92BECC3F17BE750DB0E65F6DDC9CD53BBBA99F1E93178FF490E8",
+      "actual_sha256": "ab8dcc8dff4f92becc3f17be750db0e65f6ddc9cd53bbba99f1e93178ff490e8",
+      "expected_size": null,
+      "actual_size": 383
+    },
+    {
+      "check": "unchanged_since_previous_wake",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-latest\\run.json",
+      "expected_sha256": "28B48FCF49208CA744B4ADB08D52D0856725FF67F0599FE5982139A7BF4F8FFA",
+      "actual_sha256": "28b48fcf49208ca744b4adb08d52d0856725ff67f0599fe5982139a7bf4f8ffa",
+      "expected_size": null,
+      "actual_size": 278
+    },
+    {
+      "check": "unchanged_since_previous_wake",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-latest\\run.json",
+      "expected_sha256": "A33432A8134D6A821D30B5DA5E0369B66F3FFC091CD5F7E5A04A1E3C92D35CC6",
+      "actual_sha256": "a33432a8134d6a821d30b5da5e0369b66f3ffc091cd5f7e5a04a1e3c92d35cc6",
+      "expected_size": null,
+      "actual_size": 252
+    },
+    {
+      "check": "unchanged_since_previous_wake",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+      "expected_sha256": "00637389E03B995AB5BB238B7170A9E6FD282143215C5CCF2C6ED2134C25491F",
+      "actual_sha256": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+      "expected_size": null,
+      "actual_size": 196
+    },
+    {
+      "check": "previous_full_audit_complete",
+      "pass": true
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\completion-summary.md",
+      "expected_sha256": "f4a5dba507b64302d9de351c5001c36b00cbc5f6714e60133e9e8746f2de7e7c",
+      "actual_sha256": "f4a5dba507b64302d9de351c5001c36b00cbc5f6714e60133e9e8746f2de7e7c",
+      "expected_size": null,
+      "actual_size": 13344
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit-runner.json",
+      "expected_sha256": "958abe57af13bcb8492e81624f439e1093a94c36d6b55603d8dd1a3d3c4b71b8",
+      "actual_sha256": "958abe57af13bcb8492e81624f439e1093a94c36d6b55603d8dd1a3d3c4b71b8",
+      "expected_size": null,
+      "actual_size": 6600
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\completion-audit.json",
+      "expected_sha256": "e62d821b8335bc6f21ec7c06ab7fd58746c1725050198c90ee4b3f3cc3b4bf12",
+      "actual_sha256": "e62d821b8335bc6f21ec7c06ab7fd58746c1725050198c90ee4b3f3cc3b4bf12",
+      "expected_size": null,
+      "actual_size": 315516
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\yg-completion.json",
+      "expected_sha256": "94d1470c2bfe18c0f5d1c3980c11b27295160314d758caa65d577926eb40edd1",
+      "actual_sha256": "94d1470c2bfe18c0f5d1c3980c11b27295160314d758caa65d577926eb40edd1",
+      "expected_size": null,
+      "actual_size": 14477
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\provider-completion.json",
+      "expected_sha256": "f279728333cbcb1f57b363073aaa2f73518ba94804ac84d91c1999e3939faec6",
+      "actual_sha256": "f279728333cbcb1f57b363073aaa2f73518ba94804ac84d91c1999e3939faec6",
+      "expected_size": null,
+      "actual_size": 228920
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\model-review.json",
+      "expected_sha256": "266ac5a341eb49e22e89e97801b016a8557d80a02220dba4c4ef3d471702d6d9",
+      "actual_sha256": "266ac5a341eb49e22e89e97801b016a8557d80a02220dba4c4ef3d471702d6d9",
+      "expected_size": null,
+      "actual_size": 129373
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\preflight\\final-preservation.json",
+      "expected_sha256": "c71de26d4d298d3c302595913abb7b9bd7001daa699f2bc5119770f25da2d361",
+      "actual_sha256": "c71de26d4d298d3c302595913abb7b9bd7001daa699f2bc5119770f25da2d361",
+      "expected_size": null,
+      "actual_size": 33218
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\preflight\\actuals-coverage-review.json",
+      "expected_sha256": "ee357acec97bca8d564023583ea9175fee452471f4a0b5e7556a1f387b8869fa",
+      "actual_sha256": "ee357acec97bca8d564023583ea9175fee452471f4a0b5e7556a1f387b8869fa",
+      "expected_size": null,
+      "actual_size": 132171
+    },
+    {
+      "check": "previous_full_audit_evidence",
+      "pass": true,
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\supervision-release.json",
+      "expected_sha256": "5c78f03af2d6399d1ad82169e25dc483dd8b4e5e881f655abc65ac131da1bf20",
+      "actual_sha256": "5c78f03af2d6399d1ad82169e25dc483dd8b4e5e881f655abc65ac131da1bf20",
+      "expected_size": null,
+      "actual_size": 179
+    },
+    {
+      "check": "native_stage_report",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\stage-report.json",
+      "expected_sha256": "c5464e09abe7a599006e0799d42bc52f146fe6457bf5e822271a1eecdd3fb26c",
+      "actual_sha256": "c5464e09abe7a599006e0799d42bc52f146fe6457bf5e822271a1eecdd3fb26c",
+      "expected_size": 8857,
+      "actual_size": 8857
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\gameplan_actuals_review.log",
+      "expected_sha256": "673a740fde3b320019c6e9557a7804613ccf5bb89c0c125ffb3f543f416b5253",
+      "actual_sha256": "673a740fde3b320019c6e9557a7804613ccf5bb89c0c125ffb3f543f416b5253",
+      "expected_size": 244,
+      "actual_size": 244
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\gameplan_evaluation.log",
+      "expected_sha256": "0fa87c146afa51574c657b59230aaec5b6808dd76eef3aa47a87d38cc53d4c7d",
+      "actual_sha256": "0fa87c146afa51574c657b59230aaec5b6808dd76eef3aa47a87d38cc53d4c7d",
+      "expected_size": 7536,
+      "actual_size": 7536
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\gameplan_publication.log",
+      "expected_sha256": "e7eadcff7a6695dc47ad88abd9cb81b7d684792e8d80df76931ba67241b7e214",
+      "actual_sha256": "e7eadcff7a6695dc47ad88abd9cb81b7d684792e8d80df76931ba67241b7e214",
+      "expected_size": 2797560,
+      "actual_size": 2797560
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\gameplan_trade_planning.log",
+      "expected_sha256": "705be9999baf79bd56610472880e739adc8fe4ae9367203a4309b0a5ea10e2b1",
+      "actual_sha256": "705be9999baf79bd56610472880e739adc8fe4ae9367203a4309b0a5ea10e2b1",
+      "expected_size": 228,
+      "actual_size": 228
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\loop_a_close_fetch.log",
+      "expected_sha256": "68af0437a897132a36570d5f0585f92a34a8436d540a886ae73b530ce4db3493",
+      "actual_sha256": "68af0437a897132a36570d5f0585f92a34a8436d540a886ae73b530ce4db3493",
+      "expected_size": 119039,
+      "actual_size": 119039
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\loop_b_directional_generation.log",
+      "expected_sha256": "06ecad100d4a7159aae8a3f06506e2cdc97f6562b37921044a85d92fa9b1fe8a",
+      "actual_sha256": "06ecad100d4a7159aae8a3f06506e2cdc97f6562b37921044a85d92fa9b1fe8a",
+      "expected_size": 7803,
+      "actual_size": 7803
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\stock_enrichment_training.log",
+      "expected_sha256": "100c4a6b1b3ca3dc7de2810dee9effa774de3e500c690faee9c07c75d804251d",
+      "actual_sha256": "100c4a6b1b3ca3dc7de2810dee9effa774de3e500c690faee9c07c75d804251d",
+      "expected_size": 236,
+      "actual_size": 236
+    },
+    {
+      "check": "native_log",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z\\stock_target_history.log",
+      "expected_sha256": "c43c224d1f2f504f4b28d5b0134df3e39f5c2d69716fe6a9e589a6664040edc4",
+      "actual_sha256": "c43c224d1f2f504f4b28d5b0134df3e39f5c2d69716fe6a9e589a6664040edc4",
+      "expected_size": 493,
+      "actual_size": 493
+    },
+    {
+      "check": "native_complete_zero_orders",
+      "pass": true
+    },
+    {
+      "check": "all_eight_stages_complete",
+      "pass": true
+    },
+    {
+      "check": "saved_configuration_preserved",
+      "pass": true
+    },
+    {
+      "check": "gameplan_expected_pointer",
+      "pass": true,
+      "current": {
+        "action_date": "2026-09-28",
+        "manifest_checksum_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+        "published_at": "2026-09-26T06:25:14.090102+00:00",
+        "receipt_checksum_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+        "run_path": "ml/nightly-gameplan-runs/20260926T061604.318956Z"
+      }
+    },
+    {
+      "check": "gameplan_pointer_receipt",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\receipt.json",
+      "expected_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+      "actual_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+      "expected_size": null,
+      "actual_size": 703
+    },
+    {
+      "check": "gameplan_pointer_manifest",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\manifest.json",
+      "expected_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+      "actual_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+      "expected_size": null,
+      "actual_size": 843039
+    },
+    {
+      "check": "trade_plan_expected_pointer",
+      "pass": true,
+      "current": {
+        "action_date": "2026-09-28",
+        "receipt_sha256": "95dda9feaac9a500d38beea514b7306e3b30f3fe8e599235342196e42539f81a",
+        "run_path": "ml/gameplan-trade-plan-runs/20260926T062723.283372Z",
+        "source_receipt_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d"
+      }
+    },
+    {
+      "check": "trade_plan_pointer_receipt",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\receipt.json",
+      "expected_sha256": "95dda9feaac9a500d38beea514b7306e3b30f3fe8e599235342196e42539f81a",
+      "actual_sha256": "95dda9feaac9a500d38beea514b7306e3b30f3fe8e599235342196e42539f81a",
+      "expected_size": null,
+      "actual_size": 746
+    },
+    {
+      "check": "actuals_expected_pointer",
+      "pass": true,
+      "current": {
+        "action_date": "2026-09-25",
+        "receipt_sha256": "5788afce5a8f9ba24393d3147e94b56a23ac5c6383ef292edbe676d79b5f1361",
+        "run_path": "ml/gameplan-actuals-review-runs/20260926T063044.178275Z"
+      }
+    },
+    {
+      "check": "actuals_pointer_receipt",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z\\receipt.json",
+      "expected_sha256": "5788afce5a8f9ba24393d3147e94b56a23ac5c6383ef292edbe676d79b5f1361",
+      "actual_sha256": "5788afce5a8f9ba24393d3147e94b56a23ac5c6383ef292edbe676d79b5f1361",
+      "expected_size": null,
+      "actual_size": 335
+    },
+    {
+      "check": "evaluation_pointer_receipt",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z\\receipt.json",
+      "expected_sha256": "38ebd23eccfd03e9004bb97fc08e4867f0862efb42eec3b8f46a5e7885c052e4",
+      "actual_sha256": "38ebd23eccfd03e9004bb97fc08e4867f0862efb42eec3b8f46a5e7885c052e4",
+      "expected_size": null,
+      "actual_size": 341
+    },
+    {
+      "check": "gameplan_receipt_manifest",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\manifest.json",
+      "expected_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+      "actual_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+      "expected_size": null,
+      "actual_size": 843039
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\archive-history.json",
+      "expected_sha256": "d366d87571d9baad244a0c5e3521a035989cecf751d4cdea84f38b1ec8a161be",
+      "actual_sha256": "d366d87571d9baad244a0c5e3521a035989cecf751d4cdea84f38b1ec8a161be",
+      "expected_size": 172080,
+      "actual_size": 172080
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\forecasts.parquet",
+      "expected_sha256": "fa5470abda577f7db7f3ba84a71b16db6906d8914e4fbf69ec91ec0a169d1198",
+      "actual_sha256": "fa5470abda577f7db7f3ba84a71b16db6906d8914e4fbf69ec91ec0a169d1198",
+      "expected_size": 60197,
+      "actual_size": 60197
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\gameplan.json",
+      "expected_sha256": "ca361ab72b2dbf346e48406cec6ebe0c1ae396500c396abd06acc16681253b26",
+      "actual_sha256": "ca361ab72b2dbf346e48406cec6ebe0c1ae396500c396abd06acc16681253b26",
+      "expected_size": 486205,
+      "actual_size": 486205
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\model-reports.json",
+      "expected_sha256": "91fc03bbd371ae8a71b715808fef3c4b9d1a6b97c9a12e673cd650d49e8b58a2",
+      "actual_sha256": "91fc03bbd371ae8a71b715808fef3c4b9d1a6b97c9a12e673cd650d49e8b58a2",
+      "expected_size": 128039,
+      "actual_size": 128039
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\models\\1d\\model.joblib",
+      "expected_sha256": "9ec11aa9ff698e5dbc8d9a1c9e272029afdbeef187cc2fe32e5e27c7751787d6",
+      "actual_sha256": "9ec11aa9ff698e5dbc8d9a1c9e272029afdbeef187cc2fe32e5e27c7751787d6",
+      "expected_size": 13402,
+      "actual_size": 13402
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\models\\1h\\model.joblib",
+      "expected_sha256": "4776195fbedb1b2a9e4b50c0f3ba549fb7ca315296b31590d5c52c654e009a74",
+      "actual_sha256": "4776195fbedb1b2a9e4b50c0f3ba549fb7ca315296b31590d5c52c654e009a74",
+      "expected_size": 248637,
+      "actual_size": 248637
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\models\\1w\\model.joblib",
+      "expected_sha256": "8e59867e34eb17db3a4b9124c761d7bcde521f36838c3a4f463e920682c56868",
+      "actual_sha256": "8e59867e34eb17db3a4b9124c761d7bcde521f36838c3a4f463e920682c56868",
+      "expected_size": 17686,
+      "actual_size": 17686
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\models\\4h\\model.joblib",
+      "expected_sha256": "ace612b2099b50f3f70b3e954882018fbbf91f2eafac6e5008b2fbe63288e8a6",
+      "actual_sha256": "ace612b2099b50f3f70b3e954882018fbbf91f2eafac6e5008b2fbe63288e8a6",
+      "expected_size": 106531,
+      "actual_size": 106531
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\option-strategy-intents.parquet",
+      "expected_sha256": "2839d6a21f3a193510a306a30baad73a61ffa123e2de7ca97519beabed6dc101",
+      "actual_sha256": "2839d6a21f3a193510a306a30baad73a61ffa123e2de7ca97519beabed6dc101",
+      "expected_size": 23597,
+      "actual_size": 23597
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\prior-gameplan-evaluations.parquet",
+      "expected_sha256": "068a1079eef11d6e5717dfc413b4161928085097ebec74ee6863c1a2bff96f92",
+      "actual_sha256": "068a1079eef11d6e5717dfc413b4161928085097ebec74ee6863c1a2bff96f92",
+      "expected_size": 233937,
+      "actual_size": 233937
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-1d.parquet",
+      "expected_sha256": "fe9476446db385634e9a3526d1e46c32a02bc97366e80681526a547b3908eec1",
+      "actual_sha256": "fe9476446db385634e9a3526d1e46c32a02bc97366e80681526a547b3908eec1",
+      "expected_size": 3439559,
+      "actual_size": 3439559
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-1h.parquet",
+      "expected_sha256": "b5782e04ac6cc5102551bd3766cee7f168531b3722a796308597d193dceb10a3",
+      "actual_sha256": "b5782e04ac6cc5102551bd3766cee7f168531b3722a796308597d193dceb10a3",
+      "expected_size": 11506197,
+      "actual_size": 11506197
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-1w.parquet",
+      "expected_sha256": "62a4770ebaff18f3d9342dc76853b4f1c352c4ed9b2a656d3c1ab0645ce01923",
+      "actual_sha256": "62a4770ebaff18f3d9342dc76853b4f1c352c4ed9b2a656d3c1ab0645ce01923",
+      "expected_size": 1949998,
+      "actual_size": 1949998
+    },
+    {
+      "check": "gameplan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-4h.parquet",
+      "expected_sha256": "40058739483c9df772a4b3a406c4c8527f3365e5b5bc69cfd1a48c999801c479",
+      "actual_sha256": "40058739483c9df772a4b3a406c4c8527f3365e5b5bc69cfd1a48c999801c479",
+      "expected_size": 6776235,
+      "actual_size": 6776235
+    },
+    {
+      "check": "trade_plan_receipt_manifest",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\manifest.json",
+      "expected_sha256": "2f807e9e4a9b33ee244dcb5aa25e663e6a1ec5086b803b99e2ca14a7fa1fd8ea",
+      "actual_sha256": "2f807e9e4a9b33ee244dcb5aa25e663e6a1ec5086b803b99e2ca14a7fa1fd8ea",
+      "expected_size": null,
+      "actual_size": 274983
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\Gameplan.md",
+      "expected_sha256": "2cc0e834815c277c6089fc8155d2e61cf29cacb4aef9a07b811458d51d07a37d",
+      "actual_sha256": "2cc0e834815c277c6089fc8155d2e61cf29cacb4aef9a07b811458d51d07a37d",
+      "expected_size": 92636,
+      "actual_size": 92636
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\account-snapshot.json",
+      "expected_sha256": "55d20170baad0c70a96edc18ab8c0416749e91a7a5ccf3979c67341b4e0798e6",
+      "actual_sha256": "55d20170baad0c70a96edc18ab8c0416749e91a7a5ccf3979c67341b4e0798e6",
+      "expected_size": 16936,
+      "actual_size": 16936
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\direction-ledger.json",
+      "expected_sha256": "6c2c3be2b77bf58be2289dc3a1eb4121053633a5b6801c3b311cf6ceb282be6b",
+      "actual_sha256": "6c2c3be2b77bf58be2289dc3a1eb4121053633a5b6801c3b311cf6ceb282be6b",
+      "expected_size": 38816,
+      "actual_size": 38816
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\planning-price-path.json",
+      "expected_sha256": "cafe1c085989a90dd775851ecbd5b156e117226692947ac20084326a29c34832",
+      "actual_sha256": "cafe1c085989a90dd775851ecbd5b156e117226692947ac20084326a29c34832",
+      "expected_size": 11909766,
+      "actual_size": 11909766
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\planning-reference-completion.json",
+      "expected_sha256": "2432f81248c0fc18adae32f938deca9eebc9e971a5eebe5bff026def8afd3b85",
+      "actual_sha256": "2432f81248c0fc18adae32f938deca9eebc9e971a5eebe5bff026def8afd3b85",
+      "expected_size": 1547300,
+      "actual_size": 1547300
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\price-bands.json",
+      "expected_sha256": "b741d55eaffb852c1dc110e275038f05e0d670ff66aecbbfdd7556c2ebd2ea41",
+      "actual_sha256": "b741d55eaffb852c1dc110e275038f05e0d670ff66aecbbfdd7556c2ebd2ea41",
+      "expected_size": 11146607,
+      "actual_size": 11146607
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\report.json",
+      "expected_sha256": "3f36d549a4a3beb1fe6c7cfb2ab054afcf4a92771184435a57934981d5daf64f",
+      "actual_sha256": "3f36d549a4a3beb1fe6c7cfb2ab054afcf4a92771184435a57934981d5daf64f",
+      "expected_size": 2174412,
+      "actual_size": 2174412
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\synthetic-reference-bars.parquet",
+      "expected_sha256": "8235d9c85d30d9e1aa75ad3efda37f2c533808974c2e11616f9289482e2eba60",
+      "actual_sha256": "8235d9c85d30d9e1aa75ad3efda37f2c533808974c2e11616f9289482e2eba60",
+      "expected_size": 15291,
+      "actual_size": 15291
+    },
+    {
+      "check": "trade_plan_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z\\trade-plan.parquet",
+      "expected_sha256": "378dd9c7abc4f95ab35b4c961f56de92d92e47818a089cef337e3a2f8a3af46a",
+      "actual_sha256": "378dd9c7abc4f95ab35b4c961f56de92d92e47818a089cef337e3a2f8a3af46a",
+      "expected_size": 116921,
+      "actual_size": 116921
+    },
+    {
+      "check": "actuals_receipt_manifest",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z\\manifest.json",
+      "expected_sha256": "84dc0e787959445feed239fd43836626fb545f05802f0061130e523cd3e3f9fd",
+      "actual_sha256": "84dc0e787959445feed239fd43836626fb545f05802f0061130e523cd3e3f9fd",
+      "expected_size": null,
+      "actual_size": 275438
+    },
+    {
+      "check": "actuals_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z\\Gameplan-results.md",
+      "expected_sha256": "6211d6fec9c0f0f9464671454ba72fade8f32ff9389a98d1913ed0071dc5af0e",
+      "actual_sha256": "6211d6fec9c0f0f9464671454ba72fade8f32ff9389a98d1913ed0071dc5af0e",
+      "expected_size": 64414,
+      "actual_size": 64414
+    },
+    {
+      "check": "actuals_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z\\forecast-results.parquet",
+      "expected_sha256": "6460e908ec3f310b58e6dfc80cbb937d5cc97d086d8e1762d1c044a14017d136",
+      "actual_sha256": "6460e908ec3f310b58e6dfc80cbb937d5cc97d086d8e1762d1c044a14017d136",
+      "expected_size": 152840,
+      "actual_size": 152840
+    },
+    {
+      "check": "actuals_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z\\price-results.parquet",
+      "expected_sha256": "92726f003dee59beb2fe6ffb1f5d9533be01739dedec931743167c5f905b8a33",
+      "actual_sha256": "92726f003dee59beb2fe6ffb1f5d9533be01739dedec931743167c5f905b8a33",
+      "expected_size": 21547,
+      "actual_size": 21547
+    },
+    {
+      "check": "actuals_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z\\report.json",
+      "expected_sha256": "83cc5d503c366e8c44eca499c4e3ce86defa3aa6552ab1602185ccd9050b3530",
+      "actual_sha256": "83cc5d503c366e8c44eca499c4e3ce86defa3aa6552ab1602185ccd9050b3530",
+      "expected_size": 309870,
+      "actual_size": 309870
+    },
+    {
+      "check": "sizing_receipt_manifest",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260926T062539.552484Z\\manifest.json",
+      "expected_sha256": "cb8d640d3cf0b23126fec559c9a21ca2df9348a614aecf6bddd28dcfb755395d",
+      "actual_sha256": "cb8d640d3cf0b23126fec559c9a21ca2df9348a614aecf6bddd28dcfb755395d",
+      "expected_size": null,
+      "actual_size": 3459
+    },
+    {
+      "check": "sizing_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260926T062539.552484Z\\model.json",
+      "expected_sha256": "523dee548a2150dfc8feb417ed939d5f03ab801e1add7e3107fcb314c8798e95",
+      "actual_sha256": "523dee548a2150dfc8feb417ed939d5f03ab801e1add7e3107fcb314c8798e95",
+      "expected_size": 15936474,
+      "actual_size": 15936474
+    },
+    {
+      "check": "sizing_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260926T062539.552484Z\\training-report.json",
+      "expected_sha256": "0f086ded5209d4f1f4982e39a757f87152e228289c44f4536852fb0012a26dea",
+      "actual_sha256": "0f086ded5209d4f1f4982e39a757f87152e228289c44f4536852fb0012a26dea",
+      "expected_size": 493360,
+      "actual_size": 493360
+    },
+    {
+      "check": "evaluation_receipt_manifest",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z\\manifest.json",
+      "expected_sha256": "6008f1f5b4e89bc51f10373dcd185bafaf4a924fb6ad3a276a94844343e0239c",
+      "actual_sha256": "6008f1f5b4e89bc51f10373dcd185bafaf4a924fb6ad3a276a94844343e0239c",
+      "expected_size": null,
+      "actual_size": 331146
+    },
+    {
+      "check": "evaluation_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z\\evaluations.parquet",
+      "expected_sha256": "bb88f517c3eca065773058ac4a2bd2d6514d4ac7e562cc8106adbb7f8bca1942",
+      "actual_sha256": "bb88f517c3eca065773058ac4a2bd2d6514d4ac7e562cc8106adbb7f8bca1942",
+      "expected_size": 240832,
+      "actual_size": 240832
+    },
+    {
+      "check": "evaluation_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z\\og-yg-comparison.json",
+      "expected_sha256": "d1be16b74a1b7a5648b3e84b95b0b41943783e7cd1d673fb2116a32298bc60a0",
+      "actual_sha256": "d1be16b74a1b7a5648b3e84b95b0b41943783e7cd1d673fb2116a32298bc60a0",
+      "expected_size": 1887,
+      "actual_size": 1887
+    },
+    {
+      "check": "evaluation_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z\\review.md",
+      "expected_sha256": "30bc381a9cbd613bd24bbe4bfd931f477620dbcd7b16872d8c59cd4cc1d7c9bb",
+      "actual_sha256": "30bc381a9cbd613bd24bbe4bfd931f477620dbcd7b16872d8c59cd4cc1d7c9bb",
+      "expected_size": 1810,
+      "actual_size": 1810
+    },
+    {
+      "check": "evaluation_output",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z\\summary.json",
+      "expected_sha256": "b70d4c61ab0e4370bcb870a50d444164543b50fa1791040003e64916be642f56",
+      "actual_sha256": "b70d4c61ab0e4370bcb870a50d444164543b50fa1791040003e64916be642f56",
+      "expected_size": 9472,
+      "actual_size": 9472
+    },
+    {
+      "check": "forecasts_24_per_configured_symbol",
+      "pass": true,
+      "counts": {
+        "AAPL": 24,
+        "AMZN": 24,
+        "COST": 24,
+        "CROX": 24,
+        "GOOG": 24,
+        "IONQ": 24,
+        "MU": 24,
+        "NVDA": 24,
+        "PATH": 24,
+        "SNDK": 24,
+        "TWST": 24
+      }
+    },
+    {
+      "check": "intents_24_per_configured_symbol",
+      "pass": true,
+      "counts": {
+        "AAPL": 24,
+        "AMZN": 24,
+        "COST": 24,
+        "CROX": 24,
+        "GOOG": 24,
+        "IONQ": 24,
+        "MU": 24,
+        "NVDA": 24,
+        "PATH": 24,
+        "SNDK": 24,
+        "TWST": 24
+      }
+    },
+    {
+      "check": "trade_plan_24_per_configured_symbol",
+      "pass": true,
+      "counts": {
+        "AAPL": 24,
+        "AMZN": 24,
+        "COST": 24,
+        "CROX": 24,
+        "GOOG": 24,
+        "IONQ": 24,
+        "MU": 24,
+        "NVDA": 24,
+        "PATH": 24,
+        "SNDK": 24,
+        "TWST": 24
+      }
+    },
+    {
+      "check": "stock_only_intents",
+      "pass": true
+    },
+    {
+      "check": "current_forecasts_promoted",
+      "pass": true
+    },
+    {
+      "check": "correct_source_action_dates",
+      "pass": true
+    },
+    {
+      "check": "trade_plan_frozen_identities",
+      "pass": true
+    },
+    {
+      "check": "1d_directional_qualification",
+      "pass": true
+    },
+    {
+      "check": "1h_directional_qualification",
+      "pass": true
+    },
+    {
+      "check": "1w_directional_qualification",
+      "pass": true
+    },
+    {
+      "check": "4h_directional_qualification",
+      "pass": true
+    },
+    {
+      "check": "sizing_fitted_but_unqualified",
+      "pass": true
+    },
+    {
+      "check": "sizing_pinned_source",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\manifest.json",
+      "expected_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+      "actual_sha256": "4715329d34afe9721cf27f86a0924c24bb8d56ff11021ab21b236946931e1455",
+      "expected_size": null,
+      "actual_size": 843039
+    },
+    {
+      "check": "sizing_pinned_source",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\receipt.json",
+      "expected_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+      "actual_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+      "expected_size": null,
+      "actual_size": 703
+    },
+    {
+      "check": "sizing_pinned_source",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-1d.parquet",
+      "expected_sha256": "fe9476446db385634e9a3526d1e46c32a02bc97366e80681526a547b3908eec1",
+      "actual_sha256": "fe9476446db385634e9a3526d1e46c32a02bc97366e80681526a547b3908eec1",
+      "expected_size": null,
+      "actual_size": 3439559
+    },
+    {
+      "check": "sizing_pinned_source",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-1h.parquet",
+      "expected_sha256": "b5782e04ac6cc5102551bd3766cee7f168531b3722a796308597d193dceb10a3",
+      "actual_sha256": "b5782e04ac6cc5102551bd3766cee7f168531b3722a796308597d193dceb10a3",
+      "expected_size": null,
+      "actual_size": 11506197
+    },
+    {
+      "check": "sizing_pinned_source",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-1w.parquet",
+      "expected_sha256": "62a4770ebaff18f3d9342dc76853b4f1c352c4ed9b2a656d3c1ab0645ce01923",
+      "actual_sha256": "62a4770ebaff18f3d9342dc76853b4f1c352c4ed9b2a656d3c1ab0645ce01923",
+      "expected_size": null,
+      "actual_size": 1949998
+    },
+    {
+      "check": "sizing_pinned_source",
+      "pass": true,
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z\\training-cohort-4h.parquet",
+      "expected_sha256": "40058739483c9df772a4b3a406c4c8527f3365e5b5bc69cfd1a48c999801c479",
+      "actual_sha256": "40058739483c9df772a4b3a406c4c8527f3365e5b5bc69cfd1a48c999801c479",
+      "expected_size": null,
+      "actual_size": 6776235
+    },
+    {
+      "check": "actuals_dates_source",
+      "pass": true
+    },
+    {
+      "check": "actuals_saved_coverage",
+      "pass": true,
+      "counts": {
+        "EVALUATED": 160,
+        "PENDING_MATURITY": 66,
+        "MATURE_AWAITING_DATA": 38
+      }
+    },
+    {
+      "check": "latest_evaluation_saved_coverage",
+      "pass": true,
+      "counts": {
+        "EVALUATED": 4245,
+        "MATURE_AWAITING_DATA": 894,
+        "PENDING_MATURITY": 429
+      }
+    },
+    {
+      "check": "monday_evaluation_pending",
+      "pass": true
+    }
+  ],
+  "paths": {
+    "gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z",
+    "trade_plan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260926T062723.283372Z",
+    "actuals": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260926T063044.178275Z",
+    "sizing": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260926T062539.552484Z",
+    "evaluation": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z"
+  },
+  "directional": {
+    "1d": {
+      "status": "PROMOTED",
+      "policy": "independent-stock-directional-promotion-v2",
+      "assessment": {
+        "brier_score": 0.2504586446112885,
+        "direction_accuracy_at_0_5": 0.5065502183406113,
+        "expected_calibration_error_10_bin": 0.03183650820388175,
+        "log_loss": 0.69406901482387,
+        "mean_probability": 0.5065960935008165,
+        "positive_rate": 0.4755458515283843,
+        "rows": 2290
+      },
+      "baseline": {
+        "brier_score": 0.2507676409057194,
+        "direction_accuracy_at_0_5": 0.4755458515283843,
+        "expected_calibration_error_10_bin": 0.03695465171248696,
+        "log_loss": 0.6946828149411466,
+        "mean_probability": 0.5125005032408713,
+        "positive_rate": 0.4755458515283843,
+        "rows": 2290
+      },
+      "assessment_beats_baseline": {
+        "brier_score": true,
+        "log_loss": true
+      },
+      "assessment_minus_baseline": {
+        "brier_score": -0.0003089962944309,
+        "log_loss": -0.0006138001172766
+      }
+    },
+    "1h": {
+      "status": "PROMOTED",
+      "policy": "independent-stock-directional-promotion-v2",
+      "assessment": {
+        "brier_score": 0.2503562802553099,
+        "direction_accuracy_at_0_5": 0.5058867269797992,
+        "expected_calibration_error_10_bin": 0.014695260098626093,
+        "log_loss": 0.6938734126820015,
+        "mean_probability": 0.49666401765151746,
+        "positive_rate": 0.5003098277357789,
+        "rows": 8069
+      },
+      "baseline": {
+        "brier_score": 0.250000079660241,
+        "direction_accuracy_at_0_5": 0.4996901722642211,
+        "expected_calibration_error_10_bin": 0.00041911032770491907,
+        "log_loss": 0.6931473398804298,
+        "mean_probability": 0.499890717408074,
+        "positive_rate": 0.5003098277357789,
+        "rows": 8069
+      },
+      "assessment_beats_baseline": {
+        "brier_score": false,
+        "log_loss": false
+      },
+      "assessment_minus_baseline": {
+        "brier_score": 0.0003562005950689,
+        "log_loss": 0.0007260728015717
+      }
+    },
+    "1w": {
+      "status": "PROMOTED",
+      "policy": "independent-stock-directional-promotion-v2",
+      "assessment": {
+        "brier_score": 0.2533104540023315,
+        "direction_accuracy_at_0_5": 0.5116279069767442,
+        "expected_calibration_error_10_bin": 0.06169849147577924,
+        "log_loss": 0.6998786793017542,
+        "mean_probability": 0.5723717922788095,
+        "positive_rate": 0.5158562367864693,
+        "rows": 473
+      },
+      "baseline": {
+        "brier_score": 0.2515490808736704,
+        "direction_accuracy_at_0_5": 0.5158562367864693,
+        "expected_calibration_error_10_bin": 0.04243231220071553,
+        "log_loss": 0.6962750531287822,
+        "mean_probability": 0.5582885489871848,
+        "positive_rate": 0.5158562367864693,
+        "rows": 473
+      },
+      "assessment_beats_baseline": {
+        "brier_score": false,
+        "log_loss": false
+      },
+      "assessment_minus_baseline": {
+        "brier_score": 0.0017613731286611,
+        "log_loss": 0.003603626172972
+      }
+    },
+    "4h": {
+      "status": "PROMOTED",
+      "policy": "independent-stock-directional-promotion-v2",
+      "assessment": {
+        "brier_score": 0.24971467391595553,
+        "direction_accuracy_at_0_5": 0.5189359783588818,
+        "expected_calibration_error_10_bin": 0.0005778842953329778,
+        "log_loss": 0.6925767615959547,
+        "mean_probability": 0.5014795975505179,
+        "positive_rate": 0.5009017132551848,
+        "rows": 2218
+      },
+      "baseline": {
+        "brier_score": 0.250034616002107,
+        "direction_accuracy_at_0_5": 0.5009017132551848,
+        "expected_calibration_error_10_bin": 0.005952233942109975,
+        "log_loss": 0.6932164198438693,
+        "mean_probability": 0.5068539471972948,
+        "positive_rate": 0.5009017132551848,
+        "rows": 2218
+      },
+      "assessment_beats_baseline": {
+        "brier_score": true,
+        "log_loss": true
+      },
+      "assessment_minus_baseline": {
+        "brier_score": -0.00031994208615147,
+        "log_loss": -0.0006396582479146
+      }
+    }
+  },
+  "sizing": {
+    "1d": {
+      "status": "FITTED",
+      "admitted_rows": 3791,
+      "excluded_context_rows": 23745,
+      "fitted_scope_count": 11,
+      "qualified_scope_count": 0
+    },
+    "1h": {
+      "status": "FITTED",
+      "admitted_rows": 93040,
+      "excluded_context_rows": 5978,
+      "fitted_scope_count": 143,
+      "qualified_scope_count": 0
+    },
+    "1w": {
+      "status": "FITTED",
+      "admitted_rows": 3765,
+      "excluded_context_rows": 0,
+      "fitted_scope_count": 39,
+      "qualified_scope_count": 0
+    },
+    "4h": {
+      "status": "FITTED",
+      "admitted_rows": 25082,
+      "excluded_context_rows": 0,
+      "fitted_scope_count": 78,
+      "qualified_scope_count": 0
+    }
+  },
+  "actuals": {
+    "forecasts": {
+      "EVALUATED": 160,
+      "PENDING_MATURITY": 66,
+      "MATURE_AWAITING_DATA": 38
+    },
+    "prices": {
+      "COMPARED": 137,
+      "MATURE_AWAITING_DATA": 17
+    }
+  },
+  "evaluation": {
+    "run": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260926T160907.135417Z",
+    "forecasts": 5568,
+    "counts": {
+      "EVALUATED": 4245,
+      "MATURE_AWAITING_DATA": 894,
+      "PENDING_MATURITY": 429
+    },
+    "monday_pending_rows": 264
+  },
+  "limitations": [
+    "Original deep source/cohort/inference audit was not rerun; its nine bound evidence files are unchanged.",
+    "Four sizing groups remain unqualified; 1h and 1w directional scores remain within v2 tolerances without beating both baselines.",
+    "Prior actuals retain 38 mature missing and 66 future forecasts; complete source coverage does not create observed prices."
+  ]
+}

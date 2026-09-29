@@ -38,6 +38,15 @@ class ModelConfig:
     assessment_rows: int = 288
     max_model_age_seconds: float = 86400.0
     max_train_rows: int | None = None
+    split_mode: str = "fixed_rows"
+    train_fraction: float | None = None
+    calibration_fraction: float | None = None
+    assessment_fraction: float | None = None
+    calibration_c: float = 1.0
+    logistic_weight: float = 1.0
+    extra_trees_weight: float = 1.0
+    hist_gradient_boosting_weight: float = 1.0
+    mlp_weight: float = 1.0
 
     def __post_init__(self):
         if not isinstance(self.markets_config, (str, Path)) or not str(self.markets_config).strip():
@@ -52,6 +61,11 @@ class ModelConfig:
             value = getattr(self, name)
             if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be a finite positive number.")
+        for name in ("calibration_c", "logistic_weight", "extra_trees_weight",
+                     "hist_gradient_boosting_weight", "mlp_weight"):
+            value = getattr(self, name)
+            if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+                raise ValueError(f"{name} must be a finite positive number.")
         for name in ("model_threads", "min_train_rows", "calibration_rows", "assessment_rows"):
             value = getattr(self, name)
             minimum = 1 if name == "model_threads" else 2
@@ -60,6 +74,16 @@ class ModelConfig:
         if self.max_train_rows is not None and (
                 type(self.max_train_rows) is not int or self.max_train_rows < self.min_train_rows):
             raise ValueError("max_train_rows must be None or an integer >= min_train_rows.")
+        if self.split_mode not in ("fixed_rows", "fractions"):
+            raise ValueError("split_mode must be fixed_rows or fractions.")
+        fractions = (self.train_fraction, self.calibration_fraction, self.assessment_fraction)
+        if self.split_mode == "fixed_rows":
+            if any(value is not None for value in fractions):
+                raise ValueError("Fraction controls require split_mode='fractions'.")
+        elif (any(type(value) not in (int, float) or not math.isfinite(value)
+                  or not 0 < value < 1 for value in fractions)
+              or not math.isclose(sum(fractions), 1.0, rel_tol=0, abs_tol=1e-12)):
+            raise ValueError("All three split fractions must be finite, between zero and one, and sum to one.")
         object.__setattr__(self, "markets_config", Path(self.markets_config).resolve())
         object.__setattr__(self, "horizons_bars", tuple(sorted(self.horizons_bars)))
 
@@ -88,6 +112,15 @@ class ModelConfig:
             random_state=42,
             model_threads=self.model_threads,
             max_train_rows=self.max_train_rows,
+            split_mode=self.split_mode,
+            train_fraction=self.train_fraction,
+            calibration_fraction=self.calibration_fraction,
+            assessment_fraction=self.assessment_fraction,
+            calibration_c=self.calibration_c,
+            logistic_weight=self.logistic_weight,
+            extra_trees_weight=self.extra_trees_weight,
+            hist_gradient_boosting_weight=self.hist_gradient_boosting_weight,
+            mlp_weight=self.mlp_weight,
         )
 
 

@@ -1,0 +1,53 @@
+{
+  "started_at": "2026-09-29T06:29:24.079884+00:00",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z",
+  "implementation_before": {
+    "status": "UNCHANGED",
+    "code_files": 268,
+    "baseline_recorded_at": "2026-09-29T04:09:12.120415+00:00",
+    "reviewed_isolated_drift_paths": [],
+    "explicit_review": null
+  },
+  "checks": [
+    {
+      "check": "verify_completed_run",
+      "started_at": "2026-09-29T06:29:24.113400+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_completed_run.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\completion-audit.json",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_completed_run-stderr.log",
+      "exit_code": 0,
+      "seconds": 918.535,
+      "finished_at": "2026-09-29T06:44:42.710329+00:00"
+    },
+    {
+      "check": "verify_yg_completion",
+      "started_at": "2026-09-29T06:44:42.712886+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_yg_completion.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260929T040727.779758Z",
+        "--output",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\yg-completion.json"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_yg_completion-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_yg_completion-stderr.log",
+      "exit_code": 1,
+      "seconds": 0.452,
+      "finished_at": "2026-09-29T06:44:43.164988+00:00"
+    }
+  ],
+  "status": "FAILED_REQUIRES_DIAGNOSIS",
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "production_mutations": 0,
+  "error": "RuntimeError: Final audit failed: verify_yg_completion; inspect C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_yg_completion-stderr.log",
+  "finished_at": "2026-09-29T06:44:43.165461+00:00"
+}

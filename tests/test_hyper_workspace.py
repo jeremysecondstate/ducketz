@@ -93,6 +93,29 @@ def test_headline_uses_opening_baseline_pnl_and_preserves_inherited_position(wor
     assert inherited["kind"] == "spot"
 
 
+def test_five_minute_recipe_updates_operations_preview_and_preserves_historical_horizon(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    old_forecast = {**snapshot.forecasts[0], "forecast_id": "historical-15m"}
+    forecasts = [{**row, "interval": "5m", "horizon_bars": 1, "horizon_minutes": 5}
+                 for row in snapshot.forecasts]
+    recipe = {"interval": "5m", "horizon_bars": 1, "horizon_minutes": 5, "candle_seconds": 300}
+    view.show_snapshot(replace(snapshot, forecasts=forecasts, market_recipe=recipe))
+    window.update()
+    assert "5m candles" in view.source_labels["data"][1].cget("text")
+    assert "5m · 5m horizon" in view.source_labels["forecasts"][1].cget("text")
+    assert "1 × 5m" in view.forecast_caption.cget("text")
+    view._render_inspector(forecasts[0], "Forecast preview")
+    assert "1 × 5m bars · 5 minute horizon" in view.detail.get("1.0", "end")
+    view._render_inspector(old_forecast, "Forecast preview")
+    assert "4 × 15m bars · 60 minute horizon" in view.detail.get("1.0", "end")
+    view.mode.set("Powder")
+    view._choose_mode()
+    assert "Shared model forecast preview" in view.forecast_caption.cget("text")
+    assert "1 × 5m" in view.forecast_caption.cget("text")
+    assert view.mode_status.cget("text") == "Not connected"
+
+
 def test_immutable_opening_stays_visible_beside_postfill_portfolio_and_inventory(workspace):
     view, window, _ = workspace
     snapshot = _snapshot()

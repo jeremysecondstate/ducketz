@@ -1,0 +1,25 @@
+{
+  "reviewed_at": "2026-09-29T06:38:58.629244+00:00",
+  "scope": "READ_ONLY_SUMMARY_PEER_REVIEW_NO_ARCHIVE_RELOAD_OR_PRODUCTION_WRITE",
+  "summary_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\completion-summary.md",
+  "summary_sha256": "bcccde95b8d60d977b0a7679ccb179e3be0453d86e4d67e14d0940efe149df35",
+  "status": "NO_CORRECTIONS_REMAIN",
+  "issues": [],
+  "local_link_count": 20,
+  "missing_local_links": [],
+  "verified_claims": [
+    "Native start/completion time and original deadline",
+    "264 forecasts/intents/trade-plan rows, 11 symbols and 209 execution windows",
+    "Directional metrics/status and precise thin TWST fitted support against preliminary saved report review",
+    "Sizing failure descriptions against saved preliminary sizing review",
+    "Cohort counts/date ranges/exclusions against saved preliminary directional review",
+    "11 current-session history downloads at zero quoted dollars",
+    "Planning literal cash, 46 events, 154 prices and original synthetic anchors",
+    "165 evaluated/33 mature missing/66 pending, 137 compared/17 missing and 84 correct directions",
+    "Cumulative 5568 total/4454 evaluated/949 missing/165 pending from source summary",
+    "Reconciliation completed04:16:30Z with 131 tests and685checks",
+    "All37 final preservationchecks; no trader/pipeline or new stock decisions"
+  ],
+  "deep_archive_model_provider_verification": "Explicitly pending; not independently repeated in this summary review",
+  "optional_addition": "Actuals bounded audit also verifies 6 of137 comparable hourly prices inside their original ranges. This may be useful context, but source results already disclose it."
+}

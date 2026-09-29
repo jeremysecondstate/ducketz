@@ -1,0 +1,78 @@
+{
+  "reviewed_at": "2026-09-29T06:56:19.666730+00:00",
+  "scope": "READ_ONLY_FINAL_SUMMARY_PEER_REVIEW_SAVED_REPORTS_AND_LOCAL_LINKS_ONLY",
+  "summary_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\completion-summary.md",
+  "summary_sha256": "c28fc1917af7dca25827e53814833e8f74ccc0f71e9b46753cc498da433d8f7c",
+  "status": "PASS_NO_CORRECTIONS",
+  "checks": {
+    "all_markdown_links_are_existing_absolute_local_files": true,
+    "continuation_all_bound_evidence_hashes_match": true,
+    "full_audit_12_verified_sections_no_errors": true,
+    "remaining_five_commands_exit_zero": true,
+    "successful_full_audit_inherited_exactly": true,
+    "suite_timestamp_matches_summary": true,
+    "no_native_restart_repeat_provider_or_order_actions": true,
+    "guard_before_after_exact_baseline_and_single_exception": true,
+    "archive_source_counts": true,
+    "exact_cohorts": true,
+    "quality_exclusion_counts": true,
+    "264_current_predictions_zero_error": true,
+    "seconds_partitions_rows_overlap": true,
+    "no_seconds_added_or_synthetic_examples_or_unmatched_eligible_minutes": true,
+    "raw_replay_limit_disclosed": true,
+    "all_saved_directional_assessment_scores_zero_error": true,
+    "only_4h_1d_strictly_beat_both_baselines": true,
+    "four_fitted_sizing_zero_qualified": true,
+    "optional_sizing_admission_counts": true,
+    "all_five_providers_complete_and_outputs_present": true,
+    "33_opra_scopes_and_66_payloads": true,
+    "opra_zero_cost_capacity_and_estimate": true,
+    "advisory_disposition_resolved": true,
+    "six_cme_raw_captures_and_two_capped_mbp": true,
+    "five_fmp_history_skews_current_quote_passes": true,
+    "99_pricing_routes_51_files_17_generations": true,
+    "administrative_closure_explicitly_pending": true,
+    "prior_planning_actuals_cash_corrections_retained": true
+  },
+  "issues": [],
+  "local_link_count": 27,
+  "missing_local_links": [],
+  "bad_evidence_bindings": [],
+  "source_reports": {
+    "completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\completion-audit.json",
+      "sha256": "5e54100c4243a00b815afba15f3b3e0dd9e2e73dcdddba7c4ad173a41f6f5034"
+    },
+    "audit-runner-continuation.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit-runner-continuation.json",
+      "sha256": "cb21d1c554aee0a45caa17d65eaa17f057239d33cbd77d108d55ce73690bcb1b"
+    },
+    "yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\yg-completion.json",
+      "sha256": "054babd5677016ede3ed02a07f64f08f708a8adfaa2482cb9f495282943b7e24"
+    },
+    "provider-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\provider-completion.json",
+      "sha256": "82f0d76b6a4042943d28921b062a59f37355f051cc50ed6b031dc3acb1917fb7"
+    },
+    "provider-advisory-resolution.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\provider-advisory-resolution.json",
+      "sha256": "07a86f0b5dccc2daf5e1d1ea9d30be353840256cacacc12d273216e32e9d3fca"
+    },
+    "pricing-gate-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\pricing-gate-review.json",
+      "sha256": "d3ff255af302da3cb10ee8a49a009156dcd3abbbb7917f262cd8ec7c796fe65c"
+    }
+  },
+  "timing_note": "06:51:54Z is the completed audit-sequence timestamp; its separate advisory disposition was resolved at 06:52:06Z. Summary clearly links both reports and keeps lease closure pending.",
+  "manual_review": [
+    "Archive first-source/action dates and per-horizon cohort/quality-exclusion table match the full report.",
+    "Directional table and fit/qualification distinctions match saved reports.",
+    "Read all summary additions against their linked completed audits; no factual correction required.",
+    "Existing bounded ownership, planning, actuals and reconciliation statements retain their previously verified figures."
+  ],
+  "heavy_rechecks": 0,
+  "provider_calls": 0,
+  "broker_calls": 0,
+  "production_mutations": 0
+}

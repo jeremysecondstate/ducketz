@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\dev\ducketz\artifacts\analysis\overnight-20260929\verification\verify_yg_completion.py", line 376, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\dev\ducketz\artifacts\analysis\overnight-20260929\verification\verify_yg_completion.py", line 94, in main
+    verify_environment()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\dev\ducketz\artifacts\analysis\overnight-20260929\verification\audit_environment.py", line 41, in verify_environment
+    raise RuntimeError('AUDIT_IMPLEMENTATION_DRIFT_REQUIRES_REVIEW: '+json.dumps(unreviewed))
+RuntimeError: AUDIT_IMPLEMENTATION_DRIFT_REQUIRES_REVIEW: [{"path": "ml/hyperliquid_paper_policy.py", "status": "CHANGED", "expected": "a45db62db7895ddf18037e2431484ab5d27dc4ec13f046e12aa622fe18dd3cfc", "actual": "8493e54dfe1e9e89a2cedcdcecbbede4abb536a815c2295bd191f171ebdf6038"}]

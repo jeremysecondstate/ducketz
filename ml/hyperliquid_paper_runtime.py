@@ -303,7 +303,8 @@ class PaperRuntime:
         excluded_forecast = bool(prediction and cfg.require_qualified_forecasts and not prediction["qualified"])
         signal_prediction = None if excluded_forecast else prediction
         hold_without_signal = cfg.require_qualified_forecasts and signal_prediction is None
-        key = f"forecast:{forecast_id}" if prediction else f"stale:{coin}:{int(now // 900)}"
+        interval_seconds = INTERVAL_MS[self.interval] / 1000
+        key = f"forecast:{forecast_id}" if prediction else f"stale:{coin}:{int(now // interval_seconds)}"
         stop_returns = {a: (math.copysign(1.0, p["quantity"]) * (marks[p["market"]] / p["risk_reference_price"] - 1)
                             if p else None) for a, p in positions.items()}
         stop_accounts = [a for a, value in stop_returns.items() if value is not None and value <= -cfg.stop_loss_fraction]

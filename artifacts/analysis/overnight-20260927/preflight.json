@@ -1,0 +1,49 @@
+{
+  "observed_at": "2026-09-27T04:07:52.8466071+00:00",
+  "supervision_uuid": "82312a3f-5877-4726-a278-46bb467d6eb2",
+  "hashes": [
+    {
+      "Path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+      "Hash": "68A58C0629B436F865BBF3C9579057025604EAC469DB4F66BCAA583B0EC95AC2"
+    },
+    {
+      "Path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-latest\\run.json",
+      "Hash": "AB8DCC8DFF4F92BECC3F17BE750DB0E65F6DDC9CD53BBBA99F1E93178FF490E8"
+    },
+    {
+      "Path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-latest\\run.json",
+      "Hash": "28B48FCF49208CA744B4ADB08D52D0856725FF67F0599FE5982139A7BF4F8FFA"
+    },
+    {
+      "Path": "C:\\DATASTORE\\ml\\gameplan-evaluation-latest\\run.json",
+      "Hash": "A33432A8134D6A821D30B5DA5E0369B66F3FFC091CD5F7E5A04A1E3C92D35CC6"
+    },
+    {
+      "Path": "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+      "Hash": "00637389E03B995AB5BB238B7170A9E6FD282143215C5CCF2C6ED2134C25491F"
+    },
+    {
+      "Path": "C:\\Users\\7980X\\.codex\\automations\\loops-hourly-operations\\automation.toml",
+      "Hash": "2A4A97C592C9D6076DBD64D1140B04659F48B26AA38BF3F5B3D7E950FEC24833"
+    }
+  ],
+  "scheduled_tasks": {
+    "Name": "Ducketz Independent Stock Session",
+    "State": "Disabled",
+    "Actions": [
+      {
+        "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\dev\\ducketz\\docs\\datafetch-ml\\start_stock_session.ps1\"",
+        "WorkingDirectory": "C:\\dev\\ducketz"
+      }
+    ],
+    "Triggers": [
+      {
+        "StartBoundary": "2026-09-08T03:55:00",
+        "DaysOfWeek": 62,
+        "Enabled": true
+      }
+    ]
+  },
+  "relevant_processes": []
+}

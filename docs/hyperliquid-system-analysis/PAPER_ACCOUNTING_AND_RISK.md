@@ -116,10 +116,10 @@ Values verified in [hyperliquid-paper.json](../../configs/hyperliquid-paper.json
 | `stop_loss_fraction` | 0.03 | Adverse move from the persisted stop reference that requests reduction |
 | `perp_fee_rate` / `spot_fee_rate` | 0.00045 / 0.00070 | Fixed simulated taker fee fractions |
 | `slippage_bps` | 0 | No added price penalty: fills use fetched visible-book VWAP |
-| Forecast / model / quote maximum ages | 900 / 86,400 / 45 seconds | Eligibility boundaries, detailed below |
+| Forecast / model / quote maximum ages | 300 / 86,400 / 45 seconds | Eligibility boundaries, detailed below |
 
-The runtime takes the first configured model horizon: currently four 15-minute
-bars, or one hour. Horizon volatility is the forecast's exact source-row
+The runtime takes the first configured model horizon: currently one five-minute
+bar. Horizon volatility is the forecast's exact source-row
 `volatility_log_return_20 × sqrt(horizon_bars)`.
 
 Let `p=P(not-down)`, `e=abs(p−0.5)`, `E=max(pooled_equity,0)`, and `O` be other
@@ -270,7 +270,7 @@ More severely, the market provider omits a market whose book fails validation:
 if that market is held, the missing mark aborts the entire tick before its
 per-symbol risk handling. There is no guaranteed last-mark valuation fallback.
 
-Committed forecast IDs execute once. No-forecast cycles use a 15-minute bucket;
+Committed forecast IDs execute once. No-forecast cycles use the configured candle bucket, currently five minutes;
 completed keys suppress ordinary retry attempts even after a partial/unfilled
 result. Active stop, cooldown or over-limit paths can use a 30-second risk key.
 A 30-second polling cadence does not guarantee that every desired adjustment

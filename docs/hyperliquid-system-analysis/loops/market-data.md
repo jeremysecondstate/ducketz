@@ -1,6 +1,6 @@
 # Market data and feature publication
 
-Last verified 2026-09-25; code/config authority.
+Last updated 2026-09-28 for the retained five-minute base and 288-cycle repair; code/config authority.
 
 The data layer publishes completed perpetual candles and their causal feature
 snapshots. Its coordinator owns market-worker lifetimes; models and paper run
@@ -19,7 +19,7 @@ feature descriptions and operator examples remain in the
 | Public candle normalization | [Candle adapter](../../../datafetching/hyperliquid_candles.py) |
 | Shared causal calculations | [Features](../../../technicals/hyperliquid_features.py) |
 
-The verified config has BTC, ETH, HYPE and ZEC with `15m` candles. One process
+The verified config has BTC, ETH, HYPE and ZEC with `5m` candles. One process
 creates a worker thread per configured symbol. All workers execute the same
 code with separate data, retry state and calculation instances. A bounded
 semaphore permits two complete pipeline updates at once; a delayed market
@@ -28,7 +28,7 @@ does not force every other market onto its retry schedule.
 ## Cadence and configuration
 
 Each worker first catches up, then targets five seconds after UTC candle close:
-`:00:05`, `:15:05`, `:30:05`, `:45:05` for the current interval. These are
+`:00:05`, `:05:05`, `:10:05`, and every five-minute boundary for the current interval. These are
 planned wake times, not guarantees that the exchange has published a candle.
 The cutoff is recaptured after a worker obtains a coordinator slot, so a queued
 job crossing a boundary requests the newly appropriate cutoff.
@@ -46,8 +46,8 @@ Market-loop and publication ownership are distinct:
 | Artifact | Meaning |
 | --- | --- |
 | `_coordinator/.coordinator.lock` | One coordinator for the selected datastore |
-| `<coin>/15m/.loop.lock` | One continuous loop owns that market/interval |
-| `<coin>/15m/.update.lock` | One snapshot writer, including manual one-shot updates |
+| `<coin>/5m/.loop.lock` | One continuous loop owns that market/interval |
+| `<coin>/5m/.update.lock` | One snapshot writer, including manual one-shot updates |
 | Coordinator `stop.request` | Stop this coordinator and the workers it owns |
 | Market `stop.request` | Stop that market loop |
 
@@ -61,11 +61,16 @@ These lifecycle behaviors do not register an operating-system schedule.
 ## Input and publication contract
 
 The public `candleSnapshot` endpoint supplies a rolling history window of up
-to 5,000 candles. Stored older history is retained as the window moves; the
+to 5,000 candles, about 17.36 days at five minutes. Stored older history is retained as the window moves; the
 code does not claim to recover candles already outside the API window.
 Only completed candles enter normalized history. Existing datasets reject
 mixing market identity, interval or endpoint, and reject a replay cutoff that
 precedes their already stored completed data.
+
+The continuous five-minute dataset is retained as the base for later frequency
+experiments. Existing fifteen-minute histories remain separate. Ten-minute
+candles are not a native supported interval, and no aggregation path has been
+implemented; retained data enables that future work without inventing history.
 
 The usual refresh fetches overlapping recent candles, or an earlier recoverable
 gap where needed. Merge uses timestamps and replaces matching candles with
@@ -81,7 +86,7 @@ history and writes a new immutable run directory.
 | `labels.parquet` | Separate exact-time future returns and strict-up labels |
 | `feature_catalog.json` | Ordered feature definitions, revision, provenance and exclusions |
 | `summary.json` | Coverage, gaps, feature availability, paths and timings |
-| `<coin>/15m/latest.json` | Atomically replaced only after completed run files exist |
+| `<coin>/5m/latest.json` | Atomically replaced only after completed run files exist |
 
 Readers pin the selected run once and read its files together. A failure before
 pointer replacement leaves the previous completed snapshot selected; partial
@@ -97,6 +102,10 @@ that every legacy BERA indicator was carried over. Per-build cached
 intermediates avoid redundant work; there is no persisted incremental rolling
 state between builds and no sharing of numerical history across coins.
 
+Feature windows count input candles. The current 20-return volatility window
+covers 100 minutes of five-minute returns; switching the interval did not
+rescale indicators to their earlier elapsed-time lookbacks.
+
 Warmup and undefined ratios remain missing. Candle gaps restart rolling and
 recursive history. Trailing calculations avoid future backfill and full-history
 scaling. Downstream model preprocessing is fitted on its own fitting partition.
@@ -104,7 +113,9 @@ Feature-definition changes must advance the feature schema/revision so an
 unchanged-candle refresh cannot reuse an incompatible snapshot.
 
 Default label horizons are 1, 4 and 16 candles. A target exists only when its
-exact future timestamp is observed; unknown outcomes stay null. The data
+exact future timestamp is observed; on `5m` input these are 5, 20 and 80
+minutes, with the current model using horizon 1. Unknown outcomes stay null.
+The data
 pipeline's `target_up_*` uses a strictly higher future close. The model layer
 instead derives **not-down** from `future_return_* >= 0`, so an unchanged
 future price has different class semantics. See [Models](models.md).
@@ -114,11 +125,11 @@ future price has different class semantics. See [Models](models.md).
 Missing publication or a failed attempt retries with exponential delay,
 starting at 15 seconds and capped at 120 seconds in the verified config.
 The loop catches up after downtime instead of queuing overlapping timer jobs.
-It reconciles the available history window every 96 cycles; failed/retry
+It reconciles the available history window every 288 cycles; failed/retry
 cycles mean this is not an exact daily wall-clock schedule. Coverage reports
 separate recoverable and unrecoverable gaps rather than inventing candles.
 
-Inspect `<coin>/15m/loop_status.json` and `loop_events.jsonl` alongside the
+Inspect `<coin>/5m/loop_status.json` and `loop_events.jsonl` alongside the
 coordinator's status/events. A fresh heartbeat does not imply fresh candle
 publication. Useful checks include expected/last close, lag intervals, latest
 run ID, missing latest features, retry reason and actual process ownership.

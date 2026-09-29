@@ -3,7 +3,7 @@
 Last source verification: **2026-09-25**. This is a code/configuration audit,
 not a claim that a saved PID or worker is currently alive. Commands below use
 `C:/dev/ducketz` as the working directory and the supplied datastore root.
-Model fitting cadence updated **2026-09-26** to 900 seconds.
+Current recipe updated **2026-09-28** to `5m/h1` and 300-second fitting progress.
 Read [the system overview](README.md) and [loop inventory](LOOP_INVENTORY.md)
 before changing process ownership. The separately configured
 [Operations Watch](OPERATIONS_WATCH.md) performs a compact check every 30 minutes,
@@ -44,11 +44,11 @@ BTC, ETH, HYPE or ZEC. Runtime membership comes from
 | Component | Read these files / fields |
 | --- | --- |
 | Coordinator | `_coordinator/coordinator_status.json`: `updated_at_utc`, `status`, `config_error`, `markets`; `_coordinator/coordinator_events.jsonl` |
-| Market worker | `<coin>/15m/loop_status.json`: `status`, `next_wake_utc`, `last_error`, `last_result`, `last_cycle_timing`; `loop_events.jsonl` in the same directory |
-| Published data | `<coin>/15m/latest.json` → `runs/<run_id>/summary.json`, `feature_catalog.json`, `features.parquet`, `ohlcv.parquet`, `labels.parquet` |
-| Model runtime | `_models/_runtime/status.json`: `config_error`, `training_market`, `timing_write_error`, `completed_jobs`, `markets["BTC/15m/h4"]` and other slots |
+| Market worker | `<coin>/5m/loop_status.json`: `status`, `next_wake_utc`, `last_error`, `last_result`, `last_cycle_timing`; `loop_events.jsonl` in the same directory |
+| Published data | `<coin>/5m/latest.json` → `runs/<run_id>/summary.json`, `feature_catalog.json`, `features.parquet`, `ohlcv.parquet`, `labels.parquet` |
+| Model runtime | `_models/_runtime/status.json`: `config_error`, `training_market`, `timing_write_error`, `completed_jobs`, `markets["BTC/5m/h1"]` and other slots |
 | Model slot | `status`, `training`, `last_error`, `last_prediction_error`, `last_prediction`, `candidate`, `last_report`, `last_training_timing` |
-| Forecast / model | `_models/<coin>/15m/h4/latest_prediction.json`, `candidate.json`, `active.json`, `runs/<model_id>/record.json` and `report.json` |
+| Forecast / model | `_models/<coin>/5m/h1/latest_prediction.json`, `candidate.json`, `active.json`, `runs/<model_id>/record.json` and `report.json` |
 | Training journal | `_models/_runtime/training_events.jsonl`: `outcome`, `timing`, source/model identifiers |
 | Paper runtime | `_paper/_runtime/status.json`: `updated_at_utc`, `status`, `last_error`, per-symbol `errors`, `quote_errors`, `funding_errors` |
 | Authoritative Paper | `_paper/ledger.sqlite3`: committed `cycles`, `equity`, `positions`, `decisions`, `fills`, `transfers`, `funding`, `seed` |
@@ -56,9 +56,9 @@ BTC, ETH, HYPE or ZEC. Runtime membership comes from
 | Timing exports | `_timings/report.md`, `summary.json`, `timings.parquet`; these are point-in-time exports |
 
 Lifetime ownership uses `_coordinator/.coordinator.lock`, each
-`<coin>/15m/.loop.lock`, `_models/_runtime/.runtime.lock`, and
+`<coin>/5m/.loop.lock`, `_models/_runtime/.runtime.lock`, and
 `_paper/_runtime/.paper.lock`. Data publication also uses
-`<coin>/15m/.update.lock`. Each lifetime control directory has its own optional
+`<coin>/5m/.update.lock`. Each lifetime control directory has its own optional
 `stop.request`. A file's presence alone does not prove lock ownership. Do not
 delete locks or stop markers to make a status look healthy.
 
@@ -102,7 +102,7 @@ Read raw evidence when a summarized badge does not explain a market failure:
 ```powershell
 Get-Content -LiteralPath 'C:/DATASTORE/hyperliquid/_models/_runtime/status.json' -Raw
 Get-Content -LiteralPath 'C:/DATASTORE/hyperliquid/_paper/_runtime/status.json' -Raw
-Get-Content -LiteralPath 'C:/DATASTORE/hyperliquid/BTC/15m/loop_events.jsonl' -Tail 8
+Get-Content -LiteralPath 'C:/DATASTORE/hyperliquid/BTC/5m/loop_events.jsonl' -Tail 8
 Get-Content -LiteralPath 'C:/DATASTORE/hyperliquid/_models/_runtime/training_events.jsonl' -Tail 8
 & .\.venv\Scripts\python.exe -B -m ml.hyperliquid_timings --hours 24
 ```
@@ -112,20 +112,21 @@ report. Adding `--export` **writes** the three `_timings` outputs; it is an
 explicit export operation, not required for monitoring. A partially appended
 JSONL tail may be incomplete; do not rewrite the journal to repair its last line.
 
-The current UI adapter fixes its market list to BTC/ETH/HYPE/ZEC and paths to
-`15m/h4`; the normal app also uses its default datastore root. A custom runtime
-universe/root requires inspecting the corresponding raw files and updating
-the projection before treating the UI as complete. See [maintenance](MAINTENANCE.md).
+The current UI adapter derives symbols, interval and first horizon from the
+configured recipe, currently BTC/ETH/HYPE/ZEC at `5m/h1`; the normal app uses
+its default datastore root. Invalid or unavailable recipe evidence must remain
+visible rather than silently displaying a different experiment. Inspect raw
+files for a custom root. See [maintenance](MAINTENANCE.md).
 
 ## Clocks, source ages and measured work
 
 | Clock | Current configured behavior | Inspect separately |
 | --- | --- | --- |
 | Data coordinator | Checks configuration about every second; at most two pipeline updates | Coordinator heartbeat versus each worker's candle close |
-| Data publication | 15m close + 5s; startup catch-up; failed/late attempts retry from 15s up to 120s | `lag_intervals_after_delay`, `expected_close_utc`, gap counts and `next_wake_utc` |
+| Data publication | 5m close + 5s; startup catch-up; failed/late attempts retry from 15s up to 120s; repair every 288 cycles | `lag_intervals_after_delay`, `expected_close_utc`, gap counts and `next_wake_utc` |
 | Model polling | Every 5s; one background training job globally | Poll heartbeat versus `training_market` and candidate publication |
-| Candidate fitting | Every 900s (15m) of source-candle progress; failed fit/publication retry delay 60s | Fit/calibration cutoffs versus publication time; qualification gates remain unchanged |
-| Forecast publication | Each completed 15m candle; four bars = one-hour horizon | `decision_close_utc`, `created_at_utc`, `target_close_utc` |
+| Candidate fitting | Every 300s (5m) of source-candle progress; failed fit/publication retry delay 60s | Fit/calibration cutoffs versus publication time; qualification gates remain unchanged |
+| Forecast publication | Each completed 5m candle; one bar = next-five-minute horizon | `decision_close_utc`, `created_at_utc`, `target_close_utc` |
 | Paper quote / risk cycle | About every 30s, plus work duration | Portfolio observation, errors and committed cycle |
 | Funding lookup | At most once per 300s in Paper | Funding cursor and missing settlement/price-proxy errors |
 | Paper exports | After changes or 900s since export; Parquets also on graceful shutdown | `performance.as_of_utc` versus latest ledger observation |
@@ -137,9 +138,10 @@ Values come from [market](../../configs/hyperliquid-markets.json),
 running configuration before applying them to another installation.
 
 Adapter age thresholds are display heuristics: data/forecast sources allow
-1,020s, candidates twice the configured fitting cadence (1,800s at 900s), and
-other sources normally twice their declared cadence. Paper's decision-candle
-eligibility limit is **900s**, so a
+one configured candle plus 120s (420s at five minutes), candidates twice the
+configured fitting cadence (600s at 300s), and other sources normally twice
+their declared cadence. Paper's decision-candle eligibility limit is **300s**,
+and the forecast target must remain in the future, so a
 forecast can fail Paper validation before its UI age badge becomes stale.
 The adapter assigns performance exports the runtime's 900s cadence and flags
 age above 1,800s. The previous 300s assumption caused normal quiet-cycle exports

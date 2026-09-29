@@ -1,0 +1,151 @@
+{
+  "reviewed_at": "2026-09-29T06:51:54.462035+00:00",
+  "status": "VERIFIED_EXPECTED_REMAINING_WEEK_PREFIX",
+  "run": "C:\\DATASTORE\\ml\\runs\\20260929T053846.934376Z",
+  "manifest_sha256": "a000819b27877c1aec4a1c81dd783eb30aac3104002cbc6b356a151a04251423",
+  "publication_sha256": "8e1db0c7f51b2be7afc01c3cc026f8ebe182675034c424b781b16915e0e77fd6",
+  "bounded_output_sha256": {
+    "predictions.parquet": "4454d2dede376ed42474e6db5952087d8bdd8ce3ca7852455bf3fa52e7e91a65",
+    "intelligence.parquet": "09e3d164aeaee60cda4cb3341d544ddb67d779d9f3df15b506f1f70c4271dbec"
+  },
+  "publication_counts": {
+    "actionable_ordinary_routes": 33,
+    "backtest_prediction_rows": 6979,
+    "carried_active_live_rows": 0,
+    "expired_fresh_live_rows_pruned": 0,
+    "fresh_live_rows": 88,
+    "in_progress_ordinary_routes": 0,
+    "retained_frozen_weekly_live_rows": 0,
+    "total_prediction_rows": 7067
+  },
+  "intelligence_rows": 99,
+  "live_rows_per_horizon": {
+    "1d": 11,
+    "1h": 11,
+    "1w": 11,
+    "1w-d1": 11,
+    "1w-d2": 11,
+    "1w-d3": 11,
+    "1w-d4": 11,
+    "4h": 11
+  },
+  "live_rows_per_symbol": {
+    "AAPL": 8,
+    "AMZN": 8,
+    "COST": 8,
+    "CROX": 8,
+    "GOOG": 8,
+    "IONQ": 8,
+    "MU": 8,
+    "NVDA": 8,
+    "PATH": 8,
+    "SNDK": 8,
+    "TWST": 8
+  },
+  "coherent_weekly_prefix_by_symbol": {
+    "AAPL": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "AMZN": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "GOOG": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "MU": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "NVDA": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "SNDK": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "COST": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "CROX": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "PATH": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "TWST": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ],
+    "IONQ": [
+      "1w",
+      "1w-d1",
+      "1w-d2",
+      "1w-d3",
+      "1w-d4"
+    ]
+  },
+  "remaining_week_sessions": [
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02"
+  ],
+  "omitted_suffix": {
+    "horizon": "1w-d5",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ],
+    "next_target_session": "2026-10-05",
+    "status": "NOT_APPLICABLE_TO_REMAINING_WEEK",
+    "probabilities_missing_explicitly": true
+  },
+  "conclusion": "Monday-source remaining week has four future sessions (Tue\u2013Fri); 55 weekly plus33ordinary LIVE rows equals88. All99intelligence routes remain present. No missing-source or model defect found.",
+  "scope": "Saved manifest/publication and two sub-1MB output parquets; pure bundle/calendar checks. No samples, model inference, fitting, provider/broker calls or production mutations."
+}

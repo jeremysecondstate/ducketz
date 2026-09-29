@@ -1,6 +1,6 @@
 # H.Y.P.E.R. UI and data contracts
 
-Last updated: **2026-09-26** for Paper decision checks and resize handling. [Index](README.md) ·
+Last updated: **2026-09-28** for configured market discovery and `5m/h1` display. [Index](README.md) ·
 [Accounting](PAPER_ACCOUNTING_AND_RISK.md) · [Operations](MONITORING.md)
 
 ## Entry points and ownership
@@ -14,10 +14,11 @@ existing services and controls; its real balances are not substituted for
 Paper balances or disconnected Powder results.
 
 The view adapter defaults to `C:/DATASTORE/hyperliquid`. Its forecast/data
-discovery currently uses the fixed four-symbol tuple BTC/ETH/HYPE/ZEC and
-`15m/h4`; the asset picker follows the same scope. It does not dynamically
-discover every possible runtime configuration. Treat expanding markets or
-horizons as a contract change, including the adapter, labels and filters.
+discovery and asset picker follow the configured model/market recipe, currently
+BTC/ETH/HYPE/ZEC at `5m/h1`. The first configured horizon matches Paper's
+selected horizon. Runtime metadata supplies compatibility fallback evidence
+when appropriate; invalid configuration remains visible as incomplete evidence.
+Displayed candle and forecast durations and artifact paths derive from that recipe.
 
 ## Source authority
 
@@ -32,7 +33,7 @@ horizons as a contract change, including the adapter, labels and filters.
 | Historical drawdown curve | Adapter projection of opening baseline + `total_pnl` | Running peaks precede sampling; internal transfers cannot manufacture an account drawdown. |
 | Headline worst drawdown | `_paper/performance.json` | Display the export's own `as_of_utc`; it can lag the ledger/chart. |
 | Decisions / fills / transfers | Corresponding SQLite journals and decoded `details_json` | Latest 500 rows per journal by default; preserve recorded IDs and execution quantities. |
-| Latest model forecast | `_models/<coin>/15m/h4/latest_prediction.json` | Explicit qualification, source state, timestamp and probability validation. |
+| Latest model forecast | `_models/<coin>/<interval>/h<horizon>/latest_prediction.json`, currently `5m/h1` | Explicit qualification, source state, timestamp and probability validation. |
 | Model provenance | Matching `runs/<model-id>/record.json` and `report.json` | Publication time and fitting/calibration cutoffs remain separate. |
 | Runtime health | Saved data/model/Paper status and read-only process-identity inspection | Saved `running` alone is not current process evidence. |
 | Duration details | Data cycle timing and model training events/status | Work, queue, polling and publication are separate measurements. |
@@ -99,7 +100,7 @@ its five-second data refresh does not reload Python code.
   view destruction during idle layout updates. Closing/reopening Duckets does
   not stop or restart the independently launched data, model or Paper workers.
 - Candidate freshness uses the model runtime's accepted `retrain_seconds`,
-  currently 900 seconds; its stale threshold is twice that cadence. Older status
+  currently 300 seconds; its stale threshold is twice that cadence. Older status
   files without a valid cadence retain the historical 3,600-second fallback.
 - Account selection also selects the chart. Asset/model filters apply to loaded
   activity and shared forecast previews, not an invented asset-specific equity

@@ -1,7 +1,6 @@
 # Hyperliquid loop inventory
 
-Last verified 2026-09-25; code/config authority.
-Model fitting cadence and Paper qualification/no-signal policy updated 2026-09-26.
+Last updated 2026-09-28 for `5m/h1`, 300-second fitting progress and 288-cycle data repair; code/config authority.
 
 This inventory describes implemented owners and their configured behavior. It
 does not assert that a process is currently running, register a schedule, or
@@ -12,15 +11,16 @@ runtime evidence using [Monitoring](MONITORING.md).
 
 | Owner / stage | Entry point | Configured cadence or trigger | Authoritative output | Execution authority |
 | --- | --- | --- | --- | --- |
-| Market coordinator | [`ml.hyperliquid_coordinator`](../../ml/hyperliquid_coordinator.py) | Coordinator checks about every second; each market catches up immediately, then targets completed 15-minute candles plus 5 seconds | Per-market completed run selected by `latest.json`; coordinator owns worker lifetimes | Public-data requests only |
+| Market coordinator | [`ml.hyperliquid_coordinator`](../../ml/hyperliquid_coordinator.py) | Coordinator checks about every second; each market catches up immediately, then targets completed five-minute candles plus 5 seconds; full-window reconciliation every 288 cycles | Per-market completed run selected by `latest.json`; coordinator owns worker lifetimes | Public-data requests only |
 | Per-market data worker | [`ml.hyperliquid_data_loop`](../../ml/hyperliquid_data_loop.py) and [`hyperliquid_data_pipeline`](../../ml/hyperliquid_data_pipeline.py) | Independent candle timer and 15–120-second retry backoff | OHLCV, causal features, labels, summary and feature catalog | None |
 | Model runtime | [`ml.hyperliquid_model_runtime`](../../ml/hyperliquid_model_runtime.py) | Poll completed data/model pointers every 5 seconds | Model publication and immutable forecast records | None |
-| Candidate fitting | Same model runtime; one background job globally | Normally 900 seconds (15 minutes) of source-candle progress since the last candidate; missing/incompatible candidates also trigger fitting | Exact evaluated bundle, report and assessment; candidate/active pointers | None |
+| Candidate fitting | Same model runtime; one background job globally | Normally 300 seconds (five minutes) of source-candle progress since the last candidate; missing/incompatible candidates also trigger fitting | Exact evaluated bundle, report and assessment; candidate/active pointers | None |
 | Forecasting and matured scoring | Same model runtime, polling thread | New data/model identity; at most one saved forecast per decision close | `predictions.parquet`, `outcomes.parquet`; JSON projections and metrics | None |
 | Paper portfolio / quote / risk cycle | [`ml.hyperliquid_paper_runtime`](../../ml/hyperliquid_paper_runtime.py) | 30-second configured polling, independently of candle/model timers | Transactional `_paper/ledger.sqlite3` | Simulated fills and internal virtual transfers only |
 | Powder execution | [`ml.hyperliquid_powder_runtime`](../../ml/hyperliquid_powder_runtime.py) | Explicit user activation; 30-second configured polling | Separate `_powder/ledger.sqlite3` intents, actual fills and observations | IOC orders under account ownership; no transfer calls |
 | H.Y.P.E.R. view refresh | [`HyperWorkspace`](../../app/ui/hyper_workspace.py), [`read adapter`](../../app/services/hyperliquid_powder_view.py) | Approximately 5 seconds while the workspace is mounted, including hidden tabs; bounded background reads | No new trading authority; projection of local evidence | None; switching modes never activates trading |
 | Timing report | [`ml.hyperliquid_timings`](../../ml/hyperliquid_timings.py) | Explicit on-demand report/export | Point-in-time `_timings` export derived from saved artifacts | None |
+| Expanded model research | [`ml.hyperliquid_model_research`](../../ml/hyperliquid_model_research.py) | Explicit bounded offline command; no continuous schedule | Pinned protocol, source/inputs, probability assessments and timings in a new `_model_research` directory | None; no model publication or Paper mutation |
 
 The fitting, prediction and scoring rows describe stages inside one model owner,
 not three additional daemons. A separately launched single-market loop is an
@@ -30,16 +30,27 @@ The timing exporter is not a scheduler or a prerequisite for publication.
 ## Current configuration boundary
 
 The checked-in [market config](../../configs/hyperliquid-markets.json) specifies
-BTC, ETH, HYPE and ZEC, a `15m` interval, `C:/DATASTORE/hyperliquid`, and two
+BTC, ETH, HYPE and ZEC, a `5m` interval, `C:/DATASTORE/hyperliquid`, and two
 concurrent data-update slots. The [model config](../../configs/hyperliquid-models.json)
-selects four-bar forecasts, 900-second fitting progress and two numerical threads.
-Qualification gates and reserved calibration/assessment blocks are unchanged;
-more frequent fitting does not guarantee more Qualified candidates. The
+selects one-bar/next-five-minute forecasts, 300-second fitting progress, two numerical threads,
+and chronological 70/15/15 fitting/calibration/assessment. Fractions apply to
+mature usable rows before strict horizon purges; effective counts and fractions
+are recorded separately. The production ensemble remains logistic regression,
+Extra Trees, histogram gradient boosting and MLP, with calibration C=0.1 and
+normalized weights 40/20/20/20. Qualification gates are
+unchanged; more frequent fitting does not guarantee more Qualified candidates. The
 [paper config](../../configs/hyperliquid-paper.json) now sets
 `require_qualified_forecasts=true`: only fresh Qualified signals drive allocation.
 Paper holds current exposure without an accepted signal, subject to independent
 risk reductions; see the [Paper loop](loops/paper.md). These are configuration
 facts, not permanent market membership or qualification claims.
+
+The separate expanded research command evaluates additional classical and
+compact sequence families and fixed blends. Its measured environment had
+twelve individual models; optional CatBoost was absent. It does not alter
+the four-model live ensemble. See the
+[expanded 70/15/15 audit](audits/2026-09-26-expanded-models-70-15-15.md) and
+[research command](../hyperliquid-models.md#expanded-offline-model-research).
 
 | Owner | Applies during operation | Requires restart / other boundary |
 | --- | --- | --- |
@@ -50,8 +61,10 @@ facts, not permanent market membership or qualification claims.
 | Powder | Fresh account/order/book/forecast evidence every cycle | Pins configuration and account binding; changed files block execution and incompatible restart requires investigation |
 
 Adding a symbol shares implementation, not fitted parameters or storage. Raw
-snapshots live in `<coin>/15m`; fitted bundles and forecasts live in
-`_models/<coin>/15m/h4`. Paper is one pooled ledger with account and coin keys.
+snapshots live in `<coin>/5m`; fitted bundles and forecasts live in
+`_models/<coin>/5m/h1`. The growing five-minute history is retained for future
+experiments; no ten-minute aggregation is implemented. Paper is one pooled
+ledger with account and coin keys. The UI discovers the configured market recipe.
 
 ## Ownership and independent progress
 
@@ -72,12 +85,14 @@ create SQLite coordination sidecars without changing authoritative records.
 Data publication feeds model fitting/inference. Saved forecasts and public
 quotes feed paper allocation. Later completed candles score forecasts; paper
 positions/cash/stop history affect subsequent paper decisions. Neither forward
-metrics nor paper P/L currently adjusts model weights, fitting recipes, or
-policy settings automatically. See [Loop map](LOOP_MAP.md).
+metrics nor paper P/L directly adjusts model weights, fitting recipes, or
+policy settings inside these runtime loops. The separate adaptive-round
+[Paper Improvement](PAPER_IMPROVEMENT.md) task performs reviewed changes and
+archive/reset verification. See [Loop map](LOOP_MAP.md).
 
-A four-bar forecast on 15-minute candles describes an outcome one hour after
+A one-bar forecast on five-minute candles describes an outcome five minutes after
 its decision close. Paper reassesses signals/risk; that horizon is not a fixed
-one-hour exit order. Gracefully stopping paper does not close positions and
+five-minute exit order. Gracefully stopping paper does not close positions and
 does not keep risk management running as a pause would.
 
 ## Related analysis

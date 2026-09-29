@@ -89,22 +89,22 @@ resumes it. Changing seed settings does not replace existing paper balances.
 
 ## Cadence and forecast eligibility
 
-- Models retrain every 15 minutes under the current model configuration.
-- A new one-hour forecast is recorded on each completed 15-minute candle.
+- Models retrain every five minutes of source-candle progress under the current configuration.
+- A next-five-minute forecast is recorded on each completed five-minute candle (`5m/h1`).
 - The paper runtime polls every 30 seconds for quotes, new forecasts, and risk
   checks. A polling tick does not automatically create a new trade.
 - Each forecast is processed once. Orders move existing holdings toward target
   positions rather than repeatedly buying the same target size.
 - Forecasts must match the symbol, interval, and horizon, contain complementary
-  finite probabilities, and have known source features. By default the decision
-  candle must be at most 15 minutes old, the model at most 24 hours old, and the
+  finite probabilities, and have known source features. The current configuration requires the decision
+  candle to be at most five minutes old, the model at most 24 hours old, and the
   forecast's outcome time must still be in the future.
 - A `qualified: true` publication must also have `role: "active"` and a
   matching model record with `eligible: true`; a badge alone is insufficient.
 
-The runtime uses the first configured model horizon, initially four 15-minute
-candles. Its one-hour horizon is a rolling forecast, not an instruction to close
-every position exactly one hour after entry. A later forecast can maintain,
+The runtime uses the first configured model horizon, currently one five-minute
+candle. Its five-minute horizon is a rolling forecast, not an instruction to close
+every position exactly five minutes after entry. A later forecast can maintain,
 increase, reduce, or reverse the desired pool exposure while respecting the
 account roles. With the current qualification requirement, missing, stale,
 invalid or Research forecasts preserve the current position target rather than
@@ -149,10 +149,14 @@ entry/exit policies retain their historical hysteresis and sizing formula,
 `clip((e-exit_band)/(saturation_band-exit_band), 0, 1)`. Existing minimum trade
 sizes, exposure limits, qualification and cooldowns continue to apply.
 
-For the initial one-hour horizon:
+For the current one-bar/five-minute horizon:
+
+The 20-return volatility window now covers 100 minutes of five-minute returns.
+The existing 0.5% volatility floor and other sizing controls remain configured
+independently of the shorter forecast horizon.
 
 ```text
-horizon_sigma = volatility_log_return_20 * sqrt(4)
+horizon_sigma = volatility_log_return_20 * sqrt(1)
 effective_sigma = max(horizon_sigma, 0.005)
 uncapped_gross = pooled_equity * 0.001 * confidence / effective_sigma
 symbol_cap = pooled_equity * 0.15
@@ -177,7 +181,7 @@ forecast to spot is an explicit strategy assumption; there is no separate spot
 model or spot/perpetual basis forecast. Spot fills and P/L nevertheless use the
 actual spot market's book and mark.
 
-For example, with $30,000 pooled equity, `p = 0.60`, one-hour sigma of 1%, and
+For example, with $30,000 pooled equity, `p = 0.60`, horizon sigma of 1%, and
 sufficient remaining capacity, confidence is approximately 0.615. The symbol
 target is approximately $1,846: $1,108 spot and $738 long perpetuals. Account
 cash and collateral checks can reduce those amounts further.
@@ -217,7 +221,7 @@ price, or remain partially unfilled. This runtime does not reproduce the
 exchange's liquidation engine. The performance baseline begins at opening
 paper equity, with an explicit zero-cost opening observation before trading.
 After a simulated stop fill, that account and symbol are kept at a zero target
-for one forecast horizon, initially one hour. The cooldown is reconstructed
+for one forecast horizon, currently five minutes. The cooldown is reconstructed
 from committed fills after a restart.
 
 ## Executable quotes and fill assumptions

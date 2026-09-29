@@ -66,43 +66,44 @@ class FakeMarket:
         return [deepcopy(row) for row in self.funding_rows if start_ms <= row["time"] <= end_ms]
 
 
-def configurations(tmp_path, *, seed_mode="manual", symbols=("BTC",), **overrides):
+def configurations(tmp_path, *, seed_mode="manual", symbols=("BTC",), interval="15m", horizon=4, **overrides):
     data = tmp_path / "data"
     markets_path = tmp_path / "markets.json"
     models_path = tmp_path / "models.json"
     paper_path = tmp_path / "paper.json"
-    markets_path.write_text(json.dumps({"version": 1, "symbols": list(symbols), "interval": "15m", "output_root": str(data)}))
-    models_path.write_text(json.dumps({"version": 1, "markets_config": str(markets_path), "horizons_bars": [4]}))
+    markets_path.write_text(json.dumps({"version": 1, "symbols": list(symbols), "interval": interval, "output_root": str(data)}))
+    models_path.write_text(json.dumps({"version": 1, "markets_config": str(markets_path), "horizons_bars": [horizon]}))
     paper_path.write_text(json.dumps({"version": 1, "seed_mode": seed_mode,
                                     "data_root": str(data), "model_config": str(models_path), **overrides}))
     return paper_path, data
 
 
 def forecast(data, *, coin="BTC", identity="forecast-1", decision=BASE, p=0.65,
-             qualified=False, price=77.0, overrides=None, record_overrides=None):
+             qualified=False, price=77.0, overrides=None, record_overrides=None, interval="15m", horizon=4):
+    interval_seconds = runtime_module.INTERVAL_MS[interval] / 1000
     data_id = datetime.fromtimestamp(decision + 5, timezone.utc).strftime("%Y%m%dT%H%M%SZ-1234abcd")
     model_id = datetime.fromtimestamp(decision - 600, timezone.utc).strftime("%Y%m%dT%H%M%SZ-abcdef12")
-    directory = data / "_models" / coin / "15m" / "h4"
+    directory = data / "_models" / coin / interval / f"h{horizon}"
     run = directory / "runs" / model_id
     run.mkdir(parents=True, exist_ok=True)
     record = {
-        "model_id": model_id, "coin": coin, "interval": "15m", "horizon_bars": 4,
+        "model_id": model_id, "coin": coin, "interval": interval, "horizon_bars": horizon,
         "trained_at_utc": iso(decision - 600), "eligible": qualified,
         "source_run_id": data_id, "feature_revision": "btc_shared_causal_v1",
         **(record_overrides or {}),
     }
     (run / "record.json").write_text(json.dumps(record))
     prediction = {
-        "prediction_id": identity, "model_id": model_id, "coin": coin, "interval": "15m",
-        "horizon_bars": 4, "data_run_id": data_id, "qualified": qualified,
+        "prediction_id": identity, "model_id": model_id, "coin": coin, "interval": interval,
+        "horizon_bars": horizon, "data_run_id": data_id, "qualified": qualified,
         "role": "active" if qualified else "research_candidate",
-        "created_at_utc": iso(decision + 5), "decision_timestamp_utc": iso(decision - 900),
-        "decision_close_utc": iso(decision), "target_close_utc": iso(decision + 3600),
+        "created_at_utc": iso(decision + 5), "decision_timestamp_utc": iso(decision - interval_seconds),
+        "decision_close_utc": iso(decision), "target_close_utc": iso(decision + interval_seconds * horizon),
         "decision_price": price, "p_not_down": p, "p_down": 1-p,
         **(overrides or {}),
     }
     (directory / "latest_prediction.json").write_text(json.dumps(prediction))
-    data_run = data / coin / "15m" / "runs" / data_id
+    data_run = data / coin / interval / "runs" / data_id
     data_run.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({"close_time": [pd.Timestamp(iso(decision))], "close": [price],
                   "volatility_log_return_20": [0.01]}).to_parquet(data_run / "features.parquet", index=False)
@@ -115,6 +116,66 @@ def prohibit_network(monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Paper runtime tests cannot make network requests.")
     monkeypatch.setattr("requests.post", forbidden)
+
+
+def test_five_minute_forecasts_expire_hold_and_trade_the_next_candle(tmp_path):
+    config, data = configurations(tmp_path, interval="5m", horizon=1,
+                                  require_qualified_forecasts=True, max_forecast_age_seconds=300)
+    clock = Clock()
+    instance = runtime_module.PaperRuntime(config, market=FakeMarket(clock), clock=clock)
+    instance.initialize()
+    try:
+        forecast(data, interval="5m", horizon=1, qualified=True)
+        instance.tick()
+        initial_fills = instance.ledger.history("fills")
+        assert initial_fills
+        clock.now = BASE + 60
+        instance.tick()
+        assert instance.ledger.history("fills") == initial_fills
+        clock.now = BASE + 300
+        expired = instance.tick()
+        assert "matured" in expired["errors"]["BTC"]
+        assert instance.ledger.history("fills") == initial_fills
+        assert instance.ledger.has_cycle(f"stale:BTC:{int(clock.now // 300)}")
+        clock.now = BASE + 330
+        forecast(data, interval="5m", horizon=1, qualified=True, decision=BASE + 300,
+                 identity="next-five-minute", p=.35)
+        result = instance.tick()
+        positions = result["portfolio"]["pooled"]["positions"]
+        assert len(positions) == 1 and positions[0]["account"] == "alex"
+        assert positions[0]["quantity"] < 0
+        assert any(row["forecast_id"] == "next-five-minute" for row in instance.ledger.history("fills"))
+    finally:
+        instance.ledger.close()
+
+
+def test_five_minute_stop_cooldown_blocks_then_allows_a_later_forecast(tmp_path):
+    config, data = configurations(tmp_path, interval="5m", horizon=1,
+                                  require_qualified_forecasts=True, max_forecast_age_seconds=300)
+    clock = Clock()
+    market = FakeMarket(clock)
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    instance.initialize()
+    try:
+        forecast(data, interval="5m", horizon=1, qualified=True)
+        instance.tick()
+        clock.now = BASE + 60
+        market.price = {"perp": 94.0, "spot": 95.0}
+        assert not instance.tick()["portfolio"]["pooled"]["positions"]
+        stopped_fills = instance.ledger.history("fills")
+        clock.now = BASE + 330
+        market.price = {"perp": 100.0, "spot": 102.0}
+        forecast(data, interval="5m", horizon=1, qualified=True, decision=BASE + 300,
+                 identity="within-cooldown")
+        instance.tick()
+        assert instance.ledger.history("fills") == stopped_fills
+        clock.now = BASE + 630
+        forecast(data, interval="5m", horizon=1, qualified=True, decision=BASE + 600,
+                 identity="after-cooldown")
+        assert instance.tick()["portfolio"]["pooled"]["positions"]
+        assert any(row["forecast_id"] == "after-cooldown" for row in instance.ledger.history("fills"))
+    finally:
+        instance.ledger.close()
 
 
 @pytest.fixture
@@ -340,6 +401,58 @@ def test_reductions_below_exchange_minimum_are_reported_as_unfilled_dust(runner)
     assert checks["venue_minimum_fill_notional"] == 10
     assert checks["delta_notional"] == pytest.approx(-4.5)
     assert ("jeremy", "BTC") not in instance._stops  # No stop fill was invented.
+
+
+def test_size_precision_residual_cannot_reopen_pool_below_entry(tmp_path):
+    config, data = configurations(tmp_path, symbols=("ETH",), interval="5m", horizon=1,
+                                  require_qualified_forecasts=True, max_forecast_age_seconds=300,
+                                  entry_band=.03, exit_band=.01)
+    clock = Clock()
+
+    class FourDecimalMarket(FakeMarket):
+        def snapshot(self, symbols):
+            value = super().snapshot(symbols)
+            for market in value["markets"].values():
+                market["sz_decimals"] = 4
+            return value
+
+    market = FourDecimalMarket(clock)
+    market.price = {"perp": 2662.7, "spot": 2662.7}
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    instance.initialize()
+    try:
+        instance.ledger.execute_cycle("inherited", clock(), {"perp:ETH": 2662.7, "spot:ETH": 2662.7}, [
+            {"account": "clearpond", "coin": "ETH", "kind": "spot", "quantity": 1.0002993, "price": 2662.7},
+        ])
+        forecast(data, coin="ETH", interval="5m", horizon=1, qualified=True, p=.5)
+        closed = instance.tick()
+        residual = closed["portfolio"]["accounts"]["clearpond"]["positions"][0]
+        assert residual["quantity"] == pytest.approx(.0000993)
+        fills_after_exit = instance.ledger.history("fills")
+
+        clock.now = BASE + 330
+        forecast(data, coin="ETH", interval="5m", horizon=1, qualified=True,
+                 identity="dust-deadband", decision=BASE + 300, p=.5152342865366013)
+        held = instance.tick()
+        assert instance.ledger.history("fills") == fills_after_exit
+        assert held["portfolio"]["accounts"]["jeremy"]["positions"] == []
+        assert held["portfolio"]["accounts"]["clearpond"]["positions"][0]["quantity"] == pytest.approx(.0000993)
+        decisions = [json.loads(row["details_json"]) for row in instance.ledger.history("decisions")
+                     if row["forecast_id"] == "dust-deadband"]
+        assert all(row["target_notional"] == 0 for row in decisions)
+        assert all(row["policy"]["reason"] == "entry_deadband" for row in decisions)
+        dust = next(row for row in decisions if row["account"] == "clearpond")
+        assert dust["reason"] == "below_size_precision"
+
+        clock.now = BASE + 630
+        forecast(data, coin="ETH", interval="5m", horizon=1, qualified=True,
+                 identity="true-entry", decision=BASE + 600, p=.53)
+        instance.tick()
+        entered = [row for row in instance.ledger.history("fills") if row["forecast_id"] == "true-entry"]
+        assert {row["account"] for row in entered} == {"jeremy", "clearpond"}
+        assert all(row["quantity"] > 0 for row in entered)
+    finally:
+        instance.ledger.close()
 
 
 @pytest.mark.parametrize("probability", [0.35, 0.65])

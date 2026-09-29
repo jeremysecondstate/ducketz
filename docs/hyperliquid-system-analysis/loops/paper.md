@@ -15,9 +15,9 @@ See [accounting and risk](../PAPER_ACCOUNTING_AND_RISK.md) for formulas and
 | Entry point | [`ml.hyperliquid_paper_runtime`](../../../ml/hyperliquid_paper_runtime.py), `PaperRuntime.run` |
 | Settings | [`configs/hyperliquid-paper.json`](../../../configs/hyperliquid-paper.json); loaded when the process is constructed |
 | Universe | Model/market configuration; enabled symbols are reloaded on each tick |
-| Horizon | First model horizon, currently 4 × 15-minute bars |
-| Forecast | `_models/<coin>/15m/h4/latest_prediction.json` plus matching `runs/<model-id>/record.json` |
-| Features | The forecast's exact `<coin>/15m/runs/<data-run-id>/features.parquet` row |
+| Horizon | First model horizon, currently 1 × five-minute bar |
+| Forecast | `_models/<coin>/5m/h1/latest_prediction.json` plus matching `runs/<model-id>/record.json` |
+| Features | The forecast's exact `<coin>/5m/runs/<data-run-id>/features.parquet` row |
 | Market evidence | Public metadata, separate spot/perp books and published funding history |
 | Durable truth | `_paper/ledger.sqlite3` with transactional accounts, inventory and journals |
 | Operator projection | `_paper/_runtime/status.json`, `opening_snapshot.json`, `policy.json`, dated performance and Parquet exports |
@@ -96,7 +96,7 @@ Published `status=running` may still have nonempty `errors`, `quote_errors` or
 | --- | --- |
 | Identity | Coin, interval, horizon, model record and model ID must match; data/model run IDs must have the accepted local format. |
 | Probabilities | Finite `p_not_down` in [0,1], complementary `p_down`, explicit boolean qualification. |
-| Times | Decision ≤ publication ≤ now; decision age ≤900 seconds; outcome remains future and exactly matches the configured horizon. |
+| Times | Decision ≤ publication ≤ now; decision age ≤300 seconds; outcome remains future and exactly matches the configured horizon. |
 | Model age | Model publication is not later than forecast publication and is ≤86,400 seconds old. |
 | Volatility | Exactly one source feature row at the decision close; finite nonnegative 20-return volatility scaled by `sqrt(horizon)`. |
 | Qualification | Current config requires `qualified=true`, `role=active` and matching record `eligible=true`; Research cannot allocate. |
@@ -123,7 +123,7 @@ allocation. Model publication itself still permits a labeled Research fallback.
 | `forecast:<prediction-id>` | Ordinary processing once for a saved forecast |
 | `forecast-wait:<prediction-id>` | Durable diagnostic for a quote-only deferred attempt; does not consume the forecast |
 | `forecast-retry:<prediction-id>` | One append-only completion after a narrowly verified legacy quote-only skip |
-| `stale:<coin>:<floor(now/900)>` | No-forecast processing once per 15-minute bucket |
+| `stale:<coin>:<floor(now/interval_seconds)>` | No-forecast processing once per configured candle bucket, currently 300 seconds |
 | `risk:<coin>:<floor(now/poll_seconds)>` | Revisit an already processed key when stops/over-limit risk require it |
 | `mark:<floor(now/poll_seconds)>` | Separate portfolio valuation bucket |
 | `funding:<coin>:<settlement-ms>:<account>` | Funding event and cycle identity |
