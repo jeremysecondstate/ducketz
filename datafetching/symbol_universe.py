@@ -1,4 +1,4 @@
-"""The shared production watchlist, with an explicit candidate-run override."""
+"""Machine-local production membership, with an explicit candidate-run override."""
 
 from __future__ import annotations
 
@@ -10,8 +10,23 @@ REPOSITORY_WATCHLIST = Path(__file__).resolve().with_name("watchlist.txt")
 WATCHLIST_ENV = "DUCKETS_PRODUCTION_WATCHLIST"
 
 
-def configured_watchlist_path() -> Path:
-    return Path(os.environ.get(WATCHLIST_ENV) or REPOSITORY_WATCHLIST).resolve()
+def production_watchlist_path(repository_root: Path | None = None) -> Path:
+    """Choose durable membership for this checkout independently of candidate runs."""
+
+    shared = (
+        Path(repository_root) / "datafetching" / "watchlist.txt"
+        if repository_root is not None
+        else REPOSITORY_WATCHLIST
+    ).resolve()
+    local = shared.with_name("watchlist.local.txt")
+    return local if local.is_file() else shared
+
+
+def configured_watchlist_path(repository_root: Path | None = None) -> Path:
+    """Prefer a process override, then this PC's local file, then shared defaults."""
+
+    override = os.environ.get(WATCHLIST_ENV)
+    return Path(override).resolve() if override else production_watchlist_path(repository_root)
 
 
 def normalize_symbol(value: str) -> str:

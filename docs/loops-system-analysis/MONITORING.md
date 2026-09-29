@@ -1,6 +1,6 @@
 # Monitoring and recovery
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
 
 > September 8 daytime repair: the existing operations watch is now named
 > **Loops Operations Watch** and covers both daytime incidents and overnight

@@ -55,9 +55,10 @@ def test_batch_checksum_rejects_changed_candidate_or_data_scope(tmp_path):
 
 def test_activation_refuses_partial_history_without_changing_watchlist(tmp_path,monkeypatch):
     import datafetching.research_onboarding as onboarding
+    import datafetching.symbol_universe as universe
     from ml.artifacts import file_checksum
     watchlist=tmp_path/'watchlist.txt';watchlist.write_text('AAPL\n')
-    monkeypatch.setattr(onboarding,'REPOSITORY_WATCHLIST',watchlist)
+    monkeypatch.setattr(universe,'REPOSITORY_WATCHLIST',watchlist)
     batch={'plan_id':'batch','previous_symbols':['AAPL'],'candidate_symbols':['AAPL','IONQ'],
            'selected_symbols':['IONQ'],'symbol_plan_ids':{'IONQ':'symbol-plan'},'research_lineage':{}}
     gameplan=tmp_path/'gameplan';gameplan.mkdir();(gameplan/'receipt.json').write_text('{}')
@@ -72,14 +73,17 @@ def test_activation_refuses_partial_history_without_changing_watchlist(tmp_path,
     assert not (tmp_path/'activation.json').exists()
 
 
-def _activation_fixture(tmp_path, monkeypatch):
+def _activation_fixture(tmp_path, monkeypatch, *, local=False):
     import datafetching.research_onboarding as onboarding
+    import datafetching.symbol_universe as universe
     from ml.artifacts import file_checksum
     previous = ['AAPL','AMZN','GOOG','MU','NVDA','SNDK','COST']
     selected = ['CROX','PATH','TWST','IONQ']
-    watchlist = tmp_path/'watchlist.txt'
+    shared = tmp_path/'watchlist.txt'
+    shared.write_text('MSFT\n')
+    monkeypatch.setattr(universe,'REPOSITORY_WATCHLIST',shared)
+    watchlist = shared.with_name('watchlist.local.txt') if local else shared
     watchlist.write_text('# Production symbols\n'+'\n'.join(previous)+'\n')
-    monkeypatch.setattr(onboarding,'REPOSITORY_WATCHLIST',watchlist)
     batch = {'plan_id':'batch','datastore_root':str(tmp_path),'previous_symbols':previous,
              'candidate_symbols':previous+selected,'selected_symbols':selected,
              'symbol_plan_ids':{s:s+'-plan' for s in selected},'research_lineage':{'week':'2026-09-13'}}
@@ -101,8 +105,14 @@ def _activation_fixture(tmp_path, monkeypatch):
     return batch, watchlist
 
 
-def test_activation_adds_all_four_once_and_preserves_watchlist_comments(tmp_path,monkeypatch):
-    batch, watchlist = _activation_fixture(tmp_path,monkeypatch)
+@pytest.mark.parametrize('local',[False,True])
+def test_activation_adds_all_four_once_and_preserves_watchlist_comments(tmp_path,monkeypatch,local):
+    from datafetching.symbol_universe import WATCHLIST_ENV
+    batch, watchlist = _activation_fixture(tmp_path,monkeypatch,local=local)
+    candidate = tmp_path/'candidate-watchlist.txt'
+    candidate_text = '\n'.join(batch['candidate_symbols'])+'\n'
+    candidate.write_text(candidate_text)
+    monkeypatch.setenv(WATCHLIST_ENV,str(candidate))
     result = activate_batch(tmp_path/'plan.json',batch)
     assert result['status']=='ACTIVE'
     assert watchlist.read_text().startswith('# Production symbols\n')
@@ -111,6 +121,9 @@ def test_activation_adds_all_four_once_and_preserves_watchlist_comments(tmp_path
     assert len(watchlist.read_text().splitlines()[1:])==11
     for symbol in batch['selected_symbols']:
         assert json.loads((tmp_path/symbol/'activation.json').read_text())['batch_plan_id']=='batch'
+    assert candidate.read_text()==candidate_text
+    if local:
+        assert (tmp_path/'watchlist.txt').read_text()=='MSFT\n'
 
 
 @pytest.mark.parametrize('change',['current-publication','production-membership'])

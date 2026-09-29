@@ -1,6 +1,6 @@
 # System functionality
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
 
 ## System-wide operating model
 
@@ -38,8 +38,8 @@ The exact command, schedule, artifacts, and failure rules are defined in
 
 ## Ingestion and canonical storage
 
-Loop A's overnight close cycle is the provider/data owner. It updates the shared
-`datafetching/watchlist.txt` universe and retains the existing source boundaries:
+Loop A's overnight close cycle is the provider/data owner. It updates data for
+this PC's configured production universe and retains the existing source boundaries:
 
 - Databento `EQUS.MINI` is canonical operational equity OHLCV under `stocks`.
 - Schwab equity history remains a secondary provider record.

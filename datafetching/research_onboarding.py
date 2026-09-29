@@ -30,7 +30,10 @@ from datafetching.symbol_onboarding import (
     complete_operational_history, enforce_budget, fetch_plan, load_plan,
     queue_history, register_onboarding, screen_secondary_history,
 )
-from datafetching.symbol_universe import REPOSITORY_WATCHLIST, WATCHLIST_ENV, normalize_symbol, read_symbols
+from datafetching.symbol_universe import (
+    REPOSITORY_WATCHLIST, WATCHLIST_ENV, normalize_symbol,
+    production_watchlist_path, read_symbols,
+)
 
 VERSION = 'research-symbol-onboarding-v1'
 POLICY = 'standard-included-history-2018-v1'
@@ -75,7 +78,7 @@ def build_batch(root: Path, output: Path, *, symbols: list[str], week: str,
     if output.exists():
         raise ValueError('Plan already exists; resume it instead of replacing it')
     symbols = [normalize_symbol(s) for s in symbols]
-    previous = read_symbols(REPOSITORY_WATCHLIST)
+    previous = read_symbols(production_watchlist_path())
     if not symbols or len(set(symbols)) != len(symbols) or set(symbols).intersection(previous):
         raise ValueError('Select distinct companies that are not already active')
     if reference not in previous:
@@ -509,7 +512,8 @@ def activate_batch(path: Path, batch: dict) -> dict:
             r = json.loads((p.parent/filename).read_text())
             if r.get('plan_id') != plan['plan_id'] or r.get('status') != status:
                 raise ValueError(f'{symbol} source receipt is incomplete: {filename}')
-    with exclusive_runtime_lock(REPOSITORY_WATCHLIST.with_suffix('.activation.lock'), process_name='Research batch activation'):
+    watchlist = production_watchlist_path()
+    with exclusive_runtime_lock(watchlist.with_suffix('.activation.lock'), process_name='Research batch activation'):
         root = Path(batch['datastore_root'])
         pointers = validation.get('current_pointer_hashes', {})
         if set(pointers) != {'ml/nightly-gameplan-latest/run.json', 'ml/stock-trader-model-latest/run.json',
@@ -517,13 +521,13 @@ def activate_batch(path: Path, batch: dict) -> dict:
             raise ValueError('Activation requires fresh current-pointer validation')
         if any(file_checksum(root/name) != digest for name,digest in pointers.items()):
             raise ValueError('Current publication advanced; validate the candidate again before activation')
-        current = read_symbols(REPOSITORY_WATCHLIST)
+        current = read_symbols(watchlist)
         if current not in (tuple(batch['previous_symbols']), tuple(batch['candidate_symbols'])):
             raise ValueError('Production membership changed independently; reconcile it before activation')
         if current != tuple(batch['candidate_symbols']):
-            content = REPOSITORY_WATCHLIST.read_text(encoding='utf-8').rstrip()+'\n'+'\n'.join(batch['selected_symbols'])+'\n'
-            temporary = REPOSITORY_WATCHLIST.with_suffix('.txt.tmp')
-            temporary.write_text(content, encoding='utf-8'); temporary.replace(REPOSITORY_WATCHLIST)
+            content = watchlist.read_text(encoding='utf-8').rstrip()+'\n'+'\n'.join(batch['selected_symbols'])+'\n'
+            temporary = watchlist.with_suffix('.txt.tmp')
+            temporary.write_text(content, encoding='utf-8'); temporary.replace(watchlist)
         receipt = {**validation, 'status':'ACTIVE', 'activated_at': _now(), 'research_lineage': batch['research_lineage']}
         _write(path.parent/'activation.json', receipt)
         for symbol in batch['selected_symbols']:
@@ -580,7 +584,7 @@ def main(argv=None) -> int:
                 'total_schema_requests':len(load_plan(child/'plan.json')['requests']),
                 'corporate_status':corporate.get('status','PENDING'),
                 'sec_filing_count':corporate.get('sec_filing_count')})
-        result['production_symbols'] = list(read_symbols(REPOSITORY_WATCHLIST))
+        result['production_symbols'] = list(read_symbols(production_watchlist_path()))
         print(json.dumps(result, indent=2)); return 0
     root = Path(batch['datastore_root'])
     with supervision(root, args.owner_token or str(uuid.uuid4())) as lost:

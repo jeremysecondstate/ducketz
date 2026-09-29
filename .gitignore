@@ -1,5 +1,9 @@
 .venv/
 .env
+# This PC's production symbols are separate from the shared repository defaults.
+datafetching/watchlist.local.txt
+datafetching/watchlist.local.activation.lock
+datafetching/watchlist.local.txt.tmp
 __pycache__/
 *.pyc
 .idea/

@@ -19,7 +19,7 @@ import pandas as pd
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
-from datafetching.symbol_universe import WATCHLIST_ENV
+from datafetching.symbol_universe import configured_watchlist_path
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp
 
 
@@ -154,7 +154,7 @@ def record_scheduled_noop(
 
 
 def _production_watchlist(repository_root: Path) -> Path:
-    return Path(os.environ.get(WATCHLIST_ENV) or repository_root / "datafetching" / "watchlist.txt").resolve()
+    return configured_watchlist_path(repository_root)
 
 
 def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.Timestamp,

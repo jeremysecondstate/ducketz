@@ -1,9 +1,11 @@
 # Adding a symbol to Loops
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
 
-`datafetching/watchlist.txt` is the production symbol list. `ml.universe`, stock
-trader contracts, option routes, and the normal overnight fetch read that list.
+The configured watchlist supplies production symbols to `ml.universe`, stock
+trader contracts, option routes, and the normal overnight fetch. Activation
+updates the durable list for this PC, independently of a temporary
+`DUCKETS_PRODUCTION_WATCHLIST` candidate-run override.
 The UI reads forecasts from the verified Gameplan and separately shows registered
 unfinished onboardings. A candidate can have verified read-only directional
 forecasts while its options Gameplan is pending; otherwise its probability

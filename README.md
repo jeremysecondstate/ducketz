@@ -23,6 +23,7 @@ If the answer is unclear, delete it.
 
 ## System documentation
 
+- [Running Ducketz on two PCs with separate stock lists and schedules](docs/multiple-pcs.md)
 - [Hyperliquid portfolio system and H.Y.P.E.R. operations](docs/hyperliquid-system-analysis/README.md)
 - [Powder readiness, user activation and recovery](docs/hyperliquid-system-analysis/POWDER_ACTIVATION.md)
 - [Stock/options Loops system analysis](docs/loops-system-analysis/README.md)

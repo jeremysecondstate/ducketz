@@ -161,18 +161,26 @@ def test_secondary_price_screen_preserves_evidence_and_valid_primary_bars(tmp_pa
     assert screen_secondary_history(plan, output)["excluded_series"] == receipt["excluded_series"]
 
 
+@pytest.mark.parametrize("local", [False, True])
 @pytest.mark.parametrize("incomplete", ["progress.json", "operational-history.json", "secondary-history-quality.json"])
-def test_activation_preserves_production_membership_until_every_source_gate_passes(tmp_path: Path, monkeypatch, incomplete) -> None:
+def test_activation_preserves_production_membership_until_every_source_gate_passes(tmp_path: Path, monkeypatch, incomplete, local) -> None:
     import datafetching.symbol_onboarding as onboarding
+    import datafetching.symbol_universe as universe
 
-    watchlist = tmp_path / "watchlist.txt"
+    shared = tmp_path / "watchlist.txt"
+    shared.write_text("NVDA\n")
+    monkeypatch.setattr(universe, "REPOSITORY_WATCHLIST", shared)
+    watchlist = shared.with_name("watchlist.local.txt") if local else shared
     original = "# Keep the operator's watchlist comments.\nAAPL\nAMZN\n"
     watchlist.write_text(original)
     plan = {"plan_id": "candidate", "symbol": "COST", "datastore_root": str(tmp_path),
             "previous_symbols": ["AAPL", "AMZN"], "candidate_symbols": ["AAPL", "AMZN", "COST"]}
     monkeypatch.setattr(onboarding, "load_plan", lambda _: plan)
     monkeypatch.setattr(onboarding, "validate_candidate", lambda _: {"plan_id": "candidate"})
-    monkeypatch.setattr(onboarding, "REPOSITORY_WATCHLIST", watchlist)
+    candidate = tmp_path / "candidate-watchlist.txt"
+    candidate_text = "AAPL\nAMZN\nCOST\n"
+    candidate.write_text(candidate_text)
+    monkeypatch.setenv(WATCHLIST_ENV, str(candidate))
     for filename in ("progress.json", "operational-history.json", "secondary-history-quality.json"):
         status = "HISTORY_FETCHED" if filename == "progress.json" else "COMPLETE"
         (tmp_path / filename).write_text(json.dumps({"plan_id": "candidate",
@@ -191,6 +199,35 @@ def test_activation_preserves_production_membership_until_every_source_gate_pass
     watchlist.write_text(original)
     assert onboarding.activate_plan(tmp_path / "plan.json")["status"] == "ACTIVE"
     assert watchlist.read_text() == original + "COST\n"
+    assert candidate.read_text() == candidate_text
+    if local:
+        assert shared.read_text() == "NVDA\n"
+
+
+@pytest.mark.parametrize("local", [False, True])
+def test_plan_uses_production_baseline_despite_candidate_environment(tmp_path: Path, monkeypatch, local) -> None:
+    import datafetching.symbol_onboarding as onboarding
+    import datafetching.symbol_universe as universe
+
+    shared = tmp_path / "watchlist.txt"
+    shared.write_text("NVDA\n")
+    monkeypatch.setattr(universe, "REPOSITORY_WATCHLIST", shared)
+    production = shared.with_name("watchlist.local.txt") if local else shared
+    production.write_text("AAPL\n")
+    candidate = tmp_path / "candidate-watchlist.txt"
+    candidate.write_text("AAPL\nCOST\n")
+    monkeypatch.setenv(WATCHLIST_ENV, str(candidate))
+    request = _request(tmp_path, "COST", "XNAS.ITCH", "ohlcv-1d", "2026-08-01", "2026-09-01")
+    monkeypatch.setattr(onboarding, "reference_requests", lambda *_: [request])
+    monkeypatch.setattr(onboarding.shutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 1024**3))
+    client = SimpleNamespace(metadata=SimpleNamespace(
+        get_dataset_range=lambda **_: {}, get_billable_size=lambda **_: 100,
+        get_record_count=lambda **_: 1, get_cost=lambda **_: 0.0))
+
+    plan = onboarding.build_plan(tmp_path, client, symbol="COST", reference="AAPL")
+
+    assert plan["previous_symbols"] == ["AAPL"]
+    assert plan["candidate_symbols"] == ["AAPL", "COST"]
 
 
 def test_candidate_stock_model_can_be_trained_without_replacing_production(tmp_path: Path, monkeypatch) -> None:

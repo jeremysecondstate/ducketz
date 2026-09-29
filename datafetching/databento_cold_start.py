@@ -63,6 +63,7 @@ from datafetching.databento_opra_history import (
 from datafetching.options_runtime import publish_opra_symbol_history_cursor
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
+from datafetching.symbol_universe import configured_watchlist_path
 from ml.artifacts import file_checksum
 
 
@@ -82,7 +83,7 @@ GENERIC_DOWNLOAD_MAX_BACKOFF_SECONDS = 30
 GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD = 3
 GENERIC_BATCH_FALLBACK_SIGNATURE_MAX_BYTES = 1024**2
 GENERIC_BATCH_FALLBACK_POLL_SECONDS = 5
-DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
+DEFAULT_WATCHLIST = configured_watchlist_path()
 DEFAULT_EQUITIES_DATASET = "XNAS.ITCH"
 COLD_START_EQUITIES_DATASET_ENV = "DATABENTO_COLD_START_EQUITIES_DATASET"
 STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_access.md"
