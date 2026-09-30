@@ -22,6 +22,45 @@ the smallest tested bound that keeps eligible production coverage above 95%
 across the documented 2025 missing-month release gap. CPI remains 45 days and
 GDP remains 120 days.
 
+## First run on an empty datastore
+
+A new PC has no authoritative Loop B samples yet. After a successful Loop A
+cycle for its complete stock universe, explicitly create decision-only evidence:
+
+```powershell
+python -m ml.macro_bootstrap --datastore-target pc --symbols DOCU DBX SDGR QBTS PYPL GLOB OUST ABCL MRNA RR PDYN
+```
+
+Use the exact receipt path printed by that command:
+
+```powershell
+python -m ml.option_pricing_fred --datastore-target pc --backfill --bootstrap-decisions "C:\DATASTORE\ml\macro-decision-bootstrap\<run>\receipt.json"
+```
+
+The bootstrap reuses the production adjusted bars, aligned technical inputs,
+exchange calendars, processing delays and rolling target-window code. It seals
+only symbol/horizon/decision timestamps and their source checksums. It creates
+no model, predictions, Gameplan, execution authority or Loop B publication.
+There is no automatic fallback to bootstrap evidence.
+
+This explicit contract is limited to the complete daily/weekly scope of
+`loop-a-all-bsgp-active-v3` with Databento inputs. It does not change the final
+feature profile or any training partition. The ordinary ALFRED importer,
+release-time semantics, 95% coverage threshold and zero-lookahead checks still
+apply. The first full-profile materialization must reproduce the exact sealed
+macro decision population and pass coverage again before it can return inputs
+for model fitting. Missing symbols/routes, changed profiles, changed source
+files or expanded decisions fail closed.
+
+Keep the source generation stable between sealing and the first Loop B run.
+If those inputs change, regenerate the bootstrap and rerun the explicit
+backfill/readiness command; do not edit the receipt. After the first full-profile
+Loop B publication, use the normal incremental command without the bootstrap
+flag so readiness follows authoritative model samples. This bootstrap does not
+supply any other required feature family or satisfy Gameplan readiness itself.
+
+## Ongoing updates
+
 After the backfill, one independent owner performs bounded overlapping updates
 no more than once per UTC date:
 
