@@ -13,3 +13,12 @@ scratch/
 datafetching/datastore/
 *.parquet
 *.tmp.parquet
+
+# Local September 30 operational evidence contains account/runtime snapshots,
+# authentication checks, chat/memory excerpts, screenshots and one-off backups.
+# Keep it on its originating PC; share sanitized findings in docs or CODEXSTORE.
+# These rules do not untrack any evidence already committed.
+/artifacts/analysis/hyper-model-history-20260930/
+/artifacts/analysis/hyper-probability-ui-20260930/
+/artifacts/analysis/overnight-20260930/
+/docs/hyperliquid-system-analysis/audits/2026-09-30-paper-round-*.md
