@@ -401,6 +401,95 @@ def test_paper_journals_explain_missing_forecast_attribution(workspace, journal,
     assert not view.tree.get_children()
 
 
+@pytest.mark.parametrize("journal", ["Decisions", "Fills"])
+def test_journals_show_retained_research_probability_without_signal_attribution(workspace, journal):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    source = getattr(snapshot, journal.lower())[0]
+    research = {"coin": source["coin"], "prediction_id": "saved-research-prediction",
+                "model_id": "saved-research-model", "data_run_id": "saved-source",
+                "p_not_down": .5123, "p_down": .4877, "qualified": False,
+                "created_at_utc": source["timestamp_utc"], "interval": "5m", "horizon_bars": 1,
+                "target_close_utc": "2026-09-26T03:35:00+00:00",
+                "per_model": {"random_forest": {"p_not_down": .5245}}}
+    row = {**source, "model_id": None, "forecast_id": None, "prediction_id": None,
+           "p_not_down": None, "p_down": None, "qualified": None, "qualification": "unavailable",
+           "reason": "risk_cap" if journal == "Fills" else "unqualified_forecast_excluded",
+           "policy": {"reason": "unqualified_forecast_excluded", "rejected_forecast": research}, "details": {}}
+    # A newer same-market score must never replace this historical observation.
+    forecasts = [{**f, "p_not_down": .99, "p_down": .01} for f in snapshot.forecasts]
+    view.show_snapshot(replace(snapshot, forecasts=forecasts, **{journal.lower(): [row]}))
+    view.view.set(journal)
+    view._render()
+    item = view.tree.get_children()[0]
+    assert view.tree.heading("p_not_down", "text") == "P(not-down)"
+    assert view.tree.set(item, "p_not_down") == "51.23%"
+    assert view.tree.set(item, "qualification") == "Research (excluded)"
+    assert view.tree.column("qualification", "width") >= 135
+    assert view.tree.set(item, "reason") == ("Exposure limit" if journal == "Fills" else "Research signal excluded")
+    view.tree.selection_set(item)
+    view.tree.event_generate("<<TreeviewSelect>>")
+    window.update()
+    description = view.detail.get("1.0", "end").split("SAVED RECORD")[0]
+    assert "P(not-down) 51.23%" in description and "P(down) 48.77%" in description
+    assert "random_forest  52.45%" in description
+    assert "not used as a trading signal" in description
+    assert "1 × 5m bars · 5 minute horizon" in description
+    assert "saved-research-prediction" in description and "saved-research-model" in description
+    assert "No forecast attributed" not in description and "99.00%" not in description
+    assert view._rows_by_id[item]["qualified"] is None and view._rows_by_id[item]["forecast_id"] is None
+    view.qualification_filter.set("Research")
+    assert len(view.tree.get_children()) == 1
+    view.qualification_filter.set("Qualified")
+    assert not view.tree.get_children()
+
+
+@pytest.mark.parametrize("journal", ["Decisions", "Fills"])
+@pytest.mark.parametrize("probability", [0.0, 1.0])
+def test_journal_probability_column_preserves_recorded_boundaries(workspace, journal, probability):
+    view, _, _ = workspace
+    snapshot = _snapshot()
+    row = {**getattr(snapshot, journal.lower())[0], "p_not_down": probability,
+           "p_down": 1-probability, "details": {}}
+    view.show_snapshot(replace(snapshot, **{journal.lower(): [row]}))
+    view.view.set(journal)
+    view._render()
+    item = view.tree.get_children()[0]
+    assert view.tree.set(item, "p_not_down") == f"{100*probability:.2f}%"
+
+
+@pytest.mark.parametrize("probability", [None, True, float('nan'), 1.2])
+def test_invalid_research_score_is_not_displayed_as_a_valid_probability(workspace, probability):
+    view, _, _ = workspace
+    source = _snapshot().decisions[0]
+    row = {**source, "model_id": None, "forecast_id": None, "prediction_id": None,
+           "p_not_down": None, "qualified": None, "qualification": "unavailable", "details": {},
+           "policy": {"rejected_forecast": {"coin": source["coin"], "p_not_down": probability,
+                       "qualified": False, "model_id": "research-model", "prediction_id": "research-prediction"}}}
+    view.show_snapshot(replace(_snapshot(), decisions=[row]))
+    view.view.set("Decisions")
+    view._render()
+    item = view.tree.get_children()[0]
+    assert view.tree.set(item, "p_not_down") == "—"
+    assert view.tree.set(item, "qualification") == "No forecast"
+
+
+def test_invalid_attributed_probability_is_hidden_in_column_and_inspector(workspace):
+    view, window, _ = workspace
+    source = _snapshot().decisions[0]
+    row = {**source, "p_not_down": 2.0, "p_down": -1.0, "details": {}}
+    view.show_snapshot(replace(_snapshot(), decisions=[row]))
+    view.view.set("Decisions")
+    view._render()
+    item = view.tree.get_children()[0]
+    view.tree.selection_set(item)
+    view.tree.event_generate("<<TreeviewSelect>>")
+    window.update()
+    assert view.tree.set(item, "p_not_down") == "—"
+    description = view.detail.get("1.0", "end").split("SAVED RECORD")[0]
+    assert "200.00%" not in description and "−100.00%" not in description
+
+
 @pytest.mark.parametrize("recipe,holds", [("direction-volatility-v1", False),
                                          ("direction-volatility-v2-qualified-hold", True)])
 def test_qualified_policy_hold_text_matches_recorded_recipe(workspace, recipe, holds):

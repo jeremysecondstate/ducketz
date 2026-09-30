@@ -18,6 +18,7 @@ import re
 from filelock import FileLock
 
 from ml.hyperliquid_paper_review import assert_not_excluded, read_json, safe_path, seed_info, write_json
+from ml.hyperliquid_paper_forecast_evidence import WIN_FORECAST_RULE, has_eligible_forecast
 
 VERSION = 1
 LEGACY_RULE = "win-plus-one-hold-v1"
@@ -98,6 +99,8 @@ def validate_active(active):
         raise ValueError("Legacy cadence requires at least two hours")
     if type(active.get("carry_in_unscored")) is not bool:
         raise ValueError("Carry-in status must be a strict boolean")
+    if active.get("win_forecast_rule") not in (None, WIN_FORECAST_RULE):
+        raise ValueError("Unsupported forecast WIN eligibility rule")
     if stamp(active["due_at_utc"]) != stamp(active["seed_at_utc"]) + timedelta(hours=duration):
         raise ValueError("Deadline does not match the committed seed and duration")
 
@@ -181,6 +184,11 @@ def classify(active, comparison):
                 or summary["paper_beating_actual"] != (edge > 0)):
             raise ValueError("Native winning flag and common-mark arithmetic disagree")
         outcome = "win" if edge > 0 and excess > 0 else "tie" if edge == 0 else "loss"
+        if (outcome == "win" and active.get("win_forecast_rule") == WIN_FORECAST_RULE
+                and not has_eligible_forecast(comparison["paper"].get("forecast_evidence"), active,
+                                             comparison["paper"]["observed_at_utc"])):
+            return {**result, "reason": "no_eligible_forecast_evidence",
+                    "common_mark_equity_edge": edge, "excess_return_fraction": excess}
         return {**result, "outcome": outcome, "winning": outcome == "win",
                 "next_evaluation_hours": next_hours(duration, outcome, rule_version(active)),
                 "reason": "verified_common_mark_account_comparison",
@@ -263,7 +271,7 @@ class Cadence:
                         "horizons_bars": recipe["hyperliquid-models.json"]["horizons_bars"],
                         "paper_policy_id": record["opening_policy_id"]}, opening["public_owner_sha256"]
 
-    def active(self, record, recipe, owners, duration, *, carry_in, version=CURRENT_RULE):
+    def active(self, record, recipe, owners, duration, *, carry_in, version=CURRENT_RULE, win_forecast_rule=None):
         duration = hours(duration)
         active = {"experiment_id": record["experiment_id"], "seed_at_utc": record["seed_at_utc"],
                 "experiment_sha256": file_digest(self.path(self.root / "_paper/experiment.json")),
@@ -276,6 +284,8 @@ class Cadence:
         # Missing version means legacy in immutable historical receipts.
         if version != LEGACY_RULE:
             active["cadence_rule_version"] = version
+        if win_forecast_rule is not None:
+            active["win_forecast_rule"] = win_forecast_rule
         validate_active(active)
         return active
 
@@ -368,7 +378,8 @@ class Cadence:
             duration = hours(receipt["decision"]["next_evaluation_hours"])
             if classify(receipt["ending_state"], read_json(self.path(receipt["comparison_path"]))) != receipt["decision"]:
                 raise ValueError("Assessment decision does not match its committed rule and comparison")
-            active = self.active(record, recipe, owners, duration, carry_in=False, version=rule_version(state))
+            active = self.active(record, recipe, owners, duration, carry_in=False, version=rule_version(state),
+                                 win_forecast_rule=WIN_FORECAST_RULE)
             state["history"].append({"ending_experiment_id": ending_id,
                                      "successor_experiment_id": active["experiment_id"],
                                      "assessment": pending, "decision": receipt["decision"], "advanced_at_utc": utc()})
@@ -396,7 +407,8 @@ class Cadence:
                     or record.get("superseded_experiment_id") != expected_ending_id):
                 raise ValueError("Expected identities do not match the accepted successor")
             expected_active = self.active(record, recipe, owners, state["current_evaluation_hours"],
-                                          carry_in=False, version=rule_version(state))
+                                          carry_in=False, version=rule_version(state),
+                                          win_forecast_rule=state["active"].get("win_forecast_rule"))
             if state["active"] != expected_active:
                 raise ValueError("Active cadence differs from the accepted baseline")
             if not state.get("history"):
@@ -442,7 +454,8 @@ class Cadence:
             if state["current_evaluation_hours"] != assessed["decision"]["next_evaluation_hours"]:
                 raise ValueError("Current duration differs from the consumed legacy decision")
             duration = next_hours(ending["evaluation_hours"], "loss", CURRENT_RULE)
-            active = self.active(record, recipe, owners, duration, carry_in=False, version=CURRENT_RULE)
+            active = self.active(record, recipe, owners, duration, carry_in=False, version=CURRENT_RULE,
+                                 win_forecast_rule=state["active"].get("win_forecast_rule"))
             now = utc()
             if stamp(now) >= stamp(active["due_at_utc"]):
                 raise ValueError("Shortened deadline is already due; cannot amend retrospectively")

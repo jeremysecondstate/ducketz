@@ -145,6 +145,10 @@ def test_five_minute_forecasts_expire_hold_and_trade_the_next_candle(tmp_path):
         assert len(positions) == 1 and positions[0]["account"] == "alex"
         assert positions[0]["quantity"] < 0
         assert any(row["forecast_id"] == "next-five-minute" for row in instance.ledger.history("fills"))
+        retained = [json.loads(row["details_json"])["forecast_observation"]
+                    for row in instance.ledger.history("decisions") if row["forecast_id"] == "next-five-minute"]
+        assert retained and all(row["prediction"]["qualified"] is True for row in retained)
+        assert all(row["prediction"]["_valid_until_epoch"] > clock.now for row in retained)
     finally:
         instance.ledger.close()
 

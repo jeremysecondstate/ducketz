@@ -95,6 +95,20 @@ or seeds, and mere raw display gaps cannot produce a win. Keep full losing and
 unscored history. One winning round earns the next challenge; it is not proof
 of durable trading skill.
 
+September 30 user clarification: a positive balance edge without a valid model
+prediction is not a WIN. Starting with the next freshly accepted round, native
+cadence commits `win_forecast_rule=qualified-in-round-forecast-v1`. Promotion
+also requires at least one finite, qualified, active forecast published and
+observed in that same round, still valid when its Paper decision committed,
+matching the accepted market/horizon and an independently retained eligible
+model record. A valid policy hold qualifies; executing a trade is not required.
+Missing, stale, unqualified or unprovable forecast evidence makes a positive
+endpoint UNSCORED (`no_eligible_forecast_evidence`) and retains its duration.
+Verified negative LOSS and zero-edge TIE remain scored normally. Historical
+assessments and rounds without this prospective marker keep their recorded
+meaning. Native comparison retains endpoint-bounded decision/model evidence
+and hashes; research publication alone cannot qualify a round.
+
 1. Capture a read-only comparison using the native comparison command below.
    Record real and Paper equity per account and pooled, observation times,
    opening equity, returns, cash flows, fees, funding, turnover, drawdown,

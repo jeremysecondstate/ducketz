@@ -17,7 +17,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier
+from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -66,8 +66,12 @@ class ModelSettings:
     extra_trees_weight: float = 1.0
     hist_gradient_boosting_weight: float = 1.0
     mlp_weight: float = 1.0
+    random_forest_weight: float = 0.0
 
     def __post_init__(self) -> None:
+        if (type(self.random_forest_weight) not in (int, float)
+                or not np.isfinite(self.random_forest_weight) or self.random_forest_weight < 0):
+            raise ValueError("random_forest_weight must be a finite nonnegative number.")
         for name in ("calibration_c", "logistic_weight", "extra_trees_weight",
                      "hist_gradient_boosting_weight", "mlp_weight"):
             value = getattr(self, name)
@@ -326,7 +330,7 @@ def _make_estimators(settings: ModelSettings) -> dict[str, Pipeline]:
         return Pipeline(steps)
 
     seed = settings.random_state
-    return {
+    estimators = {
         "logistic": pipeline(LogisticRegression(C=1.0, max_iter=500, random_state=seed), scale=True),
         "extra_trees": pipeline(ExtraTreesClassifier(
             n_estimators=128, max_depth=10, min_samples_leaf=12,
@@ -343,6 +347,12 @@ def _make_estimators(settings: ModelSettings) -> dict[str, Pipeline]:
             shuffle=False, random_state=seed,
         ), scale=True),
     }
+    if settings.random_forest_weight > 0:
+        estimators["random_forest"] = pipeline(RandomForestClassifier(
+            n_estimators=128, max_depth=10, min_samples_leaf=12,
+            max_features=0.7, n_jobs=1, random_state=seed,
+        ), scale=False)
+    return estimators
 
 
 def _positive_probability(estimator: Any, values: pd.DataFrame | np.ndarray) -> np.ndarray:
@@ -418,7 +428,7 @@ def train_candidate(
 ) -> dict:
     """Fit, calibrate, and assess a fixed ensemble without looking past a split.
 
-    The optional factory is a test seam; production uses all four small models.
+    Production retains all four core families and optionally adds Random Forest.
     The caller bounds native BLAS/OpenMP threads for the training process.
     """
     started = perf_counter()

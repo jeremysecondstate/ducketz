@@ -7,7 +7,9 @@ import sqlite3
 
 import pytest
 
-from app.services.hyperliquid_paper_view import HyperliquidPaperViewService, filter_rows
+from app.services.hyperliquid_paper_view import (
+    HyperliquidPaperViewService, filter_rows, journal_display_forecast,
+)
 from ml.hyperliquid_paper_ledger import PaperLedger
 
 
@@ -348,6 +350,125 @@ def test_partial_execution_and_committed_transfers_keep_actual_evidence(paper_ro
     assert fill["details"]["qualified"] is False
     assert snapshot.transfers[0]["status"] == "committed"
     assert snapshot.decisions[0]["execution"]["quantity"] == 2
+
+
+def excluded_forecast_row(**overrides):
+    prediction = {"coin": "BTC", "p_not_down": .54, "p_down": .46, "qualified": False,
+                  "prediction_id": "retained-prediction", "model_id": "retained-model",
+                  "created_at_utc": utc(NOW-60), "target_close_utc": utc(NOW+240),
+                  "interval": "5m", "horizon_bars": 1,
+                  "per_model": {"logistic": {"p_not_down": .55, "p_down": .45},
+                                "invalid": {"p_not_down": float("nan")}}}
+    return {"account": "alex", "coin": "BTC", "p_not_down": None, "qualified": None,
+            "forecast_id": None, "model_id": None, "forecast_observation": None,
+            "reason": "unqualified_forecast_excluded",
+            "policy": {"rejected_forecast": {**prediction, **overrides}}}
+
+
+def test_excluded_journal_predictions_are_visible_without_changing_signal_attribution(paper_root):
+    original = excluded_forecast_row()
+    with sqlite3.connect(paper_root / "_paper" / "ledger.sqlite3") as connection:
+        for table in ("decisions", "fills"):
+            details = json.loads(connection.execute(f"SELECT details_json FROM {table}").fetchone()[0])
+            details.update(original)
+            if table == "fills":
+                details["reason"] = "risk_cap"
+            connection.execute(f"UPDATE {table} SET details_json=?,forecast_id=NULL,model_id=NULL,reason=?",
+                               (json.dumps(details), details["reason"]))
+    snapshot = service(paper_root).load_snapshot()
+    for row in (snapshot.decisions[0], snapshot.fills[0]):
+        display = row["display_forecast"]
+        assert display["p_not_down"] == .54 and display["p_down"] == .46
+        assert display["qualification"] == "research"
+        assert display["usage"] == "excluded"
+        assert display["provenance"] == "policy.rejected_forecast"
+        assert display["prediction_id"] == "retained-prediction"
+        assert display["model_id"] == "retained-model"
+        assert display["interval"] == "5m" and display["horizon_bars"] == 1
+        assert display["per_model"] == {"logistic": {"p_not_down": .55, "p_down": .45}}
+        assert row["p_not_down"] is None and row["qualified"] is None
+        assert row["forecast_id"] is None and row["model_id"] is None
+        assert row["qualification"] == "unavailable"
+        assert json.dumps(row["details"]["policy"], sort_keys=True) == json.dumps(original["policy"], sort_keys=True)
+        assert filter_rows([row], qualification="research") == [row]
+        assert not filter_rows([row], qualification="qualified")
+    # Neither an excluded prediction nor a newer latest publication explains
+    # the cause of this exposure-reducing fill.
+    assert snapshot.fills[0]["reason"] == "risk_cap"
+    assert snapshot.forecasts[0]["p_not_down"] == .6
+    assert "display_forecast" not in snapshot.transfers[0]
+
+
+@pytest.mark.parametrize("overrides", [
+    {"p_not_down": None}, {"p_not_down": True}, {"p_not_down": float("nan")},
+    {"p_not_down": float("inf")}, {"p_not_down": -.01}, {"p_not_down": 1.01},
+    {"p_not_down": "invalid"}, {"p_down": None}, {"p_down": True},
+    {"p_down": .54}, {"qualified": True}, {"qualified": None}, {"qualified": "false"},
+    {"qualified": 0}, {"coin": "ETH"},
+])
+def test_invalid_retained_research_probability_is_not_displayed(overrides):
+    assert journal_display_forecast(excluded_forecast_row(**overrides)) == {}
+
+
+@pytest.mark.parametrize("probability", [0, 1, .5])
+def test_probability_boundaries_remain_valid_and_missing_complement_is_not_fabricated(probability):
+    row = excluded_forecast_row(p_not_down=probability)
+    del row["policy"]["rejected_forecast"]["p_down"]
+    display = journal_display_forecast(row)
+    assert display["p_not_down"] == probability and display["p_down"] is None
+    assert display["usage"] == "excluded"
+
+
+@pytest.mark.parametrize("policy", [None, [], {}, {"rejected_forecast": []}, {"rejected_forecast": {}}])
+def test_missing_retained_research_prediction_is_not_replaced_by_latest_forecast(policy):
+    row = {"coin": "BTC", "qualified": None, "p_not_down": None, "policy": policy}
+    assert journal_display_forecast(row) == {}
+
+
+def test_exact_attributed_observation_supplies_historical_dimensions_without_excluded_fallback():
+    row = excluded_forecast_row()
+    prediction = {**row["policy"]["rejected_forecast"], "qualified": True}
+    row.update(forecast_id=prediction["prediction_id"], model_id=prediction["model_id"],
+               p_not_down=.54, qualified=True, forecast_observation={"prediction": prediction})
+    display = journal_display_forecast(row)
+    assert display["qualification"] == "qualified"
+    assert display["usage"] == "attributed" and display["provenance"] == "journal"
+    assert display["p_down"] == .46 and display["interval"] == "5m"
+    assert display["per_model"]["logistic"]["p_not_down"] == .55
+    assert filter_rows([row], qualification="qualified") == [row]
+    # A valid rejected prediction cannot hide an invalid attributed signal.
+    row["p_not_down"] = 8
+    assert journal_display_forecast(row) == {}
+
+
+def test_attributed_forecast_preserves_saved_historical_cutoffs_and_publication_times():
+    provenance = {field: utc(NOW-index*300) for index, field in enumerate((
+        "model_published_at_utc", "model_created_at_utc", "training_cutoff_utc",
+        "training_label_cutoff_utc", "calibration_cutoff_utc", "train_end_utc",
+        "calibration_end_utc", "outcome_timestamp_utc", "outcome_at_utc"), start=1)}
+    row = {"coin": "BTC", "p_not_down": .6, "qualified": True,
+           "forecast_id": "historical-prediction", "model_id": "historical-model",
+           "details": provenance, "forecast_observation": {"prediction": {
+               "coin": "BTC", "prediction_id": "historical-prediction", "model_id": "historical-model",
+               "model_published_at_utc": utc(), "p_not_down": .6, "p_down": .4}}}
+    display = journal_display_forecast(row)
+    assert {field: display[field] for field in provenance} == provenance
+    assert display["model_id"] == "historical-model"
+    assert display["usage"] == "attributed"
+
+
+@pytest.mark.parametrize("field,value", [("prediction_id", "another-prediction"),
+                                        ("model_id", "another-model"), ("coin", "ETH")])
+def test_differently_identified_observation_cannot_supply_historical_forecast_context(field, value):
+    row = {"coin": "BTC", "p_not_down": .6, "qualified": False,
+           "forecast_id": "prediction-one", "model_id": "model-one",
+           "forecast_observation": {"prediction": {
+               "prediction_id": "prediction-one", "model_id": "model-one", "coin": "BTC",
+               "p_not_down": .6, "p_down": .4, "interval": "5m", "horizon_bars": 1,
+               field: value}}}
+    display = journal_display_forecast(row)
+    assert display["p_not_down"] == .6 and display["p_down"] is None
+    assert "interval" not in display and "horizon_bars" not in display
 
 
 def test_equity_history_is_per_account_and_transfer_adjusted(paper_root):

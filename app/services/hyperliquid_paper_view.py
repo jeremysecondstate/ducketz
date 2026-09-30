@@ -87,12 +87,72 @@ def _qualification(row):
     return "qualified" if flag is True else "research" if flag is False else "unavailable"
 
 
+def _journal_probabilities(forecast):
+    probability = _number(forecast.get("p_not_down"))
+    down = _number(forecast.get("p_down"))
+    if probability is None or not 0 <= probability <= 1:
+        return None
+    if "p_down" in forecast and (down is None or not 0 <= down <= 1
+            or not math.isclose(probability + down, 1, rel_tol=0, abs_tol=1e-9)):
+        return None
+    return probability, down
+
+
+def journal_display_forecast(row):
+    """Return only the valid forecast retained with this activity record.
+
+    Excluded research remains context, never execution attribution. In
+    particular, this projection does not populate the journal's signal fields
+    or consult the latest market forecast to fill missing historical evidence.
+    """
+    row = {**_mapping(row.get("details")), **row}
+    fields = ("coin", "p_not_down", "p_down", "qualified", "forecast_id", "prediction_id",
+              "model_id", "data_run_id", "interval", "horizon_bars", "horizon_minutes",
+              "created_at_utc", "forecast_created_at_utc", "decision_close_utc",
+              "decision_timestamp_utc", "target_close_utc", "outcome_timestamp_utc", "outcome_at_utc",
+              "model_published_at_utc", "model_created_at_utc", "training_cutoff_utc",
+              "training_label_cutoff_utc", "calibration_cutoff_utc", "train_end_utc",
+              "calibration_end_utc", "per_model")
+    has_signal = (any(row.get(key) for key in ("forecast_id", "prediction_id", "model_id"))
+                  or row.get("p_not_down") is not None or row.get("qualified") is not None)
+    if has_signal:
+        forecast = {key: row[key] for key in fields if key in row}
+        observed = _mapping(_mapping(row.get("forecast_observation")).get("prediction"))
+        forecast_id = row.get("forecast_id") or row.get("prediction_id")
+        # A retained observation can supply dimensions and per-model scores,
+        # but only for this exact forecast; a shared model ID alone is not enough.
+        if (forecast_id and forecast_id == (observed.get("prediction_id") or observed.get("forecast_id"))
+                and all(not row.get(key) or row[key] == observed.get(key) for key in ("coin", "model_id"))):
+            forecast = {**observed, **forecast}
+        usage, provenance = "attributed", "journal"
+    else:
+        forecast = _mapping(_mapping(row.get("policy")).get("rejected_forecast"))
+        if not forecast or forecast.get("qualified") is not False:
+            return {}
+        usage, provenance = "excluded", "policy.rejected_forecast"
+    if forecast.get("coin") and row.get("coin") and forecast["coin"] != row["coin"]:
+        return {}
+    probabilities = _journal_probabilities(forecast)
+    if probabilities is None:
+        return {}
+    per_model = {}
+    for name, value in _mapping(forecast.get("per_model")).items():
+        source = value if isinstance(value, dict) else {"p_not_down": value}
+        scores = _journal_probabilities(source)
+        if scores is not None:
+            per_model[name] = {"p_not_down": scores[0], "p_down": scores[1]}
+    return {**forecast, "p_not_down": probabilities[0], "p_down": probabilities[1],
+            "per_model": per_model, "qualification": _qualification(forecast),
+            "usage": usage, "provenance": provenance}
+
+
 def filter_rows(rows, *, account="all", asset="all", qualification="all", include_passive=True):
     """Filter journals consistently, including either participant in transfers.
 
     Accountless market decisions apply to every account. Qualification filters
-    exclude records without a recorded model qualification; they never infer it
-    from P/L. Transfers have no asset/model attribution in the current ledger.
+    include retained excluded research, while never treating it as a qualified
+    signal or inferring qualification from P/L. Transfers have no asset/model
+    attribution in the current ledger.
     """
     account = str(account or "all").lower().replace(" ", "")
     asset = str(asset or "all").upper()
@@ -105,7 +165,9 @@ def filter_rows(rows, *, account="all", asset="all", qualification="all", includ
                 continue
         if asset != "ALL" and str(row.get("coin", "")).upper() != asset:
             continue
-        if qualification != "all" and row.get("qualification", _qualification(row)) != qualification:
+        display = journal_display_forecast(row) if qualification != "all" else {}
+        label = display.get("qualification", row.get("qualification", _qualification(row)))
+        if qualification != "all" and label != qualification:
             continue
         if not include_passive and row.get("passive"):
             continue
@@ -228,6 +290,8 @@ class HyperliquidPaperViewService:
                 row["details_unavailable"] = True
         result = {**details, **row, "details": details, "source": "paper"}
         result["qualification"] = _qualification(result)
+        if "decision_id" in result or "fill_id" in result:
+            result["display_forecast"] = journal_display_forecast(result)
         if "transfer_id" in result:
             result["status"] = "committed"
         return result

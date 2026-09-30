@@ -38,7 +38,11 @@ from datafetching.databento_archive import (
     materialize_equity_archive_baseline,
 )
 from datafetching.decision_time import completed_bar_clock_for_target
-from datafetching.cme_history import cme_writer_lock_path
+from datafetching.cme_history import (
+    cme_event_root,
+    cme_writer_lock_path,
+    persist_cme_event_history,
+)
 from datafetching.derived_bars import (
     DERIVED_INTRADAY_FREQUENCIES,
     derive_daily_bars,
@@ -1243,6 +1247,8 @@ def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
     data_files = 0
     error_files = 0
     advisory_files = 0
+    limit_saturated_requests: list[str] = []
+    context_capture_failed = False
 
     try:
         specs = provider.specs()
@@ -1260,6 +1266,9 @@ def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
 
     for requested_spec in specs:
         spec = requested_spec
+        context_input = spec.group_key == "context" and spec.schema in {
+            "ohlcv-1m", "bbo-1m", "mbp-10"
+        }
         rows: list[dict[str, object]] = []
         raw_frame = None
         exc: Exception | None = None
@@ -1309,6 +1318,7 @@ def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
                 pool="cme",
             )
             error_files += 1
+            context_capture_failed |= context_input
             continue
 
         status_only = _is_cme_status_only(rows)
@@ -1343,6 +1353,7 @@ def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
                 metadata=metadata,
             )
             error_files += 1
+            context_capture_failed |= context_input
         else:
             if normalized_path is not None:
                 data_files += 1
@@ -1378,9 +1389,57 @@ def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
                     metadata=metadata,
                 )
                 error_files += 1
+                context_capture_failed |= context_input
             else:
                 if raw_path is not None:
                     data_files += 1
+
+        if spec.limit_saturated:
+            # Keep capped captures as hot/raw evidence without treating them
+            # as complete event history.
+            if context_input:
+                limit_saturated_requests.append(spec.key)
+            store.save_advisory(
+                source="databento", category="macro", symbol=spec.symbol,
+                request_key=spec.key, advisory_type="CmeCrossAssetQualityError",
+                advisory_message="CME request was limit-saturated; event history not advanced",
+                metadata={**metadata, "provider_rows_preserved": True},
+                pool="cme",
+            )
+            advisory_files += 1
+        elif not status_only:
+            try:
+                # The context reader prefers these partitions when present.
+                # Pass provider rows directly: hot-file metadata uses the group
+                # name as provider_symbol, not each event's instrument identity.
+                history = persist_cme_event_history(
+                    store.root_dir,
+                    spec=spec,
+                    normalized_rows=rows,
+                    raw_frame=raw_frame,
+                )
+            except Exception as persistence_exc:
+                _record_cme_persistence_error(
+                    store,
+                    spec,
+                    stage="event_history",
+                    target=cme_event_root(
+                        store.root_dir,
+                        group_key=spec.group_key,
+                        schema=spec.schema,
+                        scope="normalized",
+                    ),
+                    frame=rows,
+                    exc=persistence_exc,
+                    metadata=metadata,
+                )
+                error_files += 1
+                context_capture_failed |= context_input
+            else:
+                data_files += history.written
+
+    if context_capture_failed or limit_saturated_requests:
+        return data_files, error_files, advisory_files
 
     try:
         calculated_path = materialize_cme_cross_asset_context(store.root_dir)

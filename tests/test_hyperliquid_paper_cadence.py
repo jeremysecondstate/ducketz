@@ -81,7 +81,7 @@ def comparison(active, edge=10., offset=30):
             'net_external_flow_usd': 0., 'start_time_ms': start_ms, 'end_time_ms': end_ms}}
         reads.append({'account': name, 'request': {'type': 'userNonFundingLedgerUpdates',
             'user': 'wallet-sha256:'+owner, 'startTime': start_ms, 'endTime': end_ms}, 'response': []})
-    return {'experiment_id': active['experiment_id'], 'seed_at_utc': active['seed_at_utc'],
+    result = {'experiment_id': active['experiment_id'], 'seed_at_utc': active['seed_at_utc'],
             'experiment_sha256': active['experiment_sha256'],
             'paper': {'observed_at_utc': observed.isoformat(), 'opening_equity': 6000., 'common_mark_equity': 6000.+edge},
             'actual': {'completed_at_utc': completed.isoformat(), 'common_mark_equity': 6000., 'accounts': accounts},
@@ -90,6 +90,39 @@ def comparison(active, edge=10., offset=30):
                 'zero_external_flows_verified': True, 'paper_beating_actual': edge>0,
                 'observation_skew_seconds': 10., 'common_mark_equity_edge': edge, 'excess_return_fraction': edge/6000.},
             'source_reads': reads}
+    if active.get('win_forecast_rule'):
+        result['paper']['forecast_evidence'] = eligible_forecast_evidence(active, observed.isoformat())
+    return result
+
+
+def eligible_forecast_evidence(active, endpoint):
+    from ml import hyperliquid_paper_forecast_evidence as proof
+    seed = module.stamp(active['seed_at_utc'])
+    close = seed + timedelta(minutes=5)
+    created, observed = close + timedelta(seconds=5), close + timedelta(seconds=10)
+    model_id, data_id = '20260929T020000Z-abcdef12', '20260929T020500Z-1234abcd'
+    prediction = {'prediction_id': 'qualified-hold', 'coin': 'BTC', 'interval': '5m', 'horizon_bars': 1,
+                  'qualified': True, 'role': 'active', 'model_id': model_id, 'data_run_id': data_id,
+                  'p_not_down': .51, 'p_down': .49, 'created_at_utc': created.isoformat(),
+                  'decision_close_utc': close.isoformat(), 'target_close_utc': (close+timedelta(minutes=5)).isoformat(),
+                  '_valid_until_epoch': (close+timedelta(minutes=5)).timestamp()}
+    detail = {'coin': 'BTC', 'forecast_id': prediction['prediction_id'], 'model_id': model_id,
+              'data_run_id': data_id, 'qualified': True, 'forecast_created_at_utc': created.isoformat(),
+              'p_not_down': .51, 'action': 'hold', 'reason': 'neutral_signal',
+              'forecast_observation': {'schema_version': 1, 'prediction': prediction,
+                  'observed_at_utc': observed.isoformat(), 'sigma': .01,
+                  'max_forecast_age_seconds': 300, 'max_model_age_seconds': 86400}}
+    row = {'decision_id': 'decision-1', 'cycle_id': 'forecast:qualified-hold',
+           'timestamp_utc': observed.isoformat(), 'committed_at_utc': observed.isoformat(),
+           'coin': 'BTC', 'forecast_id': prediction['prediction_id'], 'model_id': model_id,
+           'details_json': json.dumps(detail)}
+    model = json.dumps({'coin': 'BTC', 'interval': '5m', 'horizon_bars': 1,
+                        'model_id': model_id, 'trained_at_utc': seed.isoformat(), 'eligible': True})
+    return {'schema_version': 1, 'rule': proof.WIN_FORECAST_RULE,
+            'experiment_id': active['experiment_id'], 'seed_at_utc': active['seed_at_utc'],
+            'endpoint_at_utc': endpoint, 'valid_qualified_forecast_count': 1,
+            'first_valid_witness': {'decision': row, 'decision_sha256': proof._hash(row['details_json']),
+                                    'model_record_json': model, 'model_record_sha256': proof._hash(model)}}
 
 
 def save_comparison(cadence, value, name='closing.json'):
@@ -116,6 +149,131 @@ def test_one_step_forward_two_back_ladder(cadence,duration,edge,outcome,next_hou
     active=scored_active(cadence,duration)
     result=module.classify(active,comparison(active,edge=edge))
     assert result['outcome']==outcome and result['next_evaluation_hours']==next_hours
+
+
+@pytest.mark.parametrize('problem', ['missing', 'zero', 'unqualified', 'nan', 'bool_probability',
+    'stale', 'future', 'before_seed', 'after_endpoint', 'wrong_recipe', 'ineligible_model',
+    'wrong_model', 'model_published_later', 'model_digest', 'decision_digest', 'uncommitted',
+    'prediction_identity', 'wrong_round', 'string_count', 'target_horizon'])
+def test_positive_edge_requires_valid_qualified_in_round_forecast(cadence, problem):
+    from ml import hyperliquid_paper_forecast_evidence as proof
+    active = scored_active(cadence, 2)
+    active['win_forecast_rule'] = proof.WIN_FORECAST_RULE
+    value = comparison(active)
+    evidence = value['paper']['forecast_evidence']
+    witness = evidence['first_valid_witness']
+    row = witness['decision']
+    detail = json.loads(row['details_json'])
+    prediction = detail['forecast_observation']['prediction']
+    model = json.loads(witness['model_record_json'])
+    if problem == 'missing': del value['paper']['forecast_evidence']
+    elif problem == 'zero': evidence['valid_qualified_forecast_count'] = 0
+    elif problem == 'unqualified': prediction['qualified'] = False
+    elif problem == 'nan': prediction['p_not_down'] = float('nan')
+    elif problem == 'bool_probability': prediction['p_not_down'] = True
+    elif problem == 'stale':
+        row['timestamp_utc'] = row['committed_at_utc'] = prediction['target_close_utc']
+    elif problem == 'future': prediction['created_at_utc'] = value['paper']['observed_at_utc']
+    elif problem == 'before_seed': prediction['created_at_utc'] = (module.stamp(active['seed_at_utc'])-timedelta(seconds=1)).isoformat()
+    elif problem == 'after_endpoint': row['timestamp_utc'] = row['committed_at_utc'] = (module.stamp(value['paper']['observed_at_utc'])+timedelta(seconds=1)).isoformat()
+    elif problem == 'wrong_recipe': active['recipe']['symbols'] = ['ETH']
+    elif problem == 'ineligible_model': model['eligible'] = False
+    elif problem == 'wrong_model': model['model_id'] = '20260929T020000Z-12345678'
+    elif problem == 'model_published_later': model['trained_at_utc'] = value['paper']['observed_at_utc']
+    elif problem == 'uncommitted': row['committed_at_utc'] = active['seed_at_utc']
+    elif problem == 'prediction_identity': row['forecast_id'] = 'another-prediction'
+    elif problem == 'wrong_round': evidence['experiment_id'] = 'another-round'
+    elif problem == 'string_count': evidence['valid_qualified_forecast_count'] = '1'
+    elif problem == 'target_horizon': prediction['target_close_utc'] = value['paper']['observed_at_utc']
+    row['details_json'] = json.dumps(detail)
+    witness['decision_sha256'] = proof._hash(row['details_json']) if problem != 'decision_digest' else '0'*64
+    witness['model_record_json'] = json.dumps(model)
+    witness['model_record_sha256'] = proof._hash(witness['model_record_json']) if problem != 'model_digest' else '0'*64
+    result = module.classify(active, value)
+    assert result['outcome'] == 'unavailable' and result['winning'] is False
+    assert result['reason'] == 'no_eligible_forecast_evidence' and result['next_evaluation_hours'] == 2
+    assert result['common_mark_equity_edge'] == 10
+
+
+def test_valid_qualified_abstention_allows_win_but_loss_and_tie_do_not_require_it(cadence):
+    from ml import hyperliquid_paper_forecast_evidence as proof
+    active = scored_active(cadence, 4)
+    active['win_forecast_rule'] = proof.WIN_FORECAST_RULE
+    value = comparison(active)
+    assert module.classify(active, value)['outcome'] == 'win'
+    for edge, outcome, duration in [(-10, 'loss', 2), (0, 'tie', 4)]:
+        value = comparison(active, edge=edge)
+        del value['paper']['forecast_evidence']
+        result = module.classify(active, value)
+        assert result['outcome'] == outcome and result['next_evaluation_hours'] == duration
+
+
+def test_forecast_collector_verifies_model_source_and_deduplicates_account_decisions(cadence, tmp_path):
+    from ml import hyperliquid_paper_forecast_evidence as proof
+    active = scored_active(cadence)
+    endpoint = comparison(active)['paper']['observed_at_utc']
+    evidence = eligible_forecast_evidence(active, endpoint)
+    witness = evidence['first_valid_witness']
+    row = witness['decision']
+    source = tmp_path / '_models/BTC/5m/h1/runs/20260929T020000Z-abcdef12/record.json'
+    source.parent.mkdir(parents=True)
+    source.write_text(witness['model_record_json'])
+    before = source.read_bytes()
+    duplicate = {**row, 'decision_id': 'second-account'}
+    collected = proof.collect_forecast_evidence(tmp_path, active, active['seed_at_utc'], endpoint, [row, duplicate])
+    assert collected['valid_qualified_forecast_count'] == 1 and collected['qualified_decision_count'] == 2
+    assert proof.has_eligible_forecast(collected, active, endpoint)
+    assert source.read_bytes() == before
+    source.unlink()
+    # Retained proof remains independently checkable after source archival.
+    assert proof.has_eligible_forecast(collected, active, endpoint)
+    missing = proof.collect_forecast_evidence(tmp_path, active, active['seed_at_utc'], endpoint, [row])
+    assert missing['valid_qualified_forecast_count'] == 0 and missing['invalid_qualified_decision_count'] == 1
+    assert not source.exists()
+    for malformed in ('[]', 'null', '"invalid"', '{"qualified":true,"forecast_observation":[]}'):
+        invalid = proof.collect_forecast_evidence(tmp_path, active, active['seed_at_utc'], endpoint,
+                                                 [{**row, 'details_json': malformed}])
+        assert invalid['valid_qualified_forecast_count'] == 0
+
+
+def test_forecast_rule_is_prospective_and_historical_positive_assessment_stays_idempotent(cadence):
+    active = scored_active(cadence)
+    assert 'win_forecast_rule' not in active
+    path = save_comparison(cadence, comparison(active))
+    first = cadence.assess(path)
+    assert first == cadence.assess(path)
+    native_baseline(cadence.root, 'run-2', '2026-09-29T04:10:00+00:00', supersedes='run-1')
+    result = cadence.advance()
+    assert result['active']['win_forecast_rule'] == module.WIN_FORECAST_RULE
+
+
+def test_native_read_only_comparison_collects_only_committed_endpoint_bounded_decisions(cadence):
+    import sqlite3
+    from ml.hyperliquid_paper_comparison import read_paper_snapshot
+    active = scored_active(cadence)
+    endpoint = comparison(active)['paper']['observed_at_utc']
+    witness = eligible_forecast_evidence(active, endpoint)['first_valid_witness']
+    row = witness['decision']
+    source = cadence.root / '_models/BTC/5m/h1/runs/20260929T020000Z-abcdef12/record.json'
+    source.parent.mkdir(parents=True)
+    source.write_text(witness['model_record_json'])
+    with sqlite3.connect(cadence.root / '_paper/ledger.sqlite3') as connection:
+        opening = json.loads(connection.execute("SELECT result_json FROM cycles WHERE cycle_id='opening'").fetchone()[0])
+        for identity, timestamp in [(row['cycle_id'], row['timestamp_utc']), ('endpoint', endpoint)]:
+            connection.execute('INSERT INTO cycles VALUES (?,?,?)',
+                               (identity, timestamp, json.dumps({**opening, 'cycle_id': identity, 'timestamp_utc': timestamp})))
+        for identity, cycle_id, timestamp in [('valid', row['cycle_id'], row['timestamp_utc']),
+                                             ('orphan', 'missing-cycle', row['timestamp_utc']),
+                                             ('future', row['cycle_id'], '2026-09-30T00:00:00+00:00')]:
+            connection.execute('INSERT INTO decisions VALUES (?,?,?,?,?,?,?,?,?,?)',
+                (identity, cycle_id, timestamp, 'alex', 'BTC', 'hold', 'neutral_signal',
+                 row['forecast_id'], row['model_id'], row['details_json']))
+    before = (cadence.root / '_paper/ledger.sqlite3').read_bytes()
+    snapshot = read_paper_snapshot(cadence.root)
+    evidence = snapshot['forecast_evidence']
+    assert evidence['committed_decision_count'] == evidence['valid_qualified_forecast_count'] == 1
+    assert evidence['first_valid_witness']['decision']['decision_id'] == 'valid'
+    assert (cadence.root / '_paper/ledger.sqlite3').read_bytes() == before
 
 
 @pytest.mark.parametrize('change', ['flows','capped','owner','flow_interval','source_event','flag_string',

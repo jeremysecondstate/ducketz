@@ -446,6 +446,10 @@ class PaperRuntime:
                       "data_run_id": signal_prediction["data_run_id"] if signal_prediction else None,
                       "forecast_created_at_utc": signal_prediction["created_at_utc"] if signal_prediction else None,
                       "p_not_down": signal_prediction["p_not_down"] if signal_prediction else None,
+                      "forecast_observation": {"schema_version": 1, "prediction": dict(signal_prediction),
+                          "observed_at_utc": _utc(now), "sigma": sigma,
+                          "max_forecast_age_seconds": cfg.max_forecast_age_seconds,
+                          "max_model_age_seconds": cfg.max_model_age_seconds} if signal_prediction else None,
                       "current_notional": current[account], "target_notional": target,
                       "reason": reason, "policy": details}
             decision = {**common, "decision_checks": checks}

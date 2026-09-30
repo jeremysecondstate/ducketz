@@ -22,6 +22,7 @@ from app.hyperliquid_accounts import HYPERLIQUID_ACCOUNT_PROFILES, resolve_portf
 from app.services.hyperliquid import HyperliquidInfoClient, _sync_hyperliquid_portfolio_with_market
 from app.services.hyperliquid_markets import spot_catalog
 from ml.hyperliquid_paper_seed import ALIASES
+from ml.hyperliquid_paper_forecast_evidence import collect_forecast_evidence
 
 
 def _now():
@@ -114,12 +115,20 @@ def read_paper_snapshot(data_root):
                 f"SUM(fee) AS fees, SUM(realized_pnl) AS realized_pnl FROM fills GROUP BY {columns}")]
         counts = {name: connection.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]
                   for name in ("cycles", "fills", "transfers", "funding")}
+        decisions = [dict(row) for row in connection.execute(
+            "SELECT d.decision_id,d.cycle_id,d.timestamp_utc,d.coin,d.forecast_id,d.model_id,"
+            "d.details_json,c.timestamp_utc AS committed_at_utc FROM decisions d "
+            "JOIN cycles c ON c.cycle_id=d.cycle_id "
+            "WHERE d.timestamp_utc>=? AND d.timestamp_utc<=? ORDER BY d.timestamp_utc,d.decision_id",
+            (seed["timestamp_utc"], latest["timestamp_utc"]))]
     if experiment_path.read_bytes() != experiment_bytes:
         raise ValueError("Experiment changed during comparison; retry after maintenance.")
     if seed["timestamp_utc"] != experiment.get("seed_at_utc"):
         raise ValueError("Experiment metadata and ledger opening disagree.")
     return {"experiment": experiment, "experiment_sha256": hashlib.sha256(experiment_bytes).hexdigest(),
-            "seed": seed, "opening": opening, "latest": latest, "fill_groups": groups, "counts": counts}
+            "seed": seed, "opening": opening, "latest": latest, "fill_groups": groups, "counts": counts,
+            "forecast_evidence": collect_forecast_evidence(root, experiment, seed["timestamp_utc"],
+                                                           latest["timestamp_utc"], decisions)}
 
 
 def common_marks(all_mids, spot_meta):
@@ -342,6 +351,7 @@ def build_comparison(paper, actual, *, max_skew_seconds=120):
                   "ledger_equity": pooled["equity"], "common_mark_equity": paper_equity,
                   "pnl_since_opening": pooled["total_pnl"], "fees": pooled["fees"],
                   "funding": pooled["funding"], "counts": paper["counts"],
+                  "forecast_evidence": paper.get("forecast_evidence"),
                   "accounts": {name: {"opening_equity": seed["baseline_equity"][name],
                       "ledger_equity": row["equity"],
                       "common_mark_equity": value_positions(row["cash"], row["positions"], marks),

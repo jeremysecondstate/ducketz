@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -20,6 +21,10 @@ from datafetching.cme_cross_asset_context import (
     materialize_cme_cross_asset_context,
 )
 from datafetching.parquet_store import ParquetStore
+from datafetching.cme_history import (
+    cme_normalized_event_paths,
+    persist_cme_event_history,
+)
 
 _WINDOW_START = pd.Timestamp("2026-07-29T17:00:00Z")
 _CALCULATED_AT = pd.Timestamp("2026-07-29T18:02:00Z")
@@ -231,7 +236,7 @@ def test_databento_fetch_materializes_only_after_source_persistence(
         _materialize,
     )
 
-    assert databento_fetch._fetch_cme(store) == (2, 0, 0)
+    assert databento_fetch._fetch_cme(store) == (3, 0, 0)
 
 
 def test_cme_persistence_failure_records_group_schema_request_and_target(
@@ -297,7 +302,7 @@ def test_cme_persistence_failure_records_group_schema_request_and_target(
     )
     store = _Store()
 
-    assert databento_fetch._fetch_cme(store) == (0, 1, 0)
+    assert databento_fetch._fetch_cme(store) == (1, 1, 0)
     assert len(store.errors) == 1
     error = store.errors[0]
     target = (
@@ -424,6 +429,299 @@ def _source_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         pd.DataFrame(bbo_rows),
         pd.DataFrame(mbp_rows),
     )
+
+
+@pytest.mark.parametrize("saturated", [False, True])
+def test_inline_cme_updates_partitioned_context_with_provider_provenance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    saturated: bool,
+) -> None:
+    schemas = ("ohlcv-1m", "bbo-1m", "mbp-10")
+    sources = dict(zip(schemas, _source_frames()))
+    specs = {}
+    for schema, frame in sources.items():
+        frame["symbol"] = frame["provider_symbol"]
+        spec = DatabentoCmeContextSpec(
+            group_key="context", output_symbol="CME_CONTEXT",
+            symbols=tuple(frame["symbol"].unique()), dataset="GLBX.MDP3",
+            schema=schema, stype_in="continuous", limit=5_000,
+            start=_WINDOW_START.to_pydatetime(),
+            end=(_WINDOW_START + pd.Timedelta(hours=1)).to_pydatetime(),
+            limit_saturated=saturated and schema == "mbp-10",
+        )
+        specs[schema] = spec
+        stale = frame.copy()
+        for column in ("timestamp", "ts_recv", "fetched_at"):
+            if column in stale:
+                stale[column] -= pd.Timedelta(days=1)
+        persist_cme_event_history(
+            tmp_path, spec=spec, normalized_rows=stale.to_dict("records"),
+            raw_frame=None,
+        )
+    sources["mbp-10"]["request_limit_saturated"] = saturated
+
+    class _Provider:
+        def specs(self):
+            return tuple(specs.values())
+
+        def fetch_cme_context(self, spec):
+            return sources[spec.schema].to_dict("records"), None, spec
+
+    monkeypatch.setattr(databento_fetch, "DatabentoCmeContextProvider", _Provider)
+    monkeypatch.setattr(
+        databento_fetch, "materialize_cme_cross_asset_context",
+        lambda root: materialize_cme_cross_asset_context(
+            root, calculated_at=_CALCULATED_AT,
+        ),
+    )
+    outcome = databento_fetch._fetch_cme(ParquetStore(tmp_path))
+    assert outcome[1:] == (0, int(saturated))
+    for schema, expected in sources.items():
+        paths = cme_normalized_event_paths(tmp_path, group_key="context", schema=schema)
+        stored = pd.concat([pd.read_parquet(path) for path in paths])
+        fresh = stored.loc[stored.timestamp.ge(_WINDOW_START)]
+        if saturated and schema == "mbp-10":
+            assert fresh.empty
+            continue
+        assert len(fresh) == len(expected)
+        assert set(fresh.provider_symbol) == set(expected.provider_symbol)
+        assert "CME_CONTEXT" not in set(fresh.provider_symbol)
+        for column in ("timestamp", "ts_recv", "fetched_at"):
+            if column in expected:
+                assert sorted(fresh[column]) == sorted(expected[column])
+        if schema == "mbp-10":
+            assert fresh.request_limit_saturated.eq(saturated).all()
+        # Identical recapture uses native deduplication and preserves receipts.
+        before = {path: path.read_bytes() for path in paths}
+        replay = expected.copy()
+        replay["fetched_at"] += pd.Timedelta(minutes=1)
+        persisted = persist_cme_event_history(
+            tmp_path, spec=specs[schema],
+            normalized_rows=replay.to_dict("records"), raw_frame=None,
+        )
+        assert persisted.written == 0
+        assert all(path.read_bytes() == content for path, content in before.items())
+    output = cme_cross_asset_context_path(tmp_path)
+    if saturated:
+        assert not output.exists()
+        diagnostic = next(tmp_path.rglob("diagnostics/*.parquet"))
+        assert pd.read_parquet(diagnostic).advisory_message.str.contains("limit-saturated").all()
+    else:
+        stored = pd.read_parquet(output)
+        assert len(stored) == 1
+        assert stored.window_end.item() == _WINDOW_START + pd.Timedelta(hours=1)
+        assert stored.available_at.item() == _CALCULATED_AT
+        assert stored.nq_return.item() == pytest.approx(math.log(1.1))
+
+
+def test_inline_cme_history_failure_retains_hot_evidence_and_skips_materialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bars, _, _ = _source_frames()
+    bars["symbol"] = bars["provider_symbol"]
+    spec = DatabentoCmeContextSpec(
+        group_key="context", output_symbol="CME_CONTEXT",
+        symbols=tuple(bars.symbol.unique()), dataset="GLBX.MDP3",
+        schema="ohlcv-1m", stype_in="continuous", limit=5_000,
+        start=_WINDOW_START.to_pydatetime(),
+        end=(_WINDOW_START + pd.Timedelta(hours=1)).to_pydatetime(),
+    )
+
+    class _Provider:
+        def specs(self):
+            return (spec,)
+
+        def fetch_cme_context(self, requested):
+            return bars.to_dict("records"), bars.copy(), requested
+
+    def _failure(*args, **kwargs):
+        raise OSError("simulated event-history write failure")
+
+    monkeypatch.setattr(databento_fetch, "DatabentoCmeContextProvider", _Provider)
+    monkeypatch.setattr(databento_fetch, "persist_cme_event_history", _failure)
+    monkeypatch.setattr(
+        databento_fetch, "materialize_cme_cross_asset_context",
+        lambda root: pytest.fail("partial durable history must not materialize"),
+    )
+    assert databento_fetch._fetch_cme(ParquetStore(tmp_path)) == (2, 1, 0)
+    assert len(list(tmp_path.rglob("normalized/*.parquet"))) == 1
+    assert len(list(tmp_path.rglob("raw/*.parquet"))) == 1
+    error_path = next(tmp_path.rglob("errors/**/*.parquet"))
+    error = pd.read_parquet(error_path).iloc[0]
+    assert error.persistence_stage == "event_history"
+    assert "simulated event-history write failure" in error.error_message
+    assert not cme_cross_asset_context_path(tmp_path).exists()
+
+
+def test_inline_saturated_recapture_preserves_complete_history_and_blocks_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, _, book = _source_frames()
+    book["symbol"] = book["provider_symbol"]
+    spec = DatabentoCmeContextSpec(
+        group_key="context", output_symbol="CME_CONTEXT",
+        symbols=tuple(book.symbol.unique()), dataset="GLBX.MDP3",
+        schema="mbp-10", stype_in="continuous", limit=5_000,
+        start=_WINDOW_START.to_pydatetime(),
+        end=(_WINDOW_START + pd.Timedelta(hours=1)).to_pydatetime(),
+        limit_saturated=True,
+    )
+    persisted = persist_cme_event_history(
+        tmp_path, spec=replace(spec, limit_saturated=False),
+        normalized_rows=book.to_dict("records"), raw_frame=None,
+    )
+    before = {path: path.read_bytes() for path in persisted.paths}
+    book["request_limit_saturated"] = True
+
+    class _Provider:
+        def specs(self):
+            return (spec,)
+
+        def fetch_cme_context(self, requested):
+            return book.to_dict("records"), book.copy(), requested
+
+    monkeypatch.setattr(databento_fetch, "DatabentoCmeContextProvider", _Provider)
+    monkeypatch.setattr(
+        databento_fetch, "persist_cme_event_history",
+        lambda *args, **kwargs: pytest.fail("capped capture must not enter shared history"),
+    )
+    monkeypatch.setattr(
+        databento_fetch, "materialize_cme_cross_asset_context",
+        lambda root: pytest.fail("current capped capture must block materialization"),
+    )
+    assert databento_fetch._fetch_cme(ParquetStore(tmp_path)) == (2, 0, 1)
+    assert all(path.read_bytes() == content for path, content in before.items())
+    hot = next(tmp_path.rglob("CME_CONTEXT/*/databento/normalized/*.parquet"))
+    assert pd.read_parquet(hot).request_limit_saturated.all()
+
+
+@pytest.mark.parametrize("failure_stage", ["fetch", "normalized", "raw"])
+def test_inline_cme_capture_error_never_materializes_partial_history(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: str,
+) -> None:
+    bars, _, _ = _source_frames()
+    bars["symbol"] = bars["provider_symbol"]
+    spec = DatabentoCmeContextSpec(
+        group_key="context", output_symbol="CME_CONTEXT",
+        symbols=tuple(bars.symbol.unique()), dataset="GLBX.MDP3",
+        schema="ohlcv-1m", stype_in="continuous", limit=5_000,
+        start=_WINDOW_START.to_pydatetime(),
+        end=(_WINDOW_START + pd.Timedelta(hours=1)).to_pydatetime(),
+    )
+
+    class _Provider:
+        def specs(self):
+            return (spec,)
+
+        def fetch_cme_context(self, requested):
+            if failure_stage == "fetch":
+                raise ValueError("simulated fetch failure")
+            return bars.to_dict("records"), bars.copy(), requested
+
+    class _Store(ParquetStore):
+        def save_macro_rows(self, *args, **kwargs):
+            if failure_stage == "normalized":
+                raise OSError("simulated normalized failure")
+            return super().save_macro_rows(*args, **kwargs)
+
+        def save_raw_frame(self, *args, **kwargs):
+            if failure_stage == "raw":
+                raise OSError("simulated raw failure")
+            return super().save_raw_frame(*args, **kwargs)
+
+    monkeypatch.setattr(databento_fetch, "DatabentoCmeContextProvider", _Provider)
+    monkeypatch.setattr(
+        databento_fetch, "call_with_persistent_databento_retry",
+        lambda call, **kwargs: call(),
+    )
+    monkeypatch.setattr(
+        databento_fetch, "materialize_cme_cross_asset_context",
+        lambda root: pytest.fail("partial source capture must not materialize"),
+    )
+    result = databento_fetch._fetch_cme(_Store(tmp_path))
+    assert result == (0 if failure_stage == "fetch" else 3, 1, 0)
+    errors = list(tmp_path.rglob("errors/**/*.parquet"))
+    assert len(errors) == 1
+    assert pd.read_parquet(errors[0]).error_message.str.contains(
+        f"simulated {failure_stage} failure"
+    ).all()
+    assert not cme_cross_asset_context_path(tmp_path).exists()
+
+
+@pytest.mark.parametrize("failure_stage", ["fetch", "normalized", "raw", "history", "saturated"])
+def test_inline_contracts_failure_does_not_block_valid_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_stage: str,
+) -> None:
+    frames = dict(zip(("ohlcv-1m", "bbo-1m", "mbp-10"), _source_frames()))
+    specs = []
+    for schema, frame in frames.items():
+        frame["symbol"] = frame.provider_symbol
+        specs.append(DatabentoCmeContextSpec(
+            group_key="context", output_symbol="CME_CONTEXT",
+            symbols=tuple(frame.symbol.unique()), dataset="GLBX.MDP3",
+            schema=schema, stype_in="continuous", limit=5_000,
+            start=_WINDOW_START.to_pydatetime(),
+            end=(_WINDOW_START + pd.Timedelta(hours=1)).to_pydatetime(),
+        ))
+    contract_spec = replace(
+        specs[1], group_key="contracts", output_symbol="CME_CONTRACTS",
+        symbols=("NQU6",), stype_in="raw_symbol",
+        limit_saturated=failure_stage == "saturated",
+    )
+    contracts = frames["bbo-1m"].iloc[:1].copy()
+    contracts["symbol"] = contracts["provider_symbol"] = "NQU6"
+    contracts["provider_stype_in"] = "raw_symbol"
+    contracts["request_limit_saturated"] = contract_spec.limit_saturated
+
+    class _Provider:
+        def specs(self):
+            return (contract_spec, *specs)
+
+        def fetch_cme_context(self, spec):
+            if spec.group_key == "contracts":
+                if failure_stage == "fetch":
+                    raise ValueError("simulated contracts fetch failure")
+                return contracts.to_dict("records"), contracts.copy(), spec
+            return frames[spec.schema].to_dict("records"), None, spec
+
+    class _Store(ParquetStore):
+        def save_macro_rows(self, *args, **kwargs):
+            if args[1] == "CME_CONTRACTS" and failure_stage == "normalized":
+                raise OSError("simulated contracts normalized failure")
+            return super().save_macro_rows(*args, **kwargs)
+
+        def save_raw_frame(self, *args, **kwargs):
+            if kwargs["symbol"] == "CME_CONTRACTS" and failure_stage == "raw":
+                raise OSError("simulated contracts raw failure")
+            return super().save_raw_frame(*args, **kwargs)
+
+    def _persist(root, *, spec, **kwargs):
+        if spec.group_key == "contracts" and failure_stage == "history":
+            raise OSError("simulated contracts history failure")
+        return persist_cme_event_history(root, spec=spec, **kwargs)
+
+    monkeypatch.setattr(databento_fetch, "DatabentoCmeContextProvider", _Provider)
+    monkeypatch.setattr(databento_fetch, "persist_cme_event_history", _persist)
+    monkeypatch.setattr(databento_fetch, "call_with_persistent_databento_retry", lambda call, **kwargs: call())
+    monkeypatch.setattr(
+        databento_fetch, "materialize_cme_cross_asset_context",
+        lambda root: materialize_cme_cross_asset_context(root, calculated_at=_CALCULATED_AT),
+    )
+    result = databento_fetch._fetch_cme(_Store(tmp_path))
+    assert result[1:] == ((0, 1) if failure_stage == "saturated" else (1, 0))
+    published = pd.read_parquet(cme_cross_asset_context_path(tmp_path))
+    assert len(published) == 1
+    assert published.window_end.item() == _WINDOW_START + pd.Timedelta(hours=1)
+    assert published.nq_return.item() == pytest.approx(math.log(1.1))
+    if failure_stage == "saturated":
+        assert not cme_normalized_event_paths(tmp_path, group_key="contracts", schema="bbo-1m")
 
 
 def _write_sources(

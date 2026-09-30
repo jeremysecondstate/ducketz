@@ -16,7 +16,7 @@ from datetime import datetime, timezone, timedelta
 from tkinter import ttk
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app.services.hyperliquid_paper_view import filter_rows
+from app.services.hyperliquid_paper_view import filter_rows, journal_display_forecast
 from app.services.hyperliquid_account_history import (HyperliquidAccountHistoryService,
     OBSERVATION_SECONDS, GAP_SECONDS, opening_equities)
 from app.services.hyperliquid_powder_view import HyperliquidWorkspaceViewService, project_powder
@@ -1123,8 +1123,8 @@ class HyperWorkspace:
         scroll = self.tree.yview()
         columns = {
             "Positions": (("account", "Account", 93), ("market", "Market", 90), ("side", "Side", 55), ("quantity", "Quantity", 94), ("avg_entry", "Avg entry", 88), ("mark_price", "Mark", 88), ("notional", "Gross", 90), ("unrealized_pnl", "Unrealized P/L", 105)),
-            "Decisions": (("time", "Time PT", 83), ("account", "Account", 90), ("market", "Market", 85), ("action", "Action", 60), ("current_notional", "Current", 83), ("target_notional", "Target", 83), ("p_not_down", "P(not-down)", 94), ("qualification", "Model", 87), ("reason", "Reason", 190)),
-            "Fills": (("time", "Time PT", 83), ("account", "Account", 90), ("market", "Market", 85), ("side", "Side", 52), ("quantity", "Executed qty", 99), ("price", "Fill price", 88), ("notional", "Notional", 88), ("fee", "Fee", 65), ("qualification", "Model", 87)),
+            "Decisions": (("time", "Time PT", 83), ("account", "Account", 90), ("market", "Market", 85), ("action", "Action", 60), ("current_notional", "Current", 83), ("target_notional", "Target", 83), ("p_not_down", "P(not-down)", 100), ("qualification", "Model", 135), ("reason", "Reason", 190)),
+            "Fills": (("time", "Time PT", 83), ("account", "Account", 90), ("market", "Market", 85), ("side", "Side", 52), ("quantity", "Executed qty", 99), ("price", "Fill price", 88), ("notional", "Notional", 88), ("fee", "Fee", 65), ("p_not_down", "P(not-down)", 100), ("qualification", "Model", 135)),
             "Transfers": (("time", "Time PT", 90), ("from_account", "From", 95), ("to_account", "To", 95), ("amount", "USDC", 100), ("reason", "Reason", 210), ("status", "Status", 95)),
         }[view]
         if view == "Fills" and self.mode.get() == "Paper":
@@ -1170,7 +1170,7 @@ class HyperWorkspace:
             self.empty_table.place(relx=.5, rely=.5, anchor="center")
         self.table_note.configure(text=("Inherited positions retain their entry cost basis; unrealized P/L can predate paper opening." if view == "Positions" else
                                        "Committed virtual cash movements · zero fee · pool net flow is zero." if view == "Transfers" else
-                                       f"Latest {getattr(self.service, 'journal_limit', 500)} records per journal · select a row for reasoning and provenance.") if self.mode.get() == "Paper" else
+                                       f"Latest {getattr(self.service, 'journal_limit', 500)} records · saved probabilities include excluded research · select a row for details.") if self.mode.get() == "Paper" else
                                       "Actual exchange records · transfer automation is not enabled · adopted spot entry basis is unavailable.")
         preview = next((r for r in (self.snapshot.forecasts if self.snapshot else [])
                         if r.get("coin") == self._inspector_forecast), None)
@@ -1196,8 +1196,15 @@ class HyperWorkspace:
         if key in ("avg_entry", "mark_price", "notional", "unrealized_pnl", "current_notional", "target_notional", "price", "fee", "amount"):
             return money(value)
         if key == "p_not_down":
+            if self.mode.get() == "Paper" and view in {"Decisions", "Fills"}:
+                return pct(journal_display_forecast(row).get("p_not_down"))
             return pct(value)
         if key == "qualification":
+            if self.mode.get() == "Paper" and view in {"Decisions", "Fills"}:
+                forecast = journal_display_forecast(row)
+                if forecast.get("usage") == "excluded":
+                    return "Research (excluded)"
+                value = forecast.get("qualification", value)
             if self._no_journal_forecast(row, view):
                 return "Risk exit" if row.get("reason") == "stop_loss" else "No forecast"
             return str(value or "unavailable").capitalize()
@@ -1211,7 +1218,8 @@ class HyperWorkspace:
 
     def _no_journal_forecast(self, row, view):
         return (self.mode.get() == "Paper" and view in {"Decisions", "Fills"}
-                and not any(row.get(key) for key in ("model_id", "forecast_id", "prediction_id")))
+                and not any(row.get(key) for key in ("model_id", "forecast_id", "prediction_id"))
+                and not journal_display_forecast(row))
 
     def _render_forecasts(self):
         if not hasattr(self, "forecast_canvas") or self._closed:
@@ -1283,15 +1291,21 @@ class HyperWorkspace:
         else:
             self.detail_heading.configure(text=view if view == "Forecast preview" else "Decision detail")
             data = {**row.get("details", {}), **row}
+            display_forecast = (journal_display_forecast(data)
+                                if self.mode.get() == "Paper" and view in {"Decisions", "Fills"} else {})
+            forecast_data = (dict(display_forecast) if self.mode.get() == "Paper"
+                             and view in {"Decisions", "Fills"} else dict(data))
+            if not forecast_data.get("forecast_id") and forecast_data.get("prediction_id"):
+                forecast_data["forecast_id"] = forecast_data["prediction_id"]
             # Attach only provenance belonging to this recorded model/forecast.
             # Never substitute a newer signal for a historical decision.
             for forecast in self.snapshot.forecasts if self.snapshot else []:
-                if data.get("model_id") and forecast.get("model_id") == data["model_id"]:
+                if forecast_data.get("model_id") and forecast.get("model_id") == forecast_data["model_id"]:
                     for field in ("model_published_at_utc", "training_cutoff_utc", "training_label_cutoff_utc", "calibration_cutoff_utc"):
-                        data.setdefault(field, forecast.get(field))
-                if data.get("forecast_id") and data["forecast_id"] in {forecast.get("forecast_id"), forecast.get("prediction_id")}:
+                        forecast_data.setdefault(field, forecast.get(field))
+                if forecast_data.get("forecast_id") and forecast_data["forecast_id"] in {forecast.get("forecast_id"), forecast.get("prediction_id")}:
                     for field in ("target_close_utc", "interval", "horizon_bars", "horizon_minutes", "per_model"):
-                        data.setdefault(field, forecast.get(field))
+                        forecast_data.setdefault(field, forecast.get(field))
             policy = data.get("policy", {}) or {}
             account = ACCOUNTS.get(data.get("account"), (data.get("account", "Shared model"),))[0]
             add(f"{account} · {data.get('coin', data.get('symbol', 'USDC'))}", "title")
@@ -1321,24 +1335,29 @@ class HyperWorkspace:
                 add(f"Exchange order {data.get('oid', '—')} · Trade {data.get('tid', '—')}")
                 add("Confirmed fills are distinct from order requests and acknowledgements. Partial fills remain partial.")
             else:
-                add("SIGNAL", "section")
-                p = number(data.get("p_not_down"))
-                p_down = data.get("p_down") if "p_down" in data else 1-p if p is not None else None
-                horizon = _forecast_horizon(data)
+                excluded = display_forecast.get("usage") == "excluded"
+                add("OBSERVED RESEARCH FORECAST" if excluded else "SIGNAL", "section")
+                p = number(forecast_data.get("p_not_down"))
+                p_down = number(forecast_data.get("p_down"))
+                if p_down is None and p is not None:
+                    p_down = 1-p
+                horizon = _forecast_horizon(forecast_data)
                 if self._no_journal_forecast(data, view):
                     add("No forecast attributed to this record.")
                 else:
                     add(f"P(not-down) {pct(p)}    P(down) {pct(p_down)}\n{horizon}")
+                if excluded:
+                    add("Research (excluded): this prediction was recorded at the time but was not used as a trading signal. The recorded action and risk checks are shown separately.")
                 if self.mode.get() == "Paper" and view == "Decisions":
                     add("Qualified describes model validation. Direction, size and risk checks determine whether a trade occurs.")
-                if data.get("source_state") and data["source_state"] != "fresh":
-                    add("Forecast source: " + data["source_state"])
-                for model, probability in (data.get("per_model") or {}).items():
+                if forecast_data.get("source_state") and forecast_data["source_state"] != "fresh":
+                    add("Forecast source: " + forecast_data["source_state"])
+                for model, probability in (forecast_data.get("per_model") or {}).items():
                     score = probability.get("p_not_down") if isinstance(probability, dict) else probability
                     add(f"{model}  {pct(score)}")
                 for field, title in (("forecast_created_at_utc", "Forecast available"), ("created_at_utc", "Available"), ("target_close_utc", "Outcome"), ("outcome_timestamp_utc", "Outcome"), ("outcome_at_utc", "Outcome")):
-                    if data.get(field):
-                        add(title + "  " + local_time(data[field], date=True))
+                    if forecast_data.get(field):
+                        add(title + "  " + local_time(forecast_data[field], date=True))
                 if policy or any(field in data for field in ("current_notional", "target_notional")):
                     add("ALLOCATION", "section")
                     add(f"Current {money(data.get('current_notional'))} → Target {money(data.get('target_notional'))}")
@@ -1365,13 +1384,16 @@ class HyperWorkspace:
                     if execution.get("book_time_utc"):
                         add("Book " + local_time(execution["book_time_utc"], date=True))
                 add("PROVENANCE", "section")
-                if self._no_journal_forecast(data, view):
+                if excluded:
+                    add("Saved research forecast · excluded from trading; observation only")
+                elif self._no_journal_forecast(data, view):
                     add("Risk exit · no forecast attribution" if data.get("reason") == "stop_loss" else "No forecast attribution")
                 else:
-                    add(str(data.get("qualification", "unavailable")).capitalize() + " model · evaluation label, not profitability")
+                    add(str(forecast_data.get("qualification", "unavailable")).capitalize() + " model · evaluation label, not profitability")
                 for field, title in (("model_created_at_utc", "Model published"), ("model_published_at_utc", "Model published"), ("training_cutoff_utc", "Training cutoff"), ("training_label_cutoff_utc", "Training label cutoff"), ("calibration_cutoff_utc", "Calibration cutoff"), ("train_end_utc", "Training cutoff"), ("calibration_end_utc", "Calibration cutoff"), ("policy_id", "Policy"), ("forecast_id", "Forecast"), ("model_id", "Model"), ("data_run_id", "Source run")):
-                    if data.get(field):
-                        add(f"{title}  {data[field]}")
+                    value = data.get(field) if field == "policy_id" else forecast_data.get(field)
+                    if value:
+                        add(f"{title}  {value}")
             if data.get("timestamp_utc"):
                 add("OBSERVATION", "section")
                 add(local_time(data["timestamp_utc"], date=True) + "\n" + data["timestamp_utc"])

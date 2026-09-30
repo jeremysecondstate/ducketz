@@ -47,8 +47,12 @@ class ModelConfig:
     extra_trees_weight: float = 1.0
     hist_gradient_boosting_weight: float = 1.0
     mlp_weight: float = 1.0
+    random_forest_weight: float = 0.0
 
     def __post_init__(self):
+        if (type(self.random_forest_weight) not in (int, float)
+                or not math.isfinite(self.random_forest_weight) or self.random_forest_weight < 0):
+            raise ValueError("random_forest_weight must be a finite nonnegative number.")
         if not isinstance(self.markets_config, (str, Path)) or not str(self.markets_config).strip():
             raise ValueError("markets_config must be a nonempty filesystem path.")
         if not isinstance(self.horizons_bars, (tuple, list)) or not self.horizons_bars:
@@ -121,6 +125,7 @@ class ModelConfig:
             extra_trees_weight=self.extra_trees_weight,
             hist_gradient_boosting_weight=self.hist_gradient_boosting_weight,
             mlp_weight=self.mlp_weight,
+            random_forest_weight=self.random_forest_weight,
         )
 
 

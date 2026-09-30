@@ -16,8 +16,9 @@
   "max_train_rows": null,
   "max_model_age_seconds": 86400,
   "calibration_c": 0.1,
-  "logistic_weight": 0.4,
-  "extra_trees_weight": 0.2,
-  "hist_gradient_boosting_weight": 0.2,
-  "mlp_weight": 0.2
+  "logistic_weight": 0.32,
+  "extra_trees_weight": 0.16,
+  "hist_gradient_boosting_weight": 0.16,
+  "mlp_weight": 0.16,
+  "random_forest_weight": 0.2
 }
