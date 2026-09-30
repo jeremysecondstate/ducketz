@@ -332,17 +332,19 @@ def test_new_bearish_forecast_closes_long_books_and_opens_only_alex(runner):
     assert all(row["quantity"] < 0 for row in second_fills)
 
 
-def test_stale_forecast_exits_existing_positions_using_current_books(runner):
+def test_stale_forecast_holds_existing_positions_without_fabricating_a_signal(runner):
     instance, clock, market, data = runner
     forecast(data)
     instance.tick()
+    inventory = instance.ledger.inventory()
+    fills = instance.ledger.history("fills")
     clock.now = BASE + instance.config.max_forecast_age_seconds + 1
     result = instance.tick()
-    assert result["portfolio"]["pooled"]["positions"] == []
+    assert instance.ledger.inventory() == inventory
     assert "stale" in result["errors"]["BTC"]
-    exits = instance.ledger.history("fills")[-2:]
-    assert all(row["quantity"] < 0 for row in exits)
-    assert all(row["forecast_id"] is None for row in exits)
+    assert instance.ledger.history("fills") == fills
+    assert all(row["reason"] == "forecast_unavailable" for row in instance.ledger.history("decisions")
+               if row["forecast_id"] is None)
 
 
 def test_stop_loss_does_not_reopen_on_the_same_forecast(runner):

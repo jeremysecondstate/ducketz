@@ -1,4 +1,4 @@
-"""Read-only proof that an in-round qualified forecast reached Paper policy."""
+"""Read-only proof that an admitted in-round forecast reached Paper policy."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -11,6 +11,8 @@ import re
 from datafetching.hyperliquid_candles import INTERVAL_MS
 
 WIN_FORECAST_RULE = "qualified-in-round-forecast-v1"
+EXPLORATORY_WIN_FORECAST_RULE = "valid-in-round-forecast-v2"
+WIN_FORECAST_RULES = (WIN_FORECAST_RULE, EXPLORATORY_WIN_FORECAST_RULE)
 RUN_ID = re.compile(r"\d{8}T\d{6}Z-[a-f0-9]{8}")
 
 
@@ -33,7 +35,33 @@ def _hash(value):
     return hashlib.sha256(value.encode()).hexdigest()
 
 
-def validate_witness(witness, seed_at_utc, endpoint_at_utc, recipe=None):
+def forecast_rule(require_qualified_forecasts):
+    if type(require_qualified_forecasts) is not bool:
+        raise ValueError("Forecast admission policy must be a boolean")
+    return WIN_FORECAST_RULE if require_qualified_forecasts else EXPLORATORY_WIN_FORECAST_RULE
+
+
+def _experiment_rule(root, experiment):
+    """Use immutable accepted configuration, never the mutable live config."""
+    if "win_forecast_rule" in experiment:
+        rule = experiment["win_forecast_rule"]
+        if rule not in WIN_FORECAST_RULES:
+            raise ValueError("Unsupported forecast WIN rule")
+        return rule
+    expected = experiment.get("config_sha256", {}).get("hyperliquid-paper.json")
+    if expected is None:
+        return WIN_FORECAST_RULE  # Historical records retain their old meaning.
+    identity = experiment["experiment_id"]
+    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}", identity):
+        raise ValueError("Invalid accepted experiment identity")
+    path = Path(root) / "_operations/paper-improvement" / identity / "accepted-source/configs/hyperliquid-paper.json"
+    source = path.read_bytes()
+    if hashlib.sha256(source).hexdigest() != expected:
+        raise ValueError("Accepted forecast admission configuration changed")
+    return forecast_rule(json.loads(source).get("require_qualified_forecasts", True))
+
+
+def validate_witness(witness, seed_at_utc, endpoint_at_utc, recipe=None, rule=WIN_FORECAST_RULE):
     """Validate retained decision and independent model-record source evidence.
 
     A policy hold or skip may qualify: a fill is deliberately not required.
@@ -58,9 +86,18 @@ def validate_witness(witness, seed_at_utc, endpoint_at_utc, recipe=None):
     if recipe is not None and (coin not in recipe["symbols"] or interval != recipe["interval"]
                               or horizon not in recipe["horizons_bars"]):
         raise ValueError("Forecast does not belong to the accepted recipe")
-    if (prediction.get("qualified") is not True or detail.get("qualified") is not True
-            or prediction.get("role") != "active"):
-        raise ValueError("Forecast is not qualified and active")
+    if rule not in WIN_FORECAST_RULES:
+        raise ValueError("Unsupported forecast WIN rule")
+    qualified = prediction.get("qualified")
+    if (type(qualified) is not bool or detail.get("qualified") is not qualified
+            or prediction.get("role") != ("active" if qualified else "research_candidate")
+            or rule == WIN_FORECAST_RULE and not qualified):
+        raise ValueError("Forecast qualification and role do not match its admission rule")
+    if rule == EXPLORATORY_WIN_FORECAST_RULE and recipe is not None:
+        if recipe.get("require_qualified_forecasts") is not False:
+            raise ValueError("Research admission was not committed for this recipe")
+        if detail.get("policy_id") != recipe.get("paper_policy_id") or not detail.get("policy_id"):
+            raise ValueError("Consumed forecast policy differs from the accepted recipe")
     for key in ("model_id", "data_run_id"):
         if not isinstance(prediction[key], str) or not RUN_ID.fullmatch(prediction[key]):
             raise ValueError("Invalid forecast source identifier")
@@ -89,8 +126,8 @@ def validate_witness(witness, seed_at_utc, endpoint_at_utc, recipe=None):
         raise ValueError("Model record source digest mismatch")
     model = json.loads(model_source)
     if (model.get("coin"), model.get("interval"), model.get("horizon_bars"), model.get("model_id")) != (
-            coin, interval, horizon, prediction["model_id"]) or model.get("eligible") is not True:
-        raise ValueError("Forecast lacks a matching independently eligible model")
+            coin, interval, horizon, prediction["model_id"]) or model.get("eligible") is not qualified:
+        raise ValueError("Forecast lacks a matching independent model qualification record")
     trained = _stamp(model["trained_at_utc"])
     max_forecast_age = _number(observation["max_forecast_age_seconds"])
     max_model_age = _number(observation["max_model_age_seconds"])
@@ -105,19 +142,33 @@ def validate_witness(witness, seed_at_utc, endpoint_at_utc, recipe=None):
 
 def collect_forecast_evidence(root, experiment, seed_at_utc, endpoint_at_utc, rows):
     """Inspect only committed rows from the caller's read-only ledger snapshot."""
-    result = {"schema_version": 1, "rule": WIN_FORECAST_RULE,
+    rule = _experiment_rule(root, experiment)
+    exploratory = rule == EXPLORATORY_WIN_FORECAST_RULE
+    result = {"schema_version": 1, "rule": rule,
               "experiment_id": experiment["experiment_id"], "seed_at_utc": seed_at_utc,
               "endpoint_at_utc": endpoint_at_utc, "committed_decision_count": len(rows),
               "decision_rows_sha256": _hash(json.dumps(rows, sort_keys=True, separators=(",", ":"))),
               "qualified_decision_count": 0, "valid_qualified_forecast_count": 0,
               "invalid_qualified_decision_count": 0, "first_valid_witness": None}
-    seen, models = set(), {}
+    if exploratory:
+        result.update(consumed_forecast_decision_count=0, valid_forecast_count=0,
+                      invalid_forecast_decision_count=0)
+    seen, qualified_seen, models = set(), set(), {}
     for row in rows:
+        detail = None
         try:
             detail = json.loads(row["details_json"])
-            if detail.get("qualified") is not True:
+            if detail.get("qualified") is not True and not exploratory:
                 continue
-            result["qualified_decision_count"] += 1
+            if exploratory and detail.get("forecast_observation") is None:
+                continue
+            if detail.get("qualified") is True:
+                result["qualified_decision_count"] += 1
+            if exploratory:
+                result["consumed_forecast_decision_count"] += 1
+                policy_id = experiment.get("opening_policy_id") or experiment.get("recipe", {}).get("paper_policy_id")
+                if not policy_id or detail.get("policy_id") != policy_id:
+                    raise ValueError("Consumed forecast does not match the accepted Paper policy")
             prediction = detail["forecast_observation"]["prediction"]
             coin, interval, horizon, model_id = (prediction[key] for key in ("coin", "interval", "horizon_bars", "model_id"))
             if (not isinstance(coin, str) or not re.fullmatch(r"[A-Z0-9]{1,20}", coin)
@@ -129,28 +180,39 @@ def collect_forecast_evidence(root, experiment, seed_at_utc, endpoint_at_utc, ro
                 models[key] = (Path(root) / "_models" / coin / interval / f"h{horizon}" / "runs" / model_id / "record.json").read_bytes().decode("utf-8")
             witness = {"decision": row, "decision_sha256": _hash(row["details_json"]),
                        "model_record_json": models[key], "model_record_sha256": _hash(models[key])}
-            identity = validate_witness(witness, seed_at_utc, endpoint_at_utc)
+            identity = validate_witness(witness, seed_at_utc, endpoint_at_utc, rule=rule)
             seen.add(identity)
+            if detail.get("qualified") is True:
+                qualified_seen.add(identity)
             if result["first_valid_witness"] is None:
                 result["first_valid_witness"] = witness
         except (OSError, AttributeError, KeyError, TypeError, ValueError, OverflowError):
-            result["invalid_qualified_decision_count"] += 1
-    result["valid_qualified_forecast_count"] = len(seen)
+            if exploratory:
+                result["invalid_forecast_decision_count"] += 1
+                if isinstance(detail, dict) and detail.get("qualified") is True:
+                    result["invalid_qualified_decision_count"] += 1
+            else:
+                result["invalid_qualified_decision_count"] += 1
+    result["valid_qualified_forecast_count"] = len(qualified_seen)
+    if exploratory:
+        result["valid_forecast_count"] = len(seen)
     return result
 
 
 def has_eligible_forecast(evidence, active, endpoint_at_utc):
     """Fail closed for a missing/malformed summary, then verify its witness."""
     try:
+        rule = active.get("win_forecast_rule", WIN_FORECAST_RULE)
+        count = "valid_forecast_count" if rule == EXPLORATORY_WIN_FORECAST_RULE else "valid_qualified_forecast_count"
         if (type(evidence.get("schema_version")) is not int or evidence["schema_version"] != 1
-                or evidence.get("rule") != WIN_FORECAST_RULE
+                or rule not in WIN_FORECAST_RULES or evidence.get("rule") != rule
                 or evidence.get("experiment_id") != active["experiment_id"]
                 or evidence.get("seed_at_utc") != active["seed_at_utc"]
                 or evidence.get("endpoint_at_utc") != endpoint_at_utc
-                or type(evidence.get("valid_qualified_forecast_count")) is not int
-                or evidence["valid_qualified_forecast_count"] < 1):
+                or type(evidence.get(count)) is not int or evidence[count] < 1):
             return False
-        validate_witness(evidence["first_valid_witness"], active["seed_at_utc"], endpoint_at_utc, active["recipe"])
+        validate_witness(evidence["first_valid_witness"], active["seed_at_utc"], endpoint_at_utc,
+                         active["recipe"], rule=rule)
         return True
     except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
         return False
