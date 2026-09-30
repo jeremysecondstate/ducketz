@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 
 from app.models.market_data import MarketBar
 from app.services.market_fetch_specs import DatabentoAnalysisSourceSpec
@@ -333,6 +335,135 @@ def test_successful_minute_selected_range_reaches_hourly_derivation(
         pd.Timestamp("2026-09-03T20:00:00Z")
     ]
     assert stored.iloc[0]["close"] == 103.0
+
+
+def test_covered_half_hours_aggregate_only_observed_trades_without_empty_fill() -> None:
+    bars = [
+        _minute_bar("2026-09-03T20:02:00Z", close=101.0, volume=200.0),
+        _minute_bar("2026-09-03T20:27:00Z", close=103.0, volume=300.0),
+        _minute_bar("2026-09-03T21:32:00Z", close=99.0, volume=50.0),
+    ]
+    options = dict(as_of=pd.Timestamp("2026-09-03T22:05:00Z"))
+    assert derive_intraday_bars("RR", bars, "30m", **options) == []
+    derived = derive_intraday_bars(
+        "RR", bars, "30m", **options,
+        coverage_start=pd.Timestamp("2026-09-03T20:00:00Z"),
+        coverage_end=pd.Timestamp("2026-09-03T22:00:00Z"),
+    )
+    assert [bar.timestamp for bar in derived] == list(pd.to_datetime(
+        ["2026-09-03T20:00:00Z", "2026-09-03T21:30:00Z"], utc=True).to_pydatetime())
+    first = derived[0]
+    assert (first.open, first.high, first.low, first.close, first.volume) == (
+        100.9, 103.2, 100.8, 103.0, 500.0)
+    assert [bar.source_bar_count for bar in derived] == [2, 1]
+    assert all(bar.bar_complete and bar.timeframe == "30m" for bar in derived)
+    assert first.bar_end_timestamp == pd.Timestamp("2026-09-03T20:30:00Z")
+
+
+@pytest.mark.parametrize("observed,expected", [
+    ("2026-09-03T21:20:00Z", ["2026-09-03T20:30:00Z"]),
+    ("2026-09-03T22:00:00Z", ["2026-09-03T20:30:00Z", "2026-09-03T21:00:00Z"]),
+])
+def test_covered_half_hours_exclude_partial_request_edges_and_open_intervals(observed, expected) -> None:
+    bars = [_minute_bar(stamp, close=101.0) for stamp in (
+        "2026-09-03T20:20:00Z", "2026-09-03T20:47:00Z",
+        "2026-09-03T21:17:00Z", "2026-09-03T21:32:00Z")]
+    derived = derive_intraday_bars(
+        "RR", bars, "30m", as_of=pd.Timestamp(observed),
+        coverage_start=pd.Timestamp("2026-09-03T20:15:00Z"),
+        coverage_end=pd.Timestamp("2026-09-03T21:45:00Z"),
+    )
+    assert [bar.timestamp for bar in derived] == list(pd.to_datetime(expected, utc=True).to_pydatetime())
+
+
+@pytest.mark.parametrize("day", ["2026-09-05", "2026-09-07"])
+def test_covered_half_hours_exclude_weekends_and_holidays_even_with_rows(day) -> None:
+    start = pd.Timestamp(day, tz="UTC")
+    assert derive_intraday_bars(
+        "RR", [_minute_bar(str(start + pd.Timedelta(hours=15)), close=100.)], "30m",
+        as_of=start + pd.Timedelta(days=1), coverage_start=start,
+        coverage_end=start + pd.Timedelta(days=1),
+    ) == []
+
+
+def test_covered_half_hours_obey_early_close_and_regular_open_boundary() -> None:
+    bars = [_minute_bar(stamp, close=100.) for stamp in (
+        "2026-11-27T14:15:00Z", "2026-11-27T14:35:00Z",
+        "2026-11-27T17:55:00Z", "2026-11-27T18:10:00Z")]
+    derived = derive_intraday_bars(
+        "RR", bars, "30m", as_of=pd.Timestamp("2026-11-28T01:00:00Z"),
+        coverage_start=pd.Timestamp("2026-11-27T14:00:00Z"),
+        coverage_end=pd.Timestamp("2026-11-28T01:00:00Z"),
+    )
+    assert [bar.timestamp for bar in derived] == list(pd.to_datetime(
+        ["2026-11-27T14:30:00Z", "2026-11-27T17:30:00Z"], utc=True).to_pydatetime())
+
+
+@pytest.mark.parametrize("day,opening", [("2026-10-30", 8), ("2026-11-02", 9)])
+def test_covered_half_hours_keep_four_eastern_open_across_dst(day, opening) -> None:
+    start = pd.Timestamp(day, tz="UTC")
+    bars = [_minute_bar(str(start + pd.Timedelta(hours=opening, minutes=m)), close=100.) for m in (-5, 5)]
+    derived = derive_intraday_bars(
+        "RR", bars, "30m", as_of=start + pd.Timedelta(hours=12),
+        coverage_start=start, coverage_end=start + pd.Timedelta(hours=12),
+    )
+    assert [bar.timestamp for bar in derived] == [(start + pd.Timedelta(hours=opening)).to_pydatetime()]
+
+
+@pytest.mark.parametrize("changes", [
+    {"close": float("nan")}, {"volume": -1.}, {"open": float("inf")},
+    {"low": 200.}, {"high": 1.},
+    {"timestamp": pd.Timestamp("2026-09-03T20:02:01Z").to_pydatetime()},
+    {"timestamp": pd.Timestamp("2026-09-03T19:59:00Z").to_pydatetime()},
+])
+def test_covered_half_hours_reject_bad_rows_instead_of_treating_them_as_no_trades(changes) -> None:
+    bars = [_minute_bar("2026-09-03T20:02:00Z", close=100.)]
+    bars.append(replace(_minute_bar("2026-09-03T20:17:00Z", close=101.), **changes))
+    with pytest.raises(ValueError, match="intact, valid"):
+        derive_intraday_bars("RR", bars, "30m", as_of=pd.Timestamp("2026-09-03T21:00:00Z"),
+            coverage_start=pd.Timestamp("2026-09-03T20:00:00Z"),
+            coverage_end=pd.Timestamp("2026-09-03T21:00:00Z"))
+
+
+def test_covered_half_hours_reject_duplicate_source_rows() -> None:
+    bar = _minute_bar("2026-09-03T20:02:00Z", close=100.)
+    with pytest.raises(ValueError, match="intact, valid"):
+        derive_intraday_bars("RR", [bar, bar], "30m", as_of=pd.Timestamp("2026-09-03T21:00:00Z"),
+            coverage_start=pd.Timestamp("2026-09-03T20:00:00Z"),
+            coverage_end=pd.Timestamp("2026-09-03T21:00:00Z"))
+
+
+@pytest.mark.parametrize("raw_rows,expected_rows", [(2, 2), (3, 0), (None, 0)])
+def test_half_hour_sparse_derivation_requires_a_successful_intact_minute_response(tmp_path, raw_rows, expected_rows) -> None:
+    bars = [_minute_bar(stamp, close=101.) for stamp in (
+        "2026-09-03T20:02:00Z", "2026-09-03T20:47:00Z")]
+    spec = DatabentoAnalysisSourceSpec("source_100d_1m", "ohlcv-1m", "1m", pd.Timedelta(days=100))
+    coverage = SimpleNamespace(start=pd.Timestamp("2026-09-03T20:00:00Z").to_pydatetime(),
+                               end=pd.Timestamp("2026-09-03T21:00:00Z").to_pydatetime())
+    raw = None if raw_rows is None else pd.DataFrame({"test_row": range(raw_rows)})
+    result = databento_fetch._persist_native_results("RR", ParquetStore(tmp_path),
+        provider=SimpleNamespace(dataset="EQUS.MINI"), profile="continuation",
+        observed_at=pd.Timestamp("2026-09-03T21:05:00Z").to_pydatetime(),
+        native_results=((spec, bars, raw, coverage, None),),
+        skip_native_frequencies=frozenset(("1m",)))
+    path = normalized_bar_path(tmp_path, source="databento", symbol="RR",
+        timeframe="30m", request_key="derived_1m_30m")
+    assert result.error_files == 0
+    assert (len(pd.read_parquet(path)) if path.exists() else 0) == expected_rows
+
+
+def test_failed_minute_request_cannot_authorize_sparse_half_hours(tmp_path) -> None:
+    spec = DatabentoAnalysisSourceSpec("source_100d_1m", "ohlcv-1m", "1m", pd.Timedelta(days=100))
+    bars = [_minute_bar("2026-09-03T20:02:00Z", close=101.)]
+    coverage = SimpleNamespace(start=pd.Timestamp("2026-09-03T20:00:00Z").to_pydatetime(),
+                               end=pd.Timestamp("2026-09-03T21:00:00Z").to_pydatetime())
+    databento_fetch._persist_native_results("RR", ParquetStore(tmp_path),
+        provider=SimpleNamespace(dataset="EQUS.MINI"), profile="continuation",
+        observed_at=pd.Timestamp("2026-09-03T21:05:00Z").to_pydatetime(),
+        native_results=((spec, bars, pd.DataFrame({"test_row": [0]}), coverage, RuntimeError("truncated")),))
+    path = normalized_bar_path(tmp_path, source="databento", symbol="RR",
+        timeframe="30m", request_key="derived_1m_30m")
+    assert not path.exists()
 
 
 def test_native_hour_wins_duplicates_while_derived_hour_fills_lag(

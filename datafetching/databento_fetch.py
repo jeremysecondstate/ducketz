@@ -422,10 +422,16 @@ def _persist_native_results(
     source_bars_by_frequency: dict[str, list] = {}
     source_specs_by_frequency = {}
     source_ranges_by_frequency = {}
+    source_response_complete_by_frequency = {}
     declared_specs_by_frequency = {}
 
     for spec, bars, raw_frame, available_range, exc in native_results:
         declared_specs_by_frequency[spec.frequency] = spec
+        source_response_complete_by_frequency[spec.frequency] = (
+            exc is None and spec.schema == "ohlcv-1m"
+            and isinstance(raw_frame, pd.DataFrame)
+            and len(raw_frame) == len(bars)
+        )
         metadata = {
             "provider_dataset": provider.dataset,
             "source_schema": spec.schema,
@@ -526,6 +532,7 @@ def _persist_native_results(
             source_bars=source_bars_by_frequency.get("1m", []),
             source_spec=source_specs_by_frequency.get("1m"),
             source_range=source_ranges_by_frequency.get("1m"),
+            source_response_complete=source_response_complete_by_frequency.get("1m", False),
             observed_at=observed_at,
         )
         data_files += derived_files
@@ -636,6 +643,7 @@ def _save_derived_intraday_bars(
     source_spec,
     source_range,
     observed_at: datetime,
+    source_response_complete: bool = False,
 ) -> tuple[int, int]:
     if not source_bars or source_spec is None:
         return 0, 0
@@ -645,6 +653,11 @@ def _save_derived_intraday_bars(
     for output_frequency in DERIVED_INTRADAY_FREQUENCIES:
         request_key = f"derived_1m_{output_frequency}"
         use_proven_sparse_hour = output_frequency == "1h" and source_range is not None
+        use_proven_sparse_half_hour = (
+            output_frequency == "30m" and source_range is not None
+            and source_response_complete
+        )
+        use_proven_range = use_proven_sparse_hour or use_proven_sparse_half_hour
         metadata = {
             "provider_dataset": provider.dataset,
             "source_schema": source_spec.schema,
@@ -653,6 +666,8 @@ def _save_derived_intraday_bars(
             "aggregation_method": (
                 "coverage_proven_sparse_hour_from_complete_1m"
                 if use_proven_sparse_hour
+                else "coverage_proven_nonempty_half_hour_from_complete_1m"
+                if use_proven_sparse_half_hour
                 else "session_resampled_from_complete_1m"
             ),
             "fetch_profile": profile,
@@ -660,21 +675,28 @@ def _save_derived_intraday_bars(
             "volume_basis": (
                 "summed_trade_volume_or_zero_for_proven_empty_hour"
                 if use_proven_sparse_hour
+                else "summed_observed_trade_volume"
+                if use_proven_sparse_half_hour
                 else "summed_from_complete_1m"
             ),
             "corporate_action_adjustment": "none",
             "normalized_bar_policy": (
                 "completed_coverage_proven_sparse_intervals_only"
                 if use_proven_sparse_hour
+                else "completed_nonempty_coverage_proven_sparse_intervals_only"
+                if use_proven_sparse_half_hour
                 else "completed_intervals_only"
             ),
         }
-        if use_proven_sparse_hour:
+        if use_proven_range:
             metadata.update(
                 {
                     "range_start": source_range.start.isoformat(),
                     "range_end": source_range.end.isoformat(),
-                    "no_trade_price_policy": "strictly_prior_close_never_future_fill",
+                    "no_trade_price_policy": (
+                        "strictly_prior_close_never_future_fill" if use_proven_sparse_hour
+                        else "omit_empty_intervals_no_price_fill"
+                    ),
                 }
             )
         try:
@@ -684,10 +706,10 @@ def _save_derived_intraday_bars(
                 output_frequency,
                 as_of=observed_at,
                 coverage_start=(
-                    source_range.start if use_proven_sparse_hour else None
+                    source_range.start if use_proven_range else None
                 ),
                 coverage_end=(
-                    source_range.end if use_proven_sparse_hour else None
+                    source_range.end if use_proven_range else None
                 ),
             )
             if store.save_bars(

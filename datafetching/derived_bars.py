@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import numpy as np
 import pandas as pd
 
 from app.models.market_data import MarketBar
@@ -92,11 +93,12 @@ def derive_intraday_bars(
     closed and every expected one-minute constituent is present. This makes
     polling at arbitrary offsets safe and prevents an overlapping continuation
     tail from replacing a complete derived candle with a partial one. The 1h
-    lane may instead use an explicit successful provider-request range. Within
-    that proven range, provider-omitted no-trade minutes are valid sparse
-    evidence; a wholly empty eligible hour carries only a strictly prior close.
-    Those coverage-proven hours follow the continuous v6 04:00--20:00 Eastern
-    source envelope, including the 09:00--10:00 open-boundary clock hour.
+    and 30m lanes may instead use an explicit successful provider-request range.
+    Within that proven range, provider-omitted no-trade minutes are valid sparse
+    evidence. Only the existing 1h contract carries a strictly prior close into an empty
+    hour. The 30m contract emits observed trades only and omits empty intervals.
+    Covered intervals follow the continuous v6 04:00--20:00 Eastern envelope;
+    half days use only their official regular session.
     """
     frequency = output_frequency.strip().lower()
     try:
@@ -105,8 +107,8 @@ def derive_intraday_bars(
         choices = ", ".join(DERIVED_INTRADAY_FREQUENCIES)
         raise ValueError(f"Unsupported derived intraday frequency {frequency!r}; use {choices}.") from exc
     coverage_supplied = coverage_start is not None or coverage_end is not None
-    if coverage_supplied and frequency != "1h":
-        raise ValueError("Provider-range sparse derivation is supported only for 1h")
+    if coverage_supplied and frequency not in {"1h", "30m"}:
+        raise ValueError("Provider-range sparse derivation is supported only for 1h and 30m")
     if (coverage_start is None) != (coverage_end is None):
         raise ValueError("Provider-range sparse derivation requires start and end")
     if not source_bars:
@@ -127,6 +129,23 @@ def derive_intraday_bars(
         ]
     )
     frame = annotate_bar_timing(frame, timeframe="1m", as_of=observed_at)
+    if coverage_supplied and frequency == "30m":
+        # Missing trades are admissible only when they were absent from the
+        # complete provider response, never when a malformed row was discarded.
+        numeric = frame[["open", "high", "low", "close", "volume"]].apply(
+            pd.to_numeric, errors="coerce"
+        )
+        stamps = frame["timestamp"]
+        if (not np.isfinite(numeric.to_numpy()).all()
+                or (numeric[["open", "high", "low", "close"]] <= 0).any().any()
+                or numeric["volume"].lt(0).any()
+                or numeric["high"].lt(numeric[["open", "close", "low"]].max(axis=1)).any()
+                or numeric["low"].gt(numeric[["open", "close", "high"]].min(axis=1)).any()
+                or stamps.isna().any() or stamps.duplicated().any()
+                or not stamps.eq(stamps.dt.floor("min")).all()
+                or not stamps.ge(_as_utc_timestamp(coverage_start)).all()
+                or not stamps.add(pd.Timedelta(minutes=1)).le(_as_utc_timestamp(coverage_end)).all()):
+            raise ValueError("Covered 30m derivation requires intact, valid one-minute provider rows")
     frame = (
         frame.loc[frame["bar_complete"]]
         .dropna(subset=["timestamp", "open", "high", "low", "close"])
@@ -138,9 +157,10 @@ def derive_intraday_bars(
 
     if coverage_supplied:
         assert coverage_start is not None and coverage_end is not None
-        return _derive_covered_hour_bars(
+        return _derive_covered_intraday_bars(
             symbol,
             frame,
+            frequency=frequency,
             observed_at=observed_at,
             coverage_start=_as_utc_timestamp(coverage_start),
             coverage_end=_as_utc_timestamp(coverage_end),
@@ -197,15 +217,16 @@ def derive_intraday_bars(
     ]
 
 
-def _derive_covered_hour_bars(
+def _derive_covered_intraday_bars(
     symbol: str,
     source: pd.DataFrame,
     *,
+    frequency: str,
     observed_at: pd.Timestamp,
     coverage_start: pd.Timestamp,
     coverage_end: pd.Timestamp,
 ) -> list[DerivedMarketBar]:
-    """Build only clock hours proven covered by one successful 1m request."""
+    """Aggregate intervals wholly covered by one successful minute request."""
 
     if coverage_end <= coverage_start:
         raise ValueError("Provider coverage end must be after coverage start")
@@ -213,7 +234,8 @@ def _derive_covered_hour_bars(
     if proven_end <= coverage_start:
         return []
 
-    intervals = _covered_equity_hour_intervals(
+    intervals = _covered_equity_intervals(
+        frequency=frequency,
         coverage_start=coverage_start,
         coverage_end=proven_end,
     )
@@ -222,16 +244,16 @@ def _derive_covered_hour_bars(
 
     ordered = source.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
     ordered_timestamps = pd.DatetimeIndex(ordered["timestamp"])
-    by_hour = {
+    by_interval = {
         pd.Timestamp(hour): group
         for hour, group in ordered.groupby(
-            ordered["timestamp"].dt.floor("h"),
+            ordered["timestamp"].dt.floor(_RESAMPLE_RULES[frequency]),
             sort=False,
         )
     }
     rows: list[dict[str, object]] = []
     for start, _end in intervals:
-        constituent = by_hour.get(start)
+        constituent = by_interval.get(start)
         if constituent is not None and not constituent.empty:
             volume = pd.to_numeric(
                 constituent["volume"], errors="coerce"
@@ -249,6 +271,8 @@ def _derive_covered_hour_bars(
             )
             continue
 
+        if frequency == "30m":
+            continue
         prior_location = ordered_timestamps.searchsorted(start, side="left") - 1
         if prior_location < 0:
             continue
@@ -269,7 +293,7 @@ def _derive_covered_hour_bars(
 
     derived = annotate_bar_timing(
         pd.DataFrame(rows),
-        timeframe="1h",
+        timeframe=frequency,
         as_of=observed_at,
     )
     clean_symbol = symbol.strip().upper()
@@ -277,7 +301,7 @@ def _derive_covered_hour_bars(
         DerivedMarketBar(
             symbol=clean_symbol,
             source="databento",
-            timeframe="1h",
+            timeframe=frequency,
             timestamp=row.timestamp.to_pydatetime(),
             open=float(row.open),
             high=float(row.high),
@@ -293,13 +317,16 @@ def _derive_covered_hour_bars(
     ]
 
 
-def _covered_equity_hour_intervals(
+def _covered_equity_intervals(
     *,
+    frequency: str,
     coverage_start: pd.Timestamp,
     coverage_end: pd.Timestamp,
 ) -> tuple[tuple[pd.Timestamp, pd.Timestamp], ...]:
-    """Return v6 continuous-source hours wholly inside proven coverage."""
+    """Return closed exchange intervals wholly inside proven coverage."""
 
+    rule = _RESAMPLE_RULES[frequency]
+    duration = pd.Timedelta(minutes=_frequency_minutes(frequency))
     local_start = coverage_start.tz_convert("America/New_York")
     local_end = coverage_end.tz_convert("America/New_York")
     calendar = _exchange_calendar(
@@ -329,15 +356,15 @@ def _covered_equity_hour_intervals(
             interval_start = local_midnight + STANDARD_EXTENDED_SESSION_OPEN
             interval_limit = local_midnight + STANDARD_EXTENDED_SESSION_CLOSE
         else:
-            interval_start = local_open.ceil("h")
+            interval_start = local_open.ceil(rule)
             interval_limit = local_close
 
-        while interval_start + pd.Timedelta(hours=1) <= interval_limit:
+        while interval_start + duration <= interval_limit:
             start = interval_start.tz_convert("UTC")
-            end = start + pd.Timedelta(hours=1)
+            end = start + duration
             if start >= coverage_start and end <= coverage_end:
                 records.append((start, end))
-            interval_start += pd.Timedelta(hours=1)
+            interval_start += duration
     return tuple(sorted(records))
 
 
