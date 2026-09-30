@@ -84,6 +84,12 @@ class ReservationState:
     cancel_requested_at: str | None = None
     target_start: str | None = None
     target_end: str | None = None
+    trigger_horizon: str | None = None
+    trigger_forecast_id: str | None = None
+    owner_forecast_id: str | None = None
+    fallback_policy_version: str | None = None
+    fallback_action_date: str | None = None
+    fallback_baseline_id: str | None = None
 
     @property
     def reserved_quantity(self) -> int:
@@ -219,6 +225,10 @@ class HorizonLedger:
                 CREATE TABLE IF NOT EXISTS blocks (symbol TEXT PRIMARY KEY, reason TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS cancellations (
                     reservation TEXT PRIMARY KEY REFERENCES reservations(id), requested_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS fallback_days (
+                    account TEXT NOT NULL, action_date TEXT NOT NULL, baseline_id TEXT NOT NULL UNIQUE,
+                    snapshot_id TEXT NOT NULL REFERENCES snapshots(id), source_fingerprint TEXT NOT NULL,
+                    policy TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(account,action_date));
             """
             for statement in schema.split(";"):
                 if statement.strip():
@@ -271,13 +281,16 @@ class HorizonLedger:
         return ReservationState(row["id"], row["allocation"], row["symbol"], row["horizon"],
             request.get("forecast", row["forecast"]), row["side"], row["quantity"], row["price"], row["filled"],
             row["status"], row["broker_order"], row["idempotency_key"], row["batch"], row["last_evidence_at"], row["requested_at"],
-            request.get("start"), request.get("end"))
+            request.get("start"), request.get("end"), request.get("trigger_horizon"),
+            request.get("trigger_forecast"), row["forecast"], request.get("fallback_policy_version"),
+            request.get("action_date"), request.get("baseline_id"))
 
     @staticmethod
     def _forecast_reserved(db, account, symbol, horizon, forecast):
-        rows = db.execute("""SELECT r.request FROM reservations r JOIN allocations a ON a.id=r.allocation
-            WHERE a.account=? AND a.symbol=? AND a.horizon=?""", (account, symbol, horizon))
-        return any(json.loads(row["request"]).get("forecast") == forecast for row in rows)
+        rows = db.execute("""SELECT r.request,a.horizon FROM reservations r JOIN allocations a ON a.id=r.allocation
+            WHERE a.account=? AND a.symbol=?""", (account, symbol))
+        return any((request := json.loads(row["request"])).get("forecast") == forecast and
+                   request.get("trigger_horizon", row["horizon"]) == horizon for row in rows)
 
     @staticmethod
     def _assigned_shares(db, allocation_id):
@@ -591,6 +604,253 @@ class HorizonLedger:
             if reservation.status in {"RESERVED", "SUBMITTED"} and reservation.batch_id != batch_id:
                 raise LedgerError("UNRECONCILED_PRIOR_BATCH")
         return json.loads(row["payload"])
+
+    @staticmethod
+    def _fallback_binding(action_date, policy, source_fingerprint, now):
+        from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
+
+        normalized = validate_fallback_policy(policy, action_date)
+        if normalized is None:
+            raise LedgerError("FALLBACK_POLICY_NOT_ENABLED_FOR_ACTION_DATE")
+        if datetime.fromisoformat(now).astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat() != action_date:
+            raise LedgerError("FALLBACK_ACTION_DATE_MISMATCH")
+        if not re.fullmatch(r"[a-f0-9]{64}", str(source_fingerprint)):
+            raise LedgerError("FALLBACK_SOURCE_FINGERPRINT_REQUIRED")
+        return normalized
+
+    def _fallback_baseline(self, db, *, action_date, policy, source_fingerprint,
+                           snapshot_id, now, batch_id=None, persist=False):
+        policy = self._fallback_binding(action_date, policy, source_fingerprint, now)
+        portfolio = self._require_snapshot(db, snapshot_id, now, batch_id=batch_id)
+        observed_date = datetime.fromisoformat(portfolio["observed_at"]).astimezone(
+            ZoneInfo("America/Los_Angeles")).date().isoformat()
+        if observed_date != action_date:
+            raise LedgerError("FALLBACK_BASELINE_SNAPSHOT_DATE_MISMATCH")
+        previous = db.execute("SELECT * FROM fallback_days WHERE account=? AND action_date=?",
+                              (self.account_fingerprint, action_date)).fetchone()
+        if previous is not None:
+            if previous["source_fingerprint"] != source_fingerprint or previous["policy"] != _encoded(policy):
+                raise LedgerError("FALLBACK_DAY_SOURCE_OR_POLICY_MISMATCH")
+            return json.loads(previous["payload"])
+        state = self._snapshot(db)
+        donors, symbols = {}, {}
+        for allocation in state.allocations:
+            if allocation.status != "ACTIVE" or allocation.horizon not in {"4h", "1d", "1w"}:
+                continue
+            held = _quantity(allocation.filled_shares)
+            donors[allocation.allocation_id] = {"allocation_id":allocation.allocation_id,
+                "symbol":allocation.symbol, "horizon":allocation.horizon,
+                "owner_forecast_id":allocation.forecast_id, "initial_owned_shares":held,
+                "daily_cap":held // 2}
+            symbols[allocation.symbol] = symbols.get(allocation.symbol, 0) + held
+        payload = {"account_fingerprint":self.account_fingerprint, "action_date":action_date,
+            "source_fingerprint":source_fingerprint, "policy":policy, "snapshot_id":snapshot_id,
+            "observed_at":portfolio["observed_at"], "donors":donors,
+            "symbols":{symbol:{"initial_owned_longer_horizon_shares":held, "daily_cap":held // 2}
+                       for symbol, held in sorted(symbols.items())}}
+        payload["baseline_id"] = _identity(["fallback-day", payload])
+        if persist:
+            db.execute("INSERT INTO fallback_days VALUES (?,?,?,?,?,?,?)", (self.account_fingerprint,
+                action_date, payload["baseline_id"], snapshot_id, source_fingerprint, _encoded(policy), _encoded(payload)))
+            self._save_evidence(db, payload["baseline_id"], "fallback-day-baseline", payload)
+        return payload
+
+    def freeze_fallback_day(self, *, action_date: str, policy: Mapping, source_fingerprint: str,
+                            snapshot_id: str, as_of: str, batch_id: str | None = None,
+                            persist: bool = True) -> dict:
+        """Freeze the first live, ready day baseline; previews never create it.
+
+        Call immediately after the first ready live reconciliation for the date,
+        before reserving normal or fallback orders. Neither new publications,
+        repurchases nor restarts replenish a previously frozen day allowance.
+        """
+        if type(persist) is not bool:
+            raise LedgerError("FALLBACK_PERSIST_FLAG_MUST_BE_BOOLEAN")
+        with self._transaction() as db:
+            return self._fallback_baseline(db, action_date=action_date, policy=policy,
+                source_fingerprint=source_fingerprint, snapshot_id=snapshot_id, now=_utc(as_of),
+                batch_id=batch_id, persist=persist)
+
+    @staticmethod
+    def _fallback_usage(db, state, action_date):
+        """Filled today plus every still-reserved fallback share consumes caps.
+
+        Prior-day pending orders remain charged until terminal broker evidence.
+        Cancellation releases only the unfilled part through ordinary ledger
+        status transitions. Fills are charged on their actual Pacific date.
+        """
+        symbols, donors = {}, {}
+        for order in state.reservations:
+            if order.fallback_policy_version is None:
+                continue
+            filled_today = sum(row["quantity"] for row in db.execute(
+                "SELECT quantity,executed_at FROM fills WHERE reservation=?", (order.reservation_id,))
+                if datetime.fromisoformat(row["executed_at"]).astimezone(
+                    ZoneInfo("America/Los_Angeles")).date().isoformat() == action_date)
+            used = filled_today + order.reserved_quantity
+            symbols[order.symbol] = symbols.get(order.symbol, 0) + used
+            donors[order.allocation_id] = donors.get(order.allocation_id, 0) + used
+        return symbols, donors
+
+    def _fallback_plan(self, db, *, symbol, horizon, forecast_id, target_start, target_end,
+                       action_date, policy, source_fingerprint, snapshot_id, as_of, batch_id=None,
+                       pending_sell_shares=0, pending_buy_shares=0, excluded_donor_horizons=(),
+                       reserved_donor_shares=None, preview=False):
+        from ml.stock_trader.cross_horizon_fallback import donor_horizons, slot_index, slot_quota
+
+        symbol, horizon, forecast_id = _name(symbol).upper(), _name(horizon), _name(forecast_id)
+        if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", symbol) or horizon not in HORIZON_WEIGHTS:
+            raise LedgerError("Unsupported symbol or horizon")
+        start, end, now = _utc(target_start), _utc(target_end), _utc(as_of)
+        if not start <= now < end:
+            raise LedgerError("FALLBACK_OUTSIDE_TRIGGER_TARGET_WINDOW")
+        if type(preview) is not bool:
+            raise LedgerError("FALLBACK_PREVIEW_FLAG_MUST_BE_BOOLEAN")
+        policy = self._fallback_binding(action_date, policy, source_fingerprint, now)
+        pending_sell, pending_buy = _number(pending_sell_shares), _number(pending_buy_shares)
+        excluded = tuple(excluded_donor_horizons)
+        if any(h not in HORIZON_WEIGHTS for h in excluded):
+            raise LedgerError("FALLBACK_INVALID_EXCLUDED_DONOR")
+        draft = {h:_quantity(q) for h,q in (reserved_donor_shares or {}).items()}
+        if any(h not in HORIZON_WEIGHTS for h in draft):
+            raise LedgerError("FALLBACK_INVALID_DRAFT_DONOR")
+        portfolio = self._require_snapshot(db, snapshot_id, now, batch_id=batch_id)
+        saved = db.execute("SELECT 1 FROM fallback_days WHERE account=? AND action_date=?",
+                           (self.account_fingerprint, action_date)).fetchone()
+        if saved is None and not preview:
+            raise LedgerError("FALLBACK_DAY_BASELINE_REQUIRED")
+        baseline = self._fallback_baseline(db, action_date=action_date, policy=policy,
+            source_fingerprint=source_fingerprint, snapshot_id=snapshot_id, now=now,
+            batch_id=batch_id, persist=False)
+        state = self._snapshot(db)
+        symbol_used, donor_used = self._fallback_usage(db, state, action_date)
+        daily_cap = baseline["symbols"].get(symbol, {}).get("daily_cap", 0)
+        quota = slot_quota(daily_cap, horizon, start, action_date)
+        result = {"eligible":False, "reason":"NO_ELIGIBLE_LONGER_DONOR", "baseline_id":baseline["baseline_id"],
+            "symbol_daily_cap":daily_cap, "symbol_used":symbol_used.get(symbol, 0),
+            "symbol_remaining":max(0, daily_cap-symbol_used.get(symbol, 0)), "slot_quota":quota,
+            "slot_index":None if horizon == "1w" else slot_index(horizon, start, action_date),
+            "donor_allocation_id":None, "donor_horizon":None, "donor_forecast_id":None,
+            "donor_remaining":0, "maximum_quantity":0, "action_date":action_date,
+            "trigger_horizon":horizon, "trigger_forecast_id":forecast_id,
+            "source_fingerprint":source_fingerprint, "preview":preview}
+        def blocked(reason):
+            return {**result, "reason":reason}
+        if self._forecast_reserved(db, self.account_fingerprint, symbol, horizon, forecast_id):
+            return blocked("FORECAST_ALREADY_RESERVED_NO_REENTRY")
+        if any(r.fallback_action_date == action_date and r.symbol == symbol and r.trigger_horizon == horizon
+               and r.target_start == start for r in state.reservations):
+            return blocked("FALLBACK_SLOT_ALREADY_RESERVED_NO_ROLLOVER")
+        own = [a for a in state.allocations if a.symbol == symbol and a.horizon == horizon]
+        if any(a.filled_shares > 0 for a in own):
+            return blocked("FALLBACK_REQUIRES_GENUINELY_ZERO_OWN_INVENTORY")
+        if any(r.status in _OPEN and r.symbol == symbol and
+               (r.horizon == horizon or r.trigger_horizon == horizon) for r in state.reservations):
+            return blocked("FALLBACK_TRIGGER_HAS_PENDING_ORDER")
+        symbol_allocations = [a for a in state.allocations if a.symbol == symbol]
+        owned = sum(a.filled_shares for a in symbol_allocations)
+        reserved_sells = sum(a.reserved_sell_shares for a in symbol_allocations)
+        reserved_buys = sum(a.reserved_buy_shares for a in symbol_allocations)
+        # Pending external sells cannot manufacture zero eligible unallocated stock.
+        if pending_sell > reserved_sells or pending_buy > reserved_buys:
+            return blocked("FALLBACK_EXTERNAL_PENDING_ORDER")
+        if symbol not in portfolio["held_shares"] or symbol not in portfolio["prices"]:
+            return blocked("MISSING_PORTFOLIO_SYMBOL_EVIDENCE")
+        if _number(portfolio["held_shares"][symbol])-owned >= 1:
+            return blocked("FALLBACK_REQUIRES_ZERO_ELIGIBLE_UNALLOCATED_STOCK")
+        if quota <= 0:
+            return blocked("FALLBACK_SLOT_QUOTA_ZERO")
+        if result["symbol_remaining"] <= 0:
+            return blocked("FALLBACK_SYMBOL_DAILY_CAP_EXHAUSTED")
+        for donor_horizon in donor_horizons(horizon):
+            if donor_horizon in excluded:
+                continue
+            for allocation in symbol_allocations:
+                if allocation.status != "ACTIVE" or allocation.horizon != donor_horizon or allocation.reserved_buy_shares:
+                    continue
+                if any(r.allocation_id == allocation.allocation_id and r.status in _OPEN
+                       and (batch_id is None or r.batch_id != batch_id or r.fallback_policy_version is None)
+                       for r in state.reservations):
+                    continue
+                frozen = baseline["donors"].get(allocation.allocation_id)
+                if frozen is None:
+                    continue
+                additional = draft.get(donor_horizon, 0)
+                remaining = max(0, min(frozen["daily_cap"]-donor_used.get(allocation.allocation_id, 0)-additional,
+                    allocation.filled_shares-allocation.reserved_sell_shares-additional))
+                if not remaining:
+                    continue
+                return {**result, "eligible":True, "reason":"ELIGIBLE_HIERARCHICAL_BEARISH_FALLBACK",
+                    "donor_allocation_id":allocation.allocation_id, "donor_horizon":donor_horizon,
+                    "donor_forecast_id":allocation.forecast_id, "donor_daily_cap":frozen["daily_cap"],
+                    "donor_used":donor_used.get(allocation.allocation_id, 0), "donor_remaining":remaining,
+                    "maximum_quantity":min(quota, result["symbol_remaining"], remaining)}
+        return result
+
+    def fallback_direction_plan(self, *, symbol: str, horizon: str, forecast_id: str, target_start: str,
+                                target_end: str, action_date: str, policy: Mapping, source_fingerprint: str,
+                                snapshot_id: str, as_of: str, batch_id: str | None = None,
+                                pending_sell_shares=0, pending_buy_shares=0, excluded_donor_horizons=(),
+                                reserved_donor_shares=None, preview: bool = False) -> dict:
+        """Read caps and the nearest eligible donor; never reserve or freeze a day."""
+        with self._transaction() as db:
+            return self._fallback_plan(db, symbol=symbol, horizon=horizon, forecast_id=forecast_id,
+                target_start=target_start, target_end=target_end, action_date=action_date, policy=policy,
+                source_fingerprint=source_fingerprint, snapshot_id=snapshot_id, as_of=as_of, batch_id=batch_id,
+                pending_sell_shares=pending_sell_shares, pending_buy_shares=pending_buy_shares,
+                excluded_donor_horizons=excluded_donor_horizons, reserved_donor_shares=reserved_donor_shares,
+                preview=preview)
+
+    def reserve_fallback_direction_exit(self, *, symbol: str, horizon: str, forecast_id: str,
+                                        target_start: str, target_end: str, action_date: str, policy: Mapping,
+                                        source_fingerprint: str, donor_allocation_id: str, quantity: int,
+                                        limit_price, snapshot_id: str, idempotency_key: str, batch_id: str,
+                                        as_of: str, pending_sell_shares=0, pending_buy_shares=0,
+                                        excluded_donor_horizons=(), reserved_donor_shares=None) -> ReservationState:
+        """Atomically reserve donor-owned stock and charge its triggering slot.
+
+        The SELL belongs to the original donor allocation. Broker fill evidence
+        reduces that owner's shares through the ordinary reconciliation path;
+        no transfer, artificial BUY or invented forecast identity is recorded.
+        """
+        symbol, horizon, forecast_id = _name(symbol).upper(), _name(horizon), _name(forecast_id)
+        now, start, end = _utc(as_of), _utc(target_start), _utc(target_end)
+        normalized = self._fallback_binding(action_date, policy, source_fingerprint, now)
+        quantity, price = _quantity(quantity, positive=True), str(_number(limit_price, positive=True))
+        key, batch = _name(idempotency_key), _name(batch_id)
+        request = {"kind":"fallback-direction-exit", "symbol":symbol, "forecast":forecast_id,
+            "trigger_forecast":forecast_id, "trigger_horizon":horizon, "start":start, "end":end,
+            "action_date":action_date, "policy":normalized, "source_fingerprint":source_fingerprint,
+            "quantity":quantity, "price":price, "snapshot":snapshot_id, "batch":batch,
+            "donor_allocation_id":_name(donor_allocation_id),
+            "pending_sell_shares":str(_number(pending_sell_shares)),
+            "pending_buy_shares":str(_number(pending_buy_shares)),
+            "excluded_donor_horizons":sorted(set(excluded_donor_horizons)),
+            "reserved_donor_shares":{h:_quantity(q) for h,q in sorted((reserved_donor_shares or {}).items())}}
+        with self._transaction() as db:
+            prior = db.execute("SELECT id,request FROM reservations WHERE idempotency_key=?", (key,)).fetchone()
+            if prior is not None:
+                saved_request = json.loads(prior["request"])
+                for derived in ("baseline_id", "fallback_policy_version", "slot_quota", "owner_horizon", "owner_forecast"):
+                    saved_request.pop(derived, None)
+                if _encoded(saved_request) != _encoded(request):
+                    raise LedgerError("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST")
+                return self._reservation(db, prior["id"])
+            plan = self._fallback_plan(db, symbol=symbol, horizon=horizon, forecast_id=forecast_id,
+                target_start=start, target_end=end, action_date=action_date, policy=normalized,
+                source_fingerprint=source_fingerprint, snapshot_id=snapshot_id, as_of=now, batch_id=batch,
+                pending_sell_shares=pending_sell_shares, pending_buy_shares=pending_buy_shares,
+                excluded_donor_horizons=excluded_donor_horizons, reserved_donor_shares=reserved_donor_shares)
+            if not plan["eligible"]:
+                raise LedgerError(plan["reason"])
+            if donor_allocation_id != plan["donor_allocation_id"]:
+                raise LedgerError("FALLBACK_DONOR_IS_NOT_NEAREST_ELIGIBLE")
+            if quantity > plan["maximum_quantity"]:
+                raise LedgerError("FALLBACK_QUANTITY_EXCEEDS_SLOT_OR_DAILY_CAP")
+            request.update({"baseline_id":plan["baseline_id"], "fallback_policy_version":"hierarchical-bearish-fallback-v1",
+                "slot_quota":plan["slot_quota"], "owner_horizon":plan["donor_horizon"],
+                "owner_forecast":plan["donor_forecast_id"]})
+            return self._insert_reservation(db, donor_allocation_id, "SELL", quantity, price, key, batch, request)
 
     def reserve_entry(self, *, symbol: str, horizon: str, forecast_id: str, target_start: str,
                       target_end: str, quantity: int, limit_price: str | float, snapshot_id: str,

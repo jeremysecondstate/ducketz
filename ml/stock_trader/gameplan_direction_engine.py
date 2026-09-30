@@ -24,28 +24,33 @@ from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
 
 
 _RANKING_POLICY = "owned-due-exits-then-bearish-horizon-symbol-then-bullish-probability-horizon-symbol-v1"
+_FALLBACK_RANKING_POLICY = "owned-exits-normal-bearish-fallback-bearish-bullish-probability-horizon-symbol-v1"
 _ZERO = Decimal(0)
 
 
-def _fingerprint(policy: StockTraderPolicy, maximum_quote_age_seconds: float = 60.) -> str:
+def _fingerprint(policy: StockTraderPolicy, maximum_quote_age_seconds: float = 60., fallback_policy=None, fallback_source_binding=None) -> str:
     return canonical_sha256({
         "sizing_policy": GAMEPLAN_SIZING_POLICY, "risk_policy_fingerprint": policy.fingerprint,
         "direction_policy": STOCK_DIRECTION_POLICY_VERSION, "horizon_weights": FIXED_HORIZON_WEIGHTS,
-        "ranking_policy": _RANKING_POLICY, "entry_budget_utilization": 1,
+        "ranking_policy": _FALLBACK_RANKING_POLICY if fallback_policy is not None else _RANKING_POLICY, "entry_budget_utilization": 1,
         "order_pricing": "current-ask-buy-current-bid-sell-wide-spread-midpoint-v1",
         "quote_freshness_policy": "realtime-nbbo-response-with-provider-update-time-v1",
         "planning_ranges_have_execution_authority": False,
         "maximum_quote_age_seconds": maximum_quote_age_seconds,
+        **({"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}),
+        **({"fallback_source_binding": fallback_source_binding} if fallback_source_binding is not None else {}),
     })
 
 
-def _metadata(policy: StockTraderPolicy, maximum_quote_age_seconds: float = 60.) -> dict:
+def _metadata(policy: StockTraderPolicy, maximum_quote_age_seconds: float = 60., fallback_policy=None) -> dict:
     return {
         "sizing_policy": GAMEPLAN_SIZING_POLICY, "direction_policy": STOCK_DIRECTION_POLICY_VERSION,
         "sizing_basis": "current_cash_and_full_horizon_capacity_or_reconciled_sell_inventory",
         "risk_policy_version": policy.policy_version, "risk_policy_fingerprint": policy.fingerprint,
         "model_name": None, "model_version": None, "model_fingerprint": None,
-        "entry_budget_utilization": 1., "ranking_policy": _RANKING_POLICY,
+        "entry_budget_utilization": 1.,
+        "ranking_policy": _FALLBACK_RANKING_POLICY if fallback_policy is not None else _RANKING_POLICY,
+        **({"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}),
         "planning_ranges_have_execution_authority": False,
         "pending_sales_fund_this_batch": False,
         "pricing_basis": "current_ask_buy_bid_sell_with_wide_spread_midpoint_v1",
@@ -88,17 +93,23 @@ def _current_price(symbol, portfolio, policy, timestamp, action, time_in_force, 
 
 def _make_decision(signal, portfolio, activation, policy, timestamp, *, action, quantity,
                    hypothetical_quantity, price, code, reason, time_in_force, sell_capacity=0,
-                   horizon_ceiling=0, maximum_quote_age_seconds=60.):
+                   horizon_ceiling=0, maximum_quote_age_seconds=60., fallback_policy=None, fallback_plan=None,
+                   fallback_source_binding=None):
     probability = finite(signal.calibrated_probability)
     direction = stock_direction(probability) if probability is not None and 0 <= probability <= 1 else "UNAVAILABLE"
     purpose = "DIRECTION_EXIT" if direction == "BEARISH" else "ENTRY" if direction == "BULLISH" else "HOLD"
+    if fallback_plan is not None:
+        purpose = "FALLBACK_DIRECTION_EXIT"
     prediction = {**asdict(signal), "position_purpose": purpose,
         "direction": direction, "sizing_policy": GAMEPLAN_SIZING_POLICY,
         "allocation_policy": "independent-stock-allocation-1-2-3-4-v1",
         "horizon_weight": FIXED_HORIZON_WEIGHTS[signal.primary_horizon],
         "horizon_budget_fraction": FIXED_HORIZON_WEIGHTS[signal.primary_horizon] / 10,
-        "authorized_sell_capacity": sell_capacity}
-    fingerprint = _fingerprint(policy, maximum_quote_age_seconds)
+        "authorized_sell_capacity": sell_capacity,
+        **({"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}),
+        **({"fallback_source_binding": fallback_source_binding} if fallback_source_binding is not None else {}),
+        **({"cross_horizon_fallback": dict(fallback_plan)} if fallback_plan is not None else {})}
+    fingerprint = _fingerprint(policy, maximum_quote_age_seconds, fallback_policy, fallback_source_binding)
     identifier = decision_identifier({"decided_at": timestamp.isoformat(), "symbol": signal.symbol,
         "prediction": prediction, "policy_fingerprint": fingerprint,
         "activation_checksum_sha256": activation.checksum_sha256, "decision_lane": "LIVE"})
@@ -118,7 +129,7 @@ def _make_decision(signal, portfolio, activation, policy, timestamp, *, action, 
         order_style_reason_code=f"GAMEPLAN_CURRENT_{'MIDPOINT' if midpoint else 'ASK' if action == 'BUY' else 'BID'}_LIMIT" if quantity else f"NO_ORDER_{code}",
         order_style_reason=("The limit uses the current bid/ask midpoint because the spread exceeds the working spread threshold."
                             if midpoint else "The limit uses the current ask for buys or current bid for sells, rounded to the permitted price increment.") if quantity else "No order was selected.",
-        prediction=prediction, enrichment={**_metadata(policy, maximum_quote_age_seconds), "horizon_notional_ceiling": float(horizon_ceiling),
+        prediction=prediction, enrichment={**_metadata(policy, maximum_quote_age_seconds, fallback_policy), "horizon_notional_ceiling": float(horizon_ceiling),
             "current_order_notional": float(quantity * price) if quantity else 0.},
         portfolio=_portfolio_summary(portfolio, signal.symbol), quote=asdict(quote) if quote is not None else {},
         order_payload=payload, policy_version=GAMEPLAN_SIZING_POLICY, policy_fingerprint=fingerprint,
@@ -194,6 +205,9 @@ def build_gameplan_direction_trade_decisions(
     maximum_quote_age_seconds: float = 60.,
     late_opening_date: str | None = None,
     recovered_forecast_ids: frozenset[str] = frozenset(),
+    fallback_policy: dict | None = None,
+    fallback_source_binding: dict | None = None,
+    fallback_sell_plans: Mapping[tuple[str, str], dict] | None = None,
 ) -> tuple[TradeDecision, ...]:
     """Apply saved directions using actual capital, inventory, and current quotes.
 
@@ -228,6 +242,19 @@ def build_gameplan_direction_trade_decisions(
         if key != (signal.symbol, signal.primary_horizon) or signal.primary_horizon not in FIXED_HORIZON_WEIGHTS:
             raise ValueError("Gameplan signal key differs from its stock/horizon")
     timestamp = utc(decided_at)
+    fallback_sell_plans = dict(fallback_sell_plans or {})
+    if fallback_policy is not None:
+        from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy, donor_horizons
+        fallback_policy = validate_fallback_policy(fallback_policy, timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+    if fallback_sell_plans and fallback_policy is None:
+        raise ValueError("Cross-horizon sales require the saved future policy")
+    for key, plan in fallback_sell_plans.items():
+        if (key not in signals or stock_direction(signals[key].calibrated_probability) != "BEARISH"
+                or bearish_sell_capacities.get(key, 0) != 0
+                or not isinstance(plan, dict) or not plan.get("donor_allocation_id")
+                or plan.get("donor_horizon") not in donor_horizons(key[1])
+                or type(plan.get("quantity")) is not int or plan["quantity"] <= 0):
+            raise ValueError("Fallback plans require one longer donor and zero ordinary sell capacity")
     capacity = active_policy.maximum_orders_per_wake
     sell_remaining = {symbol: _shares(max(_ZERO, _money(held) - _money(portfolio.pending_sell_shares.get(symbol, 0))), Decimal(1))
                       for symbol, held in portfolio.held_shares.items()}
@@ -247,7 +274,8 @@ def build_gameplan_direction_trade_decisions(
     def rank(key):
         probability = finite(signals[key].calibrated_probability)
         direction = stock_direction(probability) if probability is not None and 0 <= probability <= 1 else "NO_EDGE"
-        return (0 if direction == "BEARISH" else 1 if direction == "BULLISH" else 2,
+        return (0 if direction == "BEARISH" and key not in fallback_sell_plans else
+                1 if direction == "BEARISH" else 2 if direction == "BULLISH" else 3,
                 -probability if direction == "BULLISH" else 0, FIXED_HORIZON_WEIGHTS[key[1]], key[0])
 
     for key in sorted(signals, key=rank):
@@ -261,6 +289,8 @@ def build_gameplan_direction_trade_decisions(
         ceiling = _ZERO
         direction = stock_direction(signal.calibrated_probability) if ready else "UNAVAILABLE"
         action = "SELL" if direction == "BEARISH" else "BUY" if direction == "BULLISH" else "HOLD"
+        fallback_plan = fallback_sell_plans.get(key)
+        sell_capacity = fallback_plan["quantity"] if fallback_plan is not None else bearish_sell_capacities.get(key, 0)
         if not activation.active:
             code, reason = "TRADER_INACTIVE", activation.reason
         elif not ledger_ready:
@@ -281,10 +311,13 @@ def build_gameplan_direction_trade_decisions(
                 elif action == "SELL":
                     single_cap = _shares(_money(portfolio.account_equity) * _money(active_policy.maximum_single_order_equity_fraction),
                         max(price, _money(portfolio.quotes[signal.symbol].ask)))
-                    hypothetical = min(bearish_sell_capacities.get(key, 0), single_cap)
+                    hypothetical = min(sell_capacity, single_cap)
                     quantity = min(hypothetical, sell_remaining.get(signal.symbol, 0))
                     if not quantity:
                         code = "NO_AUTHORIZED_SELL_SHARES"
+                    elif fallback_plan is not None:
+                        code = "ELIGIBLE_BOUNDED_CROSS_HORIZON_FALLBACK"
+                        reason = "The saved daily fallback policy permits a bounded sale from the recorded longer-horizon owner."
                 elif budget_error:
                     code = "JOINT_PORTFOLIO_BUDGET_INVALID"
                 else:
@@ -313,8 +346,9 @@ def build_gameplan_direction_trade_decisions(
         decision = _make_decision(signal, portfolio, activation, active_policy, timestamp,
             action=action, quantity=quantity, hypothetical_quantity=hypothetical, price=price,
             code=code, reason=reason, time_in_force=time_in_force,
-            sell_capacity=bearish_sell_capacities.get(key, 0), horizon_ceiling=ceiling,
-            maximum_quote_age_seconds=maximum_quote_age_seconds)
+            sell_capacity=sell_capacity, horizon_ceiling=ceiling,
+            maximum_quote_age_seconds=maximum_quote_age_seconds,
+            fallback_policy=fallback_policy, fallback_plan=fallback_plan, fallback_source_binding=fallback_source_binding)
         if signal.prediction_id in recovered_forecast_ids:
             decision = replace(decision, prediction={**decision.prediction, "quote_recovery": True})
         results.append(decision)

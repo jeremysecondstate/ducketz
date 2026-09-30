@@ -192,6 +192,11 @@ def _plain_reason(value) -> str:
         "MODEL_NOT_PROMOTED": "Model assessment not passed",
         "SYMBOL_ALLOCATION_UNRESOLVED": "Hold — position allocation needs checking",
         "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON": "Hold — no eligible shares for this horizon",
+        "BEARISH_CROSS_HORIZON_FALLBACK": "Sell a capped longer-horizon holding",
+        "FALLBACK_OWN_OR_UNALLOCATED_INVENTORY_PROTECTED": "Hold — own or unallocated shares protected by prior use or open orders",
+        "FALLBACK_SLOT_OR_DAILY_CAP_EXHAUSTED": "Hold — no fallback quota at this entry",
+        "FALLBACK_NO_ELIGIBLE_LONGER_DONOR": "Hold — no eligible longer-horizon donor",
+        "FALLBACK_EXTERNAL_PENDING_ORDER": "Hold — pending order is outside horizon ownership",
         "HORIZON_POSITION_ALREADY_HELD": "Hold — this horizon already owns shares",
         "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE": "Hold — insufficient capacity for one share",
         "HORIZON_EXIT": "Horizon expiry",
@@ -205,6 +210,8 @@ def _plain_reason(value) -> str:
 def _plan_action(row: Mapping) -> str:
     if not row["execution_eligible"]:
         return "Outlook"
+    if row.get("direction_based_reason") == "BEARISH_CROSS_HORIZON_FALLBACK":
+        return f"Sell from {_text(row.get('fallback_donor_horizon'))} holdings — {_text(row.get('model_group'))} bearish fallback"
     if row.get("direction_based_reason") is not None:
         return _plain_reason(row["direction_based_reason"])
     quantity = _number(row.get("direction_based_trade_quantity"))
@@ -258,6 +265,15 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
             value = value.get("shares", value.get("held_shares"))
         position_rows.append((symbol, _shares(_mapping(snapshot.get("held_shares")).get(symbol)), _shares(value)))
     main += _table(["Stock", "Starting shares", "Projected closing shares"], position_rows)
+    fallback = _mapping(projection.get("cross_horizon_fallback"))
+    if fallback:
+        main += ["The frozen bearish fallback policy may trim one eligible longer horizon after normal sales. "
+                 "It shares a 50% daily symbol cap and a 50% cap per donor allocation. The 18 entry slots use "
+                 "hourly/four-hour/daily weights of 1/2/3; unused quota does not roll forward. "
+                 "Donors buying at the same clock or having pending orders stay protected.", ""]
+        main += _table(["Stock", "Fallback daily cap, shares", "Projected fallback sales, shares"],
+            [(symbol, _shares(_mapping(fallback.get("symbol_daily_caps")).get(symbol)),
+              _shares(_mapping(fallback.get("symbol_used")).get(symbol))) for symbol in symbols])
     if _number(summary.get("cash_buffer")) is not None:
         main += [f"Purchases preserve a cash buffer of {_money(summary['cash_buffer'])} throughout this projection.", ""]
     main += ["## Cash and holdings by hour", "",
@@ -279,6 +295,9 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
     events.sort(key=lambda row: pd.Timestamp(row["timestamp"]))
     event_rows = []
     for row in events:
+        attribution = _mapping(row.get("cross_horizon_fallback"))
+        reason = (f"{attribution.get('trigger_horizon')} bearish fallback from {attribution.get('donor_horizon')} holdings"
+                  if attribution else _plain_reason(row.get("reason")))
         event_rows.append((_pacific(row.get("timestamp"), required=True), row.get("symbol"), row.get("horizon", "—"),
                            f"{str(row.get('action', 'Unavailable')).upper()} {_shares(row.get('quantity'))}",
                            _cash_range(row.get("price_low"), row.get("price_high")),
@@ -286,7 +305,7 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
                            _signed_money(row.get("cash_change_low")), _signed_money(row.get("cash_change_base")),
                            _signed_money(row.get("cash_change_high")),
                            _cash_range(row.get("cash_low"), row.get("cash_high")), _shares(row.get("shares_after")),
-                           _plain_reason(row.get("reason"))))
+                           reason))
     details += _table(["Time, Pacific", "Stock", "Horizon", "Plan", "Price range", "Cash before, range", "Cash change low", "Cash change base", "Cash change high",
                        "Cash after, range", "Shares after", "Reason"], event_rows)
     assumptions = projection.get("assumptions") or []

@@ -1,7 +1,7 @@
 """Chronological, conditional stock Gameplan accounting; no broker authority.
 
 All views derive from one cash ledger. Holdings belong to separate horizon
-lots, so an hourly signal cannot spend or sell a longer horizon's shares.
+lots; only an explicit frozen fallback policy permits a bounded donor sale.
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import pandas as pd
 from ml.stock_direction_policy import stock_direction
 from ml.stock_trader.contracts import StockTraderPolicy, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy, donor_horizons, slot_quota
 
 
 VERSION = "direction-based-gameplan-cash-ledger-v1"
@@ -46,7 +47,7 @@ def _time(value: object) -> pd.Timestamp:
 
 def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                              price_path: Mapping, *, policy: StockTraderPolicy | None = None,
-                             signal_driven: bool = False
+                             signal_driven: bool = False, cross_horizon_fallback_policy: Mapping | None = None
                              ) -> tuple[pd.DataFrame, dict]:
     """Simulate saved directions with conditional fills and shared accounting.
 
@@ -70,6 +71,9 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     if len(days) != 1:
         raise ValueError("The cash ledger requires one pinned action session")
     day = next(iter(days))
+    fallback_policy = validate_fallback_policy(cross_horizon_fallback_policy, day)
+    if fallback_policy is not None and not signal_driven:
+        raise ValueError("Cross-horizon fallback requires signal-driven planning")
     times = [pd.Timestamp(f"{day} {hour:02d}:00", tz="America/Los_Angeles").tz_convert("UTC")
              for hour in range(4, 18)]
     points, unavailable = {}, []
@@ -125,38 +129,70 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     free = held.copy()
     lots = []
     pending_horizons = set()
+    pending_any_horizons = set()
+    initial_donors = {}
     owned_reserved = {symbol: ZERO for symbol in symbols}
+    owned_buy_reserved = {symbol: ZERO for symbol in symbols}
     for allocation in ownership.get("active_allocations", []):
         symbol, horizon = str(allocation["symbol"]), str(allocation["horizon"])
         if symbol not in free:
             continue
         quantity = _number(allocation["owned_shares"])
         reserved = _number(allocation.get("reserved_sell_shares", 0))
-        if _number(allocation.get("reserved_buy_shares", 0)):
+        reserved_buy = _number(allocation.get("reserved_buy_shares", 0))
+        owned_buy_reserved[symbol] += reserved_buy
+        if reserved_buy:
             pending_horizons.add((symbol, horizon))
+        if reserved or (symbol, horizon) in pending_horizons:
+            pending_any_horizons.add((symbol, horizon))
         if reserved > quantity or horizon not in FIXED_HORIZON_WEIGHTS:
             raise ValueError("Invalid active horizon allocation")
         free[symbol] -= quantity
         owned_reserved[symbol] += reserved
         if quantity:
-            lots.append({"symbol": symbol, "horizon": horizon, "quantity": quantity - reserved,
+            lot = {"symbol": symbol, "horizon": horizon, "quantity": quantity - reserved,
                          "reserved": reserved, "end": _time(allocation.get("target_end")),
-                         "forecast_id": str(allocation.get("prediction_id", "EXISTING_ALLOCATION"))})
+                         "forecast_id": str(allocation.get("prediction_id", "EXISTING_ALLOCATION"))}
+            if fallback_policy is not None:
+                identifier = allocation.get("allocation_id_sha256")
+                if (not isinstance(identifier, str) or len(identifier) != 64
+                        or any(char not in "0123456789abcdef" for char in identifier) or identifier in initial_donors):
+                    raise ValueError("Fallback planning requires unique source allocation identities")
+                lot["allocation_id_sha256"] = identifier
+                initial_donors[identifier] = {"symbol": symbol, "horizon": horizon,
+                    "initial_shares": float(quantity), "daily_cap": int(quantity / 2), "used": 0}
+            lots.append(lot)
+    unallocated_reserved = {}
     for symbol in symbols:
         if owned_reserved[symbol] > pending_sell[symbol]:
             raise ValueError("Allocated pending sells exceed broker pending sells")
-        free[symbol] -= pending_sell[symbol] - owned_reserved[symbol]
+        unallocated_reserved[symbol] = pending_sell[symbol] - owned_reserved[symbol]
+        free[symbol] -= unallocated_reserved[symbol]
         if free[symbol] < 0:
             raise ValueError("Horizon allocations and pending sales exceed held stock")
     blocked = set(ownership.get("blocked_symbols", []))
+    external_pending_buys = {symbol for symbol in symbols
+        if _number(snapshot.get("pending_buy_shares", {}).get(symbol, 0)) > owned_buy_reserved[symbol]}
+    fallback_budgets = {symbol: int(sum((_number(item["initial_shares"]) for item in initial_donors.values()
+                          if item["symbol"] == symbol and item["horizon"] in donor_horizons("1h")), ZERO) / 2)
+                        for symbol in symbols}
+    fallback_used = {symbol: 0 for symbol in symbols}
     events, hourly = [], []
     rows = {}
+    fallback_slots = set()
     batches = {timestamp: [] for timestamp in times}
     for record in records:
         row = {**record, "direction_based_trade_quantity": None, "direction_based_action": "CONTEXT",
                "direction_based_reason": "NON_ENTRY_CONTEXT", "projected_cash_after_low": None,
                "projected_cash_after_base": None, "projected_cash_after_high": None,
                "projected_shares_after": None, "projected_available_shares_after": None}
+        if fallback_policy is not None:
+            row.update(fallback_policy_version=fallback_policy["policy_version"],
+                       fallback_trigger_forecast_id=None, fallback_trigger_horizon=None,
+                       fallback_donor_allocation_id_sha256=None, fallback_donor_horizon=None,
+                       fallback_slot_quota=None, fallback_symbol_daily_cap=fallback_budgets[record["symbol"]],
+                       fallback_symbol_used_after=None, fallback_donor_daily_cap=None,
+                       fallback_donor_used_after=None)
         rows[str(record["id"])] = row
         if record["execution_eligible"]:
             timestamp = _time(record["target_window_start"])
@@ -164,6 +200,13 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 raise ValueError("Entry and exit clocks must match the action session contract")
             if record["model_group"] not in FIXED_HORIZON_WEIGHTS:
                 raise ValueError("Unknown independent horizon")
+            if fallback_policy is not None:
+                key = (record["symbol"], record["model_group"], timestamp)
+                if key in fallback_slots:
+                    raise ValueError("Fallback planning requires unique symbol entry slots")
+                fallback_slots.add(key)
+                row["fallback_slot_quota"] = slot_quota(fallback_budgets[record["symbol"]],
+                    record["model_group"], timestamp, day)
             row.update(direction_based_trade_quantity=0, direction_based_action="HOLD",
                        direction_based_reason="NEUTRAL")
             if not signal_driven and record["model_status"] != "PROMOTED":
@@ -177,7 +220,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     if unavailable:
         raise UnavailablePlanningPricePath(unavailable)
 
-    def trade(timestamp, symbol, action, quantity, reason, *, row=None, lot=None):
+    def trade(timestamp, symbol, action, quantity, reason, *, row=None, lot=None, fallback=None):
         nonlocal cash
         low, mid, high = points[symbol, timestamp]
         before_cash, before_shares = cash.copy(), held[symbol]
@@ -201,6 +244,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                  "cash_before_base": float(before_cash[1]), "cash_before_high": float(before_cash[2]),
                  "cash_low": float(cash[0]), "cash_base": float(cash[1]), "cash_high": float(cash[2]),
                  "shares_before": float(before_shares), "shares_after": float(held[symbol])}
+        if fallback is not None:
+            event["cross_horizon_fallback"] = fallback
         events.append(event)
         if row is not None:
             row.update(direction_based_trade_quantity=int(quantity) * (1 if action == "BUY" else -1),
@@ -209,6 +254,18 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     for timestamp in times:
         batch = batches[timestamp]
         candidates = [row for row in batch if row["direction_based_reason"] == "NEUTRAL"]
+        # Eligibility is evaluated before any same-clock sales. Consuming free
+        # shares in an earlier row cannot turn another row into a fallback.
+        fallback_eligible = {}
+        bullish_horizons = {(row["symbol"], row["model_group"]) for row in batch
+                            if stock_direction(row["calibrated_probability"]) == "BULLISH"}
+        if fallback_policy is not None:
+            for row in candidates:
+                symbol, horizon = row["symbol"], row["model_group"]
+                own_total = sum((lot["quantity"] + lot["reserved"] for lot in lots
+                                 if lot["symbol"] == symbol and lot["horizon"] == horizon), ZERO)
+                fallback_eligible[str(row["id"])] = (free[symbol] == 0 and own_total == 0
+                    and unallocated_reserved[symbol] == 0 and (symbol, horizon) not in pending_any_horizons)
         # Lower horizon wins a tie for an unallocated share. Other horizon lots
         # are protected. This deterministic precedence is disclosed in the plan.
         sellers = sorted((row for row in candidates if stock_direction(row["calibrated_probability"]) == "BEARISH"),
@@ -229,6 +286,64 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 lot["quantity"] -= taken
                 remaining -= taken
             trade(timestamp, symbol, "SELL", quantity, "BEARISH_SELL", row=row)
+        if fallback_policy is not None:
+            normal_selling_horizons = {(row["symbol"], row["model_group"]) for row in sellers
+                                      if row["direction_based_action"] == "SELL"}
+            for row in sellers:
+                if row["direction_based_reason"] != "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON":
+                    continue
+                symbol, horizon = row["symbol"], row["model_group"]
+                quota = slot_quota(fallback_budgets[symbol], horizon, timestamp, day)
+                row["fallback_slot_quota"] = quota
+                row["fallback_symbol_used_after"] = fallback_used[symbol]
+                if not donor_horizons(horizon):
+                    continue
+                if symbol in external_pending_buys:
+                    row["direction_based_reason"] = "FALLBACK_EXTERNAL_PENDING_ORDER"
+                    continue
+                if not fallback_eligible[str(row["id"])]:
+                    row["direction_based_reason"] = "FALLBACK_OWN_OR_UNALLOCATED_INVENTORY_PROTECTED"
+                    continue
+                if quota <= 0 or fallback_used[symbol] >= fallback_budgets[symbol]:
+                    row["direction_based_reason"] = "FALLBACK_SLOT_OR_DAILY_CAP_EXHAUSTED"
+                    continue
+                donor = None
+                for donor_horizon in donor_horizons(horizon):
+                    if ((symbol, donor_horizon) in bullish_horizons
+                            or (symbol, donor_horizon) in normal_selling_horizons
+                            or (symbol, donor_horizon) in pending_any_horizons):
+                        continue
+                    choices = sorted((lot for lot in lots if lot["symbol"] == symbol
+                        and lot["horizon"] == donor_horizon and lot["quantity"] >= 1
+                        and lot.get("allocation_id_sha256") in initial_donors), key=lambda lot: lot["allocation_id_sha256"])
+                    donor = next((lot for lot in choices if initial_donors[lot["allocation_id_sha256"]]["daily_cap"]
+                                  > initial_donors[lot["allocation_id_sha256"]]["used"]), None)
+                    if donor is not None:
+                        break
+                if donor is None:
+                    row["direction_based_reason"] = "FALLBACK_NO_ELIGIBLE_LONGER_DONOR"
+                    continue
+                donor_state = initial_donors[donor["allocation_id_sha256"]]
+                quantity = min(quota, fallback_budgets[symbol] - fallback_used[symbol],
+                               donor_state["daily_cap"] - donor_state["used"], int(donor["quantity"]))
+                fallback = {"policy_version": fallback_policy["policy_version"], "action_date": day,
+                    "trigger_forecast_id": str(row["id"]), "trigger_horizon": horizon,
+                    "donor_allocation_id_sha256": donor["allocation_id_sha256"], "donor_horizon": donor["horizon"],
+                    "donor_initial_shares": donor_state["initial_shares"],
+                    "donor_shares_before": float(donor["quantity"]), "slot_quota": quota,
+                    "symbol_daily_cap": fallback_budgets[symbol], "symbol_used_before": fallback_used[symbol],
+                    "symbol_used_after": fallback_used[symbol] + quantity,
+                    "donor_daily_cap": donor_state["daily_cap"], "donor_used_before": donor_state["used"],
+                    "donor_used_after": donor_state["used"] + quantity,
+                    "donor_shares_after": float(donor["quantity"] - quantity),
+                    "quantity": quantity, "basis": "CONDITIONAL_PLANNING_FILLS"}
+                donor["quantity"] -= quantity
+                donor_state["used"] += quantity
+                fallback_used[symbol] += quantity
+                trade(timestamp, symbol, "SELL", Decimal(quantity), "BEARISH_CROSS_HORIZON_FALLBACK", row=row, fallback=fallback)
+                row.update({"fallback_" + key: fallback[key] for key in (
+                    "trigger_forecast_id", "trigger_horizon", "donor_allocation_id_sha256", "donor_horizon",
+                    "slot_quota", "symbol_daily_cap", "symbol_used_after", "donor_daily_cap", "donor_used_after")})
         for lot in ([] if signal_driven else sorted(lots, key=lambda item: (item["end"], item["symbol"], item["horizon"], item["forecast_id"]))):
             if lot["symbol"] not in blocked and lot["end"] <= timestamp and lot["quantity"] >= 1:
                 quantity = Decimal(int(lot["quantity"]))
@@ -260,8 +375,13 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 row["direction_based_reason"] = "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE"
                 continue
             trade(timestamp, symbol, "BUY", quantity, "BULLISH_BUY", row=row)
-            lots.append({"symbol": symbol, "horizon": horizon, "quantity": quantity, "reserved": ZERO,
-                         "end": _time(row["target_window_end"]), "forecast_id": str(row["id"])})
+            existing = next((lot for lot in lots if lot["symbol"] == symbol and lot["horizon"] == horizon
+                            and lot["quantity"] + lot["reserved"] > 0), None) if fallback_policy is not None else None
+            if existing is not None:
+                existing["quantity"] += quantity
+            else:
+                lots.append({"symbol": symbol, "horizon": horizon, "quantity": quantity, "reserved": ZERO,
+                             "end": _time(row["target_window_end"]), "forecast_id": str(row["id"])})
         held_report = {symbol: float(value) for symbol, value in held.items()}
         available_report = {symbol: float(held[symbol] - pending_sell[symbol]) for symbol in symbols}
         hourly.append({"timestamp": timestamp.isoformat(), "cash_low": float(cash[0]),
@@ -277,6 +397,9 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                       for event in events if event["symbol"] == symbol), 0)
         if held[symbol] != initial_held[symbol] + signed:
             raise ValueError("Ending holdings do not reconcile to chronological events")
+        allocated = sum((lot["quantity"] + lot["reserved"] for lot in lots if lot["symbol"] == symbol), ZERO)
+        if held[symbol] != allocated + free[symbol] + unallocated_reserved[symbol]:
+            raise ValueError("Ending horizon lots and unallocated stock do not conserve shares")
     report = {"version": VERSION, "status": "COMPLETE", "events": events, "hourly": hourly,
               "starting_positions": {symbol: float(value) for symbol, value in initial_held.items()},
               "ending_positions": {symbol: float(value) for symbol, value in held.items()},
@@ -314,5 +437,23 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             "Unallocated shares may be assigned to bearish sales; another horizon's shares and pending sells remain protected.",
             "These quantities assume fills at planning estimates and available sale proceeds. Live orders use current quotes, actual cash and confirmed holdings; no fill is guaranteed.",
             "Unfilled trades leave cash and shares unchanged. Subsequent projected quantities then require recalculation.",
+        ]
+    if fallback_policy is not None:
+        report["cross_horizon_fallback_policy"] = fallback_policy
+        report["cross_horizon_fallback"] = {
+            "action_date": day, "baseline_observed_at": snapshot.get("observed_at"),
+            "basis": "SAVED_PLANNING_SNAPSHOT_CONDITIONAL_FILLS",
+            "symbol_daily_caps": fallback_budgets, "symbol_used": fallback_used,
+            "donors": initial_donors,
+            "events": sum(event["reason"] == "BEARISH_CROSS_HORIZON_FALLBACK" for event in events),
+        }
+        report["assumptions"] = [text for text in report["assumptions"]
+                                 if "another horizon's shares" not in text]
+        report["assumptions"] += [
+            "Normal bearish sales use their own horizon and unallocated shares before any fallback sale. Reserved or pending inventory cannot activate a fallback.",
+            "Only a bearish forecast with genuinely no own or unallocated inventory may trim one eligible longer-horizon allocation, nearest first; weekly forecasts have no donor.",
+            "Fallback sales share a 50% symbol daily cap based on initial longer-horizon holdings and a separate 50% cap for each initial donor allocation. Normal own-horizon sales are not charged to these caps.",
+            "The 18 fixed entry opportunities have weights 1 for hourly, 2 for four-hour and 3 for daily (24 weight units). Each receives its frozen integer quota; unused quota does not roll forward. Donors buying at that clock or having a pending order are excluded.",
+            "Caps reset next session from then-confirmed remaining holdings; there is no lifetime cap. This saved scenario does not reserve real shares or cash and does not guarantee better results.",
         ]
     return pd.DataFrame([rows[str(identifier)] for identifier in trade_rows.id]), report

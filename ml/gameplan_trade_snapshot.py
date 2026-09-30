@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_FLOOR
 from pathlib import Path
+import hashlib
 import json
 import re
 import sqlite3
@@ -224,7 +225,8 @@ def _ownership(root, symbols, identity, held, observed):
             start, end = _allocation_timestamp(item["start"]), _allocation_timestamp(item["end"])
             if start is None or end is None or utc(end) <= utc(start):
                 return _ownership_unavailable("OWNERSHIP_ALLOCATION_TIME_INVALID")
-            by_id[item["id"]] = {"symbol": item["symbol"], "horizon": item["horizon"],
+            by_id[item["id"]] = {"allocation_id_sha256": hashlib.sha256(item["id"].encode("utf-8")).hexdigest(),
+                "symbol": item["symbol"], "horizon": item["horizon"],
                 "owned_shares": 0, "reserved_buy_shares": 0, "reserved_sell_shares": 0,
                 "target_start": start, "target_end": end,
                 "status": item["status"]}

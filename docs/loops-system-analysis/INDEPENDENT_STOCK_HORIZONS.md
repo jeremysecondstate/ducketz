@@ -1,5 +1,18 @@
 # Independent stock horizons
 
+## September 30 prospective bearish fallback
+
+The user approved a 50% shared daily limit for small cross-horizon bearish
+fallback sales, for newly prepared October 1 and later sessions. See
+[the source-bound policy and weighted pacing](CROSS_HORIZON_BEARISH_FALLBACK.md).
+Own-horizon sales remain first; 1h may then draw from 4h/1d/1w, 4h from 1d/1w,
+and 1d from 1w. Weekly cannot draw from another horizon. This prospective policy
+supersedes other-horizon protection only for its bounded, verified fallback
+route; old publications, fixed sizing, and the active September 30 session
+retain their saved behavior. The 50% ceiling resets daily against actual
+remaining holdings and is not a lifetime floor. No trader is started by this
+change.
+
 September 23, 2026: fresh nightly runs opt into `--archive-history`, the verified
 XNAS daily/hourly feature history and matching minute-target prefix integration.
 The 21:05 Pacific operation targets 03:30 completion with the existing 04:00 hard

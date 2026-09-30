@@ -126,6 +126,20 @@ def _loaded_gameplan_run(root: Path, signals, sources, *, execution_ready_plan: 
     return None
 
 
+def _loaded_fallback_policy(root, run, action_date):
+    """Bind the verified future policy to this exact immutable receipt."""
+    from ml.artifacts import file_checksum
+    from ml.stock_trader.cross_horizon_fallback import read_gameplan_fallback_policy
+    policy = read_gameplan_fallback_policy(run, action_date)
+    if policy is None:
+        return None, None
+    run = Path(run).resolve()
+    if run.parent != (Path(root) / "ml/nightly-gameplan-runs").resolve():
+        raise ValueError("Fallback source is outside the immutable Gameplan directory")
+    return policy, {"source_run":run.relative_to(Path(root).resolve()).as_posix(),
+                    "source_receipt_sha256":file_checksum(run / "receipt.json")}
+
+
 def run_independent_stock_trader_once(
     datastore_root: Path, *, decided_at=None, execute: bool = False,
     session=None, policy: StockTraderPolicy | None = None,
@@ -207,6 +221,8 @@ def run_independent_stock_trader_once(
             return finish("EXECUTION_WINDOW_CLOSED", error=window.reason)
         signals = {}
         source_gameplan_run = None
+        fallback_policy = None
+        fallback_source_binding = None
         try:
             if entry_allowed:
                 signal_options = ({"execution_ready_plan": True} if sizing_policy == GAMEPLAN_SIZING_POLICY else
@@ -227,6 +243,12 @@ def run_independent_stock_trader_once(
                         action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat())
                     metadata["source_gameplan_run"] = (source_gameplan_run.relative_to(root).as_posix()
                                                        if source_gameplan_run is not None else None)
+                    if sizing_policy == GAMEPLAN_SIZING_POLICY:
+                        fallback_policy, fallback_source_binding = _loaded_fallback_policy(root, source_gameplan_run,
+                            timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+                        if fallback_policy is not None:
+                            metadata["cross_horizon_fallback_policy"] = fallback_policy
+                            metadata["fallback_source_binding"] = fallback_source_binding
         except (OSError, ValueError, RuntimeError) as exc:
             signals = {}
             metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
@@ -367,6 +389,18 @@ def run_independent_stock_trader_once(
                 qualified = {}
                 metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
                 metadata["gameplan_deployment_error"] = str(exc)
+        if fallback_policy is not None and reconciliation.ready and qualified:
+            try:
+                current_policy, current_binding = _loaded_fallback_policy(root, source_gameplan_run,
+                    timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+                if current_policy != fallback_policy or current_binding != fallback_source_binding:
+                    raise ValueError("CROSS_HORIZON_FALLBACK_SOURCE_CHANGED_DURING_CAPTURE")
+                metadata["fallback_day"] = ledger.freeze_fallback_day(
+                    action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat(),
+                    policy=fallback_policy, source_fingerprint=canonical_sha256(fallback_source_binding),
+                    snapshot_id=snapshot_id, as_of=timestamp.isoformat(), persist=execute)
+            except (OSError, ValueError, RuntimeError) as exc:
+                return finish("CROSS_HORIZON_FALLBACK_BASELINE_UNAVAILABLE", error=str(exc))
         if sizing_policy == GAMEPLAN_SIZING_POLICY:
             # A read failure or quote skip does not consume a forecast. Existing
             # allocations, including completed ones, suppress its resubmission.
@@ -407,7 +441,24 @@ def run_independent_stock_trader_once(
                 qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified),
                 bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
                 **decision_options, **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}),
-                **({"recovered_forecast_ids":frozenset(s.prediction_id for s in qualified.values())} if resume_quote_run else {}))
+                **({"recovered_forecast_ids":frozenset(s.prediction_id for s in qualified.values())} if resume_quote_run else {}),
+                fallback_policy=fallback_policy, fallback_source_binding=fallback_source_binding)
+            if fallback_policy is not None and reconciliation.ready:
+                try:
+                    fallback_plans = _direction_fallback_plans(
+                        qualified, signals, state, portfolio, decisions, ledger=ledger,
+                        policy=fallback_policy, source_fingerprint=canonical_sha256(fallback_source_binding),
+                        snapshot_id=snapshot_id, timestamp=timestamp, preview=not execute)
+                except (OSError, ValueError, RuntimeError) as exc:
+                    return finish("CROSS_HORIZON_FALLBACK_PLAN_UNAVAILABLE", error=str(exc))
+                if fallback_plans:
+                    decisions = build_gameplan_direction_trade_decisions(
+                        qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified),
+                        bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
+                        **decision_options, fallback_policy=fallback_policy, fallback_sell_plans=fallback_plans,
+                        fallback_source_binding=fallback_source_binding,
+                        **({"recovered_forecast_ids":frozenset(s.prediction_id for s in qualified.values())} if resume_quote_run else {}))
+                metadata["cross_horizon_fallback_plans"] = {f"{s}/{h}": plan for (s,h),plan in fallback_plans.items()}
         elif sizing_policy == FIXED_SIZING_POLICY:
             from ml.stock_trader.fixed_horizon_engine import build_fixed_horizon_trade_decisions
             decisions = build_fixed_horizon_trade_decisions(
@@ -472,6 +523,66 @@ def _direction_sell_capacities(signals, state, portfolio, exits):
         capacities[key] = int(own + free.get(symbol, 0))
         free[symbol] = 0
     return capacities
+
+
+def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_decisions, *,
+                              ledger, policy, source_fingerprint, snapshot_id, timestamp, preview):
+    """Select disjoint donor slices after ordinary own-horizon sales.
+
+    A zero selected order is not proof of absent stock. Recheck genuine original
+    own/unallocated inventory before asking the ledger for a bounded donor.
+    """
+    from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+    allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
+    reserved = {}
+    normal_sales = set()
+    for decision in normal_decisions:
+        if decision.action == "SELL" and decision.quantity > 0:
+            key = (decision.symbol, decision.prediction["primary_horizon"])
+            allocation = allocations.get(key)
+            if allocation is not None:
+                reserved[key] = min(decision.quantity, allocation.filled_shares)
+                normal_sales.add(key)
+    plans, draft_used = {}, {}
+    for key in sorted(signals, key=lambda item: (FIXED_HORIZON_WEIGHTS[item[1]], item[0])):
+        signal = signals[key]
+        if stock_direction(signal.calibrated_probability) != "BEARISH":
+            continue
+        symbol, horizon = key
+        own = allocations.get(key)
+        if own and (own.filled_shares or own.reserved_buy_shares or own.reserved_sell_shares):
+            continue
+        owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
+        pending_owned = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
+        external_pending = max(0, portfolio.pending_sell_shares.get(symbol, 0) - pending_owned)
+        if int(max(0, portfolio.held_shares.get(symbol, 0) - owned - external_pending)):
+            continue
+        # Even already-consumed instructions at this clock retain their donor
+        # protection; filtering them from execution must not erase their signal.
+        excluded = tuple(sorted({h for (s,h), current in all_signals.items()
+                                 if s == symbol and stock_direction(current.calibrated_probability) == "BULLISH"}
+                                | {h for s,h in normal_sales if s == symbol}))
+        plan = ledger.fallback_direction_plan(
+            symbol=symbol, horizon=horizon, forecast_id=signal.prediction_id,
+            target_start=signal.target_window_start, target_end=signal.target_window_end,
+            action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat(),
+            policy=policy, source_fingerprint=source_fingerprint, snapshot_id=snapshot_id,
+            as_of=timestamp.isoformat(), pending_sell_shares=portfolio.pending_sell_shares.get(symbol, 0),
+            pending_buy_shares=portfolio.pending_buy_shares.get(symbol, 0),
+            excluded_donor_horizons=excluded,
+            reserved_donor_shares={h:q for (s,h),q in reserved.items() if s == symbol}, preview=preview)
+        if not plan["eligible"]:
+            continue
+        quantity = min(plan["maximum_quantity"], max(0, plan["symbol_remaining"] - draft_used.get(symbol, 0)))
+        if quantity <= 0:
+            continue
+        plans[key] = {**plan, "quantity": quantity, "excluded_donor_horizons": list(excluded),
+                      "action_date": timestamp.tz_convert("America/Los_Angeles").date().isoformat(),
+                      "source_fingerprint": source_fingerprint}
+        donor_key = symbol, plan["donor_horizon"]
+        reserved[donor_key] = reserved.get(donor_key, 0) + quantity
+        draft_used[symbol] = draft_used.get(symbol, 0) + quantity
+    return plans
 
 
 def _exit_decisions(ledger, portfolio, activation, policy, timestamp, snapshot_id, time_in_force, *, gameplan_pricing=False):
@@ -591,6 +702,16 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                                 "America/Los_Angeles").date().isoformat())
                     except (OSError, ValueError, RuntimeError) as exc:
                         raise _SubmissionStopped("GAMEPLAN_DEPLOYMENT_NOT_APPROVED: " + str(exc)) from exc
+                    if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
+                        action_date = utc(decision.prediction["target_window_start"]).tz_convert("America/Los_Angeles").date().isoformat()
+                        try:
+                            current_fallback, current_binding = _loaded_fallback_policy(root, source_gameplan_run, action_date)
+                        except (OSError, ValueError, RuntimeError) as exc:
+                            raise _SubmissionStopped("CROSS_HORIZON_FALLBACK_SOURCE_UNAVAILABLE: " + str(exc)) from exc
+                        if current_fallback != decision.prediction.get("cross_horizon_fallback_policy"):
+                            raise _SubmissionStopped("CROSS_HORIZON_FALLBACK_POLICY_CHANGED")
+                        if current_binding != decision.prediction.get("fallback_source_binding"):
+                            raise _SubmissionStopped("CROSS_HORIZON_FALLBACK_SOURCE_CHANGED")
                 reason = _submission_identity_safety_reason(decision, context)
                 if reason:
                     raise _SubmissionStopped(reason)
@@ -625,7 +746,20 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 quantity=decision.quantity, limit_price=decision.limit_price, snapshot_id=snapshot_id,
                 idempotency_key=decision.decision_id, batch_id=batch_id, as_of=utc(clock()).isoformat(),
             )
-            if decision.prediction.get("position_purpose") == "DIRECTION_EXIT":
+            if decision.prediction.get("position_purpose") == "FALLBACK_DIRECTION_EXIT":
+                fallback = decision.prediction["cross_horizon_fallback"]
+                reservation = ledger.reserve_fallback_direction_exit(
+                    symbol=decision.symbol, horizon=decision.prediction["primary_horizon"],
+                    forecast_id=decision.prediction["prediction_id"],
+                    target_start=decision.prediction["target_window_start"],
+                    target_end=decision.prediction["target_window_end"],
+                    action_date=fallback["action_date"], policy=decision.prediction["cross_horizon_fallback_policy"],
+                    source_fingerprint=fallback["source_fingerprint"],
+                    donor_allocation_id=fallback["donor_allocation_id"],
+                    pending_sell_shares=decision.portfolio.get("pending_sell_shares", 0),
+                    pending_buy_shares=decision.portfolio.get("pending_buy_shares", 0),
+                    excluded_donor_horizons=fallback["excluded_donor_horizons"], **common)
+            elif decision.prediction.get("position_purpose") == "DIRECTION_EXIT":
                 reservation = ledger.reserve_direction_exit(
                     symbol=decision.symbol, horizon=decision.prediction["primary_horizon"],
                     forecast_id=decision.prediction["prediction_id"],
