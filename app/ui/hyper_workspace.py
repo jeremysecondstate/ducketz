@@ -1,7 +1,8 @@
 """Read-only H.Y.P.E.R. Paper/Powder workspace.
 
-Only the loader thread touches local artifacts. It communicates with Tk through
-a queue; neither mode owns an execution client or a runtime lifecycle control.
+Loader threads communicate with Tk through queues. The optional real-account
+collector reads public balances; neither mode owns an execution client or a
+runtime lifecycle control.
 """
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ from tkinter import ttk
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services.hyperliquid_paper_view import filter_rows
+from app.services.hyperliquid_account_history import (HyperliquidAccountHistoryService,
+    OBSERVATION_SECONDS, GAP_SECONDS, opening_equities)
 from app.services.hyperliquid_powder_view import HyperliquidWorkspaceViewService, project_powder
 from app.ui.theme import TEXT, MUTED_TEXT, DANGER, WARNING
 
@@ -24,6 +27,7 @@ PANEL = "#0c2031"
 INSET = "#0a1b2b"
 LINE = "#233e52"
 MINT = "#78edc1"
+REAL_ORANGE = "#f4a35d"
 ACCOUNTS = {"alex": ("Alex", "Short perps", "AL"),
             "jeremy": ("Jeremy", "Long perps", "JE"),
             "clearpond": ("Clear Pond", "Spot", "CP")}
@@ -256,20 +260,26 @@ class Tooltip:
 
 
 class HyperWorkspace:
-    def __init__(self, root, parent, *, service=None, auto_load=True, refresh_ms=5000):
+    def __init__(self, root, parent, *, service=None, account_history=None, auto_load=True, refresh_ms=5000):
         self.root, self.parent = root, parent
+        self.account_history = (account_history if account_history is not None else
+                                HyperliquidAccountHistoryService() if service is None else None)
         self.service = service if service is not None else HyperliquidWorkspaceViewService()
         self.snapshot = None
         self.refresh_ms = max(100, int(refresh_ms))
         self._closed = self._loading = False
         self._auto_enabled = auto_load
         self._messages = queue.Queue(maxsize=1)
+        self._real_messages = queue.Queue(maxsize=1)
+        self._real_loading = False
+        self._real_error = ""
         self._jobs = {}
         self._rows_by_id = {}
         self._selections = {}
         self._table_view = None
         self._layout_mode = None
         self._chart_points = []
+        self._real_chart_points = []
         self._detail_content = None
         self._detail_key = None
         self._inspector_forecast = None
@@ -297,6 +307,8 @@ class HyperWorkspace:
         if auto_load:
             self._schedule("initial", 1, self.refresh)
             self._schedule("auto", self.refresh_ms, self._auto_refresh)
+            if self.account_history is not None:
+                self._schedule("real-accounts", 1, self._refresh_real_accounts)
         self._render()
 
     def _styles(self):
@@ -466,12 +478,23 @@ class HyperWorkspace:
         ranges = tk.Frame(options, bg=PANEL)
         ranges.pack(side="right")
         self._radios(ranges, self.chart_range, ("1H", "24H", "7D", "All"))
+        self.chart_legend = tk.Frame(self.chart_card, bg=PANEL)
+        self.chart_legend.pack(fill="x", padx=12, pady=(0, 3))
+        label(self.chart_legend, "━  Paper", color=MINT, size=9).pack(side="left")
+        self.real_legend = label(self.chart_legend, "━  Real accounts", color=REAL_ORANGE, size=9)
+        self.real_legend.pack(side="left", padx=(18, 0))
+        self.real_status = label(self.chart_legend, "Awaiting observations", color=MUTED_TEXT, size=8)
+        self.real_status.pack(side="right")
+        Tooltip(self.real_legend, "Real account total uses the same balance valuation as Hyperliquid Duckets.\n"
+                "In P/L mode, orange shows real equity change from the mirror opening.\n"
+                "Deposits and withdrawals are included; this is not cashflow-adjusted trading P/L.\n"
+                "Observations are collected every minute while this workspace is open.")
         self.chart = tk.Canvas(self.chart_card, bg=PANEL, highlightthickness=0, height=240, width=100)
         self.chart.pack(fill="both", expand=True, padx=6)
         self.chart.bind("<Configure>", lambda _: self._draw_chart())
         self.chart.bind("<Motion>", self._chart_hover)
         self.chart.bind("<Leave>", lambda _: self.chart.delete("hover"))
-        self.chart_note = label(self.chart_card, "", size=8, color=MUTED_TEXT)
+        self.chart_note = label(self.chart_card, "", size=8, color=MUTED_TEXT, justify="left")
         self.chart_note.pack(fill="x", padx=12, pady=(2, 6))
         self.costs = label(self.chart_card, "Fees  —    ·    Funding  — · estimated", size=9, color=MUTED_TEXT)
         self.costs.pack(fill="x", padx=12, pady=(2, 10))
@@ -632,6 +655,9 @@ class HyperWorkspace:
     def _schedule(self, name, delay, callback):
         if self._closed:
             return
+        previous = self._jobs.pop(name, None)
+        if previous:
+            self.parent.after_cancel(previous)
         def run():
             self._jobs.pop(name, None)
             if not self._closed:
@@ -645,13 +671,27 @@ class HyperWorkspace:
         self.refresh_button.configure(state="disabled")
         def load():
             try:
-                result = (self.service.load_snapshot(), None)
+                snapshot = self.service.load_snapshot()
+                if self.account_history is not None:
+                    try:
+                        snapshot.real_equity_history = self.account_history.load_history(snapshot.seed)
+                        snapshot.real_accounts_error = self.account_history.error
+                    except Exception as error:
+                        snapshot.real_accounts_error = "Real history unavailable (" + type(error).__name__ + ")"
+                result = (snapshot, None)
             except Exception as exc:
                 result = (None, f"Local read failed: {exc}")
             self._messages.put(result)
         threading.Thread(target=load, name="hyper-view-read", daemon=True).start()
 
     def _poll(self):
+        try:
+            self._real_error = self._real_messages.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            self._real_loading = False
+            self.refresh()
         try:
             snapshot, error = self._messages.get_nowait()
         except queue.Empty:
@@ -669,6 +709,22 @@ class HyperWorkspace:
     def _auto_refresh(self):
         self.refresh()
         self._schedule("auto", self.refresh_ms, self._auto_refresh)
+
+    def _refresh_real_accounts(self):
+        if self._closed or self.account_history is None:
+            return
+        if not self._real_loading and self.mode.get() == "Paper":
+            self._real_loading = True
+            def collect():
+                try:
+                    self.account_history.sync()
+                    error = self.account_history.error
+                except Exception as exc:
+                    error = "Real account read unavailable (" + type(exc).__name__ + ")"
+                    self.account_history.error = error
+                self._real_messages.put(error)
+            threading.Thread(target=collect, name="hyper-real-balances", daemon=True).start()
+        self._schedule("real-accounts", OBSERVATION_SECONDS * 1000, self._refresh_real_accounts)
 
     def _destroy(self, event):
         if event.widget != self.parent or self._closed:
@@ -892,8 +948,18 @@ class HyperWorkspace:
         canvas = self.chart
         canvas.delete("all")
         self._chart_points = []
+        self._real_chart_points = []
         width, height = max(100, canvas.winfo_width()), max(100, canvas.winfo_height())
         series = self._chart_series()
+        real_series = self._real_chart_series()
+        if self.mode.get() == "Paper":
+            if not self.chart_legend.winfo_manager():
+                self.chart_legend.pack(fill="x", padx=12, pady=(0, 3), before=self.chart)
+            self.real_legend.configure(text="━  Real accounts" + (" · equity change" if self.chart_metric.get() == "P/L" else ""))
+            status, stale = self._real_chart_status()
+            self.real_status.configure(text=status, fg=WARNING if stale else MUTED_TEXT)
+        else:
+            self.chart_legend.pack_forget()
         if not series:
             powder = self.mode.get() == "Powder"
             canvas.create_text(width/2, height/2-12, text="Real performance will appear here" if powder else "No equity observations available", fill=TEXT, font=("Segoe UI", 12))
@@ -902,13 +968,15 @@ class HyperWorkspace:
             self.chart_note.configure(text=("Actual balances and fills are available below" if connected else "No real-money opening baseline") if powder else "Account filter selects the chart; asset/model filters select activity")
             return
         left, top, right, bottom = 78, 18, width-20, height-32
-        values = [point[1] for point in series]
+        values = [point[1] for point in (*series, *real_series) if point[1] is not None]
         low, high = min(values), max(values)
         if self.chart_metric.get() in ("P/L", "Drawdown"):
             low, high = min(0, low), max(0, high)
         padding = max((high-low)*.12, .001 if self.chart_metric.get() == "Drawdown" else .05)
         low, high = low-padding, high+padding
-        x0, x1 = series[0][0].timestamp(), series[-1][0].timestamp()
+        x0 = min(point[0].timestamp() for point in (*series, *real_series))
+        x1 = max(point[0].timestamp() for point in (*series, *real_series))
+        self._chart_bounds = (left, right, x0, x1)
         for i in range(5):
             value = low+(high-low)*i/4
             y = bottom-(bottom-top)*i/4
@@ -925,25 +993,116 @@ class HyperWorkspace:
             self._chart_points.append((x, y, stamp, value))
             coords.extend((x, y))
         if len(coords) >= 4:
-            canvas.create_line(*coords, fill=MINT, width=2)
+            canvas.create_line(*coords, fill=MINT, width=2, tags="paper-line")
         x, y = coords[-2:]
         canvas.create_oval(x-3, y-3, x+3, y+3, fill=TEXT, outline=MINT)
-        for index in sorted({0, len(series)//2, len(series)-1}):
-            point = self._chart_points[index]
-            canvas.create_text(point[0], bottom+18, text=local_time(point[2].isoformat()).replace(":00 PT", " PT"), fill=MUTED_TEXT, font=("Segoe UI", 8),
-                               anchor="w" if index == 0 else "e" if index == len(series)-1 else "center")
+        segment, previous = [], None
+        def draw_real_segment():
+            if len(segment) >= 4:
+                canvas.create_line(*segment, fill=REAL_ORANGE, width=2, tags="real-line")
+            elif segment:
+                x, y = segment
+                canvas.create_oval(x-2, y-2, x+2, y+2, fill=REAL_ORANGE, outline="", tags="real-line")
+        for stamp, value, row in real_series:
+            if value is None or row.get("had_gap") or (previous and (stamp-previous).total_seconds() > GAP_SECONDS):
+                draw_real_segment()
+                segment = []
+            previous = stamp
+            if value is None:
+                continue
+            x = left+(stamp.timestamp()-x0)/max(1, x1-x0)*(right-left)
+            y = bottom-(value-low)/(high-low)*(bottom-top)
+            self._real_chart_points.append((x, y, stamp, value, row))
+            segment.extend((x, y))
+        draw_real_segment()
+        if self._real_chart_points:
+            x, y, *_ = self._real_chart_points[-1]
+            canvas.create_oval(x-3, y-3, x+3, y+3, fill=REAL_ORANGE, outline=REAL_ORANGE, tags="real-line")
+        for fraction, anchor in ((0, "w"), (.5, "center"), (1, "e")):
+            stamp = datetime.fromtimestamp(x0+(x1-x0)*fraction, timezone.utc).isoformat()
+            canvas.create_text(left+(right-left)*fraction, bottom+18, text=local_time(stamp),
+                               fill=MUTED_TEXT, font=("Segoe UI", 8), anchor=anchor)
         sampled = " · sampled history" if self.snapshot.history_sampled else ""
-        self.chart_note.configure(text=f"{self.account_filter.get()} · {len(series)} observations{sampled} · hover for exact time/value")
+        note = f"{self.account_filter.get()} · {len(series)} Paper / {len(self._real_chart_points)} real observations{sampled} · hover for values"
+        if self.chart_metric.get() == "P/L":
+            note += "\nReal equity change includes deposits and withdrawals."
+        self.chart_note.configure(text=note)
+
+    def _real_chart_series(self):
+        if not self.snapshot or self.mode.get() != "Paper" or self.chart_metric.get() == "Drawdown":
+            return []
+        start = timestamp(self.snapshot.seed.get("timestamp_utc"))
+        if start is None:
+            return []
+        account = ACCOUNT_KEYS.get(self.account_filter.get(), "pooled")
+        baseline = opening_equities(self.snapshot.seed).get(account)
+        if self.chart_metric.get() == "P/L" and baseline is None:
+            return []
+        end = timestamp(self.snapshot.observed_at_utc)
+        rows = [row for row in self.snapshot.real_equity_history
+                if row.get("account") == account and timestamp(row.get("timestamp_utc"))
+                and timestamp(row["timestamp_utc"]) >= start
+                and (end is None or timestamp(row["timestamp_utc"]) <= end)]
+        if baseline is not None:
+            rows.insert(0, {"account": account, "timestamp_utc": start.isoformat(),
+                            "equity": baseline, "opening": True})
+        rows.sort(key=lambda row: timestamp(row["timestamp_utc"]))
+        series = []
+        for row in rows:
+            equity = number(row.get("equity"))
+            value = equity-baseline if equity is not None and self.chart_metric.get() == "P/L" else equity
+            series.append((timestamp(row["timestamp_utc"]), value, row))
+        hours = {"1H": 1, "24H": 24, "7D": 168}.get(self.chart_range.get())
+        if hours:
+            end = timestamp(self.snapshot.portfolio_observed_at_utc) or end
+            if end:
+                series = [point for point in series if point[0] >= end-timedelta(hours=hours)]
+        return series
+
+    def _real_chart_status(self):
+        if self.chart_metric.get() == "Drawdown":
+            return "Real comparison: P/L and Equity", False
+        if not self.snapshot:
+            return "Awaiting observations", False
+        if self.snapshot.real_accounts_error:
+            return self.snapshot.real_accounts_error, True
+        if self.chart_metric.get() == "P/L" and not self._real_chart_series():
+            return "Real opening balance unavailable", True
+        account = ACCOUNT_KEYS.get(self.account_filter.get(), "pooled")
+        rows = [row for row in self.snapshot.real_equity_history
+                if row.get("account") == account and timestamp(row.get("timestamp_utc"))]
+        if not rows:
+            return "Awaiting observations", False
+        latest = max(rows, key=lambda row: timestamp(row["timestamp_utc"]))
+        if number(latest.get("equity")) is None:
+            return "Real account observation unavailable", True
+        now = timestamp(self.snapshot.observed_at_utc)
+        age = (now-timestamp(latest["timestamp_utc"])).total_seconds() if now else None
+        stale = age is not None and age > GAP_SECONDS
+        return ("Stale · " + age_text(age) if stale else "Observed " + local_time(latest["timestamp_utc"])), stale
 
     def _chart_hover(self, event):
         self.chart.delete("hover")
         if not self._chart_points:
             return
         x, y, stamp, value = min(self._chart_points, key=lambda p: abs(p[0]-event.x))
-        text = (f"{value:.4f}%" if self.chart_metric.get() == "Drawdown" else money(value)) + "  ·  " + local_time(stamp.isoformat()) + "\n" + stamp.isoformat()
+        text = "Paper: " + (f"{value:.4f}%" if self.chart_metric.get() == "Drawdown" else money(value)) + "  ·  " + local_time(stamp.isoformat()) + "\n" + stamp.isoformat()
+        if self._real_chart_points:
+            left, right, x0, x1 = self._chart_bounds
+            cursor = x0+min(1, max(0, (event.x-left)/max(1, right-left)))*(x1-x0)
+            real = min(self._real_chart_series(), key=lambda point: abs(point[0].timestamp()-cursor))
+            if abs(real[0].timestamp()-cursor) <= GAP_SECONDS and real[1] is not None:
+                real_value, row = real[1], real[2]
+                text += "\nReal " + ("equity change" if self.chart_metric.get() == "P/L" else "equity") + ": " + money(real_value) + " · " + local_time(real[0].isoformat())
+                text += "\n" + real[0].isoformat()
+                if self.chart_metric.get() == "P/L":
+                    text += "\nReal total " + money(row.get("equity")) + " · includes deposits/withdrawals"
+            else:
+                text += "\nReal: observation unavailable near this time"
         self.chart.create_line(x, 12, x, self.chart.winfo_height()-30, fill=MUTED_TEXT, dash=(2, 3), tags="hover")
-        anchor_x = min(max(8, event.x-150), max(8, self.chart.winfo_width()-325))
-        self.chart.create_rectangle(anchor_x, 6, anchor_x+320, 47, fill=INSET, outline=LINE, tags="hover")
+        tooltip_width = min(440, self.chart.winfo_width()-16)
+        anchor_x = min(max(8, event.x-tooltip_width/2), max(8, self.chart.winfo_width()-tooltip_width-8))
+        self.chart.create_rectangle(anchor_x, 6, anchor_x+tooltip_width, 20+15*len(text.splitlines()), fill=INSET, outline=LINE, tags="hover")
         self.chart.create_text(anchor_x+8, 12, text=text, fill=TEXT, anchor="nw", font=("Segoe UI", 8), tags="hover")
 
     def _filters(self):

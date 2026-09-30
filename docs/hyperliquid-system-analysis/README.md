@@ -42,6 +42,12 @@ displays **Not connected** until actual observations exist. It never substitutes
 Paper balances. Actual P/L/funding accounting and automatic transfers remain
 planned. The existing **Hyperliquid Duckets** manual workspace shares account
 ownership locks with Powder so local manual mutations cannot race the runner.
+Paper's orange comparison curve observes the real account totals through a
+separate public balance reader once per minute while the UI is open. Its saved
+history is separate from both ledgers. The local projection used by Operations
+Watch remains read-only and makes no provider requests. The orange P/L curve is
+real equity change from the mirror opening, including deposits and withdrawals;
+see the [chart implementation](../hyperliquid-duckets-design-ui/hyper-2026-09-25/IMPLEMENTATION.md).
 
 The Paper view derives its market list, candle interval and first model horizon
 from the configured recipe. Ten-minute aggregation is not implemented; retained
@@ -49,9 +55,10 @@ five-minute candles provide a base for future frequency experiments.
 
 The entry points do not install an operating-system startup task. The separately
 configured [Paper Improvement](PAPER_IMPROVEMENT.md) task reviews results against
-the actual accounts in two-hour rounds using GPT-6 Astra / Ultra, increasing
-the next round by one hour after each verified win and retaining the duration
-after a loss/tie. It runs justified
+the actual accounts in adaptive rounds using GPT-6 Astra / Ultra, starting at
+two hours. Each verified win adds one hour to the next round; each verified loss
+subtracts two hours with a one-hour minimum. Ties and unscored outcomes keep the
+duration. It runs justified
 model experiments, archives the completed run, and verifies a fresh one-for-one
 Paper opening. Its accepted-baseline receipt coordinates with the separately
 configured [Operations Watch](OPERATIONS_WATCH.md) checks local health every

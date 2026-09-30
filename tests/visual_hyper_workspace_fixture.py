@@ -137,6 +137,8 @@ def _snapshot() -> PaperViewSnapshot:
                   "details": {"donor_cash": 6300, "donor_reserve": 400,
                               "receiver_requirement": 300}}]
     equity_history = []
+    real_equity_history = []
+    source_equity = {key: values["initial_equity"] + .02 for key, values in accounts.items()}
     peaks = {account: values["initial_equity"] for account, values in accounts.items()}
     peaks["pooled"] = pooled["initial_equity"]
     for index in range(73):
@@ -157,6 +159,16 @@ def _snapshot() -> PaperViewSnapshot:
         equity_history.append({"timestamp_utc": at, "account": "pooled", "equity": equity,
                                "total_pnl": total_at, "drawdown_fraction": equity / peaks["pooled"] - 1,
                                "fees": pooled["fees"] * progress, "funding": pooled["funding"] * progress})
+    for index in range(361):
+        progress = index / 360
+        at = (OBSERVED-timedelta(minutes=360-index)).isoformat()
+        total = 0
+        for account, values in accounts.items():
+            delta = values["total_pnl"] * .65 * progress + math.sin(index/16) * 12 * progress * (1-progress)
+            equity = source_equity[account] + delta
+            total += equity
+            real_equity_history.append({"timestamp_utc": at, "account": account, "equity": equity})
+        real_equity_history.append({"timestamp_utc": at, "account": "pooled", "equity": total})
     sources = {
         "ledger": SourceState("Ledger", "fresh", stamp, 0, 30, "Read-only consistent transaction"),
         "paper": SourceState("Paper", "fresh", stamp, 0, 30, "Paper loop running · sample"),
@@ -177,14 +189,17 @@ def _snapshot() -> PaperViewSnapshot:
     return PaperViewSnapshot(
         observed_at_utc=stamp, portfolio_observed_at_utc=stamp,
         pooled=pooled, accounts=accounts, positions=positions, decisions=decisions,
-        fills=fills, transfers=transfers, equity_history=equity_history, forecasts=forecasts,
+        fills=fills, transfers=transfers, equity_history=equity_history,
+        real_equity_history=real_equity_history, forecasts=forecasts,
         performance={"as_of_utc": forecast_stamp, "max_drawdown_fraction": min(
             row["drawdown_fraction"] for row in equity_history if row["account"] == "pooled")},
         runtime={"status": "running", "updated_at_utc": stamp, "simulated": True, "poll_seconds": 30},
         policy={"version": "sample-paper-policy", "require_qualified_forecasts": False,
                 "account_utilization": .80, "per_symbol_gross_fraction": .15,
                 "pool_gross_fraction": .60, "poll_seconds": 30},
-        seed={"timestamp_utc": equity_history[0]["timestamp_utc"]},
+        seed={"timestamp_utc": equity_history[0]["timestamp_utc"],
+              "baseline_equity": {key: values["initial_equity"] for key, values in accounts.items()},
+              "metadata": {"accounts": {key: {"source_equity": value} for key, value in source_equity.items()}}},
         sources=sources, timings=timings, warnings=(),
     )
 

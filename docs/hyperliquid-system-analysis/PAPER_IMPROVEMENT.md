@@ -1,6 +1,6 @@
 # HYPER Paper improvement cycle
 
-Operating contract: **2026-09-28 / v3**.
+Operating contract: **2026-09-29 / v4**.
 
 The user authorized an independent **Hyperliquid Paper Improvement** Scheduled
 task using **GPT-6 Astra / Ultra**, initially every three days and subsequently
@@ -41,12 +41,35 @@ unrelated changes, historical archives, and the healthy data coordinator.
 
 The former three-day schedule and 60-hour minimum are superseded. Read
 `_operations/paper-improvement-cadence.json` for the active round's committed
-experiment identity, seed, duration and due time. Start at two hours. A verified
-win increases the **next** round by exactly one hour: 2 → 3 → 4 → 5 and onward.
-A loss or tie keeps the current duration; it does not demote to two hours.
-An unavailable, late or carry-in result is explicitly unscored and cannot
-advance the ladder. Use `ml.hyperliquid_paper_cadence` to assess and advance the
-durable scorecard; do not promote by editing memory or by reading a green total.
+experiment identity, seed, duration and due time. The September 29 user rule is
+**one step forward, two steps back**: a verified **WIN adds exactly one hour**
+to the next round; a verified **LOSS subtracts exactly two hours, with a
+one-hour minimum**. Thus losses take 4 → 2 → 1 hours; a loss at one hour stays
+at one hour, and a win at one hour advances to two hours. The original ladder
+started at two hours. A **TIE keeps the duration**. An unavailable, late or
+carry-in result is explicitly **UNSCORED and keeps the duration**; it cannot
+promote or incur a loss penalty. Losses and ties still require evidence-backed
+improvement. Use `ml.hyperliquid_paper_cadence` to assess and advance the durable
+scorecard; never hand-edit history or infer an outcome from a green total.
+
+This rule applies prospectively, with the user's explicit first application to
+the already completed four-hour LOSS of `20260929-paper-round-10`. Its existing
+successor `20260929-paper-round-11` becomes two hours with the same opening seed
+`2026-09-30T05:50:48.990853548+00:00`, due
+`2026-09-30T07:50:48.990853+00:00` (September 30, 12:50:48 a.m. Pacific).
+Use the native `adopt-loss-penalty` amendment once for this authorized transition;
+retain the old assessment and consumed history as originally recorded under
+the old rule. The amendment records the new policy and revised active deadline.
+It is not another assessment, promotion, archive or mirror. Ordinary rounds
+continue through `status`, `assess` and `advance` under the recorded policy.
+
+For this one-time mid-round amendment, align the existing app task to the
+revised seed-based deadline using its supported hourly wall-clock fields:
+every two hours on even-numbered Pacific hours at 50 minutes, 49 seconds.
+The first nominal wake is September 30 at 12:50:49 a.m.; scheduler jitter still
+applies and the exact scoring deadline remains the seed plus two hours.
+Do not anchor two hours from the amendment's edit time. After the next verified
+fresh opening, restore the ordinary seed-time hourly reanchor described below.
 
 Each invocation completes at most one cycle. Before the active round's due
 time, do not tune, archive or reset it. A duplicate assessment or completed

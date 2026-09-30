@@ -102,15 +102,17 @@ def test_bootstrap_is_unscored_preserves_live_opening_and_is_idempotent(cadence)
     before=(cadence.root/'_paper/opening_snapshot.json').read_bytes()
     first=cadence.status();second=cadence.init()
     assert first==second and first['active']['carry_in_unscored'] is True
+    assert first['cadence_rule_version'] == first['active']['cadence_rule_version'] == module.CURRENT_RULE
     assert first['next_due_at_utc']=='2026-09-29T04:00:00+00:00'
     assert before==(cadence.root/'_paper/opening_snapshot.json').read_bytes()
     decision=module.classify(first['active'],comparison(first['active'],offset=3600))
     assert decision['outcome']=='carry_in_unscored' and decision['next_evaluation_hours']==2
 
 
-@pytest.mark.parametrize('duration,edge,outcome,next_hours', [(2,10,'win',3),(3,10,'win',4),
-    (3,-10,'loss',3),(4,0,'tie',4),(8,-1,'loss',8)])
-def test_monotonic_duration_ladder(cadence,duration,edge,outcome,next_hours):
+@pytest.mark.parametrize('duration,edge,outcome,next_hours', [(1,10,'win',2),(2,10,'win',3),(3,10,'win',4),
+    (4,-10,'loss',2),(3,-10,'loss',1),(2,-10,'loss',1),(1,-10,'loss',1),
+    (4,0,'tie',4),(1,0,'tie',1),(8,-1,'loss',6)])
+def test_one_step_forward_two_back_ladder(cadence,duration,edge,outcome,next_hours):
     active=scored_active(cadence,duration)
     result=module.classify(active,comparison(active,edge=edge))
     assert result['outcome']==outcome and result['next_evaluation_hours']==next_hours
@@ -230,3 +232,234 @@ def test_lock_external_path_and_invalid_duration_are_rejected(cadence,tmp_path):
         cadence.assess(tmp_path.parent/'outside.json')
     state=cadence.state();state['active']['evaluation_hours']=True;write(cadence.state_path,state)
     with pytest.raises(ValueError,match='integer'):cadence.status()
+
+
+def legacy_state(cadence):
+    state = cadence.state()
+    state.pop('cadence_rule_version')
+    state['active'].pop('cadence_rule_version')
+    state['policy'] = module.policy(module.LEGACY_RULE)
+    write(cadence.state_path, state)
+    return state
+
+
+@pytest.fixture
+def consumed_legacy_loss(cadence, monkeypatch):
+    scored_active(cadence, 4)
+    active = legacy_state(cadence)['active']
+    path = save_comparison(cadence, comparison(active, edge=-10))
+    assert cadence.assess(path)['decision']['next_evaluation_hours'] == 4
+    native_baseline(cadence.root, 'run-2', '2026-09-29T06:10:00+00:00', supersedes='run-1')
+    cadence.advance()
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T06:30:00+00:00')
+    return cadence
+
+
+def adopt(cadence, change_id='rule-change', ending='run-1', active='run-2'):
+    return cadence.adopt_loss_penalty(change_id, ending, active)
+
+
+def test_legacy_immutable_classifications_and_pending_receipts_keep_old_meaning(cadence):
+    active = scored_active(cadence, 4)
+    active.pop('cadence_rule_version')
+    assert module.classify(active, comparison(active, edge=-10))['next_evaluation_hours'] == 4
+    legacy_state(cadence)
+    path = save_comparison(cadence, comparison(active, edge=-10))
+    result = cadence.assess(path)
+    immutable = next(cadence.receipts.glob('*.json'))
+    before = immutable.read_bytes()
+    assert result == cadence.assess(path)
+    assert immutable.read_bytes() == before
+    assert result['cadence_rule_version'] == module.LEGACY_RULE
+    assert result['planned_successor_evaluation_hours'] == 4
+    native_baseline(cadence.root, 'run-2', '2026-09-29T06:10:00+00:00', supersedes='run-1')
+    result = cadence.advance()
+    assert result['current_evaluation_hours'] == 4
+    assert result['cadence_rule_version'] == module.LEGACY_RULE
+
+
+def test_adoption_preserves_history_opening_configs_and_consumed_receipts(consumed_legacy_loss, monkeypatch):
+    cadence = consumed_legacy_loss
+    before = cadence.state()
+    files = {path: path.read_bytes() for path in cadence.root.rglob('*') if path.is_file()
+             and path != cadence.state_path and not path.name.endswith('.lock')}
+    result = adopt(cadence)
+    after = cadence.state()
+    assert after['history'] == before['history']
+    assert after['active']['seed_at_utc'] == before['active']['seed_at_utc']
+    assert after['active']['immutable_opening_hashes'] == before['active']['immutable_opening_hashes']
+    assert result['current_evaluation_hours'] == 2
+    assert result['next_due_at_utc'] == '2026-09-29T08:10:00+00:00'
+    assert result['cadence_rule_version'] == module.CURRENT_RULE
+    assert all(path.read_bytes() == data for path, data in files.items())
+    receipt = review.read_json(result['policy_amendment']['path'])
+    assert receipt['before_state'] == before
+    assert receipt['after_active'] == after['active']
+    committed = cadence.state_path.read_bytes()
+    assert adopt(cadence) == result
+    assert cadence.state_path.read_bytes() == committed
+    assert len(list(cadence.amendments.glob('*.json'))) == 1
+    with pytest.raises(ValueError, match='another change ID'):
+        adopt(cadence, change_id='second-change')
+    # Successful idempotent retry is allowed after due; no new deadline is set.
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T08:15:00+00:00')
+    assert adopt(cadence) == result
+    assert cadence.state_path.read_bytes() == committed
+    assert len(after['policy_amendments']) == 1
+
+
+def test_adopted_policy_scores_and_advances_four_to_two_to_one(consumed_legacy_loss):
+    cadence = consumed_legacy_loss
+    adopt(cadence)
+    active = cadence.state()['active']
+    result = cadence.assess(save_comparison(cadence, comparison(active, edge=-10), 'new-closing.json'))
+    assert result['planned_successor_evaluation_hours'] == 1
+    native_baseline(cadence.root, 'run-3', '2026-09-29T08:20:00+00:00', supersedes='run-2')
+    result = cadence.advance()
+    assert result['current_evaluation_hours'] == 1
+    assert result['next_due_at_utc'] == '2026-09-29T09:20:00+00:00'
+    assert result['active']['cadence_rule_version'] == module.CURRENT_RULE
+    active = result['active']
+    assert module.classify(active, comparison(active, edge=-10))['next_evaluation_hours'] == 1
+    assert module.classify(active, comparison(active, edge=10))['next_evaluation_hours'] == 2
+
+
+def test_policy_amendment_receipt_first_interruption_recovers_once(consumed_legacy_loss, monkeypatch):
+    cadence = consumed_legacy_loss
+    before = cadence.state_path.read_bytes()
+    original = module.write_json
+    def interrupted(path, value, **kwargs):
+        if path == cadence.state_path:
+            raise OSError('interrupted policy state write')
+        return original(path, value, **kwargs)
+    monkeypatch.setattr(module, 'write_json', interrupted)
+    with pytest.raises(OSError, match='interrupted'):
+        adopt(cadence)
+    receipt = next(cadence.amendments.glob('*.json'))
+    immutable = receipt.read_bytes()
+    assert cadence.state_path.read_bytes() == before
+    monkeypatch.setattr(module, 'write_json', original)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T06:35:00+00:00')
+    result = adopt(cadence)
+    assert result['current_evaluation_hours'] == 2
+    assert receipt.read_bytes() == immutable
+    assert len(cadence.state()['history']) == 1
+    assert result == adopt(cadence)
+
+
+@pytest.mark.parametrize('problem', ['pending', 'maintenance', 'wrong_active', 'wrong_ending',
+    'active_provenance', 'assessment', 'comparison', 'history', 'opening', 'config', 'excluded'])
+def test_adoption_rejects_unverified_or_conflicting_inputs_without_writes(consumed_legacy_loss, problem):
+    cadence = consumed_legacy_loss
+    state = cadence.state()
+    ending, active = 'run-1', 'run-2'
+    if problem == 'pending':
+        state['pending_assessment'] = state['history'][-1]['assessment']
+        write(cadence.state_path, state)
+    elif problem == 'maintenance':
+        write(cadence.operations / 'paper-maintenance.json', {'status': 'in_progress', 'cycle_id': 'another-owner'})
+    elif problem == 'wrong_active': active = 'other'
+    elif problem == 'wrong_ending': ending = 'other'
+    elif problem == 'active_provenance':
+        state['active']['opening_equity'] += 1
+        write(cadence.state_path, state)
+    elif problem == 'assessment':
+        path = next(cadence.receipts.glob('*.json'))
+        value = review.read_json(path); value['decision']['outcome'] = 'win'; write(path, value)
+    elif problem == 'comparison':
+        path = cadence.operations / 'closing.json'
+        value = review.read_json(path); value['comparison']['common_mark_equity_edge'] = -11; write(path, value)
+    elif problem == 'history':
+        state['history'][-1]['decision']['next_evaluation_hours'] = 10
+        write(cadence.state_path, state)
+    elif problem == 'opening':
+        path = cadence.root / '_paper/opening_snapshot.json'
+        value = review.read_json(path); value['cash']['alex'] += 1; write(path, value)
+    elif problem == 'config':
+        path = cadence.operations / 'paper-improvement/run-2/accepted-source/configs/hyperliquid-models.json'
+        value = review.read_json(path); value['horizons_bars'] = [4]; write(path, value)
+    elif problem == 'excluded':
+        write(cadence.operations / 'excluded-paper-runs.json', {'excluded_runs': [{'experiment_id': 'run-1'}]})
+    before = cadence.state_path.read_bytes()
+    with pytest.raises(ValueError):
+        adopt(cadence, ending=ending, active=active)
+    assert cadence.state_path.read_bytes() == before
+    assert not cadence.amendments.exists()
+
+
+@pytest.mark.parametrize('seconds', [0, 1])
+def test_adoption_cannot_shorten_a_round_to_an_already_due_deadline(consumed_legacy_loss, monkeypatch, seconds):
+    cadence = consumed_legacy_loss
+    due = module.stamp('2026-09-29T08:10:00+00:00') + timedelta(seconds=seconds)
+    monkeypatch.setattr(module, 'utc', lambda: due.isoformat())
+    before = cadence.state_path.read_bytes()
+    with pytest.raises(ValueError, match='already due'):
+        adopt(cadence)
+    assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
+
+
+@pytest.mark.parametrize('lock_name', ['.paper-cadence.lock', '.paper-review.lock'])
+def test_policy_adoption_honors_both_owners(consumed_legacy_loss, lock_name):
+    cadence = consumed_legacy_loss
+    before = cadence.state_path.read_bytes()
+    with FileLock(str(cadence.operations / lock_name), timeout=0):
+        with pytest.raises(Timeout):
+            adopt(cadence)
+    assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
+
+
+def test_committed_policy_amendment_tampering_is_detected(consumed_legacy_loss):
+    cadence = consumed_legacy_loss
+    result = adopt(cadence)
+    path = cadence.path(result['policy_amendment']['path'])
+    receipt = review.read_json(path)
+    receipt['after_active']['evaluation_hours'] = 1
+    write(path, receipt)
+    with pytest.raises(ValueError, match='amendment changed'):
+        cadence.status()
+    with pytest.raises(ValueError, match='amendment changed'):
+        adopt(cadence)
+
+
+def test_uncommitted_policy_amendment_tampering_blocks_recovery(consumed_legacy_loss, monkeypatch):
+    cadence = consumed_legacy_loss
+    original = module.write_json
+    def interrupted(path, value, **kwargs):
+        if path == cadence.state_path: raise OSError('interrupted')
+        return original(path, value, **kwargs)
+    monkeypatch.setattr(module, 'write_json', interrupted)
+    with pytest.raises(OSError): adopt(cadence)
+    monkeypatch.setattr(module, 'write_json', original)
+    path = next(cadence.amendments.glob('*.json'))
+    receipt = review.read_json(path); receipt['after_active']['opening_equity'] += 1; write(path, receipt)
+    before = cadence.state_path.read_bytes()
+    with pytest.raises(ValueError, match='does not match'):
+        adopt(cadence)
+    assert cadence.state_path.read_bytes() == before
+
+
+def test_rehashed_false_assessment_decision_cannot_authorize_amendment(consumed_legacy_loss):
+    cadence = consumed_legacy_loss
+    state = cadence.state()
+    reference = state['history'][-1]['assessment']
+    receipt = review.read_json(reference['path'])
+    receipt['decision']['common_mark_equity_edge'] = -11
+    state['history'][-1]['decision'] = deepcopy(receipt['decision'])
+    write(cadence.path(reference['path']), receipt)
+    reference['sha256'] = module.file_digest(reference['path'])
+    write(cadence.state_path, state)
+    before = cadence.state_path.read_bytes()
+    with pytest.raises(ValueError, match='verified consumed legacy LOSS'):
+        adopt(cadence)
+    assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
+
+
+@pytest.mark.parametrize('duration', [1, 2, 4])
+def test_ties_and_unscored_results_hold_under_new_rule(cadence, duration):
+    active = scored_active(cadence, duration)
+    assert module.classify(active, comparison(active, edge=0))['next_evaluation_hours'] == duration
+    assert module.classify(active, comparison(active, offset=301))['next_evaluation_hours'] == duration
+    value = comparison(active); value['comparison']['performance_comparable'] = False
+    assert module.classify(active, value)['next_evaluation_hours'] == duration
+    active['carry_in_unscored'] = True
+    assert module.classify(active, comparison(active))['next_evaluation_hours'] == duration

@@ -1,0 +1,530 @@
+{
+  "reviewed_at": "2026-09-30T04:47:54.116048+00:00",
+  "scope": "LOCAL_READ_ONLY_CURRENT_PROVIDER_WARNING_TRIAGE",
+  "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+  "native_status": "RUNNING",
+  "native_stage": "loop_a_close_fetch",
+  "source_session": "2026-09-29",
+  "stock_source_close": "2026-09-30T00:00:00+00:00",
+  "log_snapshot": {
+    "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z\\loop_a_close_fetch.log",
+    "bytes": 111482,
+    "sha256": "a4c8584aba15c551f43721d5560f88659bd25598451b7e30562eb60d43ed35c7"
+  },
+  "warnings": [
+    {
+      "line": 138,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 140,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 142,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 144,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 148,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 150,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 152,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 156,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 160,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition"
+    },
+    {
+      "line": 167,
+      "text": "[CME/cross-asset-context] advisory recorded: C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cross-asset-context\\databento\\diagnostics\\CME_CONTEXT_cross-asset-context.parquet"
+    },
+    {
+      "line": 263,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 359,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 455,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 551,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 647,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 743,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 830,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 926,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 1022,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 1118,
+      "text": "Failed calculations: 0"
+    },
+    {
+      "line": 1214,
+      "text": "Failed calculations: 0"
+    }
+  ],
+  "cme_request_log": [
+    {
+      "line": 137,
+      "text": "[2026-09-30T04:15:42.898265Z] START provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-27T04:10:00Z..2026-09-30T04:10:00Z try=1"
+    },
+    {
+      "line": 146,
+      "text": "[2026-09-30T04:16:17.496265Z] END   provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-27T04:10:00Z..2026-09-30T04:10:00Z try=1 elapsed=34595.0ms rows=2389 op=fetched status=ok"
+    },
+    {
+      "line": 147,
+      "text": "[2026-09-30T04:16:37.586605Z] START provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-27T04:10:00Z..2026-09-30T04:10:00Z try=1"
+    },
+    {
+      "line": 154,
+      "text": "[2026-09-30T04:17:03.830630Z] END   provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-27T04:10:00Z..2026-09-30T04:10:00Z try=1 elapsed=26241.7ms rows=4079 op=fetched status=ok"
+    },
+    {
+      "line": 155,
+      "text": "[2026-09-30T04:17:32.182055Z] START provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-09-30T03:10:00Z..2026-09-30T04:10:00Z try=1"
+    },
+    {
+      "line": 158,
+      "text": "[2026-09-30T04:17:35.996792Z] END   provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-09-30T03:10:00Z..2026-09-30T04:10:00Z try=1 elapsed=3814.4ms rows=300 op=fetched status=ok"
+    },
+    {
+      "line": 159,
+      "text": "[2026-09-30T04:17:38.537727Z] START provider.request name=\"CME cme_contracts_bbo-1m\" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-09-30T03:10:00Z..2026-09-30T04:10:00Z try=1"
+    },
+    {
+      "line": 162,
+      "text": "[2026-09-30T04:17:59.367781Z] END   provider.request name=\"CME cme_contracts_bbo-1m\" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-09-30T03:10:00Z..2026-09-30T04:10:00Z try=1 elapsed=20828.2ms rows=240 op=fetched status=ok"
+    },
+    {
+      "line": 163,
+      "text": "[2026-09-30T04:18:01.383542Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-29T19:50:43.146412Z..2026-09-29T20:15:43.146412Z try=1"
+    },
+    {
+      "line": 164,
+      "text": "[2026-09-30T04:19:18.811215Z] END   provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-29T19:50:43.146412Z..2026-09-29T20:15:43.146412Z try=1 elapsed=77420.9ms rows=5000 op=fetched status=ok"
+    },
+    {
+      "line": 165,
+      "text": "[2026-09-30T04:20:09.532324Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-29T19:50:43.146412Z..2026-09-29T20:15:43.146412Z try=1"
+    },
+    {
+      "line": 166,
+      "text": "[2026-09-30T04:20:52.908371Z] END   provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-29T19:50:43.146412Z..2026-09-29T20:15:43.146412Z try=1 elapsed=43372.2ms rows=5000 op=fetched status=ok"
+    }
+  ],
+  "provider_degraded_dates": [
+    [
+      "2026-09-30",
+      "degraded"
+    ]
+  ],
+  "current_cme_captures": [
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+      "sha256": "5f1813c07eca70e7eab650acc06aadc883a6a5f2a9b30e07aa59287f08129e17",
+      "file_rows": 57410,
+      "current_native_rows": 2389,
+      "latest_fetched_at": "2026-09-30 04:16:17.458679+00:00",
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 480,
+          "first_market": "2026-09-29 19:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 230
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 480,
+          "first_market": "2026-09-29 19:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 230
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 479,
+          "first_market": "2026-09-29 19:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 229
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 480,
+          "first_market": "2026-09-29 19:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 230
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 470,
+          "first_market": "2026-09-29 19:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 240,
+          "rows_before_stock_source_close": 230
+        }
+      ],
+      "current_request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "ohlcv-1m",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-27 04:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-29 19:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 3,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "snapshot_status": "CURRENT_NATIVE_CAPTURE"
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "sha256": "ab43796db2adae807f26f70e27525ff56e01752146c05b78606c150aa5fd9963",
+      "file_rows": 5640,
+      "current_native_rows": 300,
+      "latest_fetched_at": "2026-09-30 04:17:35.984116+00:00",
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:54.081088129+00:00",
+          "last_market": "2026-09-30 04:08:52.302409433+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:48.657205877+00:00",
+          "last_market": "2026-09-30 04:08:54.324800245+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:50.101174839+00:00",
+          "last_market": "2026-09-30 04:08:59.789643491+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:54.031150711+00:00",
+          "last_market": "2026-09-30 04:08:56.928600855+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:38.703822959+00:00",
+          "last_market": "2026-09-30 04:08:34.041586511+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        }
+      ],
+      "current_request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-30 03:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-30 03:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "snapshot_status": "CURRENT_NATIVE_CAPTURE"
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "sha256": "1f2fdf8f58c60569dbbc917b7d30d7ec6bfc0ddcde2728f0228ece83a1e7608c",
+      "file_rows": 97198,
+      "current_native_rows": 5000,
+      "latest_fetched_at": "2026-09-30 04:19:18.258155+00:00",
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 290,
+          "first_market": "2026-09-29 20:14:57.872169609+00:00",
+          "last_market": "2026-09-29 20:15:27.126575353+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 290
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 1431,
+          "first_market": "2026-09-29 20:14:56.318813275+00:00",
+          "last_market": "2026-09-29 20:15:29.396147947+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 1431
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 723,
+          "first_market": "2026-09-29 20:14:56.276567563+00:00",
+          "last_market": "2026-09-29 20:15:29.355798423+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 723
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 2179,
+          "first_market": "2026-09-29 20:14:56.300610349+00:00",
+          "last_market": "2026-09-29 20:15:29.396335941+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 2179
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 377,
+          "first_market": "2026-09-29 20:14:56.317654965+00:00",
+          "last_market": "2026-09-29 20:15:29.393732037+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 377
+        }
+      ],
+      "current_request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-29 19:50:43.146412+00:00",
+          "initial_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "effective_range_start": "2026-09-29 20:14:56.271412+00:00",
+          "effective_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "request_limit_saturated": true,
+          "latest_window_shrink_count": 5,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "snapshot_status": "CURRENT_NATIVE_CAPTURE"
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+      "sha256": "7083ee286fb7da54cc79f1a0484b84640daa08b5835973b4a8a52ef0604a20a9",
+      "file_rows": 64932,
+      "current_native_rows": 4079,
+      "latest_fetched_at": "2026-09-30 04:17:03.774251+00:00",
+      "symbols": [
+        {
+          "symbol": "CLX6",
+          "rows": 1020,
+          "first_market": "2026-09-29 10:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 770
+        },
+        {
+          "symbol": "ESZ6",
+          "rows": 1020,
+          "first_market": "2026-09-29 10:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 770
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 1019,
+          "first_market": "2026-09-29 10:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 769
+        },
+        {
+          "symbol": "NQZ6",
+          "rows": 1020,
+          "first_market": "2026-09-29 10:10:00+00:00",
+          "last_market": "2026-09-30 04:09:00+00:00",
+          "rows_after_stock_source_close": 250,
+          "rows_before_stock_source_close": 770
+        }
+      ],
+      "current_request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "ohlcv-1m",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-27 04:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-29 10:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 2,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "snapshot_status": "CURRENT_NATIVE_CAPTURE"
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "sha256": "021f7db3207df813a8a718278227f17d5355e8b9ea292c9231c736ec2b30543e",
+      "file_rows": 4060,
+      "current_native_rows": 240,
+      "latest_fetched_at": "2026-09-30 04:17:59.357519+00:00",
+      "symbols": [
+        {
+          "symbol": "CLX6",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:54.081088129+00:00",
+          "last_market": "2026-09-30 04:08:52.302409433+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "ESZ6",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:48.657205877+00:00",
+          "last_market": "2026-09-30 04:08:54.324800245+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:50.101174839+00:00",
+          "last_market": "2026-09-30 04:08:59.789643491+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        },
+        {
+          "symbol": "NQZ6",
+          "rows": 60,
+          "first_market": "2026-09-30 03:09:54.031150711+00:00",
+          "last_market": "2026-09-30 04:08:56.928600855+00:00",
+          "rows_after_stock_source_close": 60,
+          "rows_before_stock_source_close": 0
+        }
+      ],
+      "current_request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-30 03:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-30 03:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "snapshot_status": "CURRENT_NATIVE_CAPTURE"
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "sha256": "4bf776660dedd52d0a82d26a7b2ff1ddb4b44b2c5d3c502935c96c0e13d78a6c",
+      "file_rows": 89148,
+      "current_native_rows": 5000,
+      "latest_fetched_at": "2026-09-30 04:20:52.331979+00:00",
+      "symbols": [
+        {
+          "symbol": "CLX6",
+          "rows": 354,
+          "first_market": "2026-09-29 20:14:57.872169609+00:00",
+          "last_market": "2026-09-29 20:15:33.597994497+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 354
+        },
+        {
+          "symbol": "ESZ6",
+          "rows": 1475,
+          "first_market": "2026-09-29 20:14:56.318813275+00:00",
+          "last_market": "2026-09-29 20:15:33.504661513+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 1475
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 817,
+          "first_market": "2026-09-29 20:14:56.276567563+00:00",
+          "last_market": "2026-09-29 20:15:32.252140713+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 817
+        },
+        {
+          "symbol": "NQZ6",
+          "rows": 2354,
+          "first_market": "2026-09-29 20:14:56.300610349+00:00",
+          "last_market": "2026-09-29 20:15:33.490108109+00:00",
+          "rows_after_stock_source_close": 0,
+          "rows_before_stock_source_close": 2354
+        }
+      ],
+      "current_request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-29 19:50:43.146412+00:00",
+          "initial_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "effective_range_start": "2026-09-29 20:14:56.271412+00:00",
+          "effective_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "request_limit_saturated": true,
+          "latest_window_shrink_count": 5,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "snapshot_status": "CURRENT_NATIVE_CAPTURE"
+    }
+  ],
+  "classification": "CURRENT_UTC_DAY_PROVIDER_DEGRADED_CAUSE_UNRESOLVED",
+  "findings": [
+    "The reduced-quality warning names September30, the UTC day still in progress at capture; the completed September29 stock action session ends at September30T00:00Z.",
+    "Native CME requests deliberately include available current-day context after that stock-source boundary. Native code caps request ends to the lesser of local now and advertised schema availability.",
+    "A current-day label and successful request do not prove degraded quality is caused only by partial-day publication. No saved dataset-condition reason snapshot was found; actual vendor quality remains explicitly degraded.",
+    "Current per-symbol records and native successful request lines establish observed delivery only, not complete minute coverage or model eligibility. Saturated MBP limits cannot establish full-range completeness.",
+    "No provider request, retry, configuration edit or gate change was made. Native completed-artifact audits remain responsible for final coverage and input eligibility."
+  ],
+  "new_failure_candidates": [],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "orders_placed": 0
+}

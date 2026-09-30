@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -156,6 +156,30 @@ def sync_hyperliquid_portfolio(
     )
 
 
+def sync_hyperliquid_balances() -> list[PortfolioSnapshot]:
+    """Public balance observations using the same valuation as Duckets.
+
+    This lightweight path omits market charts, RPC, open orders and fill history.
+    It never constructs a signing/execution client.
+    """
+    client = HyperliquidInfoClient(timeout_seconds=5)
+    all_mids = client.post_info({"type": "allMids"})
+    spot_meta = client.post_info({"type": "spotMetaAndAssetCtxs"})
+    if not isinstance(all_mids, dict) or not isinstance(spot_meta, list):
+        raise RuntimeError("Hyperliquid market valuation is unavailable.")
+    snapshots = []
+    for account in hyperliquid_accounts():
+        try:
+            snapshot = _sync_hyperliquid_portfolio_with_market(
+                account, client, all_mids=all_mids, spot_meta_and_asset_ctxs=spot_meta,
+                hype_market={}, chain_status={}, include_activity=False)
+        except Exception as error:
+            snapshot = PortfolioSnapshot(source="hyperliquid", account_label=account.label,
+                account_facts={"sync_error": type(error).__name__})
+        snapshots.append(snapshot)
+    return snapshots
+
+
 def _sync_hyperliquid_portfolio_with_market(
     account: HyperliquidAccountConfig,
     client: HyperliquidInfoClient,
@@ -164,6 +188,7 @@ def _sync_hyperliquid_portfolio_with_market(
     spot_meta_and_asset_ctxs: list[Any],
     hype_market: dict[str, object],
     chain_status: dict[str, object],
+    include_activity: bool = True,
 ) -> PortfolioSnapshot:
     wallet_address = _normalize_wallet_address(
         account.wallet_address or resolve_portfolio_wallet(HYPERLIQUID_ACCOUNT_PROFILES[account.profile_key], client)
@@ -241,7 +266,7 @@ def _sync_hyperliquid_portfolio_with_market(
     if unified:
         account_facts["available"] = spot_available.get("USDC", 0.0)
         account_facts["perp_equity"] = 0.0
-    for kind, key in (("frontendOpenOrders", "open_orders"), ("userFills", "activity")):
+    for kind, key in ((("frontendOpenOrders", "open_orders"), ("userFills", "activity")) if include_activity else ()):
         try:
             rows = client.post_info({"type": kind, "user": wallet_address})
             if not isinstance(rows, list):
@@ -255,7 +280,7 @@ def _sync_hyperliquid_portfolio_with_market(
         account_label=account.label,
         cash=cash,
         holdings=[*perp_holdings, *spot_holdings],
-        synced_at=datetime.now(),
+        synced_at=datetime.now(timezone.utc),
         reported_total_value=account_facts["equity"],
         status=f"{account.label} synced {wallet_address[:6]}...{wallet_address[-4:]}",
         account_facts=account_facts,

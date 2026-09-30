@@ -3,6 +3,22 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-09-29 — One step forward, two steps back
+
+The user changed Paper Improvement to add one hour after a verified WIN and
+subtract two hours after a verified LOSS, with a one-hour minimum. Ties and
+unscored results retain the duration. Paper Improvement v4 and Operations Watch
+v15 now describe this rule; Watch keeps its separate 30-minute schedule and
+cannot score, apply penalties, tune or reseed.
+
+The native, versioned policy amendment applies round10's completed four-hour
+LOSS once to its existing round11 successor: two hours from its unchanged
+opening, due September 30 at 12:50:48 a.m. Pacific. Historical assessments and
+consumed ladder history remain unchanged. The app schedule is aligned to that
+deadline, and normal seed-based reanchoring resumes after the next fresh mirror.
+Models, trading settings, workers and ledger were not restarted or reset.
+See the [rule-change audit](audits/2026-09-29-paper-loss-penalty.md).
+
 ## 2026-09-28 — Two-hour competitive Paper rounds
 
 Changed the existing GPT-6 Astra / Ultra improvement task to start at two-hour

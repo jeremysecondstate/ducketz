@@ -1,0 +1,135 @@
+{
+  "prepared_at": "2026-09-30T04:10:19.825988+00:00",
+  "status": "PREPARED_NOT_EXECUTED",
+  "native_original_run": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z",
+  "expected_loop_a_cycle": "20260930T040724.527431Z-pid61720",
+  "source_session": "2026-09-29",
+  "action_date": "2026-09-30",
+  "provider_exclusive_end": "2026-09-30",
+  "deadline_at": "2026-09-30T11:00:00Z",
+  "target_completion_pacific": "2026-09-30T03:30:00-07:00",
+  "baseline_publication": "C:/DATASTORE/ml/nightly-gameplan-runs/20260929T061339.593647Z",
+  "expected_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "expected_forecasts": 264,
+  "expected_intents": 264,
+  "expected_entry_forecasts": 209,
+  "expected_opra_cursors": 33,
+  "files": [
+    {
+      "name": "verify_completed_run.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_completed_run.py",
+      "original_sha256": "d48f286ac03b521caf8e03bfc00f1ccfc931f2e59cdba76fd0094104b1a0974b",
+      "adapted_sha256": "989751ef67191b86aee9fd898dfcc5b3adf0760efc6e43f886b7d7493dc4077d"
+    },
+    {
+      "name": "verify_yg_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_yg_completion.py",
+      "original_sha256": "350e710f5269b1c2cf67ab67b25061e43a79a9d20bb385af4938e656849aa4f8",
+      "adapted_sha256": "a5a6725f87f46f11beb2031804b6547a742ee49a0088f84bc9b554349b36c9be"
+    },
+    {
+      "name": "verify_archive_history.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\verify_archive_history.py",
+      "original_sha256": "f452e0084d3aeb04be13983dbbb69764d6ad5c05249737347294d8790d767bad",
+      "adapted_sha256": "e47d4d85d9a870c787e177090993162239169daf7df032dd1383de8142885c42"
+    },
+    {
+      "name": "audit_provider_completion.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit_provider_completion.py",
+      "original_sha256": "665a8593e75431b21f5749b3a01de6aab7dddac9e943df181c534dbabc2f9193",
+      "adapted_sha256": "5ef5b692e581904c55ec1cdd1572c3d7a8db2d00ad97c03fbb3d503e5711115a"
+    },
+    {
+      "name": "provider_advisories.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\provider_advisories.py",
+      "original_sha256": "65511b157758ba702f48cafcacdc6e77c0223bac1dc70b177aca416acd74fc56",
+      "adapted_sha256": "6ffa4091a6c716dbc47d9b33a1ea2aa7402c30611f096e245f35a8c7d1c6a76f"
+    },
+    {
+      "name": "review_models.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\review_models.py",
+      "original_sha256": "932c83c3dd32ba762a78c53e345226e51ea6ab4f9f2d184acdbc0a4ee75ea402",
+      "adapted_sha256": "692d051dc800ceafb114d3af8fc407d39da5b43bcd3aa261acb76634835f8956"
+    },
+    {
+      "name": "audit_environment.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit_environment.py",
+      "original_sha256": "3f9deae4f6849a2ad3c14ddd8be9d34f2a4d87859f7715158eea44839345c91d",
+      "adapted_sha256": "3f9deae4f6849a2ad3c14ddd8be9d34f2a4d87859f7715158eea44839345c91d"
+    },
+    {
+      "name": "run_final_checks.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\run_final_checks.py",
+      "original_sha256": "add863fa1f52a8d1d9c2c194adea83d1d6d6d0a77bc462b4fac3476a2b2a6239",
+      "adapted_sha256": "eb70a566d906343646d6efdcc72fa0e9bfc4b0b45c9a47a6b49973d48e18b5da"
+    },
+    {
+      "name": "validate_helpers.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\validate_helpers.py",
+      "original_sha256": "a3a0b8a9ca2916a259f6ac47d6e998c701a7b2b20924421564f8e5e7a0cf1423",
+      "adapted_sha256": "2831b5a94f83c79a1c72fdbe26a3ee2cc7b477afd7e437f3082410c81b1feda7"
+    },
+    {
+      "name": "audit_optional_pricing.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\audit_optional_pricing.py",
+      "original_sha256": "7330d7fb2fed99bb79f25dac8d3799a15b370609e50ee93f28553ea05dbeae27",
+      "adapted_sha256": "5c8d8ac5b84497dfd66ed8a9f2a16fd19d9624e59d27cea2d46667e9219494dc"
+    },
+    {
+      "name": "preliminary_directional_review.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\preliminary_directional_review.py",
+      "original_sha256": "1abcde4e58d3517f8c76f48b2ad727fdc2fc330ad721a23ce5b0602722ab4b03",
+      "adapted_sha256": "8f8b6ecbdd3e4168e31d749fcf339e66e8a70d0d4c94128685be406b2ca07779"
+    },
+    {
+      "name": "preliminary_sizing_review.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\preliminary_sizing_review.py",
+      "original_sha256": "63bc7d63f2369ac775f05b8f7a2207a45bdec34688bd528f599e6075be3e2b0b",
+      "adapted_sha256": "1fc592729d8ff3b9fb0b9c0fd0edc3d3fe41837376f35390eb26e6959255fd52"
+    },
+    {
+      "name": "watch_reviews.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\watch_reviews.py",
+      "original_sha256": "43e65c7483bc0f2112fbbfe8a50dc4d797260aca662afe2ac68b7c745e70b82e",
+      "adapted_sha256": "584894e41df538b29bbeeeaf8b3d379ac9b1af4920e159a262e9a96e3936eac2"
+    },
+    {
+      "name": "review_loop_b_weekly_prefix.py",
+      "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260929\\verification\\review_loop_b_weekly_prefix.py",
+      "original_sha256": "e87e9e88168990b7d689d033955f77fc4c6690dfe6a67cbecb8adf4d9ea4a476",
+      "adapted_sha256": "541033763ba698e9731968dcbaefd17ce96bb88a71562f223c03ef2344a4b495"
+    }
+  ],
+  "code_inventory_files": 268,
+  "changes_from_prior_environment": [
+    {
+      "path": "ml/hyperliquid_paper_policy.py",
+      "previous_sha256": "a45db62db7895ddf18037e2431484ab5d27dc4ec13f046e12aa622fe18dd3cfc",
+      "current_sha256": "8493e54dfe1e9e89a2cedcdcecbbede4abb536a815c2295bd191f171ebdf6038"
+    }
+  ],
+  "production_mutations": 0,
+  "provider_calls": 0,
+  "pipeline_starts": 0,
+  "orders_placed": 0,
+  "additional_helpers": {
+    "prepare_helpers.py": "5a654d195d54cadaf4cc75b839dd1a479e15c59b30eb9c99a9b4d065c8ca242c",
+    "resolve_provider_advisories.py": "52321a37f542f901da9bab4f2eadd3604744a1e71142b1f0e0e5f72a1cf184f3",
+    "summarize_final_audit.py": "c281e46c969614a9700ab8771a0038c80d1ceba2dbe635fa46d2451e39fd3afd"
+  },
+  "reviewed_at": "2026-09-30T04:28:42.115930+00:00",
+  "syntax_validation": "ALL_HELPERS_AST_PARSE",
+  "bounded_checks": "helper-review-tests.json"
+}

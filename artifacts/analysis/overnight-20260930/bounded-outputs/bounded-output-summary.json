@@ -1,0 +1,191 @@
+{
+  "reviewed_at": "2026-09-30T06:40:08.761494+00:00",
+  "status": "PASS_WITH_EXPLICIT_COVERAGE_LIMITATIONS",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+  "action_date": "2026-09-30",
+  "reviewed_prior_action_date": "2026-09-29",
+  "checks": {
+    "trade_plan_checks_pass": true,
+    "actuals_checks_pass": true,
+    "all_events_and_hourly_summaries_pass": true,
+    "all_actual_endpoint_and_hourly_clocks_pass": true,
+    "review_is_saved_outputs_only": true
+  },
+  "audit_check_counts": {
+    "trade_plan": 38,
+    "actuals": 36,
+    "cash_share_events": 32,
+    "hourly_summaries": 14,
+    "actual_endpoint_clocks": 528,
+    "actual_hourly_clocks": 154
+  },
+  "trade_plan_rows": {
+    "forecasts": 264,
+    "intents": 264,
+    "tradeplan": 264,
+    "price_points": 154,
+    "synthetic_planning_bars": 306
+  },
+  "cash": {
+    "buy_events": 19,
+    "cash_buffer": 2.7425,
+    "cash_change_high": 280.3,
+    "cash_change_low": -27.68,
+    "direction_buy_rows": 19,
+    "direction_sell_rows": 13,
+    "ending_cash_base": 180.87,
+    "ending_cash_high": 335.15,
+    "ending_cash_low": 27.17,
+    "sell_events": 13,
+    "starting_cash": 54.85,
+    "trade_events": 32
+  },
+  "current_synthetic_anchors": [
+    {
+      "symbol": "CROX",
+      "status": "AVAILABLE_SYNTHETIC",
+      "price": 123.0,
+      "observed_at": "2026-09-29T20:40:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 200.0,
+      "fill_count": 200,
+      "verified": true
+    },
+    {
+      "symbol": "PATH",
+      "status": "AVAILABLE_SYNTHETIC",
+      "price": 12.31,
+      "observed_at": "2026-09-29T22:14:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 106.0,
+      "fill_count": 106,
+      "verified": true
+    }
+  ],
+  "actual_forecasts": {
+    "evaluated": 163,
+    "mature_awaiting_data": 35,
+    "pending_maturity": 66,
+    "total": 264
+  },
+  "actual_prices": {
+    "COMPARED": 135,
+    "MATURE_AWAITING_DATA": 19
+  },
+  "raw_direction": {
+    "correct": 84,
+    "evaluable": 163,
+    "accuracy": 0.5153374233128835,
+    "evaluated_neutral_excluded": 0,
+    "pending_or_missing_excluded": 101,
+    "saved_direction_policy_versions": [
+      "stock-direction-50-v2"
+    ],
+    "interpretation": "Raw observed price direction under the frozen publication; includes evaluated opening-gap research, not broker fills or realized P/L."
+  },
+  "price_range_result": {
+    "in_range": 17,
+    "compared": 135,
+    "missing_excluded": 19
+  },
+  "mature_missing_forecasts_by_symbol": {
+    "COST": 5,
+    "CROX": 11,
+    "GOOG": 2,
+    "IONQ": 1,
+    "PATH": 8,
+    "TWST": 8
+  },
+  "missing_clock_prices_by_symbol": {
+    "COST": [
+      "06:00",
+      "14:00"
+    ],
+    "CROX": [
+      "04:00",
+      "05:00",
+      "06:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00"
+    ],
+    "PATH": [
+      "05:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00"
+    ],
+    "TWST": [
+      "05:00",
+      "06:00",
+      "14:00",
+      "15:00",
+      "16:00"
+    ]
+  },
+  "pending_route_counts": {
+    "4h@16:00": 11,
+    "1d@D+2": 11,
+    "1d@D+3": 11,
+    "1d@D+4": 11,
+    "1d@D+5": 11,
+    "1w@D+5": 11
+  },
+  "actual_source_gameplan_published_at": "2026-09-29T06:23:01.500161+00:00",
+  "actual_source_trade_plan_completed_at": "2026-09-29T06:28:25.474923+00:00",
+  "saved_policy_note": "Audits the current documented YG 50-percent direction policy, signal-driven holding and v3/240-minute sparse-session planning policy. These are not the older 54/46 thresholds, fixed expiry or v2/15-minute current-anchor policy quoted in the automation history.",
+  "limitations": [
+    "Actual outcomes preserve 35 mature forecasts without an eligible observation and 66 future forecasts. The 19 missing hourly prices stay null; verified acquisition coverage does not prove a boundary trade or absence of trading.",
+    "CROX 200-minute and PATH 106-minute carries are explicit planning assumptions under the saved v3/240-minute policy, with original timestamps retained. They are not prices for training, evaluation, actuals or live quote validation.",
+    "Cash and shares reflect a hypothetical sequence of fills. Broker capacity is separate from literal cash; no-fill baseline preserved. No realized P/L or actual fills are inferred.",
+    "Ownership evidence compares saved planning holdings with the saved post-reconciliation baseline. The root preservation audit independently checks operational ledger tables and controls.",
+    "Raw source bytes, model/cohort reconstruction and actual endpoint selection from archives are intentionally delegated to the main final audit."
+  ],
+  "evidence": [
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\native_gate.py",
+      "size": 3142,
+      "sha256": "0d2b2ca21335861af45a2a071ffb9a1bb16a78545263dfc5f43c01b2a3820ce4"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review_trade_plan.py",
+      "size": 18930,
+      "sha256": "96530bbb53a80b5382c050217495bc3cb57f371426ef867495f6b38a43c27fd7"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review_actuals.py",
+      "size": 18588,
+      "sha256": "ff4067ace42e4c9a85f30b56abdbbe19d2d435e8831d18d762978bddd9486264"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\final-output-review.json",
+      "size": 16025,
+      "sha256": "99accfdf8e3d305f133ab4e6dd075e566b845745bdb47cb68a66dc629eb41e14"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\actuals-coverage-review.json",
+      "size": 196738,
+      "sha256": "8f8b3763ee2287484b6f72e8d14fbc6f40a3f9fc253cb03edf8f20ada91efd32"
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z\\stage-report.json",
+      "size": 8848,
+      "sha256": "b079e23a7baea32f6cc2f6d637451e95b9fbcfee3c168315bd19146868bfa302"
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z\\receipt.json",
+      "size": 1718,
+      "sha256": "3edd3cdbceae80a7fdd362fd78da504425ba95911a91fb402a1b22eb70ca886c"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\preflight\\post-reconciliation-baseline.json",
+      "size": 830247,
+      "sha256": "25e2bb1f4b6882239dfb6048c0c040215a2b4008d8f7ac317c9a6a723267fcb6"
+    }
+  ],
+  "production_writes": 0,
+  "broker_calls": 0,
+  "provider_calls": 0
+}

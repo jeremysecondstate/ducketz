@@ -20,6 +20,8 @@ from filelock import FileLock
 from ml.hyperliquid_paper_review import assert_not_excluded, read_json, safe_path, seed_info, write_json
 
 VERSION = 1
+LEGACY_RULE = "win-plus-one-hold-v1"
+CURRENT_RULE = "win-plus-one-loss-minus-two-floor-one-v2"
 LATE_SECONDS = 300
 ACCOUNTS = {"alex", "jeremy", "clearpond"}
 IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}")
@@ -45,9 +47,38 @@ def number(value):
 
 
 def hours(value):
-    if type(value) is not int or value < 2:
-        raise ValueError("Experiment duration must be an integer of at least two hours")
+    if type(value) is not int or value < 1:
+        raise ValueError("Experiment duration must be an integer of at least one hour")
     return value
+
+
+def rule_version(value):
+    version = value.get("cadence_rule_version", LEGACY_RULE)
+    if version not in (LEGACY_RULE, CURRENT_RULE):
+        raise ValueError("Unsupported cadence rule version")
+    return version
+
+
+def policy(version):
+    if version == LEGACY_RULE:
+        return {"on_win": "add_one_hour", "on_loss_tie_or_unscored": "retain_current_hours",
+                "late_allowance_seconds": LATE_SECONDS}
+    if version != CURRENT_RULE:
+        raise ValueError("Unsupported cadence rule version")
+    return {"on_win": "add_one_hour", "on_loss": "subtract_two_hours_floor_one",
+            "on_tie_or_unscored": "retain_current_hours", "minimum_evaluation_hours": 1,
+            "late_allowance_seconds": LATE_SECONDS}
+
+
+def next_hours(duration, outcome, version):
+    duration = hours(duration)
+    if version not in (LEGACY_RULE, CURRENT_RULE):
+        raise ValueError("Unsupported cadence rule version")
+    if outcome == "win":
+        return duration + 1
+    if outcome == "loss" and version == CURRENT_RULE:
+        return max(1, duration - 2)
+    return duration
 
 
 def digest(value):
@@ -63,6 +94,8 @@ def validate_active(active):
     if not isinstance(active, dict) or not isinstance(active.get("experiment_id"), str) or not IDENTIFIER.fullmatch(active["experiment_id"]):
         raise ValueError("Invalid active experiment identity")
     duration = hours(active.get("evaluation_hours"))
+    if rule_version(active) == LEGACY_RULE and duration < 2:
+        raise ValueError("Legacy cadence requires at least two hours")
     if type(active.get("carry_in_unscored")) is not bool:
         raise ValueError("Carry-in status must be a strict boolean")
     if stamp(active["due_at_utc"]) != stamp(active["seed_at_utc"]) + timedelta(hours=duration):
@@ -149,7 +182,7 @@ def classify(active, comparison):
             raise ValueError("Native winning flag and common-mark arithmetic disagree")
         outcome = "win" if edge > 0 and excess > 0 else "tie" if edge == 0 else "loss"
         return {**result, "outcome": outcome, "winning": outcome == "win",
-                "next_evaluation_hours": duration + 1 if outcome == "win" else duration,
+                "next_evaluation_hours": next_hours(duration, outcome, rule_version(active)),
                 "reason": "verified_common_mark_account_comparison",
                 "common_mark_equity_edge": edge, "excess_return_fraction": excess}
     except (KeyError, TypeError, ValueError, OverflowError) as error:
@@ -164,6 +197,7 @@ class Cadence:
         self.operations = self.path(self.root / "_operations")
         self.state_path = self.path(self.operations / "paper-improvement-cadence.json")
         self.receipts = self.path(self.operations / "paper-improvement-cadence" / "assessments")
+        self.amendments = self.path(self.operations / "paper-improvement-cadence" / "policy-amendments")
 
     def path(self, path):
         path = safe_path(path)
@@ -181,8 +215,13 @@ class Cadence:
         if type(value.get("schema_version")) is not int or value["schema_version"] != VERSION:
             raise ValueError("Unsupported cadence state version")
         validate_active(value["active"])
+        if rule_version(value) != rule_version(value["active"]) or value.get("policy") != policy(rule_version(value)):
+            raise ValueError("State, active experiment and cadence policy disagree")
         if hours(value.get("current_evaluation_hours")) != value["active"]["evaluation_hours"]:
             raise ValueError("Cadence duration and active experiment disagree")
+        for amendment in value.get("policy_amendments", []):
+            if file_digest(self.path(amendment["path"])) != amendment["sha256"]:
+                raise ValueError("Committed policy amendment changed")
         return value
 
     def baseline(self):
@@ -224,9 +263,9 @@ class Cadence:
                         "horizons_bars": recipe["hyperliquid-models.json"]["horizons_bars"],
                         "paper_policy_id": record["opening_policy_id"]}, opening["public_owner_sha256"]
 
-    def active(self, record, recipe, owners, duration, *, carry_in):
+    def active(self, record, recipe, owners, duration, *, carry_in, version=CURRENT_RULE):
         duration = hours(duration)
-        return {"experiment_id": record["experiment_id"], "seed_at_utc": record["seed_at_utc"],
+        active = {"experiment_id": record["experiment_id"], "seed_at_utc": record["seed_at_utc"],
                 "experiment_sha256": file_digest(self.path(self.root / "_paper/experiment.json")),
                 "evaluation_hours": duration,
                 "due_at_utc": (stamp(record["seed_at_utc"]) + timedelta(hours=duration)).isoformat(),
@@ -234,6 +273,11 @@ class Cadence:
                 "immutable_opening_hashes": record["immutable_opening_hashes"],
                 "public_owner_sha256": owners, "recipe": recipe,
                 "baseline_evidence_directory": record["evidence_directory"]}
+        # Missing version means legacy in immutable historical receipts.
+        if version != LEGACY_RULE:
+            active["cadence_rule_version"] = version
+        validate_active(active)
+        return active
 
     def status(self):
         state = self.state()
@@ -244,8 +288,10 @@ class Cadence:
             if file_digest(receipt_path) != pending["sha256"]:
                 raise ValueError("Pending assessment changed")
             planned_hours = hours(read_json(receipt_path)["decision"]["next_evaluation_hours"])
-        return {"state_path": str(self.state_path), "current_evaluation_hours": state["current_evaluation_hours"],
+        return {"state_path": str(self.state_path), "cadence_rule_version": rule_version(state),
+                "current_evaluation_hours": state["current_evaluation_hours"],
                 "active": state["active"], "pending_assessment": state.get("pending_assessment"),
+                "policy_amendments": state.get("policy_amendments", []),
                 "next_due_at_utc": state["active"]["due_at_utc"],
                 "planned_successor_evaluation_hours": planned_hours,
                 "schedule_reanchor_deadline_at_utc": (stamp(state["active"]["seed_at_utc"]) + timedelta(seconds=180)).isoformat(),
@@ -260,8 +306,7 @@ class Cadence:
                     raise ValueError("Existing cadence belongs to another run; use advance after its assessment")
                 return self.status()
             value = {"schema_version": VERSION, "initialized_at_utc": utc(),
-                     "policy": {"on_win": "add_one_hour", "on_loss_tie_or_unscored": "retain_current_hours",
-                                "late_allowance_seconds": LATE_SECONDS},
+                     "cadence_rule_version": CURRENT_RULE, "policy": policy(CURRENT_RULE),
                      "current_evaluation_hours": 2,
                      "active": self.active(record, recipe, owners, 2, carry_in=True),
                      "pending_assessment": None, "history": []}
@@ -321,7 +366,9 @@ class Cadence:
             if stamp(record["seed_at_utc"]) <= stamp(state["active"]["seed_at_utc"]):
                 raise ValueError("Replacement opening must be newer than the ending experiment")
             duration = hours(receipt["decision"]["next_evaluation_hours"])
-            active = self.active(record, recipe, owners, duration, carry_in=False)
+            if classify(receipt["ending_state"], read_json(self.path(receipt["comparison_path"]))) != receipt["decision"]:
+                raise ValueError("Assessment decision does not match its committed rule and comparison")
+            active = self.active(record, recipe, owners, duration, carry_in=False, version=rule_version(state))
             state["history"].append({"ending_experiment_id": ending_id,
                                      "successor_experiment_id": active["experiment_id"],
                                      "assessment": pending, "decision": receipt["decision"], "advanced_at_utc": utc()})
@@ -329,17 +376,119 @@ class Cadence:
             write_json(self.state_path, state)
             return self.status()
 
+    def adopt_loss_penalty(self, change_id, expected_ending_id, expected_active_id):
+        """Apply the latest consumed legacy loss once, retaining its original score.
+
+        This explicit policy amendment shortens the existing accepted successor;
+        it never creates an experiment, changes workers, or edits old receipts.
+        A receipt-first interrupted commit is recovered using the same change ID.
+        """
+        if any(not isinstance(value, str) or not IDENTIFIER.fullmatch(value)
+               for value in (change_id, expected_ending_id, expected_active_id)):
+            raise ValueError("Valid change, ending and active identities are required")
+        with self.lock(), FileLock(str(self.path(self.operations / ".paper-review.lock")), timeout=0):
+            state = self.state()
+            if state.get("pending_assessment") is not None:
+                raise ValueError("Cannot amend a round with a pending assessment")
+            record, recipe, owners = self.baseline()
+            if (state["active"]["experiment_id"] != expected_active_id
+                    or record["experiment_id"] != expected_active_id
+                    or record.get("superseded_experiment_id") != expected_ending_id):
+                raise ValueError("Expected identities do not match the accepted successor")
+            expected_active = self.active(record, recipe, owners, state["current_evaluation_hours"],
+                                          carry_in=False, version=rule_version(state))
+            if state["active"] != expected_active:
+                raise ValueError("Active cadence differs from the accepted baseline")
+            if not state.get("history"):
+                raise ValueError("A consumed ending assessment is required")
+            latest = state["history"][-1]
+            if (latest["ending_experiment_id"] != expected_ending_id
+                    or latest["successor_experiment_id"] != expected_active_id):
+                raise ValueError("Latest consumed assessment has different identities")
+            assert_not_excluded(self.root, {"experiment_id": expected_ending_id})
+            assessed_path = self.path(latest["assessment"]["path"])
+            if file_digest(assessed_path) != latest["assessment"]["sha256"]:
+                raise ValueError("Consumed assessment changed")
+            assessed = read_json(assessed_path)
+            ending = assessed["ending_state"]
+            if (ending["experiment_id"] != expected_ending_id
+                    or assessed["ending_state_sha256"] != digest(ending)
+                    or latest["decision"] != assessed["decision"]):
+                raise ValueError("Consumed assessment does not match retained history")
+            comparison_path = self.path(assessed["comparison_path"])
+            if file_digest(comparison_path) != assessed["comparison_sha256"]:
+                raise ValueError("Assessed comparison changed")
+            if (rule_version(ending) != LEGACY_RULE
+                    or classify(ending, read_json(comparison_path)) != assessed["decision"]
+                    or assessed["decision"]["outcome"] != "loss"):
+                raise ValueError("Amendment requires a verified consumed legacy LOSS")
+            receipt_path = self.path(self.amendments / (change_id + ".json"))
+            committed = state.get("policy_amendments", [])
+            if rule_version(state) == CURRENT_RULE:
+                if len(committed) != 1 or committed[0]["path"] != str(receipt_path):
+                    raise ValueError("Loss penalty was already adopted with another change ID")
+                receipt = read_json(receipt_path)
+                expected_after = deepcopy(receipt["before_state"])
+                expected_after.update(active=receipt["after_active"],
+                                      current_evaluation_hours=receipt["after_active"]["evaluation_hours"],
+                                      cadence_rule_version=CURRENT_RULE, policy=policy(CURRENT_RULE),
+                                      policy_amendments=committed)
+                if (receipt["change_id"] != change_id or receipt["ending_experiment_id"] != expected_ending_id
+                        or receipt["active_experiment_id"] != expected_active_id or expected_after != state):
+                    raise ValueError("Committed amendment does not match the active state")
+                return {"policy_amendment": committed[0], **self.status()}
+            if committed:
+                raise ValueError("Legacy state has unexpected policy amendments")
+            if state["current_evaluation_hours"] != assessed["decision"]["next_evaluation_hours"]:
+                raise ValueError("Current duration differs from the consumed legacy decision")
+            duration = next_hours(ending["evaluation_hours"], "loss", CURRENT_RULE)
+            active = self.active(record, recipe, owners, duration, carry_in=False, version=CURRENT_RULE)
+            now = utc()
+            if stamp(now) >= stamp(active["due_at_utc"]):
+                raise ValueError("Shortened deadline is already due; cannot amend retrospectively")
+            receipt = {"schema_version": VERSION, "change_id": change_id,
+                       "ending_experiment_id": expected_ending_id, "active_experiment_id": expected_active_id,
+                       "from_rule_version": LEGACY_RULE, "to_rule_version": CURRENT_RULE,
+                       "amended_at_utc": now, "reason": "user_authorized_latest_loss_penalty",
+                       "consumed_assessment": deepcopy(latest["assessment"]),
+                       "comparison_path": str(comparison_path), "comparison_sha256": assessed["comparison_sha256"],
+                       "before_state": deepcopy(state), "before_state_sha256": file_digest(self.state_path),
+                       "after_active": active}
+            self.amendments.mkdir(parents=True, exist_ok=True)
+            if receipt_path.exists():
+                retained = read_json(receipt_path)
+                receipt["amended_at_utc"] = retained.get("amended_at_utc")
+                if (retained != receipt or stamp(receipt["amended_at_utc"]) > stamp(now)
+                        or stamp(receipt["amended_at_utc"]) >= stamp(active["due_at_utc"])):
+                    raise ValueError("Existing policy amendment does not match this transition")
+            else:
+                write_json(receipt_path, receipt, exclusive=True)
+            reference = {"path": str(receipt_path), "sha256": file_digest(receipt_path)}
+            state.update(active=active, current_evaluation_hours=duration,
+                         cadence_rule_version=CURRENT_RULE, policy=policy(CURRENT_RULE),
+                         policy_amendments=[reference])
+            write_json(self.state_path, state)
+            return {"policy_amendment": reference, **self.status()}
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init", "status", "assess", "advance"))
+    parser.add_argument("command", choices=("init", "status", "assess", "advance", "adopt-loss-penalty"))
     parser.add_argument("--root", type=Path, default=Path("C:/DATASTORE/hyperliquid"))
     parser.add_argument("--comparison", type=Path)
+    parser.add_argument("--change-id")
+    parser.add_argument("--expected-ending-id")
+    parser.add_argument("--expected-active-id")
     args = parser.parse_args(argv)
     if args.command == "assess" and args.comparison is None:
         parser.error("assess requires --comparison")
     cadence = Cadence(args.root)
-    result = cadence.assess(args.comparison) if args.command == "assess" else getattr(cadence, args.command)()
+    if args.command == "adopt-loss-penalty":
+        if not all((args.change_id, args.expected_ending_id, args.expected_active_id)):
+            parser.error("adopt-loss-penalty requires --change-id, --expected-ending-id and --expected-active-id")
+        result = cadence.adopt_loss_penalty(args.change_id, args.expected_ending_id, args.expected_active_id)
+    else:
+        result = cadence.assess(args.comparison) if args.command == "assess" else getattr(cadence, args.command)()
     print(json.dumps(result, indent=2, allow_nan=False))
     return 0
 

@@ -1,0 +1,172 @@
+{
+  "reviewed_at": "2026-09-30T06:58:53.489610+00:00",
+  "status": "PASS",
+  "scope": "SAVED_REPORTS_EVIDENCE_HASHES_LINKS_AND_SUMMARY_ARITHMETIC_ONLY",
+  "checks": {
+    "final_external_evidence_sizes_and_hashes": true,
+    "bounded_evidence_sizes_and_hashes": true,
+    "native_complete_eight_stages_no_resume": true,
+    "final_source_action_deadline": true,
+    "reported_pacific_completion_clock": true,
+    "twelve_sections_verified": true,
+    "seven_audit_commands_passed": true,
+    "zero_overnight_orders": true,
+    "expected_current_rows": true,
+    "all_promoted_v2_with_explicit_baseline_limits": true,
+    "only_four_hour_beats_both": true,
+    "no_future_accuracy_claim": true,
+    "all_sizing_fitted_zero_qualified": true,
+    "sizing_failure_inventory": true,
+    "sizing_failures_fully_described": true,
+    "archive_inventory_counts": true,
+    "current_probabilities_264_zero_error": true,
+    "no_prefix_acquisition_and_cursor_preservation": true,
+    "eleven_zero_cost_minute_acquisitions": true,
+    "opra_counts_zero_cost_and_byte_estimates": true,
+    "loop_b_model_and_sample_counts_saved": true,
+    "loop_b_remaining_week_counts": true,
+    "cash_event_arithmetic": true,
+    "cash_summary_values": true,
+    "synthetic_anchor_details": true,
+    "synthetic_observation_clocks": true,
+    "current_saved_policy_distinction_disclosed": true,
+    "conditional_fill_and_no_realized_pl_claim": true,
+    "actuals_forecast_totals": true,
+    "raw_direction_accuracy_math": true,
+    "actual_price_totals": true,
+    "mature_missing_symbol_counts": true,
+    "cumulative_coverage_totals": true,
+    "preservation_ten_checks": true,
+    "authority_twenty_nine_checks": true,
+    "reconciliation_756_and_42_checks": true,
+    "raw_decode_and_cursor_hash_limits_disclosed": true,
+    "unresolved_vendor_quality_disclosed": true,
+    "supervision_held_not_claimed_released": true,
+    "metric_table_1h": true,
+    "metric_table_4h": true,
+    "metric_table_1d": true,
+    "metric_table_1w": true,
+    "cohort_table_1d": true,
+    "cohort_table_1h": true,
+    "cohort_table_1w": true,
+    "cohort_table_4h": true,
+    "all_summary_and_bounded_links_exist_absolute": true
+  },
+  "issues": [],
+  "links": [
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/DATASTORE/ml/gameplan-trade-plan-runs/20260930T062633.629638Z/Gameplan.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/DATASTORE/ml/gameplan-actuals-review-runs/20260930T063012.679198Z/Gameplan-results.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/audit-findings.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z/stage-report.json",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/model-review.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/provider-warning/review.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/bounded-outputs/review.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z/operator-notes.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/final-preservation.json",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/cadence-isolation-peer-review.json",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/bounded-outputs/final-output-review.json",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/bounded-outputs/actuals-coverage-review.json",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review.md",
+      "target": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/bounded-outputs/bounded-output-summary.json",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review.md",
+      "target": "C:/DATASTORE/ml/gameplan-trade-plan-runs/20260930T062633.629638Z/Gameplan.md",
+      "exists": true,
+      "absolute": true
+    },
+    {
+      "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\review.md",
+      "target": "C:/DATASTORE/ml/gameplan-actuals-review-runs/20260930T063012.679198Z/Gameplan-results.md",
+      "exists": true,
+      "absolute": true
+    }
+  ],
+  "reviewed_summary": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\completion-summary.md",
+    "sha256": "2cf0936d7d7a964b0fb92b10dcd08d83a0a386f64422f6a7a7a8b19585cc41f2",
+    "phase": "PRE_CLOSURE_REVIEWED_VERSION"
+  },
+  "reviewed_final_verification": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\final-verification.json",
+    "sha256": "2f679becb4f737bc1f189258a1c707d05b4bb81f7da85f905049e58f2ad30fce",
+    "phase": "PRE_CLOSURE_REVIEWED_VERSION"
+  },
+  "bounded_review": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\bounded-outputs\\bounded-output-summary.json",
+    "sha256": "65d1f6f22b25e982a7c4ae35d78aa9ed1ac7d7ffc8af44d8c72f92f2bb0fb8b6"
+  },
+  "quality_interpretation": "All four directional groups satisfy explicit v2 tolerances; only4h beats both baselines. Sizing remains fitted with zero qualified scopes. No predictive improvement, observed-price invention or realized-P/L claim found.",
+  "supervision_closure": "Intentionally pending; subsequent closure append needs its own evidence/hash refresh.",
+  "self_reference_handling": "Only this peer report is excluded from checking its own final-index entry to avoid circular hashes. Root may bind the final peer output when appending closure; reviewed summary/index hashes identify the preclosure versions.",
+  "notes": [
+    "Sizing failure prose now explicitly lists all four return-MSE, daily/weekly Brier/log-loss, and weekly adverse-MSE failures. Initial peer diagnostic retained: expected summary-hash drift while the reviewed prose was edited, resolved by refreshing only the evidence index."
+  ],
+  "production_writes": 0,
+  "provider_calls": 0,
+  "broker_calls": 0,
+  "heavy_audits_repeated": 0
+}

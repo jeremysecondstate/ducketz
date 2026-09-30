@@ -43,6 +43,8 @@ class PaperViewSnapshot:
     fills: list[dict] = field(default_factory=list)
     transfers: list[dict] = field(default_factory=list)
     equity_history: list[dict] = field(default_factory=list)
+    real_equity_history: list[dict] = field(default_factory=list)
+    real_accounts_error: str = ""
     forecasts: list[dict] = field(default_factory=list)
     timings: list[dict] = field(default_factory=list)
     performance: dict = field(default_factory=dict)

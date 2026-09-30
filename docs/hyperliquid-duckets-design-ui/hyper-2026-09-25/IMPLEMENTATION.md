@@ -34,6 +34,28 @@ pause, reseed, policy-edit, order or transfer controls.
 
 ## Included behavior
 
+**Real-account chart comparison, September 29, 2026:** Paper's chart overlays an
+orange real-account curve beside the mint Paper curve. Equity shows the actual
+total using the same valuation as Hyperliquid Duckets, with the same account and
+time-range filters. In P/L mode, orange is real equity change from the observed
+real mirror opening; deposits and withdrawals are included, so it is explicitly
+labeled equity change rather than cashflow-adjusted trading P/L. Drawdown retains
+the existing Paper accounting.
+
+An independent UI background reader observes public balances once per minute
+while H.Y.P.E.R. is open in Paper mode. Explicit Hyperliquid Duckets syncs also
+record their exact totals. Observations persist in
+`C:/DATASTORE/hyperliquid/_account_history/equity.sqlite3`, outside both execution
+ledgers, and remain available across Paper rollovers. Each new chart selects its
+own opening. Failed or incomplete totals are gaps; the curve never connects
+missing observations or fabricates history before collection began. Source age
+and unavailable reads remain visible in the legend and hover shows both values
+with their observation times.
+
+The shared local workspace projection and Operations Watch still perform only
+bounded local reads. The balance collector is a separate UI operation with no
+signing client, orders, transfers, runtime controls or configuration edits.
+
 - Navy panels, mint selection, compact Paper/Powder navigation and five summary
   metrics. Alex, Jeremy and Clear Pond retain their short-perpetual,
   long-perpetual and spot roles.

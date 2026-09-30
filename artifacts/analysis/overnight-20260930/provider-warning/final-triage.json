@@ -1,0 +1,260 @@
+{
+  "reviewed_at": "2026-09-30T05:41:03.568976+00:00",
+  "status": "TRIAGE_COMPLETE_EXPLICIT_PROVIDER_QUALITY_LIMITATION",
+  "checks": {
+    "native_loop_a_complete": true,
+    "all_six_cme_requests_completed": true,
+    "all_six_current_captures_observed": true,
+    "no_failed_request_or_traceback_candidate": true,
+    "all_eleven_technical_summaries_zero_failures": true,
+    "no_unclassified_log_warning": true,
+    "native_opra_summary_zero_failed_scopes_and_cost": true,
+    "degraded_dates_only_captured_current_utc_day": true,
+    "configured_symbol_scopes_observed": true
+  },
+  "native_stage": {
+    "command": [
+      "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+      "-u",
+      "-m",
+      "datafetching.orchestrate",
+      "--datastore-target",
+      "pc",
+      "--watchlist",
+      "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+      "--providers",
+      "databento",
+      "fmp",
+      "fred",
+      "schwab",
+      "sec",
+      "--cme-mode",
+      "inline",
+      "--options-mode",
+      "inline",
+      "--opra-history-mode",
+      "daily",
+      "--opra-history-utc-hour",
+      "0",
+      "--opra-history-max-estimated-download-bytes",
+      "20000000000",
+      "--opra-history-max-estimated-cost-usd",
+      "1",
+      "--opra-history-max-catchup-days",
+      "30",
+      "--bar-readiness-recovery-timeout-seconds",
+      "420",
+      "--bar-readiness-recovery-poll-seconds",
+      "10",
+      "--once"
+    ],
+    "elapsed_seconds": 5547.4990906,
+    "error": null,
+    "exit_code": 0,
+    "finished_at": "2026-09-30T05:39:51.723942+00:00",
+    "log_path": "loop_a_close_fetch.log",
+    "stage": "loop_a_close_fetch",
+    "started_at": "2026-09-30T04:07:23.823104+00:00",
+    "status": "COMPLETE"
+  },
+  "warning_classification": "CURRENT_UTC_DAY_PROVIDER_DEGRADED_CAUSE_UNRESOLVED",
+  "vendor_reduced_quality_warning_occurrences": 9,
+  "vendor_reduced_quality_dates": [
+    [
+      "2026-09-30",
+      "degraded"
+    ]
+  ],
+  "derived_context_advisories": [
+    {
+      "line": 167,
+      "text": "[CME/cross-asset-context] advisory recorded: C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cross-asset-context\\databento\\diagnostics\\CME_CONTEXT_cross-asset-context.parquet"
+    }
+  ],
+  "other_warning_lines": [],
+  "native_opra_summary": [
+    {
+      "requested_scopes": "33",
+      "completed_scopes": "33",
+      "capacity_blocked_scopes": "0",
+      "failed_scopes": "0",
+      "bootstrap_required_scopes": "0",
+      "preflighted_scopes": "33",
+      "deferred_scopes": "0",
+      "live_replay_completed_scopes": "0",
+      "live_replay_bytes": "0",
+      "selected_estimated_download_bytes": "2424616064",
+      "selected_estimated_cost_usd": "0.0"
+    }
+  ],
+  "final_snapshot": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\provider-warning\\latest.json",
+    "sha256": "123ac307f9ed94c6f683a3b2e0168626b91ad23abed983d168a38e2ad9d4c367"
+  },
+  "cme_capture_summary": [
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+      "sha256": "5f1813c07eca70e7eab650acc06aadc883a6a5f2a9b30e07aa59287f08129e17",
+      "current_rows": 2389,
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "ohlcv-1m",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-27 04:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-29 19:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 3,
+          "cme_schema_status": "CURRENT"
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "sha256": "ab43796db2adae807f26f70e27525ff56e01752146c05b78606c150aa5fd9963",
+      "current_rows": 300,
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-30 03:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-30 03:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "cme_schema_status": "CURRENT"
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "sha256": "1f2fdf8f58c60569dbbc917b7d30d7ec6bfc0ddcde2728f0228ece83a1e7608c",
+      "current_rows": 5000,
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-29 19:50:43.146412+00:00",
+          "initial_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "effective_range_start": "2026-09-29 20:14:56.271412+00:00",
+          "effective_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "request_limit_saturated": true,
+          "latest_window_shrink_count": 5,
+          "cme_schema_status": "CURRENT"
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+      "sha256": "7083ee286fb7da54cc79f1a0484b84640daa08b5835973b4a8a52ef0604a20a9",
+      "current_rows": 4079,
+      "symbols": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "ohlcv-1m",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-27 04:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-29 10:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 2,
+          "cme_schema_status": "CURRENT"
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "sha256": "021f7db3207df813a8a718278227f17d5355e8b9ea292c9231c736ec2b30543e",
+      "current_rows": 240,
+      "symbols": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-30 03:10:00+00:00",
+          "initial_range_end": "2026-09-30 04:10:00+00:00",
+          "effective_range_start": "2026-09-30 03:10:00+00:00",
+          "effective_range_end": "2026-09-30 04:10:00+00:00",
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "cme_schema_status": "CURRENT"
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "sha256": "4bf776660dedd52d0a82d26a7b2ff1ddb4b44b2c5d3c502935c96c0e13d78a6c",
+      "current_rows": 5000,
+      "symbols": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-29 19:50:43.146412+00:00",
+          "initial_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "effective_range_start": "2026-09-29 20:14:56.271412+00:00",
+          "effective_range_end": "2026-09-29 20:15:43.146412+00:00",
+          "request_limit_saturated": true,
+          "latest_window_shrink_count": 5,
+          "cme_schema_status": "CURRENT"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    "The reduced-quality warning names September30, the UTC day still in progress at capture; the completed September29 stock action session ends at September30T00:00Z.",
+    "Native CME requests deliberately include available current-day context after that stock-source boundary. Native code caps request ends to the lesser of local now and advertised schema availability.",
+    "A current-day label and successful request do not prove degraded quality is caused only by partial-day publication. No saved dataset-condition reason snapshot was found; actual vendor quality remains explicitly degraded.",
+    "Current per-symbol records and native successful request lines establish observed delivery only, not complete minute coverage or model eligibility. Saturated MBP limits cannot establish full-range completeness.",
+    "No provider request, retry, configuration edit or gate change was made. Native completed-artifact audits remain responsible for final coverage and input eligibility."
+  ],
+  "required_final_audit": "Native completed-artifact, cost, provider coverage, input eligibility and source checksum verification remain required independently.",
+  "provider_calls": 0,
+  "production_writes": 0,
+  "orders_placed": 0
+}

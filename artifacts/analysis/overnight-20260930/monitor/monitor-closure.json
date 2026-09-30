@@ -1,0 +1,41 @@
+{
+  "closed_at": "2026-09-30T06:59:15.977129+00:00",
+  "status": "RELEASED",
+  "owner_token": "3e1f4906-750c-46d5-8e0b-5dfdad3b651a",
+  "helper_exit_code": 0,
+  "helper_terminal_status": "AGENT_KEEPALIVE_EXPIRED",
+  "helper_process_absent": true,
+  "native_process_absent": true,
+  "automated_renewal_count": 276,
+  "all_automated_renewals_acquired": true,
+  "maximum_automated_renewal_gap_seconds": 35.962029,
+  "last_automated_renewal": {
+    "observed_at": "2026-09-30T06:51:50.486121+00:00",
+    "status": "ACQUIRED",
+    "owner_token": "3e1f4906-750c-46d5-8e0b-5dfdad3b651a",
+    "updated_at": "2026-09-30T06:51:51.347379+00:00",
+    "expires_at": "2026-09-30T06:54:51.347379+00:00"
+  },
+  "post_audit_gap": {
+    "cause": "Root context compaction exceeded helper keepalive; helper self-stopped after all native work and audits completed.",
+    "lease_expired_at": "2026-09-30T06:54:51.347379+00:00",
+    "same_owner_reacquired_at": "2026-09-30T06:56:52.866791+00:00",
+    "reacquisition_status": "ACQUIRED",
+    "reacquisition_evidence": "Root native claim tool result; subsequent saved final-claim.json and closure-claim.json.",
+    "native_completed_at": "2026-09-30T06:30:57.383549+00:00",
+    "production_actions_during_gap": 0
+  },
+  "final_process_check": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\monitor\\final-process-check.json",
+  "final_claim": {
+    "status": "ACQUIRED",
+    "owner_token": "3e1f4906-750c-46d5-8e0b-5dfdad3b651a",
+    "updated_at": "2026-09-30T06:59:14.735525+00:00",
+    "expires_at": "2026-09-30T07:02:14.735525+00:00"
+  },
+  "release": {
+    "status": "RELEASED",
+    "owner_token": "3e1f4906-750c-46d5-8e0b-5dfdad3b651a",
+    "updated_at": "2026-09-30T06:59:15.899655+00:00",
+    "expires_at": "2026-09-30T06:59:15.899655+00:00"
+  }
+}

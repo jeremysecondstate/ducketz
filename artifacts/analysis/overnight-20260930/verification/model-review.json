@@ -1,0 +1,3574 @@
+{
+  "reviewed_at": "2026-09-30T06:48:38.731461+00:00",
+  "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z",
+  "action_date": "2026-09-30",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+  "native_ancestry": [
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+      "status": "COMPLETE"
+    }
+  ],
+  "native_status_at_review": "COMPLETE",
+  "full_native_completion_verified": false,
+  "scope": "Read-only immutable model reports/cohorts and enrichment validation; no fitting, candidate selection, archive/account/provider reads.",
+  "assessment_inference_reproduction": "Directional estimator inference left to the separate final immutable-model verifier.",
+  "forecast_rows": 264,
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "groups": {
+    "1h": {
+      "checks": {
+        "archive_feature_contract": true,
+        "raw_direction_target_preserved": true,
+        "saved_promotion_arithmetic": true,
+        "saved_v2_policy": true,
+        "no_duplicate_exact_targets": true,
+        "observed_boundaries_within_five_minutes": true,
+        "unblended_xnas_source": true,
+        "returns_match_observed_prices": true,
+        "exact_fitted_symbol_route_support_and_status": true,
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "selected_minimum_development_log_loss": true,
+        "calibration_excludes_assessment_selection": true
+      },
+      "support_errors": [],
+      "promotion_gate": {
+        "policy_version": "independent-stock-directional-promotion-v2",
+        "status": "PROMOTED",
+        "checks": {
+          "calibration_retains_directional_information": true,
+          "assessment_has_at_least_10_decision_clusters": true,
+          "expected_calibration_error_at_most_0_15": true,
+          "brier_within_baseline_tolerance": true,
+          "log_loss_within_baseline_tolerance": true
+        },
+        "baseline_tolerances": {
+          "brier_score": 0.005,
+          "log_loss": 0.01
+        },
+        "assessment_minus_baseline": {
+          "brier_score": 0.0002762363502817,
+          "log_loss": 0.0005649337947821
+        },
+        "assessment_beats_baseline": {
+          "brier_score": false,
+          "log_loss": false
+        },
+        "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+        "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes."
+      },
+      "assessment": {
+        "brier_score": 0.2502759741529368,
+        "direction_accuracy_at_0_5": 0.505513567092058,
+        "expected_calibration_error_10_bin": 0.012277588439882947,
+        "log_loss": 0.6937115899599755,
+        "mean_probability": 0.4970091909072615,
+        "positive_rate": 0.4994424482715896,
+        "rows": 8071
+      },
+      "training_rate_baseline": {
+        "brier_score": 0.2499997378026551,
+        "direction_accuracy_at_0_5": 0.5005575517284103,
+        "expected_calibration_error_10_bin": 0.0002206050430029749,
+        "log_loss": 0.6931466561651934,
+        "mean_probability": 0.4996630533145926,
+        "positive_rate": 0.4994424482715896,
+        "rows": 8071
+      },
+      "fitted_target_rows": 155811,
+      "saved_policy_metric_limits": {
+        "brier_score": {
+          "assessment": 0.2502759741529368,
+          "training_rate_baseline": 0.2499997378026551,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2549997378026551,
+          "actual_baseline_excess": 0.0002762363502817,
+          "margin_to_maximum": 0.0047237636497183,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6937115899599755,
+          "training_rate_baseline": 0.6931466561651934,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7031466561651935,
+          "actual_baseline_excess": 0.0005649337947821,
+          "margin_to_maximum": 0.0094350662052179,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "strictly_beats_both_baselines": false,
+      "failed_promotion_checks": [],
+      "baseline_excess": {
+        "brier_score": 0.0002762363502816778,
+        "log_loss": 0.0005649337947820632
+      },
+      "selected_family": "hist-gradient",
+      "selected_development_metrics": {
+        "brier_score": 0.24998760069508566,
+        "direction_accuracy_at_0_5": 0.5089455136893467,
+        "expected_calibration_error_10_bin": 0.01302817795621014,
+        "log_loss": 0.693122843858518,
+        "mean_probability": 0.49696874622087395,
+        "positive_rate": 0.4841420439143399,
+        "rows": 7378
+      },
+      "selection_candidates": 9,
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_eligibility": {
+          "identity": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": null,
+            "probability_span": 0.24516921497729127,
+            "reason": "INFORMATION_RETAINED"
+          },
+          "platt": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": 0.44828170909030607,
+            "probability_span": 0.11086453752408904,
+            "reason": "INFORMATION_RETAINED"
+          }
+        },
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.2499433358475932,
+            "log_loss": 0.6930357840196186,
+            "rows": 4166
+          },
+          "platt": {
+            "brier_score": 0.2526581569072148,
+            "log_loss": 0.698479002376601,
+            "rows": 4166
+          }
+        },
+        "fit_class_counts": {
+          "0": 1824,
+          "1": 2138
+        },
+        "fit_decision_clusters": 31,
+        "fit_last_target_end": "2026-05-14T00:00:00+00:00",
+        "fit_rows": 3962,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-stock-information-retaining-development-selection-v2",
+        "purged_rows": 0,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_among_information_retaining_candidates_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 32,
+        "validation_first_decision": "2026-05-14T00:05:00+00:00",
+        "validation_rows": 4166
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.3896221027907029,
+          0.6357722915094743
+        ],
+        "calibrated_probability_range": [
+          0.38265577838544634,
+          0.6488595543376665
+        ],
+        "calibration_positive_rate": 0.5108267716535433,
+        "calibration_rows": 8128,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.38265577838544634,
+          0.6488595543376665
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "probability_shrinkage_policy": null,
+      "selected_probability_shrinkage_weight": 1.0,
+      "retained_champion": null,
+      "fitted_cohort": "training-cohort-1h.parquet",
+      "partitions": {
+        "train": {
+          "rows": 148433,
+          "decision_clusters": 1905,
+          "positive_rate": 0.5004345394891971,
+          "first_decision": "2018-05-31T00:05:00+00:00",
+          "last_decision": "2025-12-25T00:05:00+00:00",
+          "last_target_end": "2025-12-27T00:00:00+00:00"
+        },
+        "selection": {
+          "rows": 7378,
+          "decision_clusters": 63,
+          "positive_rate": 0.4841420439143399,
+          "first_decision": "2025-12-27T00:05:00+00:00",
+          "last_decision": "2026-03-28T00:05:00+00:00",
+          "last_target_end": "2026-03-30T23:00:00+00:00"
+        },
+        "calibration": {
+          "rows": 8128,
+          "decision_clusters": 63,
+          "positive_rate": 0.5108267716535433,
+          "first_decision": "2026-03-31T00:05:00+00:00",
+          "last_decision": "2026-06-30T00:05:00+00:00",
+          "last_target_end": "2026-06-30T23:00:00+00:00"
+        },
+        "assessment": {
+          "rows": 8071,
+          "decision_clusters": 63,
+          "positive_rate": 0.4994424482715896,
+          "first_decision": "2026-07-01T00:05:00+00:00",
+          "last_decision": "2026-09-29T00:05:00+00:00",
+          "last_target_end": "2026-09-30T00:00:00+00:00"
+        }
+      },
+      "support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 1681,
+          "admitted_rows": 21859,
+          "admitted_rows_by_route": {
+            "1h@04:00": 1668,
+            "1h@05:00": 1678,
+            "1h@06:00": 1681,
+            "1h@07:00": 1681,
+            "1h@08:00": 1681,
+            "1h@09:00": 1681,
+            "1h@10:00": 1679,
+            "1h@11:00": 1680,
+            "1h@12:00": 1678,
+            "1h@13:00": 1660,
+            "1h@14:00": 1562,
+            "1h@15:00": 1472,
+            "1h@16:00": 980,
+            "1h@gap": 1078
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 881,
+          "assessment_rows_by_route": {
+            "1h@04:00": 63,
+            "1h@05:00": 63,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 63,
+            "1h@14:00": 63,
+            "1h@15:00": 62,
+            "1h@16:00": 63,
+            "1h@gap": 63
+          },
+          "fitted_decision_clusters": 1555,
+          "fitted_rows": 20096,
+          "fitted_rows_by_route": {
+            "1h@04:00": 1542,
+            "1h@05:00": 1552,
+            "1h@06:00": 1555,
+            "1h@07:00": 1555,
+            "1h@08:00": 1555,
+            "1h@09:00": 1555,
+            "1h@10:00": 1553,
+            "1h@11:00": 1554,
+            "1h@12:00": 1552,
+            "1h@13:00": 1534,
+            "1h@14:00": 1437,
+            "1h@15:00": 1347,
+            "1h@16:00": 853,
+            "1h@gap": 952
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 1681,
+          "admitted_rows": 21348,
+          "admitted_rows_by_route": {
+            "1h@04:00": 1653,
+            "1h@05:00": 1675,
+            "1h@06:00": 1678,
+            "1h@07:00": 1681,
+            "1h@08:00": 1681,
+            "1h@09:00": 1681,
+            "1h@10:00": 1680,
+            "1h@11:00": 1679,
+            "1h@12:00": 1676,
+            "1h@13:00": 1612,
+            "1h@14:00": 1442,
+            "1h@15:00": 1271,
+            "1h@16:00": 895,
+            "1h@gap": 1044
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 882,
+          "assessment_rows_by_route": {
+            "1h@04:00": 63,
+            "1h@05:00": 63,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 63,
+            "1h@14:00": 63,
+            "1h@15:00": 63,
+            "1h@16:00": 63,
+            "1h@gap": 63
+          },
+          "fitted_decision_clusters": 1555,
+          "fitted_rows": 19583,
+          "fitted_rows_by_route": {
+            "1h@04:00": 1527,
+            "1h@05:00": 1549,
+            "1h@06:00": 1552,
+            "1h@07:00": 1555,
+            "1h@08:00": 1555,
+            "1h@09:00": 1555,
+            "1h@10:00": 1554,
+            "1h@11:00": 1553,
+            "1h@12:00": 1550,
+            "1h@13:00": 1486,
+            "1h@14:00": 1316,
+            "1h@15:00": 1145,
+            "1h@16:00": 768,
+            "1h@gap": 918
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 1701,
+          "admitted_rows": 14920,
+          "admitted_rows_by_route": {
+            "1h@04:00": 668,
+            "1h@05:00": 765,
+            "1h@06:00": 1272,
+            "1h@07:00": 1701,
+            "1h@08:00": 1701,
+            "1h@09:00": 1701,
+            "1h@10:00": 1691,
+            "1h@11:00": 1688,
+            "1h@12:00": 1689,
+            "1h@13:00": 820,
+            "1h@14:00": 382,
+            "1h@15:00": 308,
+            "1h@16:00": 188,
+            "1h@gap": 346
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 639,
+          "assessment_rows_by_route": {
+            "1h@04:00": 35,
+            "1h@05:00": 34,
+            "1h@06:00": 53,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 39,
+            "1h@14:00": 26,
+            "1h@15:00": 21,
+            "1h@16:00": 20,
+            "1h@gap": 33
+          },
+          "fitted_decision_clusters": 1575,
+          "fitted_rows": 13655,
+          "fitted_rows_by_route": {
+            "1h@04:00": 597,
+            "1h@05:00": 700,
+            "1h@06:00": 1171,
+            "1h@07:00": 1575,
+            "1h@08:00": 1575,
+            "1h@09:00": 1575,
+            "1h@10:00": 1565,
+            "1h@11:00": 1562,
+            "1h@12:00": 1563,
+            "1h@13:00": 743,
+            "1h@14:00": 331,
+            "1h@15:00": 259,
+            "1h@16:00": 153,
+            "1h@gap": 286
+          }
+        },
+        "CROX": {
+          "admitted_decision_clusters": 2094,
+          "admitted_rows": 14272,
+          "admitted_rows_by_route": {
+            "1h@04:00": 232,
+            "1h@05:00": 265,
+            "1h@06:00": 740,
+            "1h@07:00": 2094,
+            "1h@08:00": 2094,
+            "1h@09:00": 2094,
+            "1h@10:00": 2073,
+            "1h@11:00": 2076,
+            "1h@12:00": 2076,
+            "1h@13:00": 323,
+            "1h@14:00": 69,
+            "1h@15:00": 31,
+            "1h@16:00": 21,
+            "1h@gap": 84
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 390,
+          "assessment_rows_by_route": {
+            "1h@04:00": 1,
+            "1h@05:00": 1,
+            "1h@06:00": 5,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 2,
+            "1h@14:00": 1,
+            "1h@gap": 2
+          },
+          "fitted_decision_clusters": 1968,
+          "fitted_rows": 13483,
+          "fitted_rows_by_route": {
+            "1h@04:00": 230,
+            "1h@05:00": 263,
+            "1h@06:00": 728,
+            "1h@07:00": 1968,
+            "1h@08:00": 1968,
+            "1h@09:00": 1968,
+            "1h@10:00": 1948,
+            "1h@11:00": 1950,
+            "1h@12:00": 1950,
+            "1h@13:00": 314,
+            "1h@14:00": 67,
+            "1h@15:00": 30,
+            "1h@16:00": 19,
+            "1h@gap": 80
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 1681,
+          "admitted_rows": 19356,
+          "admitted_rows_by_route": {
+            "1h@04:00": 1376,
+            "1h@05:00": 1523,
+            "1h@06:00": 1621,
+            "1h@07:00": 1681,
+            "1h@08:00": 1681,
+            "1h@09:00": 1681,
+            "1h@10:00": 1676,
+            "1h@11:00": 1673,
+            "1h@12:00": 1674,
+            "1h@13:00": 1412,
+            "1h@14:00": 976,
+            "1h@15:00": 894,
+            "1h@16:00": 644,
+            "1h@gap": 844
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 856,
+          "assessment_rows_by_route": {
+            "1h@04:00": 62,
+            "1h@05:00": 63,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 61,
+            "1h@14:00": 52,
+            "1h@15:00": 57,
+            "1h@16:00": 58,
+            "1h@gap": 62
+          },
+          "fitted_decision_clusters": 1555,
+          "fitted_rows": 17629,
+          "fitted_rows_by_route": {
+            "1h@04:00": 1251,
+            "1h@05:00": 1397,
+            "1h@06:00": 1495,
+            "1h@07:00": 1555,
+            "1h@08:00": 1555,
+            "1h@09:00": 1555,
+            "1h@10:00": 1550,
+            "1h@11:00": 1547,
+            "1h@12:00": 1548,
+            "1h@13:00": 1288,
+            "1h@14:00": 863,
+            "1h@15:00": 780,
+            "1h@16:00": 524,
+            "1h@gap": 721
+          }
+        },
+        "IONQ": {
+          "admitted_decision_clusters": 1211,
+          "admitted_rows": 13386,
+          "admitted_rows_by_route": {
+            "1h@04:00": 1110,
+            "1h@05:00": 1118,
+            "1h@06:00": 1185,
+            "1h@07:00": 1210,
+            "1h@08:00": 1210,
+            "1h@09:00": 1210,
+            "1h@10:00": 1208,
+            "1h@11:00": 1205,
+            "1h@12:00": 1209,
+            "1h@13:00": 979,
+            "1h@14:00": 721,
+            "1h@15:00": 430,
+            "1h@16:00": 231,
+            "1h@gap": 360
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 818,
+          "assessment_rows_by_route": {
+            "1h@04:00": 63,
+            "1h@05:00": 61,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 60,
+            "1h@14:00": 50,
+            "1h@15:00": 50,
+            "1h@16:00": 44,
+            "1h@gap": 49
+          },
+          "fitted_decision_clusters": 1085,
+          "fitted_rows": 11718,
+          "fitted_rows_by_route": {
+            "1h@04:00": 984,
+            "1h@05:00": 995,
+            "1h@06:00": 1059,
+            "1h@07:00": 1084,
+            "1h@08:00": 1084,
+            "1h@09:00": 1084,
+            "1h@10:00": 1082,
+            "1h@11:00": 1079,
+            "1h@12:00": 1083,
+            "1h@13:00": 856,
+            "1h@14:00": 617,
+            "1h@15:00": 324,
+            "1h@16:00": 133,
+            "1h@gap": 254
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 1701,
+          "admitted_rows": 18997,
+          "admitted_rows_by_route": {
+            "1h@04:00": 1393,
+            "1h@05:00": 1507,
+            "1h@06:00": 1654,
+            "1h@07:00": 1701,
+            "1h@08:00": 1701,
+            "1h@09:00": 1701,
+            "1h@10:00": 1693,
+            "1h@11:00": 1694,
+            "1h@12:00": 1692,
+            "1h@13:00": 1241,
+            "1h@14:00": 853,
+            "1h@15:00": 772,
+            "1h@16:00": 572,
+            "1h@gap": 823
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 882,
+          "assessment_rows_by_route": {
+            "1h@04:00": 63,
+            "1h@05:00": 63,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 63,
+            "1h@14:00": 63,
+            "1h@15:00": 63,
+            "1h@16:00": 63,
+            "1h@gap": 63
+          },
+          "fitted_decision_clusters": 1575,
+          "fitted_rows": 17232,
+          "fitted_rows_by_route": {
+            "1h@04:00": 1267,
+            "1h@05:00": 1381,
+            "1h@06:00": 1528,
+            "1h@07:00": 1575,
+            "1h@08:00": 1575,
+            "1h@09:00": 1575,
+            "1h@10:00": 1567,
+            "1h@11:00": 1568,
+            "1h@12:00": 1566,
+            "1h@13:00": 1115,
+            "1h@14:00": 727,
+            "1h@15:00": 646,
+            "1h@16:00": 445,
+            "1h@gap": 697
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 1673,
+          "admitted_rows": 21393,
+          "admitted_rows_by_route": {
+            "1h@04:00": 1626,
+            "1h@05:00": 1659,
+            "1h@06:00": 1672,
+            "1h@07:00": 1673,
+            "1h@08:00": 1673,
+            "1h@09:00": 1673,
+            "1h@10:00": 1670,
+            "1h@11:00": 1669,
+            "1h@12:00": 1669,
+            "1h@13:00": 1592,
+            "1h@14:00": 1470,
+            "1h@15:00": 1355,
+            "1h@16:00": 947,
+            "1h@gap": 1045
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 881,
+          "assessment_rows_by_route": {
+            "1h@04:00": 63,
+            "1h@05:00": 63,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 63,
+            "1h@14:00": 62,
+            "1h@15:00": 63,
+            "1h@16:00": 63,
+            "1h@gap": 63
+          },
+          "fitted_decision_clusters": 1547,
+          "fitted_rows": 19629,
+          "fitted_rows_by_route": {
+            "1h@04:00": 1500,
+            "1h@05:00": 1533,
+            "1h@06:00": 1546,
+            "1h@07:00": 1547,
+            "1h@08:00": 1547,
+            "1h@09:00": 1547,
+            "1h@10:00": 1544,
+            "1h@11:00": 1543,
+            "1h@12:00": 1543,
+            "1h@13:00": 1466,
+            "1h@14:00": 1345,
+            "1h@15:00": 1229,
+            "1h@16:00": 820,
+            "1h@gap": 919
+          }
+        },
+        "PATH": {
+          "admitted_decision_clusters": 1325,
+          "admitted_rows": 10631,
+          "admitted_rows_by_route": {
+            "1h@04:00": 460,
+            "1h@05:00": 486,
+            "1h@06:00": 883,
+            "1h@07:00": 1325,
+            "1h@08:00": 1325,
+            "1h@09:00": 1324,
+            "1h@10:00": 1318,
+            "1h@11:00": 1316,
+            "1h@12:00": 1316,
+            "1h@13:00": 312,
+            "1h@14:00": 167,
+            "1h@15:00": 133,
+            "1h@16:00": 74,
+            "1h@gap": 192
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 550,
+          "assessment_rows_by_route": {
+            "1h@04:00": 32,
+            "1h@05:00": 31,
+            "1h@06:00": 48,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 26,
+            "1h@14:00": 5,
+            "1h@15:00": 10,
+            "1h@16:00": 5,
+            "1h@gap": 15
+          },
+          "fitted_decision_clusters": 1199,
+          "fitted_rows": 9494,
+          "fitted_rows_by_route": {
+            "1h@04:00": 390,
+            "1h@05:00": 420,
+            "1h@06:00": 784,
+            "1h@07:00": 1199,
+            "1h@08:00": 1199,
+            "1h@09:00": 1198,
+            "1h@10:00": 1192,
+            "1h@11:00": 1190,
+            "1h@12:00": 1190,
+            "1h@13:00": 256,
+            "1h@14:00": 148,
+            "1h@15:00": 108,
+            "1h@16:00": 63,
+            "1h@gap": 157
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 381,
+          "admitted_rows": 4144,
+          "admitted_rows_by_route": {
+            "1h@04:00": 267,
+            "1h@05:00": 262,
+            "1h@06:00": 287,
+            "1h@07:00": 381,
+            "1h@08:00": 381,
+            "1h@09:00": 381,
+            "1h@10:00": 380,
+            "1h@11:00": 379,
+            "1h@12:00": 379,
+            "1h@13:00": 247,
+            "1h@14:00": 235,
+            "1h@15:00": 237,
+            "1h@16:00": 159,
+            "1h@gap": 169
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 882,
+          "assessment_rows_by_route": {
+            "1h@04:00": 63,
+            "1h@05:00": 63,
+            "1h@06:00": 63,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 63,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 63,
+            "1h@14:00": 63,
+            "1h@15:00": 63,
+            "1h@16:00": 63,
+            "1h@gap": 63
+          },
+          "fitted_decision_clusters": 255,
+          "fitted_rows": 2379,
+          "fitted_rows_by_route": {
+            "1h@04:00": 141,
+            "1h@05:00": 136,
+            "1h@06:00": 161,
+            "1h@07:00": 255,
+            "1h@08:00": 255,
+            "1h@09:00": 255,
+            "1h@10:00": 254,
+            "1h@11:00": 253,
+            "1h@12:00": 253,
+            "1h@13:00": 121,
+            "1h@14:00": 109,
+            "1h@15:00": 111,
+            "1h@16:00": 32,
+            "1h@gap": 43
+          }
+        },
+        "TWST": {
+          "admitted_decision_clusters": 1961,
+          "admitted_rows": 11718,
+          "admitted_rows_by_route": {
+            "1h@04:00": 27,
+            "1h@05:00": 43,
+            "1h@06:00": 229,
+            "1h@07:00": 1885,
+            "1h@08:00": 1876,
+            "1h@09:00": 1864,
+            "1h@10:00": 1855,
+            "1h@11:00": 1877,
+            "1h@12:00": 1916,
+            "1h@13:00": 121,
+            "1h@14:00": 9,
+            "1h@15:00": 5,
+            "1h@16:00": 4,
+            "1h@gap": 7
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 410,
+          "assessment_rows_by_route": {
+            "1h@04:00": 2,
+            "1h@05:00": 4,
+            "1h@06:00": 11,
+            "1h@07:00": 63,
+            "1h@08:00": 63,
+            "1h@09:00": 62,
+            "1h@10:00": 63,
+            "1h@11:00": 63,
+            "1h@12:00": 63,
+            "1h@13:00": 8,
+            "1h@14:00": 2,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 3
+          },
+          "fitted_decision_clusters": 1835,
+          "fitted_rows": 10913,
+          "fitted_rows_by_route": {
+            "1h@04:00": 23,
+            "1h@05:00": 39,
+            "1h@06:00": 212,
+            "1h@07:00": 1760,
+            "1h@08:00": 1750,
+            "1h@09:00": 1739,
+            "1h@10:00": 1729,
+            "1h@11:00": 1751,
+            "1h@12:00": 1790,
+            "1h@13:00": 105,
+            "1h@14:00": 7,
+            "1h@15:00": 3,
+            "1h@16:00": 1,
+            "1h@gap": 4
+          }
+        }
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "fitted_rows": 1
+      },
+      "zero_assessment_symbols": [],
+      "forecast_statuses": {
+        "PROMOTED": 154
+      },
+      "forecast_probability_range": [
+        0.42480564283522826,
+        0.588720382125807
+      ],
+      "previous_publication_comparison": {
+        "baseline_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260929T061339.593647Z",
+        "previous_gate": {
+          "assessment_beats_baseline": {
+            "brier_score": false,
+            "log_loss": false
+          },
+          "assessment_minus_baseline": {
+            "brier_score": 0.00044671876746847,
+            "log_loss": 0.000904365457562
+          },
+          "baseline_tolerances": {
+            "brier_score": 0.005,
+            "log_loss": 0.01
+          },
+          "checks": {
+            "assessment_has_at_least_10_decision_clusters": true,
+            "brier_within_baseline_tolerance": true,
+            "calibration_retains_directional_information": true,
+            "expected_calibration_error_at_most_0_15": true,
+            "log_loss_within_baseline_tolerance": true
+          },
+          "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+          "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+          "policy_version": "independent-stock-directional-promotion-v2",
+          "status": "PROMOTED"
+        },
+        "previous_assessment": {
+          "brier_score": 0.2504468341500252,
+          "direction_accuracy_at_0_5": 0.49789343246592316,
+          "expected_calibration_error_10_bin": 0.02194999863906189,
+          "log_loss": 0.6940517767826425,
+          "mean_probability": 0.49635928992343276,
+          "positive_rate": 0.5001239157372986,
+          "rows": 8070
+        },
+        "assessment_delta": {
+          "brier_score": -0.00017085999708843502,
+          "log_loss": -0.00034018682266701017
+        },
+        "previous_selected_family": "hist-gradient",
+        "previous_assessment_rows": 8070,
+        "previous_assessment_clusters": 63,
+        "comparison_does_not_select_candidates": true,
+        "different_feature_contract": false,
+        "cohorts_are_distinct_publications": true,
+        "comparability_note": "Previous publication is the frozen September 29 archive-history baseline; feature-contract identity is compared explicitly. This is a factual cross-publication score comparison, not a controlled same-cohort accuracy experiment."
+      }
+    },
+    "4h": {
+      "checks": {
+        "archive_feature_contract": true,
+        "raw_direction_target_preserved": true,
+        "saved_promotion_arithmetic": true,
+        "saved_v2_policy": true,
+        "no_duplicate_exact_targets": true,
+        "observed_boundaries_within_five_minutes": true,
+        "unblended_xnas_source": true,
+        "returns_match_observed_prices": true,
+        "exact_fitted_symbol_route_support_and_status": true,
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "selected_minimum_development_log_loss": true,
+        "calibration_excludes_assessment_selection": true
+      },
+      "support_errors": [],
+      "promotion_gate": {
+        "policy_version": "independent-stock-directional-promotion-v2",
+        "status": "PROMOTED",
+        "checks": {
+          "calibration_retains_directional_information": true,
+          "assessment_has_at_least_10_decision_clusters": true,
+          "expected_calibration_error_at_most_0_15": true,
+          "brier_within_baseline_tolerance": true,
+          "log_loss_within_baseline_tolerance": true
+        },
+        "baseline_tolerances": {
+          "brier_score": 0.005,
+          "log_loss": 0.01
+        },
+        "assessment_minus_baseline": {
+          "brier_score": -0.0001390184232293,
+          "log_loss": -0.0002770928308305
+        },
+        "assessment_beats_baseline": {
+          "brier_score": true,
+          "log_loss": true
+        },
+        "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+        "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes."
+      },
+      "assessment": {
+        "brier_score": 0.2499283101796543,
+        "direction_accuracy_at_0_5": 0.5114813147230977,
+        "expected_calibration_error_10_bin": 0.0030149398139729926,
+        "log_loss": 0.6930047546224142,
+        "mean_probability": 0.5009888254510734,
+        "positive_rate": 0.49797388563710043,
+        "rows": 2221
+      },
+      "training_rate_baseline": {
+        "brier_score": 0.2500673286028836,
+        "direction_accuracy_at_0_5": 0.49797388563710043,
+        "expected_calibration_error_10_bin": 0.008451848454339772,
+        "log_loss": 0.6932818474532447,
+        "mean_probability": 0.5064257340914402,
+        "positive_rate": 0.49797388563710043,
+        "rows": 2221
+      },
+      "fitted_target_rows": 38517,
+      "saved_policy_metric_limits": {
+        "brier_score": {
+          "assessment": 0.2499283101796543,
+          "training_rate_baseline": 0.2500673286028836,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2550673286028836,
+          "actual_baseline_excess": -0.0001390184232293,
+          "margin_to_maximum": 0.0051390184232293,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6930047546224142,
+          "training_rate_baseline": 0.6932818474532447,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7032818474532447,
+          "actual_baseline_excess": -0.0002770928308305,
+          "margin_to_maximum": 0.0102770928308305,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "strictly_beats_both_baselines": true,
+      "failed_promotion_checks": [],
+      "baseline_excess": {
+        "brier_score": -0.00013901842322930347,
+        "log_loss": -0.0002770928308305498
+      },
+      "selected_family": "hist-gradient",
+      "selected_development_metrics": {
+        "brier_score": 0.2505269249539821,
+        "direction_accuracy_at_0_5": 0.5024206562668101,
+        "expected_calibration_error_10_bin": 0.025201359977048754,
+        "log_loss": 0.6942031409395145,
+        "mean_probability": 0.4953465993530573,
+        "positive_rate": 0.4701452393760086,
+        "rows": 1859
+      },
+      "selection_candidates": 9,
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_eligibility": {
+          "identity": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": null,
+            "probability_span": 0.11482054108664086,
+            "reason": "INFORMATION_RETAINED"
+          },
+          "platt": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": 0.08879492611802355,
+            "probability_span": 0.009432747655404694,
+            "reason": "INFORMATION_RETAINED"
+          }
+        },
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.25047510948398477,
+            "log_loss": 0.6940979314008612,
+            "rows": 1141
+          },
+          "platt": {
+            "brier_score": 0.25872722530766107,
+            "log_loss": 0.7107779904670236,
+            "rows": 1141
+          }
+        },
+        "fit_class_counts": {
+          "0": 467,
+          "1": 631
+        },
+        "fit_decision_clusters": 31,
+        "fit_last_target_end": "2026-05-13T23:00:00+00:00",
+        "fit_rows": 1098,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-stock-information-retaining-development-selection-v2",
+        "purged_rows": 7,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_among_information_retaining_candidates_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 32,
+        "validation_first_decision": "2026-05-14T00:05:00+00:00",
+        "validation_rows": 1141
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.4202459915506363,
+          0.5574135870506365
+        ],
+        "calibrated_probability_range": [
+          0.42399208182866627,
+          0.5478135687296547
+        ],
+        "calibration_positive_rate": 0.52493321460374,
+        "calibration_rows": 2246,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.42399208182866627,
+          0.5478135687296547
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "probability_shrinkage_policy": null,
+      "selected_probability_shrinkage_weight": 1.0,
+      "retained_champion": null,
+      "fitted_cohort": "training-cohort-4h.parquet",
+      "partitions": {
+        "train": {
+          "rows": 36658,
+          "decision_clusters": 1901,
+          "positive_rate": 0.508265590048557,
+          "first_decision": "2018-05-31T00:05:00+00:00",
+          "last_decision": "2025-12-25T00:05:00+00:00",
+          "last_target_end": "2025-12-27T00:00:00+00:00"
+        },
+        "selection": {
+          "rows": 1859,
+          "decision_clusters": 63,
+          "positive_rate": 0.4701452393760086,
+          "first_decision": "2025-12-27T00:05:00+00:00",
+          "last_decision": "2026-03-28T00:05:00+00:00",
+          "last_target_end": "2026-03-30T23:00:00+00:00"
+        },
+        "calibration": {
+          "rows": 2246,
+          "decision_clusters": 63,
+          "positive_rate": 0.52493321460374,
+          "first_decision": "2026-03-31T00:05:00+00:00",
+          "last_decision": "2026-06-30T00:05:00+00:00",
+          "last_target_end": "2026-06-30T23:00:00+00:00"
+        },
+        "assessment": {
+          "rows": 2221,
+          "decision_clusters": 63,
+          "positive_rate": 0.49797388563710043,
+          "first_decision": "2026-07-01T00:05:00+00:00",
+          "last_decision": "2026-09-29T00:05:00+00:00",
+          "last_target_end": "2026-09-29T23:00:00+00:00"
+        }
+      },
+      "support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 1681,
+          "admitted_rows": 5871,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1679,
+            "4h@08:00": 1681,
+            "4h@12:00": 1526,
+            "4h@16:00": 985
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 250,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 62,
+            "4h@16:00": 62
+          },
+          "fitted_decision_clusters": 1555,
+          "fitted_rows": 5368,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1553,
+            "4h@08:00": 1555,
+            "4h@12:00": 1401,
+            "4h@16:00": 859
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 1681,
+          "admitted_rows": 5662,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1667,
+            "4h@08:00": 1680,
+            "4h@12:00": 1402,
+            "4h@16:00": 913
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 251,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 63,
+            "4h@16:00": 62
+          },
+          "fitted_decision_clusters": 1555,
+          "fitted_rows": 5158,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1541,
+            "4h@08:00": 1554,
+            "4h@12:00": 1276,
+            "4h@16:00": 787
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 1699,
+          "admitted_rows": 3754,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1145,
+            "4h@08:00": 1692,
+            "4h@12:00": 579,
+            "4h@16:00": 338
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 179,
+          "assessment_rows_by_route": {
+            "4h@04:00": 57,
+            "4h@08:00": 63,
+            "4h@12:00": 31,
+            "4h@16:00": 28
+          },
+          "fitted_decision_clusters": 1573,
+          "fitted_rows": 3392,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1037,
+            "4h@08:00": 1566,
+            "4h@12:00": 512,
+            "4h@16:00": 277
+          }
+        },
+        "CROX": {
+          "admitted_decision_clusters": 2079,
+          "admitted_rows": 2930,
+          "admitted_rows_by_route": {
+            "4h@04:00": 613,
+            "4h@08:00": 2077,
+            "4h@12:00": 155,
+            "4h@16:00": 85
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 75,
+          "assessment_rows_by_route": {
+            "4h@04:00": 7,
+            "4h@08:00": 63,
+            "4h@12:00": 2,
+            "4h@16:00": 3
+          },
+          "fitted_decision_clusters": 1953,
+          "fitted_rows": 2769,
+          "fitted_rows_by_route": {
+            "4h@04:00": 592,
+            "4h@08:00": 1951,
+            "4h@12:00": 149,
+            "4h@16:00": 77
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 1678,
+          "admitted_rows": 4974,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1514,
+            "4h@08:00": 1673,
+            "4h@12:00": 1076,
+            "4h@16:00": 711
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 242,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 58,
+            "4h@16:00": 58
+          },
+          "fitted_decision_clusters": 1552,
+          "fitted_rows": 4482,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1388,
+            "4h@08:00": 1547,
+            "4h@12:00": 958,
+            "4h@16:00": 589
+          }
+        },
+        "IONQ": {
+          "admitted_decision_clusters": 1211,
+          "admitted_rows": 3245,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1160,
+            "4h@08:00": 1207,
+            "4h@12:00": 567,
+            "4h@16:00": 311
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 237,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 56,
+            "4h@16:00": 55
+          },
+          "fitted_decision_clusters": 1085,
+          "fitted_rows": 2767,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1034,
+            "4h@08:00": 1081,
+            "4h@12:00": 453,
+            "4h@16:00": 199
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 1700,
+          "admitted_rows": 4938,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1601,
+            "4h@08:00": 1696,
+            "4h@12:00": 978,
+            "4h@16:00": 663
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 251,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 63,
+            "4h@16:00": 62
+          },
+          "fitted_decision_clusters": 1574,
+          "fitted_rows": 4434,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1475,
+            "4h@08:00": 1570,
+            "4h@12:00": 852,
+            "4h@16:00": 537
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 1672,
+          "admitted_rows": 5733,
+          "admitted_rows_by_route": {
+            "4h@04:00": 1653,
+            "4h@08:00": 1669,
+            "4h@12:00": 1451,
+            "4h@16:00": 960
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 251,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 63,
+            "4h@16:00": 62
+          },
+          "fitted_decision_clusters": 1546,
+          "fitted_rows": 5229,
+          "fitted_rows_by_route": {
+            "4h@04:00": 1527,
+            "4h@08:00": 1543,
+            "4h@12:00": 1325,
+            "4h@16:00": 834
+          }
+        },
+        "PATH": {
+          "admitted_decision_clusters": 1323,
+          "admitted_rows": 2656,
+          "admitted_rows_by_route": {
+            "4h@04:00": 859,
+            "4h@08:00": 1318,
+            "4h@12:00": 318,
+            "4h@16:00": 161
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 144,
+          "assessment_rows_by_route": {
+            "4h@04:00": 51,
+            "4h@08:00": 63,
+            "4h@12:00": 16,
+            "4h@16:00": 14
+          },
+          "fitted_decision_clusters": 1197,
+          "fitted_rows": 2357,
+          "fitted_rows_by_route": {
+            "4h@04:00": 754,
+            "4h@08:00": 1192,
+            "4h@12:00": 279,
+            "4h@16:00": 132
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 380,
+          "admitted_rows": 1080,
+          "admitted_rows_by_route": {
+            "4h@04:00": 288,
+            "4h@08:00": 380,
+            "4h@12:00": 249,
+            "4h@16:00": 163
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 251,
+          "assessment_rows_by_route": {
+            "4h@04:00": 63,
+            "4h@08:00": 63,
+            "4h@12:00": 63,
+            "4h@16:00": 62
+          },
+          "fitted_decision_clusters": 254,
+          "fitted_rows": 576,
+          "fitted_rows_by_route": {
+            "4h@04:00": 162,
+            "4h@08:00": 254,
+            "4h@12:00": 123,
+            "4h@16:00": 37
+          }
+        },
+        "TWST": {
+          "admitted_decision_clusters": 1877,
+          "admitted_rows": 2157,
+          "admitted_rows_by_route": {
+            "4h@04:00": 185,
+            "4h@08:00": 1877,
+            "4h@12:00": 60,
+            "4h@16:00": 35
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 90,
+          "assessment_rows_by_route": {
+            "4h@04:00": 14,
+            "4h@08:00": 63,
+            "4h@12:00": 6,
+            "4h@16:00": 7
+          },
+          "fitted_decision_clusters": 1751,
+          "fitted_rows": 1985,
+          "fitted_rows_by_route": {
+            "4h@04:00": 159,
+            "4h@08:00": 1751,
+            "4h@12:00": 51,
+            "4h@16:00": 24
+          }
+        }
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 24
+      },
+      "zero_assessment_symbols": [],
+      "forecast_statuses": {
+        "PROMOTED": 44
+      },
+      "forecast_probability_range": [
+        0.46077051488013754,
+        0.5274988390931649
+      ],
+      "previous_publication_comparison": {
+        "baseline_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260929T061339.593647Z",
+        "previous_gate": {
+          "assessment_beats_baseline": {
+            "brier_score": true,
+            "log_loss": true
+          },
+          "assessment_minus_baseline": {
+            "brier_score": -0.00018419626204847,
+            "log_loss": -0.0003667250435935
+          },
+          "baseline_tolerances": {
+            "brier_score": 0.005,
+            "log_loss": 0.01
+          },
+          "checks": {
+            "assessment_has_at_least_10_decision_clusters": true,
+            "brier_within_baseline_tolerance": true,
+            "calibration_retains_directional_information": true,
+            "expected_calibration_error_at_most_0_15": true,
+            "log_loss_within_baseline_tolerance": true
+          },
+          "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+          "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+          "policy_version": "independent-stock-directional-promotion-v2",
+          "status": "PROMOTED"
+        },
+        "previous_assessment": {
+          "brier_score": 0.2498752537631933,
+          "direction_accuracy_at_0_5": 0.5083370887787292,
+          "expected_calibration_error_10_bin": 0.011426646806363818,
+          "log_loss": 0.6928993652437955,
+          "mean_probability": 0.500137401374815,
+          "positive_rate": 0.4988733663812528,
+          "rows": 2219
+        },
+        "assessment_delta": {
+          "brier_score": 5.3056416461000344e-05,
+          "log_loss": 0.00010538937861870323
+        },
+        "previous_selected_family": "hist-gradient",
+        "previous_assessment_rows": 2219,
+        "previous_assessment_clusters": 63,
+        "comparison_does_not_select_candidates": true,
+        "different_feature_contract": false,
+        "cohorts_are_distinct_publications": true,
+        "comparability_note": "Previous publication is the frozen September 29 archive-history baseline; feature-contract identity is compared explicitly. This is a factual cross-publication score comparison, not a controlled same-cohort accuracy experiment."
+      }
+    },
+    "1d": {
+      "checks": {
+        "archive_feature_contract": true,
+        "raw_direction_target_preserved": true,
+        "saved_promotion_arithmetic": true,
+        "saved_v2_policy": true,
+        "no_duplicate_exact_targets": true,
+        "observed_boundaries_within_five_minutes": true,
+        "unblended_xnas_source": true,
+        "returns_match_observed_prices": true,
+        "exact_fitted_symbol_route_support_and_status": true,
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "selected_minimum_development_log_loss": true,
+        "calibration_excludes_assessment_selection": true
+      },
+      "support_errors": [],
+      "promotion_gate": {
+        "policy_version": "independent-stock-directional-promotion-v2",
+        "status": "PROMOTED",
+        "checks": {
+          "calibration_retains_directional_information": true,
+          "assessment_has_at_least_10_decision_clusters": true,
+          "expected_calibration_error_at_most_0_15": true,
+          "brier_within_baseline_tolerance": true,
+          "log_loss_within_baseline_tolerance": true
+        },
+        "baseline_tolerances": {
+          "brier_score": 0.005,
+          "log_loss": 0.01
+        },
+        "assessment_minus_baseline": {
+          "brier_score": 0.00020807549842984,
+          "log_loss": 0.000423055827058
+        },
+        "assessment_beats_baseline": {
+          "brier_score": false,
+          "log_loss": false
+        },
+        "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+        "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes."
+      },
+      "assessment": {
+        "brier_score": 0.25100640241532934,
+        "direction_accuracy_at_0_5": 0.5010893246187363,
+        "expected_calibration_error_10_bin": 0.0353862575930371,
+        "log_loss": 0.6951671949211351,
+        "mean_probability": 0.5061562976182422,
+        "positive_rate": 0.4710239651416122,
+        "rows": 2295
+      },
+      "training_rate_baseline": {
+        "brier_score": 0.2507983269168995,
+        "direction_accuracy_at_0_5": 0.4710239651416122,
+        "expected_calibration_error_10_bin": 0.04047144070840597,
+        "log_loss": 0.6947441390940771,
+        "mean_probability": 0.5114954058500182,
+        "positive_rate": 0.4710239651416122,
+        "rows": 2295
+      },
+      "fitted_target_rows": 24923,
+      "saved_policy_metric_limits": {
+        "brier_score": {
+          "assessment": 0.25100640241532934,
+          "training_rate_baseline": 0.2507983269168995,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2557983269168995,
+          "actual_baseline_excess": 0.00020807549842984,
+          "margin_to_maximum": 0.00479192450157016,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6951671949211351,
+          "training_rate_baseline": 0.6947441390940771,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7047441390940771,
+          "actual_baseline_excess": 0.000423055827058,
+          "margin_to_maximum": 0.009576944172942,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "strictly_beats_both_baselines": false,
+      "failed_promotion_checks": [],
+      "baseline_excess": {
+        "brier_score": 0.0002080754984298272,
+        "log_loss": 0.0004230558270580387
+      },
+      "selected_family": "regularized-logistic-c0.001",
+      "selected_development_metrics": {
+        "brier_score": 0.24982677988932817,
+        "direction_accuracy_at_0_5": 0.523854961832061,
+        "expected_calibration_error_10_bin": 0.0076041320358538915,
+        "log_loss": 0.6928187688788173,
+        "mean_probability": 0.5091178179990236,
+        "positive_rate": 0.5109732824427481,
+        "rows": 2096
+      },
+      "selection_candidates": 9,
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_eligibility": {
+          "identity": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": null,
+            "probability_span": 0.20460064426934294,
+            "reason": "INFORMATION_RETAINED"
+          },
+          "platt": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": 0.3647642564475363,
+            "probability_span": 0.07116697075696088,
+            "reason": "INFORMATION_RETAINED"
+          }
+        },
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.25219631631819744,
+            "log_loss": 0.6975682354286651,
+            "rows": 1152
+          },
+          "platt": {
+            "brier_score": 0.2738585787205507,
+            "log_loss": 0.742045513342679,
+            "rows": 1152
+          }
+        },
+        "fit_class_counts": {
+          "0": 421,
+          "1": 678
+        },
+        "fit_decision_clusters": 31,
+        "fit_last_target_end": "2026-05-14T00:00:00+00:00",
+        "fit_rows": 1099,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-stock-information-retaining-development-selection-v2",
+        "purged_rows": 73,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_among_information_retaining_candidates_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 32,
+        "validation_first_decision": "2026-05-14T00:05:00+00:00",
+        "validation_rows": 1152
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.4025653148958309,
+          0.7086209289227166
+        ],
+        "calibrated_probability_range": [
+          0.35157969882146733,
+          0.6159463517917197
+        ],
+        "calibration_positive_rate": 0.5283993115318416,
+        "calibration_rows": 2324,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.35157969882146733,
+          0.6159463517917197
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "probability_shrinkage_policy": null,
+      "selected_probability_shrinkage_weight": 1.0,
+      "retained_champion": null,
+      "fitted_cohort": "training-cohort-1d.parquet",
+      "partitions": {
+        "train": {
+          "rows": 22827,
+          "decision_clusters": 993,
+          "positive_rate": 0.511543347789898,
+          "first_decision": "2019-09-18T00:05:00+00:00",
+          "last_decision": "2025-08-30T00:05:00+00:00",
+          "last_target_end": "2025-09-03T00:00:00+00:00"
+        },
+        "selection": {
+          "rows": 2096,
+          "decision_clusters": 63,
+          "positive_rate": 0.5109732824427481,
+          "first_decision": "2025-09-03T00:05:00+00:00",
+          "last_decision": "2026-03-28T00:05:00+00:00",
+          "last_target_end": "2026-03-31T00:00:00+00:00"
+        },
+        "calibration": {
+          "rows": 2324,
+          "decision_clusters": 63,
+          "positive_rate": 0.5283993115318416,
+          "first_decision": "2026-03-31T00:05:00+00:00",
+          "last_decision": "2026-06-30T00:05:00+00:00",
+          "last_target_end": "2026-07-01T00:00:00+00:00"
+        },
+        "assessment": {
+          "rows": 2295,
+          "decision_clusters": 63,
+          "positive_rate": 0.4710239651416122,
+          "first_decision": "2026-07-01T00:05:00+00:00",
+          "last_decision": "2026-09-29T00:05:00+00:00",
+          "last_target_end": "2026-09-30T00:00:00+00:00"
+        }
+      },
+      "support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 1125,
+          "admitted_rows": 5386,
+          "admitted_rows_by_route": {
+            "1d@D+1": 1077,
+            "1d@D+2": 1077,
+            "1d@D+3": 1077,
+            "1d@D+4": 1077,
+            "1d@D+5": 1078
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 305,
+          "assessment_rows_by_route": {
+            "1d@D+1": 63,
+            "1d@D+2": 62,
+            "1d@D+3": 61,
+            "1d@D+4": 60,
+            "1d@D+5": 59
+          },
+          "fitted_decision_clusters": 999,
+          "fitted_rows": 4746,
+          "fitted_rows_by_route": {
+            "1d@D+1": 951,
+            "1d@D+2": 950,
+            "1d@D+3": 949,
+            "1d@D+4": 948,
+            "1d@D+5": 948
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 1123,
+          "admitted_rows": 5222,
+          "admitted_rows_by_route": {
+            "1d@D+1": 1043,
+            "1d@D+2": 1044,
+            "1d@D+3": 1045,
+            "1d@D+4": 1045,
+            "1d@D+5": 1045
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 305,
+          "assessment_rows_by_route": {
+            "1d@D+1": 63,
+            "1d@D+2": 62,
+            "1d@D+3": 61,
+            "1d@D+4": 60,
+            "1d@D+5": 59
+          },
+          "fitted_decision_clusters": 997,
+          "fitted_rows": 4582,
+          "fitted_rows_by_route": {
+            "1d@D+1": 917,
+            "1d@D+2": 917,
+            "1d@D+3": 917,
+            "1d@D+4": 916,
+            "1d@D+5": 915
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 829,
+          "admitted_rows": 1699,
+          "admitted_rows_by_route": {
+            "1d@D+1": 339,
+            "1d@D+2": 340,
+            "1d@D+3": 340,
+            "1d@D+4": 340,
+            "1d@D+5": 340
+          },
+          "assessment_decision_clusters": 58,
+          "assessment_rows": 150,
+          "assessment_rows_by_route": {
+            "1d@D+1": 31,
+            "1d@D+2": 30,
+            "1d@D+3": 30,
+            "1d@D+4": 30,
+            "1d@D+5": 29
+          },
+          "fitted_decision_clusters": 714,
+          "fitted_rows": 1410,
+          "fitted_rows_by_route": {
+            "1d@D+1": 282,
+            "1d@D+2": 282,
+            "1d@D+3": 282,
+            "1d@D+4": 282,
+            "1d@D+5": 282
+          }
+        },
+        "CROX": {
+          "admitted_decision_clusters": 234,
+          "admitted_rows": 300,
+          "admitted_rows_by_route": {
+            "1d@D+1": 60,
+            "1d@D+2": 60,
+            "1d@D+3": 60,
+            "1d@D+4": 60,
+            "1d@D+5": 60
+          },
+          "assessment_decision_clusters": 5,
+          "assessment_rows": 5,
+          "assessment_rows_by_route": {
+            "1d@D+1": 1,
+            "1d@D+2": 1,
+            "1d@D+3": 1,
+            "1d@D+4": 1,
+            "1d@D+5": 1
+          },
+          "fitted_decision_clusters": 224,
+          "fitted_rows": 290,
+          "fitted_rows_by_route": {
+            "1d@D+1": 58,
+            "1d@D+2": 58,
+            "1d@D+3": 58,
+            "1d@D+4": 58,
+            "1d@D+5": 58
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 1072,
+          "admitted_rows": 4211,
+          "admitted_rows_by_route": {
+            "1d@D+1": 841,
+            "1d@D+2": 843,
+            "1d@D+3": 843,
+            "1d@D+4": 842,
+            "1d@D+5": 842
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 300,
+          "assessment_rows_by_route": {
+            "1d@D+1": 62,
+            "1d@D+2": 61,
+            "1d@D+3": 60,
+            "1d@D+4": 59,
+            "1d@D+5": 58
+          },
+          "fitted_decision_clusters": 946,
+          "fitted_rows": 3586,
+          "fitted_rows_by_route": {
+            "1d@D+1": 718,
+            "1d@D+2": 719,
+            "1d@D+3": 718,
+            "1d@D+4": 716,
+            "1d@D+5": 715
+          }
+        },
+        "IONQ": {
+          "admitted_decision_clusters": 617,
+          "admitted_rows": 1805,
+          "admitted_rows_by_route": {
+            "1d@D+1": 362,
+            "1d@D+2": 362,
+            "1d@D+3": 361,
+            "1d@D+4": 360,
+            "1d@D+5": 360
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 238,
+          "assessment_rows_by_route": {
+            "1d@D+1": 49,
+            "1d@D+2": 48,
+            "1d@D+3": 48,
+            "1d@D+4": 47,
+            "1d@D+5": 46
+          },
+          "fitted_decision_clusters": 490,
+          "fitted_rows": 1264,
+          "fitted_rows_by_route": {
+            "1d@D+1": 255,
+            "1d@D+2": 254,
+            "1d@D+3": 253,
+            "1d@D+4": 251,
+            "1d@D+5": 251
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 1120,
+          "admitted_rows": 4083,
+          "admitted_rows_by_route": {
+            "1d@D+1": 816,
+            "1d@D+2": 816,
+            "1d@D+3": 818,
+            "1d@D+4": 816,
+            "1d@D+5": 817
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 305,
+          "assessment_rows_by_route": {
+            "1d@D+1": 63,
+            "1d@D+2": 62,
+            "1d@D+3": 61,
+            "1d@D+4": 60,
+            "1d@D+5": 59
+          },
+          "fitted_decision_clusters": 994,
+          "fitted_rows": 3443,
+          "fitted_rows_by_route": {
+            "1d@D+1": 690,
+            "1d@D+2": 689,
+            "1d@D+3": 690,
+            "1d@D+4": 687,
+            "1d@D+5": 687
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 1112,
+          "admitted_rows": 5222,
+          "admitted_rows_by_route": {
+            "1d@D+1": 1043,
+            "1d@D+2": 1044,
+            "1d@D+3": 1045,
+            "1d@D+4": 1045,
+            "1d@D+5": 1045
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 305,
+          "assessment_rows_by_route": {
+            "1d@D+1": 63,
+            "1d@D+2": 62,
+            "1d@D+3": 61,
+            "1d@D+4": 60,
+            "1d@D+5": 59
+          },
+          "fitted_decision_clusters": 986,
+          "fitted_rows": 4582,
+          "fitted_rows_by_route": {
+            "1d@D+1": 917,
+            "1d@D+2": 917,
+            "1d@D+3": 917,
+            "1d@D+4": 916,
+            "1d@D+5": 915
+          }
+        },
+        "PATH": {
+          "admitted_decision_clusters": 542,
+          "admitted_rows": 954,
+          "admitted_rows_by_route": {
+            "1d@D+1": 192,
+            "1d@D+2": 192,
+            "1d@D+3": 191,
+            "1d@D+4": 190,
+            "1d@D+5": 189
+          },
+          "assessment_decision_clusters": 41,
+          "assessment_rows": 62,
+          "assessment_rows_by_route": {
+            "1d@D+1": 13,
+            "1d@D+2": 13,
+            "1d@D+3": 12,
+            "1d@D+4": 12,
+            "1d@D+5": 12
+          },
+          "fitted_decision_clusters": 446,
+          "fitted_rows": 790,
+          "fitted_rows_by_route": {
+            "1d@D+1": 160,
+            "1d@D+2": 160,
+            "1d@D+3": 158,
+            "1d@D+4": 157,
+            "1d@D+5": 155
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 197,
+          "admitted_rows": 850,
+          "admitted_rows_by_route": {
+            "1d@D+1": 170,
+            "1d@D+2": 170,
+            "1d@D+3": 170,
+            "1d@D+4": 170,
+            "1d@D+5": 170
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 305,
+          "assessment_rows_by_route": {
+            "1d@D+1": 63,
+            "1d@D+2": 62,
+            "1d@D+3": 61,
+            "1d@D+4": 60,
+            "1d@D+5": 59
+          },
+          "fitted_decision_clusters": 71,
+          "fitted_rows": 220,
+          "fitted_rows_by_route": {
+            "1d@D+1": 44,
+            "1d@D+2": 44,
+            "1d@D+3": 44,
+            "1d@D+4": 44,
+            "1d@D+5": 44
+          }
+        },
+        "TWST": {
+          "admitted_decision_clusters": 25,
+          "admitted_rows": 25,
+          "admitted_rows_by_route": {
+            "1d@D+1": 5,
+            "1d@D+2": 5,
+            "1d@D+3": 5,
+            "1d@D+4": 5,
+            "1d@D+5": 5
+          },
+          "assessment_decision_clusters": 15,
+          "assessment_rows": 15,
+          "assessment_rows_by_route": {
+            "1d@D+1": 3,
+            "1d@D+2": 3,
+            "1d@D+3": 3,
+            "1d@D+4": 3,
+            "1d@D+5": 3
+          },
+          "fitted_decision_clusters": 10,
+          "fitted_rows": 10,
+          "fitted_rows_by_route": {
+            "1d@D+1": 2,
+            "1d@D+2": 2,
+            "1d@D+3": 2,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          }
+        }
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 2
+      },
+      "zero_assessment_symbols": [],
+      "forecast_statuses": {
+        "PROMOTED": 55
+      },
+      "forecast_probability_range": [
+        0.4644394755869398,
+        0.593444832024389
+      ],
+      "previous_publication_comparison": {
+        "baseline_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260929T061339.593647Z",
+        "previous_gate": {
+          "assessment_beats_baseline": {
+            "brier_score": true,
+            "log_loss": true
+          },
+          "assessment_minus_baseline": {
+            "brier_score": -0.00014084520183384,
+            "log_loss": -0.000277352867415
+          },
+          "baseline_tolerances": {
+            "brier_score": 0.005,
+            "log_loss": 0.01
+          },
+          "checks": {
+            "assessment_has_at_least_10_decision_clusters": true,
+            "brier_within_baseline_tolerance": true,
+            "calibration_retains_directional_information": true,
+            "expected_calibration_error_at_most_0_15": true,
+            "log_loss_within_baseline_tolerance": true
+          },
+          "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+          "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+          "policy_version": "independent-stock-directional-promotion-v2",
+          "status": "PROMOTED"
+        },
+        "previous_assessment": {
+          "brier_score": 0.25066679133323116,
+          "direction_accuracy_at_0_5": 0.5039335664335665,
+          "expected_calibration_error_10_bin": 0.035255882398343666,
+          "log_loss": 0.6944854408224492,
+          "mean_probability": 0.5074671547523087,
+          "positive_rate": 0.47246503496503495,
+          "rows": 2288
+        },
+        "assessment_delta": {
+          "brier_score": 0.00033961108209817903,
+          "log_loss": 0.0006817540986858717
+        },
+        "previous_selected_family": "regularized-logistic-c0.001",
+        "previous_assessment_rows": 2288,
+        "previous_assessment_clusters": 63,
+        "comparison_does_not_select_candidates": true,
+        "different_feature_contract": false,
+        "cohorts_are_distinct_publications": true,
+        "comparability_note": "Previous publication is the frozen September 29 archive-history baseline; feature-contract identity is compared explicitly. This is a factual cross-publication score comparison, not a controlled same-cohort accuracy experiment."
+      }
+    },
+    "1w": {
+      "checks": {
+        "archive_feature_contract": true,
+        "raw_direction_target_preserved": true,
+        "saved_promotion_arithmetic": true,
+        "saved_v2_policy": true,
+        "no_duplicate_exact_targets": true,
+        "observed_boundaries_within_five_minutes": true,
+        "unblended_xnas_source": true,
+        "returns_match_observed_prices": true,
+        "exact_fitted_symbol_route_support_and_status": true,
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "selected_minimum_development_log_loss": true,
+        "calibration_excludes_assessment_selection": true
+      },
+      "support_errors": [],
+      "promotion_gate": {
+        "policy_version": "independent-stock-directional-promotion-v2",
+        "status": "PROMOTED",
+        "checks": {
+          "calibration_retains_directional_information": true,
+          "assessment_has_at_least_10_decision_clusters": true,
+          "expected_calibration_error_at_most_0_15": true,
+          "brier_within_baseline_tolerance": true,
+          "log_loss_within_baseline_tolerance": true
+        },
+        "baseline_tolerances": {
+          "brier_score": 0.005,
+          "log_loss": 0.01
+        },
+        "assessment_minus_baseline": {
+          "brier_score": 0.00018440329068925,
+          "log_loss": 0.0003705938913323
+        },
+        "assessment_beats_baseline": {
+          "brier_score": false,
+          "log_loss": false
+        },
+        "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+        "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes."
+      },
+      "assessment": {
+        "brier_score": 0.25211857520168185,
+        "direction_accuracy_at_0_5": 0.5084745762711864,
+        "expected_calibration_error_10_bin": 0.051109979030583765,
+        "log_loss": 0.6974154014497242,
+        "mean_probability": 0.5595563632793091,
+        "positive_rate": 0.510593220338983,
+        "rows": 472
+      },
+      "training_rate_baseline": {
+        "brier_score": 0.2519341719109926,
+        "direction_accuracy_at_0_5": 0.510593220338983,
+        "expected_calibration_error_10_bin": 0.045237022759492596,
+        "log_loss": 0.6970448075583919,
+        "mean_probability": 0.5558302430984756,
+        "positive_rate": 0.510593220338983,
+        "rows": 472
+      },
+      "fitted_target_rows": 4854,
+      "saved_policy_metric_limits": {
+        "brier_score": {
+          "assessment": 0.25211857520168185,
+          "training_rate_baseline": 0.2519341719109926,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2569341719109926,
+          "actual_baseline_excess": 0.00018440329068925,
+          "margin_to_maximum": 0.00481559670931075,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6974154014497242,
+          "training_rate_baseline": 0.6970448075583919,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7070448075583919,
+          "actual_baseline_excess": 0.0003705938913323,
+          "margin_to_maximum": 0.0096294061086677,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "strictly_beats_both_baselines": false,
+      "failed_promotion_checks": [],
+      "baseline_excess": {
+        "brier_score": 0.0001844032906892501,
+        "log_loss": 0.0003705938913323159
+      },
+      "selected_family": "regularized-logistic-c0.001-prior-shrinkage-w0.25",
+      "selected_development_metrics": {
+        "brier_score": 0.24203141619837518,
+        "direction_accuracy_at_0_5": 0.6022988505747127,
+        "expected_calibration_error_10_bin": 0.05049435466431129,
+        "log_loss": 0.6771564343351207,
+        "mean_probability": 0.5518044959104014,
+        "positive_rate": 0.6022988505747127,
+        "rows": 435
+      },
+      "selection_candidates": 36,
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_eligibility": {
+          "identity": {
+            "eligible": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": null,
+            "probability_span": 0.042383950672280846,
+            "reason": "INFORMATION_RETAINED"
+          },
+          "platt": {
+            "eligible": false,
+            "nondecreasing_constraint_active": true,
+            "platt_slope": 0.0,
+            "probability_span": 0.0,
+            "reason": "CONSTANT_OR_ORIENTATION_CONSTRAINED"
+          }
+        },
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.25360555403423524,
+            "log_loss": 0.7003986070519657,
+            "rows": 233
+          },
+          "platt": {
+            "brier_score": 0.35945723891920883,
+            "log_loss": 0.9764343203460094,
+            "rows": 233
+          }
+        },
+        "fit_class_counts": {
+          "0": 33,
+          "1": 155
+        },
+        "fit_decision_clusters": 25,
+        "fit_last_target_end": "2026-05-06T00:00:00+00:00",
+        "fit_rows": 188,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-stock-information-retaining-development-selection-v2",
+        "purged_rows": 29,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_among_information_retaining_candidates_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 30,
+        "validation_first_decision": "2026-05-06T00:05:00+00:00",
+        "validation_rows": 233
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.49334668269918963,
+          0.5865535723050165
+        ],
+        "calibrated_probability_range": [
+          0.5266023048747325,
+          0.5810508481515625
+        ],
+        "calibration_positive_rate": 0.66,
+        "calibration_rows": 450,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.5266023048747325,
+          0.5810508481515625
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "probability_shrinkage_policy": "independent-stock-weekly-prior-probability-shrinkage-v1",
+      "selected_probability_shrinkage_weight": 0.25,
+      "retained_champion": null,
+      "fitted_cohort": "training-cohort-1w.parquet",
+      "partitions": {
+        "train": {
+          "rows": 4419,
+          "decision_clusters": 920,
+          "positive_rate": 0.551255940257977,
+          "first_decision": "2019-09-18T00:05:00+00:00",
+          "last_decision": "2025-08-14T00:05:00+00:00",
+          "last_target_end": "2025-08-21T00:00:00+00:00"
+        },
+        "selection": {
+          "rows": 435,
+          "decision_clusters": 59,
+          "positive_rate": 0.6022988505747127,
+          "first_decision": "2025-08-21T00:05:00+00:00",
+          "last_decision": "2026-03-18T00:05:00+00:00",
+          "last_target_end": "2026-03-25T00:00:00+00:00"
+        },
+        "calibration": {
+          "rows": 450,
+          "decision_clusters": 59,
+          "positive_rate": 0.66,
+          "first_decision": "2026-03-25T00:05:00+00:00",
+          "last_decision": "2026-06-17T00:05:00+00:00",
+          "last_target_end": "2026-06-25T00:00:00+00:00"
+        },
+        "assessment": {
+          "rows": 472,
+          "decision_clusters": 63,
+          "positive_rate": 0.510593220338983,
+          "first_decision": "2026-06-25T00:05:00+00:00",
+          "last_decision": "2026-09-23T00:05:00+00:00",
+          "last_target_end": "2026-09-30T00:00:00+00:00"
+        }
+      },
+      "support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 1064,
+          "admitted_rows": 1064,
+          "admitted_rows_by_route": {
+            "1w@D+5": 1064
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 63,
+          "assessment_rows_by_route": {
+            "1w@D+5": 63
+          },
+          "fitted_decision_clusters": 930,
+          "fitted_rows": 930,
+          "fitted_rows_by_route": {
+            "1w@D+5": 930
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 1029,
+          "admitted_rows": 1029,
+          "admitted_rows_by_route": {
+            "1w@D+5": 1029
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 63,
+          "assessment_rows_by_route": {
+            "1w@D+5": 63
+          },
+          "fitted_decision_clusters": 895,
+          "fitted_rows": 895,
+          "fitted_rows_by_route": {
+            "1w@D+5": 895
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 336,
+          "admitted_rows": 336,
+          "admitted_rows_by_route": {
+            "1w@D+5": 336
+          },
+          "assessment_decision_clusters": 30,
+          "assessment_rows": 30,
+          "assessment_rows_by_route": {
+            "1w@D+5": 30
+          },
+          "fitted_decision_clusters": 275,
+          "fitted_rows": 275,
+          "fitted_rows_by_route": {
+            "1w@D+5": 275
+          }
+        },
+        "CROX": {
+          "admitted_decision_clusters": 62,
+          "admitted_rows": 62,
+          "admitted_rows_by_route": {
+            "1w@D+5": 62
+          },
+          "assessment_decision_clusters": 1,
+          "assessment_rows": 1,
+          "assessment_rows_by_route": {
+            "1w@D+5": 1
+          },
+          "fitted_decision_clusters": 59,
+          "fitted_rows": 59,
+          "fitted_rows_by_route": {
+            "1w@D+5": 59
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 833,
+          "admitted_rows": 833,
+          "admitted_rows_by_route": {
+            "1w@D+5": 833
+          },
+          "assessment_decision_clusters": 62,
+          "assessment_rows": 62,
+          "assessment_rows_by_route": {
+            "1w@D+5": 62
+          },
+          "fitted_decision_clusters": 702,
+          "fitted_rows": 702,
+          "fitted_rows_by_route": {
+            "1w@D+5": 702
+          }
+        },
+        "IONQ": {
+          "admitted_decision_clusters": 357,
+          "admitted_rows": 357,
+          "admitted_rows_by_route": {
+            "1w@D+5": 357
+          },
+          "assessment_decision_clusters": 49,
+          "assessment_rows": 49,
+          "assessment_rows_by_route": {
+            "1w@D+5": 49
+          },
+          "fitted_decision_clusters": 247,
+          "fitted_rows": 247,
+          "fitted_rows_by_route": {
+            "1w@D+5": 247
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 802,
+          "admitted_rows": 802,
+          "admitted_rows_by_route": {
+            "1w@D+5": 802
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 63,
+          "assessment_rows_by_route": {
+            "1w@D+5": 63
+          },
+          "fitted_decision_clusters": 669,
+          "fitted_rows": 669,
+          "fitted_rows_by_route": {
+            "1w@D+5": 669
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 1030,
+          "admitted_rows": 1030,
+          "admitted_rows_by_route": {
+            "1w@D+5": 1030
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 63,
+          "assessment_rows_by_route": {
+            "1w@D+5": 63
+          },
+          "fitted_decision_clusters": 896,
+          "fitted_rows": 896,
+          "fitted_rows_by_route": {
+            "1w@D+5": 896
+          }
+        },
+        "PATH": {
+          "admitted_decision_clusters": 170,
+          "admitted_rows": 170,
+          "admitted_rows_by_route": {
+            "1w@D+5": 170
+          },
+          "assessment_decision_clusters": 13,
+          "assessment_rows": 13,
+          "assessment_rows_by_route": {
+            "1w@D+5": 13
+          },
+          "fitted_decision_clusters": 135,
+          "fitted_rows": 135,
+          "fitted_rows_by_route": {
+            "1w@D+5": 135
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 168,
+          "admitted_rows": 168,
+          "admitted_rows_by_route": {
+            "1w@D+5": 168
+          },
+          "assessment_decision_clusters": 63,
+          "assessment_rows": 63,
+          "assessment_rows_by_route": {
+            "1w@D+5": 63
+          },
+          "fitted_decision_clusters": 38,
+          "fitted_rows": 38,
+          "fitted_rows_by_route": {
+            "1w@D+5": 38
+          }
+        },
+        "TWST": {
+          "admitted_decision_clusters": 10,
+          "admitted_rows": 10,
+          "admitted_rows_by_route": {
+            "1w@D+5": 10
+          },
+          "assessment_decision_clusters": 2,
+          "assessment_rows": 2,
+          "assessment_rows_by_route": {
+            "1w@D+5": 2
+          },
+          "fitted_decision_clusters": 8,
+          "fitted_rows": 8,
+          "fitted_rows_by_route": {
+            "1w@D+5": 8
+          }
+        }
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 8
+      },
+      "zero_assessment_symbols": [],
+      "forecast_statuses": {
+        "PROMOTED": 11
+      },
+      "forecast_probability_range": [
+        0.546562706739957,
+        0.5719696423460339
+      ],
+      "previous_publication_comparison": {
+        "baseline_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260929T061339.593647Z",
+        "previous_gate": {
+          "assessment_beats_baseline": {
+            "brier_score": false,
+            "log_loss": false
+          },
+          "assessment_minus_baseline": {
+            "brier_score": 0.00153287004043262,
+            "log_loss": 0.0031382361221921
+          },
+          "baseline_tolerances": {
+            "brier_score": 0.005,
+            "log_loss": 0.01
+          },
+          "checks": {
+            "assessment_has_at_least_10_decision_clusters": true,
+            "brier_within_baseline_tolerance": true,
+            "calibration_retains_directional_information": true,
+            "expected_calibration_error_at_most_0_15": true,
+            "log_loss_within_baseline_tolerance": true
+          },
+          "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+          "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+          "policy_version": "independent-stock-directional-promotion-v2",
+          "status": "PROMOTED"
+        },
+        "previous_assessment": {
+          "brier_score": 0.25288658094285227,
+          "direction_accuracy_at_0_5": 0.5127118644067796,
+          "expected_calibration_error_10_bin": 0.05874647315631667,
+          "log_loss": 0.6990195396169795,
+          "mean_probability": 0.5704397193396876,
+          "positive_rate": 0.5169491525423728,
+          "rows": 472
+        },
+        "assessment_delta": {
+          "brier_score": -0.0007680057411704189,
+          "log_loss": -0.0016041381672552424
+        },
+        "previous_selected_family": "regularized-logistic-c0.001-prior-shrinkage-w0.75",
+        "previous_assessment_rows": 472,
+        "previous_assessment_clusters": 63,
+        "comparison_does_not_select_candidates": true,
+        "different_feature_contract": false,
+        "cohorts_are_distinct_publications": true,
+        "comparability_note": "Previous publication is the frozen September 29 archive-history baseline; feature-contract identity is compared explicitly. This is a factual cross-publication score comparison, not a controlled same-cohort accuracy experiment."
+      }
+    }
+  },
+  "errors": [],
+  "coverage_notes": [
+    {
+      "enrichment_group": "1h",
+      "fit_status": "FITTED",
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+      }
+    },
+    {
+      "enrichment_group": "4h",
+      "fit_status": "FITTED",
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      }
+    },
+    {
+      "enrichment_group": "1d",
+      "fit_status": "FITTED",
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+      }
+    },
+    {
+      "enrichment_group": "1w",
+      "fit_status": "FITTED",
+      "qualified_scopes": 0,
+      "reason_counts": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      }
+    }
+  ],
+  "enrichment": {
+    "status": "MODELS_FIT",
+    "run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260930T062446.604631Z",
+    "source_verified": true,
+    "supported_horizons": [],
+    "qualified_target_contracts": [],
+    "feature_contract_version": "independent-stock-enrichment-market-features-v1",
+    "scope_qualification_policy": "pooled-horizon-with-observed-target-coverage-v1",
+    "groups": {
+      "1h": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 143,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 4.355192466538851e-05,
+          "base_adverse_mse": 4.719338050013591e-05,
+          "base_brier": 0.23572412741373353,
+          "base_log_loss": 0.66431939599003,
+          "base_return_mse": 0.00011310108402860955,
+          "brier": 0.23060416720595375,
+          "ece": 0.014287155826064735,
+          "log_loss": 0.6529629987026071,
+          "probability_range": [
+            0.15547921787905403,
+            0.6011252770710817
+          ],
+          "return_mse": 0.00011323731539886107
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-07-01T00:05:00+00:00",
+            "last_decision": "2026-09-29T00:05:00+00:00",
+            "last_target_end": "2026-09-30T00:00:00+00:00",
+            "positive_rate": 0.3804004214963119,
+            "rows": 7592,
+            "rows_sha256": "4dca459524d1099ea0183faa443c8e9e1c8ac2c2fa7572bc51804515d714c2f4"
+          },
+          "calibration": {
+            "decision_clusters": 63,
+            "first_decision": "2026-03-31T00:05:00+00:00",
+            "last_decision": "2026-06-30T00:05:00+00:00",
+            "last_target_end": "2026-07-01T00:00:00+00:00",
+            "positive_rate": 0.4143473147785182,
+            "rows": 7653,
+            "rows_sha256": "c64349ecbf7dd04bfaf8482382162a3feabc7f19bbd0751215f4fc4a56dd8849"
+          },
+          "selection": {
+            "decision_clusters": 63,
+            "first_decision": "2025-12-27T00:05:00+00:00",
+            "last_decision": "2026-03-28T00:05:00+00:00",
+            "last_target_end": "2026-03-31T00:00:00+00:00",
+            "positive_rate": 0.38415052877352013,
+            "rows": 7281,
+            "rows_sha256": "8aa792731e6dbc0650dec2d1bb055921d84d500316f08ef26cb1c2eae8f8073c"
+          },
+          "train": {
+            "decision_clusters": 686,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-12-25T00:05:00+00:00",
+            "last_target_end": "2025-12-27T00:00:00+00:00",
+            "positive_rate": 0.38586994926297047,
+            "rows": 70757,
+            "rows_sha256": "acea146dd0df8cad06d7e40803c674d7b1e095a321e845a13d5549353e2ad9e8"
+          }
+        },
+        "head_development_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "1.0": {
+              "adverse_mse": 3.8945352158565195e-05,
+              "allocation_transformed_target_mse": 6.18485581231056,
+              "log_loss": 0.6530721224814154,
+              "return_mse": 0.00011050390276621052
+            },
+            "20.0": {
+              "adverse_mse": 3.894614382803406e-05,
+              "allocation_transformed_target_mse": 6.18485006395866,
+              "log_loss": 0.6530638185218571,
+              "return_mse": 0.00011050368646256521
+            },
+            "5.0": {
+              "adverse_mse": 3.8945515395855796e-05,
+              "allocation_transformed_target_mse": 6.184854586091101,
+              "log_loss": 0.6530703501479973,
+              "return_mse": 0.0001105038571175099
+            }
+          },
+          "candidate_penalties": [
+            1.0,
+            5.0,
+            20.0
+          ],
+          "head_objectives": {
+            "adverse_return": "adverse_mse",
+            "allocation_fraction": "allocation_transformed_target_mse",
+            "expected_net_return": "return_mse",
+            "trade_probability": "log_loss"
+          },
+          "policy": "independent-enrichment-head-objective-selection-v1",
+          "selected_penalties": {
+            "adverse_return": 1.0,
+            "allocation_fraction": 20.0,
+            "expected_net_return": 20.0,
+            "trade_probability": 20.0
+          },
+          "tie_policy": "first_penalty_in_fixed_order"
+        },
+        "calibration_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "identity": {
+              "brier_score": 0.2347136458408679,
+              "log_loss": 0.6617645806601014,
+              "rows": 3925
+            },
+            "platt": {
+              "brier_score": 0.23597969714293765,
+              "log_loss": 0.6645617277284902,
+              "rows": 3925
+            }
+          },
+          "fit_decision_clusters": 31,
+          "fit_last_target_end": "2026-05-14T00:00:00+00:00",
+          "fit_rows": 3728,
+          "full_calibration_refit_rows": 0,
+          "policy": "independent-enrichment-logit-development-selection-v1",
+          "purged_rows": 0,
+          "selected_family": "identity",
+          "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+          "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+          "split": "first_half_vs_second_half_decision_clusters",
+          "validation_decision_clusters": 32,
+          "validation_first_decision": "2026-05-14T00:05:00+00:00",
+          "validation_rows": 3925
+        },
+        "admitted_rows": 93283,
+        "excluded_context_rows": 5992,
+        "market_feature_admission": {
+          "admitted_rows": 93283,
+          "excluded_by_feature": {
+            "bp__compression_score": 72749,
+            "bp__direction_score": 72749,
+            "mr__atr_percent": 72749,
+            "mr__momentum_risk_adjusted": 72749,
+            "mr__range_position": 72749,
+            "mr__trend_atr": 72749,
+            "mr__volatility_ratio": 72749,
+            "mr__volume_score": 72749
+          },
+          "excluded_by_symbol": {
+            "AAPL": 9818,
+            "AMZN": 9449,
+            "COST": 6744,
+            "CROX": 8222,
+            "GOOG": 8003,
+            "IONQ": 3178,
+            "MU": 8175,
+            "NVDA": 9528,
+            "PATH": 3346,
+            "TWST": 6286
+          },
+          "excluded_missing_market_rows": 72749,
+          "excluded_rows_sha256": "6d61443903d04989c556d28d9a0ec757f796a7e1d4cbf9145c12dfb66eeaf45b",
+          "input_execution_rows": 166032,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "sizing_quality_checks": {
+          "brier_below_baseline": true,
+          "log_loss_below_baseline": true,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": true,
+          "varying_probability": true,
+          "assessment_clusters_at_least_minimum": true
+        },
+        "failed_sizing_quality_checks": [
+          "return_mse_below_baseline"
+        ],
+        "checks": {
+          "calibration_selection_excludes_assessment": true,
+          "head_selection_excludes_assessment": true,
+          "qualified_count_matches_scopes": true,
+          "adverse_return_minimum_development_objective": true,
+          "allocation_fraction_minimum_development_objective": true,
+          "expected_net_return_minimum_development_objective": true,
+          "trade_probability_minimum_development_objective": true,
+          "strict_sizing_quality_arithmetic": true
+        },
+        "reason": null
+      },
+      "4h": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 78,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 0.00018279334041437493,
+          "base_adverse_mse": 0.0002060466146058687,
+          "base_brier": 0.24817908771794572,
+          "base_log_loss": 0.6895011358380781,
+          "base_return_mse": 0.0005402017631584604,
+          "brier": 0.24750028167279434,
+          "ece": 0.00871821349024709,
+          "log_loss": 0.6881551786278693,
+          "probability_range": [
+            0.35491287908118324,
+            0.6803196952699921
+          ],
+          "return_mse": 0.0005425573197870826
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-07-01T00:05:00+00:00",
+            "last_decision": "2026-09-29T00:05:00+00:00",
+            "last_target_end": "2026-09-29T23:00:00+00:00",
+            "positive_rate": 0.4570013507429086,
+            "rows": 2221,
+            "rows_sha256": "f38ed7a54ffe3cfa74fa54b923f8abc452f32dc4bfc83d9436ca9786367c4676"
+          },
+          "calibration": {
+            "decision_clusters": 63,
+            "first_decision": "2026-03-31T00:05:00+00:00",
+            "last_decision": "2026-06-30T00:05:00+00:00",
+            "last_target_end": "2026-06-30T23:00:00+00:00",
+            "positive_rate": 0.4897595725734639,
+            "rows": 2246,
+            "rows_sha256": "1eaa2a278eb7802f50c3f42f5157c19c0d023ee74499bf9afa7044b0b2801c2a"
+          },
+          "selection": {
+            "decision_clusters": 63,
+            "first_decision": "2025-12-27T00:05:00+00:00",
+            "last_decision": "2026-03-28T00:05:00+00:00",
+            "last_target_end": "2026-03-30T23:00:00+00:00",
+            "positive_rate": 0.4319526627218935,
+            "rows": 1859,
+            "rows_sha256": "7eef6ff07ebe1cf3b5dbdc98c3a5430b7734ffd756656de52bc0075566b68faa"
+          },
+          "train": {
+            "decision_clusters": 686,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-12-25T00:05:00+00:00",
+            "last_target_end": "2025-12-27T00:00:00+00:00",
+            "positive_rate": 0.4652881139698065,
+            "rows": 18812,
+            "rows_sha256": "925b36a6358acbe6a05162b5e3cb3ec72a33dc8295465d218f593a7332b172d2"
+          }
+        },
+        "head_development_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "1.0": {
+              "adverse_mse": 0.00014321157807672404,
+              "allocation_transformed_target_mse": 7.001728108491465,
+              "log_loss": 0.6870674557763611,
+              "return_mse": 0.0004474104351613968
+            },
+            "20.0": {
+              "adverse_mse": 0.0001432186704191936,
+              "allocation_transformed_target_mse": 7.001423371800582,
+              "log_loss": 0.6868994613478873,
+              "return_mse": 0.00044739534092082446
+            },
+            "5.0": {
+              "adverse_mse": 0.00014321292977560374,
+              "allocation_transformed_target_mse": 7.001663153672057,
+              "log_loss": 0.6870308025674438,
+              "return_mse": 0.00044740722508155917
+            }
+          },
+          "candidate_penalties": [
+            1.0,
+            5.0,
+            20.0
+          ],
+          "head_objectives": {
+            "adverse_return": "adverse_mse",
+            "allocation_fraction": "allocation_transformed_target_mse",
+            "expected_net_return": "return_mse",
+            "trade_probability": "log_loss"
+          },
+          "policy": "independent-enrichment-head-objective-selection-v1",
+          "selected_penalties": {
+            "adverse_return": 1.0,
+            "allocation_fraction": 20.0,
+            "expected_net_return": 20.0,
+            "trade_probability": 20.0
+          },
+          "tie_policy": "first_penalty_in_fixed_order"
+        },
+        "calibration_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "identity": {
+              "brier_score": 0.2442636951679238,
+              "log_loss": 0.6815979475724188,
+              "rows": 1141
+            },
+            "platt": {
+              "brier_score": 0.25214473888808026,
+              "log_loss": 0.6974052936191463,
+              "rows": 1141
+            }
+          },
+          "fit_decision_clusters": 31,
+          "fit_last_target_end": "2026-05-13T23:00:00+00:00",
+          "fit_rows": 1098,
+          "full_calibration_refit_rows": 0,
+          "policy": "independent-enrichment-logit-development-selection-v1",
+          "purged_rows": 7,
+          "selected_family": "identity",
+          "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+          "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+          "split": "first_half_vs_second_half_decision_clusters",
+          "validation_decision_clusters": 32,
+          "validation_first_decision": "2026-05-14T00:05:00+00:00",
+          "validation_rows": 1141
+        },
+        "admitted_rows": 25154,
+        "excluded_context_rows": 0,
+        "market_feature_admission": {
+          "admitted_rows": 25154,
+          "excluded_by_feature": {
+            "bp__compression_score": 17846,
+            "bp__direction_score": 17846,
+            "mr__atr_percent": 17846,
+            "mr__momentum_risk_adjusted": 17846,
+            "mr__range_position": 17846,
+            "mr__trend_atr": 17846,
+            "mr__volatility_ratio": 17846,
+            "mr__volume_score": 17846
+          },
+          "excluded_by_symbol": {
+            "AAPL": 2722,
+            "AMZN": 2556,
+            "COST": 1641,
+            "CROX": 1619,
+            "GOOG": 2008,
+            "IONQ": 675,
+            "MU": 2125,
+            "NVDA": 2591,
+            "PATH": 798,
+            "TWST": 1111
+          },
+          "excluded_missing_market_rows": 17846,
+          "excluded_rows_sha256": "58b584a4e3bd16d28ead11647dbff93daf3942a70b8246a5850789b4bafd7f3f",
+          "input_execution_rows": 43000,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "sizing_quality_checks": {
+          "brier_below_baseline": true,
+          "log_loss_below_baseline": true,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": true,
+          "varying_probability": true,
+          "assessment_clusters_at_least_minimum": true
+        },
+        "failed_sizing_quality_checks": [
+          "return_mse_below_baseline"
+        ],
+        "checks": {
+          "calibration_selection_excludes_assessment": true,
+          "head_selection_excludes_assessment": true,
+          "qualified_count_matches_scopes": true,
+          "adverse_return_minimum_development_objective": true,
+          "allocation_fraction_minimum_development_objective": true,
+          "expected_net_return_minimum_development_objective": true,
+          "trade_probability_minimum_development_objective": true,
+          "strict_sizing_quality_arithmetic": true
+        },
+        "reason": null
+      },
+      "1d": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 11,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 0.000452924865456108,
+          "base_adverse_mse": 0.000497219740445409,
+          "base_brier": 0.2487527971342498,
+          "base_log_loss": 0.6906520733291506,
+          "base_return_mse": 0.0016242116580313176,
+          "brier": 0.25771337909031244,
+          "ece": 0.07355275389223677,
+          "log_loss": 0.7116269310002502,
+          "probability_range": [
+            0.3251942833593166,
+            0.970867574443015
+          ],
+          "return_mse": 0.0016983992196317108
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-07-01T00:05:00+00:00",
+            "last_decision": "2026-09-29T00:05:00+00:00",
+            "last_target_end": "2026-09-30T00:00:00+00:00",
+            "positive_rate": 0.45147679324894513,
+            "rows": 474,
+            "rows_sha256": "2c723b2b224374904be860ebd95284dbb57811af3f73b022bd4a5a71fe898d47"
+          },
+          "calibration": {
+            "decision_clusters": 63,
+            "first_decision": "2026-03-31T00:05:00+00:00",
+            "last_decision": "2026-06-30T00:05:00+00:00",
+            "last_target_end": "2026-07-01T00:00:00+00:00",
+            "positive_rate": 0.5270833333333333,
+            "rows": 480,
+            "rows_sha256": "510272f273c9b4acff20fa3d07d08100358468bd29de15bb00cda75918e31cc1"
+          },
+          "selection": {
+            "decision_clusters": 63,
+            "first_decision": "2025-08-27T00:05:00+00:00",
+            "last_decision": "2026-03-28T00:05:00+00:00",
+            "last_target_end": "2026-03-31T00:00:00+00:00",
+            "positive_rate": 0.49673202614379086,
+            "rows": 459,
+            "rows_sha256": "ad71214469bceae35ca46a9a47098e3731e881c8336e47f0ca67f71fe0212aa8"
+          },
+          "train": {
+            "decision_clusters": 429,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-08-26T00:05:00+00:00",
+            "last_target_end": "2025-08-27T00:00:00+00:00",
+            "positive_rate": 0.4824561403508772,
+            "rows": 2394,
+            "rows_sha256": "20784a6565ebdca8317ba20e8f64d87ca929569bdd77684941119a3c4b0c9a44"
+          }
+        },
+        "head_development_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "1.0": {
+              "adverse_mse": 0.00039623328002084924,
+              "allocation_transformed_target_mse": 7.81762318402938,
+              "log_loss": 0.6873429729802891,
+              "return_mse": 0.001434566441319371
+            },
+            "20.0": {
+              "adverse_mse": 0.0003902796710725661,
+              "allocation_transformed_target_mse": 7.813016968934915,
+              "log_loss": 0.6871243481224053,
+              "return_mse": 0.0014323719552968256
+            },
+            "5.0": {
+              "adverse_mse": 0.0003943389860881805,
+              "allocation_transformed_target_mse": 7.816600509308279,
+              "log_loss": 0.6872827576889853,
+              "return_mse": 0.0014341018873305085
+            }
+          },
+          "candidate_penalties": [
+            1.0,
+            5.0,
+            20.0
+          ],
+          "head_objectives": {
+            "adverse_return": "adverse_mse",
+            "allocation_fraction": "allocation_transformed_target_mse",
+            "expected_net_return": "return_mse",
+            "trade_probability": "log_loss"
+          },
+          "policy": "independent-enrichment-head-objective-selection-v1",
+          "selected_penalties": {
+            "adverse_return": 20.0,
+            "allocation_fraction": 20.0,
+            "expected_net_return": 20.0,
+            "trade_probability": 20.0
+          },
+          "tie_policy": "first_penalty_in_fixed_order"
+        },
+        "calibration_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "identity": {
+              "brier_score": 0.2529472005927272,
+              "log_loss": 0.6995941448197465,
+              "rows": 245
+            },
+            "platt": {
+              "brier_score": 0.27697522303247907,
+              "log_loss": 0.7487378356102729,
+              "rows": 245
+            }
+          },
+          "fit_decision_clusters": 31,
+          "fit_last_target_end": "2026-05-14T00:00:00+00:00",
+          "fit_rows": 235,
+          "full_calibration_refit_rows": 0,
+          "policy": "independent-enrichment-logit-development-selection-v1",
+          "purged_rows": 0,
+          "selected_family": "identity",
+          "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+          "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+          "split": "first_half_vs_second_half_decision_clusters",
+          "validation_decision_clusters": 32,
+          "validation_first_decision": "2026-05-14T00:05:00+00:00",
+          "validation_rows": 245
+        },
+        "admitted_rows": 3807,
+        "excluded_context_rows": 23809,
+        "market_feature_admission": {
+          "admitted_rows": 3807,
+          "excluded_by_feature": {
+            "bp__compression_score": 2141,
+            "bp__direction_score": 2141,
+            "mr__atr_percent": 2141,
+            "mr__momentum_risk_adjusted": 2141,
+            "mr__range_position": 2141,
+            "mr__trend_atr": 2141,
+            "mr__volatility_ratio": 2141,
+            "mr__volume_score": 2141
+          },
+          "excluded_by_symbol": {
+            "AAPL": 463,
+            "AMZN": 439,
+            "COST": 117,
+            "CROX": 35,
+            "GOOG": 262,
+            "IONQ": 15,
+            "MU": 310,
+            "NVDA": 444,
+            "PATH": 55,
+            "TWST": 1
+          },
+          "excluded_missing_market_rows": 2141,
+          "excluded_rows_sha256": "7bcf89f69d35fab3292794fa4084870824da79d7d3b52f17e0f312ec961bf9cb",
+          "input_execution_rows": 5948,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "sizing_quality_checks": {
+          "brier_below_baseline": false,
+          "log_loss_below_baseline": false,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": true,
+          "varying_probability": true,
+          "assessment_clusters_at_least_minimum": true
+        },
+        "failed_sizing_quality_checks": [
+          "brier_below_baseline",
+          "log_loss_below_baseline",
+          "return_mse_below_baseline"
+        ],
+        "checks": {
+          "calibration_selection_excludes_assessment": true,
+          "head_selection_excludes_assessment": true,
+          "qualified_count_matches_scopes": true,
+          "adverse_return_minimum_development_objective": true,
+          "allocation_fraction_minimum_development_objective": true,
+          "expected_net_return_minimum_development_objective": true,
+          "trade_probability_minimum_development_objective": true,
+          "strict_sizing_quality_arithmetic": true
+        },
+        "reason": null
+      },
+      "1w": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 39,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 0.0028852271027515375,
+          "base_adverse_mse": 0.0028395381837282145,
+          "base_brier": 0.2536486304947937,
+          "base_log_loss": 0.7004982154113457,
+          "base_return_mse": 0.008151102385797485,
+          "brier": 0.2752655961362846,
+          "ece": 0.11843137621060368,
+          "log_loss": 0.7547743119284093,
+          "probability_range": [
+            0.22377184976008466,
+            0.9170993608725475
+          ],
+          "return_mse": 0.010138382728801543
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-06-25T00:05:00+00:00",
+            "last_decision": "2026-09-23T00:05:00+00:00",
+            "last_target_end": "2026-09-30T00:00:00+00:00",
+            "positive_rate": 0.5,
+            "rows": 472,
+            "rows_sha256": "da92fce8d965ad72802ea43c536266e4ceaa1686627a46df3e36027d313e144b"
+          },
+          "calibration": {
+            "decision_clusters": 59,
+            "first_decision": "2026-03-25T00:05:00+00:00",
+            "last_decision": "2026-06-17T00:05:00+00:00",
+            "last_target_end": "2026-06-25T00:00:00+00:00",
+            "positive_rate": 0.6555555555555556,
+            "rows": 450,
+            "rows_sha256": "2b5ab5fdfe3bf76f5eeb59f1476dca4e75a9b8622683c97f47f731f53c8a71cc"
+          },
+          "selection": {
+            "decision_clusters": 59,
+            "first_decision": "2025-08-21T00:05:00+00:00",
+            "last_decision": "2026-03-18T00:05:00+00:00",
+            "last_target_end": "2026-03-25T00:00:00+00:00",
+            "positive_rate": 0.5954022988505747,
+            "rows": 435,
+            "rows_sha256": "ec24577b4019a69d370755896d4803805720706778fb4597d22b5e39fd960956"
+          },
+          "train": {
+            "decision_clusters": 421,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-08-14T00:05:00+00:00",
+            "last_target_end": "2025-08-21T00:00:00+00:00",
+            "positive_rate": 0.5538922155688623,
+            "rows": 2338,
+            "rows_sha256": "184593b4cc57af51012639f9bf2f5b60c016b6cb965fa2eca5bf92fedbca4af9"
+          }
+        },
+        "head_development_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "1.0": {
+              "adverse_mse": 0.0010517636700329638,
+              "allocation_transformed_target_mse": 12.922827122334256,
+              "log_loss": 1.0623875788797263,
+              "return_mse": 0.009333979345125679
+            },
+            "20.0": {
+              "adverse_mse": 0.0010472227291505325,
+              "allocation_transformed_target_mse": 12.904418271684582,
+              "log_loss": 0.8809812673383894,
+              "return_mse": 0.0093336769784258
+            },
+            "5.0": {
+              "adverse_mse": 0.001050641062002057,
+              "allocation_transformed_target_mse": 12.918847002884295,
+              "log_loss": 0.9622253818262853,
+              "return_mse": 0.009333923715485817
+            }
+          },
+          "candidate_penalties": [
+            1.0,
+            5.0,
+            20.0
+          ],
+          "head_objectives": {
+            "adverse_return": "adverse_mse",
+            "allocation_fraction": "allocation_transformed_target_mse",
+            "expected_net_return": "return_mse",
+            "trade_probability": "log_loss"
+          },
+          "policy": "independent-enrichment-head-objective-selection-v1",
+          "selected_penalties": {
+            "adverse_return": 20.0,
+            "allocation_fraction": 20.0,
+            "expected_net_return": 20.0,
+            "trade_probability": 20.0
+          },
+          "tie_policy": "first_penalty_in_fixed_order"
+        },
+        "calibration_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "identity": {
+              "brier_score": 0.2557203633924205,
+              "log_loss": 0.7073699173346167,
+              "rows": 233
+            },
+            "platt": {
+              "brier_score": 0.363795315095418,
+              "log_loss": 0.9861070670722986,
+              "rows": 233
+            }
+          },
+          "fit_decision_clusters": 25,
+          "fit_last_target_end": "2026-05-06T00:00:00+00:00",
+          "fit_rows": 188,
+          "full_calibration_refit_rows": 0,
+          "policy": "independent-enrichment-logit-development-selection-v1",
+          "purged_rows": 29,
+          "selected_family": "identity",
+          "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+          "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+          "split": "first_half_vs_second_half_decision_clusters",
+          "validation_decision_clusters": 30,
+          "validation_first_decision": "2026-05-06T00:05:00+00:00",
+          "validation_rows": 233
+        },
+        "admitted_rows": 3780,
+        "excluded_context_rows": 0,
+        "market_feature_admission": {
+          "admitted_rows": 3780,
+          "excluded_by_feature": {
+            "bp__compression_score": 2081,
+            "bp__direction_score": 2081,
+            "mr__atr_percent": 2081,
+            "mr__momentum_risk_adjusted": 2081,
+            "mr__range_position": 2081,
+            "mr__trend_atr": 2081,
+            "mr__volatility_ratio": 2081,
+            "mr__volume_score": 2081
+          },
+          "excluded_by_symbol": {
+            "AAPL": 454,
+            "AMZN": 428,
+            "COST": 115,
+            "CROX": 31,
+            "GOOG": 258,
+            "IONQ": 13,
+            "MU": 297,
+            "NVDA": 439,
+            "PATH": 44,
+            "TWST": 2
+          },
+          "excluded_missing_market_rows": 2081,
+          "excluded_rows_sha256": "819e35da28ed9a7e7bae7c883b7bc6cc56b6144940e71c6e09271e6001f9b7da",
+          "input_execution_rows": 5861,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "sizing_quality_checks": {
+          "brier_below_baseline": false,
+          "log_loss_below_baseline": false,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": false,
+          "varying_probability": true,
+          "assessment_clusters_at_least_minimum": true
+        },
+        "failed_sizing_quality_checks": [
+          "brier_below_baseline",
+          "log_loss_below_baseline",
+          "return_mse_below_baseline",
+          "adverse_mse_at_most_baseline"
+        ],
+        "checks": {
+          "calibration_selection_excludes_assessment": true,
+          "head_selection_excludes_assessment": true,
+          "qualified_count_matches_scopes": true,
+          "adverse_return_minimum_development_objective": true,
+          "allocation_fraction_minimum_development_objective": true,
+          "expected_net_return_minimum_development_objective": true,
+          "trade_probability_minimum_development_objective": true,
+          "strict_sizing_quality_arithmetic": true
+        },
+        "reason": null
+      }
+    },
+    "report": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260930T062446.604631Z\\training-report.json"
+  },
+  "orders_placed": 0,
+  "status": "VERIFIED_SAVED_MODELS_WITH_COVERAGE_NOTES",
+  "concrete_defect_demonstrated": false,
+  "verifier_sha256": "692d051dc800ceafb114d3af8fc407d39da5b43bcd3aa261acb76634835f8956",
+  "qualification_summary": {
+    "1h": {
+      "fitted_target_rows": 155811,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2502759741529368,
+          "training_rate_baseline": 0.2499997378026551,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2549997378026551,
+          "actual_baseline_excess": 0.0002762363502817,
+          "margin_to_maximum": 0.0047237636497183,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6937115899599755,
+          "training_rate_baseline": 0.6931466561651934,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7031466561651935,
+          "actual_baseline_excess": 0.0005649337947821,
+          "margin_to_maximum": 0.0094350662052179,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 154
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "fitted_rows": 1
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 143,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        }
+      }
+    },
+    "4h": {
+      "fitted_target_rows": 38517,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2499283101796543,
+          "training_rate_baseline": 0.2500673286028836,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2550673286028836,
+          "actual_baseline_excess": -0.0001390184232293,
+          "margin_to_maximum": 0.0051390184232293,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6930047546224142,
+          "training_rate_baseline": 0.6932818474532447,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7032818474532447,
+          "actual_baseline_excess": -0.0002770928308305,
+          "margin_to_maximum": 0.0102770928308305,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 44
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 24
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 78,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    },
+    "1d": {
+      "fitted_target_rows": 24923,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25100640241532934,
+          "training_rate_baseline": 0.2507983269168995,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2557983269168995,
+          "actual_baseline_excess": 0.00020807549842984,
+          "margin_to_maximum": 0.00479192450157016,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6951671949211351,
+          "training_rate_baseline": 0.6947441390940771,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7047441390940771,
+          "actual_baseline_excess": 0.000423055827058,
+          "margin_to_maximum": 0.009576944172942,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 55
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 2
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 11,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        }
+      }
+    },
+    "1w": {
+      "fitted_target_rows": 4854,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25211857520168185,
+          "training_rate_baseline": 0.2519341719109926,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2569341719109926,
+          "actual_baseline_excess": 0.00018440329068925,
+          "margin_to_maximum": 0.00481559670931075,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6974154014497242,
+          "training_rate_baseline": 0.6970448075583919,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7070448075583919,
+          "actual_baseline_excess": 0.0003705938913323,
+          "margin_to_maximum": 0.0096294061086677,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 11
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 8
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 39,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    }
+  }
+}

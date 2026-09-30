@@ -127,6 +127,30 @@ def test_spot_valuation_uses_pair_index_and_never_the_perpetual_quote():
     assert service._spot_price("HYPE", {"token": 150}, {"HYPE": "900", "@150": "700", "@107": "80"}, SPOT_META) == 80
 
 
+@pytest.mark.parametrize("mode", ["unifiedAccount", "portfolioMargin", "disabled"])
+def test_balance_only_collection_matches_duckets_without_order_or_fill_reads(monkeypatch, mode):
+    calls = []
+    class Client(PortfolioClient):
+        def __init__(self, **kwargs):
+            super().__init__(mode)
+        def post_info(self, payload):
+            calls.append(payload["type"])
+            if payload["type"] == "allMids":
+                return {"HYPE": "90"}
+            if payload["type"] == "spotMetaAndAssetCtxs":
+                return SPOT_META
+            assert payload["type"] not in {"frontendOpenOrders", "userFills", "candleSnapshot"}
+            return super().post_info(payload)
+    monkeypatch.setattr(service, "HyperliquidInfoClient", Client)
+    monkeypatch.setattr(service, "hyperliquid_accounts", lambda: [HyperliquidAccountConfig("Clearpond", OWNER)])
+    real = service.sync_hyperliquid_balances()[0]
+    duckets = service._sync_hyperliquid_portfolio_with_market(HyperliquidAccountConfig("Clearpond", OWNER), PortfolioClient(mode),
+        all_mids={"HYPE": "90"}, spot_meta_and_asset_ctxs=SPOT_META, hype_market={}, chain_status={})
+    assert real.total_value == duckets.total_value
+    assert real.synced_at.tzinfo is not None
+    assert calls == ["allMids", "spotMetaAndAssetCtxs", "clearinghouseState", "spotClearinghouseState", "userAbstraction"]
+
+
 def test_one_missing_account_does_not_hide_other_accounts_or_markets(monkeypatch):
     class Client(PortfolioClient):
         def __init__(self, **kwargs):

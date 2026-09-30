@@ -1,0 +1,54 @@
+{
+  "status": "KNOWN_OPTIONAL_PRICING_QUARANTINE_UNCHANGED_AUTHORITY",
+  "issues": [],
+  "compact_source_files_matched": 51,
+  "compact_source_bytes_hashed": 10208882,
+  "failed_route_count": 99,
+  "current_causal_cutoff": "2026-09-30T04:31:54.022240Z",
+  "latest_pricing_availability_age_at_current_cutoff_seconds": 3485813.020208,
+  "current_route_fraction_review": "VERIFIED_SAVED_MANIFEST",
+  "current_group_summary": {
+    "constraints": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.014164305949008499,
+      "maximum_fresh_joined_fraction": 0.014164305949008499,
+      "maximum_distinct_targets": 1
+    },
+    "edge": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.006016847172081829,
+      "maximum_fresh_joined_fraction": 0.006016847172081829,
+      "maximum_distinct_targets": 1
+    },
+    "fair_value": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.006016847172081829,
+      "maximum_fresh_joined_fraction": 0.006016847172081829,
+      "maximum_distinct_targets": 1
+    },
+    "interval_calibration": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0,
+      "maximum_fresh_joined_fraction": 0,
+      "maximum_distinct_targets": 0
+    },
+    "liquidity": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.006016847172081829,
+      "maximum_fresh_joined_fraction": 0.006016847172081829,
+      "maximum_distinct_targets": 1
+    },
+    "uncertainty": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0,
+      "maximum_fresh_joined_fraction": 0,
+      "maximum_distinct_targets": 0
+    }
+  }
+}

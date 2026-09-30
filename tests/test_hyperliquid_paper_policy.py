@@ -29,8 +29,9 @@ def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_re
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
     assert config == PaperConfig(
-        require_qualified_forecasts=True, entry_band=0.03, exit_band=0.01,
-        rebalance_min_delta_fraction=0.60, max_forecast_age_seconds=300,
+        require_qualified_forecasts=True, entry_band=0.075, exit_band=0.0025,
+        rebalance_min_delta_fraction=0.70, max_forecast_age_seconds=300,
+        bullish_spot_fraction=0.40, volatility_budget_fraction=0.0006,
     )
 
 
@@ -54,7 +55,7 @@ def test_evaluation_shared_band_opens_added_direction(probability, account):
     assert current.require_qualified_forecasts is True
 
 
-@pytest.mark.parametrize("probability", [0.529999, 0.470001, 0.51, 0.49])
+@pytest.mark.parametrize("probability", [0.574999, 0.425001, 0.53, 0.47, 0.51, 0.49])
 def test_evaluation_entry_band_still_has_a_neutral_region(probability):
     result = plan(probability=probability, config=load_config(DEFAULT_PAPER_CONFIG_PATH))
     assert not any(result["targets"].values())
@@ -81,17 +82,17 @@ def test_shared_policy_uses_same_inclusive_boundary_for_flat_and_held_positions(
 
 
 @pytest.mark.parametrize("account,quantity,boundary,held_probability,exit_probability", [
-    ("jeremy", 500, .53, .515, .51),
-    ("alex", -500, .47, .485, .49),
+    ("jeremy", 500, .575, .503, .5025),
+    ("alex", -500, .425, .497, .4975),
 ])
-def test_active_policy_requires_wider_entry_but_preserves_held_exit_boundary(
+def test_active_policy_requires_wider_entry_and_retains_held_direction_until_exit_boundary(
     account, quantity, boundary, held_probability, exit_probability,
 ):
     config = load_config(DEFAULT_PAPER_CONFIG_PATH)
     opened = plan(probability=boundary, config=config)
     assert abs(opened["targets"][account]) > config.min_trade_notional
     assert opened["details"]["reason"] == "entry_threshold_met"
-    assert opened["details"]["confidence"] == pytest.approx(.02 / .14)
+    assert opened["details"]["confidence"] == pytest.approx(.0725 / .1475)
 
     # Marginal conviction cannot start a position, but may retain its direction.
     assert not any(plan(probability=held_probability, config=config)["targets"].values())

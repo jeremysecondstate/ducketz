@@ -1,0 +1,89 @@
+{
+  "checked_at": "2026-09-30T06:50:59.296633+00:00",
+  "status": "PASS",
+  "checks": [
+    {
+      "check": "ALL_HELPER_AST_PARSE",
+      "status": "PASS",
+      "files": 19
+    },
+    {
+      "check": "CODE_ENVIRONMENT_UNCHANGED",
+      "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+      "code_files": 268,
+      "baseline_recorded_at": "2026-09-30T04:10:19.754453+00:00",
+      "reviewed_isolated_drift_paths": [
+        "ml/hyperliquid_paper_cadence.py"
+      ],
+      "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\reviewed-isolated-code-drift.json"
+    },
+    {
+      "check": "verify_completed_run.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "archive_checks_started": false,
+        "native_statuses": {
+          "receipt.json": "MISSING",
+          "stage-report.json": "MISSING"
+        },
+        "next_step": "Wait for native COMPLETE report and receipt, then verify the terminal attempt.",
+        "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\NOT_AN_EXISTING_NATIVE_RUN_PREPARATION_GUARD",
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "verification_is_read_only": true,
+        "verified_at": "2026-09-30T06:50:57.213177+00:00"
+      }
+    },
+    {
+      "check": "audit_provider_completion.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\NOT_AN_EXISTING_NATIVE_RUN_PREPARATION_GUARD",
+        "native_report_status": "MISSING",
+        "native_receipt_status": "MISSING",
+        "archive_checks_started": false,
+        "provider_calls": 0
+      }
+    },
+    {
+      "check": "run_final_checks.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "heavy_checks_started": false,
+        "native_statuses": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "check": "audit_optional_pricing.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "heavy_checks_started": false
+      }
+    },
+    {
+      "check": "YG_GUARD_PRECEDES_ENVIRONMENT_AND_MODEL_IMPORTS",
+      "status": "PASS"
+    },
+    {
+      "check": "TUESDAY_SOURCE_WEDNESDAY_PROVIDER_END_WEDNESDAY_ACTION",
+      "status": "PASS"
+    },
+    {
+      "check": "SAVED_METRIC_GUARD_REJECTS_MISSING_CHANGED_NONFINITE",
+      "status": "PASS"
+    }
+  ],
+  "scope": "AST, source constants, missing-completion refusal, numeric report guard and code hashes only; no market/model/account reads.",
+  "source_archive_checks_started": false,
+  "production_mutations": 0,
+  "orders_placed": 0
+}

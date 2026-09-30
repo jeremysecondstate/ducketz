@@ -1,0 +1,185 @@
+{
+  "started_at": "2026-09-30T06:34:46.523693+00:00",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+  "implementation_before": {
+    "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+    "code_files": 268,
+    "baseline_recorded_at": "2026-09-30T04:10:19.754453+00:00",
+    "reviewed_isolated_drift_paths": [
+      "ml/hyperliquid_paper_cadence.py"
+    ],
+    "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\reviewed-isolated-code-drift.json"
+  },
+  "checks": [
+    {
+      "check": "verify_completed_run",
+      "started_at": "2026-09-30T06:34:46.553265+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\verify_completed_run.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\completion-audit.json",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\verify_completed_run-stderr.log",
+      "exit_code": 0,
+      "seconds": 798.542,
+      "finished_at": "2026-09-30T06:48:05.161023+00:00"
+    },
+    {
+      "check": "verify_yg_completion",
+      "started_at": "2026-09-30T06:48:05.163303+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\verify_yg_completion.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+        "--output",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\yg-completion.json"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\verify_yg_completion-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\verify_yg_completion-stderr.log",
+      "exit_code": 0,
+      "seconds": 14.507,
+      "finished_at": "2026-09-30T06:48:19.671222+00:00"
+    },
+    {
+      "check": "audit_provider_completion",
+      "started_at": "2026-09-30T06:48:19.671863+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\audit_provider_completion.py",
+        "--terminal-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+        "--hash-current"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\audit_provider_completion-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\audit_provider_completion-stderr.log",
+      "exit_code": 0,
+      "seconds": 1.312,
+      "finished_at": "2026-09-30T06:48:20.984208+00:00"
+    },
+    {
+      "check": "resolve_provider_advisories",
+      "started_at": "2026-09-30T06:48:20.984900+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\resolve_provider_advisories.py"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\resolve_provider_advisories-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\resolve_provider_advisories-stderr.log",
+      "exit_code": 0,
+      "seconds": 0.64,
+      "finished_at": "2026-09-30T06:48:21.624537+00:00"
+    },
+    {
+      "check": "review_models",
+      "started_at": "2026-09-30T06:48:21.625082+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\review_models.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+        "--gameplan-run",
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z",
+        "--enrichment-run",
+        "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260930T062446.604631Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\review_models-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\review_models-stderr.log",
+      "exit_code": 0,
+      "seconds": 95.848,
+      "finished_at": "2026-09-30T06:49:57.480927+00:00"
+    },
+    {
+      "check": "audit_optional_pricing",
+      "started_at": "2026-09-30T06:49:57.481801+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\audit_optional_pricing.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\audit_optional_pricing-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\audit_optional_pricing-stderr.log",
+      "exit_code": 0,
+      "seconds": 1.831,
+      "finished_at": "2026-09-30T06:49:59.313092+00:00"
+    },
+    {
+      "check": "review_loop_b_weekly_prefix",
+      "started_at": "2026-09-30T06:49:59.313713+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\review_loop_b_weekly_prefix.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\review_loop_b_weekly_prefix-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\review_loop_b_weekly_prefix-stderr.log",
+      "exit_code": 0,
+      "seconds": 1.777,
+      "finished_at": "2026-09-30T06:50:01.091118+00:00"
+    }
+  ],
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "production_mutations": 0,
+  "implementation_after": {
+    "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+    "code_files": 268,
+    "baseline_recorded_at": "2026-09-30T04:10:19.754453+00:00",
+    "reviewed_isolated_drift_paths": [
+      "ml/hyperliquid_paper_cadence.py"
+    ],
+    "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\reviewed-isolated-code-drift.json"
+  },
+  "evidence": {
+    "completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\completion-audit.json",
+      "sha256": "0ecdb588c8d0fdf5dd3643099895791d07baa0eb6fe7c89e039465724f153a06"
+    },
+    "yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\yg-completion.json",
+      "sha256": "8cc364e984850e7414bce01bbebfbdb62f3a50188fc98af4d1604f0ee50d41a7"
+    },
+    "provider-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\provider-completion.json",
+      "sha256": "a7470d554dd662f60f4075726199223deed91887c6a5c65121ec682fd1b6bf50"
+    },
+    "model-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\model-review.json",
+      "sha256": "4828d8e2699b08c6c080d578c05bdac44dadfa71d612e2801448052775ea1cd1"
+    },
+    "model-metric-summary.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\model-metric-summary.json",
+      "sha256": "735bc8cccca284a5ba8dd400e907f4d65c64efe2a1f53ea292de7e74c038b6ab"
+    },
+    "pricing-gate-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\pricing-gate-review.json",
+      "sha256": "89c198b44388815276f448a7015979f5f1c24614f11a315e740f1a96f00b0295"
+    },
+    "loop-b-weekly-prefix-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\loop-b-weekly-prefix-review.json",
+      "sha256": "79c9f0cdcbd7f118a49bf286a2a8e6ae398cb86566fcb6cb29d6cf59859967cb"
+    },
+    "provider-advisory-resolution.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\provider-advisory-resolution.json",
+      "sha256": "555e112bd4b0263b9aaea56861b0f1df9a8fd7cb705374c57bc92363f3557f6a"
+    }
+  },
+  "limitations": [
+    "Model quality and unavailable actual outcomes retain their saved status.",
+    "Controls, holdings ledger and schedule pre/post verification remain a separate root/preflight audit.",
+    "Archive API validates raw/normalized hashes and native request headers; second/minute check does not replay every raw DBN record."
+  ],
+  "finished_at": "2026-09-30T06:50:01.137200+00:00"
+}

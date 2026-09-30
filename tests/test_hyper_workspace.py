@@ -40,8 +40,8 @@ def tk_callback_errors(root, monkeypatch):
 
 @pytest.fixture
 def workspace(root, monkeypatch, tk_callback_errors):
-    # H.Y.P.E.R. is an observer. No view action may initialize a ledger, reach
-    # the exchange or start a process, including merely switching to Powder.
+    # These injected offline views cannot reach providers, initialize a ledger
+    # or start a process, including merely switching to Powder.
     import subprocess
     import requests
     from ml.hyperliquid_paper_ledger import PaperLedger
@@ -609,6 +609,118 @@ def test_chart_sampling_keeps_recorded_opening_before_immediate_fills(workspace)
     assert series[0][2] == history[0]
     assert series[0][1] == 0
     assert series[-1][2] == history[-1]
+
+
+def test_orange_comparison_uses_real_opening_and_exact_account_totals(workspace):
+    from app.ui.hyper_workspace import REAL_ORANGE
+    from types import SimpleNamespace
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    view.show_snapshot(snapshot)
+    window.update()
+    opening = sum(row["source_equity"] for row in snapshot.seed["metadata"]["accounts"].values())
+    current = next(row for row in reversed(snapshot.real_equity_history) if row["account"] == "pooled")["equity"]
+    assert view._real_chart_series()[0][1] == 0
+    assert view._real_chart_series()[-1][1] == pytest.approx(current-opening)
+    assert view.chart.find_withtag("real-line")
+    assert all(view.chart.itemcget(item, "fill") == REAL_ORANGE for item in view.chart.find_withtag("real-line"))
+    assert "deposits and withdrawals" in view.chart_note.cget("text")
+    x, y, *_ = view._real_chart_points[-1]
+    view._chart_hover(SimpleNamespace(x=x, y=y))
+    hover = "\n".join(view.chart.itemcget(item, "text") for item in view.chart.find_withtag("hover") if view.chart.type(item) == "text")
+    assert "Paper:" in hover and "Real equity change:" in hover
+    assert f"${current:,.2f}" in hover
+    view.chart_metric.set("Equity")
+    assert view._real_chart_series()[-1][1] == current
+    view.account_filter.set("Alex")
+    assert all(point[2]["account"] == "alex" for point in view._real_chart_series())
+    expected = next(row["equity"] for row in reversed(snapshot.real_equity_history) if row["account"] == "alex")
+    assert view._real_chart_series()[-1][1] == expected
+
+
+def test_real_curve_keeps_opening_baseline_across_time_ranges(workspace):
+    view, _, _ = workspace
+    snapshot = _snapshot()
+    view.show_snapshot(snapshot)
+    all_values = {stamp: value for stamp, value, _ in view._real_chart_series()}
+    view.chart_range.set("1H")
+    cutoff = datetime.fromisoformat(snapshot.portfolio_observed_at_utc)-timedelta(hours=1)
+    assert all(stamp >= cutoff and value == all_values[stamp] for stamp, value, _ in view._real_chart_series())
+    view.chart_metric.set("Drawdown")
+    assert not view._real_chart_series()
+    assert not view._real_chart_points
+    assert "P/L and Equity" in view.real_status.cget("text")
+    view.mode.set("Powder")
+    assert not view.chart_legend.winfo_manager()
+    assert not view._real_chart_points
+
+
+def test_missing_real_opening_does_not_use_paper_baseline(workspace):
+    view, _, _ = workspace
+    snapshot = _snapshot()
+    view.show_snapshot(replace(snapshot, seed={"timestamp_utc": snapshot.seed["timestamp_utc"],
+        "baseline_equity": snapshot.seed["baseline_equity"]}))
+    assert view._real_chart_series() == []
+    assert view.real_status.cget("text") == "Real opening balance unavailable"
+    view.chart_metric.set("Equity")
+    assert view._real_chart_series()
+
+
+def test_real_history_gaps_and_partial_reads_never_join_an_invented_curve(workspace):
+    view, window, _ = workspace
+    start = datetime(2026, 9, 26, 3, 20, tzinfo=timezone.utc)
+    at = lambda seconds: (start+timedelta(seconds=seconds)).isoformat()
+    real = [{"account": "pooled", "timestamp_utc": at(seconds), "equity": value}
+            for seconds, value in ((60, 601), (120, None), (180, 605), (240, 606), (600, 603))]
+    snapshot = replace(_snapshot(), observed_at_utc=at(600), portfolio_observed_at_utc=at(600),
+        seed={"timestamp_utc": at(0), "metadata": {"accounts": {key: {"source_equity": 200} for key in ("alex", "jeremy", "clearpond")}}},
+        real_equity_history=real, equity_history=[{"account": "pooled", "timestamp_utc": at(0), "total_pnl": 0},
+                                                {"account": "pooled", "timestamp_utc": at(600), "total_pnl": 8}])
+    view.show_snapshot(snapshot)
+    window.update()
+    lines = [item for item in view.chart.find_withtag("real-line") if view.chart.type(item) == "line"]
+    assert len(lines) == 2  # opening→60s and 180→240s; no crossing the missing sample or six-minute gap
+    assert all(len(view.chart.coords(item)) == 4 for item in lines)
+    view.show_snapshot(replace(snapshot, real_equity_history=[*real[:-1], {"account": "pooled", "timestamp_utc": at(600), "equity": None}]))
+    assert "unavailable" in view.real_status.cget("text")
+
+
+def test_real_balance_collection_runs_off_tk_and_does_not_block_local_refresh(root):
+    class History:
+        error = ""
+        def __init__(self):
+            self.started, self.release = threading.Event(), threading.Event()
+            self.calls, self.thread_ids = 0, []
+        def sync(self):
+            self.calls += 1
+            self.thread_ids.append(threading.get_ident())
+            self.started.set()
+            self.release.wait(timeout=4)
+        def load_history(self, seed):
+            return _snapshot().real_equity_history
+    window = tk.Toplevel(root)
+    parent = ttk.Frame(window)
+    parent.pack(fill="both", expand=True)
+    history = History()
+    view = HyperWorkspace(window, parent, service=FixtureService(), account_history=history, auto_load=False)
+    try:
+        view._refresh_real_accounts()
+        assert history.started.wait(timeout=1)
+        view._refresh_real_accounts()
+        assert history.calls == 1
+        view.refresh()
+        _pump_until(window, lambda: view.snapshot is not None and not view._loading)
+        assert view._real_loading
+        assert history.thread_ids == [history.thread_ids[0]]
+        assert history.thread_ids[0] != threading.get_ident()
+        history.release.set()
+        _pump_until(window, lambda: not view._real_loading)
+        view.mode.set("Powder")
+        view._refresh_real_accounts()
+        assert history.calls == 1
+    finally:
+        history.release.set()
+        window.destroy()
 
 
 class BlockingService:

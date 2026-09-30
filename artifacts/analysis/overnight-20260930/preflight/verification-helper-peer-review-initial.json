@@ -1,0 +1,65 @@
+{
+  "reviewed_at": "2026-09-30T05:04:49.136545+00:00",
+  "status": "PASS_WITH_STANDALONE_BINDING_HARDENING_REQUEST",
+  "scope": "BOUNDED_READ_ONLY_HELPER_SOURCE_CALENDAR_AND_SAVED_BASE_CYCLE_METADATA_NO_ARCHIVE_RECONSTRUCTION",
+  "checks": {
+    "all_helper_AST_parse": true,
+    "source_action_provider_end": true,
+    "original_four_am_pacific_deadline": true,
+    "saved_cycle_receipt_and_log_prefix_bindings": true,
+    "loop_a_cycle_uses_worker_identity": true,
+    "tuesday_weekly_prefix_arithmetic": true
+  },
+  "remaining_sessions": [
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02"
+  ],
+  "next_five_sessions": [
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-05",
+    "2026-10-06"
+  ],
+  "expected_counts": {
+    "symbols": 11,
+    "weekly_live": 44,
+    "ordinary_live": 33,
+    "live": 77,
+    "intelligence": 99,
+    "omitted_suffix": 22
+  },
+  "findings": [
+    {
+      "file": "review_loop_b_weekly_prefix.py",
+      "severity": "audit_self_containment",
+      "detail": "Hashes pinned Gameplan receipt, but does not bind receipt to loaded Gameplan manifest or assert standalone expected action/deadline. Comprehensive preceding runner audits already enforce these; requested direct lightweight checks for standalone confidence."
+    }
+  ],
+  "no_active_wrong_pid_assumption": "Original prepare_helpers.py retains launcher61720 and refuses rerun because baseline exists; current provider/pricing helpers verify dynamic completed worker60120.",
+  "source_sha256": {
+    "audit_environment.py": "3f9deae4f6849a2ad3c14ddd8be9d34f2a4d87859f7715158eea44839345c91d",
+    "audit_optional_pricing.py": "e57d3b9b12daea5368e822e726afd447c68a171d8980865d75b9b89caa2f5eec",
+    "audit_provider_completion.py": "b104fe81d83ef5114e0dc7ebe685182495a4859d3b52966c2be2cf483a075eff",
+    "preliminary_directional_review.py": "8f8b6ecbdd3e4168e31d749fcf339e66e8a70d0d4c94128685be406b2ca07779",
+    "preliminary_sizing_review.py": "1fc592729d8ff3b9fb0b9c0fd0edc3d3fe41837376f35390eb26e6959255fd52",
+    "prepare_helpers.py": "5a654d195d54cadaf4cc75b839dd1a479e15c59b30eb9c99a9b4d065c8ca242c",
+    "provider_advisories.py": "6ffa4091a6c716dbc47d9b33a1ea2aa7402c30611f096e245f35a8c7d1c6a76f",
+    "resolve_provider_advisories.py": "52321a37f542f901da9bab4f2eadd3604744a1e71142b1f0e0e5f72a1cf184f3",
+    "review_cycle_binding.py": "2dd9764539c76d5927ba0c1eac9691a5591499bdd9edf8b2fcde96291f6dbdca",
+    "review_loop_b_weekly_prefix.py": "3bcbe12ace6d329f43130f3a49e62afe4011c2c9fa6f12c3e63b5fdb3b529132",
+    "review_models.py": "692d051dc800ceafb114d3af8fc407d39da5b43bcd3aa261acb76634835f8956",
+    "run_final_checks.py": "eb70a566d906343646d6efdcc72fa0e9bfc4b0b45c9a47a6b49973d48e18b5da",
+    "summarize_final_audit.py": "c281e46c969614a9700ab8771a0038c80d1ceba2dbe635fa46d2451e39fd3afd",
+    "validate_helpers.py": "2831b5a94f83c79a1c72fdbe26a3ee2cc7b477afd7e437f3082410c81b1feda7",
+    "verify_archive_history.py": "e47d4d85d9a870c787e177090993162239169daf7df032dd1383de8142885c42",
+    "verify_completed_run.py": "989751ef67191b86aee9fd898dfcc5b3adf0760efc6e43f886b7d7493dc4077d",
+    "verify_yg_completion.py": "a5a6725f87f46f11beb2031804b6547a742ee49a0088f84bc9b554349b36c9be",
+    "watch_reviews.py": "584894e41df538b29bbeeeaf8b3d379ac9b1af4920e159a262e9a96e3936eac2"
+  },
+  "production_writes": 0,
+  "provider_calls": 0,
+  "broker_calls": 0,
+  "source_archive_checks": 0
+}

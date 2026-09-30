@@ -11,6 +11,7 @@ from tkinter import messagebox, ttk
 from PIL import Image, ImageTk
 
 from app.models.portfolio import PortfolioSnapshot
+from app.services.hyperliquid_account_history import HyperliquidAccountHistoryService
 from app.hyperliquid_accounts import HYPERLIQUID_ACCOUNT_PROFILES
 from app.ui.hyperliquid_workspace import HyperliquidWorkspaceMixin
 from app.ui.hyper_workspace import HyperWorkspace
@@ -548,12 +549,14 @@ class DucketBucketApp:
             parent=schwab_frame,
         )
 
+        account_history = HyperliquidAccountHistoryService()
         HyperliquidDucketsTab(
             root=self.root,
             parent=hyperliquid_frame,
+            account_history=account_history,
         )
 
-        HyperWorkspace(root=self.root, parent=hyper_frame)
+        HyperWorkspace(root=self.root, parent=hyper_frame, account_history=account_history)
 
         GameplanStatsTab(root=self.root, parent=stats_frame)
         GameplanTab(root=self.root, parent=gameplan_frame)
@@ -775,7 +778,8 @@ class DucketsTab:
 
 
 class HyperliquidDucketsTab(HyperliquidWorkspaceMixin, DucketsTab):
-    def __init__(self, root: tk.Tk, parent: ttk.Frame) -> None:
+    def __init__(self, root: tk.Tk, parent: ttk.Frame, *, account_history=None) -> None:
+        self.account_history = account_history
         self.spot_account = tk.StringVar(master=root, value=HYPERLIQUID_ACCOUNT_CHOICES[0])
         self.spot_market = tk.StringVar(master=root, value="HYPE")
         self.spot_side = tk.StringVar(master=root, value="buy")
@@ -839,9 +843,13 @@ class HyperliquidDucketsTab(HyperliquidWorkspaceMixin, DucketsTab):
             parent=parent,
             title="Hyperliquid Duckets",
             sync_button_text="Sync Hyperliquid",
-            sync_snapshots=lambda: sync_hyperliquid_portfolios(tuple(self.watchlist)),
+            sync_snapshots=self._sync_account_snapshots,
         )
         self.status_icon.set("○")
+
+    def _sync_account_snapshots(self):
+        loader = lambda: sync_hyperliquid_portfolios(tuple(self.watchlist))
+        return self.account_history.sync(loader, force=True) if self.account_history else loader()
 
 
     def _apply_hyperliquid_styles(self) -> None:

@@ -1,0 +1,55 @@
+{
+  "reviewed_at": "2026-09-30T04:34:14.211028+00:00",
+  "status": "CORRECTED_AUDIT_ONLY_CYCLE_BINDING",
+  "initial_inferred_cycle": "20260930T040724.527431Z-pid61720",
+  "verified_completed_cycle": "20260930T040724.527431Z-pid60120",
+  "cause": "Initial helper preparation used overnight child launcher PID61720; actual Loop A datastore owner is child PID60120. Native completed log and saved receipt identify the owner.",
+  "initial_preparation": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\verification\\preparation-before-cycle-review.json",
+    "sha256": "7ce2ac89c8aff5654ad758314bff5c3dcfcc2308419589ad3ee0cbcfdc6ee619"
+  },
+  "saved_base_receipt": {
+    "path": "C:\\DATASTORE\\.ducketz-loop-a-complete.json",
+    "sha256": "7ea5174f8b72785b90a3e6697df55227590cd5310f3a727378aee48cc039f513",
+    "payload": {
+      "failure_count": 0,
+      "finished_at": "2026-09-30T04:31:54.022240Z",
+      "generation": "20260930T040724.527431Z-pid60120",
+      "providers": [
+        "databento",
+        "fmp",
+        "fred",
+        "schwab",
+        "sec"
+      ],
+      "schema_version": "loop-a-cycle-v1",
+      "started_at": "2026-09-30T04:07:24.527431Z",
+      "status": "COMPLETE",
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "GOOG",
+        "MU",
+        "NVDA",
+        "SNDK",
+        "COST",
+        "CROX",
+        "PATH",
+        "TWST",
+        "IONQ"
+      ]
+    }
+  },
+  "native_log_prefix": {
+    "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z\\loop_a_close_fetch.log",
+    "bytes": 106123,
+    "sha256": "5430794dccad1e1c13224e35df0f2bca57cf51dd4eac42ad5ea6b9a180c756d6"
+  },
+  "heavy_audits_started": false,
+  "audit_failures_before_correction": [],
+  "implementation": "Provider helper now requires exact COMPLETE-cycle log identity plus timestamp/generation equality. Pricing helper requires the same already-verified provider cycle.",
+  "source_baseline_preserved": true,
+  "production_mutations": 0,
+  "provider_calls": 0,
+  "orders_placed": 0
+}

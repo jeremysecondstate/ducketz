@@ -1,0 +1,143 @@
+{
+  "reviewed_at": "2026-09-30T06:59:16.830165+00:00",
+  "status": "VERIFIED_WITH_EXPLICIT_QUALITY_AND_COVERAGE_LIMITATIONS",
+  "source_session": "2026-09-29",
+  "action_date": "2026-09-30",
+  "native_run": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z",
+  "native_completed_at": "2026-09-30T06:30:57.383549+00:00",
+  "original_deadline": "2026-09-30T11:00:00+00:00",
+  "native_stages_complete": 8,
+  "full_audit_sections": 12,
+  "audit_commands_passed": 7,
+  "orders_placed": 0,
+  "native_restarts": 0,
+  "supervision_token": "3e1f4906-750c-46d5-8e0b-5dfdad3b651a",
+  "supervision": {
+    "status": "RELEASED",
+    "owner_token": "3e1f4906-750c-46d5-8e0b-5dfdad3b651a",
+    "updated_at": "2026-09-30T06:59:15.899655+00:00",
+    "expires_at": "2026-09-30T06:59:15.899655+00:00"
+  },
+  "evidence": [
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/completion-summary.md",
+      "bytes": 9062,
+      "sha256": "213241a5cb405bd0d8eb87de10b6cd847bb1de6ad569b51afb0ca0fcefdcf553"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/audit-findings.json",
+      "bytes": 211703,
+      "sha256": "e3a67211db46ac3f8350ad662da8bf49064d9fef2fec152ef5a27c7e34def1e8"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/audit-findings.md",
+      "bytes": 4224,
+      "sha256": "2ec87b00eb8221d4b973eba8e27a902a71856a603fddee6877f95fcc23f35cc1"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/audit-runner.json",
+      "bytes": 9230,
+      "sha256": "7516435c4e961b4b7301d723d547f4a63fe1a63fcf25c2f5d47e9c4369f07935"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/model-metric-summary.json",
+      "bytes": 8190,
+      "sha256": "735bc8cccca284a5ba8dd400e907f4d65c64efe2a1f53ea292de7e74c038b6ab"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/completion-audit.json",
+      "bytes": 308984,
+      "sha256": "0ecdb588c8d0fdf5dd3643099895791d07baa0eb6fe7c89e039465724f153a06"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/verification/model-review.md",
+      "bytes": 2470,
+      "sha256": "2fc62be260e7063dcdc30df5ec73ea86ccb7e43496919bfb7962e0d02519b49e"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/final-preservation.json",
+      "bytes": 833737,
+      "sha256": "e0430187b30034ef9a63202d323c553f0263f406fe44f956742ca7a473643c4d"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/final-authorities-peer-review.json",
+      "bytes": 10623,
+      "sha256": "412a9084b4dfa961ab42f833f960f082d72dd4d842c75020ec86c8471d193ac0"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/cadence-isolation-peer-review.json",
+      "bytes": 8079,
+      "sha256": "8c3d7af0bb4b2560932b1ab2ebc13666bffa0ab5d078f91b7764f702ad14cd3f"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/reconciliation-peer-review.json",
+      "bytes": 11445,
+      "sha256": "43b1a172b5d407296e306c249c6bc2bfae8db1e9397ae0a0c1bfd73659a012da"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/reconciliation/native-reconciliation-verification.json",
+      "bytes": 48346,
+      "sha256": "3c23af942a58247afcb5f684ef4d6282954757f52ebc28b7e65c1df716f996cb"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/bounded-outputs/bounded-output-summary.json",
+      "bytes": 6762,
+      "sha256": "65d1f6f22b25e982a7c4ae35d78aa9ed1ac7d7ffc8af44d8c72f92f2bb0fb8b6"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/bounded-outputs/review.md",
+      "bytes": 3847,
+      "sha256": "a3e11041c1d49a3b71be49e1e87c37d83cef1b8b69fa15c0b16986f70423c5ab"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/provider-warning/final-triage.json",
+      "bytes": 10100,
+      "sha256": "212918a1c2501f735779bb8b5f0163d1ba31590494478ee563e6e1a21b4ee4e5"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/provider-warning/review.md",
+      "bytes": 1386,
+      "sha256": "e6a0588e93193375c4cf48ce3059cd169b6f9896e34167c0082c8b52f8d4fa4a"
+    },
+    {
+      "path": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z/stage-report.json",
+      "bytes": 8848,
+      "sha256": "b079e23a7baea32f6cc2f6d637451e95b9fbcfee3c168315bd19146868bfa302"
+    },
+    {
+      "path": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z/receipt.json",
+      "bytes": 1718,
+      "sha256": "3edd3cdbceae80a7fdd362fd78da504425ba95911a91fb402a1b22eb70ca886c"
+    },
+    {
+      "path": "C:/DATASTORE/ml/overnight-runs/20260930T040723.733025Z/operator-notes.md",
+      "bytes": 2368,
+      "sha256": "c217055a9ca43d3f4e71d6e7f21eea0760b4249c033c20e32c0492507d815d3e"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/supervision-release.json",
+      "bytes": 194,
+      "sha256": "64ba6198caaeb11a1ed4a2c45bd4159670c9370037686388af6aa3232fbb2f49"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/monitor/monitor-closure.json",
+      "bytes": 1834,
+      "sha256": "2799b3d462860266a47e3796c83cc53f7e5579c362430551098b4c7b907be099"
+    },
+    {
+      "path": "C:/dev/ducketz/artifacts/analysis/overnight-20260930/preflight/completion-summary-peer-review.json",
+      "bytes": 8116,
+      "sha256": "5819c9b79fe9e9b495ff736e639131ea4ce2e6144ef412f6660f63500a39a829"
+    }
+  ],
+  "limits": [
+    "Native raw/normalized files and request headers are verified; raw second-level DBN records are not independently decoded.",
+    "Native original cursor snapshot contents are self-hashed and manifest-semantic bound; there is no separately recorded outer file checksum.",
+    "Model qualification follows each immutable policy; passing v2 tolerances does not establish beating a baseline.",
+    "Optional Pricing, stale CME context, capped MBP, and retained FMP clock-skew exclusions remain explicit.",
+    "September 30 CME provider degradation cause is unresolved; successful captures and current UTC-day timing do not clear the vendor quality warning. OHLCV scopes narrowed adaptively; neither those nor capped MBP prove the full original request range.",
+    "Synthetic planning references are assumptions; actuals and training retain observed-price five-minute boundaries.",
+    "The initial environment guard stopped before any heavy audit on an unrelated concurrent Hyperliquid cadence edit. Its exact reviewed hash is admitted only after a 169-module native import-closure peer review; original baseline and refusal remain preserved.",
+    "Controls, ledgers, schedules, supervision and broker preservation are separately verified by root/preflight."
+  ]
+}

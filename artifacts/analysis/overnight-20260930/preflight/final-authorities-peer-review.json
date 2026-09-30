@@ -1,0 +1,242 @@
+{
+  "reviewed_at": "2026-09-30T06:35:57.357794+00:00",
+  "status": "PASS",
+  "scope": "BOUNDED_INDEPENDENT_RECEIPT_POINTER_PROCESS_AND_PRESERVATION_REVIEW_NO_RECONSTRUCTION",
+  "checks": {
+    "preservation_pass": true,
+    "native_complete": true,
+    "native_report_binding": true,
+    "all_eight_required_stages_complete": true,
+    "original_deadline_unchanged": true,
+    "completed_before_target": true,
+    "zero_native_order_authority": true,
+    "archive_independent_stock_source_unchanged": true,
+    "no_current_stock_trader": true,
+    "no_new_stock_decisions": true,
+    "no_active_native_pipeline": true,
+    "native_pinned_gameplan": true,
+    "gameplan_manifest_binding": true,
+    "gameplan_action_date": true,
+    "trade_receipt_binding": true,
+    "trade_manifest_binding": true,
+    "trade_pinned_source": true,
+    "trade_action_and_rows": true,
+    "enrichment_receipt_binding": true,
+    "enrichment_manifest_binding": true,
+    "enrichment_report_binding": true,
+    "enrichment_pinned_source": true,
+    "actuals_receipt_binding": true,
+    "actuals_manifest_binding": true,
+    "actuals_prior_session_date": true,
+    "actuals_pinned_successor": true,
+    "actuals_prior_immutable_source": true,
+    "actuals_dated_pointer": true,
+    "all_native_logs_bound": true
+  },
+  "issues": [],
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z",
+  "completed_at": "2026-09-30T06:30:57.383549+00:00",
+  "gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z",
+  "trade_plan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z",
+  "actuals": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z",
+  "enrichment": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260930T062446.604631Z",
+  "readable_gameplan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\Gameplan.md",
+  "native_log_bindings": [
+    {
+      "name": "gameplan_actuals_review.log",
+      "verified": true,
+      "sha256": "762acb01e069bab42294f2eab09782f057724d5e1f949e0319da4d0c15039248",
+      "bytes": 244
+    },
+    {
+      "name": "gameplan_evaluation.log",
+      "verified": true,
+      "sha256": "4a3e579498973c545e0f6b112e7299191b478973c992ae59d95c99b4af5d2138",
+      "bytes": 8014
+    },
+    {
+      "name": "gameplan_publication.log",
+      "verified": true,
+      "sha256": "d7a86741b702076bbf5706fdea1eafef6db8f7d8164b5a5a11f4205349668c24",
+      "bytes": 3392404
+    },
+    {
+      "name": "gameplan_trade_planning.log",
+      "verified": true,
+      "sha256": "c04672ea292ce29cd9b2f8ff4859967146744f32a5712b26905986aa361797c1",
+      "bytes": 228
+    },
+    {
+      "name": "loop_a_close_fetch.log",
+      "verified": true,
+      "sha256": "2313496f4bda0d07291779b8a3896f7cae7c48a8821198ca6f90d9e88f9cffdb",
+      "bytes": 119574
+    },
+    {
+      "name": "loop_b_directional_generation.log",
+      "verified": true,
+      "sha256": "c4cf35604709b76f40b257ed08f9bb95aac9b49d8aac823af6809b47be64e9ed",
+      "bytes": 7803
+    },
+    {
+      "name": "stock_enrichment_training.log",
+      "verified": true,
+      "sha256": "41940ef3512a324debeeb4089bab8985f02103783d2b1fe1c4df770249e1cad1",
+      "bytes": 236
+    },
+    {
+      "name": "stock_target_history.log",
+      "verified": true,
+      "sha256": "9bef326456aebdb60c56c3b0a3fee6081ac88d64271bdf9108c7b8cd4aa40fc1",
+      "bytes": 493
+    }
+  ],
+  "processes": [
+    {
+      "ProcessId": 55988,
+      "ParentProcessId": 58140,
+      "CreationDate": "/Date(1790734047844)/",
+      "Name": "cmd.exe",
+      "CommandLine": "C:\\Windows\\System32\\cmd.exe /d /s /c \"\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u -m ml.hyperliquid_coordinator --config \"C:\\dev\\ducketz\\configs\\hyperliquid-markets.json\" 1>\"C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stdout.log\" 2>\"C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stderr.log\"\""
+    },
+    {
+      "ProcessId": 57536,
+      "ParentProcessId": 55988,
+      "CreationDate": "/Date(1790734047881)/",
+      "Name": "python.exe",
+      "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\"  -u -m ml.hyperliquid_coordinator --config \"C:\\dev\\ducketz\\configs\\hyperliquid-markets.json\" "
+    },
+    {
+      "ProcessId": 56964,
+      "ParentProcessId": 57536,
+      "CreationDate": "/Date(1790734047888)/",
+      "Name": "python.exe",
+      "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\"  -u -m ml.hyperliquid_coordinator --config \"C:\\dev\\ducketz\\configs\\hyperliquid-markets.json\" "
+    },
+    {
+      "ProcessId": 62300,
+      "ParentProcessId": 66248,
+      "CreationDate": "/Date(1790747351261)/",
+      "Name": "cmd.exe",
+      "CommandLine": "C:\\Windows\\System32\\cmd.exe /d /s /c \"\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u -m ml.hyperliquid_model_runtime --config \"C:\\dev\\ducketz\\configs\\hyperliquid-models.json\" 1>\"C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\round11.stdout.log\" 2>\"C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\round11.stderr.log\"\""
+    },
+    {
+      "ProcessId": 56820,
+      "ParentProcessId": 62300,
+      "CreationDate": "/Date(1790747351300)/",
+      "Name": "python.exe",
+      "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\"  -u -m ml.hyperliquid_model_runtime --config \"C:\\dev\\ducketz\\configs\\hyperliquid-models.json\" "
+    },
+    {
+      "ProcessId": 61508,
+      "ParentProcessId": 56820,
+      "CreationDate": "/Date(1790747351308)/",
+      "Name": "python.exe",
+      "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\"  -u -m ml.hyperliquid_model_runtime --config \"C:\\dev\\ducketz\\configs\\hyperliquid-models.json\" "
+    },
+    {
+      "ProcessId": 65708,
+      "ParentProcessId": 66248,
+      "CreationDate": "/Date(1790747502876)/",
+      "Name": "cmd.exe",
+      "CommandLine": "C:\\Windows\\System32\\cmd.exe /d /s /c \"\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u -m ml.hyperliquid_paper_runtime --config \"C:\\dev\\ducketz\\configs\\hyperliquid-paper.json\" 1>\"C:\\DATASTORE\\hyperliquid\\_paper\\_runtime\\round11.stdout.log\" 2>\"C:\\DATASTORE\\hyperliquid\\_paper\\_runtime\\round11.stderr.log\"\""
+    },
+    {
+      "ProcessId": 64832,
+      "ParentProcessId": 65708,
+      "CreationDate": "/Date(1790747502911)/",
+      "Name": "python.exe",
+      "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\"  -u -m ml.hyperliquid_paper_runtime --config \"C:\\dev\\ducketz\\configs\\hyperliquid-paper.json\" "
+    },
+    {
+      "ProcessId": 60464,
+      "ParentProcessId": 64832,
+      "CreationDate": "/Date(1790747502918)/",
+      "Name": "python.exe",
+      "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\"  -u -m ml.hyperliquid_paper_runtime --config \"C:\\dev\\ducketz\\configs\\hyperliquid-paper.json\" "
+    }
+  ],
+  "new_stock_decision_runs": [],
+  "active_stock_traders": [],
+  "active_native_pipeline": [],
+  "concurrent_changes": {
+    "configs/hyperliquid-paper.json": {
+      "baseline": {
+        "git_status": " M",
+        "sha256": "f00184ae74bc426022ceddacc869ee632c77a09471903a8ee913b391f1a55856"
+      },
+      "current": {
+        "git_status": " M",
+        "sha256": "02df66a92c67684d5e743765982ec57f7c2c28d0793bbe44eacfd3dc8ee4c7c2"
+      }
+    },
+    "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md": {
+      "baseline": null,
+      "current": {
+        "git_status": " M",
+        "sha256": "9f530144f1966c6db76d44e3d2e39acdf358028f8c77eebf2fd2537f6c7bed45"
+      }
+    },
+    "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md": {
+      "baseline": null,
+      "current": {
+        "git_status": " M",
+        "sha256": "a56ed6e69329bc3801a9e011b4436c5ed9cc4449fdea338f5151741c682ec5a2"
+      }
+    },
+    "docs/hyperliquid-system-analysis/README.md": {
+      "baseline": {
+        "git_status": " M",
+        "sha256": "14e71a86782f656cfea7421dc008d2a9695de8c785c112b7a094f9069c0a813a"
+      },
+      "current": {
+        "git_status": " M",
+        "sha256": "688d2909042fa380e0600fcf9dfac4ec1f6c120879b4660b062ea73799a49972"
+      }
+    },
+    "ml/hyperliquid_paper_cadence.py": {
+      "baseline": null,
+      "current": {
+        "git_status": " M",
+        "sha256": "2d28b6eb7ff14fc680ca3d820a4fbd67a64a5511aad14ca6c405806d72ee8544"
+      }
+    },
+    "tests/test_hyperliquid_paper_cadence.py": {
+      "baseline": null,
+      "current": {
+        "git_status": " M",
+        "sha256": "1cc46a0b289bcfd038b3c8320e4643aa595fd326e37432f8f88c004cc546c8eb"
+      }
+    },
+    "tests/test_hyperliquid_paper_policy.py": {
+      "baseline": {
+        "git_status": " M",
+        "sha256": "8ba3a0a6c80197142fd8f9faf3cdfc22296aaab0973475ef2598f87f49cc2180"
+      },
+      "current": {
+        "git_status": " M",
+        "sha256": "ad7e0eb171d8fa31fcaa2313d29cf66a970ee697d9b3b758bd88c001937bf8cb"
+      }
+    },
+    "docs/hyperliquid-system-analysis/audits/2026-09-29-paper-round-11.md": {
+      "baseline": null,
+      "current": {
+        "git_status": "??",
+        "sha256": "5fd51e84e91078d28daa4392789f1a9d7e614aab98895e05234806cfb4d119ec"
+      }
+    }
+  },
+  "limitation": "Archive reconstruction, model metrics, row/source quality, cash conservation and actuals outcomes are verified separately by final_audit.",
+  "source_sha256": {
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\preflight\\final-preservation.json": "e0430187b30034ef9a63202d323c553f0263f406fe44f956742ca7a473643c4d",
+    "C:\\DATASTORE\\ml\\overnight-runs\\20260930T040723.733025Z\\receipt.json": "3edd3cdbceae80a7fdd362fd78da504425ba95911a91fb402a1b22eb70ca886c",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\receipt.json": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\receipt.json": "64c7aad9d321992af91db734fb490ba60f63d2f78c7e13f79d88c95a20e41dab",
+    "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z\\receipt.json": "79d4583a1d7b5f84e0297c76187d274dc66e9de69a046faa40c244dae44aa85e",
+    "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260930T062446.604631Z\\receipt.json": "cf3ffe813ecb1f77ad5ca6e0404fc17ea4c5b44a45f68ae1dce212795cf606f4"
+  },
+  "orders_placed": 0,
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "production_writes": 0
+}

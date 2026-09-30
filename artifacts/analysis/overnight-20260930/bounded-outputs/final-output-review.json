@@ -1,0 +1,550 @@
+{
+  "reviewed_at": "2026-09-30T06:38:42.103544+00:00",
+  "status": "PASS",
+  "scope": "BOUNDED_SAVED_PUBLICATION_OUTPUTS_ONLY_NO_ARCHIVE_RELOAD_MODEL_INFERENCE_BROKER_OR_PROVIDER_CALLS",
+  "checks": {
+    "exact_264_rows_each": true,
+    "exact_universe_24_rows_per_symbol": true,
+    "forecast_ids_unique_frozen_preserved": true,
+    "stock_only_intents_nonexecuting": true,
+    "complete_pinned_plan": true,
+    "gameplan_receipt_binding": true,
+    "manifest_receipt_and_outputs": true,
+    "selected_publication_files_manifest_bound": true,
+    "latest_gameplan_pointer": true,
+    "latest_tradeplan_pointer": true,
+    "latest_actuals_pointer": true,
+    "fresh_readonly_account_snapshot": true,
+    "snapshot_ownership_safe_no_working_orders": true,
+    "literal_cash_not_broker_capacity": true,
+    "report_embedded_sources_match": true,
+    "synthetic_reference_json_matches_parquet": true,
+    "complete_projection_and_prices": true,
+    "one_price_observation_clock": true,
+    "source_contract_retained": true,
+    "quantity_columns_adjacent_readable": true,
+    "nonentry_rows_have_no_direction_quantity": "True",
+    "zero_orders_in_all_saved_outputs": true,
+    "explicit_review_only_authority": true,
+    "original_deadline_retained_without_exception": true,
+    "recorded_current_policies_preserved": true,
+    "snapshot_holdings_match_reconciled_baseline": true,
+    "no_fill_baseline_preserved": true,
+    "every_event_conserves_cash_shares_and_price": true,
+    "event_sequence_chronological": true,
+    "each_hour_sells_before_buys": true,
+    "ending_cash_matches_ledger": true,
+    "ending_positions_match_events": true,
+    "ending_lots_conserve_owned_shares": true,
+    "all_fourteen_hour_balances_and_forecast_rows_match": true,
+    "event_counts_match_summary": true,
+    "all_current_reference_anchors_verified": true,
+    "synthetics_confined_to_planning_contract": true,
+    "original_reference_observation_retained_all_prices": true
+  },
+  "issues": [],
+  "paths": {
+    "gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z",
+    "tradeplan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z",
+    "actuals": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z",
+    "readable": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\Gameplan.md"
+  },
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "rows": {
+    "forecasts": 264,
+    "intents": 264,
+    "tradeplan": 264,
+    "price_points": 154,
+    "synthetic_planning_bars": 306
+  },
+  "forecast_roles": {
+    "EXECUTION": 209,
+    "OPENING_GAP_RESEARCH": 11,
+    "OUTLOOK": 44
+  },
+  "saved_direction_policy": "stock-direction-50-v2",
+  "saved_holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+  "saved_planning_reference_contract": "sparse-session-planning-reference-completion-v2",
+  "snapshot_observed_at": "2026-09-30T06:26:39.672622+00:00",
+  "literal_available_cash": 54.85,
+  "broker_capacity_separate": 80514.15,
+  "held_shares": {
+    "AAPL": 55.0,
+    "AMZN": 47.0,
+    "COST": 14.0,
+    "CROX": 73.0,
+    "GOOG": 42.0,
+    "IONQ": 312.0,
+    "MU": 6.0,
+    "NVDA": 48.0,
+    "PATH": 30.0,
+    "SNDK": 6.0,
+    "TWST": 60.0
+  },
+  "ledger_summary": {
+    "buy_events": 19,
+    "cash_buffer": 2.7425,
+    "cash_change_high": 280.3,
+    "cash_change_low": -27.68,
+    "direction_buy_rows": 19,
+    "direction_sell_rows": 13,
+    "ending_cash_base": 180.87,
+    "ending_cash_high": 335.15,
+    "ending_cash_low": 27.17,
+    "sell_events": 13,
+    "starting_cash": 54.85,
+    "trade_events": 32
+  },
+  "ending_holdings": {
+    "AAPL": 59.0,
+    "AMZN": 39.0,
+    "COST": 9.0,
+    "CROX": 51.0,
+    "GOOG": 19.0,
+    "IONQ": 447.0,
+    "MU": 7.0,
+    "NVDA": 48.0,
+    "PATH": 228.0,
+    "SNDK": 9.0,
+    "TWST": 65.0
+  },
+  "event_checks": [
+    {
+      "sequence": 1,
+      "verified": true
+    },
+    {
+      "sequence": 2,
+      "verified": true
+    },
+    {
+      "sequence": 3,
+      "verified": true
+    },
+    {
+      "sequence": 4,
+      "verified": true
+    },
+    {
+      "sequence": 5,
+      "verified": true
+    },
+    {
+      "sequence": 6,
+      "verified": true
+    },
+    {
+      "sequence": 7,
+      "verified": true
+    },
+    {
+      "sequence": 8,
+      "verified": true
+    },
+    {
+      "sequence": 9,
+      "verified": true
+    },
+    {
+      "sequence": 10,
+      "verified": true
+    },
+    {
+      "sequence": 11,
+      "verified": true
+    },
+    {
+      "sequence": 12,
+      "verified": true
+    },
+    {
+      "sequence": 13,
+      "verified": true
+    },
+    {
+      "sequence": 14,
+      "verified": true
+    },
+    {
+      "sequence": 15,
+      "verified": true
+    },
+    {
+      "sequence": 16,
+      "verified": true
+    },
+    {
+      "sequence": 17,
+      "verified": true
+    },
+    {
+      "sequence": 18,
+      "verified": true
+    },
+    {
+      "sequence": 19,
+      "verified": true
+    },
+    {
+      "sequence": 20,
+      "verified": true
+    },
+    {
+      "sequence": 21,
+      "verified": true
+    },
+    {
+      "sequence": 22,
+      "verified": true
+    },
+    {
+      "sequence": 23,
+      "verified": true
+    },
+    {
+      "sequence": 24,
+      "verified": true
+    },
+    {
+      "sequence": 25,
+      "verified": true
+    },
+    {
+      "sequence": 26,
+      "verified": true
+    },
+    {
+      "sequence": 27,
+      "verified": true
+    },
+    {
+      "sequence": 28,
+      "verified": true
+    },
+    {
+      "sequence": 29,
+      "verified": true
+    },
+    {
+      "sequence": 30,
+      "verified": true
+    },
+    {
+      "sequence": 31,
+      "verified": true
+    },
+    {
+      "sequence": 32,
+      "verified": true
+    }
+  ],
+  "hour_checks": [
+    {
+      "clock": "04:00",
+      "rows": 44,
+      "verified": true
+    },
+    {
+      "clock": "05:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "06:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "07:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "08:00",
+      "rows": 22,
+      "verified": true
+    },
+    {
+      "clock": "09:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "10:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "11:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "12:00",
+      "rows": 22,
+      "verified": true
+    },
+    {
+      "clock": "13:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "14:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "15:00",
+      "rows": 11,
+      "verified": true
+    },
+    {
+      "clock": "16:00",
+      "rows": 22,
+      "verified": true
+    },
+    {
+      "clock": "17:00",
+      "rows": 0,
+      "verified": true
+    }
+  ],
+  "current_reference_anchors": [
+    {
+      "symbol": "AAPL",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 330.14,
+      "observed_at": "2026-09-30T00:00:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "AMZN",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 247.3,
+      "observed_at": "2026-09-30T00:00:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "COST",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 924.0,
+      "observed_at": "2026-09-29T23:57:00+00:00",
+      "effective_at": "2026-09-29T23:57:00+00:00",
+      "gap_minutes": 3.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "CROX",
+      "status": "AVAILABLE_SYNTHETIC",
+      "price": 123.0,
+      "observed_at": "2026-09-29T20:40:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 200.0,
+      "fill_count": 200,
+      "verified": true
+    },
+    {
+      "symbol": "GOOG",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 338.0,
+      "observed_at": "2026-09-29T23:58:00+00:00",
+      "effective_at": "2026-09-29T23:58:00+00:00",
+      "gap_minutes": 2.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "IONQ",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 44.14,
+      "observed_at": "2026-09-29T23:57:00+00:00",
+      "effective_at": "2026-09-29T23:57:00+00:00",
+      "gap_minutes": 3.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "MU",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 1071.87,
+      "observed_at": "2026-09-30T00:00:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "NVDA",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 228.38,
+      "observed_at": "2026-09-30T00:00:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "PATH",
+      "status": "AVAILABLE_SYNTHETIC",
+      "price": 12.31,
+      "observed_at": "2026-09-29T22:14:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 106.0,
+      "fill_count": 106,
+      "verified": true
+    },
+    {
+      "symbol": "SNDK",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 1727.09,
+      "observed_at": "2026-09-30T00:00:00+00:00",
+      "effective_at": "2026-09-30T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "verified": true
+    },
+    {
+      "symbol": "TWST",
+      "status": "AVAILABLE_OBSERVED",
+      "price": 187.74,
+      "observed_at": "2026-09-29T23:57:00+00:00",
+      "effective_at": "2026-09-29T23:57:00+00:00",
+      "gap_minutes": 3.0,
+      "fill_count": 0,
+      "verified": true
+    }
+  ],
+  "reference_unavailability": {
+    "AVAILABLE_OBSERVED": 9,
+    "AVAILABLE_SYNTHETIC": 2
+  },
+  "source_output_bindings": [
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\Gameplan.md",
+      "sha256": "1f41edf627fad04b17b9b48567f9debea8542108f8b3dcfef373f75f0be4de12",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\account-snapshot.json",
+      "sha256": "67896cdf5a33f944312fa1d57d06a1713aee8868b5c7a0240fbdf614b081ac8c",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\direction-ledger.json",
+      "sha256": "c7c28d984857ef49288b57aaeb76f8b82b83b07f116ca382b08149d7fc4f9d9a",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\planning-price-path.json",
+      "sha256": "53bc134904645af430752bd6302b9de743e0c1fbf948bd372336dbc97ee6d43b",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\planning-reference-completion.json",
+      "sha256": "e24f44b0a6472d112de4f683d389e33956a5386cd2711548d022af68ecc5f2a7",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\price-bands.json",
+      "sha256": "280ff01563ffd950e479dd1e5b87f82229d3eba7ef51b9432f8809c30f747d51",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\report.json",
+      "sha256": "1181d768806c2103014620ca0b521b68a4142ee31e5882cb115943052e30814d",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\synthetic-reference-bars.parquet",
+      "sha256": "d82976378aefc7c30e908b633f57e33116595e48067fb80f69b4e279abcf599b",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z\\trade-plan.parquet",
+      "sha256": "c3abbefc5c9f557c04fdb55735b8aebb06e27edd3995808d7bd9202955af5f42",
+      "verified": true
+    }
+  ],
+  "selected_publication_bindings": [
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\gameplan.json",
+      "sha256": "8e7adcf4eff073e97112a12c47052be55e0958d46cb48145f13ae1ad03255604",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\forecasts.parquet",
+      "sha256": "1e5e5b6ecf11a51e85a20dcdb1c58f95d4e4cdd645445665881a4c7c39547c4e",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\option-strategy-intents.parquet",
+      "sha256": "a1a69148a694cee0401d1eb83ecea43fed80cceb7ea7d40abbf511c90093d5e3",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\receipt.json",
+      "sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\manifest.json",
+      "sha256": "a94099522b2e4f95b8b1f0f8d94c5d34fd837f2c002bc7dfcfb8c9b0bdc49ed0",
+      "verified": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\forecasts.parquet",
+      "sha256": "1e5e5b6ecf11a51e85a20dcdb1c58f95d4e4cdd645445665881a4c7c39547c4e",
+      "verified": true
+    }
+  ],
+  "pointers": {
+    "nightly-gameplan": {
+      "action_date": "2026-09-30",
+      "manifest_checksum_sha256": "a94099522b2e4f95b8b1f0f8d94c5d34fd837f2c002bc7dfcfb8c9b0bdc49ed0",
+      "published_at": "2026-09-30T06:24:21.107006+00:00",
+      "receipt_checksum_sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0",
+      "run_path": "ml/nightly-gameplan-runs/20260930T061501.586401Z"
+    },
+    "gameplan-trade-plan": {
+      "action_date": "2026-09-30",
+      "receipt_sha256": "64c7aad9d321992af91db734fb490ba60f63d2f78c7e13f79d88c95a20e41dab",
+      "run_path": "ml/gameplan-trade-plan-runs/20260930T062633.629638Z",
+      "source_receipt_sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0"
+    },
+    "gameplan-actuals-review": {
+      "action_date": "2026-09-29",
+      "receipt_sha256": "79d4583a1d7b5f84e0297c76187d274dc66e9de69a046faa40c244dae44aa85e",
+      "run_path": "ml/gameplan-actuals-review-runs/20260930T063012.679198Z"
+    }
+  },
+  "limitations": [
+    "Saved outputs are audited here; peer native audit independently verifies source bytes, cohorts, models and derivation.",
+    "Cash/holdings are the planning snapshot and hypothetical conditional fills; no broker recapture or realized P/L is claimed.",
+    "Synthetic current anchors and historical closing carries are planning assumptions only; native labels/actuals retain observed endpoint rules."
+  ],
+  "saved_policy_note": "Audits the current documented YG 50-percent direction policy, signal-driven holding and v3/240-minute sparse-session planning policy. These are not the older 54/46 thresholds, fixed expiry or v2/15-minute current-anchor policy quoted in the automation history.",
+  "provider_calls": 0,
+  "broker_calls": 0,
+  "production_writes": 0,
+  "ownership_mutation_scope": "Bounded saved ownership snapshot compared with post-reconciliation saved holdings; root preservation audit separately checks operational database bytes/tables."
+}

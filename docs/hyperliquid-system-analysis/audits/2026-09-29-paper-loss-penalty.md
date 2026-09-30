@@ -1,0 +1,23 @@
+# Paper loss-penalty rule — September 29, 2026
+
+The user authorized **one step forward, two steps back**. A verified WIN adds one hour to the next round. A verified LOSS subtracts two hours, with a one-hour minimum. Thus consecutive losses take **4 → 2 → 1 hours**; another loss stays at one hour, and a win at one hour returns to two hours. TIE and UNSCORED keep the current duration. Existing comparability, deadline and qualification requirements remain in force.
+
+The user's first application is the completed four-hour LOSS of round10. The existing accepted **round11** now runs for **two hours** from its original seed **2026-09-30T05:50:48.990853548+00:00**, due **2026-09-30T00:50:48.990853-07:00 / 2026-09-30T07:50:48.990853+00:00**. Its $43,969.81565838906 opening, all ten inherited positions, startup costs, ledger, models and worker processes are preserved. No comparison, scoring, tuning, archive, restart or fresh mirror was performed for this rule change.
+
+## Native state and evidence
+
+The versioned native cadence helper now records rule `win-plus-one-loss-minus-two-floor-one-v2`. Its guarded `adopt-loss-penalty` command verified both lifecycle/cadence locks, the completed accepted successor, original immutable opening, last consumed legacy LOSS, unchanged comparison hash, no pending assessment, exclusions, and a still-future shortened deadline. It created one immutable amendment receipt and changed only the active duration/deadline and policy metadata. The old round10 assessment and every consumed history row remain as recorded under the former rule; past rounds were not reinterpreted.
+
+A repeated identical native amendment returned the same state without writing it. Receipt-first interruption recovery, tamper rejection, conflicting ownership/maintenance, and already-due deadline rejection are covered by the focused tests. **80 tests passed, one skipped.** Trading configuration hashes remain unchanged. Paper60464, models61508 and coordinator56964 match their pre-change identities and creation times; no errors, warnings, stops or competing owner were found. Health at 2026-09-30T06:29:06.195089+00:00 verified committed Paper progress; Powder remains off.
+
+## App schedule and standing instructions
+
+The existing improvement automation received full app-tool PAUSED then ACTIVE updates. A supported temporary two-hour wall-clock rule targets even-numbered Pacific hours at :50:49 so editing the rule does not move the deadline to two hours after the edit. The app's actual saved next wake is **2026-09-30T00:51:33-07:00**, confirmed by a targeted read-only scheduling-record query: **44.009147 seconds after the scoring deadline** due to its normal deterministic jitter. No app database or automation TOML was directly edited. After the next independently verified fresh opening, ordinary hourly-interval seed-time reanchoring resumes.
+
+Improvement remains GPT-6 Astra/Ultra on the same local project, name and notification settings. The Operations Watch prompt was updated to the new rule while preserving its existing 30-minute cadence, saved next wake, GPT-6 Luna/xhigh, project and notification settings. It still cannot score, apply penalties, tune or reseed. Paper Improvement contract is now 2026-09-29/v4; Watch is v15. Current memories are synchronized to the new rule and revised deadline, with prior memories retained as evidence.
+
+Receipts: [native amendment](C:/DATASTORE/hyperliquid/_operations/paper-improvement-cadence/policy-amendments/20260929-loss-penalty.json) · [completion](C:/DATASTORE/hyperliquid/_operations/paper-improvement-cadence/rule-change-20260929-loss-penalty/completed-rule-change.json) · [app schedule](C:/DATASTORE/hyperliquid/_operations/paper-improvement-cadence/rule-change-20260929-loss-penalty/app-schedule-after.json) · [tests](C:/DATASTORE/hyperliquid/_operations/paper-improvement-cadence/rule-change-20260929-loss-penalty/code-validation/validation.json) · [unchanged identities](C:/DATASTORE/hyperliquid/_operations/paper-improvement-cadence/rule-change-20260929-loss-penalty/verification/preserved-identity-current.json) · [app tool receipts](C:/DATASTORE/hyperliquid/_operations/paper-improvement-cadence/rule-change-20260929-loss-penalty/app-tool-receipts.json).
+
+The archived round11 handoff audit and its original four-hour schedule receipt remain immutable historical evidence, superseded for scheduling by this authorized amendment. The accepted source snapshot remains the original handoff provenance; these cadence/docs changes do not alter the execution/model configurations or the accepted experiment.
+
+Recorded 2026-09-30T06:36:30.826267+00:00.

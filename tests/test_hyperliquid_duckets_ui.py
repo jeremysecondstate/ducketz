@@ -166,6 +166,26 @@ def workspace(root, monkeypatch, tmp_path):
     window.destroy()
 
 
+def test_explicit_duckets_sync_records_the_same_real_total(workspace, monkeypatch, tmp_path):
+    from dataclasses import replace
+    from datetime import datetime, timezone
+    from app.services.aggregate import DucketBucketSnapshot
+    from app.services.hyperliquid_account_history import HyperliquidAccountHistoryService
+    from visual_hyperliquid_duckets_fixture import _snapshots
+    import app.ui.ducket_bucket as ui
+    samples = [replace(snapshot, reported_total_value=snapshot.total_value+25) for snapshot in _snapshots()]
+    monkeypatch.setattr(ui, "sync_hyperliquid_portfolios", lambda watchlist: samples)
+    now = datetime(2026, 9, 30, 2, 30, tzinfo=timezone.utc).timestamp()
+    history = HyperliquidAccountHistoryService(tmp_path, clock=lambda: now)
+    workspace.account_history = history
+    synced = workspace._sync_account_snapshots()
+    workspace._show_bucket(DucketBucketSnapshot(synced))
+    rows = history.load_history({"timestamp_utc": datetime.fromtimestamp(now-60, timezone.utc).isoformat()})
+    actual = next(row["equity"] for row in rows if row["account"] == "pooled")
+    assert actual == pytest.approx(sum(snapshot.total_value for snapshot in synced))
+    assert workspace.account_total.get() == ui._money(actual)
+
+
 def test_switching_account_product_and_market_discards_prior_draft(workspace):
     tab = workspace
     for variable, value in ((tab.composer_account, "Alex"), (tab.composer_product, "Spot"), (tab.composer_market, "BTC")):

@@ -1,6 +1,6 @@
 # Hyperliquid Operations Watch
 
-Operating contract: **2026-09-28 / v14**. Companion to [Monitoring and recovery](MONITORING.md).
+Operating contract: **2026-09-29 / v15**. Companion to [Monitoring and recovery](MONITORING.md).
 
 ## Current accepted run and improvement handoff
 
@@ -11,8 +11,13 @@ fresh account mirrors and model changes. This watch's authority remains health
 observation and narrowly permitted recovery only; it never improves or reseeds.
 
 The improvement task's persistent cadence receipt defines each ending round:
-a verified win adds one hour to the next round; a loss/tie retains its duration.
-Unscored or late results cannot promote it. The prior three-day schedule and
+a verified win adds one hour to the next round; a verified loss subtracts two
+hours with a one-hour minimum. Ties and unscored/late results retain the duration.
+The September 29 rule amendment applies round10's four-hour loss to the already
+running round11, making it two hours without changing its accepted opening.
+Historical assessments and consumed history remain immutable; the native policy
+amendment records that exception. This watch only reads the amended cadence.
+The prior three-day schedule and
 60-hour guard are historical. This watch keeps its 30-minute schedule, does
 not score/promote rounds or edit improvement timing, and must honor a pending
 user real-account purchase before any explicitly requested fresh mirror.
