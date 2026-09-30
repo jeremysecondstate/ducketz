@@ -20,19 +20,41 @@ def plan(probability=0.65, sigma=0.01, equity=30000.0, current=None, other_gross
     return target_notionals(probability, sigma, equity, current or {}, other_gross, config or PaperConfig())
 
 
-def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_reads():
+def strict_policy():
+    """Retain the prior policy as an explicit fixture, not the active Paper default."""
+    return PaperConfig(
+        require_qualified_forecasts=True, entry_band=.075, exit_band=.0025,
+        rebalance_min_delta_fraction=.70, max_forecast_age_seconds=300,
+        bullish_spot_fraction=.40, volatility_budget_fraction=.0006,
+    )
+
+
+def test_checked_in_policy_is_exploratory_paper_mirror_without_account_reads():
     config = load_config(DEFAULT_PAPER_CONFIG_PATH)
     assert config.mode == "paper"
     assert config.seed_mode == "mirror"
     assert config.model_config == DEFAULT_MODEL_CONFIG_PATH
-    assert config.require_qualified_forecasts is True
+    assert config.require_qualified_forecasts is False
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
     assert config == PaperConfig(
-        require_qualified_forecasts=True, entry_band=0.075, exit_band=0.0025,
-        rebalance_min_delta_fraction=0.70, max_forecast_age_seconds=300,
-        bullish_spot_fraction=0.40, volatility_budget_fraction=0.0006,
+        require_qualified_forecasts=False, entry_band=0, exit_band=0,
+        rebalance_min_delta_fraction=0, min_trade_notional=10, max_forecast_age_seconds=300,
+        bullish_spot_fraction=0.30, volatility_budget_fraction=0.00045, saturation_band=.18,
     )
+
+
+def test_powder_keeps_the_prior_strict_policy_separate_from_exploratory_paper():
+    from ml.hyperliquid_powder_runtime import load_config as load_powder
+    powder = load_powder(DEFAULT_PAPER_CONFIG_PATH.with_name('hyperliquid-powder.json'))
+    assert powder.paper_config.name == 'hyperliquid-powder-policy.json'
+    assert powder.paper_config != DEFAULT_PAPER_CONFIG_PATH
+    assert load_config(powder.paper_config) == strict_policy()
+    paper = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    assert replace(paper, require_qualified_forecasts=True, entry_band=.075,
+                   exit_band=.0025, rebalance_min_delta_fraction=.70,
+                   min_trade_notional=25, volatility_budget_fraction=.0006,
+                   bullish_spot_fraction=.40, saturation_band=.15) == load_config(powder.paper_config)
 
 
 def test_defaults_and_active_config_use_book_prices_and_distinct_taker_fee_rates(tmp_path):
@@ -45,7 +67,7 @@ def test_defaults_and_active_config_use_book_prices_and_distinct_taker_fee_rates
 
 @pytest.mark.parametrize("probability,account", [(0.51, "jeremy"), (0.49, "alex")])
 def test_evaluation_shared_band_opens_added_direction(probability, account):
-    current = replace(load_config(DEFAULT_PAPER_CONFIG_PATH), entry_band=.01, exit_band=.01)
+    current = replace(strict_policy(), entry_band=.01, exit_band=.01)
     previous = replace(current, entry_band=0.04, exit_band=0.02)
     assert plan(probability=probability, config=previous)["targets"][account] == 0
     result = plan(probability=probability, config=current)
@@ -56,8 +78,8 @@ def test_evaluation_shared_band_opens_added_direction(probability, account):
 
 
 @pytest.mark.parametrize("probability", [0.574999, 0.425001, 0.53, 0.47, 0.51, 0.49])
-def test_evaluation_entry_band_still_has_a_neutral_region(probability):
-    result = plan(probability=probability, config=load_config(DEFAULT_PAPER_CONFIG_PATH))
+def test_historical_strict_entry_band_has_a_neutral_region(probability):
+    result = plan(probability=probability, config=strict_policy())
     assert not any(result["targets"].values())
     assert result["details"]["reason"] == "entry_deadband"
 
@@ -85,10 +107,10 @@ def test_shared_policy_uses_same_inclusive_boundary_for_flat_and_held_positions(
     ("jeremy", 500, .575, .503, .5025),
     ("alex", -500, .425, .497, .4975),
 ])
-def test_active_policy_requires_wider_entry_and_retains_held_direction_until_exit_boundary(
+def test_historical_policy_requires_wider_entry_and_retains_held_direction_until_exit_boundary(
     account, quantity, boundary, held_probability, exit_probability,
 ):
-    config = load_config(DEFAULT_PAPER_CONFIG_PATH)
+    config = strict_policy()
     opened = plan(probability=boundary, config=config)
     assert abs(opened["targets"][account]) > config.min_trade_notional
     assert opened["details"]["reason"] == "entry_threshold_met"
@@ -105,8 +127,8 @@ def test_active_policy_requires_wider_entry_and_retains_held_direction_until_exi
         assert should_rebalance(quantity, 0, config)
 
 
-def test_active_wider_entry_preserves_cost_risk_and_qualification_controls():
-    config = load_config(DEFAULT_PAPER_CONFIG_PATH)
+def test_historical_wider_entry_preserves_cost_risk_and_qualification_controls():
+    config = strict_policy()
     previous = replace(config, entry_band=.01)
     assert config.require_qualified_forecasts
     assert config.stop_loss_fraction == .03
