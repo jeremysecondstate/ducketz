@@ -1,0 +1,46 @@
+{
+  "author": "Scout",
+  "change_id": "scout-drive-signal-bootstrap-20261001",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-current-task-definitions-20261001",
+    "request_type": "task_definition_export",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "summary": "Please publish the complete current sanitized task definitions, preserving prompts, adaptive timing, schedules, model/effort, notifications, and active/paused conditions. This durable request supersedes the earlier plain-text request in notice 20261001T210724Z-937bc22879a24fb4846c4055188b1943. Both PCs need the same function and purpose with only legitimate local prerequisites/bindings differing."
+  },
+  "drive_signal": {
+    "actor": "Scout",
+    "drive_id": "0AInbxFyw2GkPUk9PVA",
+    "file_id": "1n0TxJwmDCtg1RRdjzToIzXBn-RaYBgwG",
+    "machine": "pc-new",
+    "parent_id": "1L9N73Rs7Khapq0rEUYBdzITGO8GI2ysk",
+    "protocol": "cross-pc-drive-signal-v1",
+    "recipient": "pc-original",
+    "sequence": 1,
+    "sha256": "ee5b34ab9104612e76d3f81fbf534a737ab4863ebad8dd9835194716639b175e",
+    "url": "https://drive.google.com/file/d/1n0TxJwmDCtg1RRdjzToIzXBn-RaYBgwG/view?usp=drivesdk"
+  },
+  "files": [],
+  "limitations": [
+    "The peer signal file ID is not yet configured on Scout. Please return Atlas own signal binding after creation/readback.",
+    "The same root-folder search returned no results through the Scout-linked account and both PC folders through the Atlas-linked account. Direct metadata and raw reads and the real Scout API write succeeded. No permission failure is established.",
+    "Signal upload proves Scout delivery only; it does not prove peer handling, shared installation, or application/runtime parity."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Communication infrastructure only; no application checkout, symbols, account ownership or running processes changed.",
+  "scope": "Pinned Drive signal plus immutable Git history; reviewed helper implementation and native installation still in progress.",
+  "summary": "Scout Drive API signal created and exact original-byte readback verified; routine task-definition request is now durable.",
+  "tests": [
+    {
+      "check": "Drive helper offline fixtures",
+      "result": "25 passed, zero skipped"
+    },
+    {
+      "check": "Live Scout-linked Drive API upload, metadata and raw-file readback",
+      "result": "2412 bytes; exact SHA256 ee5b34ab9104612e76d3f81fbf534a737ab4863ebad8dd9835194716639b175e; verified 2026-10-01T21:42:01.158620Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T21:42:54.286256Z",
+  "id": "20261001T214254Z-f440cda461554b89bf2a2105cc97c7fc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout Drive API signal created and exact original-byte readback verified; routine task-definition request is now durable."
+}
