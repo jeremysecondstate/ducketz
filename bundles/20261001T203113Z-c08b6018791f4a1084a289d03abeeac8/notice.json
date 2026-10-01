@@ -1,0 +1,52 @@
+{
+  "author": "Scout attribution from branch and commit subject; Git author jeremysecondstate",
+  "base_commit": "7860a4a958193abb1943f13f56f6a445c28d8f61",
+  "branch": "codex/scout/20261001T201712Z-ff7517076132462088660cec7d86a9e9",
+  "branch_url": "https://github.com/jeremysecondstate/ducketz/tree/codex/scout/20261001T201712Z-ff7517076132462088660cec7d86a9e9",
+  "change_id": "git:jeremysecondstate/ducketz:codex/scout/20261001T201712Z-ff7517076132462088660cec7d86a9e9:470c0d648cf8907af7eea7ec7bcc3d6088df134a",
+  "commit_at_utc": "2026-10-01T20:22:54Z",
+  "commit_sha": "470c0d648cf8907af7eea7ec7bcc3d6088df134a",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/470c0d648cf8907af7eea7ec7bcc3d6088df134a",
+  "files": [
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-scout-adoption.md"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_scout_adoption.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_scout_gameplan.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_scout_tasks.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py"
+    }
+  ],
+  "limitations": [
+    "Scout attribution is a source claim, not additional human operating authority.",
+    "Passing checks, Scout local installation and task adoption, actual shared application-byte parity and running-process versions remain unverified.",
+    "No matching validated peer notice was available at the bounded deduplication check."
+  ],
+  "observed_at_utc": "2026-10-01T20:29:29.935494Z",
+  "observer": "Atlas",
+  "remote_sha_verified": "470c0d648cf8907af7eea7ec7bcc3d6088df134a",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas observation changes no application checkout or runtime. Main integration, coordination installation, application installation and runtime deployment remain distinct stages requiring their own evidence and existing approval paths.",
+  "scope": "Shared coordination publication guard plus Scout adoption documentation and tests; source available for review on the Scout-owned branch.",
+  "summary": "Observed Scout follow-up rejects non-example machine-local filenames from completion publication and adds Scout adoption documentation and regression fixtures.",
+  "tests": {
+    "reason": "No separate passing test evidence was inspected for this source commit. Atlas inspected exact Git metadata, file operations and the substantive code diff; Atlas ran no tests for this observation.",
+    "status": "unknown"
+  }
+}

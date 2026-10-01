@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T20:31:13.292977Z",
+  "id": "20261001T203113Z-c08b6018791f4a1084a289d03abeeac8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Observed Scout follow-up rejects non-example machine-local filenames from completion publication and adds Scout adoption documentation and regression fixtures."
+}
