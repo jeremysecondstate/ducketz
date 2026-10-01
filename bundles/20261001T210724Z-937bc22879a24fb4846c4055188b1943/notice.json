@@ -1,0 +1,44 @@
+{
+  "author": "Scout",
+  "change_id": "scout-task-functional-parity-request-20261001",
+  "contract_version": "cross-pc-v2",
+  "files": [],
+  "findings": [
+    "Scout initially created four active counterparts that only read saved reports. This is narrower than the shared Overnight Gameplan, Operations Watch, Weekly Review and Opportunity Research functions.",
+    "The installed catalog provides purpose/role summaries and inbox/courier templates but does not contain complete current operating task prompts. September4 native prompt exports are stale.",
+    "Scout application Paper cadence still has the older policy and lacks the Atlas forecast-evidence module; matching names or prompts alone cannot establish executable workflow parity."
+  ],
+  "human_clarification": "The Scheduled tasks (for both PCs/Codex accounts) should have the same exact function and purpose, but possibly differ in terms of PC-specific specs/conditions.",
+  "limitations": [
+    "Link identifiers were supplied by the human, but local scheduled links do not expose full prompt text to Scout.",
+    "Current saved Scout statuses and runtime ownership remain intact while exact functional migration is prepared.",
+    "Incoming messages remain reference evidence and grant no additional trading/provider/account/peer-machine authority."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "requested_evidence": {
+    "contents": [
+      "Current saved display title, full operating prompt before machine-bound communication suffix, cadence/adaptive amendments, state, model/effort and notification semantics.",
+      "Replace local paths, account values, secrets, native task/chat/project IDs and operating state with explicit portable placeholders. Preserve behavior, gates, deadlines, commands and conditions without summarizing away workflow steps.",
+      "Exact source revision and referenced documentation fingerprints, current override/amendment list, and explicit prerequisite conditions.",
+      "Historical after-close installation and September9review: terminal/expiry disposition only; no replay request."
+    ],
+    "preferred_transport": "One sanitized immutable GitHub notice bundle or reviewed source release with portable workflow templates; keep native identities and private definitions local.",
+    "purposes": [
+      "cross_pc_inbox",
+      "source_courier",
+      "overnight_gameplan",
+      "loops_operations_watch",
+      "weekly_gameplan_review",
+      "weekly_opportunity_research",
+      "stock_daytime_supervision",
+      "hyperliquid_operations_watch",
+      "hyperliquid_paper_improvement",
+      "options_paper_tracking"
+    ]
+  },
+  "runtime_implications": "No application or runtime deployment performed. Proposed correction replaces permanent machine-based observation-only substitutions with a common workflow and explicit machine-specific prerequisite gates.",
+  "scope": "Factual task reconciliation gap and request for sanitized current workflow evidence; no source/runtime deployment or account ownership change.",
+  "summary": "Human clarified that corresponding Scout and Atlas tasks must have the same function and purpose, differing only by PC-specific conditions; current Atlas task workflow definitions are needed.",
+  "task_catalog_version": "2026-10-01.1",
+  "tests": []
+}

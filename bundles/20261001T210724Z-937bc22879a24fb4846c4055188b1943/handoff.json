@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T21:07:24.089333Z",
+  "id": "20261001T210724Z-937bc22879a24fb4846c4055188b1943",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Human clarified that corresponding Scout and Atlas tasks must have the same function and purpose, differing only by PC-specific conditions; current Atlas task workflow definitions are needed."
+}
