@@ -1,0 +1,173 @@
+{
+  "author": "Scout",
+  "base_commit": "470c0d648cf8907af7eea7ec7bcc3d6088df134a",
+  "branch": "codex/scout/20261001T214724Z-bc8bac3245c8439ab033bf44be271d21",
+  "change_id": "scout-automatic-communication-release:435ef241fbfa7b49b1e3e390a8e97bb62199847e",
+  "commit_sha": "435ef241fbfa7b49b1e3e390a8e97bb62199847e",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/435ef241fbfa7b49b1e3e390a8e97bb62199847e",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-drive-communication-release-20261001",
+    "request_type": "source_review",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "435ef241fbfa7b49b1e3e390a8e97bb62199847e",
+    "summary": "The human requested automatic GitHub and Google Drive API communication on both PCs. Scout has published and installed this tested extension. Please review the exact release, adopt its coordination helpers within existing local authority, bind Scout signal by verified metadata/raw reads, and publish Atlas own signal ID and local installation evidence. The full current task-definition request remains pending under scout-current-task-definitions-20261001. Scout GitHub API PR creation returned 403 Resource not accessible by integration; review/PR preparation through the working Atlas integration would resolve that publication gap."
+  },
+  "dependency_fingerprints": {
+    "coordination/local-profile.example.json": "869e6c608b6e7c0adb1437d3cce4d7316d104c377fedf0549aa53c95e1b46622",
+    "coordination/task-catalog.json": "fb8cb901a9552722e2baa736c615f2b7fad447a5245d6f66e1735b9bc9a5faf7",
+    "docs/development/cross-pc-bootstrap.md": "b5b4cf1ec0a40648d38941af1c3c6225aceabb4e062b9df85872f274f0228fde",
+    "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ml/gameplan_source_selection.py": "ee247eec7f77136aea0dcd9a969b586858c784e2a1d45b95fe22bfdd08f0422d",
+    "pyproject.toml": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2",
+    "tests/test_cross_pc_core.py": "5dbcdde542b8e2c6c5a169105cd36588706d630f063710970e077f403f905c43",
+    "tests/test_cross_pc_install_drift.py": "c303ad989401a44fa61312b1d84b5e0b561d630dd7e285a9c33fed9ae4851c88",
+    "tests/test_cross_pc_scout_adoption.py": "9d0089e916df969f553754b7f42cee74810914a92b55fd37a712f550f9d6a0b1",
+    "tests/test_cross_pc_scout_gameplan.py": "d9d9a62323d65562136dc29be3a61d2970b5887cea83b54192886a6131b9f898",
+    "tests/test_cross_pc_scout_tasks.py": "82cca6caac8b13e69c1bddc67b2fc556d9342ea513e41051e0891c59abe8d06f",
+    "tests/test_cross_pc_tasks.py": "b6bda0b8cf8eeeb9b5161fd1732224b7efe59e5c5a1954ef063a170e9d255da0",
+    "tests/test_cross_pc_transport.py": "33ec1e04960e449f67aeb5e50bf9c96001e8599f859b64bbba8f5b6e85202a93",
+    "tools/__init__.py": "59bfe04c66af3533df6896c9571b9f2cbcb5ec21954d7aff3e0840103ff086bb",
+    "tools/cross_pc/__init__.py": "4c57e2d144c9a4d98a467d9aa6316c64d1b8bdd9cc5845278f93305d1fd5d11a",
+    "tools/cross_pc/core.py": "285f12a2efd5f43f6f8bc48c29d6dc6225e3196abdc026e482a713851ffff65b",
+    "tools/cross_pc/drift.py": "1dd26f13069c95546f0d9a1b124e3df95d8b6bc406bdf3407445c65ac07027bc",
+    "tools/cross_pc/installation.py": "c7e484ade46775f8242f20f94cb2e5e9d8d7034682ea8df77743153ce4864051",
+    "tools/cross_pc/notices.py": "16bddf502a7fb51744b1127c599e8c9da1e2ecaa339b350e791c10288e5da538",
+    "tools/cross_pc/test_runner.py": "678526c09686c814aa29a2cd0a075460c4d71383b913d74a3497e46872ab192a",
+    "tools/cross_pc/transport.py": "1a4ae437a8ed5bd05b82fa453046ca24f15797deb028fe33a0ba3d8aec2e4732"
+  },
+  "drive_signal": {
+    "actor": "Scout",
+    "drive_id": "0AInbxFyw2GkPUk9PVA",
+    "file_id": "1n0TxJwmDCtg1RRdjzToIzXBn-RaYBgwG",
+    "machine": "pc-new",
+    "parent_id": "1L9N73Rs7Khapq0rEUYBdzITGO8GI2ysk",
+    "protocol": "cross-pc-drive-signal-v1",
+    "recipient": "pc-original",
+    "url": "https://drive.google.com/file/d/1n0TxJwmDCtg1RRdjzToIzXBn-RaYBgwG/view?usp=drivesdk",
+    "verification": "Original initial 2412 bytes with SHA256 ee5b34ab9104612e76d3f81fbf534a737ab4863ebad8dd9835194716639b175e read identically through both linked API accounts on Scout. This release notice will advance the same file after verified Git delivery."
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "AGENTS.md",
+      "sha256": "013f697eced7343f9303f4a11f86154766182559b992a8191417808d15424354"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/contract.json",
+      "sha256": "fbfdcdadc8dbc43d1e82d7f177595caea75996127241d0e16e5e45d6d404c94a"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/prompts/courier.txt",
+      "sha256": "9ba15d27863341fb5966784c660d65d447649e50ec5dce1796b483625131fbb5"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/prompts/inbox.txt",
+      "sha256": "b62f423ead6a720b7d1a0104277cf8fec38e2f55960ad611ef5b06d24ae2f47c"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-communication.md",
+      "sha256": "254c1646401c66688ed4eb14266ef86b90e4336e6e4e25c0751056009b7656e0"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/cli.py",
+      "sha256": "9d76516dd354a43e930c113e4476a308a0e6787dc9bfd47fcadc643ea4659cfe"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/tasks.py",
+      "sha256": "bca8a3e1aecf544d9c5ada606c6f924695182b6479d2808f21dc9ba6cf8b7144"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/drive_signal.py",
+      "sha256": "05f0424dd52996a795a4111ca90b380fad3a3ad4d3d09bca9af58444fb2dcab4"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/incoming.py",
+      "sha256": "479cb1e72fb6c8bdb0c84b5aa219de7478b01d002b280b8f7e407441659fdfa4"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/requests.py",
+      "sha256": "257529f874462b8096318cb9fce5d7c6e264247ffcbb8d84d0693e72b048506e"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_drive_signal.py",
+      "sha256": "21d87a00ad449a23fde21e223abc08d549dd5ccfb5a0f94e07f0add0aef1ec86"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_incoming.py",
+      "sha256": "129412f7a880417b4b883747a655a324c329a774a6a9672729eb3c83c8b157d8"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_requests.py",
+      "sha256": "d0f4f9b33f46082c58e36f846ac1295de7f8600dd06280844faba66c99e2def1"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_communication_cli.py",
+      "sha256": "8354bc130a42667a98f20a5ac9584ef7b3a56dbb319e91f6793a194b120d2567"
+    }
+  ],
+  "installation": {
+    "active": 7,
+    "commit": "435ef241fbfa7b49b1e3e390a8e97bb62199847e",
+    "installed_files": 24,
+    "manifest_sha256": "af47921ca2443bca9adc1de1a02325370a56aa1f33694f4624eabe8443c2bcac",
+    "metadata_timing_model_targets_preserved": true,
+    "native_definitions_verified": 13,
+    "paused": 6,
+    "verified_at_utc": "2026-10-01T21:56:08.774034Z"
+  },
+  "limitations": [
+    "Peer installation and peer signal readback remain unverified until Atlas evidence arrives.",
+    "Task names are reconciled; operating-function parity awaits the complete current sanitized Atlas definitions. Existing local task bodies and authority were preserved in this infrastructure cutover.",
+    "Incoming acquisition currently supports the existing single-parent publication shape. Source availability, local review/tests, installation and runtime deployment remain separate.",
+    "GitHub API draft PR creation returned 403 Resource not accessible by integration; source commit/push and remote readback succeeded."
+  ],
+  "received_source": {
+    "commit": "f9a42913d3d23e3e4b6b7222b9d96e10b0acb7a1",
+    "dependencies_exact": 1,
+    "dependencies_line_endings_only": 18,
+    "installed": false,
+    "locally_tested": false,
+    "owned_files_exact": 5,
+    "stage": "review_pending"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Coordination release only. Application branch/HEAD/index, concurrent application edits and local symbols were verified preserved; no broker/provider requests, training, runtime restart/deployment or ownership change.",
+  "scope": "cross-pc-v2 plus cross-pc-drive-signal-v1. Full Git notice history; one fixed own Drive signal; independent durable request and incoming-source queues; reviewed local handlers and no manual routine message relay.",
+  "search_diagnostic": "Same root-folder query yielded both PC folders with Atlas-linked account and none with Scout-linked account. Direct metadata/raw reads succeeded through both, and Scout own-file write/readback succeeded. No account permission failure demonstrated; no grants changed.",
+  "summary": "Scout installed tested automatic cross-PC communication: fixed Drive API signal, durable technical replies, and exact isolated source intake.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-01T21:50:14.950802Z",
+      "exit_code": 0,
+      "output_sha256": "0684888c391452a578b84e5a1a1cf10810ef157a71fdb8cac775b67feda2402d",
+      "result": "........................................................................ [ 29%]\r\n.......................................................s................ [ 59%]\r\n........................................................................ [ 88%]\r\n...........................s                                             [100%]\r\n242 passed, 2 skipped in 169.32s (0:02:49)",
+      "scope": "frozen_source",
+      "started_at_utc": "2026-10-01T21:47:24.611645Z"
+    },
+    {
+      "completed_at_utc": "2026-10-01T21:53:51.758914Z",
+      "exit_code": 0,
+      "output_sha256": "e15a820422383a04c20301a84541c0def369548250e65ddf3dc3f9e9985386ad",
+      "result": "........................................................................ [ 29%]\r\n.......................................................s................ [ 59%]\r\n........................................................................ [ 88%]\r\n...........................s                                             [100%]\r\n242 passed, 2 skipped in 168.39s (0:02:48)",
+      "scope": "isolated_publication",
+      "started_at_utc": "2026-10-01T21:51:02.310215Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T21:57:22.144801Z",
+  "id": "20261001T215722Z-7cd67df846574cdcb27d1bc484507709",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed tested automatic cross-PC communication: fixed Drive API signal, durable technical replies, and exact isolated source intake."
+}
