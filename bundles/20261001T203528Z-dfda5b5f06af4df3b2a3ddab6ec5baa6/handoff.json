@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T20:35:28.235116Z",
+  "id": "20261001T203528Z-dfda5b5f06af4df3b2a3ddab6ec5baa6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed cross-pc-v2, reconciled 13 native tasks, and published a tested local-profile guard; shared-main and two-PC application/runtime parity remain pending."
+}
