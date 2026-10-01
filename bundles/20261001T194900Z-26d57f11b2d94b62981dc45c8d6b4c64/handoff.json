@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T19:49:00.075183Z",
+  "id": "20261001T194900Z-26d57f11b2d94b62981dc45c8d6b4c64",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Historical Gameplan fallback source installation status"
+}

@@ -1,0 +1,53 @@
+{
+  "author": "Atlas",
+  "branch": "codex/cross-horizon-bearish-fallback-20260930",
+  "change_id": "legacy:20261001T003037Z-e0f98cd554ab4ad7bbd86de4af6079fc",
+  "commit_sha": "be760388063a0fa3099c1cc445ba758be69ceb23",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/be760388063a0fa3099c1cc445ba758be69ceb23",
+  "files": [
+    "app/ui/gameplan.py",
+    "app/ui/gameplan_data.py",
+    "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+    "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+    "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/gameplan_trade_review.py",
+    "ml/gameplan_trade_snapshot.py",
+    "ml/nightly_gameplan.py",
+    "ml/stock_trader/cross_horizon_fallback.py",
+    "ml/stock_trader/fallback_review.py",
+    "ml/stock_trader/gameplan_direction_engine.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "ml/stock_trader/independent_runtime.py",
+    "tests/test_cross_horizon_fallback_ledger.py",
+    "tests/test_cross_horizon_fallback_policy.py",
+    "tests/test_cross_horizon_fallback_review.py",
+    "tests/test_cross_horizon_fallback_runtime.py",
+    "tests/test_gameplan_fallback_planning.py",
+    "tests/test_gameplan_quote_clock_recovery.py",
+    "tests/test_gameplan_trade_snapshot.py",
+    "tests/test_stock_only_gameplan.py"
+  ],
+  "limitations": [
+    "Historical evidence does not establish the current in-memory runtime version.",
+    "Scout source/task/runtime adoption remains unverified.",
+    "No baseline outperformance, live-fill or new execution authority is claimed."
+  ],
+  "provenance": {
+    "conversion": "Local paths and detailed operating-state fields omitted; exact original bundle retained locally.",
+    "original_bundle_id": "20261001T003037Z-e0f98cd554ab4ad7bbd86de4af6079fc",
+    "original_created_at_utc": "2026-10-01T00:30:37.891909Z",
+    "original_delivery_stage": "delivery_pending",
+    "original_manifest_sha256": "87234aafac5f2fe5ca3422e2202a0900809fb930818620a17bf314fa3f46d493",
+    "replacement_transport": "github-git-v2"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reference evidence only. No new source commit, push, runtime, provider, broker, model or deployment action. Existing ownership remains unchanged.",
+  "scope": "Historical sanitized source/task coordination conversion",
+  "summary": "Historical Gameplan fallback source installation status",
+  "tests": {
+    "historical_saved_post_installation": "678 passed; completed 2026-10-01T00:20:10.265057Z",
+    "new_tests_in_conversion": false
+  }
+}
