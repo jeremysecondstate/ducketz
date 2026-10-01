@@ -1,0 +1,11 @@
+{
+  "contract_version": "cross-pc-v2",
+  "id": "20261001T194833Z-fe853750809b46ef9fff3271b334f2c7",
+  "original_manifest_sha256": "0d3220f4f429228c20dc9cb15416c423f27737bf4651d4d13c7c0a9b05ed3063",
+  "original_schema_version": 2,
+  "recipient": "pc-new",
+  "repository": "jeremysecondstate/ducketz",
+  "sender": "pc-original",
+  "source_transport": "cross-pc-v2",
+  "transport": "github-git-v2"
+}

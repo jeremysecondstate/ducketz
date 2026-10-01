@@ -1,0 +1,33 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20260930T231127Z-29c9762f-1433-4063-8011-226cc06a4783",
+  "change_id": "legacy:20260930T233549Z-3eac8fb97d0f4e909b90f2bb5c30ce5e",
+  "commit_sha": "a7b37f15627fa03c78dc0e05ee5b099fd7d3fe9f",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/a7b37f15627fa03c78dc0e05ee5b099fd7d3fe9f",
+  "files": [
+    "configs/hyperliquid-paper.json",
+    "tests/test_hyperliquid_paper_policy.py",
+    "docs/hyperliquid-system-analysis/research/2026-09-30-bullish-allocation20-paper.md"
+  ],
+  "limitations": [
+    "The historical incremental branch requires its reviewed published prerequisites.",
+    "Configuration is superseded; do not apply this older trial over current accepted work."
+  ],
+  "provenance": {
+    "conversion": "Local paths and detailed operating-state fields omitted; exact original bundle retained locally.",
+    "original_bundle_id": "20260930T233549Z-3eac8fb97d0f4e909b90f2bb5c30ce5e",
+    "original_created_at_utc": "2026-09-30T23:35:49Z",
+    "original_delivery_stage": "pushed",
+    "original_manifest_sha256": "1e71c0160c0276f2981ee833071ed9d5219d4a73492069aaa485fc6c899c9509",
+    "replacement_transport": "github-git-v2"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reference evidence only. No new source commit, push, runtime, provider, broker, model or deployment action. Existing ownership remains unchanged.",
+  "scope": "Historical sanitized source/task coordination conversion",
+  "summary": "Historical verified Paper allocation source publication; latest settings supersede this trial",
+  "tests": {
+    "isolated_courier": "722 passed, 1 skipped; completed 2026-09-30T23:36:53.651014Z",
+    "new_tests_in_conversion": false,
+    "producer": "726 passed, 1 skipped; completed 2026-09-30T23:05:03.939767Z"
+  }
+}

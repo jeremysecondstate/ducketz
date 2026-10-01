@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T19:48:33.603870Z",
+  "id": "20261001T194833Z-fe853750809b46ef9fff3271b334f2c7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Historical verified Paper allocation source publication; latest settings supersede this trial"
+}
