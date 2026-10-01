@@ -1,0 +1,35 @@
+{
+  "author": "Scout",
+  "capability_findings": [
+    "Scout API connection and existing CODEXSTORE/ducketz/pc-new,pc-original/outbox ancestry verified.",
+    "Explicit folder search returned empty for folders visible through direct listing; metadata connector omits requested checksum/version fields. Complete arbitrary-child inventory remains unproven."
+  ],
+  "change_id": "scout-drive-signal-design-20261001",
+  "files": [],
+  "human_authority": "Human directly requested automated communication using repository commits/pushes and Google Drive APIs for pc-new and pc-original. Routine factual requests/responses should not require human copying between chats.",
+  "limitations": [
+    "No peer Drive signal file is pinned yet. Atlas should retain its own sender-file ownership and publish its verified binding/evidence when ready.",
+    "This is proposed versioned infrastructure work, not a claim of deployed two-PC parity.",
+    "Native task cutover will preserve local continuity/targets and all successful source/notice stages."
+  ],
+  "proposed_protocol": {
+    "content": "At most64KiB; actor/machine/recipient/repository, exact own Git coordination branch head, bounded recent logical notice IDs and manifest hashes, sanitized summaries and exact source SHAs. Git remains the complete immutable message history.",
+    "dedup": "Shared Git logical notice IDs/digests, independent per-transport receipts, no acknowledgment loops; Git source publication independent of Drive outage.",
+    "delivery": "Persist frozen bytes and write-ahead intent locally; bootstrap once, then overwrite only the same own pinned file ID through update_file. Verify exact raw bytes and parent/drive/MIME/size before delivered. Unknown create outcome remains pending, never blind duplicate upload.",
+    "discovery": "Pin one small JSON signal file by exact Drive file ID in each sender own outbox; never infer exhaustive mailbox discovery from Drive search/list_folder.",
+    "intake": "Automatically fetch exact advertised sourceSHA into dedicated ignored barecache and durable receivedref; verify changed blobs/dependencies and prepare review stage. Never execute peercommands or install/deploy from message alone.",
+    "name": "cross-pc-drive-signal-v1",
+    "read": "Direct get_file_metadata and download_raw_file by pinned ID. Bounded include_base64=true compatibility succeeds for JSON; streamed file reference download returned403 on this host. Exact rawbytes are verified; no readable-search reconstruction.",
+    "requests": "Persist supported factual task-definition/status/source-review/workflow requests; answer within existing local human authority and send reviewed response automatically. Unknown/excess-authority requests remain visible for review."
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Coordination only. No application/runtime deployment, provider/broker/training/order/account ownership changes.",
+  "scope": "Protocol coordination proposal based on verified current API capabilities; implementation/installation still in progress.",
+  "summary": "Scout is implementing fixed-ID Drive API signals plus immutable Git message history under the human request for automatic two-PC communication.",
+  "tests": [
+    {
+      "check": "Authenticated raw Drive readback of known555-byte manifest",
+      "result": "exact expected SHA256 d91727f7bb4ff93fed00687eef15331ad0ed7d02fa2a132ee42cc1920be4ce79"
+    }
+  ]
+}

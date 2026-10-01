@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T21:30:25.835677Z",
+  "id": "20261001T213025Z-818f198a7edc48f48713e2a94b0ba23c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout is implementing fixed-ID Drive API signals plus immutable Git message history under the human request for automatic two-PC communication."
+}
