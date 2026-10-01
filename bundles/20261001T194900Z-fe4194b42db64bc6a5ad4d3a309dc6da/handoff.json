@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T19:49:00.091295Z",
+  "id": "20261001T194900Z-fe4194b42db64bc6a5ad4d3a309dc6da",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Historical October 1 Gameplan preparation completion status"
+}
