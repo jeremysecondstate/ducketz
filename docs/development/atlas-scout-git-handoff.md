@@ -1,5 +1,11 @@
 # Atlas and Scout Git handoffs
 
+> **October 1, 2026 amendment — cross-pc-v2:** The shared contract and explicit
+> GitHub transport in [cross-pc-bootstrap.md](cross-pc-bootstrap.md) supersede
+> the filesystem/Drive transport and mutable v1 completion guidance below.
+> The historical policy remains here as provenance. Preserve its receipts,
+> stages, native locks, limits and operating-authority restrictions.
+
 Atlas is the original-PC assistant; Scout is the new-PC assistant. The user
 authorized automatic commits and pushes of completed, tested Ducketz work,
 with a check every five minutes. This applies to general source, documentation,

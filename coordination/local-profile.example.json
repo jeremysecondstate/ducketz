@@ -1,0 +1,23 @@
+{
+  "contract_version": "cross-pc-v2",
+  "repository": "jeremysecondstate/ducketz",
+  "actor": "Scout",
+  "machine": "pc-new",
+  "branch_prefix": "codex/scout/",
+  "checkout": "REPLACE_WITH_EXISTING_LOCAL_CHECKOUT",
+  "symbols": ["EXAMPLE_A", "EXAMPLE_B"],
+  "authorized_producers": ["human-authorized-development"],
+  "operating_roles": {"source_publication": true, "live_execution": "unchanged_existing_owner", "runtime_deployment": false},
+  "ready_root": "REPLACE_WITH_LOCAL_V2_READY_DIRECTORY",
+  "snapshot_root": "REPLACE_WITH_LOCAL_IMMUTABLE_SNAPSHOT_DIRECTORY",
+  "evidence_root": "REPLACE_WITH_LOCAL_TEST_EVIDENCE_DIRECTORY",
+  "state_path": "REPLACE_WITH_LOCAL_V2_RECEIPTS_PATH",
+  "git_lock": "REUSE_EXISTING_NATIVE_GIT_LOCK_PATH",
+  "inbox_lock": "REUSE_EXISTING_NATIVE_INBOX_LOCK_PATH",
+  "inbox_state": "REPLACE_WITH_LOCAL_SEPARATE_V2_INBOX_RECEIPTS",
+  "transport_cache": "REPLACE_WITH_LOCAL_BARE_GIT_CACHE_DIRECTORY",
+  "outgoing_root": "REPLACE_WITH_LOCAL_OUTGOING_DIRECTORY",
+  "remote": "https://github.com/jeremysecondstate/ducketz.git",
+  "local_config_fields": {},
+  "legacy": {"rule": "Keep all existing queues, bundles, unknown outcomes, locks and receipts; register existing paths privately during adoption."}
+}

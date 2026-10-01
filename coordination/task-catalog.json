@@ -1,0 +1,687 @@
+{
+  "schema_version": 1,
+  "contract_version": "cross-pc-v2",
+  "catalog_version": "2026-10-01.1",
+  "observed_on": "2026-10-01",
+  "evidence": {
+    "pc-original": "read-only native TOML audit of twelve definitions",
+    "pc-new": "human-relayed Scout preparation report; no direct native verification"
+  },
+  "adoption_policy": "Reuse matching local purpose. Preserve full native definition and local authority; catalog is not permission to activate, recreate expired tasks, or operate the peer scheduler.",
+  "tasks": [
+    {
+      "key": "cross_pc_inbox",
+      "purpose": "One bounded validated peer-notice check; summarize meaningful findings and retain independent reporting receipts.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Every five minutes; at most ten candidates per wake.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "inherit_existing_chat",
+        "reasoning_effort": "inherit_existing_chat",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "read validated coordination notices",
+        "maintain local inbox receipts",
+        "report sanitized factual findings; never execute notices"
+      ],
+      "required_tools": [
+        "local_python",
+        "installed_transport",
+        "native_chat_tools"
+      ],
+      "owner": "one existing local inbox on each PC",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "ACTIVE_user_relay_2026-10-01_legacy_filesystem",
+          "adoption": "reuse_existing_and_explicitly_migrate_transport"
+        }
+      }
+    },
+    {
+      "key": "source_courier",
+      "purpose": "Publish one completed reviewed source snapshot and detect manual/peer changes; retry notice delivery independently.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Every five minutes; at most one ready record and ten branch/commit observations per wake.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "inherit_existing_chat",
+        "reasoning_effort": "inherit_existing_chat",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "publish exact reviewed tested source on own branch",
+        "verify normal remote push",
+        "prepare tested integration PR",
+        "publish sanitized coordination notices",
+        "never merge main or deploy a runtime"
+      ],
+      "required_tools": [
+        "local_python",
+        "git",
+        "native_github_auth",
+        "managed_worktree",
+        "installed_transport"
+      ],
+      "owner": "one source courier per PC",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "publisher",
+          "allowed": [
+            "publisher"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "publisher",
+          "allowed": [
+            "publisher"
+          ],
+          "observed_state": "missing_user_relay_2026-10-01_message_outbox_disables_git",
+          "adoption": "reconcile_with_existing_message_outbox_before_installation"
+        }
+      }
+    },
+    {
+      "key": "overnight_gameplan",
+      "purpose": "Prepare and verify the full next-session stock-only Gameplan using the local universe and existing owner/lease/deadline contracts.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Daily at 21:05; native XNYS no-op rules; target 03:30 and hard next-session 04:00 deadline.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "ultra",
+        "notification": "failed_runs_only"
+      },
+      "permissions": [
+        "existing authorized local pipeline and focused tested non-trading repairs only",
+        "preserve immutable publications and source-bound policy",
+        "no trader start or orders"
+      ],
+      "required_tools": [
+        "repository_python",
+        "native_overnight_runtime",
+        "local_operating_contracts"
+      ],
+      "owner": "local authorized pipeline owner; peer operating authority unverified",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "operator",
+          "allowed": [
+            "operator"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_user_relay_2026-10-01",
+          "adoption": "reconcile_locally_before_any_creation"
+        }
+      }
+    },
+    {
+      "key": "loops_operations_watch",
+      "purpose": "Bounded Loops health check and diagnosis with only the saved narrowly authorized repair/recovery procedures.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Every ninety minutes; recovery of missing eligible daily work no earlier than 21:15.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "low",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "observe local status/process/lease evidence",
+        "focused repairs only within existing task authority",
+        "no live process start/restart without separate explicit authorization",
+        "no orders or control changes"
+      ],
+      "required_tools": [
+        "repository_python",
+        "native_overnight_runtime",
+        "local_operating_contracts"
+      ],
+      "owner": "local supervision owner under existing lease rules",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "operator",
+          "allowed": [
+            "operator"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_user_relay_2026-10-01",
+          "adoption": "reconcile_locally_before_any_creation"
+        }
+      }
+    },
+    {
+      "key": "weekly_gameplan_review",
+      "purpose": "Evaluate saved matured forecasts against their own frozen universe and report honest coverage and scores.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Saturday at 09:00.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "medium",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "run existing local evaluation command and write its evaluation output",
+        "read immutable saved Gameplans",
+        "no source repair, broker calls, training, ledger refresh or risk proposals"
+      ],
+      "required_tools": [
+        "repository_python",
+        "native_gameplan_evaluation",
+        "local_operating_contracts"
+      ],
+      "owner": "local evaluation task",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_user_relay_2026-10-01",
+          "adoption": "reconcile_locally_before_any_creation"
+        }
+      }
+    },
+    {
+      "key": "weekly_opportunity_research",
+      "purpose": "Produce the authorized weekly research edition and update unresolved calls using dated evidence.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Sunday at 09:00; deliver one weekly report even when no recommendation qualifies; suppress duplicate editions.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "inherit_existing_chat",
+        "reasoning_effort": "inherit_existing_chat",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "existing research/provider reads and local research publication",
+        "no source code, production watchlist, Gameplan, model, control or account changes",
+        "research publication does not authorize company onboarding"
+      ],
+      "required_tools": [
+        "repository_python",
+        "native_opportunity_research",
+        "web_research",
+        "existing_authorized_research_connection"
+      ],
+      "owner": "local research analyst",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_user_relay_2026-10-01",
+          "adoption": "reconcile_locally_before_any_creation"
+        }
+      }
+    },
+    {
+      "key": "stock_daytime_supervision",
+      "purpose": "Bounded pre-opening supervision of the user-started live stock trader.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Weekdays at 03:55; finish promptly; native session owns its continuous operation.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "low",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "read local worker/lock/status evidence",
+        "narrow diagnosis",
+        "never start another worker, alter controls, or submit/cancel/replace orders"
+      ],
+      "required_tools": [
+        "repository_python",
+        "local_operating_contracts"
+      ],
+      "owner": "Atlas retains live execution ownership; supervision grants no live execution authority",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_owner_restricted_user_relay_2026-10-01",
+          "adoption": "do_not_create_operator_counterpart"
+        }
+      }
+    },
+    {
+      "key": "hyperliquid_operations_watch",
+      "purpose": "Bounded Hyperliquid health watch using the accepted local lifecycle and policy evidence.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Every thirty minutes when enabled; current native definition is paused.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "gpt-6-luna",
+        "reasoning_effort": "xhigh",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "paused; preserve existing narrow recovery conditions for future explicitly authorized resumption",
+        "never score, promote, tune, reseed, or change Paper cadence",
+        "Powder always observational; no orders or funds movements"
+      ],
+      "required_tools": [
+        "repository_python",
+        "local_hyperliquid_contracts"
+      ],
+      "owner": "local accepted experiment owner; peer operating permissions unresolved",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "disabled",
+          "allowed": [
+            "disabled"
+          ],
+          "observed_state": "PAUSED_native_audit_2026-10-01",
+          "adoption": "preserve_paused"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_owner_restricted_user_relay_2026-10-01",
+          "adoption": "ownership_reconciliation_required"
+        }
+      }
+    },
+    {
+      "key": "hyperliquid_paper_improvement",
+      "purpose": "Complete at most one authorized local simulated Paper competition/improvement lifecycle and preserve its adaptive cadence.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Current saved native interval one hour; actual next duration comes from immutable native assessment and accepted seed.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": {
+          "initial_hours": 2,
+          "win_add_hours": 1,
+          "loss_subtract_hours": 2,
+          "minimum_hours": 1,
+          "tie": "retain",
+          "unscored_late_unavailable": "retain; no promotion or loss penalty",
+          "reanchor": "Preserve full PAUSED then ACTIVE native updates after verified fresh opening; use assessed successor duration and existing timing gates. Never reanchor during infrastructure adoption.",
+          "historical_exceptions": "Preserve already-consumed dated cadence amendments; do not apply them twice."
+        }
+      },
+      "preferences": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "ultra",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "existing local simulated Paper model/code/parameter improvements and staged lifecycle only",
+        "preserve accepted ownership, public-read provenance, immutable assessments and source policy",
+        "Powder observational; no real orders, account changes or funds movements"
+      ],
+      "required_tools": [
+        "repository_python",
+        "native_paper_cadence",
+        "native_paper_lifecycle",
+        "native_automation_update"
+      ],
+      "owner": "Atlas owns current accepted experiment; Scout operating permission unresolved",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "operator",
+          "allowed": [
+            "operator"
+          ],
+          "observed_state": "ACTIVE_native_audit_2026-10-01",
+          "adoption": "reuse_existing"
+        },
+        "pc-new": {
+          "default": "observer",
+          "allowed": [
+            "observer"
+          ],
+          "observed_state": "missing_owner_restricted_user_relay_2026-10-01",
+          "adoption": "ownership_reconciliation_required"
+        }
+      }
+    },
+    {
+      "key": "options_paper_tracking",
+      "purpose": "Retained paused legacy options ledger; immutable stock Gameplans do not establish executed options profit.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Saved Tuesday through Saturday at 00:17; paused.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "gpt-6-astra",
+        "reasoning_effort": "max",
+        "notification": "failed_runs_only"
+      },
+      "permissions": [
+        "disabled until separately reconsidered and contracts permit",
+        "exact-leg execution evidence or explicitly counterfactual outcomes",
+        "no old recurring stack, Gameplan mutation, broker mutation or orders"
+      ],
+      "required_tools": [
+        "local_operating_contracts"
+      ],
+      "owner": "retained legacy task; no active operator",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "disabled",
+          "allowed": [
+            "disabled"
+          ],
+          "observed_state": "PAUSED_native_audit_2026-10-01",
+          "adoption": "preserve_paused"
+        },
+        "pc-new": {
+          "default": "disabled",
+          "allowed": [
+            "disabled"
+          ],
+          "observed_state": "missing_user_relay_2026-10-01",
+          "adoption": "do_not_activate_or_create_active_counterpart"
+        }
+      }
+    },
+    {
+      "key": "historical_fallback_installation",
+      "purpose": "Retained one-time September 30 post-close fallback installation follow-up.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "One occurrence at 17:10; authorization window ended October 1, 2026 at 04:00 Pacific.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "inherit_existing_chat",
+        "reasoning_effort": "inherit_existing_chat",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "expired one-time scope; no replay or extension",
+        "preserve original guards and terminal evidence",
+        "no runtime launch or order authority"
+      ],
+      "required_tools": [
+        "local_operating_contracts"
+      ],
+      "owner": "original explicitly authorized one-time local owner",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "retired",
+          "allowed": [
+            "retired"
+          ],
+          "observed_state": "ACTIVE_saved_COUNT1_native_audit_2026-10-01",
+          "adoption": "preserve_definition_do_not_recreate_or_run"
+        },
+        "pc-new": {
+          "default": "retired",
+          "allowed": [
+            "retired"
+          ],
+          "observed_state": "no_counterpart_required",
+          "adoption": "do_not_recreate"
+        }
+      }
+    },
+    {
+      "key": "historical_gameplan_review",
+      "purpose": "Retained terminal September 9 Gameplan review follow-up.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Saved thirty-minute interval; paused historical follow-up.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "inherit_existing_chat",
+        "reasoning_effort": "inherit_existing_chat",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "paused terminal follow-up; no new pipeline authority",
+        "preserve original deadline and historical records"
+      ],
+      "required_tools": [
+        "local_operating_contracts"
+      ],
+      "owner": "original review owner; retired historical purpose",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "disabled",
+          "allowed": [
+            "disabled"
+          ],
+          "observed_state": "PAUSED_native_audit_2026-10-01",
+          "adoption": "preserve_paused"
+        },
+        "pc-new": {
+          "default": "retired",
+          "allowed": [
+            "retired"
+          ],
+          "observed_state": "no_counterpart_required",
+          "adoption": "do_not_recreate"
+        }
+      }
+    },
+    {
+      "key": "communication_continuity",
+      "purpose": "Preserve existing activity-based communication-chat rollover and pending migration state.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Scout standalone every fifteen minutes per user relay; Atlas continuity is embedded in both five-minute communication monitors.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "preserve_local_saved_preference",
+        "reasoning_effort": "preserve_local_saved_preference",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "existing local user-authorized continuity only",
+        "preserve targets, compaction threshold, readiness and migration transaction",
+        "no new runtime, trading or source authority"
+      ],
+      "required_tools": [
+        "native_chat_tools",
+        "native_automation_update",
+        "existing_local_continuity_helper"
+      ],
+      "owner": "local communication chat owner",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "continuity",
+          "allowed": [
+            "continuity"
+          ],
+          "observed_state": "embedded_native_prompts_2026-10-01",
+          "adoption": "preserve_embedded_block_no_duplicate_schedule"
+        },
+        "pc-new": {
+          "default": "continuity",
+          "allowed": [
+            "continuity"
+          ],
+          "observed_state": "ACTIVE_user_relay_2026-10-01",
+          "adoption": "reuse_existing_after_local_audit"
+        }
+      }
+    },
+    {
+      "key": "bootstrap_completion",
+      "purpose": "Retained Scout bootstrap completion follow-up, pending its local authoritative definition.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Preserve saved local cadence; no Atlas counterpart.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "preserve_local_saved_preference",
+        "reasoning_effort": "preserve_local_saved_preference",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "paused; do not infer new installation or activation authority"
+      ],
+      "required_tools": [
+        "local_operating_contracts"
+      ],
+      "owner": "Scout local bootstrap owner",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "retired",
+          "allowed": [
+            "retired"
+          ],
+          "observed_state": "not_present_native_audit_2026-10-01",
+          "adoption": "do_not_create"
+        },
+        "pc-new": {
+          "default": "disabled",
+          "allowed": [
+            "disabled"
+          ],
+          "observed_state": "PAUSED_user_relay_2026-10-01",
+          "adoption": "preserve_paused_after_local_audit"
+        }
+      }
+    },
+    {
+      "key": "data_fetch_completion",
+      "purpose": "Retained Scout data-fetch completion follow-up, pending its local authoritative definition.",
+      "prompt_version": "cross-pc-v2",
+      "cadence": {
+        "semantic": "Preserve saved local cadence; no Atlas counterpart.",
+        "timezone": "America/Los_Angeles",
+        "adaptive_rules": "none; preserve saved native timing exactly"
+      },
+      "preferences": {
+        "model": "preserve_local_saved_preference",
+        "reasoning_effort": "preserve_local_saved_preference",
+        "notification": "preserve_saved_preference"
+      },
+      "permissions": [
+        "paused; no provider work or resumed fetching from catalog adoption"
+      ],
+      "required_tools": [
+        "local_operating_contracts"
+      ],
+      "owner": "Scout local data-fetch owner",
+      "symbol_profile_binding": "private local profile; historical artifacts retain their saved universe",
+      "supported_roles": {
+        "pc-original": {
+          "default": "retired",
+          "allowed": [
+            "retired"
+          ],
+          "observed_state": "not_present_native_audit_2026-10-01",
+          "adoption": "do_not_create"
+        },
+        "pc-new": {
+          "default": "disabled",
+          "allowed": [
+            "disabled"
+          ],
+          "observed_state": "PAUSED_user_relay_2026-10-01",
+          "adoption": "preserve_paused_after_local_audit"
+        }
+      }
+    }
+  ]
+}
