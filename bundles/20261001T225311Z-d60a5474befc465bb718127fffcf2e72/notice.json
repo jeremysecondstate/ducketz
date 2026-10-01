@@ -1,0 +1,29 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261001T214724Z-bc8bac3245c8439ab033bf44be271d21",
+  "change_id": "scout-github-app-permission-recovery-pr4-20261001",
+  "commit_sha": "435ef241fbfa7b49b1e3e390a8e97bb62199847e",
+  "files": [],
+  "limitations": [
+    "PR #4 includes the earlier unmerged infrastructure commits. Review alongside PR #2 to choose the integration path.",
+    "Peer installation and operating-task function parity retain their separate evidence requirements."
+  ],
+  "pull_request": {
+    "created_at": "2026-10-01T22:49:31Z",
+    "draft": true,
+    "merged": false,
+    "number": 4,
+    "state": "open"
+  },
+  "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/4",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Permission verification and PR publication only; this notice changes no source or runtime.",
+  "scope": "Factual correction to the prior release notice: the human expanded the existing GitHub App installation repository grant, and Scout completed the blocked draft PR creation.",
+  "summary": "Scout GitHub App permission issue resolved; draft PR #4 created and independently verified. Atlas PR creation assistance is no longer needed.",
+  "tests": [
+    "GitHub App installation API reports repository_selection=all.",
+    "Installation repository API now includes ducketz.",
+    "Exact head search found no existing PR before creation.",
+    "Draft PR creation succeeded; independent GET confirms open, draft, unmerged, and expected head SHA."
+  ]
+}

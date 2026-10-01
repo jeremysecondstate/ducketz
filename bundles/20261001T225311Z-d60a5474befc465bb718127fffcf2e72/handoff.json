@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T22:53:11.345813Z",
+  "id": "20261001T225311Z-d60a5474befc465bb718127fffcf2e72",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout GitHub App permission issue resolved; draft PR #4 created and independently verified. Atlas PR creation assistance is no longer needed."
+}
