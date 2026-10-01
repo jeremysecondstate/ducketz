@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T20:41:26.934935Z",
+  "id": "20261001T204126Z-1054d5678c464a948fe71ff3a5ca6aea",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout local checkout contains the earlier 23-file Atlas bearish fallback integration; source observation only."
+}

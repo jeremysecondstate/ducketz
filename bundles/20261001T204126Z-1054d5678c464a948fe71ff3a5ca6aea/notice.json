@@ -1,0 +1,52 @@
+{
+  "author": "jeremysecondstate",
+  "branch": "codex/machine-local-symbols",
+  "change_id": "source-observation:df2ab89af4819552576d068aea68b6b527c634c1",
+  "commit_sha": "df2ab89af4819552576d068aea68b6b527c634c1",
+  "commit_title": "Integrate Atlas bearish fallback policy on Scout",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/df2ab89af4819552576d068aea68b6b527c634c1",
+  "committed_at": "2026-10-01T10:44:26-07:00",
+  "files": [
+    "app/ui/gameplan.py",
+    "app/ui/gameplan_data.py",
+    "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+    "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+    "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/gameplan_trade_review.py",
+    "ml/gameplan_trade_snapshot.py",
+    "ml/nightly_gameplan.py",
+    "ml/stock_trader/cross_horizon_fallback.py",
+    "ml/stock_trader/fallback_review.py",
+    "ml/stock_trader/gameplan_direction_engine.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "ml/stock_trader/independent_runtime.py",
+    "tests/test_cross_horizon_fallback_ledger.py",
+    "tests/test_cross_horizon_fallback_policy.py",
+    "tests/test_cross_horizon_fallback_review.py",
+    "tests/test_cross_horizon_fallback_runtime.py",
+    "tests/test_gameplan_fallback_planning.py",
+    "tests/test_gameplan_quote_clock_recovery.py",
+    "tests/test_gameplan_trade_snapshot.py",
+    "tests/test_stock_only_gameplan.py"
+  ],
+  "installation_stage": "existing_checkout_head_observed",
+  "limitations": [
+    "Commit metadata and filenames were read locally. Test claims in a commit message were not independently verified.",
+    "Remote availability of this local revision and shared-main integration are unverified.",
+    "This existing revision was already reported locally; it is distinct from the coordination helper adoption release."
+  ],
+  "main_integration_stage": "unverified",
+  "publication_stage": "local_commit_observed",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Current in-memory runtime version and peer application parity are unverified. This notice changes no application source, configuration, symbols, runtime, provider/broker activity or ownership.",
+  "runtime_stage": "unverified",
+  "scope": "Factual observation of the existing local committed source revision. No new source completion or application operation.",
+  "summary": "Scout local checkout contains the earlier 23-file Atlas bearish fallback integration; source observation only.",
+  "tests": {
+    "independently_verified_by_this_courier": "unknown",
+    "new_tests_run": false,
+    "test_timestamps": "unknown"
+  }
+}
