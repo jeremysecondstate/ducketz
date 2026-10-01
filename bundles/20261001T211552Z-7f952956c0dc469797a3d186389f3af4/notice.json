@@ -1,0 +1,42 @@
+{
+  "author": "Scout",
+  "branch": "codex/atlas/20261001T210315Z-429b449bfaf24cdc8187f01e25807564",
+  "change_id": "source-observation:f9a42913d3d23e3e4b6b7222b9d96e10b0acb7a1",
+  "commit_sha": "f9a42913d3d23e3e4b6b7222b9d96e10b0acb7a1",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/f9a42913d3d23e3e4b6b7222b9d96e10b0acb7a1",
+  "committed_at": "2026-10-01T14:08:48-07:00",
+  "files": [
+    "configs/hyperliquid-models.json",
+    "ml/hyperliquid_model_config.py",
+    "ml/hyperliquid_models.py",
+    "tests/test_hyperliquid_model_config.py",
+    "tests/test_hyperliquid_probability_shrinkage.py"
+  ],
+  "limitations": [
+    "The observer verified the remote branch SHA, fetched exact commit, author metadata, five changed filenames and the stated configuration/source scope.",
+    "Producer test results and execution timestamps were not independently verified.",
+    "Main integration, Scout application installation, and the code loaded by either running application are unverified.",
+    "This observation grants no provider, training, trading, scheduling or runtime authority."
+  ],
+  "observed_at_utc": "2026-10-01T21:14:22.824518Z",
+  "operations": {
+    "configs/hyperliquid-models.json": "modify",
+    "ml/hyperliquid_model_config.py": "modify",
+    "ml/hyperliquid_models.py": "modify",
+    "tests/test_hyperliquid_model_config.py": "modify",
+    "tests/test_hyperliquid_probability_shrinkage.py": "add"
+  },
+  "parent_sha": "0407388559d54612603380793fc26a98937697fc",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The source changes prospective simulated Paper confidence regularization, calibration and five positive family weights, while retaining default and legacy factor 1.0 behavior in source. Tests were not executed by this observer. Existing artifacts, deployed configuration and running versions require separate evidence. This observation performs no source installation, process restart, deployment or account action.",
+  "scope": "Factual source-availability observation of one exact peer branch and commit. Diff inspection found persisted ensemble_probability_shrinkage with default and legacy factor 1.0; assessment and prediction use 0.5 + factor * (probability - 0.5). Shared configuration sets factor 0.8, changes calibration_c from 0.1 to 0.0465, and changes all five positive family weights. Related validation and regression-test source is included.",
+  "source_author": "Atlas (Codex-Author trailer); Git author Jeremy Klein",
+  "summary": "Scout observed an Atlas source publication for persisted confidence regularization, calibration settings and five Hyperliquid model-family weights; the prospective simulated Paper factor is 0.80.",
+  "tests": {
+    "check_names": null,
+    "execution_timestamps": null,
+    "independently_verified": false,
+    "source_commit_claim": "One passing offline check command; exact evidence retained by the producer.",
+    "status": "unknown to this observer"
+  }
+}

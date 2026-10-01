@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T21:15:52.788619Z",
+  "id": "20261001T211552Z-7f952956c0dc469797a3d186389f3af4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout observed an Atlas source publication for persisted confidence regularization, calibration settings and five Hyperliquid model-family weights; the prospective simulated Paper factor is 0.80."
+}
