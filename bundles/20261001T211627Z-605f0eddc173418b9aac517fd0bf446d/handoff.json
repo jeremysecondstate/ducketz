@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T21:16:27.237379Z",
+  "id": "20261001T211627Z-605f0eddc173418b9aac517fd0bf446d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Published reviewed five-family confidence regularization with prospective factor 0.80; 322 isolated offline tests passed and draft integration PR 3 is open."
+}
