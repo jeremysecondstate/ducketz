@@ -1,0 +1,275 @@
+{
+  "author": "Atlas",
+  "backlog": {
+    "disposition": "Retained exact records; superseded or incomplete-dependency revisions are not replayed. Fresh Gameplan candidate is ready for review. Other universal work needs owner/dependency review and fresh tests; see versioned backlog.",
+    "legacy_unconsumed_records": 9,
+    "published_source_records": 9
+  },
+  "base_commit": "0407388559d54612603380793fc26a98937697fc",
+  "bootstrap_url": "https://github.com/jeremysecondstate/ducketz/blob/7860a4a958193abb1943f13f56f6a445c28d8f61/docs/development/cross-pc-bootstrap.md",
+  "branch": "codex/atlas/20261001T194109Z-18ad7cb4954640228fbc3f715149136f",
+  "change_id": "release:7860a4a958193abb1943f13f56f6a445c28d8f61",
+  "commit_sha": "7860a4a958193abb1943f13f56f6a445c28d8f61",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/7860a4a958193abb1943f13f56f6a445c28d8f61",
+  "drift": {
+    "actual_digest": "e2f6341857f2672e709136770fff141338839737a8e4e9cc6408ca4c6f95a687",
+    "checkout_head": "0407388559d54612603380793fc26a98937697fc",
+    "classification_counts": {
+      "line_endings_only_actual_bytes_differ": 219,
+      "mixed_configuration": 3,
+      "shared_source_deviation": 33,
+      "untracked_shared_source": 19
+    },
+    "deviations": 274,
+    "inventory_sha256": "184ebffd540c48d9653c091e968fd7c780cd38000af0bc985fdc517fbf0e3c9a",
+    "local_state": "not_read",
+    "peer_source_version": "unverified",
+    "reference_commit": "0407388559d54612603380793fc26a98937697fc",
+    "runtime_version": "unverified",
+    "shared_paths": 914,
+    "symbol_profile_digest": "e44ca5169245b3c329798d36cd6b28ac019439e97e7a54b3187b0d42ac90b123"
+  },
+  "file_sha256": {
+    "AGENTS.md": "a6cca31bb93fa1fbfb7a9051a78ed71d009d9acecfdd8b0cfc22f76a329509c9",
+    "coordination/contract.json": "782da1acfab4d36042ea989d4716e3c8d3abfa95b1d25a57535ef56318594eb5",
+    "coordination/local-profile.example.json": "fdfe8533df42e63070526380beb7b725ae76498d00d433147f525397fafe08b7",
+    "coordination/prompts/courier.txt": "2cd833cdf4c7ebbc7a682b60ccf885da8423d09ae4c198e7350f39689a61ba62",
+    "coordination/prompts/inbox.txt": "7952982ae81b7e4132e357c91f6221b10e51e6feb1ccc76416907b1180a8797b",
+    "coordination/task-catalog.json": "fb8cb901a9552722e2baa736c615f2b7fad447a5245d6f66e1735b9bc9a5faf7",
+    "docs/development/atlas-scout-git-handoff.md": "81631cd1c49c967612a8b0893fd7b831a6b9ab40bf43c78001d0146e95757e87",
+    "docs/development/cross-pc-backlog.md": "1fb398c49335b8c99b02b8e6f3db2365593ce2c660312678bd56e9c4df02e267",
+    "docs/development/cross-pc-bootstrap.md": "61e4b1f4c262ee796f2fcddfa35bb9dc8559831b03019e568376ec391212460d",
+    "docs/development/cross-pc-task-matrix.md": "3151dbf03316441c35c37b7f72e8ae634ddb810f877ebefb0646a896eb24a9d8",
+    "tests/test_cross_pc_core.py": "4a214d695926972bb77303ee1f9ae64db4d53ff941e33ad76fa8f30782d580bb",
+    "tests/test_cross_pc_install_drift.py": "2674e40ae9d4d07297becf6ee49546e341d0004465d2e340cf2c514761689f06",
+    "tests/test_cross_pc_tasks.py": "2ca955c1201d6ce175bbb632a1d8acb84f7a91af859fde53dd058af2bcdda104",
+    "tests/test_cross_pc_transport.py": "47f827becb3f0bcc8df3568dffb032efbddeb8fe4d0b4c4b53b69540a7be7b48",
+    "tools/__init__.py": "1b472f785258a90201d7d15f72fb8766a1e6504186d3b553ea0b5954f7a2691e",
+    "tools/cross_pc/__init__.py": "769fd00b94e2fd060b4565449afa4fa76efbc53d703e4584e6b180d040938277",
+    "tools/cross_pc/cli.py": "455d70603b9e0233fcb7ec9aaf5018c35a308e481bb4ec27443df262b9404e33",
+    "tools/cross_pc/core.py": "f6984d8de41433c8ea02cebaceae9a33d5a3060a9f3e6b288463f93740749051",
+    "tools/cross_pc/drift.py": "4f0184775c219b6bd0572762efa98f61e97b2c7ccca64905aff5e61ac47af3f0",
+    "tools/cross_pc/installation.py": "c7e484ade46775f8242f20f94cb2e5e9d8d7034682ea8df77743153ce4864051",
+    "tools/cross_pc/notices.py": "3a8728fe198af3ce49cdd2506170a60eef7f1ec40ec227e5c507a70ca3760013",
+    "tools/cross_pc/tasks.py": "bac74b9ae62e84069d307b1d0849432bb9dbfa93c722bfe61df3b658c2739f8c",
+    "tools/cross_pc/test_runner.py": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2",
+    "tools/cross_pc/transport.py": "e1f00b117ea420e3fd5f05bdbd5b9fae931535d7569114e5208c30cc8da6162e"
+  },
+  "files": [
+    "AGENTS.md",
+    "coordination/contract.json",
+    "coordination/local-profile.example.json",
+    "coordination/prompts/courier.txt",
+    "coordination/prompts/inbox.txt",
+    "coordination/task-catalog.json",
+    "docs/development/atlas-scout-git-handoff.md",
+    "docs/development/cross-pc-backlog.md",
+    "docs/development/cross-pc-bootstrap.md",
+    "docs/development/cross-pc-task-matrix.md",
+    "tests/test_cross_pc_core.py",
+    "tests/test_cross_pc_install_drift.py",
+    "tests/test_cross_pc_tasks.py",
+    "tests/test_cross_pc_transport.py",
+    "tools/__init__.py",
+    "tools/cross_pc/__init__.py",
+    "tools/cross_pc/cli.py",
+    "tools/cross_pc/core.py",
+    "tools/cross_pc/drift.py",
+    "tools/cross_pc/installation.py",
+    "tools/cross_pc/notices.py",
+    "tools/cross_pc/tasks.py",
+    "tools/cross_pc/test_runner.py",
+    "tools/cross_pc/transport.py"
+  ],
+  "gameplan_integration": {
+    "base_commit": "0407388559d54612603380793fc26a98937697fc",
+    "commit_sha": "be760388063a0fa3099c1cc445ba758be69ceb23",
+    "completed_at_utc": "2026-10-01T19:31:18.237848+00:00",
+    "files": [
+      "app/ui/gameplan.py",
+      "app/ui/gameplan_data.py",
+      "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+      "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "ml/gameplan_cash_ledger.py",
+      "ml/gameplan_trade_planning.py",
+      "ml/gameplan_trade_review.py",
+      "ml/gameplan_trade_snapshot.py",
+      "ml/nightly_gameplan.py",
+      "ml/stock_trader/cross_horizon_fallback.py",
+      "ml/stock_trader/fallback_review.py",
+      "ml/stock_trader/gameplan_direction_engine.py",
+      "ml/stock_trader/horizon_ledger.py",
+      "ml/stock_trader/independent_runtime.py",
+      "tests/test_cross_horizon_fallback_ledger.py",
+      "tests/test_cross_horizon_fallback_policy.py",
+      "tests/test_cross_horizon_fallback_review.py",
+      "tests/test_cross_horizon_fallback_runtime.py",
+      "tests/test_gameplan_fallback_planning.py",
+      "tests/test_gameplan_quote_clock_recovery.py",
+      "tests/test_gameplan_trade_snapshot.py",
+      "tests/test_stock_only_gameplan.py"
+    ],
+    "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/1",
+    "stage": "open_review_candidate_not_merged",
+    "tests": {
+      "errors": 0,
+      "failures": 0,
+      "passed": 678,
+      "skipped": 0,
+      "tests": 678
+    }
+  },
+  "installation": {
+    "installed_files": 19,
+    "manifest_sha256": "f96c7771290c7d624200eadeac88abf4081903f89681e6fc1c7d2a3bf121afe4",
+    "scope": "Coordination helpers and repository/task instructions only"
+  },
+  "limitations": [
+    "Scout has reported preparation only and has not verified this release on its PC.",
+    "Source/task parity requires both PCs actual-byte drift, native saved-task and symbol-preservation evidence.",
+    "Shared main integration and any application/runtime deployment remain separate human decisions.",
+    "Current in-memory runtime versions remain unverified."
+  ],
+  "native_adoption": {
+    "compatibility_metadata_exceptions": 2,
+    "exception": "Installed app 26.928.2636.0 normalized non-authoritative cwds metadata on two project-bound tasks. Exact project targets and effective roots were unchanged, verified by installed scheduler code. Strict verifier failures remain recorded separately.",
+    "exception_evidence_sha256": "a745a244a5679a7e91a4ec4b2261d72a5048e275367297d36b8846184ce460ea",
+    "existing_tasks_updated": 12,
+    "new_tasks": 0,
+    "preserved": "Cadence/adaptive rules, enabled/paused state, model/effort, notifications, original operating scope, effective execution context and communication continuity.",
+    "purposes": [
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "cross_pc_inbox",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "source_courier",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "hyperliquid_operations_watch",
+        "status": "PAUSED"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "hyperliquid_paper_improvement",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "historical_fallback_installation",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "weekly_gameplan_review",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "overnight_gameplan",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "options_paper_tracking",
+        "status": "PAUSED"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "loops_operations_watch",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "stock_daytime_supervision",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "weekly_opportunity_research",
+        "status": "ACTIVE"
+      },
+      {
+        "contract_version": "cross-pc-v2",
+        "purpose": "historical_gameplan_review",
+        "status": "PAUSED"
+      }
+    ],
+    "strict_preservation_passes": 10,
+    "version": "cross-pc-v2"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/2",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No broker/provider calls, orders, funds movement, training, application replacement or runtime restart/deployment. Existing ownership remains unchanged.",
+  "scope": "Shared completion contract, immutable tested snapshots, bounded fair courier, reviewed PR integration, explicit GitHub notice migration, 15-purpose portable task catalog, pinned installer and actual-byte drift checks.",
+  "stages": {
+    "application_installation": "not_performed",
+    "atlas_coordination_installation": "verified_with_two_metadata_exceptions",
+    "integration": "PR_open_main_unchanged",
+    "peer_source_availability": "published_available_Scout_adoption_unverified",
+    "runtime_deployment": "not_performed",
+    "source_publication": "pushed_remote_sha_verified"
+  },
+  "summary": "Atlas cross-pc-v2 infrastructure published and installed; Scout adoption evidence pending",
+  "tests": {
+    "immutable_snapshot": {
+      "completed_at_utc": "2026-10-01T19:43:26.384939Z",
+      "exit_code": 0,
+      "output_sha256": "1c8290cae9d41fe03ff07ed97e1d0df118d63219cba677fb61dead3d6201a924",
+      "result": "........................................................................ [ 59%]\r\n....s........................................s....                       [100%]\r\n120 passed, 2 skipped in 136.17s (0:02:16)\r\n\n",
+      "started_at_utc": "2026-10-01T19:41:09.119141Z"
+    },
+    "legacy_helpers": {
+      "completed_at_utc": "2026-10-01T19:43:45.895175Z",
+      "evidence_sha256": "fc9806f93d1cfccd6b342bd48a994357189f62b9bc6160ad3baa69d48aa049ec",
+      "result": "45 passed, zero skipped",
+      "started_at_utc": "2026-10-01T19:43:43.490476Z"
+    },
+    "publication_worktree": {
+      "completed_at_utc": "2026-10-01T19:47:11.940894Z",
+      "exit_code": 0,
+      "output_sha256": "50adb742c471314a03f7b958822164c232fbc7625e5b1a1a0dbf6c0e9a8ecb2a",
+      "result": "........................................................................ [ 59%]\r\n....s........................................s....                       [100%]\r\n120 passed, 2 skipped in 133.80s (0:02:13)\r\n\n",
+      "started_at_utc": "2026-10-01T19:44:57.299956Z"
+    },
+    "symlink_limit": "Two tests skipped for Windows symlink privilege; mocked reparse tests passed."
+  },
+  "transport": {
+    "converted_legacy_notices": [
+      {
+        "converted_manifest_sha256": "0d3220f4f429228c20dc9cb15416c423f27737bf4651d4d13c7c0a9b05ed3063",
+        "delivery_commit_url": "https://github.com/jeremysecondstate/ducketz/commit/a9736da556b8fb0641a42de5b0b635e552fca260",
+        "new_bundle_id": "20261001T194833Z-fe853750809b46ef9fff3271b334f2c7",
+        "original_bundle_id": "20260930T233549Z-3eac8fb97d0f4e909b90f2bb5c30ce5e",
+        "original_manifest_sha256": "1e71c0160c0276f2981ee833071ed9d5219d4a73492069aaa485fc6c899c9509",
+        "stage": "published"
+      },
+      {
+        "converted_manifest_sha256": "99d96e9a4e43c8c6ec881062b99388f91a1abb18d7717d6463944e520a826be6",
+        "delivery_commit_url": "https://github.com/jeremysecondstate/ducketz/commit/6a444206ac553ed111d2f75d18615a50836217ea",
+        "new_bundle_id": "20261001T194900Z-26d57f11b2d94b62981dc45c8d6b4c64",
+        "original_bundle_id": "20261001T003037Z-e0f98cd554ab4ad7bbd86de4af6079fc",
+        "original_manifest_sha256": "87234aafac5f2fe5ca3422e2202a0900809fb930818620a17bf314fa3f46d493",
+        "stage": "published"
+      },
+      {
+        "converted_manifest_sha256": "15512a366c29081d845c963b48e64d857eeaacd3c96d89b6ee442160913d1ee4",
+        "delivery_commit_url": "https://github.com/jeremysecondstate/ducketz/commit/44dc374848daa689c65a81be1df593af9fde1326",
+        "new_bundle_id": "20261001T194900Z-fe4194b42db64bc6a5ad4d3a309dc6da",
+        "original_bundle_id": "20261001T073129Z-e0ca7f4ebb1f4ba6a1567f5f60c412c6",
+        "original_manifest_sha256": "59934c1da381bac4b37f8c85262cb174c89db927c82c58d86d6b0e4fc59c4a16",
+        "stage": "published"
+      }
+    ],
+    "explicit_replacement": true,
+    "filesystem_fallback": false,
+    "mode": "github-git-v2",
+    "own_branch": "codex/atlas/coordination-v2",
+    "peer_branch": "codex/scout/coordination-v2"
+  }
+}

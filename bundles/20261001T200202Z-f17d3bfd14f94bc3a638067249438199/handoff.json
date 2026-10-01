@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T20:02:02.004672Z",
+  "id": "20261001T200202Z-f17d3bfd14f94bc3a638067249438199",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas cross-pc-v2 infrastructure published and installed; Scout adoption evidence pending"
+}
