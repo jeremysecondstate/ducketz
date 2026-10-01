@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-01T23:21:17.265163Z",
+  "id": "20261001T232117Z-03220cf17ef84948a9da1669ab1fc6f6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Published reviewed probability shrinkage with prospective factor 0.70; 322 isolated offline tests passed and draft integration PR 5 is open."
+}
