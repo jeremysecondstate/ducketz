@@ -99,6 +99,9 @@ def shareable(value):
     parts = value.lower().split("/")
     if any(p in {".git", ".codex", ".venv", "scratch", "data", "datastore", "credentials", "secrets"} for p in parts):
         raise ValueError("local/private path cannot be queued")
+    filename_parts = parts[-1].split(".")
+    if "local" in filename_parts[1:] and "example" not in filename_parts[1:]:
+        raise ValueError("machine-local settings cannot be queued")
     if parts[-1] == ".env" or parts[-1].endswith((".db", ".sqlite", ".sqlite3", ".parquet", ".pkl", ".joblib", ".pem", ".key")) or (parts[-1].endswith(".lock") and not parts[-1].startswith("requirements")):
         raise ValueError("private/generated payload cannot be queued")
     return value

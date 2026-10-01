@@ -236,6 +236,34 @@ def test_private_and_escaping_paths_rejected(name):
         core.shareable(name)
 
 
+@pytest.mark.parametrize("name", ["datafetching/watchlist.local.txt", "configs/strategy.local.json", "configs/strategy.local"])
+@pytest.mark.parametrize("as_dependency", [False, True])
+def test_machine_local_files_cannot_enter_completion_snapshots(setup, name, as_dependency):
+    root, profile, spec = setup
+    local = root / name
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text("machine-specific fixture\n")
+    original = local.read_bytes()
+    if as_dependency:
+        spec["dependencies"].append(name)
+    else:
+        spec["files"].append({"path": name, "operation": "add", "owned": True})
+
+    with pytest.raises(ValueError, match="machine-local settings"):
+        core.queue(profile, root, spec)
+
+    assert local.read_bytes() == original
+    assert not Path(profile["snapshot_root"]).exists()
+    assert not Path(profile["evidence_root"]).exists()
+    assert not core.state(profile)["records"]
+
+
+@pytest.mark.parametrize("name", ["datafetching/watchlist.txt", "configs/strategy.json",
+                                  "configs/strategy.local.example.json", "configs/strategy.example.local.json"])
+def test_shared_defaults_and_explicit_example_templates_remain_shareable(name):
+    assert core.shareable(name) == name
+
+
 def test_explicit_deletion_intent(setup):
     root, profile, spec = setup
     spec["files"][0]["operation"] = "delete"
