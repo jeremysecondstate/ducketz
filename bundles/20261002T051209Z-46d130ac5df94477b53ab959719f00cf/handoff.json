@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:12:09.583055Z",
+  "id": "20261002T051209Z-46d130ac5df94477b53ab959719f00cf",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Main source revision 24cf2636f6b467efbce5f92bcd3f9d6e4588469b is available at the verified origin main ref. It adds research/configuration material, Paper/Model updates, and a date-effective bearish cross-horizon fallback SELL path in independent stock Gameplan execution. The tracked stock watchlist is unchanged."
+}

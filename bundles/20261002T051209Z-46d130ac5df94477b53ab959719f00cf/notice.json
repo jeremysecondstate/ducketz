@@ -1,0 +1,233 @@
+{
+  "author": "Jeremy Klein",
+  "base_sha": "0407388559d54612603380793fc26a98937697fc",
+  "branch": "main",
+  "change_id": "main-24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "commit_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "status": "A"
+    },
+    {
+      "path": "app/services/hyperliquid_paper_view.py",
+      "status": "M"
+    },
+    {
+      "path": "app/services/hyperliquid_powder_view.py",
+      "status": "M"
+    },
+    {
+      "path": "app/ui/gameplan.py",
+      "status": "M"
+    },
+    {
+      "path": "app/ui/gameplan_data.py",
+      "status": "M"
+    },
+    {
+      "path": "app/ui/hyper_workspace.py",
+      "status": "M"
+    },
+    {
+      "path": "configs/hyperliquid-models.json",
+      "status": "M"
+    },
+    {
+      "path": "configs/hyperliquid-paper.json",
+      "status": "M"
+    },
+    {
+      "path": "configs/hyperliquid-powder.json",
+      "status": "M"
+    },
+    {
+      "path": "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/hyperliquid-system-analysis/research/2026-09-30-bullish-allocation.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/hyperliquid-system-analysis/research/2026-09-30-bullish-allocation20-paper.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/hyperliquid-system-analysis/research/2026-09-30-five-family-weighting.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/hyperliquid-system-analysis/research/2026-09-30-saturation24-paper.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+      "status": "A"
+    },
+    {
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "status": "M"
+    },
+    {
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "status": "M"
+    },
+    {
+      "path": "ml/gameplan_cash_ledger.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/gameplan_trade_planning.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/gameplan_trade_review.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/gameplan_trade_snapshot.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/hyperliquid_model_config.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/hyperliquid_models.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/hyperliquid_paper_cadence.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/hyperliquid_paper_forecast_evidence.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/hyperliquid_paper_review.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/hyperliquid_paper_runtime.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/nightly_gameplan.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/stock_trader/cross_horizon_fallback.py",
+      "status": "A"
+    },
+    {
+      "path": "ml/stock_trader/fallback_review.py",
+      "status": "A"
+    },
+    {
+      "path": "ml/stock_trader/gameplan_direction_engine.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/stock_trader/horizon_ledger.py",
+      "status": "M"
+    },
+    {
+      "path": "ml/stock_trader/independent_runtime.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_ledger.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_policy.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_review.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_runtime.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_gameplan_fallback_planning.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_gameplan_quote_clock_recovery.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_gameplan_trade_snapshot.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyper_workspace.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_model_config.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_paper_exploration.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_hyperliquid_paper_exploratory_cadence.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_hyperliquid_paper_policy.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_paper_review.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_paper_runtime.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_paper_view.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_powder_view.py",
+      "status": "M"
+    },
+    {
+      "path": "tests/test_hyperliquid_probability_shrinkage.py",
+      "status": "A"
+    },
+    {
+      "path": "tests/test_stock_only_gameplan.py",
+      "status": "M"
+    }
+  ],
+  "limitations": [
+    "Atlas did not independently rerun the author-reported checks; exact execution timestamps are unknown.",
+    "No application installation or running-process version was verified on either PC.",
+    "Scout local symbol, checkout, task, and runtime evidence remains pending.",
+    "85 paths containing local analysis evidence, task prompts, or machine-specific account/path configuration were omitted from this portable notice; the notice carries none of their paths or values."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source availability is verified; runtime adoption is not. The new independent stock Gameplan fallback can produce SELL decisions under its frozen prospective policy, and Paper/Model defaults changed. This is an operational behavior change if a consumer adopts the source. The commit itself did not start or restart a process.",
+  "scope": "The commit changes common runtime source and model/Paper defaults in addition to documentation. The new stock fallback path can create bounded SELL decisions for qualifying bearish forecasts from the effective action date 2026-10-01. Atlas confirms the committed tracked stock watchlist is unchanged and its private profile retains 11 stock symbols.",
+  "summary": "Main source revision 24cf2636f6b467efbce5f92bcd3f9d6e4588469b is available at the verified origin main ref. It adds research/configuration material, Paper/Model updates, and a date-effective bearish cross-horizon fallback SELL path in independent stock Gameplan execution. The tracked stock watchlist is unchanged.",
+  "tests": {
+    "execution_time_utc": "unknown",
+    "independently_reexecuted_by_atlas": false,
+    "reported_by_commit_author_and_direct_human": "152 focused checks and 56 passed tests"
+  }
+}
