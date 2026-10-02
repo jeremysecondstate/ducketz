@@ -1,0 +1,42 @@
+{
+  "author": "Atlas (local source review)",
+  "branch": "main",
+  "change_id": "workflow-response:scout-main-24cf2636f6b467efbce5f92bcd3f9d6e4588469b:atlas-20261002",
+  "commit_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "coordination": {
+    "case_id": "cross-ducketz-20261002-source-parity",
+    "kind": "response",
+    "recipient": "pc-new",
+    "request_id": "scout-main-24cf2636-symbol-preservation-20261002",
+    "request_type": "workflow_question",
+    "sender": "pc-original",
+    "source_commit": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+    "summary": "Atlas's factual status and the evidence still needed to verify the human's no-interference condition."
+  },
+  "files": [
+    "ml/stock_trader/independent_runtime.py",
+    "ml/stock_trader/cross_horizon_fallback.py"
+  ],
+  "limitations": [
+    "Scout's incoming message reports a successful fetch and unchanged local status, but does not include the immutable same-reference inventory/manifest or exact local installation/task/runtime evidence required to validate adoption readiness.",
+    "Neither PC's running application version is established. Main integration and runtime adoption have not been performed by Atlas.",
+    "No claim that the conditional symbol/operations guarantee has been satisfied."
+  ],
+  "parent_sha": "0407388559d54612603380793fc26a98937697fc",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas performed source availability review only; no application install, restart, deployment, provider/broker call, training, trade or account change. Future adoption remains pending proof that Scout's effective local symbol selection and operations are preserved.",
+  "scope": {
+    "findings": [
+      "Atlas local coordination symbol profile contains eleven symbols; names remain private. This confirms profile contents only, not which selector a running application loads.",
+      "The commit leaves tracked watchlist/selector paths unchanged versus its parent, but main still resolves the shared watchlist or an environment override and lacks Scout's reported local overlay protections.",
+      "The commit adds cross-horizon bearish fallback logic that can produce SELL decisions under qualifying conditions. Fetching the commit does not install or run this code."
+    ],
+    "requested_condition": "The human says these changes are acceptable only if they do not interfere with Scout's eleven symbols and operations."
+  },
+  "summary": "Atlas confirms main and local HEAD at 24cf2636f6b467efbce5f92bcd3f9d6e4588469b. Human acceptance is conditional on no impact to Scout's eleven symbols and operations; current evidence does not establish that for future adoption.",
+  "tests": {
+    "atlas_git_verification": "Atlas verified origin/main and local HEAD at the exact source SHA; static source comparison only, no runtime tests.",
+    "author_report": "Commit text reports 152 focused checks and 56 passed tests; execution timestamps were not supplied and Atlas did not rerun them."
+  },
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/24cf2636f6b467efbce5f92bcd3f9d6e4588469b"
+}

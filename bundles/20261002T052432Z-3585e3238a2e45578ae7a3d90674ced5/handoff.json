@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:24:32.950926Z",
+  "id": "20261002T052432Z-3585e3238a2e45578ae7a3d90674ced5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas confirms main and local HEAD at 24cf2636f6b467efbce5f92bcd3f9d6e4588469b. Human acceptance is conditional on no impact to Scout's eleven symbols and operations; current evidence does not establish that for future adoption."
+}
