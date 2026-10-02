@@ -1,0 +1,185 @@
+{
+  "schema": "hyperliquid-paper-round-account-breakdown-v1",
+  "producer": "hyperliquid-paper-improvement",
+  "actor": "Atlas",
+  "machine": "pc-original",
+  "experiment_id": "20261002-paper-round-45",
+  "comparison_outcome": "UNSCORED",
+  "comparison_reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+  "comparison_endpoint_at_utc": "2026-10-02T12:24:47.460563+00:00",
+  "stopped_ledger_at_utc": "2026-10-02T12:26:22.797847+00:00",
+  "ledger_source": "Archived Paper SQLite ledger; account metrics aggregate exact fills and equity marks at stop.",
+  "per_account_stopped_ledger": {
+    "alex": {
+      "fills": 20,
+      "forecast_linked_fills": 20,
+      "qualified_fills": 10,
+      "research_fills": 10,
+      "turnover_usd": 18370.102039999994,
+      "fees_usd": 8.266545918,
+      "realized_pnl_usd": -663.100640000001,
+      "funding_usd": 0.000319362,
+      "funding_events": 1,
+      "max_drawdown": {
+        "max_drawdown_usd": 7.324845449929853,
+        "max_drawdown_fraction": 0.001242936105857534,
+        "trough": {
+          "timestamp_utc": "2026-10-02T11:53:20.166303+00:00",
+          "cycle_id": "mark:59698066",
+          "equity_usd": 5885.85455082825,
+          "peak_equity_usd": 5893.179396278179
+        }
+      },
+      "latest_ledger_equity_usd": 5885.886933563289
+    },
+    "clearpond": {
+      "fills": 15,
+      "forecast_linked_fills": 15,
+      "qualified_fills": 8,
+      "research_fills": 7,
+      "turnover_usd": 30433.10881,
+      "fees_usd": 21.303176167,
+      "realized_pnl_usd": -49.2168897868,
+      "max_drawdown": {
+        "max_drawdown_usd": 70.57425416813203,
+        "max_drawdown_fraction": 0.002104675333747636,
+        "trough": {
+          "timestamp_utc": "2026-10-02T12:02:56.366223+00:00",
+          "cycle_id": "mark:59698085",
+          "equity_usd": 33461.559199624855,
+          "peak_equity_usd": 33532.13345379299
+        }
+      },
+      "latest_ledger_equity_usd": 33461.63345038207
+    },
+    "jeremy": {
+      "fills": 57,
+      "forecast_linked_fills": 57,
+      "qualified_fills": 32,
+      "research_fills": 25,
+      "turnover_usd": 16294.098940000009,
+      "fees_usd": 7.332344523,
+      "realized_pnl_usd": 218.349083140166,
+      "funding_usd": -0.010086412719300006,
+      "funding_events": 8,
+      "max_drawdown": {
+        "max_drawdown_usd": 43.74705769695811,
+        "max_drawdown_fraction": 0.008087882074191536,
+        "trough": {
+          "timestamp_utc": "2026-10-02T12:02:56.366223+00:00",
+          "cycle_id": "mark:59698085",
+          "equity_usd": 5365.216289648962,
+          "peak_equity_usd": 5408.96334734592
+        }
+      },
+      "latest_ledger_equity_usd": 5366.416417102042
+    }
+  },
+  "pooled_stopped_ledger": {
+    "fills": 92,
+    "forecast_linked_fills": 92,
+    "qualified_fills": 50,
+    "research_fills": 42,
+    "turnover_usd": 65097.30979000001,
+    "fees_usd": 36.902066608,
+    "funding_usd": -0.009767050719300006,
+    "realized_pnl_usd": -493.968446646635,
+    "latest_ledger_equity_usd": 44713.9368010474,
+    "max_drawdown": {
+      "max_drawdown_usd": 78.543579451798,
+      "max_drawdown_fraction": 0.0017535487115192029,
+      "trough": {
+        "timestamp_utc": "2026-10-02T12:02:56.366223+00:00",
+        "cycle_id": "mark:59698085",
+        "equity_usd": 44712.67261878603,
+        "peak_equity_usd": 44791.21619823783
+      }
+    }
+  },
+  "native_common_mark_endpoint": {
+    "alex": {
+      "paper_common_mark_equity": 5885.8869337110245,
+      "paper_pnl_since_opening_common_mark": 35.76753661209568,
+      "actual_common_mark_equity": 5948.952761267025,
+      "actual_pnl_since_opening_common_mark": 98.83336416809652,
+      "paper_minus_actual_common_mark_edge": -63.06582755600084,
+      "paper_fees": 8.266545917999997,
+      "paper_funding": 0.000319362
+    },
+    "clearpond": {
+      "paper_common_mark_equity": 33461.63446091752,
+      "paper_pnl_since_opening_common_mark": -70.49899287546577,
+      "actual_common_mark_equity": 33581.39073386252,
+      "actual_pnl_since_opening_common_mark": 49.25728006953432,
+      "paper_minus_actual_common_mark_edge": -119.75627294500009,
+      "paper_fees": 21.293377944999996,
+      "paper_funding": 0.0
+    },
+    "jeremy": {
+      "paper_common_mark_equity": 5366.249632776382,
+      "paper_pnl_since_opening_common_mark": -42.71371456953784,
+      "actual_common_mark_equity": 5335.1249786016,
+      "actual_pnl_since_opening_common_mark": -73.83836874432018,
+      "paper_minus_actual_common_mark_edge": 31.124654174782336,
+      "paper_fees": 7.261933882500002,
+      "paper_funding": -0.010086412719300006
+    }
+  },
+  "pooled_endpoint": {
+    "opening_pooled_equity": 44791.21619823784,
+    "paper_common_mark_equity": 44713.77102740492,
+    "actual_common_mark_equity": 44865.46847373115,
+    "common_mark_equity_edge": -151.69744632623042,
+    "paper_return_fraction": -0.0017290258538674719,
+    "actual_return_fraction": 0.0016577418921754905,
+    "excess_return_fraction": -0.0033867677460429945,
+    "paper_fees": 36.8218577455,
+    "paper_funding": -0.009767050719300006,
+    "paper_turnover": 64926.84424
+  },
+  "attribution_by_coin": {
+    "BTC": {
+      "fills": 23,
+      "turnover": 22461.53914,
+      "fees": 15.522718898,
+      "realized_pnl": -35.73623340811382,
+      "price_pnl_before_fees_funding": -35.73484344639993,
+      "pnl_after_fees_before_funding": -51.25756234439993
+    },
+    "ETH": {
+      "fills": 26,
+      "turnover": 3727.89057,
+      "fees": 2.3737755165,
+      "realized_pnl": -4.881900155731242,
+      "price_pnl_before_fees_funding": -4.8818212599999224,
+      "pnl_after_fees_before_funding": -7.255596776499923
+    },
+    "HYPE": {
+      "fills": 14,
+      "turnover": 19314.59449,
+      "fees": 9.823326052999999,
+      "realized_pnl": -197.68495284334983,
+      "price_pnl_before_fees_funding": -1.1759658664397818,
+      "pnl_after_fees_before_funding": -10.99929191943978
+    },
+    "ZEC": {
+      "fills": 26,
+      "turnover": 19422.82004,
+      "fees": 9.102037278,
+      "realized_pnl": -255.66536023943974,
+      "price_pnl_before_fees_funding": 1.2038856479989022,
+      "pnl_after_fees_before_funding": -7.898151630001097
+    }
+  },
+  "comparability": {
+    "performance_comparable": true,
+    "mirror_baseline_verified": true,
+    "zero_external_flows_verified": true,
+    "observation_skew_seconds": 14.115938,
+    "max_observation_skew_seconds": 120
+  },
+  "limitations": [
+    "Timing failed the five-minute Paper endpoint gate; edge and return comparisons are descriptive only.",
+    "Actual account turnover and per-account drawdown were not available from the public account reads and are not inferred."
+  ]
+}

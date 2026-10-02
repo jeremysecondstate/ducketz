@@ -1,0 +1,63 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-02T13:14:19.824338Z",
+  "completion_id": "20261002T131419Z-2e8bbc2e",
+  "details": [
+    "Adds per-account and pooled ledger turnover, fees, funding, realized P&L, drawdown, and Qualified versus Research fill counts.",
+    "Pairs stopped-ledger balances with native common-mark endpoint balances and per-coin attribution; the late comparison remains UNSCORED.",
+    "No source/configuration change, retune, or new round; current round 46 continues running under the accepted Paper policy."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261002T131419Z-2e8bbc2e/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.json",
+      "expected_sha256": "cda59f8f0a59acab00a26d15e7db748dcfbaea9bfed98980a34f4c5ccf3f3c5a",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.json",
+      "published_sha256": "cda59f8f0a59acab00a26d15e7db748dcfbaea9bfed98980a34f4c5ccf3f3c5a",
+      "published_size": 6681,
+      "sha256": "cda59f8f0a59acab00a26d15e7db748dcfbaea9bfed98980a34f4c5ccf3f3c5a",
+      "size": 6681,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261002T131419Z-2e8bbc2e/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.md",
+      "expected_sha256": "3d36aa60c7c8ca617d0a234626b947d551463cadcf4e0ad04b65f6f347f03614",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.md",
+      "published_sha256": "3d36aa60c7c8ca617d0a234626b947d551463cadcf4e0ad04b65f6f347f03614",
+      "published_size": 2418,
+      "sha256": "3d36aa60c7c8ca617d0a234626b947d551463cadcf4e0ad04b65f6f347f03614",
+      "size": 2418,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "cda59f8f0a59acab00a26d15e7db748dcfbaea9bfed98980a34f4c5ccf3f3c5a",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "3d36aa60c7c8ca617d0a234626b947d551463cadcf4e0ad04b65f6f347f03614",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.md",
+      "supersedes": null
+    }
+  ],
+  "producer": "hyperliquid-paper-improvement",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "machine-local",
+  "source_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Round 45 per-account turnover, drawdown and forecast-quality breakdown.",
+  "symbols": []
+}
