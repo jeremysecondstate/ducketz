@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T11:10:24.206667Z",
+  "id": "20261002T111024Z-abe0e96041184e9497835d150c0d227e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published Round 44 UNSCORED Paper closeout and Round 45 opening reference artifacts on main; exact archived bytes verified."
+}
