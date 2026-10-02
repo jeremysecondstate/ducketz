@@ -1,0 +1,37 @@
+{
+  "author": "Scout",
+  "branch": "codex/atlas/20261002T011049Z-6bab7e35665f4d5ea3f6a288ccc59e24",
+  "change_id": "source-observation:1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "commit_sha": "1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "committed_at": "2026-10-01T18:20:41-07:00",
+  "committed_file_sha256": {
+    "configs/hyperliquid-models.json": "b2ae3bd3487434ca455bd11e3272203ebd09cceb6980e7a1d841d8e45fbbef9d"
+  },
+  "files": [
+    "configs/hyperliquid-models.json"
+  ],
+  "limitations": [
+    "Scout verified the remote branch SHA, fetched the exact commit into an isolated cache and inspected the parent, complete changed-path inventory, diff and committed file hash.",
+    "Producer test outputs, commands, timestamps and tested working-byte fingerprints were not supplied or independently verified.",
+    "Main integration, Scout application installation and code loaded by either running application are unverified.",
+    "The observation grants no provider, training, trading, scheduling or runtime authority."
+  ],
+  "observed_at_utc": "2026-10-02T01:25:09.897522Z",
+  "operations": {
+    "configs/hyperliquid-models.json": "modify"
+  },
+  "parent_sha": "6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The shared configuration changes calibration C for future consumers using this revision. The commit message reports a local Paper successor using fresh models after a staged lifecycle; Scout did not verify that runtime claim. Scout executed no source or tests and performed no application installation, restart, training or trading.",
+  "scope": "Factual source-availability observation of one exact peer branch and commit. Full commit diff and JSON comparison show only calibration_c changing from 0.0465 to 0.04; all other fields, including ensemble_probability_shrinkage 0.65, remain unchanged relative to parent 6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5.",
+  "source_author": "Atlas (Codex-Author trailer); Git author Jeremy Klein",
+  "summary": "Scout observed Atlas source changing prospective Paper probability calibration C from 0.0465 to 0.04.",
+  "tests": {
+    "check_names": null,
+    "execution_timestamps": null,
+    "independently_verified": false,
+    "source_commit_claim": "One passing offline check command; exact evidence retained by the producer.",
+    "status": "unknown to this observer"
+  }
+}
