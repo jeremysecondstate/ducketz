@@ -1,0 +1,26 @@
+........................................................................ [ 10%]
+........................................................................ [ 21%]
+........................................................................ [ 31%]
+........................................................................ [ 42%]
+........................................................................ [ 53%]
+........................................................................ [ 63%]
+........................................................................ [ 74%]
+........................................................................ [ 84%]
+........................................................................ [ 95%]
+..............................                                           [100%]
+============================== warnings summary ===============================
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+tests/test_gameplan_probability_target.py::test_raw_direction_fit_uses_new_labels_and_saves_exact_target_and_grid
+  C:\dev\ducketz\.venv\Lib\site-packages\joblib\numpy_pickle.py:207: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    array.shape = self.shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+678 passed, 9 warnings in 98.66s (0:01:38)

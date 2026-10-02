@@ -1,0 +1,49 @@
+{
+  "operation": "commit",
+  "completed_at_utc": "2026-09-30T20:57:56.060391+00:00",
+  "branch": "codex/cross-horizon-bearish-fallback-20260930",
+  "commit": "be760388063a0fa3099c1cc445ba758be69ceb23",
+  "parent": "0407388559d54612603380793fc26a98937697fc",
+  "tree": "ee6ee65bbbb4d73c6a1ebfb61f56f1a98a7911b6",
+  "remote_sha": null,
+  "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+  "files": [
+    "app/ui/gameplan.py",
+    "app/ui/gameplan_data.py",
+    "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+    "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+    "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/gameplan_trade_review.py",
+    "ml/gameplan_trade_snapshot.py",
+    "ml/nightly_gameplan.py",
+    "ml/stock_trader/cross_horizon_fallback.py",
+    "ml/stock_trader/fallback_review.py",
+    "ml/stock_trader/gameplan_direction_engine.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "ml/stock_trader/independent_runtime.py",
+    "tests/test_cross_horizon_fallback_ledger.py",
+    "tests/test_cross_horizon_fallback_policy.py",
+    "tests/test_cross_horizon_fallback_review.py",
+    "tests/test_cross_horizon_fallback_runtime.py",
+    "tests/test_gameplan_fallback_planning.py",
+    "tests/test_gameplan_quote_clock_recovery.py",
+    "tests/test_gameplan_trade_snapshot.py",
+    "tests/test_stock_only_gameplan.py"
+  ],
+  "file_count": 23,
+  "active_before": {
+    "head": "0407388559d54612603380793fc26a98937697fc",
+    "branch": "main",
+    "index_sha256": "1c58fc7fbb0fbe09ee6df4c86da078da1e0b0b9fa3fac748f060a6aa8ca1c16e"
+  },
+  "active_after": {
+    "head": "0407388559d54612603380793fc26a98937697fc",
+    "branch": "main",
+    "index_sha256": "1c58fc7fbb0fbe09ee6df4c86da078da1e0b0b9fa3fac748f060a6aa8ca1c16e"
+  },
+  "active_unchanged": true,
+  "deployment_status": "STAGED_NOT_DEPLOYED",
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/be760388063a0fa3099c1cc445ba758be69ceb23"
+}

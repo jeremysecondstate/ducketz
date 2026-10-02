@@ -1,0 +1,9 @@
+{
+  "status": "CORRECTED_BY_ADDENDUM",
+  "original_metadata_preserved": true,
+  "metadata_file": "post-deploy-verifier-line-ending-fix.json",
+  "original_diff_sha256": "eab11c584f47a6f44934c1e8796d3fe640b49dfd2fd6c2bdb247277d4240ee62",
+  "actual_raw_diff_sha256": "1f3ccd48b805b3aba3d76b0c65635ba895b6c3d165f4c01e8233f94cb1992094",
+  "reason": "Original value hashed normalized text; this addendum hashes the exact saved diff bytes.",
+  "application_or_verifier_source_changed": false
+}

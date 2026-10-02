@@ -93,6 +93,226 @@ def configure_five_minute(root, *, stamp=NOW-1):
     return config
 
 
+def history_forecast(root, *, identity="forecast1", model_id="model1", decision=NOW-60,
+                     probability=.61, qualified=False, write_latest=True):
+    model = root / "_models" / "BTC" / "5m" / "h1"
+    row = {"prediction_id": identity, "model_id": model_id, "data_run_id": "data1",
+           "coin": "BTC", "interval": "5m", "horizon_bars": 1, "qualified": qualified,
+           "created_at_utc": utc(decision+2), "decision_close_utc": utc(decision),
+           "target_close_utc": utc(decision+300), "p_not_down": probability,
+           "p_down": 1-probability, "per_model": {"logistic": {"p_not_down": .6, "p_down": .4},
+                                                  "mlp": {"p_not_down": .62, "p_down": .38}}}
+    if write_latest:
+        write_json(model / "latest_prediction.json", row)
+    write_json(model / "runs" / model_id / "record.json", {"model_id": model_id,
+        "coin": "BTC", "interval": "5m", "horizon_bars": 1, "trained_at_utc": utc(decision-30)})
+    write_json(model / "runs" / model_id / "report.json", {"coin": "BTC", "interval": "5m",
+        "horizon_bars": 1, "model_names": ["logistic", "mlp"], "ensemble_weights": {"logistic": 3, "mlp": 1},
+        "eligible": qualified, "eligibility_reasons": ["brier_score worse than neutral_baseline"],
+        "metrics": {"ensemble": {"brier_score": .26, "log_loss": .71, "accuracy": .48, "rows": 811},
+                    "logistic": {"brier_score": .27, "log_loss": .72, "rows": 811},
+                    "mlp": {"brier_score": .28, "log_loss": .73, "rows": 811},
+                    "prior_baseline": {"brier_score": .251, "log_loss": .70, "rows": 811},
+                    "neutral_baseline": {"brier_score": .25, "log_loss": .693, "rows": 811}},
+        "splits": {"fit": {"last_decision_close_utc": utc(decision-86400)},
+                   "calibration": {"last_decision_close_utc": utc(decision-600)}}})
+    return row
+
+
+def write_prediction_history(root, rows, *, row_group_size=None):
+    import pyarrow as arrow
+    import pyarrow.parquet as parquet
+    encoded = [{**{key: value for key, value in row.items() if key != "per_model"},
+                "per_model_json": json.dumps(row.get("per_model", {}))} for row in rows]
+    path = root / "_models" / "BTC" / "5m" / "h1" / "predictions.parquet"
+    parquet.write_table(arrow.Table.from_pylist(encoded), path, row_group_size=row_group_size)
+    return path
+
+
+def test_model_history_exact_report_members_weights_and_qualification(paper_root):
+    configure_five_minute(paper_root)
+    history_forecast(paper_root)
+    rows = service(paper_root).load_snapshot().model_history
+    ensemble, logistic, mlp = rows
+    assert [row["family"] for row in rows] == ["ensemble", "logistic", "mlp"]
+    assert [row["weight"] for row in rows] == [None, .75, .25]
+    assert [row["p_not_down"] for row in rows] == [.61, .6, .62]
+    assert [row["brier_score"] for row in rows] == [.26, .27, .28]
+    assert [row["log_loss"] for row in rows] == [.71, .72, .73]
+    assert ensemble["baseline_metrics"]["neutral_baseline"]["brier_score"] == .25
+    assert ensemble["assessment_rows"] == 811
+    assert ensemble["qualification"] == "research"
+    assert ensemble["forecast_state"] == "current"
+    assert ensemble["metric_source"] == "exact_model_report"
+    assert ensemble["eligibility_reasons"] == ["brier_score worse than neutral_baseline"]
+    assert all(row["is_latest"] for row in rows)
+    assert not ensemble["validation_errors"]
+
+
+def test_model_history_uses_committed_journal_exact_identity_and_keeps_expired(paper_root):
+    configure_five_minute(paper_root)
+    old = history_forecast(paper_root, identity="older", model_id="oldmodel", decision=NOW-360,
+                           probability=.4, qualified=True, write_latest=False)
+    latest = history_forecast(paper_root, identity="newer", model_id="newmodel", probability=.7)
+    write_prediction_history(paper_root, [old, latest])
+    # A current JSON race cannot overwrite a value already in the journal.
+    path = paper_root / "_models/BTC/5m/h1/latest_prediction.json"
+    write_json(path, {**latest, "p_not_down": .9, "p_down": .1})
+    old_report = paper_root / "_models/BTC/5m/h1/runs/oldmodel/report.json"
+    report = json.loads(old_report.read_text())
+    report["metrics"]["ensemble"]["brier_score"] = .22
+    write_json(old_report, report)
+    rows = service(paper_root).load_snapshot().model_history
+    ensembles = [row for row in rows if row["family"] == "ensemble"]
+    assert [row["p_not_down"] for row in ensembles] == [.7, .4]
+    assert [row["brier_score"] for row in ensembles] == [.26, .22]
+    assert [row["is_latest"] for row in ensembles] == [True, False]
+    assert [row["forecast_state"] for row in ensembles] == ["current", "expired"]
+    assert ensembles[1]["qualification"] == "qualified"
+    assert ensembles[1]["model_id"] == "oldmodel"
+
+
+@pytest.mark.parametrize("failure", ["missing", "wrong_identity", "wrong_market", "traversal"])
+def test_model_history_does_not_invent_historical_metrics(paper_root, failure):
+    configure_five_minute(paper_root)
+    row = history_forecast(paper_root)
+    model = paper_root / "_models/BTC/5m/h1"
+    if failure == "missing":
+        (model / "runs/model1/report.json").unlink()
+    elif failure == "wrong_identity":
+        path = model / "runs/model1/record.json"
+        write_json(path, {**json.loads(path.read_text()), "model_id": "other"})
+    elif failure == "wrong_market":
+        path = model / "runs/model1/report.json"
+        write_json(path, {**json.loads(path.read_text()), "coin": "ETH"})
+    else:
+        write_json(model / "latest_prediction.json", {**row, "model_id": "../model1"})
+    snapshot = service(paper_root).load_snapshot()
+    assert len(snapshot.model_history) == 3
+    assert snapshot.model_history[0]["p_not_down"] == .61
+    assert all(row["metric_source"] == "unavailable" and row["brier_score"] is None
+               and row["weight"] is None for row in snapshot.model_history)
+    assert snapshot.model_history[0]["eligibility_reasons"]
+
+
+@pytest.mark.parametrize("probability", [float("nan"), float("inf"), -.1, 1.1, True, None])
+def test_model_history_invalid_member_keeps_other_members_and_never_displays_invalid_score(paper_root, probability):
+    configure_five_minute(paper_root)
+    row = history_forecast(paper_root)
+    row["per_model"]["logistic"] = {"p_not_down": probability}
+    write_json(paper_root / "_models/BTC/5m/h1/latest_prediction.json", row)
+    rows = service(paper_root).load_snapshot().model_history
+    assert rows[0]["p_not_down"] == .61
+    assert rows[1]["p_not_down"] is None and rows[1]["forecast_state"] == "invalid"
+    assert rows[1]["validation_errors"] == ["Member probability is unavailable or invalid"]
+    assert rows[2]["p_not_down"] == .62
+
+
+def test_model_history_missing_member_is_visible_without_made_up_probability(paper_root):
+    configure_five_minute(paper_root)
+    row = history_forecast(paper_root)
+    del row["per_model"]["mlp"]
+    write_json(paper_root / "_models/BTC/5m/h1/latest_prediction.json", row)
+    rows = service(paper_root).load_snapshot().model_history
+    assert rows[2]["family"] == "mlp" and rows[2]["p_not_down"] is None
+    assert rows[2]["weight"] == .25 and rows[2]["brier_score"] == .28
+
+
+def test_model_history_tail_is_bounded_and_cache_refreshes_when_source_changes(paper_root, monkeypatch):
+    import pyarrow.parquet as parquet
+    configure_five_minute(paper_root)
+    base = history_forecast(paper_root)
+    rows = [{**base, "prediction_id": f"p{n}", "decision_close_utc": utc(NOW-300*(100-n)),
+             "created_at_utc": utc(NOW-300*(100-n)+2), "target_close_utc": utc(NOW-300*(99-n))}
+            for n in range(100)]
+    path = write_prediction_history(paper_root, rows, row_group_size=20)
+    reader = service(paper_root)
+    tail = reader._prediction_history(path, [])
+    assert len(tail) == 72 and tail[0]["prediction_id"] == "p28" and tail[-1]["prediction_id"] == "p99"
+    original = parquet.ParquetFile
+    monkeypatch.setattr(parquet, "ParquetFile", lambda *_: pytest.fail("Unchanged parquet should be cached"))
+    assert reader._prediction_history(path, []) == tail
+    monkeypatch.setattr(parquet, "ParquetFile", original)
+    write_prediction_history(paper_root, rows + [{**rows[-1], "prediction_id": "p100"}])
+    assert reader._prediction_history(path, [])[-1]["prediction_id"] == "p100"
+
+
+def test_model_history_corrupt_journal_keeps_latest_and_read_only(paper_root):
+    configure_five_minute(paper_root)
+    history_forecast(paper_root)
+    path = paper_root / "_models/BTC/5m/h1/predictions.parquet"
+    path.write_bytes(b"unfinished")
+    before = {str(path): path.read_bytes() for path in (paper_root / "_models").rglob("*") if path.is_file()}
+    snapshot = service(paper_root).load_snapshot()
+    after = {str(path): path.read_bytes() for path in (paper_root / "_models").rglob("*") if path.is_file()}
+    assert before == after
+    assert len(snapshot.model_history) == 3
+    assert any("Cannot read model history" in warning for warning in snapshot.warnings)
+
+
+def test_model_history_oversized_group_never_reads_unbounded_rows(paper_root, monkeypatch):
+    from types import SimpleNamespace
+    import pyarrow.parquet as parquet
+    configure_five_minute(paper_root)
+    history_forecast(paper_root)
+    path = paper_root / "_models/BTC/5m/h1/predictions.parquet"
+    path.write_bytes(b"placeholder")
+
+    class Oversized:
+        num_row_groups = 1
+        metadata = SimpleNamespace(row_group=lambda _: SimpleNamespace(total_byte_size=9*1024*1024, num_rows=72))
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read_row_group(self, *_):
+            pytest.fail("Oversized groups must not be read")
+
+    monkeypatch.setattr(parquet, "ParquetFile", lambda _: Oversized())
+    reader = service(paper_root)
+    for _ in range(2):
+        snapshot = reader.load_snapshot()
+        assert len(snapshot.model_history) == 3
+        assert any("tail exceeds the read limit" in warning for warning in snapshot.warnings)
+
+
+@pytest.mark.parametrize("change", [{"target_close_utc": utc(NOW-60)},
+    {"created_at_utc": utc(NOW+60)}, {"decision_close_utc": None}, {"interval": "15m"},
+    {"horizon_bars": 4}, {"qualified": True}])
+def test_model_history_invalid_timing_dimensions_and_qualification_remain_explicit(paper_root, change):
+    configure_five_minute(paper_root)
+    row = history_forecast(paper_root)
+    write_json(paper_root / "_models/BTC/5m/h1/latest_prediction.json", {**row, **change})
+    rows = service(paper_root).load_snapshot().model_history
+    assert rows and all(row["forecast_state"] == "invalid" and row["validation_errors"] for row in rows)
+
+
+def test_model_history_archive_transition_does_not_resurrect_cached_predictions(paper_root):
+    configure_five_minute(paper_root)
+    row = history_forecast(paper_root)
+    path = write_prediction_history(paper_root, [row])
+    reader = service(paper_root)
+    assert len(reader.load_snapshot().model_history) == 3
+    path.unlink()
+    (path.parent / "latest_prediction.json").unlink()
+    assert reader.load_snapshot().model_history == []
+
+
+def test_model_history_latest_same_candle_uses_newest_publication_not_journal_order(paper_root):
+    configure_five_minute(paper_root)
+    older = history_forecast(paper_root, identity="older")
+    newer = {**older, "prediction_id": "newer", "created_at_utc": utc(NOW-30),
+             "p_not_down": .7, "p_down": .3}
+    # Retain both observations, while the JSON projection still has the older
+    # publication. The newest publication for the candle drives Latest cycle.
+    write_prediction_history(paper_root, [older, newer])
+    rows = service(paper_root).load_snapshot().model_history
+    ensembles = [row for row in rows if row["family"] == "ensemble"]
+    assert [row["prediction_id"] for row in ensembles] == ["newer", "older"]
+    assert [row["is_latest"] for row in ensembles] == [True, False]
+    assert [row["p_not_down"] for row in ensembles] == [.7, .61]
+
+
 def test_configured_five_minute_recipe_reads_new_sources_not_existing_fifteen_minute(paper_root):
     configure_five_minute(paper_root)
     snapshot = service(paper_root).load_snapshot()

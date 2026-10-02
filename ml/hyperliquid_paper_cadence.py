@@ -18,7 +18,10 @@ import re
 from filelock import FileLock
 
 from ml.hyperliquid_paper_review import assert_not_excluded, read_json, safe_path, seed_info, write_json
-from ml.hyperliquid_paper_forecast_evidence import WIN_FORECAST_RULE, has_eligible_forecast
+from ml.hyperliquid_paper_forecast_evidence import (
+    WIN_FORECAST_RULE, EXPLORATORY_WIN_FORECAST_RULE, WIN_FORECAST_RULES,
+    forecast_rule, has_eligible_forecast,
+)
 
 VERSION = 1
 LEGACY_RULE = "win-plus-one-hold-v1"
@@ -99,8 +102,13 @@ def validate_active(active):
         raise ValueError("Legacy cadence requires at least two hours")
     if type(active.get("carry_in_unscored")) is not bool:
         raise ValueError("Carry-in status must be a strict boolean")
-    if active.get("win_forecast_rule") not in (None, WIN_FORECAST_RULE):
+    if active.get("win_forecast_rule") not in (None, *WIN_FORECAST_RULES):
         raise ValueError("Unsupported forecast WIN eligibility rule")
+    admission = active.get("recipe", {}).get("require_qualified_forecasts")
+    if active.get("win_forecast_rule") == EXPLORATORY_WIN_FORECAST_RULE and admission is not False:
+        raise ValueError("Exploratory forecast rule requires committed research admission")
+    if active.get("win_forecast_rule") == WIN_FORECAST_RULE and admission is False:
+        raise ValueError("Qualified forecast rule conflicts with committed research admission")
     if stamp(active["due_at_utc"]) != stamp(active["seed_at_utc"]) + timedelta(hours=duration):
         raise ValueError("Deadline does not match the committed seed and duration")
 
@@ -184,7 +192,7 @@ def classify(active, comparison):
                 or summary["paper_beating_actual"] != (edge > 0)):
             raise ValueError("Native winning flag and common-mark arithmetic disagree")
         outcome = "win" if edge > 0 and excess > 0 else "tie" if edge == 0 else "loss"
-        if (outcome == "win" and active.get("win_forecast_rule") == WIN_FORECAST_RULE
+        if (outcome == "win" and active.get("win_forecast_rule") in WIN_FORECAST_RULES
                 and not has_eligible_forecast(comparison["paper"].get("forecast_evidence"), active,
                                              comparison["paper"]["observed_at_utc"])):
             return {**result, "reason": "no_eligible_forecast_evidence",
@@ -269,7 +277,8 @@ class Cadence:
                         "interval": recipe["hyperliquid-markets.json"]["interval"],
                         "symbols": recipe["hyperliquid-markets.json"]["symbols"],
                         "horizons_bars": recipe["hyperliquid-models.json"]["horizons_bars"],
-                        "paper_policy_id": record["opening_policy_id"]}, opening["public_owner_sha256"]
+                        "paper_policy_id": record["opening_policy_id"],
+                        "require_qualified_forecasts": recipe["hyperliquid-paper.json"].get("require_qualified_forecasts", True)}, opening["public_owner_sha256"]
 
     def active(self, record, recipe, owners, duration, *, carry_in, version=CURRENT_RULE, win_forecast_rule=None):
         duration = hours(duration)
@@ -379,7 +388,7 @@ class Cadence:
             if classify(receipt["ending_state"], read_json(self.path(receipt["comparison_path"]))) != receipt["decision"]:
                 raise ValueError("Assessment decision does not match its committed rule and comparison")
             active = self.active(record, recipe, owners, duration, carry_in=False, version=rule_version(state),
-                                 win_forecast_rule=WIN_FORECAST_RULE)
+                                 win_forecast_rule=forecast_rule(recipe["require_qualified_forecasts"]))
             state["history"].append({"ending_experiment_id": ending_id,
                                      "successor_experiment_id": active["experiment_id"],
                                      "assessment": pending, "decision": receipt["decision"], "advanced_at_utc": utc()})

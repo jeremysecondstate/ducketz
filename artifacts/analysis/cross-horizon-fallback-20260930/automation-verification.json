@@ -1,0 +1,101 @@
+{
+  "verified_at_utc": "2026-09-30 20:51:02 UTC",
+  "status": "SAVED_AND_READ_BACK",
+  "install_status": "STAGED_NOT_DEPLOYED",
+  "changes": [
+    {
+      "id": "loops-hourly-operations",
+      "kind": "cron",
+      "name": "Loops Overnight Gameplan",
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+      "target_thread_id": null,
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "notification_policy": "failed_runs_only",
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE",
+        "I:\\Shared drives\\CODEXSTORE"
+      ],
+      "preserved_original_prompt": true,
+      "schedule_changed": false,
+      "model_changed": false,
+      "workspace_normalization": null
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "kind": "cron",
+      "name": "Loops Operations Watch",
+      "status": "ACTIVE",
+      "rrule": "FREQ=MINUTELY;INTERVAL=90;BYSECOND=0",
+      "target_thread_id": null,
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "notification_policy": null,
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE",
+        "I:\\Shared drives\\CODEXSTORE"
+      ],
+      "preserved_original_prompt": true,
+      "schedule_changed": false,
+      "model_changed": false,
+      "workspace_normalization": null
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "kind": "cron",
+      "name": "Loops Stock Trader â€” Daytime Supervision",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55",
+      "target_thread_id": null,
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "notification_policy": null,
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE",
+        "I:\\Shared drives\\CODEXSTORE"
+      ],
+      "preserved_original_prompt": true,
+      "schedule_changed": false,
+      "model_changed": false,
+      "workspace_normalization": {
+        "before": [
+          "C:\\dev\\ducketz",
+          "C:\\DATASTORE"
+        ],
+        "after": [
+          "C:\\dev\\ducketz",
+          "C:\\DATASTORE",
+          "I:\\Shared drives\\CODEXSTORE"
+        ],
+        "reason": "Native app refreshed saved project roots, adding the user-requested CODEXSTORE shared folder."
+      }
+    },
+    {
+      "id": "install-gameplan-fallback-after-close",
+      "kind": "heartbeat",
+      "name": "Install Gameplan fallback after close",
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;COUNT=1;BYHOUR=17;BYMINUTE=10;BYSECOND=0",
+      "target_thread_id": "01a0f07d-887f-76a0-8f07-e53b8ada538d",
+      "model": null,
+      "reasoning_effort": null,
+      "notification_policy": null,
+      "cwds": null,
+      "preserved_original_prompt": null,
+      "schedule_changed": false,
+      "model_changed": false,
+      "workspace_normalization": null
+    }
+  ],
+  "scheduled_followup_local": "2026-09-30 17:10 America/Los_Angeles",
+  "scheduled_followup_utc": "2026-10-01T00:10:00Z",
+  "atlas_thread_id": "01a0f337-c5a9-71e2-8f33-002712a09b66",
+  "atlas_message_sent": true,
+  "scout_delivery_confirmed": false,
+  "production_source_changed": false,
+  "orders_submitted": 0
+}

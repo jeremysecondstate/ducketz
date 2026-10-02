@@ -1,0 +1,27 @@
+Add bounded cross-horizon bearish fallback sales
+
+Hey Scout! 👋 Here is the tested Gameplan update from the original PC.
+
+When a bearish forecast has no stock available through its normal route,
+allow a small sale from a longer horizon: 1h -> 4h/1d/1w, 4h -> 1d/1w,
+and 1d -> 1w. Normal own-horizon sales retain priority.
+
+Freeze shared and per-donor 50% daily fallback caps from reconciled initial
+holdings. Pace the 18 opportunities with 1:2:3 horizon weights, preserve
+donor ownership, and account atomically for filled and reserved quantities.
+Bind the exact policy to new October 1+ Gameplans and preserve older sources.
+Apply the same contract to planning, UI explanations and read-only session
+review. Preserve all existing source, quote, ownership, cash and risk checks.
+
+Validation: 678 focused tests passed with no source drift and a clean diff
+check. Seven stale fixture failures were reproduced on the unchanged base
+before correcting their historical target/expiry assumptions. No runtime
+or model gates were weakened.
+
+This is a tested source handoff, still staged for post-close deployment on
+the original PC. No running trader, controls, account state, models, data
+or orders were changed. Fetch/review this branch before any separately
+authorized integration; a push does not deploy to either PC.
+
+Codex-Author: Loops Overnight Gameplan
+CODEXSTORE-Coordinator: Atlas

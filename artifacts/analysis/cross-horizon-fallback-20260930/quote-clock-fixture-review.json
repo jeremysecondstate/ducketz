@@ -1,0 +1,31 @@
+{
+  "reviewed_at": "2026-09-30T20:32:00.061354+00:00",
+  "status": "BASELINE_FAILURES_CONFIRMED_FIXTURE_ONLY_CORRECTION",
+  "base_revision": "0407388559d54612603380793fc26a98937697fc",
+  "baseline_test_command": "python -m pytest tests/test_gameplan_quote_clock_recovery.py tests/test_stock_only_gameplan.py -q",
+  "baseline_result": {
+    "failed": 7,
+    "passed": 8,
+    "seconds": 6.31,
+    "log": "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\baseline-tests.log",
+    "log_sha256": "b62deb84db8028a591ff5fdb4eb6f5077a6e23ea7c5a0c0a9f03128b3668ac46"
+  },
+  "original_fixture_blob": "37cbcda9c4c69e26c2746f1518c827d43dcc1dac",
+  "original_helper_blob": "4b34843aa1eb4ee36f1e8526287c0f734188fd75",
+  "unchanged_current_helper_blob": "4b34843aa1eb4ee36f1e8526287c0f734188fd75",
+  "base_runtime_blob": "2a9a420a0fe335b1f046bb761cadec360537cce0",
+  "cause": "Five quote-clock assertions expected scheduled expiry liquidation under manual Gameplan policy while the fixture supplied no current signal and entries=False. Exact base already disabled manual expiry sales and excluded manual allocations from owned-exit quote refresh. Two separate stock-only probability-target fixture failures were also reproduced and handled by root.",
+  "correction": "Only quote-clock tests changed: a genuine new bearish signal requests the owned sale through managed entry handling; original inventory target stays unchanged. Failed quote cases expect normal entry quote unavailability. Near-close test has no signal and asserts no sale while retaining bounded wait/deadline check. No quote tolerance, runtime behavior, model gate or production code changed for these failures.",
+  "candidate_fixture": {
+    "path": "C:\\Users\\7980X\\.codex\\worktrees\\cross-horizon-bearish-fallback\\ducketz\\tests\\test_gameplan_quote_clock_recovery.py",
+    "sha256": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43"
+  },
+  "focused_command": "python -m pytest tests/test_gameplan_quote_clock_recovery.py tests/test_gameplan_direction_runtime.py tests/test_gameplan_quote_recovery.py -q",
+  "focused_result": {
+    "passed": 40,
+    "failed": 0,
+    "seconds": 11.33
+  },
+  "diff_check": "PASS",
+  "candidate_files_frozen": true
+}

@@ -46,6 +46,7 @@ class PaperViewSnapshot:
     real_equity_history: list[dict] = field(default_factory=list)
     real_accounts_error: str = ""
     forecasts: list[dict] = field(default_factory=list)
+    model_history: list[dict] = field(default_factory=list)
     timings: list[dict] = field(default_factory=list)
     performance: dict = field(default_factory=dict)
     policy: dict = field(default_factory=dict)
@@ -210,6 +211,173 @@ class HyperliquidPaperViewService:
         self.clock = clock
         self.read_timeout_seconds = max(.05, min(float(read_timeout_seconds), 5.0))
         self.process_probe = process_probe
+        self._model_history_cache = {}
+
+    def _prediction_history(self, path, warnings):
+        """Read a bounded tail of native forecasts without loading model bundles."""
+        try:
+            stat = path.stat()
+            signature = (stat.st_mtime_ns, stat.st_size)
+            cached = self._model_history_cache.get(path)
+            if cached and cached[0] == signature:
+                return cached[1]
+            # Parquet row groups are the smallest independently readable unit.
+            # Refuse an oversized group rather than silently read an unbounded
+            # journal. The latest JSON still provides the current observation.
+            import pyarrow.parquet as parquet
+            rows, budget, complete = [], 8 * 1024 * 1024, True
+            with parquet.ParquetFile(path) as source:
+                for index in range(source.num_row_groups - 1, -1, -1):
+                    group = source.metadata.row_group(index)
+                    if group.total_byte_size > budget or group.num_rows > 100000:
+                        warnings.append(f"Model history tail exceeds the read limit: {path.parent}")
+                        complete = False
+                        break
+                    budget -= group.total_byte_size
+                    table = source.read_row_group(index)
+                    take = min(72 - len(rows), table.num_rows)
+                    rows = table.slice(table.num_rows - take, take).to_pylist() + rows
+                    if len(rows) >= 72:
+                        break
+            if complete:
+                self._model_history_cache[path] = (signature, rows)
+            return rows
+        except FileNotFoundError:
+            return []
+        except (OSError, ValueError, TypeError, ImportError) as exc:
+            warnings.append(f"Cannot read model history: {type(exc).__name__}: {path.parent}")
+            return []
+
+    def _history_report(self, model, model_id, warnings):
+        if not isinstance(model_id, str) or re.fullmatch(r"[A-Za-z0-9_-]+", model_id) is None:
+            return {}, {}, "Model identity is unavailable or invalid"
+        directory = model / "runs" / model_id
+        if not directory.resolve().is_relative_to(model.resolve()):
+            return {}, {}, "Model report path leaves its model directory"
+        paths = (directory / "record.json", directory / "report.json")
+        try:
+            signature = tuple((p.stat().st_mtime_ns, p.stat().st_size) for p in paths)
+            if any(size > 256 * 1024 for _, size in signature):
+                return {}, {}, "Exact model report exceeds the view limit"
+            cached = self._model_history_cache.get(directory)
+            if cached and cached[0] == signature:
+                return cached[1]
+            record, _ = self._json(paths[0], warnings, optional=True)
+            report, _ = self._json(paths[1], warnings, optional=True)
+            result = (record, report, "") if record.get("model_id") == model_id and report else (
+                {}, {}, "Exact model record/report is unavailable or has a different identity")
+            # A bounded cache avoids repeatedly reading immutable fitted reports.
+            if len(self._model_history_cache) >= 512:
+                self._model_history_cache.clear()
+            self._model_history_cache[directory] = (signature, result)
+            return result
+        except OSError:
+            return {}, {}, "Exact model record/report is unavailable"
+
+    def _model_history(self, snapshot, model, latest, coin, recipe, now, warnings):
+        history = self._prediction_history(model / "predictions.parquet", warnings)
+        by_id = {str(row.get("prediction_id")): row for row in history if row.get("prediction_id")}
+        # The committed parquet record wins when the JSON projection and journal
+        # temporarily disagree. No recent value fills a historical missing value.
+        latest_key = str(latest.get("prediction_id") or "latest")
+        if latest and latest_key not in by_id:
+            by_id[latest_key] = latest
+        rows = sorted(by_id.values(), key=lambda row: (
+            _timestamp(str(row.get("decision_close_utc"))) or 0,
+            _timestamp(str(row.get("created_at_utc"))) or 0,
+            str(row.get("prediction_id") or "")), reverse=True)[:72]
+        latest_id = rows[0].get("prediction_id") if rows else None
+        interval, horizon = recipe["interval"], recipe["horizon_bars"]
+        for prediction in rows:
+            prediction = dict(prediction)
+            for key in ("decision_close_utc", "created_at_utc", "target_close_utc"):
+                if isinstance(prediction.get(key), datetime):
+                    prediction[key] = prediction[key].isoformat()
+            errors = []
+            if (prediction.get("coin") != coin or prediction.get("interval") != interval
+                    or prediction.get("horizon_bars") != horizon):
+                errors.append("Forecast market or horizon does not match its journal")
+            decision, created, target = (_timestamp(prediction.get(key)) for key in (
+                "decision_close_utc", "created_at_utc", "target_close_utc"))
+            if (None in (decision, created, target) or created > now + 5 or created < decision
+                    or created >= target or target - decision != recipe["candle_seconds"] * horizon):
+                errors.append("Forecast timestamps are unavailable or inconsistent")
+            ensemble_probability = _journal_probabilities(prediction)
+            if ensemble_probability is None:
+                errors.append("Ensemble probability is unavailable or invalid")
+            per_model = prediction.get("per_model")
+            if per_model is None and isinstance(prediction.get("per_model_json"), str):
+                try:
+                    per_model = json.loads(prediction["per_model_json"])
+                except (ValueError, TypeError):
+                    errors.append("Saved member probabilities cannot be decoded")
+            per_model = {name: value for name, value in _mapping(per_model).items()
+                         if isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,80}", name)}
+            if len(per_model) > 32:
+                errors.append("Saved member count exceeds the view limit")
+                per_model = dict(list(per_model.items())[:32])
+            record, report, report_error = self._history_report(model, prediction.get("model_id"), warnings)
+            if report and any(record.get(key) != expected or report.get(key) != expected
+                              for key, expected in (("coin", coin), ("interval", interval), ("horizon_bars", horizon))):
+                record, report, report_error = {}, {}, "Exact model report belongs to a different market or horizon"
+            if report and prediction.get("qualified") is True and report.get("eligible") is not True:
+                errors.append("Saved qualification conflicts with the exact model report")
+            model_names = report.get("model_names")
+            model_names = {name for name in model_names[:32] if isinstance(name, str)
+                           and re.fullmatch(r"[A-Za-z0-9_-]{1,80}", name)} if isinstance(model_names, list) else set(per_model)
+            members = sorted(set(per_model) | model_names)[:32]
+            weights = _mapping(report.get("ensemble_weights"))
+            values = {name: _number(value) for name, value in weights.items()}
+            if (set(values) != model_names or not values
+                    or any(value is None or value <= 0 for value in values.values())):
+                weights = {}
+            else:
+                scale = max(values.values())
+                total = sum(value / scale for value in values.values())
+                weights = {name: value / scale / total for name, value in values.items()}
+            metrics = _mapping(report.get("metrics"))
+            baselines = {name: self._history_metrics(_mapping(metrics.get(name)))
+                         for name in ("prior_baseline", "neutral_baseline")}
+            reasons = report.get("eligibility_reasons", [])
+            reasons = [str(value) for value in reasons[:20]] if isinstance(reasons, list) else []
+            if report_error:
+                reasons.append(report_error)
+            splits = _mapping(report.get("splits"))
+            common = {key: prediction.get(key) for key in ("prediction_id", "model_id", "data_run_id",
+                "created_at_utc", "decision_close_utc", "target_close_utc", "qualified")}
+            common.update(coin=coin, interval=interval, horizon_bars=horizon,
+                horizon_minutes=recipe["horizon_minutes"], qualification=_qualification(prediction),
+                is_latest=prediction.get("prediction_id") == latest_id,
+                forecast_state="invalid" if errors else "expired" if target <= now else "current",
+                eligibility_reasons=reasons, baseline_metrics=baselines,
+                model_published_at_utc=record.get("trained_at_utc"),
+                training_cutoff_utc=_mapping(splits.get("fit")).get("last_decision_close_utc"),
+                calibration_cutoff_utc=_mapping(splits.get("calibration")).get("last_decision_close_utc"),
+                metric_source="exact_model_report" if report else "unavailable", source="shared_model",
+                evaluation_role=report.get("evaluation_role"), report_eligible=report.get("eligible"))
+            for name in ("ensemble", *members):
+                member = prediction if name == "ensemble" else per_model.get(name)
+                member = member if isinstance(member, dict) else {"p_not_down": member}
+                probability = _journal_probabilities(member)
+                row_errors = list(errors)
+                if probability is None and name != "ensemble":
+                    row_errors.append("Member probability is unavailable or invalid")
+                snapshot.model_history.append({**common, **self._history_metrics(_mapping(metrics.get(name))),
+                    "family": name, "weight": weights.get(name),
+                    "p_not_down": probability[0] if probability else None,
+                    "p_down": probability[1] if probability else None,
+                    "forecast_state": "invalid" if row_errors else common["forecast_state"],
+                    "validation_errors": row_errors})
+
+    @staticmethod
+    def _history_metrics(metrics):
+        result = {}
+        for key, maximum in (("brier_score", 1), ("log_loss", None), ("accuracy", 1)):
+            value = _number(metrics.get(key))
+            result[key] = value if value is not None and value >= 0 and (maximum is None or value <= maximum) else None
+        rows = metrics.get("rows")
+        result["assessment_rows"] = rows if type(rows) is int and rows >= 0 else None
+        return result
 
     @staticmethod
     def _json(path, warnings, *, optional=False):
@@ -573,6 +741,7 @@ class HyperliquidPaperViewService:
                     "details": timing})
             model = self.data_root / "_models" / coin / interval / f"h{horizon}"
             prediction, prediction_error = self._json(model / "latest_prediction.json", warnings)
+            self._model_history(snapshot, model, prediction, coin, recipe, now, warnings)
             source = self._source(f"forecast:{coin}", prediction.get("created_at_utc"), now, candle_seconds,
                                  state=prediction_error, grace=candle_seconds + 120)
             if prediction:

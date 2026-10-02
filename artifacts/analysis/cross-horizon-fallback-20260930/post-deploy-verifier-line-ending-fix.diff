@@ -1,0 +1,43 @@
+--- before/post_deploy_verify.py
++++ after/post_deploy_verify.py
+@@ -19,6 +19,7 @@
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--supervision-uuid", required=True)
++    parser.add_argument("--report-name", default="post-deployment-verification.json")
+     args = parser.parse_args()
+     raw = (PACKAGE / "apply_candidate.py").read_bytes()
+     if hashlib.sha256(raw).hexdigest() != HELPER_SHA:
+@@ -27,7 +28,9 @@
+     helper.__file__ = str(PACKAGE / "apply_candidate.py")
+     exec(compile(raw, helper.__file__, "exec"), helper.__dict__)
+     package = helper.plain_path(PACKAGE)
+-    report_path = helper.safe_path(package, "post-deployment-verification.json")
++    if not helper.re.fullmatch(r"post-deployment-verification(?:-[A-Za-z0-9_-]+)?\.json",args.report_name):
++        raise RuntimeError("Report name must be a safe post-deployment-verification JSON basename")
++    report_path = helper.safe_path(package,args.report_name)
+     if report_path.exists():
+         raise RuntimeError("Post-deployment report already exists; preserve and inspect it")
+     record = {"status":"FAIL", "started_at_utc":datetime.now(timezone.utc).isoformat(),
+@@ -40,6 +43,9 @@
+         if digest != MANIFEST_SHA or manifest["apply_helper_sha256"] != HELPER_SHA:
+             raise RuntimeError("Sealed manifest/helper identity differs")
+         evidence = helper.json_file(helper.safe_path(package, manifest["test_evidence"]["path"]))
++        tested_checkout = helper.plain_path(Path(manifest["source_checkout"]))
++        if helper.plain_path(Path(evidence["cwd"])) != tested_checkout:
++            raise RuntimeError("Sealed source checkout differs from recorded test cwd")
+         command = evidence["command"]
+         tests = command[3:-1]
+         if (command[:3] != [str(helper.TARGET / ".venv/Scripts/python.exe"), "-m", "pytest"]
+@@ -70,7 +76,10 @@
+                 raise RuntimeError("Installed source/dependency hash differs")
+             for rel in tests:
+                 data = helper.read_file(helper.safe_path(helper.TARGET,rel))
+-                if evidence["source_fingerprints"].get(rel) not in {helper.sha(data),helper.sha(data.replace(b"\r\n",b"\n"))}:
++                original = helper.read_file(helper.safe_path(tested_checkout,rel))
++                if helper.sha(original) != evidence["source_fingerprints"].get(rel):
++                    raise RuntimeError("Original tested worktree bytes changed: " + rel)
++                if original.replace(b"\r\n",b"\n") != data.replace(b"\r\n",b"\n"):
+                     raise RuntimeError("Selected test differs from recorded tested source: " + rel)
+             return current
+ 

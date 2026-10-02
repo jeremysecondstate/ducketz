@@ -1,0 +1,26 @@
+{
+  "verified_at_utc": "2026-09-30 20:59:52 UTC",
+  "source_commit": "be760388063a0fa3099c1cc445ba758be69ceb23",
+  "branch": "codex/cross-horizon-bearish-fallback-20260930",
+  "remote_verified": true,
+  "automation_updates": [
+    {
+      "id": "loops-hourly-operations",
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+      "allOtherFieldsPreserved": true,
+      "promptMatches": true
+    },
+    {
+      "id": "install-gameplan-fallback-after-close",
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;COUNT=1;BYHOUR=17;BYMINUTE=10;BYSECOND=0",
+      "allOtherFieldsPreserved": true,
+      "promptMatches": true
+    }
+  ],
+  "atlas_thread_id": "01a0f337-c5a9-71e2-8f33-002712a09b66",
+  "atlas_message_sent": true,
+  "scout_receipt_confirmed": false,
+  "deployment_status": "STAGED_NOT_DEPLOYED"
+}

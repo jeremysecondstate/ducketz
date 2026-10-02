@@ -1,0 +1,9 @@
+{
+  "status": "VERIFIED_STAGED_NOT_DEPLOYED",
+  "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+  "files": 23,
+  "dependencies": 176,
+  "helper_sha256": "7620f5c4731ef9509a1c5627c41077a513e9ec30d655857a7922c4891121e33c",
+  "deployment_executed": false,
+  "production_locks_acquired": false
+}

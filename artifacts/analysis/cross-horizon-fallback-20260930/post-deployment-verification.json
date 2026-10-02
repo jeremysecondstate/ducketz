@@ -1,0 +1,13 @@
+{
+  "broker_requests": 0,
+  "completed_at_utc": "2026-10-01T00:15:25.138883+00:00",
+  "error": "RuntimeError: Selected test differs from recorded tested source: tests/test_stock_horizon_ledger.py",
+  "helper_sha256": "7620f5c4731ef9509a1c5627c41077a513e9ec30d655857a7922c4891121e33c",
+  "locks_released": true,
+  "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+  "orders_placed": 0,
+  "source_drift": [],
+  "started_at_utc": "2026-10-01T00:15:24.923495+00:00",
+  "status": "FAIL",
+  "supervision_uuid": "161c058c-458f-41c9-8f09-ed7b74fdfbf8"
+}

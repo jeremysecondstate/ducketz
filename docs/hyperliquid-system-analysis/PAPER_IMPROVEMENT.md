@@ -1,6 +1,40 @@
 # HYPER Paper improvement cycle
 
-Operating contract: **2026-09-29 / v4**.
+Operating contract: **2026-09-30 / v5**.
+
+## September 30 user-directed exploratory Paper policy
+
+The user explicitly replaced qualified-only conservative Paper admission with
+an exploratory policy: start loose, observe simulated trades, then tighten from
+evidence. From the next verified accepted handoff, valid Research forecasts may
+drive Paper alongside Qualified forecasts. Use `require_qualified_forecasts=false`,
+`entry_band=exit_band=0`, `rebalance_min_delta_fraction=0`, and
+`min_trade_notional=10`. These settings remove the discretionary probability and
+70%-target adjustment filters and the extra $25 minimum. Every fresh finite
+directional forecast reaches sizing; an unchanged/zero target, exchange quantity
+precision, the executable $10 floor, insufficient cash or book depth can still
+produce a truthful hold/skip. Never invent a fill merely to fill every decision row.
+
+Research remains labeled Research; its model qualification is not rewritten.
+Missing, malformed or expired forecasts hold existing targets while independent
+stops, cooldowns and exposure/collateral checks continue. Retain simulated fees,
+executable-book pricing, the existing caps, stops, source validation and continuous
+5m collection. Powder uses its own retained strict policy file and stays inactive;
+Paper exploration must not liberalize current or future real execution.
+
+New exploratory rounds use `valid-in-round-forecast-v2` for WIN evidence: a fresh,
+finite in-round forecast actually consumed by Paper, with a matching retained
+model record, can be Research or Qualified. Preserve truthful role/qualification,
+timing, account, external-flow, common-mark and after-cost return checks. Existing
+rounds keep their committed historical rule. This supersedes the earlier
+qualified-only WIN restriction prospectively; it does not rescore history.
+
+Retain this exploratory admission policy through automated rounds. Tightening
+must be a documented response to observed Paper evidence, not an automatic return
+to qualification-only admission or inactivity. Reviews must report forecast-driven
+fill counts, turnover/costs, and remaining hold/skip causes. This explicit user
+policy change is the improvement for its transition; no extra model retune is
+required simply because the closing strict-policy round loses or ties.
 
 The user authorized an independent **Hyperliquid Paper Improvement** Scheduled
 task using **GPT-6 Astra / Ultra**, initially every three days and subsequently
@@ -16,7 +50,8 @@ forecasts for the next five minutes, and fitting due each 300 seconds of
 source-candle progress. Preserve this frequency unless newer user instructions
 change it; do not restore historical 15m/h4 defaults. Use the accepted receipt
 and configured interval/horizon throughout candidate evaluation and health
-checks. The four positive-weight families and 70/15/15 split remain in place.
+checks. Preserve the accepted positive-weight family count (currently five per
+slot) and the 70/15/15 split.
 Existing target-time expiry applies; Paper still polls books/risk every 30s and
 exports performance every 900s. Forecasts need not cause trades or close a
 position at their target. Fixed-bar feature windows now span one-third the
@@ -95,10 +130,11 @@ or seeds, and mere raw display gaps cannot produce a win. Keep full losing and
 unscored history. One winning round earns the next challenge; it is not proof
 of durable trading skill.
 
-September 30 user clarification: a positive balance edge without a valid model
-prediction is not a WIN. Starting with the next freshly accepted round, native
-cadence commits `win_forecast_rule=qualified-in-round-forecast-v1`. Promotion
-also requires at least one finite, qualified, active forecast published and
+The earlier September 30 clarification introduced
+`win_forecast_rule=qualified-in-round-forecast-v1` for the qualified-only rounds
+accepted under that instruction. For those committed rounds, a positive balance
+edge without a valid model prediction is not a WIN. Promotion requires at least
+one finite, qualified, active forecast published and
 observed in that same round, still valid when its Paper decision committed,
 matching the accepted market/horizon and an independently retained eligible
 model record. A valid policy hold qualifies; executing a trade is not required.
@@ -107,7 +143,9 @@ endpoint UNSCORED (`no_eligible_forecast_evidence`) and retains its duration.
 Verified negative LOSS and zero-edge TIE remain scored normally. Historical
 assessments and rounds without this prospective marker keep their recorded
 meaning. Native comparison retains endpoint-bounded decision/model evidence
-and hashes; research publication alone cannot qualify a round.
+and hashes. Under either rule, publication alone is insufficient: Paper must
+consume the valid forecast in-round. Newly accepted exploratory rounds use the
+v2 admission rule stated above instead of this historical qualified-only rule.
 
 1. Capture a read-only comparison using the native comparison command below.
    Record real and Paper equity per account and pooled, observation times,
@@ -131,13 +169,14 @@ and hashes; research publication alone cannot qualify a round.
    releases. A replacement must be included in that evaluated and published
    bundle with a positive ensemble contribution; a dormant research artifact,
    duplicate name, or zero weight does not satisfy replacement. A market's
-   Qualified/Research status is a separate gate, not model removal. Keep an
+   Qualified/Research status records model assessment, not model removal;
+   current exploratory Paper admits valid forecasts from either status. Keep an
    inventory before and after. Investigate fees and turnover as well as
    probability losses. If comparisons are incomplete, repair collection
    and use available cost/signal evidence without inventing a relative score.
 4. Test candidate changes in isolated research directories against a pinned
    incumbent and chronological data. Preserve 70/15/15 partitions, horizon
-   purging, no future leakage, qualification gates, and executable quote/fee
+   purging, no future leakage, truthful qualification assessment, and executable quote/fee
    assumptions. Before fitting, record candidate recipes, source hashes,
    development/confirmation partitions, selection criteria and acceptance
    criteria, including relevant per-market regressions and cost/turnover evidence.
@@ -158,8 +197,9 @@ and hashes; research publication alone cannot qualify a round.
    compatibility. Retain a winning recipe for its next, longer challenge unless
    a concrete defect requires a documented fix. Unavailable comparisons call
    for collection repairs and a recorded hypothesis, never an invented loss/win.
-   Do not weaken qualification, expand leverage/exposure caps, reduce simulated
-   fees, remove stops, or alter real execution to manufacture a win. Shared
+   Preserve truthful model qualification; Paper signal admission follows the
+   newer exploratory policy above. Do not expand leverage/exposure caps, reduce
+   simulated fees, remove stops, or alter real execution to manufacture a win. Shared
    model code is also consumed by Powder: if Powder is active, do not hot-change
    its model namespace or policy; report the conflict and preserve the session.
 
@@ -217,10 +257,11 @@ existing verification receipts are never overwritten.
    integrity result, prior experiment identity, and source/config provenance.
    Review the final stopped result in addition to the earlier comparison.
    Verify preservation before initializing any replacement namespace.
-4. Apply the tested model change. Start the native model worker with the hidden
+4. Apply the tested or explicitly user-directed change. Start the native model worker with the hidden
    independent Windows launch from [Operations Watch](OPERATIONS_WATCH.md).
-   Require fresh coherent predictions for all configured slots; Research is
-   allowed and remains ineligible for signal trades. Record estimator membership,
+   Require fresh coherent predictions for all configured slots. Valid Research
+   forecasts may drive signals under the accepted exploratory Paper policy;
+   preserve their Research label and native qualification result. Record estimator membership,
    config hashes, split cutoffs, qualification, and current artifact identities.
 5. `prepare` creates the fresh mirror using public read-only account responses
    and the native prepare-only runtime. Verify every inherited signed quantity,

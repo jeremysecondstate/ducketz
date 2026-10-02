@@ -361,12 +361,52 @@ class ReviewCycle:
             self.phase(operation, "archived")
             return result
 
+    def preserve_unstarted_prepare(self, operation, source_path):
+        """Retain a proven pre-entrypoint failure before resuming the same stage.
+
+        An absent Paper namespace and empty capture files are required. A durable
+        marker also permits interruption between the two evidence moves; it never
+        permits replacing a partial ledger, source response, or newer capture.
+        """
+        output_path = child(self.directory, "prepare.stdout.json")
+        source_path = safe_path(source_path)
+        recovery = operation.get("prepare_preflight_recovery")
+        if recovery is None:
+            if (not output_path.is_file() or output_path.stat().st_size != 0
+                    or not source_path.is_file() or read_json(source_path) != []):
+                raise ValueError("Unstarted prepare recovery requires empty stdout and empty retained reads")
+            preserved = child(self.directory, "prepare-preflight-failure-" + uuid4().hex)
+            preserved.mkdir()
+            recovery = {"recorded_at_utc": utc(), "cycle_id": self.cycle_id,
+                        "directory": str(preserved), "reason": "No Paper namespace or captured public reads",
+                        "files": [{"name": path.name, "bytes": path.stat().st_size,
+                                   "sha256": digest(path)} for path in (output_path, source_path)]}
+            write_json(preserved / "manifest.json", recovery, exclusive=True)
+            self.phase(operation, "preparing", prepare_preflight_recovery=recovery)
+        preserved = safe_path(recovery["directory"])
+        if (preserved.parent != self.directory or recovery["cycle_id"] != self.cycle_id
+                or read_json(preserved / "manifest.json") != recovery):
+            raise ValueError("Unstarted prepare recovery evidence does not match this cycle")
+        if {row["name"] for row in recovery["files"]} != {output_path.name, source_path.name}:
+            raise ValueError("Unexpected unstarted prepare recovery files")
+        for row in recovery["files"]:
+            source, destination = child(self.directory, row["name"]), child(preserved, row["name"])
+            if source.exists() == destination.exists():
+                raise ValueError("Ambiguous interrupted prepare evidence preservation")
+            current = source if source.exists() else destination
+            if (not current.is_file() or current.stat().st_size != row["bytes"]
+                    or digest(current) != row["sha256"]):
+                raise ValueError("Unstarted prepare recovery evidence changed")
+            if source.exists():
+                source.rename(destination)
+
     def prepare(self):
         with self.lock():
             operation = self.operation("archived", "preparing", "prepared")
             paper = child(self.root, "_paper")
             source_path = self.directory / "opening-public-account-reads.json"
-            if operation["phase"] == "archived":
+            unstarted = operation["phase"] == "preparing" and not paper.exists()
+            if operation["phase"] == "archived" or unstarted:
                 if any(row["module"] != "ml.hyperliquid_model_runtime" for row in runtime_processes()):
                     raise ValueError("Paper/Powder runtime appeared before fresh preparation")
                 if paper.exists():
@@ -376,6 +416,8 @@ class ReviewCycle:
                 config = load_config(config_path)
                 if config.mode != "paper" or config.seed_mode != "mirror" or config.data_root != self.root:
                     raise ValueError("Expected mirror-mode Paper config for this exact datastore")
+                if unstarted:
+                    self.preserve_unstarted_prepare(operation, source_path)
                 from ml.hyperliquid_paper_seed import AccountReader
                 from ml.hyperliquid_paper_runtime import main as paper_main
                 original = AccountReader.post_info

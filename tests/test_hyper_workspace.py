@@ -80,6 +80,109 @@ def _pump_until(window, condition, *, timeout=3):
     assert condition(), "Tk did not receive the background read before timeout"
 
 
+def _history_row(**overrides):
+    return {"coin": "BTC", "family": "ensemble", "prediction_id": "forecast-new", "model_id": "model-new",
+            "data_run_id": "data-new", "decision_close_utc": "2026-09-30T09:00:00+00:00",
+            "target_close_utc": "2026-09-30T09:05:00+00:00", "created_at_utc": "2026-09-30T09:00:08+00:00",
+            "p_not_down": .5403, "p_down": .4597, "weight": None, "brier_score": .2507134,
+            "log_loss": .694582, "accuracy": .515, "assessment_rows": 1200,
+            "qualified": False, "qualification": "research", "is_latest": True, "forecast_state": "current",
+            "eligibility_reasons": ["Brier exceeds neutral baseline", "Log loss exceeds prior baseline"],
+            "baseline_metrics": {"neutral": {"brier_score": .25, "log_loss": .693147},
+                                 "prior": {"brier_score": .2499, "log_loss": .6929}},
+            "metric_source": "exact_model_report", **overrides}
+
+
+def test_model_history_shows_saved_family_scores_weights_and_ensemble_blockers(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    snapshot.model_history = [_history_row(), _history_row(family="logistic", weight=.32, p_not_down=.5216,
+                                                         brier_score=.2498, log_loss=.6928)]
+    snapshot.policy = {"require_qualified_forecasts": True, "entry_band": .075}
+    view.show_snapshot(snapshot)
+    window.update()
+    rows = [view.model_history_tree.item(iid, "values") for iid in view.model_history_tree.get_children()]
+    assert rows[0][4:8] == ("54.03%", "0.250713", "0.694582", "Research · excluded")
+    assert rows[1][2:6] == ("Logistic", "32.00%", "52.16%", "0.249800")
+    summary = view.model_history_summary.cget("text")
+    assert "0 qualified" in summary and "1 research / excluded" in summary
+    assert "57.50%" in summary and "42.50%" in summary
+    detail = view.model_history_detail.get("1.0", "end")
+    assert "Baseline neutral: Brier 0.250000" in detail
+    assert "Brier exceeds neutral baseline" in detail
+    assert "Model model-new · prediction forecast-new" in detail
+    assert "Qualification belongs to the ensemble" in detail
+
+
+def test_model_history_keeps_expired_probabilities_and_filters_independently(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    snapshot.model_history = [_history_row(), _history_row(coin="ETH", prediction_id="eth-new", forecast_state="expired"),
+                             _history_row(prediction_id="btc-old", model_id="old-model", is_latest=False,
+                                          p_not_down=.45, brier_score=.248, forecast_state="expired")]
+    view.show_snapshot(snapshot)
+    view.asset_filter.set("ZEC")  # Activity filters do not hide the separate model diagnostics.
+    assert len(view.model_history_tree.get_children()) == 2
+    assert "1 matured / expired" in view.model_history_summary.cget("text")
+    view.model_history_scope.set("Recent history")
+    assert len(view.model_history_tree.get_children()) == 3
+    view.model_history_asset.set("BTC")
+    assert len(view.model_history_tree.get_children()) == 2
+    old = "BTC:btc-old:ensemble"
+    view.model_history_tree.selection_set(old)
+    view._select_model_history()
+    view.show_snapshot(snapshot)
+    window.update()
+    assert view.model_history_tree.selection() == (old,)
+    values = view.model_history_tree.item(old, "values")
+    assert values[4:6] == ("45.00%", "0.248000")
+    assert values[-1] == "Matured / expired"
+    assert "old-model" in view.model_history_detail.get("1.0", "end")
+    view.model_history_detail.yview_moveto(1)
+    window.update()
+    before = view.model_history_detail.yview()
+    assert before[0] > 0
+    view.show_snapshot(snapshot)
+    window.update()
+    assert view.model_history_detail.yview() == before
+
+
+def test_model_history_empty_and_powder_preview_have_no_execution_side_effects(workspace):
+    view, window, _ = workspace
+    assert not view.model_history_tree.get_children()
+    assert "No saved model history" in view.model_history_summary.cget("text")
+    snapshot = _snapshot()
+    snapshot.model_history = [_history_row()]
+    view.show_snapshot(snapshot)
+    view.mode.set("Powder")
+    window.update()
+    assert "Shared forecast preview" in view.model_history_summary.cget("text")
+    assert view.model_history_tree.item(view.model_history_tree.get_children()[0], "values")[4] == "54.03%"
+
+
+def test_model_history_unknown_values_are_not_zero_scores():
+    from app.ui.hyper_workspace import _model_history_values, _model_history_detail
+    row = _history_row(p_not_down=None, brier_score=None, log_loss=None, weight=None, qualified=None,
+                       eligibility_reasons=[], metric_source="unavailable")
+    values = _model_history_values(row)
+    assert values[3:7] == ("—", "—", "—", "—")
+    assert values[7] == "Unavailable"
+    assert "Qualification evidence unavailable" in _model_history_detail(row)
+
+
+@pytest.mark.parametrize("saved_reason, display", [
+    ("Forecast is stale or has a future timestamp.", "Forecast stale / timestamp invalid"),
+    ("Forecast expired while fetching executable books.", "Forecast expired during book fetch"),
+    ("Missing file", "Qualified forecast unavailable"),
+])
+def test_unavailable_decisions_show_recorded_freshness_error_without_backfill(workspace, saved_reason, display):
+    view, _, _ = workspace
+    row = {"coin": "BTC", "action": "hold", "reason": "qualified_forecast_unavailable",
+           "policy": {"reason": saved_reason, "signal_action": "hold_until_qualified_forecast"}}
+    assert view._cell("reason", row, "Decisions") == display
+    assert view._cell("p_not_down", row, "Decisions") == "—"
+
+
 def test_headline_uses_opening_baseline_pnl_and_preserves_inherited_position(workspace):
     view, _, _ = workspace
     assert "42,112.86" in view.metric_values["equity"].cget("text")

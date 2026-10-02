@@ -1,0 +1,321 @@
+FFFF..F......FF                                                          [100%]
+================================== FAILURES ===================================
+_ test_recent_future_quote_waits_before_due_exit_without_relabeling_evidence __
+
+environment = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_recent_future_quote_wai...g_sell={}, broker=<test_independent_stock_runtime.Broker object at 0x000001A1252BE660>, captures=1, after_capture=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A1413350F0>
+
+    def test_recent_future_quote_waits_before_due_exit_without_relabeling_evidence(environment, monkeypatch):
+        env = environment
+        ledger, captured = setup_owned_exit(env, monkeypatch)
+        result, sleeps = run_exit(env)
+        assert sleeps == pytest.approx([2.301])
+>       assert result.status == "ORDERS_SUBMITTED" and result.submitted_orders == 1
+E       AssertionError: assert ('NO_ORDERS_SUBMITTED' == 'ORDERS_SUBMITTED'
+E         
+E         - ORDERS_SUBMITTED
+E         + NO_ORDERS_SUBMITTED
+E         ? +++)
+
+tests\test_gameplan_quote_clock_recovery.py:58: AssertionError
+_ test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock[10.0-True-False] _
+
+environment = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_unusable_due_quote_is_r...g_sell={}, broker=<test_independent_stock_runtime.Broker object at 0x000001A12535E350>, captures=1, after_capture=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A141334E90>
+ahead = 10.0, advance = True, expected_wait = False
+
+    @pytest.mark.parametrize("ahead,advance,expected_wait", [(10., True, False), (2.3, False, True), (-61., True, False)])
+    def test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock(environment, monkeypatch, ahead, advance, expected_wait):
+        env = environment
+        ledger, _ = setup_owned_exit(env, monkeypatch, ahead=ahead)
+        result, sleeps = run_exit(env, advance_clock=advance)
+        assert bool(sleeps) is expected_wait
+>       assert result.status == "HORIZON_EXIT_QUOTE_UNAVAILABLE" and result.error
+E       AssertionError: assert ('NO_ORDERS_SUBMITTED' == 'HORIZON_EXIT...E_UNAVAILABLE'
+E         
+E         - HORIZON_EXIT_QUOTE_UNAVAILABLE
+E         + NO_ORDERS_SUBMITTED)
+
+tests\test_gameplan_quote_clock_recovery.py:77: AssertionError
+_ test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock[2.3-False-True] _
+
+environment = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_unusable_due_quote_is_r...g_sell={}, broker=<test_independent_stock_runtime.Broker object at 0x000001A12535F110>, captures=1, after_capture=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A125351FD0>
+ahead = 2.3, advance = False, expected_wait = True
+
+    @pytest.mark.parametrize("ahead,advance,expected_wait", [(10., True, False), (2.3, False, True), (-61., True, False)])
+    def test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock(environment, monkeypatch, ahead, advance, expected_wait):
+        env = environment
+        ledger, _ = setup_owned_exit(env, monkeypatch, ahead=ahead)
+        result, sleeps = run_exit(env, advance_clock=advance)
+        assert bool(sleeps) is expected_wait
+>       assert result.status == "HORIZON_EXIT_QUOTE_UNAVAILABLE" and result.error
+E       AssertionError: assert ('NO_ORDERS_SUBMITTED' == 'HORIZON_EXIT...E_UNAVAILABLE'
+E         
+E         - HORIZON_EXIT_QUOTE_UNAVAILABLE
+E         + NO_ORDERS_SUBMITTED)
+
+tests\test_gameplan_quote_clock_recovery.py:77: AssertionError
+_ test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock[-61.0-True-False] _
+
+environment = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_unusable_due_quote_is_r...g_sell={}, broker=<test_independent_stock_runtime.Broker object at 0x000001A1252FF6F0>, captures=1, after_capture=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A12534C8D0>
+ahead = -61.0, advance = True, expected_wait = False
+
+    @pytest.mark.parametrize("ahead,advance,expected_wait", [(10., True, False), (2.3, False, True), (-61., True, False)])
+    def test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock(environment, monkeypatch, ahead, advance, expected_wait):
+        env = environment
+        ledger, _ = setup_owned_exit(env, monkeypatch, ahead=ahead)
+        result, sleeps = run_exit(env, advance_clock=advance)
+        assert bool(sleeps) is expected_wait
+>       assert result.status == "HORIZON_EXIT_QUOTE_UNAVAILABLE" and result.error
+E       AssertionError: assert ('NO_ORDERS_SUBMITTED' == 'HORIZON_EXIT...E_UNAVAILABLE'
+E         
+E         - HORIZON_EXIT_QUOTE_UNAVAILABLE
+E         + NO_ORDERS_SUBMITTED)
+
+tests\test_gameplan_quote_clock_recovery.py:77: AssertionError
+___________ test_wait_preserves_closing_deadline_and_execution_lead ___________
+
+environment = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_wait_preserves_closing_...g_sell={}, broker=<test_independent_stock_runtime.Broker object at 0x000001A12534C9E0>, captures=1, after_capture=None)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A12536F150>
+
+    def test_wait_preserves_closing_deadline_and_execution_lead(environment, monkeypatch):
+        env = environment
+        ledger, _ = setup_owned_exit(env, monkeypatch)
+        env.now = pd.Timestamp("2026-09-08T23:59:50Z")
+        result, sleeps = run_exit(env)
+>       assert sleeps == [] and result.status == "HORIZON_EXIT_QUOTE_UNAVAILABLE"
+E       AssertionError: assert ([] == []
+E         
+E         Use -v to get more diff and 'NO_ORDERS_SUBMITTED' == 'HORIZON_EXIT...E_UNAVAILABLE'
+E         
+E         - HORIZON_EXIT_QUOTE_UNAVAILABLE
+E         + NO_ORDERS_SUBMITTED)
+
+tests\test_gameplan_quote_clock_recovery.py:107: AssertionError
+_ test_independent_target_publication_uses_new_labels_and_preserves_native_contract[canonical-equity-minute-v1] _
+
+publication_fixture = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_independent_target_publ...000', tz='UTC')], fits=['1h', '4h', '1d', '1w'], fit=<function publication_fixture.<locals>.fit at 0x000001A1255598A0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A12559C410>
+price_source = 'canonical-equity-minute-v1'
+
+    @pytest.mark.parametrize("price_source", ["canonical-equity-minute-v1", "xnas-itch-archive-v1"])
+    def test_independent_target_publication_uses_new_labels_and_preserves_native_contract(publication_fixture, monkeypatch, price_source):
+        from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, stock_target_windows
+    
+        fixture = publication_fixture
+        sources = []
+        points = set()
+        for day in (date(2026, 8, 17), ACTION_DATE):
+            windows = stock_target_windows(day)
+            gap = next(row for row in windows if row["route"] == "1h@gap")
+            for index, symbol in enumerate(SYMBOLS):
+                information = gap["target_window_start"] + pd.Timedelta(minutes=5)
+                sources.append({"symbol": symbol, "action_date": day, "mr__test": float(index),
+                                "decision_timestamp": information, "information_available_at": information,
+                                "bar_end_timestamp": gap["target_window_start"],
+                                "bar_timestamp": gap["target_window_start"] - pd.Timedelta(hours=1),
+                                "exchange_session": str(gap["target_window_start"].tz_convert("America/Los_Angeles").date()),
+                                "exchange_calendar": "XNAS", "horizon": "1h", "timeframe": "1h",
+                                "target_window_start": nightly._local_timestamp(day, 4),
+                                "assumed_round_trip_cost": 0.0})
+                for row in windows:
+                    is_gap = row["target_role"] == "OPENING_GAP_RESEARCH"
+                    points.add((symbol, row["target_window_start"] - pd.Timedelta(minutes=int(is_gap))))
+                    points.add((symbol, row["target_window_end"] - pd.Timedelta(minutes=int(not is_gap))))
+        sources = pd.DataFrame(sources)
+        sources.to_parquet(fixture.root / "ml/runs/loop-b-fixture/samples.parquet", index=False)
+        monkeypatch.setattr(nightly, "_current_overnight_sources", _REAL_CURRENT_SOURCE_SELECTOR)
+        origin = min(timestamp for _, timestamp in points)
+        rows = []
+        for symbol, timestamp in sorted(points):
+            slope = 0.1 if symbol == "AAPL" else -0.1
+            price = 10000 + slope * (timestamp - origin).total_seconds() / 3600
+            rows.append({"symbol": symbol, "timestamp": timestamp, "open": price, "close": price + slope / 60})
+        monkeypatch.setattr(nightly, "_load_equity_minute_bars", lambda *a, **k: (pd.DataFrame(rows), ()))
+        def explicit_source(root, *, symbols, source_contract):
+            assert tuple(symbols) == SYMBOLS
+            assert source_contract == "xnas-itch-archive-v1"
+            report = {"source_contract": source_contract, "dataset": "XNAS.ITCH"}
+            bars = pd.DataFrame(rows)
+            bars.attrs["stock_price_source"] = report
+            return bars, (), report
+        monkeypatch.setattr(nightly, "load_stock_target_prices", explicit_source)
+    
+        def fit_new_targets(training, **kwargs):
+            assert set(training.target) == {0, 1}
+            assert training.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
+            kwargs["current"] = kwargs["current"].assign(
+                model_status="RESEARCH_NOT_PROMOTED" if kwargs["group"] == "1w" else "PROMOTED",
+                calibrated_probability=0.7, raw_probability=0.71)
+            result = fixture.fit(training, **kwargs)
+            result["report"]["source_selection_contract"] = nightly.GAMEPLAN_SOURCE_SELECTION_VERSION
+            return result
+    
+        monkeypatch.setattr(nightly, "_fit_group_model", fit_new_targets)
+>       result = nightly.run_nightly_gameplan_once(fixture.root, stock_only=True,
+                                                  independent_stock_horizons=True, stock_price_source=price_source, reporter=None)
+
+tests\test_stock_only_gameplan.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml\nightly_gameplan.py:575: in run_nightly_gameplan_once
+    _publish_gameplan(
+ml\nightly_gameplan.py:2279: in _publish_gameplan
+    _verify_probability_target_metadata(run, manifest)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+run = WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_independent_target_public0/ml/nightly-gameplan-runs/20260908T050000.000000Z')
+manifest = {'configuration': {'action_date': '2026-09-08', 'archive_history': False, 'broker_orders_enabled': False, 'execution_a...ate\\symbol-history\\AAPL\\cbbo-1m.json', 'size': 35, ...}, ...], 'model_name': 'nightly-path-hgb-mlp-challenger', ...}
+receipt = None
+
+    def _verify_probability_target_metadata(run: Path, manifest: Mapping, receipt: Mapping | None = None) -> None:
+        """New target semantics are bound everywhere; absent historical metadata stays legacy."""
+        config = manifest.get("configuration", {})
+        if "probability_target_contract" not in config:
+            if "forecasts.parquet" in manifest.get("output_files", {}):
+                historical = pd.read_parquet(run / "forecasts.parquet")
+                if probability_target_contract(historical) != LEGACY_COST_TARGET:
+                    raise RuntimeError("Gameplan raw-direction rows lack manifest probability target provenance")
+            return
+        contract = probability_target_contract(config)
+        metadata = probability_target_metadata(contract)
+        if any(config.get(key) != value for key, value in metadata.items()):
+            raise RuntimeError("Gameplan probability target and variant disagree")
+        if receipt is not None and any(receipt.get(key) != value for key, value in metadata.items()):
+            raise RuntimeError("Gameplan receipt and probability target disagree")
+        if contract != RAW_DIRECTION_TARGET:
+            return
+        expected_target = "target_raw_price_direction"
+        if manifest.get("target_column") != expected_target:
+            raise RuntimeError("Gameplan manifest does not identify the raw-direction fitting target")
+        outputs = manifest.get("output_files", {})
+        required = ("gameplan.json", "model-reports.json", "forecasts.parquet",
+                    *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS))
+        if not set(required).issubset(outputs):
+            raise RuntimeError("Gameplan probability target evidence is not manifest-bound")
+        plan = json.loads((run / "gameplan.json").read_text(encoding="utf-8"))
+        reports = json.loads((run / "model-reports.json").read_text(encoding="utf-8"))
+        for item in (plan, *(reports.get(group, {}) for group in MODEL_GROUPS)):
+            if any(item.get(key) != value for key, value in metadata.items()):
+>               raise RuntimeError("Gameplan model reports and probability target disagree")
+E               RuntimeError: Gameplan model reports and probability target disagree
+
+ml\nightly_gameplan.py:2405: RuntimeError
+_ test_independent_target_publication_uses_new_labels_and_preserves_native_contract[xnas-itch-archive-v1] _
+
+publication_fixture = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_independent_target_publ...000', tz='UTC')], fits=['1h', '4h', '1d', '1w'], fit=<function publication_fixture.<locals>.fit at 0x000001A1256D80E0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001A12559D010>
+price_source = 'xnas-itch-archive-v1'
+
+    @pytest.mark.parametrize("price_source", ["canonical-equity-minute-v1", "xnas-itch-archive-v1"])
+    def test_independent_target_publication_uses_new_labels_and_preserves_native_contract(publication_fixture, monkeypatch, price_source):
+        from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, stock_target_windows
+    
+        fixture = publication_fixture
+        sources = []
+        points = set()
+        for day in (date(2026, 8, 17), ACTION_DATE):
+            windows = stock_target_windows(day)
+            gap = next(row for row in windows if row["route"] == "1h@gap")
+            for index, symbol in enumerate(SYMBOLS):
+                information = gap["target_window_start"] + pd.Timedelta(minutes=5)
+                sources.append({"symbol": symbol, "action_date": day, "mr__test": float(index),
+                                "decision_timestamp": information, "information_available_at": information,
+                                "bar_end_timestamp": gap["target_window_start"],
+                                "bar_timestamp": gap["target_window_start"] - pd.Timedelta(hours=1),
+                                "exchange_session": str(gap["target_window_start"].tz_convert("America/Los_Angeles").date()),
+                                "exchange_calendar": "XNAS", "horizon": "1h", "timeframe": "1h",
+                                "target_window_start": nightly._local_timestamp(day, 4),
+                                "assumed_round_trip_cost": 0.0})
+                for row in windows:
+                    is_gap = row["target_role"] == "OPENING_GAP_RESEARCH"
+                    points.add((symbol, row["target_window_start"] - pd.Timedelta(minutes=int(is_gap))))
+                    points.add((symbol, row["target_window_end"] - pd.Timedelta(minutes=int(not is_gap))))
+        sources = pd.DataFrame(sources)
+        sources.to_parquet(fixture.root / "ml/runs/loop-b-fixture/samples.parquet", index=False)
+        monkeypatch.setattr(nightly, "_current_overnight_sources", _REAL_CURRENT_SOURCE_SELECTOR)
+        origin = min(timestamp for _, timestamp in points)
+        rows = []
+        for symbol, timestamp in sorted(points):
+            slope = 0.1 if symbol == "AAPL" else -0.1
+            price = 10000 + slope * (timestamp - origin).total_seconds() / 3600
+            rows.append({"symbol": symbol, "timestamp": timestamp, "open": price, "close": price + slope / 60})
+        monkeypatch.setattr(nightly, "_load_equity_minute_bars", lambda *a, **k: (pd.DataFrame(rows), ()))
+        def explicit_source(root, *, symbols, source_contract):
+            assert tuple(symbols) == SYMBOLS
+            assert source_contract == "xnas-itch-archive-v1"
+            report = {"source_contract": source_contract, "dataset": "XNAS.ITCH"}
+            bars = pd.DataFrame(rows)
+            bars.attrs["stock_price_source"] = report
+            return bars, (), report
+        monkeypatch.setattr(nightly, "load_stock_target_prices", explicit_source)
+    
+        def fit_new_targets(training, **kwargs):
+            assert set(training.target) == {0, 1}
+            assert training.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
+            kwargs["current"] = kwargs["current"].assign(
+                model_status="RESEARCH_NOT_PROMOTED" if kwargs["group"] == "1w" else "PROMOTED",
+                calibrated_probability=0.7, raw_probability=0.71)
+            result = fixture.fit(training, **kwargs)
+            result["report"]["source_selection_contract"] = nightly.GAMEPLAN_SOURCE_SELECTION_VERSION
+            return result
+    
+        monkeypatch.setattr(nightly, "_fit_group_model", fit_new_targets)
+>       result = nightly.run_nightly_gameplan_once(fixture.root, stock_only=True,
+                                                  independent_stock_horizons=True, stock_price_source=price_source, reporter=None)
+
+tests\test_stock_only_gameplan.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml\nightly_gameplan.py:575: in run_nightly_gameplan_once
+    _publish_gameplan(
+ml\nightly_gameplan.py:2279: in _publish_gameplan
+    _verify_probability_target_metadata(run, manifest)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+run = WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-3178/test_independent_target_public1/ml/nightly-gameplan-runs/20260908T050000.000000Z')
+manifest = {'configuration': {'action_date': '2026-09-08', 'archive_history': False, 'broker_orders_enabled': False, 'execution_a...ate\\symbol-history\\AAPL\\cbbo-1m.json', 'size': 35, ...}, ...], 'model_name': 'nightly-path-hgb-mlp-challenger', ...}
+receipt = None
+
+    def _verify_probability_target_metadata(run: Path, manifest: Mapping, receipt: Mapping | None = None) -> None:
+        """New target semantics are bound everywhere; absent historical metadata stays legacy."""
+        config = manifest.get("configuration", {})
+        if "probability_target_contract" not in config:
+            if "forecasts.parquet" in manifest.get("output_files", {}):
+                historical = pd.read_parquet(run / "forecasts.parquet")
+                if probability_target_contract(historical) != LEGACY_COST_TARGET:
+                    raise RuntimeError("Gameplan raw-direction rows lack manifest probability target provenance")
+            return
+        contract = probability_target_contract(config)
+        metadata = probability_target_metadata(contract)
+        if any(config.get(key) != value for key, value in metadata.items()):
+            raise RuntimeError("Gameplan probability target and variant disagree")
+        if receipt is not None and any(receipt.get(key) != value for key, value in metadata.items()):
+            raise RuntimeError("Gameplan receipt and probability target disagree")
+        if contract != RAW_DIRECTION_TARGET:
+            return
+        expected_target = "target_raw_price_direction"
+        if manifest.get("target_column") != expected_target:
+            raise RuntimeError("Gameplan manifest does not identify the raw-direction fitting target")
+        outputs = manifest.get("output_files", {})
+        required = ("gameplan.json", "model-reports.json", "forecasts.parquet",
+                    *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS))
+        if not set(required).issubset(outputs):
+            raise RuntimeError("Gameplan probability target evidence is not manifest-bound")
+        plan = json.loads((run / "gameplan.json").read_text(encoding="utf-8"))
+        reports = json.loads((run / "model-reports.json").read_text(encoding="utf-8"))
+        for item in (plan, *(reports.get(group, {}) for group in MODEL_GROUPS)):
+            if any(item.get(key) != value for key, value in metadata.items()):
+>               raise RuntimeError("Gameplan model reports and probability target disagree")
+E               RuntimeError: Gameplan model reports and probability target disagree
+
+ml\nightly_gameplan.py:2405: RuntimeError
+=========================== short test summary info ===========================
+FAILED tests/test_gameplan_quote_clock_recovery.py::test_recent_future_quote_waits_before_due_exit_without_relabeling_evidence
+FAILED tests/test_gameplan_quote_clock_recovery.py::test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock[10.0-True-False]
+FAILED tests/test_gameplan_quote_clock_recovery.py::test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock[2.3-False-True]
+FAILED tests/test_gameplan_quote_clock_recovery.py::test_unusable_due_quote_is_reported_unhealthy_and_preserves_owned_stock[-61.0-True-False]
+FAILED tests/test_gameplan_quote_clock_recovery.py::test_wait_preserves_closing_deadline_and_execution_lead
+FAILED tests/test_stock_only_gameplan.py::test_independent_target_publication_uses_new_labels_and_preserves_native_contract[canonical-equity-minute-v1]
+FAILED tests/test_stock_only_gameplan.py::test_independent_target_publication_uses_new_labels_and_preserves_native_contract[xnas-itch-archive-v1]
+7 failed, 8 passed in 6.31s

@@ -1,0 +1,232 @@
+{
+  "status": "PASS",
+  "verified_at_utc": "2026-10-01T00:17:05.257015+00:00",
+  "syntax": "PASS",
+  "lines": 139,
+  "before_sha256": "bb6cbdd7872efbb9193deecb7e0c5ca4daec820804e8dd55bea1adf79cc32408",
+  "after_sha256": "d5eff467168de4a65043765169852e758722ebbdb8dfa029da89936a9176e110",
+  "diff_sha256": "eab11c584f47a6f44934c1e8796d3fe640b49dfd2fd6c2bdb247277d4240ee62",
+  "failure_report_sha256": "9d93466875f02f76d5139988c9ddddf221a42ece588801ebe3e853510bb2361b",
+  "selected_test_count": 27,
+  "checks": [
+    {
+      "path": "tests/test_cross_horizon_fallback_policy.py",
+      "recorded_sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+      "original_sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+      "current_sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_ledger.py",
+      "recorded_sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+      "original_sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+      "current_sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_runtime.py",
+      "recorded_sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+      "original_sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+      "current_sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_cross_horizon_fallback_review.py",
+      "recorded_sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+      "original_sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+      "current_sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_fallback_planning.py",
+      "recorded_sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+      "original_sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+      "current_sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_stock_horizon_ledger.py",
+      "recorded_sha256": "85e804ff784d20865bff4b8fc2f14705526712620ffef684c2e9a43b137fcfb0",
+      "original_sha256": "85e804ff784d20865bff4b8fc2f14705526712620ffef684c2e9a43b137fcfb0",
+      "current_sha256": "6705ff0c6955237813263667136ca6742aa7c3cf7bad04d1a72c799b70dc2eac",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_stock_horizon_broker.py",
+      "recorded_sha256": "bf2b7a2b342bad7c0f827ca71e9e3aab6ccb2639a5a8f291606a0703ea954204",
+      "original_sha256": "bf2b7a2b342bad7c0f827ca71e9e3aab6ccb2639a5a8f291606a0703ea954204",
+      "current_sha256": "dd2ffb2385a753e8b2fa279a623592851ab36a7611a7ecc15335c4d134336a59",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_stock_horizon_schwab_context.py",
+      "recorded_sha256": "efae0219306ca5eb99080a75cda094e0a0cc68ff1bb62a1124db73e512de63db",
+      "original_sha256": "efae0219306ca5eb99080a75cda094e0a0cc68ff1bb62a1124db73e512de63db",
+      "current_sha256": "0858bfe3ddf8ece746b5beae6081f7525f93fa675fd2e53df16058effd391703",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_independent_stock_runtime.py",
+      "recorded_sha256": "951d0dce666ed7dcf0ee7a42ff418b01c43e3fb241885ca86a0e4de3d8c4ca1d",
+      "original_sha256": "951d0dce666ed7dcf0ee7a42ff418b01c43e3fb241885ca86a0e4de3d8c4ca1d",
+      "current_sha256": "c80d5464bf9920aa9eb9630a8b2e59ba039dbb8cce8f5ea05a89ba14e218dbce",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_independent_stock_session.py",
+      "recorded_sha256": "1a703daefa4c0fa15e72fe61ffeb595d18a6a33463ec8ac1fb4044985305a596",
+      "original_sha256": "1a703daefa4c0fa15e72fe61ffeb595d18a6a33463ec8ac1fb4044985305a596",
+      "current_sha256": "72706d9ddacaac808d8aa65da56ca6cff2cb0532e124fbc50f92e5983b48dd8a",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_direction_runtime.py",
+      "recorded_sha256": "ebcc64c9be8396f97c53872e55148683f5119b7e240de433474e0175fd797534",
+      "original_sha256": "ebcc64c9be8396f97c53872e55148683f5119b7e240de433474e0175fd797534",
+      "current_sha256": "ebcc64c9be8396f97c53872e55148683f5119b7e240de433474e0175fd797534",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_direction_engine.py",
+      "recorded_sha256": "e18d3b8b703072ae4c7287ca9e680bf72f08058d265ecf7db816945db2fe43ca",
+      "original_sha256": "e18d3b8b703072ae4c7287ca9e680bf72f08058d265ecf7db816945db2fe43ca",
+      "current_sha256": "8f390c0dee25962f0bdecfbe4e6b35a144aafe8c6e9501b15b61cb7bb249c55f",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_direction_snapshot.py",
+      "recorded_sha256": "9422d79e88780061e80cb39bc33bb10612a60b66e15eedb0bb628c990cc11f06",
+      "original_sha256": "9422d79e88780061e80cb39bc33bb10612a60b66e15eedb0bb628c990cc11f06",
+      "current_sha256": "ee7594a48d9d21470e86957e3b6da186323176bb2e780f8d14edb6324aea63a0",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_quote_recovery.py",
+      "recorded_sha256": "eaf11e8af97c75951bd112a46b1e730b455136f97d4a6c6d0d7a316cc16d4cfc",
+      "original_sha256": "eaf11e8af97c75951bd112a46b1e730b455136f97d4a6c6d0d7a316cc16d4cfc",
+      "current_sha256": "499bac225bf43029fffedeec173207f02781f6e3890c399ba91fadf8d6caddd8",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_quote_clock_recovery.py",
+      "recorded_sha256": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+      "original_sha256": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+      "current_sha256": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_cash_ledger.py",
+      "recorded_sha256": "7ac9c5e845112e11284832b06d6f7391e746110bacb36c9a0c96787bb84f8d60",
+      "original_sha256": "7ac9c5e845112e11284832b06d6f7391e746110bacb36c9a0c96787bb84f8d60",
+      "current_sha256": "7ac9c5e845112e11284832b06d6f7391e746110bacb36c9a0c96787bb84f8d60",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_trade_planning.py",
+      "recorded_sha256": "9cca8deb0d58338b6a5957e1773f5af6fef2193def5b3fbfa4c11ea5e0cbaeab",
+      "original_sha256": "9cca8deb0d58338b6a5957e1773f5af6fef2193def5b3fbfa4c11ea5e0cbaeab",
+      "current_sha256": "b40d91e534175c11fafa5af99af23711f36a7c97794b9c3de362dd0ccfcb44e1",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_trade_snapshot.py",
+      "recorded_sha256": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+      "original_sha256": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+      "current_sha256": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_trade_review.py",
+      "recorded_sha256": "93dc5475a7d0585be39dd36bbf662c6453269bbed1a5d49ea91229d0ea2fc68b",
+      "original_sha256": "93dc5475a7d0585be39dd36bbf662c6453269bbed1a5d49ea91229d0ea2fc68b",
+      "current_sha256": "93dc5475a7d0585be39dd36bbf662c6453269bbed1a5d49ea91229d0ea2fc68b",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_data.py",
+      "recorded_sha256": "8bbba5d493d02d9a525f290122e679b8d74d21715dfdf6fcc22c5596033b45da",
+      "original_sha256": "8bbba5d493d02d9a525f290122e679b8d74d21715dfdf6fcc22c5596033b45da",
+      "current_sha256": "35f02e30ed1e5a31863407615e575a9e9e8d43ef40c319bfbe131c40e4b2e384",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_ui.py",
+      "recorded_sha256": "f0a454d113a6dcc775ae7fd7c1333b1ec3ae4bf793ffb8f1aa9ebdc238dc4372",
+      "original_sha256": "f0a454d113a6dcc775ae7fd7c1333b1ec3ae4bf793ffb8f1aa9ebdc238dc4372",
+      "current_sha256": "2593eef81ab963543337f6c9b44b9c72f0ea54b37854d1124a9c6f03fecc6b8b",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_deployment_execution.py",
+      "recorded_sha256": "e2849d7daf338647c7769a0830e72850e2a902a62f1224cd466631f4fe0f7901",
+      "original_sha256": "e2849d7daf338647c7769a0830e72850e2a902a62f1224cd466631f4fe0f7901",
+      "current_sha256": "0d280847e0556a74da4ba7b2ab29175b8996513ee4d3c9f4d3bc75b47a819af0",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_deployment_handoff.py",
+      "recorded_sha256": "a3035e84f414a22fb5f0bce62e9fefe9502661ee789390dfc2f786c8681cf31b",
+      "original_sha256": "a3035e84f414a22fb5f0bce62e9fefe9502661ee789390dfc2f786c8681cf31b",
+      "current_sha256": "5bb5e90f5de295908e6e9cf578db7924dc088517dc09b5a7dc0365e3644010de",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_stock_trader.py",
+      "recorded_sha256": "3846ce3f2a47d5c4907a794cb18fe8230d77f9248d99f9e3cd46a8eba98bf4eb",
+      "original_sha256": "3846ce3f2a47d5c4907a794cb18fe8230d77f9248d99f9e3cd46a8eba98bf4eb",
+      "current_sha256": "dab217017c584733ec040e2ebabc425842fb4464957c9e2eff4169369ad125e3",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_nightly_gameplan.py",
+      "recorded_sha256": "01f7c54fe945f8e94d4ef27f9b20a83606b7c366490e1363fd3501e2c0f8638e",
+      "original_sha256": "01f7c54fe945f8e94d4ef27f9b20a83606b7c366490e1363fd3501e2c0f8638e",
+      "current_sha256": "5cb384a5cda3d523260c405450a0ede8a47986fea37756e675ce00cf2d827155",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_gameplan_probability_target.py",
+      "recorded_sha256": "a078cc570e00ccdd4671230d17c260b815fff2a76d117da256bc91cf7d9e7e05",
+      "original_sha256": "a078cc570e00ccdd4671230d17c260b815fff2a76d117da256bc91cf7d9e7e05",
+      "current_sha256": "a0e9e0798e6c6af5f3a7746c8b15dfdb2374a0773f52a055f340fcc4befd2430",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    },
+    {
+      "path": "tests/test_stock_only_gameplan.py",
+      "recorded_sha256": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+      "original_sha256": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+      "current_sha256": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+      "recorded_original_match": true,
+      "normalized_equal": true
+    }
+  ],
+  "verifier_executed": false,
+  "production_locks_acquired": false,
+  "broker_requests": 0
+}

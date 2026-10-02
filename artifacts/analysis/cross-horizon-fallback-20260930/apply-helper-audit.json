@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "reviewed_at_utc": "2026-09-30T20:47:30.670548+00:00",
+  "reviewer": "independent final_audit peer",
+  "scope": "Bounded static review of installer ownership, terminal worker, process inventory, locks, path/source/evidence drift and partial application handling; inspection and independent hash/count verification of temporary-root test evidence. This is not a production deployment result.",
+  "bindings": {
+    "apply_candidate.py": "7620f5c4731ef9509a1c5627c41077a513e9ec30d655857a7922c4891121e33c",
+    "test_apply_candidate.py": "badf578aaed6ad82704d4de88e44e17ea9742e46d9e4b65dd720733a95a86fa6",
+    "apply-helper-tests.xml": "8c9524a91741271ee58d47c954316552588ff1ffbee85e89ce75df39383e5aa6",
+    "apply-helper-tests.log": "69e6020c2a26d65f697e708f933ea41f8e5b4552c12e57e099769a80ee262256",
+    "apply-helper-verification.json": "731e5006c20b01577fc1dd325147a05ff8937463919f7c1f855067b2958b2312"
+  },
+  "tests": {
+    "passed": 56,
+    "skipped": 2,
+    "failures": 0,
+    "errors": 0,
+    "elapsed_seconds": 2.85,
+    "reviewer_reexecuted": false,
+    "hashes_and_junit_counts_independently_verified": true,
+    "scope": "Temporary target/package/datastore roots and injected process/time/claim/native maintenance gate evidence only.",
+    "skips": "Windows denied creating two actual symlink fixtures. Three privilege-free Windows reparse-attribute rejection cases passed."
+  },
+  "reviewed_checks": [
+    "Post-close date/time window; current exact own supervision UUID and bounded live lease; terminal matching manual session and absent saved worker PID.",
+    "Fail-closed native process inventory and competing trader/overnight process detection.",
+    "Three native maintenance-gated exclusive locks; never recover or delete an existing foreign lock; release only exact owned bytes.",
+    "Safe relative source paths, no symlink/reparse components, case-insensitive destination uniqueness and source suffix/directory scope.",
+    "Manifest, payload, base backup, changed source, supporting dependencies and combined test evidence hash bindings; repeat guards before and during writes.",
+    "Exact pre-invocation bytes captured before replacement; already-final files excluded from rollback.",
+    "Reverse rollback while all native locks remain held, including after lease expiry and post-replace exceptions; exact installed-byte ownership checked before restore/removal.",
+    "Cleanup before error evidence writes; continue other restorations after a failure; concurrent edits preserved with ROLLBACK_INCOMPLETE.",
+    "Final precommit ownership/process/time/dependency/source guards are inside rollback boundary.",
+    "Post-lock-release failure records APPLIED_UNRECEIPTED and never performs unlocked rollback."
+  ],
+  "initial_finding": {
+    "severity": "material deployment gap",
+    "description": "An ordinary mid-install failure previously left a mixed source tree after releasing native locks.",
+    "resolution": "ACCEPTED: exact-owned reverse rollback was added inside all three locks, before error evidence writes, with explicit incomplete-restoration and post-release states.",
+    "regression_coverage": "Expired claim; dependency drift; exception after atomic replacement; both restoration and new-file removal under all three locks; already-final preservation; concurrent target drift; restoration continuation; transient/persistent evidence-write failure; post-release guard and receipt-write failure."
+  },
+  "unresolved_findings": [],
+  "remaining_limitations": [
+    "Abrupt process termination or power loss cannot execute Python rollback; the helper does not provide whole-tree crash atomicity.",
+    "Concurrent target drift or failed restoration is deliberately preserved and may leave an incomplete source tree; this requires exact evidence-based recovery.",
+    "Post-release source or receipt failures may leave fully applied files without a valid receipt. APPLIED_UNRECEIPTED is not deployment completion.",
+    "Temporary-root tests do not prove the production process, broker, filesystem or scheduling state will be eligible at deployment time."
+  ],
+  "required_recovery_and_launch_condition": "Before any trader or pipeline launch, require a fresh successful APPLIED receipt bound to this sealed package and verify all current changed-source and supporting-dependency hashes. Missing receipts, IN_PROGRESS, FILES_APPLIED_LOCKED, BLOCKED, ROLLED_BACK, ROLLBACK_INCOMPLETE, APPLIED_UNRECEIPTED or abrupt loss require inspection and exact package/source/lock reconciliation, then a fresh successful apply/verification. Never infer safe launch from a partially applied source tree or stale receipt.",
+  "operational_condition_owner": "Root confirms this launch/recovery condition is required by DEPLOYMENT instructions and the nightly automation prompt.",
+  "production_actions": {
+    "deployment_executed": false,
+    "production_locks_acquired": false,
+    "broker_requests": 0,
+    "production_source_edits": false
+  },
+  "result": "No further concrete blocker found in this bounded review after the accepted rollback fix. PASS is conditional on the explicit recovery and launch contract above, not a claim of production installation."
+}

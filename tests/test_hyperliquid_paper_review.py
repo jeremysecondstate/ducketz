@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import sqlite3
 
 from filelock import FileLock, Timeout
 import pytest
@@ -231,7 +232,8 @@ def test_powder_activity_blocks_begin(cycle, monkeypatch):
     assert not cycle.operation_path.exists()
 
 
-def test_prepare_native_entrypoint_captures_source_and_is_idempotent(cycle, monkeypatch):
+@pytest.mark.parametrize("recovery", ("fresh", "empty_collision", "interrupted_preservation"))
+def test_prepare_native_entrypoint_captures_source_and_is_idempotent(cycle, monkeypatch, recovery):
     cycle.begin()
     cycle.archive()
     from ml import hyperliquid_paper_runtime as runtime
@@ -257,11 +259,74 @@ def test_prepare_native_entrypoint_captures_source_and_is_idempotent(cycle, monk
     original = seed_module.mirror_accounts
     monkeypatch.setattr(runtime, "mirror_accounts", lambda market, symbols, clock: original(market, symbols, clock=clock, values=values))
     monkeypatch.setattr(runtime, "PublicPaperMarket", lambda clock: FakeMarket(clock))
+    if recovery != "fresh":
+        # A caller mistakenly reserved the native stdout destination. The first
+        # invocation never reaches paper_main and must leave the same stage.
+        (cycle.directory / "prepare.stdout.json").write_bytes(b"")
+        with pytest.raises(FileExistsError):
+            cycle.prepare()
+        assert review.read_json(cycle.operation_path)["phase"] == "preparing"
+        assert not (cycle.root / "_paper").exists()
+        assert review.read_json(cycle.directory / "opening-public-account-reads.json") == []
+        if recovery == "interrupted_preservation":
+            rename = Path.rename
+
+            def interrupted(source, destination):
+                if source.name == "opening-public-account-reads.json":
+                    raise OSError("interrupted evidence move")
+                return rename(source, destination)
+
+            monkeypatch.setattr(Path, "rename", interrupted)
+            with pytest.raises(OSError, match="interrupted evidence"):
+                cycle.prepare()
+            assert not (cycle.root / "_paper").exists()
+            monkeypatch.setattr(Path, "rename", rename)
     result = cycle.prepare()
     assert result["opening_equity"] == 3000
     assert len(review.read_json(cycle.directory / "opening-public-account-reads.json")) == 12
     seed_hashes = result["immutable_opening_hashes"]
     assert cycle.prepare()["immutable_opening_hashes"] == seed_hashes
+    if recovery != "fresh":
+        retained = list(cycle.directory.glob("prepare-preflight-failure-*"))
+        assert len(retained) == 1
+        assert (retained[0] / "prepare.stdout.json").read_bytes() == b""
+        assert review.read_json(retained[0] / "opening-public-account-reads.json") == []
+        operation = review.read_json(cycle.operation_path)
+        assert operation["cycle_id"] == cycle.cycle_id
+        assert operation["prepare_preflight_recovery"] == review.read_json(retained[0] / "manifest.json")
+
+
+@pytest.mark.parametrize("obstacle", ("stdout", "reads", "missing_stdout", "missing_reads", "namespace",
+                                    "paper_owner", "powder_owner"))
+def test_prepare_preflight_recovery_refuses_partial_or_owned_attempt(cycle, monkeypatch, obstacle):
+    cycle.begin()
+    cycle.archive()
+    cycle.phase(review.read_json(cycle.operation_path), "preparing")
+    output = cycle.directory / "prepare.stdout.json"
+    source = cycle.directory / "opening-public-account-reads.json"
+    if obstacle != "missing_stdout":
+        output.write_bytes(b"partial result" if obstacle == "stdout" else b"")
+    if obstacle != "missing_reads":
+        publish(source, [{"response": "retained"}] if obstacle == "reads" else [])
+    if obstacle == "namespace":
+        (cycle.root / "_paper").mkdir()
+    if obstacle.endswith("_owner"):
+        role = obstacle.removesuffix("_owner")
+        monkeypatch.setattr(review, "runtime_processes", lambda: [
+            {"pid": 42, "module": f"ml.hyperliquid_{role}_runtime"}])
+    # Avoid depending on the real config parser: only recovery behavior is under
+    # test here. No public account reader or native prepare invocation is allowed.
+    from types import SimpleNamespace
+    from ml import hyperliquid_paper_policy, hyperliquid_paper_runtime
+    monkeypatch.setattr(hyperliquid_paper_policy, "load_config", lambda _: SimpleNamespace(
+        mode="paper", seed_mode="mirror", data_root=cycle.root))
+    monkeypatch.setattr(hyperliquid_paper_runtime, "main", lambda *_: pytest.fail("Unsafe prepare retry"))
+    before = {p.name: p.read_bytes() for p in (output, source) if p.exists()}
+    with pytest.raises((ValueError, sqlite3.OperationalError, FileNotFoundError)):
+        cycle.prepare()
+    assert before == {p.name: p.read_bytes() for p in (output, source) if p.exists()}
+    assert not list(cycle.directory.glob("prepare-preflight-failure-*"))
+    assert review.read_json(cycle.operation_path)["phase"] == "preparing"
 
 
 def test_complete_receipt_is_idempotent_and_requires_trading_health(cycle, monkeypatch):

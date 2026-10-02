@@ -48,8 +48,13 @@ class ModelConfig:
     hist_gradient_boosting_weight: float = 1.0
     mlp_weight: float = 1.0
     random_forest_weight: float = 0.0
+    ensemble_probability_shrinkage: float = 1.0
 
     def __post_init__(self):
+        shrinkage = self.ensemble_probability_shrinkage
+        if (type(shrinkage) not in (int, float) or not math.isfinite(shrinkage)
+                or not 0 < shrinkage <= 1):
+            raise ValueError("ensemble_probability_shrinkage must be finite and in (0, 1].")
         if (type(self.random_forest_weight) not in (int, float)
                 or not math.isfinite(self.random_forest_weight) or self.random_forest_weight < 0):
             raise ValueError("random_forest_weight must be a finite nonnegative number.")
@@ -126,6 +131,7 @@ class ModelConfig:
             hist_gradient_boosting_weight=self.hist_gradient_boosting_weight,
             mlp_weight=self.mlp_weight,
             random_forest_weight=self.random_forest_weight,
+            ensemble_probability_shrinkage=self.ensemble_probability_shrinkage,
         )
 
 

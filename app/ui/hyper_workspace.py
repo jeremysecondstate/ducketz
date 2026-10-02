@@ -28,6 +28,9 @@ INSET = "#0a1b2b"
 LINE = "#233e52"
 MINT = "#78edc1"
 REAL_ORANGE = "#f4a35d"
+MODEL_NAMES = {"ensemble": "Ensemble", "logistic": "Logistic", "extra_trees": "Extra Trees",
+               "hist_gradient_boosting": "Hist Gradient Boosting", "mlp": "MLP",
+               "random_forest": "Random Forest"}
 ACCOUNTS = {"alex": ("Alex", "Short perps", "AL"),
             "jeremy": ("Jeremy", "Long perps", "JE"),
             "clearpond": ("Clear Pond", "Spot", "CP")}
@@ -37,6 +40,8 @@ REASONS = {"entry_deadband": "Below entry threshold", "hold_with_hysteresis": "E
            "stop_loss": "Stop loss", "stop_cooldown": "Stop cooldown", "risk_cap": "Exposure limit",
            "unqualified_forecast_excluded": "Research signal excluded",
            "qualified_forecast_unavailable": "Qualified forecast unavailable",
+           "forecast_expired_during_book_fetch": "Forecast expired during book fetch",
+           "forecast_timestamp_unusable": "Forecast stale / timestamp invalid",
            "paper_target_collateral_allocation": "Fund target collateral", "no_change": "Recorded target unchanged",
            "exit_band": "Inside exit band", "below_size_precision": "Below size precision",
            "below_min_notional": "Below venue minimum", "execution_unfilled": "No executable fill",
@@ -71,6 +76,10 @@ def _forecast_horizon(row):
 def _paper_decision_reason(row):
     """Explain older nonfills only from their saved evidence, never today's policy."""
     reason = row.get("reason")
+    if reason == "qualified_forecast_unavailable":
+        policy = row.get("policy") if isinstance(row.get("policy"), dict) else {}
+        return {"Forecast is stale or has a future timestamp.": "forecast_timestamp_unusable",
+                "Forecast expired while fetching executable books.": "forecast_expired_during_book_fetch"}.get(policy.get("reason"), reason)
     if row.get("action") not in {"hold", "skip"} or reason not in {None, "", "signal_rebalance"}:
         return reason
     execution = row.get("execution") if isinstance(row.get("execution"), dict) else {}
@@ -173,6 +182,49 @@ def money(value, signed=False):
 def pct(value):
     value = number(value)
     return "—" if value is None else f"{value * 100:,.2f}%"
+
+
+def _model_score(value):
+    value = number(value)
+    return "—" if value is None else f"{value:.6f}"
+
+
+def _model_history_values(row):
+    """Keep prediction probability, validation quality and freshness distinct."""
+    return (local_time(row.get("decision_close_utc")).replace(" PT", ""), row.get("coin", "—"),
+            MODEL_NAMES.get(row.get("family"), row.get("family", "—")), pct(row.get("weight")),
+            pct(row.get("p_not_down")), _model_score(row.get("brier_score")), _model_score(row.get("log_loss")),
+            "Qualified" if row.get("qualified") is True else "Research · excluded" if row.get("qualified") is False else "Unavailable",
+            {"current": "Current", "expired": "Matured / expired", "invalid": "Invalid"}.get(row.get("forecast_state"), "Unavailable"))
+
+
+def _model_history_detail(row):
+    if not row:
+        return "Select a model row to inspect its validation baselines, qualification checks and saved forecast provenance."
+    lines = [f"{row.get('coin', '—')} · {MODEL_NAMES.get(row.get('family'), row.get('family', '—'))} · "
+             f"Candle close {local_time(row.get('decision_close_utc'), date=True)} → target {local_time(row.get('target_close_utc'), date=True)}",
+             f"Published {local_time(row.get('created_at_utc'), date=True)} · P(not-down) {pct(row.get('p_not_down'))} · "
+             f"P(down) {pct(row.get('p_down'))} · ensemble weight {pct(row.get('weight'))}",
+             f"Held-out assessment: Brier {_model_score(row.get('brier_score'))} · log loss {_model_score(row.get('log_loss'))} · "
+             f"accuracy {pct(row.get('accuracy'))} · rows {row.get('assessment_rows') or '—'}"]
+    baselines = row.get("baseline_metrics") if isinstance(row.get("baseline_metrics"), dict) else {}
+    for name, metrics in baselines.items():
+        if isinstance(metrics, dict):
+            name = {"prior_baseline": "trained prior", "neutral_baseline": "neutral 50%"}.get(name, name)
+            lines.append(f"Baseline {name}: Brier {_model_score(metrics.get('brier_score'))} · log loss {_model_score(metrics.get('log_loss'))}")
+    reasons = row.get("eligibility_reasons") or []
+    reasons = [str(reason).replace("log_loss", "Log loss").replace("brier_score", "Brier")
+               .replace("prior_baseline", "trained-prior baseline").replace("neutral_baseline", "neutral 50% baseline")
+               for reason in reasons]
+    lines.append("Ensemble qualification: " + ("Passed saved model checks." if row.get("qualified") is True else
+                 "; ".join(str(reason) for reason in reasons) if reasons else "Qualification evidence unavailable."))
+    for error in row.get("validation_errors") or []:
+        lines.append("Forecast evidence: " + str(error))
+    lines.extend(["Qualification belongs to the ensemble. Each family row shows that family's own validation scores.",
+                  "Lower Brier and log loss are better. Qualification requires ensemble scores no worse than both baselines.",
+                  f"Model {row.get('model_id') or '—'} · prediction {row.get('prediction_id') or '—'} · data {row.get('data_run_id') or '—'}",
+                  f"Metric source: {row.get('metric_source', 'unavailable')} · model published {local_time(row.get('model_published_at_utc'), date=True)}"])
+    return "\n".join(lines)
 
 
 def quantity(value):
@@ -293,6 +345,8 @@ class HyperWorkspace:
         self.chart_range = tk.StringVar(root, "All")
         self.include_passive = tk.BooleanVar(root, False)
         self.show_record = tk.BooleanVar(root, False)
+        self.model_history_asset = tk.StringVar(root, "All assets")
+        self.model_history_scope = tk.StringVar(root, "Latest per asset")
         self._styles()
         self._build()
         parent.bind("<Destroy>", self._destroy, add="+")
@@ -413,6 +467,7 @@ class HyperWorkspace:
         self._build_chart()
         self._build_table()
         self._build_right()
+        self._build_model_history()
         self.footer = label(self.page, "Read-only local view · all times PT", size=8, color=MUTED_TEXT)
         self.footer.pack(fill="x", padx=16, pady=(4, 6))
         self._apply_layout(1706)
@@ -536,6 +591,129 @@ class HyperWorkspace:
         self.empty_table = label(table_box, "", size=10, color=MUTED_TEXT, justify="center")
         self.table_note = label(self.table_card, "", size=8, color=MUTED_TEXT, wraplength=650, justify="left")
         self.table_note.pack(fill="x", padx=12, pady=(5, 8))
+
+    def _build_model_history(self):
+        self.model_history_card = card(self.body)
+        self.model_history_card.pack(fill="x", padx=14, pady=(0, 10))
+        head = tk.Frame(self.model_history_card, bg=PANEL)
+        head.pack(fill="x", padx=12, pady=(10, 5))
+        self.model_history_title = label(head, "Model scores · five-minute forecasts", size=12, bold=True)
+        self.model_history_title.pack(side="left")
+        self.model_history_count = label(head, "", size=8, color=MUTED_TEXT)
+        self.model_history_count.pack(side="right")
+        self.model_history_summary = label(self.model_history_card, "", size=9, justify="left", color=WARNING)
+        self.model_history_summary.pack(fill="x", padx=12, pady=(0, 5))
+        self.model_history_summary.bind("<Configure>", lambda event: self.model_history_summary.configure(wraplength=max(250, event.width)))
+        controls = tk.Frame(self.model_history_card, bg=PANEL)
+        controls.pack(fill="x", padx=10, pady=(0, 6))
+        ttk.Combobox(controls, textvariable=self.model_history_asset, values=("All assets", "BTC", "ETH", "HYPE", "ZEC"),
+                     state="readonly", width=10, style="HYPER.TCombobox").pack(side="left", padx=(0, 5))
+        ttk.Combobox(controls, textvariable=self.model_history_scope, values=("Latest per asset", "Recent history"),
+                     state="readonly", width=16, style="HYPER.TCombobox").pack(side="left")
+        for var in (self.model_history_asset, self.model_history_scope):
+            var.trace_add("write", lambda *_: self._render_model_history())
+        box = tk.Frame(self.model_history_card, bg=INSET)
+        box.pack(fill="x", padx=10)
+        box.columnconfigure(0, weight=1)
+        columns = (("time", "Candle close PT", 115), ("coin", "Asset", 62), ("family", "Model", 175),
+                   ("weight", "Weight", 72), ("probability", "P(not-down)", 100),
+                   ("brier", "Brier ↓", 92), ("log_loss", "Log loss ↓", 92),
+                   ("qualification", "Ensemble gate", 150), ("freshness", "Forecast validity", 145))
+        self.model_history_tree = ttk.Treeview(box, columns=[column[0] for column in columns],
+            show="headings", selectmode="browse", height=8, style="HYPER.Treeview")
+        for key, title, width in columns:
+            self.model_history_tree.heading(key, text=title)
+            self.model_history_tree.column(key, width=width, minwidth=width, stretch=key == "family", anchor="w")
+        self.model_history_tree.grid(row=0, column=0, sticky="nsew")
+        ybar = ttk.Scrollbar(box, orient="vertical", command=self.model_history_tree.yview)
+        ybar.grid(row=0, column=1, sticky="ns")
+        xbar = ttk.Scrollbar(box, orient="horizontal", command=self.model_history_tree.xview)
+        xbar.grid(row=1, column=0, sticky="ew")
+        self.model_history_tree.configure(yscrollcommand=ybar.set, xscrollcommand=xbar.set)
+        self.model_history_tree.tag_configure("ensemble", foreground=MINT)
+        self.model_history_tree.bind("<<TreeviewSelect>>", self._select_model_history)
+        self.model_history_note = label(self.model_history_card,
+            "Saved forecasts, one row per model · historical validation scores, not realized trading returns · select a row for baselines and blockers.",
+            size=8, color=MUTED_TEXT, justify="left")
+        self.model_history_note.pack(fill="x", padx=12, pady=(5, 5))
+        self.model_history_note.bind("<Configure>", lambda event: self.model_history_note.configure(wraplength=max(250, event.width)))
+        detail_box = tk.Frame(self.model_history_card, bg=INSET)
+        detail_box.pack(fill="x", padx=10, pady=(0, 10))
+        self.model_history_detail = tk.Text(detail_box, height=7, wrap="word", bg=INSET,
+            fg=TEXT, relief="flat", padx=8, pady=6, font=("Segoe UI", 9), state="disabled")
+        self.model_history_detail.pack(side="left", fill="x", expand=True)
+        detail_scroll = ttk.Scrollbar(detail_box, orient="vertical", command=self.model_history_detail.yview)
+        detail_scroll.pack(side="right", fill="y")
+        self.model_history_detail.configure(yscrollcommand=detail_scroll.set)
+        self._model_history_rows = {}
+
+    def _render_model_history(self):
+        if not hasattr(self, "model_history_tree") or self._closed:
+            return
+        snapshot = self.snapshot
+        rows = getattr(snapshot, "model_history", []) if snapshot else []
+        asset = self.model_history_asset.get()
+        if asset != "All assets":
+            rows = [row for row in rows if row.get("coin") == asset]
+        latest = [row for row in rows if row.get("is_latest") and row.get("family") == "ensemble"]
+        qualified = sum(row.get("qualified") is True for row in latest)
+        research = sum(row.get("qualified") is False for row in latest)
+        expired = sum(row.get("forecast_state") == "expired" for row in latest)
+        invalid = sum(row.get("forecast_state") == "invalid" for row in latest)
+        recipe = snapshot.market_recipe if snapshot else {}
+        self.model_history_title.configure(text=f"Model scores · {recipe.get('interval', 'candle')} forecasts")
+        summary = (f"Latest: {qualified} qualified · {research} research / excluded · {expired} matured / expired · {invalid} invalid. "
+                   "Research forecasts cannot drive Paper entries." if latest else "No saved model history is available for this selection.")
+        if self.mode.get() == "Powder":
+            summary += " Shared forecast preview; this view does not activate execution."
+        elif snapshot:
+            policy = snapshot.policy.get("config", snapshot.policy)
+            band = number(policy.get("entry_band"))
+            if band is not None and 0 <= band <= .5:
+                summary += f" Current entry thresholds: long ≥ {pct(.5+band)}; short ≤ {pct(.5-band)} after qualification."
+        self.model_history_summary.configure(text=summary, fg=WARNING if research or expired or invalid or not latest else MUTED_TEXT)
+        if self.model_history_scope.get() == "Latest per asset":
+            rows = [row for row in rows if row.get("is_latest")]
+        rows = sorted(rows, key=lambda row: (-(timestamp(row.get("decision_close_utc")).timestamp()
+            if timestamp(row.get("decision_close_utc")) else 0), str(row.get("coin", "")),
+            row.get("family") != "ensemble", str(row.get("family", ""))))
+        tree = self.model_history_tree
+        selected, scroll = tree.selection(), tree.yview()
+        by_id = {}
+        for index, row in enumerate(rows):
+            iid = f"{row.get('coin')}:{row.get('prediction_id')}:{row.get('family')}"
+            by_id[iid] = row
+            values = _model_history_values(row)
+            tags = ("ensemble",) if row.get("family") == "ensemble" else ()
+            if tree.exists(iid):
+                tree.item(iid, values=values, tags=tags)
+                tree.move(iid, "", index)
+            else:
+                tree.insert("", index, iid=iid, values=values, tags=tags)
+        for iid in tree.get_children():
+            if iid not in by_id:
+                tree.delete(iid)
+        self._model_history_rows = by_id
+        chosen = next((iid for iid in selected if iid in by_id), next(iter(by_id), None))
+        if chosen:
+            tree.selection_set(chosen)
+        if scroll:
+            tree.yview_moveto(scroll[0])
+        self.model_history_count.configure(text=f"{len(rows)} model rows")
+        self._select_model_history()
+
+    def _select_model_history(self, _event=None):
+        selected = self.model_history_tree.selection()
+        row = self._model_history_rows.get(selected[0]) if selected else None
+        content = _model_history_detail(row)
+        if content == getattr(self, "_model_history_detail_content", None):
+            return
+        self._model_history_detail_content = content
+        self.model_history_detail.configure(state="normal")
+        self.model_history_detail.delete("1.0", "end")
+        self.model_history_detail.insert("1.0", content)
+        self.model_history_detail.yview_moveto(0)
+        self.model_history_detail.configure(state="disabled")
 
     def _build_right(self):
         self.forecast_card = card(self.right)
@@ -898,6 +1076,8 @@ class HyperWorkspace:
         self._draw_chart()
         self._render_table()
         self._render_forecasts()
+
+        self._render_model_history()
 
     def _draw_exposure(self, key):
         if key not in self.account_values:

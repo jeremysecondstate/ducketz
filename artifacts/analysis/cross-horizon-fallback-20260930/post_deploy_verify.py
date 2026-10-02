@@ -1,0 +1,139 @@
+"""One-off locked verification of the sealed candidate; never starts a trader."""
+import argparse
+from contextlib import ExitStack
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import types
+import uuid
+
+PACKAGE = Path(__file__).absolute().parent
+HELPER_SHA = "7620f5c4731ef9509a1c5627c41077a513e9ec30d655857a7922c4891121e33c"
+MANIFEST_SHA = "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--supervision-uuid", required=True)
+    parser.add_argument("--report-name", default="post-deployment-verification.json")
+    args = parser.parse_args()
+    raw = (PACKAGE / "apply_candidate.py").read_bytes()
+    if hashlib.sha256(raw).hexdigest() != HELPER_SHA:
+        raise RuntimeError("Frozen installer helper hash differs")
+    helper = types.ModuleType("frozen_apply_candidate")
+    helper.__file__ = str(PACKAGE / "apply_candidate.py")
+    exec(compile(raw, helper.__file__, "exec"), helper.__dict__)
+    package = helper.plain_path(PACKAGE)
+    if not helper.re.fullmatch(r"post-deployment-verification(?:-[A-Za-z0-9_-]+)?\.json",args.report_name):
+        raise RuntimeError("Report name must be a safe post-deployment-verification JSON basename")
+    report_path = helper.safe_path(package,args.report_name)
+    if report_path.exists():
+        raise RuntimeError("Post-deployment report already exists; preserve and inspect it")
+    record = {"status":"FAIL", "started_at_utc":datetime.now(timezone.utc).isoformat(),
+              "manifest_sha256":MANIFEST_SHA, "helper_sha256":HELPER_SHA,
+              "supervision_uuid":args.supervision_uuid, "locks_released":False,
+              "orders_placed":0, "broker_requests":0, "source_drift":[]}
+    log_path = helper.safe_path(package, "post-deployment-tests-" + uuid.uuid4().hex + ".log")
+    try:
+        manifest, digest, files = helper.validate_package(package, helper.TARGET)
+        if digest != MANIFEST_SHA or manifest["apply_helper_sha256"] != HELPER_SHA:
+            raise RuntimeError("Sealed manifest/helper identity differs")
+        evidence = helper.json_file(helper.safe_path(package, manifest["test_evidence"]["path"]))
+        tested_checkout = helper.plain_path(Path(manifest["source_checkout"]))
+        if helper.plain_path(Path(evidence["cwd"])) != tested_checkout:
+            raise RuntimeError("Sealed source checkout differs from recorded test cwd")
+        command = evidence["command"]
+        tests = command[3:-1]
+        if (command[:3] != [str(helper.TARGET / ".venv/Scripts/python.exe"), "-m", "pytest"]
+                or command[-1:] != ["-q"] or len(tests) != 27 or len(set(tests)) != 27
+                or any(not p.startswith("tests/test_") or not p.endswith(".py") for p in tests)):
+            raise RuntimeError("Unexpected recorded pytest command")
+        expected = {f["path"]:f["sha256"] for f in files}
+        dependencies = manifest["source_dependency_fingerprints"]
+        if len(expected) != 23 or len(dependencies) != 176:
+            raise RuntimeError("Unexpected sealed source/dependency counts")
+        monitored = sorted(set(expected) | set(dependencies) | set(tests))
+
+        def snapshot():
+            return {p:helper.file_hash(helper.safe_path(helper.TARGET,p)) for p in monitored}
+
+        def verify_installed():
+            _, observed, _ = helper.validate_package(package,helper.TARGET)
+            if observed != MANIFEST_SHA or helper.file_hash(package/"apply_candidate.py") != HELPER_SHA:
+                raise RuntimeError("Package/helper changed during verification")
+            for name in ("apply-progress.json", "apply-receipt.json"):
+                saved = helper.json_file(helper.safe_path(package,name))
+                if (saved.get("status") != "APPLIED" or saved.get("manifest_sha256") != MANIFEST_SHA
+                        or saved.get("locks_released") is not True
+                        or saved.get("supervision_uuid") != args.supervision_uuid):
+                    raise RuntimeError("Fresh matching APPLIED progress and receipt required: " + name)
+            current = snapshot()
+            if any(current[p] != h for p,h in {**expected,**dependencies}.items()):
+                raise RuntimeError("Installed source/dependency hash differs")
+            for rel in tests:
+                data = helper.read_file(helper.safe_path(helper.TARGET,rel))
+                original = helper.read_file(helper.safe_path(tested_checkout,rel))
+                if helper.sha(original) != evidence["source_fingerprints"].get(rel):
+                    raise RuntimeError("Original tested worktree bytes changed: " + rel)
+                if original.replace(b"\r\n",b"\n") != data.replace(b"\r\n",b"\n"):
+                    raise RuntimeError("Selected test differs from recorded tested source: " + rel)
+            return current
+
+        verify_installed()
+        record["initial_guard"] = helper.guard_state(helper.DATASTORE,args.supervision_uuid,
+                                                      datetime.now(timezone.utc),helper.native_processes())
+        sys.path.insert(0,str(helper.TARGET))
+        from datafetching.runtime_lock import runtime_lock_maintenance_gate
+        with ExitStack() as stack:
+            for rel in helper.LOCKS:
+                stack.enter_context(helper.strict_native_lock(helper.safe_path(helper.DATASTORE,rel),
+                                                              gate_factory=runtime_lock_maintenance_gate))
+            record["locked_initial_guard"] = helper.guard_state(helper.DATASTORE,args.supervision_uuid,
+                                                               datetime.now(timezone.utc),helper.native_processes())
+            before = verify_installed()
+            record.update(command=command,cwd=str(helper.TARGET),source_fingerprints_before=before,
+                          installed_file_count=23,dependency_count=176,selected_test_count=27,log_path=log_path.name)
+            with log_path.open("xb") as output:
+                result = subprocess.run(command,cwd=helper.TARGET,stdout=output,stderr=subprocess.STDOUT,
+                                        env={**os.environ,"PYTHONDONTWRITEBYTECODE":"1"},check=False)
+                output.flush()
+                os.fsync(output.fileno())
+            record.update(exit_code=result.returncode,log_sha256=helper.file_hash(log_path))
+            after = snapshot()
+            record.update(source_fingerprints_after=after,source_drift=[p for p in monitored if before[p]!=after[p]])
+            verify_installed()
+            checks = []
+            for staged in (False,True):
+                diff = subprocess.run(["git","diff","--check",*(["--cached"] if staged else []),"--",*monitored],
+                                      cwd=helper.TARGET,capture_output=True,text=True,check=False)
+                checks.append({"staged":staged,"exit_code":diff.returncode,"output":diff.stdout+diff.stderr})
+            record["diff_checks"] = checks
+            record["locked_final_guard"] = helper.guard_state(helper.DATASTORE,args.supervision_uuid,
+                                                              datetime.now(timezone.utc),helper.native_processes())
+            if result.returncode or record["source_drift"] or any(c["exit_code"] for c in checks):
+                raise RuntimeError("Post-deployment tests, source preservation or diff check failed")
+        record["locks_released"] = True
+        record["final_guard"] = helper.guard_state(helper.DATASTORE,args.supervision_uuid,
+                                                  datetime.now(timezone.utc),helper.native_processes())
+        if verify_installed() != before:
+            raise RuntimeError("Monitored source changed after lock release")
+        record["status"] = "PASS"
+    except Exception as exc:
+        record["error"] = f"{type(exc).__name__}: {exc}"
+        record["locks_released"] = all(not helper.safe_path(helper.DATASTORE,p).exists() for p in helper.LOCKS)
+    record["completed_at_utc"] = datetime.now(timezone.utc).isoformat()
+    with report_path.open("x",encoding="utf-8") as output:
+        json.dump(record,output,indent=2,sort_keys=True)
+        output.write("\n")
+        output.flush()
+        os.fsync(output.fileno())
+    print(json.dumps({"status":record["status"],"report":str(report_path),"log":str(log_path)}))
+    return 0 if record["status"]=="PASS" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

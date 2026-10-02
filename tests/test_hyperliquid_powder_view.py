@@ -4,12 +4,13 @@ from app.services.hyperliquid_powder_view import project_powder
 
 def test_empty_powder_never_uses_paper_balances():
     paper = PaperViewSnapshot(pooled={"equity": 10000}, accounts={"alex": {"equity": 10000}},
-        fills=[{"fee": 100}], forecasts=[{"coin": "BTC"}],
+        fills=[{"fee": 100}], forecasts=[{"coin": "BTC"}], model_history=[{"coin": "BTC", "family": "mlp"}],
         sources={"ledger": SourceState("Paper", "fresh"), "models": SourceState("Models", "fresh")})
     powder = project_powder({}, paper=paper, now=1000)
     assert powder.pooled == powder.accounts == {}
     assert powder.fills == []
     assert powder.forecasts == paper.forecasts
+    assert powder.model_history == paper.model_history
     assert "ledger" not in powder.sources
     assert powder.runtime["connected"] is False
 

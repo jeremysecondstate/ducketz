@@ -32,6 +32,10 @@ def test_default_file_uses_shared_market_config_and_next_five_minute_horizon():
     assert (settings.train_fraction, settings.calibration_fraction, settings.assessment_fraction) == (.70, .15, .15)
     assert settings.max_train_rows is None
     assert settings.max_model_age_seconds == 86400
+    assert settings.ensemble_probability_shrinkage == 0.5
+    assert all(weight > 0 for weight in (settings.logistic_weight, settings.extra_trees_weight,
+                                         settings.hist_gradient_boosting_weight, settings.mlp_weight,
+                                         settings.random_forest_weight))
     assert not hasattr(settings, "symbols")
     with pytest.raises(FrozenInstanceError):
         settings.poll_seconds = 30
@@ -92,6 +96,7 @@ def test_horizons_are_sorted_and_recipe_factory_passes_only_model_settings(monke
         hist_gradient_boosting_weight: float
         mlp_weight: float
         random_forest_weight: float
+        ensemble_probability_shrinkage: float
 
     monkeypatch.setitem(sys.modules, "ml.hyperliquid_models", SimpleNamespace(ModelSettings=Recipe))
     settings = ModelConfig(
@@ -100,7 +105,7 @@ def test_horizons_are_sorted_and_recipe_factory_passes_only_model_settings(monke
     )
     assert settings.horizons_bars == (1, 4, 16)
     assert settings.model_settings(4) == Recipe(4, 1500, 200, 300, 42, 3, 2000, "fixed_rows", None, None, None,
-                                               1.0, 1.0, 1.0, 1.0, 1.0, 0.0)
+                                               1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0)
     with pytest.raises(ValueError, match="configuration's horizons"):
         settings.model_settings(2)
     with pytest.raises(ValueError, match="configuration's horizons"):

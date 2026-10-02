@@ -1,6 +1,15 @@
 # Hyperliquid Operations Watch
 
-Operating contract: **2026-09-29 / v15**. Companion to [Monitoring and recovery](MONITORING.md).
+Operating contract: **2026-09-30 / v16**. Companion to [Monitoring and recovery](MONITORING.md).
+
+The September 30 user instruction authorizes exploratory Paper from its next
+accepted handoff: admit valid Research forecasts, zero entry/exit bands, zero
+discretionary rebalance fraction, and a $10 minimum matching the execution floor.
+Read the accepted policy to determine whether transition is complete. Do not
+restore qualified-only settings from older memories. Missing/stale data still
+holds targets while stops/caps continue; models keep truthful qualification.
+Powder's retained strict policy is separate and must never inherit Paper's loose
+settings. Watch cannot tune either policy, initiate a mirror, or change scoring.
 
 ## Current accepted run and improvement handoff
 
@@ -114,9 +123,11 @@ sources = {key: {**asdict(value), "age_seconds": round(value.age_seconds, 1)
            if value.age_seconds is not None else None} for key, value in s.sources.items()}
 print(json.dumps({
     "read_at_utc": s.observed_at_utc,
-    "config_sha256": {name: hashlib.sha256(Path("configs", name).read_bytes()).hexdigest()
+    "config_sha256": {name: (hashlib.sha256(Path("configs", name).read_bytes()).hexdigest()
+                            if Path("configs", name).exists() else None)
         for name in ("hyperliquid-markets.json", "hyperliquid-models.json",
-                     "hyperliquid-paper.json", "hyperliquid-powder.json")},
+                     "hyperliquid-paper.json", "hyperliquid-powder.json",
+                     "hyperliquid-powder-policy.json")},
     "portfolio_at_utc": s.portfolio_observed_at_utc,
     "paper_seed_at_utc": s.seed.get("timestamp_utc"),
     "paper_baseline_equity": s.seed.get("baseline_equity"),
@@ -133,8 +144,9 @@ print(json.dumps({
 The UI projection resolves membership, interval and primary horizon from the
 configured model/market files; the new trial uses BTC/ETH/HYPE/ZEC at 5m/h1.
 Its strict health helper also binds every configured slot to the actual recipe
-and target expiry. Compare the four
-small configuration content hashes against memory each run; JSON `version`
+and target expiry. Compare these configuration content hashes against memory
+each run, including Powder's separate referenced policy after its accepted
+isolation. A missing file is reported as null, not a matching hash. JSON `version`
 fields are schema versions and do not detect edited settings. Inspect changed
 configurations and any referenced files before claiming coverage; custom
 membership/root/horizons still require matching raw checks before claiming coverage.
@@ -159,12 +171,12 @@ Interpret observations using [Monitoring](MONITORING.md):
   A forecast expiring near a candle boundary requires inspecting publication progress, not
   automatically restarting models. No trade, a research forecast and no promotion
   are not failures.
-- The current Paper experiment is qualified-only. Research or missing forecasts
-  do not drive signal trades: existing targets are held, with independent risk
-  exits still possible. Excluded Research forecasts are expected, not evidence
-  that the model process is broken. Monitor prolonged data/forecast outages even
-  when Paper continues marking and checking risk. Never loosen this gate to
-  produce trades or treat a risk exit as an unqualified signal entry.
+- Paper signal admission follows its current accepted policy. Under exploratory
+  admission, fresh valid Research forecasts can drive simulated signal trades;
+  under historical qualified-only admission, they were excluded. Missing/stale
+  forecasts hold targets with independent risk exits still possible. Monitor
+  prolonged data/forecast outages and recurring no-fill reasons. Never relabel
+  Research as Qualified or treat a risk exit as a forecast-driven trade.
 - A performance export aged 600–900s can be normal while committed cycles advance.
   Do not restart workers for export-only lag or transient SQLite read contention.
 - A fresh mirror has an explicit `opening` observation: untouched signed inventory,
@@ -184,7 +196,7 @@ The following v11 numerical baseline is dated September 26. Once a v12 durable
 handoff exists, substitute its accepted experiment and configuration throughout
 these recovery checks. All stop/ownership/ledger-preservation conditions remain.
 
-The current baseline is data + models + qualified-only Paper intended running,
+The September 26 baseline was data + models + qualified-only Paper intended running,
 Powder off. The latest user-authorized mirror is
 `20260926T180818Z-701515-btc-mirror`, opened at
 **2026-09-26T18:08:18.218420982Z**, with opening equity
@@ -352,10 +364,11 @@ operator stops, maintenance or user instructions.
    `ml.hyperliquid_forecast_reader.read_forecast` with the loaded Paper policy,
    market interval and configured horizon. Also enforce
    `prediction["qualified"]` for signal eligibility when
-   `policy.require_qualified_forecasts` is true; the validator corroborates an
-   active eligible model but leaves consumer inclusion policy to its caller.
-   Research-only slots do not prohibit resuming qualified-only Paper's risk and
-   mark loop: those positions hold until an eligible signal or risk reduction.
+   `policy.require_qualified_forecasts` is true. The validator corroborates source,
+   model identity, timing and truthful qualification; consumer policy determines
+   whether Research can participate. Research-only slots are expected and can
+   trade under the user-authorized exploratory Paper policy. Missing forecasts
+   leave the mark/risk loop running while positions hold until a signal or risk reduction.
    No qualified signals is an allowed operating state. Report upstream faults
    accurately instead of loosening the gate. The validator reads artifacts
    without creating a runtime. Keep healthy workers running. Do not force fitting
