@@ -14,6 +14,86 @@ import pytest
 from tools.cross_pc import artifact_publish as publisher
 
 
+def test_secret_values_resolve_forward_file_local_aliases_without_environment(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text('API_KEY=${LOCAL_VALUE}\nLOCAL_VALUE="synthetic-local-value"\nMODE=paper\n')
+    monkeypatch.setenv("LOCAL_VALUE", "synthetic-process-value")
+    values = publisher._secret_values(env)
+    assert values == [b"synthetic-local-value"]
+    publisher._scan_bytes(b"synthetic-process-value", values)
+    with pytest.raises(publisher.ArtifactPublishError, match="exact local .env value"):
+        publisher._scan_bytes(b"published synthetic-local-value", values)
+
+
+def test_secret_values_preserve_literals_and_resolve_shared_short_alias_target(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("API_KEY=${NEXT}\nAUTH_TOKEN='${FINAL}'\nNEXT=${FINAL}\nFINAL=abc\n"
+                   "PASSWORD=literal$dollar\\nvalue\nPRIVATE_VALUE=long literal # ignored comment\n")
+    values = publisher._secret_values(env)
+    assert set(values) == {b"abc", b"literal$dollar\\nvalue", b"long literal"}
+    with pytest.raises(publisher.ArtifactPublishError, match="exact local .env value"):
+        publisher._scan_bytes(b"abc", values)
+
+
+@pytest.mark.parametrize("text", [
+    "API_KEY=${MISSING}\n",
+    "API_KEY=${EMPTY}\nEMPTY=\n",
+    "API_KEY=${EMPTY}\nEMPTY=''\n",
+    "API_KEY=${API_KEY}\n",
+    "API_KEY=${OTHER}\nOTHER=${API_KEY}\n",
+    "API_KEY=${BAD}\nBAD=${UNKNOWN}\n",
+    "API_KEY=${VALUE}\nVALUE=one\nVALUE=two\n",
+    "API_KEY=${VALUE}\nVALUE=one\nvalue=one\n",
+    "API_KEY=${VALUE}\nvalue=one\n",
+    "API_KEY=${}\n",
+    "API_KEY=${VALUE\nVALUE=one\n",
+    "API_KEY=${VALUE:-default}\nVALUE=one\n",
+    "API_KEY=prefix${VALUE}\nVALUE=one\n",
+    "API_KEY=${VALUE}suffix\nVALUE=one\n",
+    "API_KEY=${VALUE}${OTHER}\nVALUE=one\nOTHER=two\n",
+    "API_KEY=${VALUE NAME}\n",
+    "API_KEY='\n",
+    "MODE=${MISSING}\n",
+])
+def test_secret_values_reject_ambiguous_or_unresolved_references_without_disclosure(tmp_path, monkeypatch, text):
+    env = tmp_path / ".env"
+    env.write_text(text)
+    monkeypatch.setenv("MISSING", "synthetic-process-fallback")
+    with pytest.raises(publisher.ArtifactPublishError) as error:
+        publisher._secret_values(env)
+    message = str(error.value)
+    for private in ["API_KEY", "VALUE", "OTHER", "MISSING", "synthetic-process-fallback", text.strip()]:
+        assert private not in message
+
+
+def test_secret_values_bound_alias_depth_without_false_cross_root_cycles(tmp_path):
+    env = tmp_path / ".env"
+    # Two independent sensitive roots share the same bounded alias chain.
+    chain = [f"V{i}=${{V{i + 1}}}" for i in range(publisher._MAX_ENV_ALIAS_DEPTH - 1)]
+    terminal = f"V{publisher._MAX_ENV_ALIAS_DEPTH - 1}=synthetic-terminal"
+    env.write_text("API_KEY=${V0}\nAUTH_TOKEN=${V0}\n" + "\n".join(chain + [terminal]) + "\n")
+    assert publisher._secret_values(env) == [b"synthetic-terminal"]
+    env.write_text("API_KEY=${EXTRA}\nEXTRA=${V0}\n" + "\n".join(chain + [terminal]) + "\n")
+    with pytest.raises(publisher.ArtifactPublishError, match="depth limit"):
+        publisher._secret_values(env)
+
+
+@pytest.mark.parametrize("limit", ["file", "value", "entries"])
+def test_secret_values_bound_file_value_and_entry_sizes(tmp_path, monkeypatch, limit):
+    env = tmp_path / ".env"
+    if limit == "file":
+        monkeypatch.setattr(publisher, "_MAX_ENV_BYTES", 32)
+        env.write_text("#" + "x" * 32)
+    elif limit == "value":
+        monkeypatch.setattr(publisher, "_MAX_ENV_VALUE_BYTES", 8)
+        env.write_text("API_KEY=123456789\n")
+    else:
+        monkeypatch.setattr(publisher, "_MAX_ENV_ENTRIES", 2)
+        env.write_text("MODE=paper\nSOURCE=fixture\nAPI_KEY=synthetic\n")
+    with pytest.raises(publisher.ArtifactPublishError, match="limit"):
+        publisher._secret_values(env)
+
+
 def git(root, *args):
     result = subprocess.run(["git", *args], cwd=root, capture_output=True, check=True)
     return result.stdout.decode("utf-8").strip()

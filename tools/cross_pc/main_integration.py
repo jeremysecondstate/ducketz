@@ -82,7 +82,7 @@ def _remote(root, branch):
 
 def _fetch(root, record_id, branch, expected, label):
     ref = "refs/cross-pc/main-integration/" + record_id + "/" + label
-    core.git(root, "fetch", "--no-tags", "--refmap=", "origin", "refs/heads/" + branch + ":" + ref)
+    core.git(root, "fetch", "--no-tags", "--no-recurse-submodules", "--refmap=", "origin", "refs/heads/" + branch + ":" + ref)
     if core.git_text(root, "rev-parse", "--verify", ref) != expected:
         raise ValueError("fetched " + label + " differs from remote SHA")
 
@@ -158,6 +158,13 @@ def _load_receipt(profile, record_id, main_sha):
 
 def _existing_candidate(profile, record_id, root, entry, record, source_sha):
     head = core.git_text(root, "rev-parse", "HEAD")
+    pending_path = _receipt_path(profile, record_id, head)
+    if pending_path.exists():
+        _, pending = _load_receipt(profile, record_id, head)
+        if pending.get("stage") == "committing":
+            _validate_pending(pending, root, entry, record, source_sha)
+            _pending_bytes(root, record)
+            return pending
     parent = core.git(root, "rev-parse", head + "^", check=False)
     if parent.returncode:
         return None
@@ -167,12 +174,86 @@ def _existing_candidate(profile, record_id, root, entry, record, source_sha):
         return None
     _, receipt = _load_receipt(profile, record_id, main_before)
     if (receipt.get("record_sha256") != entry["record_sha256"] or receipt.get("source_sha") != source_sha
-            or receipt.get("candidate_sha") != head or receipt.get("worktree") != str(root)):
+            or receipt.get("candidate_sha") not in {None, head} or receipt.get("worktree") != str(root)):
         raise ValueError("existing integration candidate receipt mismatch")
+    if receipt.get("stage") == "committing":
+        _validate_pending(receipt, root, entry, record, source_sha)
+        return _finish_commit(profile, record_id, root, record, receipt)
+    if receipt.get("candidate_sha") != head or receipt.get("stage") not in {"prepared", "push_pending", "main_integrated"}:
+        raise ValueError("existing integration candidate stage mismatch")
     core.verify_test_evidence(receipt.get("integration_tests"), record["fingerprints"])
     _verify_commit(root, record, head, main_before)
-    if core.git_text(root, "status", "--porcelain", "--untracked-files=all"):
+    if (core.git_text(root, "status", "--porcelain", "--untracked-files=all")
+            or core.fingerprints(root, record["fingerprints"]) != record["fingerprints"]):
         raise ValueError("existing integration candidate is dirty")
+    return receipt
+
+
+def _validate_pending(receipt, root, entry, record, source_sha):
+    if (receipt.get("record_sha256") != entry["record_sha256"] or receipt.get("source_sha") != source_sha
+            or receipt.get("worktree") != str(root) or receipt.get("candidate_sha") is not None
+            or not isinstance(receipt.get("commit_message"), str)
+            or core.digest(receipt["commit_message"].encode("utf-8")) != receipt.get("commit_message_sha256")):
+        raise ValueError("pending integration commit receipt mismatch")
+    core.verify_test_evidence(receipt.get("integration_tests"), record["fingerprints"])
+
+
+def _pending_bytes(root, record):
+    owned = {item["path"] for item in record["files"]}
+    staged = set(core.git_text(root, "diff", "--cached", "--name-only").splitlines())
+    if _changed(root) != owned or staged - owned:
+        raise ValueError("pending integration commit contains unrelated or missing changes")
+    if core.fingerprints(root, record["fingerprints"]) != record["fingerprints"]:
+        raise ValueError("pending integration bytes or dependencies changed after tests")
+    for name in staged:
+        blob = core.git(root, "show", ":" + name, check=False)
+        expected = record["fingerprints"][name]
+        if ((expected is None and blob.returncode == 0)
+                or (expected is not None and (blob.returncode or core.digest(blob.stdout) != expected))):
+            raise ValueError("pending integration index changed after review")
+
+
+def _scan_publication(profile, record, message):
+    values = core.source_private_values(profile)
+    for item in record["files"]:
+        if item["operation"] != "delete":
+            raw = core.blob_path(profile, record["fingerprints"][item["path"]]).read_bytes()
+            core.reject_source_private_values(raw, values)
+    core.reject_source_private_values(message.encode("utf-8"), values)
+
+
+def _finish_commit(profile, record_id, root, record, receipt):
+    """Resume one frozen commit, including a crash after Git created it."""
+    main_sha = receipt["main_before"]
+    head = core.git_text(root, "rev-parse", "HEAD")
+    if head == main_sha:
+        _pending_bytes(root, record)
+        _scan_publication(profile, record, receipt["commit_message"])
+        for item in record["files"]:
+            if item["operation"] == "delete":
+                core.git(root, "update-index", "--force-remove", "--", item["path"])
+            else:
+                raw = core.blob_path(profile, record["fingerprints"][item["path"]]).read_bytes()
+                oid = core.git(root, "hash-object", "-w", "--stdin", "--no-filters", data=raw).stdout.decode().strip()
+                prior = core.git_text(root, "ls-tree", receipt["source_sha"], "--", item["path"])
+                mode = prior.split()[0] if prior else "100644"
+                core.git(root, "update-index", "--add", "--cacheinfo", mode + "," + oid + "," + item["path"])
+        _pending_bytes(root, record)
+        core.git(root, "-c", "user.name=" + profile["actor"], "-c", "user.email=" + profile["actor"].lower()
+                 + "@cross-pc.invalid", "commit", "-F", "-", data=receipt["commit_message"].encode("utf-8"))
+        head = core.git_text(root, "rev-parse", "HEAD")
+    _verify_commit(root, record, head, main_sha)
+    if core.git_text(root, "log", "-1", "--format=%B") != receipt["commit_message"].strip():
+        raise ValueError("unknown integration commit after interruption")
+    if (core.git_text(root, "status", "--porcelain", "--untracked-files=all")
+            or core.fingerprints(root, record["fingerprints"]) != record["fingerprints"]):
+        raise ValueError("candidate changed after integration commit")
+    receipt.update(candidate_sha=head, stage="prepared", verified_at_utc=core.now())
+    path = _receipt_path(profile, record_id, main_sha)
+    core.atomic(path, receipt)
+    receipts = core.state(profile)
+    receipts["records"][record_id].update(integration_stage="validated", integration_receipt=str(path), integration_sha=head)
+    core.atomic(profile["state_path"], receipts)
     return receipt
 
 
@@ -225,6 +306,8 @@ def verify(profile, record_id, worktree, *, reviewed=False):
             raise ValueError("remote source branch changed")
         existing = _existing_candidate(profile, record_id, root, entry, record, source_sha)
         if existing:
+            if existing["stage"] == "committing":
+                return _finish_commit(profile, record_id, root, record, existing)
             return existing
         main_sha = core.git_text(root, "rev-parse", "HEAD")
         if not SHA.fullmatch(main_sha) or _remote(root, "main") != main_sha:
@@ -248,15 +331,6 @@ def verify(profile, record_id, worktree, *, reviewed=False):
                                 Path(profile["evidence_root"]) / "main-integration" / record_id / main_sha,
                                 original_root=record["source_root"])
         _candidate_bytes(root, record)
-        for item in record["files"]:
-            if item["operation"] == "delete":
-                core.git(root, "update-index", "--force-remove", "--", item["path"])
-            else:
-                raw = core.blob_path(profile, record["fingerprints"][item["path"]]).read_bytes()
-                oid = core.git(root, "hash-object", "-w", "--stdin", "--no-filters", data=raw).stdout.decode().strip()
-                prior = core.git_text(root, "ls-tree", source_sha, "--", item["path"])
-                mode = prior.split()[0] if prior else "100644"
-                core.git(root, "update-index", "--add", "--cacheinfo", mode + "," + oid + "," + item["path"])
         body = (profile["actor"] + ": Integrate " + record["summary"] + "\n\n"
                 + "Producer: " + producer + " (" + profile["machine"] + ")\nScope: shared\n"
                 + "Changes:\n" + "\n".join("- " + detail for detail in details) + "\n"
@@ -267,26 +341,20 @@ def verify(profile, record_id, worktree, *, reviewed=False):
                 + "Runtime: " + runtime + "\n"
                 + "Source-Commit: " + source_sha + "\nCompletion-Record: " + record_id + "\n"
                 + "Main-Base: " + main_sha + "\n")
-        core.git(root, "-c", "user.name=" + profile["actor"], "-c", "user.email=" + profile["actor"].lower()
-                 + "@cross-pc.invalid", "commit", "-F", "-", data=body.encode("utf-8"))
-        candidate_sha = core.git_text(root, "rev-parse", "HEAD")
-        _verify_commit(root, record, candidate_sha, main_sha)
-        if core.git_text(root, "status", "--porcelain", "--untracked-files=all"):
-            raise ValueError("candidate changed after integration commit")
+        _scan_publication(profile, record, body)
         path = _receipt_path(profile, record_id, main_sha)
         receipt = {"contract_version": "cross-pc-v2", "actor": profile["actor"], "record_id": record_id,
                    "record_sha256": entry["record_sha256"], "source_branch": branch, "source_sha": source_sha,
-                   "main_before": main_sha, "candidate_sha": candidate_sha, "integration_tests": tests,
-                   "stage": "prepared", "verified_at_utc": core.now(), "worktree": str(root)}
+                   "main_before": main_sha, "candidate_sha": None, "integration_tests": tests,
+                   "stage": "committing", "reviewed_at_utc": core.now(), "worktree": str(root),
+                   "commit_message": body, "commit_message_sha256": core.digest(body.encode("utf-8"))}
         if path.exists():
-            _, prior = _load_receipt(profile, record_id, main_sha)
-            if prior["candidate_sha"] != candidate_sha:
-                raise ValueError("a different integration candidate already owns this main base")
-            return prior
+            raise ValueError("an integration transaction already owns this main base; preserve its receipt")
+        # Persist passing evidence and the exact message before changing the index.
         core.atomic(path, receipt)
-        entry.update(integration_stage="validated", integration_receipt=str(path), integration_sha=candidate_sha)
+        entry.update(integration_stage="committing", integration_receipt=str(path))
         core.atomic(profile["state_path"], receipts)
-        return receipt
+        return _finish_commit(profile, record_id, root, record, receipt)
 
 
 def publish(profile, record_id, worktree, *, approved=False):
@@ -301,11 +369,13 @@ def publish(profile, record_id, worktree, *, approved=False):
         path, receipt = _load_receipt(profile, record_id, main_before)
         if (receipt.get("record_sha256") != entry["record_sha256"] or receipt.get("source_branch") != branch
                 or receipt.get("source_sha") != source_sha or receipt.get("candidate_sha") != candidate_sha
-                or receipt.get("worktree") != str(root)):
+                or receipt.get("worktree") != str(root)
+                or receipt.get("stage") not in {"prepared", "push_pending", "main_integrated"}):
             raise ValueError("integration receipt differs from sealed source or worktree")
         core.verify_test_evidence(receipt.get("integration_tests"), record["fingerprints"])
         _verify_commit(root, record, candidate_sha, main_before)
-        if core.git_text(root, "status", "--porcelain", "--untracked-files=all"):
+        if (core.git_text(root, "status", "--porcelain", "--untracked-files=all")
+                or core.fingerprints(root, record["fingerprints"]) != record["fingerprints"]):
             raise ValueError("integration worktree changed after tests")
         if _remote(root, branch) != source_sha:
             raise ValueError("remote source branch changed after verification")
@@ -316,12 +386,23 @@ def publish(profile, record_id, worktree, *, approved=False):
                 if core.git(root, "merge-base", "--is-ancestor", candidate_sha, current, check=False).returncode:
                     raise ValueError("main advanced outside the verified candidate; reprepare and retest")
             else:
-                core.git(root, "push", "origin", candidate_sha + ":refs/heads/main", check=False)
+                if receipt["stage"] != "prepared":
+                    raise ValueError("previous main push is not present on remote; preserve its receipt for review before retrying")
+                _scan_publication(profile, record, core.git_text(root, "log", "-1", "--format=%B"))
+                receipt.update(stage="push_pending", push_started_at_utc=core.now())
+                core.atomic(path, receipt)
+                entry.update(integration_stage="push_pending", integration_receipt=str(path))
+                core.atomic(profile["state_path"], receipts)
+                # An interrupted invocation reconciles this frozen SHA before any
+                # further write. It never blindly repeats an uncertain main push.
+                outcome = core.git(root, "push", "origin", candidate_sha + ":refs/heads/main", check=False)
+                receipt["push_exit_code"] = outcome.returncode
+                core.atomic(path, receipt)
                 current = _remote(root, "main")
                 if current != candidate_sha:
                     _fetch(root, record_id, "main", current, "main")
                     if core.git(root, "merge-base", "--is-ancestor", candidate_sha, current, check=False).returncode:
-                        raise RuntimeError("main push outcome unverified or advanced; prepared receipt retained")
+                        raise RuntimeError("main push outcome unverified or advanced; pending receipt retained")
         receipt.update(stage="main_integrated", integrated_sha=candidate_sha,
                        verified_remote_sha=current, published_at_utc=receipt.get("published_at_utc") or core.now())
         core.atomic(path, receipt)
