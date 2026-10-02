@@ -1,0 +1,126 @@
+{
+  "recorded_at_utc": "2026-09-30T08:34:29.990930+00:00",
+  "result": "passed",
+  "experiment_id": "20260930-paper-round-12",
+  "seed_at_utc": "2026-09-30T08:05:03.926644802+00:00",
+  "cadence_due_at_utc": "2026-09-30T09:05:03.926644+00:00",
+  "opening_unchanged": true,
+  "production_source_provenance_unchanged": true,
+  "scope": "Read-only UI/service projection; no workers restarted, no ledger edits, no cadence/settings changes",
+  "tests": {
+    "ui": 53,
+    "paper_and_powder_service": 85
+  },
+  "journals": {
+    "decisions": {
+      "rows": 108,
+      "probabilities": 84,
+      "research_context": 84,
+      "sample": [
+        {
+          "coin": "ZEC",
+          "account": "clearpond",
+          "timestamp_utc": "2026-09-30T08:30:22.889440+00:00",
+          "recorded_reason": "unqualified_forecast_excluded",
+          "p_not_down": 0.5467795917200924,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        },
+        {
+          "coin": "ZEC",
+          "account": "jeremy",
+          "timestamp_utc": "2026-09-30T08:30:22.889440+00:00",
+          "recorded_reason": "unqualified_forecast_excluded",
+          "p_not_down": 0.5467795917200924,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        },
+        {
+          "coin": "ZEC",
+          "account": "alex",
+          "timestamp_utc": "2026-09-30T08:30:22.889440+00:00",
+          "recorded_reason": "unqualified_forecast_excluded",
+          "p_not_down": 0.5467795917200924,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        },
+        {
+          "coin": "HYPE",
+          "account": "clearpond",
+          "timestamp_utc": "2026-09-30T08:30:22.888426+00:00",
+          "recorded_reason": "unqualified_forecast_excluded",
+          "p_not_down": 0.5174565499420324,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        }
+      ]
+    },
+    "fills": {
+      "rows": 8,
+      "probabilities": 8,
+      "research_context": 8,
+      "sample": [
+        {
+          "coin": "ZEC",
+          "account": "clearpond",
+          "timestamp_utc": "2026-09-30T08:06:30.913720+00:00",
+          "recorded_reason": "risk_cap",
+          "p_not_down": 0.5462352395516117,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        },
+        {
+          "coin": "ZEC",
+          "account": "jeremy",
+          "timestamp_utc": "2026-09-30T08:06:30.913720+00:00",
+          "recorded_reason": "risk_cap",
+          "p_not_down": 0.5462352395516117,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        },
+        {
+          "coin": "ZEC",
+          "account": "alex",
+          "timestamp_utc": "2026-09-30T08:06:30.913720+00:00",
+          "recorded_reason": "risk_cap",
+          "p_not_down": 0.5462352395516117,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        },
+        {
+          "coin": "HYPE",
+          "account": "clearpond",
+          "timestamp_utc": "2026-09-30T08:06:30.911909+00:00",
+          "recorded_reason": "risk_cap",
+          "p_not_down": 0.5031697690739885,
+          "display_qualification": "research",
+          "usage": "excluded",
+          "signal_qualified": null,
+          "signal_model_id": null
+        }
+      ]
+    }
+  },
+  "total_targeted_tests_passed": 138,
+  "finalized_at_utc": "2026-09-30T08:36:03.997873+00:00",
+  "visual_verification": {
+    "result": "passed",
+    "decisions": "C:\\dev\\ducketz\\artifacts\\analysis\\hyper-probability-ui-20260930\\decisions-local.png",
+    "fills": "C:\\dev\\ducketz\\artifacts\\analysis\\hyper-probability-ui-20260930\\fills-local-wide.png",
+    "source": "Separate read-only fixture of actual local ledger"
+  }
+}

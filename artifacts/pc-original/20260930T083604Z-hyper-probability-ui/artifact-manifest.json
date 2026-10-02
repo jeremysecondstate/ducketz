@@ -1,0 +1,106 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-09-30T08:36:04Z",
+  "completion_id": "20260930T083604Z-hyper-probability-ui",
+  "details": [
+    "Atlas publication review adopts four previously completed exact artifact paths; the original file-producing task is not identified by the saved evidence.",
+    "This machine-local UI evidence consists of three Atlas screenshots and one verification record. The saved fixture rows explicitly include HYPE and ZEC; the images are local review evidence, not live Scout state.",
+    "Saved verification finalized at 2026-09-30T08:36:03Z records 138 passing targeted UI and Paper/Powder service tests. These are historical results and were not rerun for this publication review.",
+    "The two adjacent Hyperliquid task-memory snapshots are intentionally excluded from this public artifact candidate. No worker restart, ledger edit, or cadence/settings change was recorded by the saved verification."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/decisions-local.png",
+      "expected_sha256": "e993606c83b25f7dbb53be5a69383a8dcd49cf174054bb8478ff61d45facfad1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/decisions-local.png",
+      "published_sha256": "e993606c83b25f7dbb53be5a69383a8dcd49cf174054bb8478ff61d45facfad1",
+      "published_size": 66545,
+      "sha256": "e993606c83b25f7dbb53be5a69383a8dcd49cf174054bb8478ff61d45facfad1",
+      "size": 66545,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/fills-local-wide.png",
+      "expected_sha256": "58958c1b904563488e811113b98e8bda69ec41b2fb45ad2a1c78ab27b2f5dc29",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/fills-local-wide.png",
+      "published_sha256": "58958c1b904563488e811113b98e8bda69ec41b2fb45ad2a1c78ab27b2f5dc29",
+      "published_size": 71025,
+      "sha256": "58958c1b904563488e811113b98e8bda69ec41b2fb45ad2a1c78ab27b2f5dc29",
+      "size": 71025,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/fills-local.png",
+      "expected_sha256": "a45e4640b37aa2f5ede3a71af62342bfc4905dde73792d9371b96621705600bd",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/fills-local.png",
+      "published_sha256": "a45e4640b37aa2f5ede3a71af62342bfc4905dde73792d9371b96621705600bd",
+      "published_size": 65761,
+      "sha256": "a45e4640b37aa2f5ede3a71af62342bfc4905dde73792d9371b96621705600bd",
+      "size": 65761,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/verification.json",
+      "expected_sha256": "08c44b80335bb920511108613e4b805e985a2817a4fc02f8a881283c0265cf96",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/verification.json",
+      "published_sha256": "08c44b80335bb920511108613e4b805e985a2817a4fc02f8a881283c0265cf96",
+      "published_size": 4409,
+      "sha256": "08c44b80335bb920511108613e4b805e985a2817a4fc02f8a881283c0265cf96",
+      "size": 4409,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "e993606c83b25f7dbb53be5a69383a8dcd49cf174054bb8478ff61d45facfad1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/decisions-local.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "58958c1b904563488e811113b98e8bda69ec41b2fb45ad2a1c78ab27b2f5dc29",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/fills-local-wide.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "a45e4640b37aa2f5ede3a71af62342bfc4905dde73792d9371b96621705600bd",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/fills-local.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "08c44b80335bb920511108613e4b805e985a2817a4fc02f8a881283c0265cf96",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-probability-ui-20260930/verification.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "machine-local",
+  "source_head": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+  "summary": "Archive Atlas Hyperliquid probability UI verification and screenshots",
+  "symbols": []
+}
