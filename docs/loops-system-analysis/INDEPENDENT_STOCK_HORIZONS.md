@@ -103,9 +103,9 @@ its 07:00 Pacific target end. That entry was missed; the ordinary 07:00 TWST
 instruction subsequently filled 15 shares at $127.22 at 07:01:29 Pacific.
 Ordinary restarts of the current Gameplan policy do not need recovery flags.
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
 
-The accepted stock design covers the production symbols in `datafetching/watchlist.txt`.
+The accepted stock design covers this PC's configured production symbols.
 All clocks below are America/Los_Angeles. Options remain separate research.
 
 The September 14 production universe contains eleven symbols after verified

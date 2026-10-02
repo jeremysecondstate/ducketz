@@ -4,7 +4,7 @@ The separate Hyperliquid data/model/Paper portfolio stack and H.Y.P.E.R.
 workspace are documented in
 [Hyperliquid system analysis](../hyperliquid-system-analysis/README.md).
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
 
 This directory documents the current Loops implementation. Code, immutable
 receipts, provider cursors, and datastore health are authoritative; prose alone
@@ -97,7 +97,7 @@ Earlier immutable publications retain their original policies and scores.
 
 ## Current data authority
 
-- The production universe is configured in `datafetching/watchlist.txt` and
+- The production universe comes from this PC's configured watchlist and is
   shared by Loop A, ML, option routes, and the stock trader. Additions follow
   [Symbol onboarding](SYMBOL_ONBOARDING.md), including history parity, candidate
   training, publication checks, and activation receipts.

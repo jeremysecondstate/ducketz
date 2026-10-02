@@ -1,6 +1,9 @@
 # Configured-universe stock trader
 
-Current membership comes from `datafetching/watchlist.txt`. Research selections
+Current membership comes from this PC's configured watchlist:
+`datafetching/watchlist.local.txt` when present, otherwise the shared
+`datafetching/watchlist.txt`. See [Running Ducketz on two PCs](../multiple-pcs.md)
+for override precedence and setup. Research selections
 enter through [the verified onboarding path](RESEARCH_SYMBOL_ONBOARDING.md);
 each publication retains its own universe and `24 × N` forecast identity.
 Adding symbols preserves the existing risk limits and manual initial-start rule.

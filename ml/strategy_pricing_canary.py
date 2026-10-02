@@ -13,6 +13,7 @@ import pandas as pd
 
 from datafetching.bar_readiness import read_bar_readiness
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
+from datafetching.symbol_universe import configured_watchlist_path
 from ml.option_pricing.target_outcome import read_target_outcome
 from ml.strategy_publication import (
     StrategyPublication,
@@ -27,7 +28,7 @@ from ml.strategy_selection.contracts import (
 from ml.strategy_selection.runtime import _opra_execution_model_eligible
 
 
-DEFAULT_WATCHLIST = Path(__file__).resolve().parents[1] / "datafetching" / "watchlist.txt"
+DEFAULT_WATCHLIST = configured_watchlist_path()
 
 
 class StrategyPricingCanaryError(RuntimeError):

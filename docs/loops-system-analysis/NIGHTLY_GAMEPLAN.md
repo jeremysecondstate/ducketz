@@ -93,7 +93,7 @@ improved accuracy merely to satisfy the readiness request.
 This versioned target contract supersedes cost-adjusted-only descriptions below
 for new YG publications; historical publications keep their saved semantics.
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
 
 September 14 onboarding: CROX, PATH, TWST and IONQ are now active, bringing the
 current universe to eleven (264 forecasts, 264 stock-only intents, 33 production
@@ -137,7 +137,7 @@ failed stage when a restart is needed. Long, healthy training is expected.
 
 ## Operating day
 
-- The production universe is configured in `datafetching/watchlist.txt`; use
+- The production universe comes from this PC's configured watchlist; use
   [SYMBOL_ONBOARDING.md](SYMBOL_ONBOARDING.md) for additions. Validate each saved
   run against its own symbol manifest, including older six-symbol publications.
 - The stock action window is 04:00 through 17:00 America/Los_Angeles. All configured

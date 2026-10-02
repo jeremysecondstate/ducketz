@@ -63,7 +63,7 @@ def restore_references(root, folder, plan_id, candidate_source):
 def finalize_batch(path, batch):
     from datafetching.research_onboarding import (verify_overnight_completion, verify_trade_plan,
                                                  validate_in_subprocess, activate_batch)
-    from datafetching.symbol_universe import REPOSITORY_WATCHLIST, read_symbols
+    from datafetching.symbol_universe import production_watchlist_path, read_symbols
     from ml.artifacts import file_checksum, verify_manifest
     from ml.nightly_gameplan import read_gameplan_run
     root, folder = Path(batch['datastore_root']).resolve(), path.parent
@@ -80,7 +80,7 @@ def finalize_batch(path, batch):
     if utc_timestamp() >= deadline:
         raise ValueError('Batch activation deadline passed; retain the completed candidate for review')
     with publication_locks(root):
-        if read_symbols(REPOSITORY_WATCHLIST) not in (tuple(batch['previous_symbols']), tuple(batch['candidate_symbols'])):
+        if read_symbols(production_watchlist_path()) not in (tuple(batch['previous_symbols']), tuple(batch['candidate_symbols'])):
             raise ValueError('Production membership changed independently')
         baseline = snapshot_references(root, folder, batch['plan_id'])
         publication = read_gameplan_run(root, root/source)
@@ -117,6 +117,6 @@ def finalize_batch(path, batch):
                 raise ValueError('Batch activation deadline passed during validation')
             return activate_batch(path, batch)
         except Exception:
-            if read_symbols(REPOSITORY_WATCHLIST) == tuple(batch['previous_symbols']):
+            if read_symbols(production_watchlist_path()) == tuple(batch['previous_symbols']):
                 restore_references(root, folder, batch['plan_id'], source)
             raise

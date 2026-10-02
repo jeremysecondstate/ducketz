@@ -19,6 +19,7 @@ from filelock import FileLock, Timeout
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import runtime_lock_maintenance_gate
+from datafetching.symbol_universe import configured_watchlist_path
 from ml.prediction_runtime import (
     DEFAULT_INTERVAL_MINUTES as LOOP_B_INTERVAL_MINUTES,
     DEFAULT_PHASE_OFFSET_MINUTES as LOOP_B_PHASE_OFFSET_MINUTES,
@@ -117,6 +118,16 @@ class GuardianLaunchSpec:
 # These are a deliberately closed restart allowlist. They match the checked-in
 # production commands. Options recovery keeps the current prospective-only
 # posture so an unattended liveness repair cannot initiate historical catch-up.
+def _watchlist_argument() -> str:
+    selected = configured_watchlist_path()
+    repository = Path(__file__).resolve().parents[1]
+    try:
+        # Preserve deployed command identities when shared defaults still apply.
+        return str(selected.relative_to(repository))
+    except ValueError:
+        return str(selected)
+
+
 GUARDIAN_LAUNCHES = (
     GuardianLaunchSpec(
         "cme",
@@ -154,7 +165,7 @@ GUARDIAN_LAUNCHES = (
             "--datastore-target",
             "pc",
             "--watchlist",
-            r"datafetching\watchlist.txt",
+            _watchlist_argument(),
             "--providers",
             "databento",
             "fmp",
@@ -193,7 +204,7 @@ GUARDIAN_LAUNCHES = (
             "--datastore-target",
             "pc",
             "--watchlist",
-            r"datafetching\watchlist.txt",
+            _watchlist_argument(),
             "--interval-minutes",
             "15",
             "--phase-offset-minutes",
@@ -214,7 +225,7 @@ GUARDIAN_LAUNCHES = (
             "--datastore-target",
             "pc",
             "--watchlist",
-            r"datafetching\watchlist.txt",
+            _watchlist_argument(),
             "--provider",
             "databento",
             "--horizons",
@@ -252,7 +263,7 @@ GUARDIAN_LAUNCHES = (
             "--datastore-target",
             "pc",
             "--watchlist",
-            r"datafetching\watchlist.txt",
+            _watchlist_argument(),
             "--provider-mode",
             "opra-canonical",
             "--interval-minutes",

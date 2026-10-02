@@ -7,7 +7,9 @@ duplicate ownership. Read this file before manually invoking that fallback.
 
 ## Purpose and ownership boundary
 
-The lane incrementally maintains every parent in `datafetching/watchlist.txt` and the three
+The lane incrementally maintains every parent in this PC's configured watchlist
+(`datafetching/watchlist.local.txt` when present, otherwise the shared
+`datafetching/watchlist.txt`; see [two-PC setup](../multiple-pcs.md)) and the three
 schemas required by options-strategy modeling: `ohlcv-1h`, `cbbo-1m`, and
 `definition`. Exact `cbbo-1m` snapshots supply historical candidate entry/exit
 BBO economics; hourly bars supply surface context/cross-checks; definitions

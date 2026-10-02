@@ -28,7 +28,10 @@ from datafetching.databento_cold_start import (
 from datafetching.main import run_symbol_fetch
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
-from datafetching.symbol_universe import REPOSITORY_WATCHLIST, WATCHLIST_ENV, normalize_symbol, read_symbols
+from datafetching.symbol_universe import (
+    REPOSITORY_WATCHLIST, WATCHLIST_ENV, normalize_symbol,
+    production_watchlist_path, read_symbols,
+)
 
 VERSION = "symbol-onboarding-v1"
 PRODUCTION_OPRA_SCHEMAS = ("definition", "ohlcv-1h", "cbbo-1m")
@@ -127,7 +130,7 @@ def enforce_budget(estimates: list[dict], *, max_billable_bytes: int, max_cost_u
 def build_plan(root: Path, client: object, *, symbol: str, reference: str,
                max_billable_bytes: int = 20_000_000_000, max_cost_usd: float = 1.0) -> dict:
     symbol, reference = normalize_symbol(symbol), normalize_symbol(reference)
-    current = read_symbols()
+    current = read_symbols(production_watchlist_path())
     if symbol in current or reference not in current:
         raise ValueError("Candidate must be new and its reference must already be active")
     catalog = client.metadata.get_dataset_range(dataset="OPRA.PILLAR")
@@ -420,15 +423,16 @@ def activate_plan(path: Path) -> dict:
         raise ValueError("Operational history receipt is not complete")
     if secondary.get("plan_id") != plan["plan_id"] or secondary.get("status") != "COMPLETE":
         raise ValueError("Secondary history quality receipt is not complete")
-    with exclusive_runtime_lock(REPOSITORY_WATCHLIST.with_suffix(".activation.lock"), process_name="Duckets universe activation"):
-        current = read_symbols(REPOSITORY_WATCHLIST)
+    watchlist = production_watchlist_path()
+    with exclusive_runtime_lock(watchlist.with_suffix(".activation.lock"), process_name="Duckets universe activation"):
+        current = read_symbols(watchlist)
         if current not in (tuple(plan["previous_symbols"]), tuple(plan["candidate_symbols"])):
             raise ValueError("Production watchlist changed independently; reconcile before activation")
         if current != tuple(plan["candidate_symbols"]):
-            temporary = REPOSITORY_WATCHLIST.with_suffix(".txt.tmp")
-            previous_text = REPOSITORY_WATCHLIST.read_text(encoding="utf-8")
+            temporary = watchlist.with_suffix(".txt.tmp")
+            previous_text = watchlist.read_text(encoding="utf-8")
             temporary.write_text(previous_text.rstrip() + "\n" + plan["symbol"] + "\n", encoding="utf-8")
-            temporary.replace(REPOSITORY_WATCHLIST)
+            temporary.replace(watchlist)
         receipt = {**validation, "status": "ACTIVE", "activated_at": _now(),
                    "after": inventory(Path(plan["datastore_root"]), plan["symbol"])}
         _write(path.parent / "activation.json", receipt)

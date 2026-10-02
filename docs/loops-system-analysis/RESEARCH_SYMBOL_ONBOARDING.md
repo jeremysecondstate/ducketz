@@ -8,8 +8,12 @@ not upgrade its investment assessment or claim that a recommendation qualified.
 The reusable entry point is `python -m datafetching.research_onboarding`. It adds
 all selected companies as one candidate batch, runs the existing native stock
 pipeline, verifies the outputs, and activates the complete batch atomically.
-`datafetching/watchlist.txt` remains the production authority. Every consumer and
-Scheduled task must read it rather than maintain a separate literal symbol list.
+The durable production authority is `datafetching/watchlist.local.txt` when
+present in this checkout, otherwise the shared `datafetching/watchlist.txt`.
+Every consumer and Scheduled task must resolve this PC's configured watchlist
+rather than maintain a separate literal symbol list. Candidate runs can use
+`DUCKETS_PRODUCTION_WATCHLIST`; activation still updates the durable production
+list. See [Running Ducketz on two PCs](../multiple-pcs.md) for setup and precedence.
 
 ## Plan an explicitly selected batch
 
