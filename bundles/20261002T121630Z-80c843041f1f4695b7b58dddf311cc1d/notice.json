@@ -1,0 +1,30 @@
+{
+  "author": "Scout / pc-new",
+  "change_id": "20261002T120937Z-5d1032418edc4b67bad43b740bb4061a-main",
+  "completion_record": "20261002T120937Z-5d1032418edc4b67bad43b740bb4061a",
+  "files": [
+    "ml/stock_trader/gameplan_execution.py",
+    "tests/test_gameplan_execution_abstention.py",
+    "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+  ],
+  "findings": [
+    "The publisher can retain a calibrated probability while explicitly saving NO_EDGE and RESEARCH_NO_TARGET_HISTORY with zero fitted support. The reader previously rejected that valid abstention.",
+    "The reader now omits only supported explicit abstentions, preserves probability and artifact bytes, rejects genuine contradictions and duplicate allocations, and shares validation with preflight.",
+    "The local Daytime Supervision prompt now distinguishes saved-instruction errors, source availability, installation, loaded worker code and actual broker-capture recovery. Native schedule and settings were preserved."
+  ],
+  "limitations": [
+    "Twelve champion-model test failures caused by missing gameplan.json fixtures reproduce at the unchanged base and are outside the passing seven-suite check.",
+    "Local source installation and worker reload are pending; this notice does not establish peer installation or runtime use."
+  ],
+  "logical_task": "overnight_gameplan",
+  "main_commit": "cb133c309a074a9c3cf2004a756cadfc914da1e3",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Review exact immutable source and local dependencies before adoption. A running Python worker retains its imported module; a locally authorized normal stop and fresh manual start are required to load the repair. Preserve all local symbols, frozen artifacts, controls, ledgers and reservations under local operating ownership. Do not replay prior entry slots.",
+  "scope": "shared",
+  "source_commit": "f73130f245ad6957690781fcabdc52674cd1aa67",
+  "summary": "Gameplan execution now preserves explicit no-history abstentions and validates saved instructions during preflight.",
+  "tests": [
+    "175 offline tests passed on final main candidate, including 47 new abstention regressions; completed 2026-10-02T12:15:21.928076Z.",
+    "Reviewed 101 exact source/test/dependency fingerprints; socket-denied verification, no provider or broker requests."
+  ]
+}
