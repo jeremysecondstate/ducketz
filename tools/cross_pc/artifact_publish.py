@@ -40,7 +40,7 @@ def _fail(message: str):
 
 def _git(root: Path, *args: str, data: bytes | None = None, check: bool = True) -> subprocess.CompletedProcess:
     result = subprocess.run(
-        ["git", "-c", "commit.gpgsign=false", *args], cwd=root, input=data,
+        ["git", "-c", "core.longpaths=true", "-c", "commit.gpgsign=false", *args], cwd=root, input=data,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180,
     )
     if check and result.returncode:
@@ -51,6 +51,20 @@ def _git(root: Path, *args: str, data: bytes | None = None, check: bool = True) 
 
 def _text(root: Path, *args: str) -> str:
     return _git(root, *args).stdout.decode("utf-8", "strict").strip()
+
+
+def _hash_object(worktree: Path, source: Path) -> str:
+    # On Windows a full snapshot path can exceed Git's argv path limit. Feed
+    # the already reviewed bytes over stdin without loading large files into RAM.
+    with source.open("rb") as reader:
+        result = subprocess.run(
+            ["git", "-c", "commit.gpgsign=false", "hash-object", "-w", "--stdin"],
+            cwd=worktree, stdin=reader, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=180,
+        )
+    if result.returncode:
+        _fail("git hash-object failed; receipt remains available for review")
+    return result.stdout.decode("ascii").strip()
 
 
 def _hash_file(path: Path) -> tuple[str, int]:
@@ -450,14 +464,14 @@ def _verify_superseded_base(worktree: Path, receipt: dict, base: str):
         prior = item.get("supersedes")
         if prior is None:
             continue
-        result = _git(worktree, "show", f'{base}:{prior["destination"]}', check=False)
+        result = _git(worktree, "cat-file", "blob", f'{base}:{prior["destination"]}', check=False)
         if result.returncode or hashlib.sha256(result.stdout).hexdigest() != prior["published_sha256"]:
             _fail("prior published artifact differs from reviewed revision base")
 
 
 def _verify_deduplicated_base(worktree: Path, receipt: dict, base: str):
     for prior in receipt.get("deduplicated_from", []):
-        result = _git(worktree, "show", f'{base}:{prior["destination"]}', check=False)
+        result = _git(worktree, "cat-file", "blob", f'{base}:{prior["destination"]}', check=False)
         if result.returncode or hashlib.sha256(result.stdout).hexdigest() != prior["published_sha256"]:
             _fail("previous identical artifact is no longer on main")
 
@@ -497,12 +511,12 @@ def _verify_commit(worktree: Path, receipt: dict, sha: str, base: str):
     changed = set(_git(worktree, "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", sha).stdout.decode("utf-8").rstrip("\0").split("\0"))
     if changed != expected:
         _fail("artifact commit contains paths outside the reviewed snapshot")
-    manifest = _git(worktree, "show", sha + ":" + prefix + "/artifact-manifest.json").stdout
+    manifest = _git(worktree, "cat-file", "blob", sha + ":" + prefix + "/artifact-manifest.json").stdout
     if hashlib.sha256(manifest).hexdigest() != receipt["manifest_sha256"]:
         _fail("artifact commit manifest differs from reviewed snapshot")
     for item in receipt["files"]:
         if item["destination"]:
-            raw = _git(worktree, "show", sha + ":" + item["destination"]).stdout
+            raw = _git(worktree, "cat-file", "blob", sha + ":" + item["destination"]).stdout
             if hashlib.sha256(raw).hexdigest() != item["published_sha256"]:
                 _fail("artifact commit bytes differ from reviewed snapshot")
 
@@ -528,7 +542,7 @@ def _prepare_commit(profile: dict, receipt: dict, worktree: Path, base: str) -> 
         destination = core.safe_path(worktree, target)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
-        blob = _git(worktree, "hash-object", "-w", "--no-filters", str(source)).stdout.decode("ascii").strip()
+        blob = _hash_object(worktree, source)
         _git(worktree, "update-index", "--add", "--cacheinfo", "100644", blob, target)
         intended.add(target)
     manifest_target = target_root + "/artifact-manifest.json"
@@ -538,7 +552,7 @@ def _prepare_commit(profile: dict, receipt: dict, worktree: Path, base: str) -> 
     manifest_dest = core.safe_path(worktree, manifest_target)
     manifest_dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(manifest_source, manifest_dest)
-    manifest_blob = _git(worktree, "hash-object", "-w", "--no-filters", str(manifest_source)).stdout.decode("ascii").strip()
+    manifest_blob = _hash_object(worktree, manifest_source)
     _git(worktree, "update-index", "--add", "--cacheinfo", "100644", manifest_blob, manifest_target)
     intended.add(manifest_target)
     staged = set(_git(worktree, "diff", "--cached", "--name-only", "-z").stdout.decode("utf-8").rstrip("\0").split("\0"))
@@ -591,6 +605,22 @@ def publish(profile: dict, completion_id: str, worktree: str | Path, *, quiet_se
             _verify_live(receipt, quiet_seconds)
             if _text(worktree, "status", "--porcelain"):
                 _fail("isolated worktree has unrelated changes")
+            # A process can stop after creating the exact commit and before
+            # recording its SHA. Reconcile that local stage instead of
+            # creating a second commit from the same immutable snapshot.
+            if receipt["stage"] == "snapshotted":
+                head = _text(worktree, "rev-parse", "HEAD")
+                parent = _git(worktree, "rev-parse", head + "^", check=False)
+                if parent.returncode == 0:
+                    recovered_base = parent.stdout.decode("ascii").strip()
+                    try:
+                        _verify_commit(worktree, receipt, head, recovered_base)
+                    except ArtifactPublishError:
+                        pass
+                    else:
+                        receipt.update(stage="committed", base_sha=recovered_base,
+                                       commit_sha=head, committed_at_utc=core.now())
+                        _save_receipt(path, receipt)
             for _ in range(3):
                 remote = _remote_main(worktree)
                 if receipt["stage"] == "committed" and receipt.get("commit_sha"):

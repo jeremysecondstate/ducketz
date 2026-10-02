@@ -156,6 +156,19 @@ def test_token_named_artifact_uses_exact_value_scan(site):
         publisher.snapshot(profile, root, spec(root, name, id="20261002T080100Z-run00002"))
 
 
+def test_long_git_paths_and_interrupted_commit_are_reconciled(site):
+    root, worktree, remote, profile = site
+    name = "artifacts/analysis/overnight-20261001/" + "x" * 50 + "/" + "y" * 45 + ".json"
+    output(root, name, b"reviewed long-path output\n")
+    record = publisher.snapshot(profile, root, spec(root, name))
+    base = git(worktree, "rev-parse", "HEAD")
+    committed = publisher._prepare_commit(profile, record, worktree, base)
+    assert json.loads(publisher._receipt_path(profile, record["id"]).read_text())["stage"] == "snapshotted"
+    result = publisher.publish(profile, record["id"], worktree)
+    assert result["commit_sha"] == committed
+    assert result["remote_sha"] == git(worktree, "ls-remote", "origin", "refs/heads/main").split()[0]
+
+
 def test_deterministic_gzip_round_trip_and_original_hash(site):
     root, worktree, remote, profile = site
     name = "artifacts/analysis/overnight-20261001/holdings.sqlite3"
