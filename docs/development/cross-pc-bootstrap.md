@@ -89,6 +89,8 @@ not preapproved work or invented test evidence:
   "reviewed": true,
   "base_commit": "EXACT_REVIEWED_40_HEX_HEAD",
   "summary": "Concrete problem and resulting behavior",
+  "scope": "shared",
+  "change_details": ["Describe the practical source change without private values"],
   "files": [
     {"path": "ml/example.py", "operation": "modify", "owned": true},
     {"path": "tests/test_example.py", "operation": "add", "owned": true}
@@ -110,6 +112,15 @@ from the base must become reviewed owned operations or remain blocked. Deletion
 requires `operation=delete`. Test paths must be repository-relative; replay
 rejects inline code, external scripts and path/cwd overrides. Tests themselves
 must be reviewed to stay offline and import the candidate.
+
+Set `scope` to `shared` for common source or `symbol-specific` for a reviewed
+symbol overlay. The latter labels this PC's applicability; it does not stop a
+peer from receiving a later main commit. New completion specs should include
+short `change_details` describing the behavior and any symbol boundary without
+symbols, account values, credentials or local paths. Publication commit messages
+list the producer, scope, details, exact owned paths/operations, isolated check
+times and output hashes, limitations and runtime implications. Older sealed
+records without these fields remain `unclassified` and need field-level review.
 
 Overlapping producers need explicit locally recorded ownership resolution.
 Supersession must identify actual overlapping predecessor records, preserve their

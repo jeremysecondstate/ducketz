@@ -122,6 +122,8 @@ def test_queue_fairness_is_independent_of_delivery_outage(setup):
 
 def test_exact_publication_preserves_application_and_never_duplicates(setup, tmp_path):
     root, profile, spec = setup
+    spec["scope"] = "shared"
+    spec["change_details"] = ["Keep Gameplan output consistent for both PCs"]
     # CRLF bytes must survive Git staging without conversion.
     (root / "app/gameplan.py").write_bytes(b"def plan(symbols):\r\n    return {symbol: 3 for symbol in symbols}\r\n")
     before = (run(root, "rev-parse", "HEAD"), run(root, "status", "--porcelain"), (root / ".git/index").read_bytes())
@@ -133,6 +135,17 @@ def test_exact_publication_preserves_application_and_never_duplicates(setup, tmp
     core.verify_candidate(profile, record["id"], tree, reviewed=True)
     result = core.publish_source(profile, record["id"])
     assert result["source_stage"] == "pushed"
+    message = run(tree, "log", "-1", "--format=%B")
+    assert "Producer: dev" in message
+    assert "Scope: Shared source for Atlas and Scout" in message
+    assert "- Keep Gameplan output consistent for both PCs" in message
+    assert "- modify app/gameplan.py" in message
+    assert "repository test script tests/check.py passed " in message
+    assert record["fingerprints"]["app/gameplan.py"] not in message
+    assert "output SHA-256 " + core.state(profile)["records"][record["id"]]["isolated_tests"][0]["output_sha256"] in message
+    assert "- Offline fixture" in message
+    assert "Runtime: Source availability only; no runtime change." in message
+    assert str(sys.executable) not in message
     assert core.git(tree, "show", result["commit_sha"] + ":app/gameplan.py").stdout == (root / "app/gameplan.py").read_bytes()
     assert core.publish_source(profile, record["id"])["commit_sha"] == result["commit_sha"]
     assert before == (run(root, "rev-parse", "HEAD"), run(root, "status", "--porcelain"), (root / ".git/index").read_bytes())
@@ -240,6 +253,32 @@ def test_failed_check_does_not_queue_ready_record(setup):
 def test_private_and_escaping_paths_rejected(name):
     with pytest.raises(ValueError):
         core.shareable(name)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("scope", "Atlas-only"),
+    ("summary", "Updated C:\\Users\\Operator\\private.json"),
+    ("runtime_implications", "account_id=123456789"),
+    ("change_details", ["Read token=private-value from local state"]),
+    ("limitations", ["See /Users/operator/private.log"]),
+])
+def test_queue_rejects_private_or_ambiguous_public_commit_metadata(setup, field, value):
+    root, profile, spec = setup
+    spec[field] = value
+    with pytest.raises(ValueError):
+        core.queue(profile, root, spec)
+    assert not core.state(profile)["records"]
+
+
+def test_symbol_specific_source_message_identifies_peer_boundary(setup):
+    root, profile, spec = setup
+    spec["scope"] = "symbol-specific"
+    spec["change_details"] = ["Document Atlas-specific overlay without changing shared behavior"]
+    record = core.queue(profile, root, spec)
+    message = core.source_commit_message(record, record["tests"])
+    assert "Scope: Atlas symbol-specific material; peer keeps its own symbol settings" in message
+    assert "Document Atlas-specific overlay" in message
+    assert "Completion-Record: " + record["id"] in message
 
 
 @pytest.mark.parametrize("name", ["app/ui/gameplan.py", "ml/nightly_gameplan.py",

@@ -35,6 +35,13 @@ _PRIVATE_SUFFIXES = {
     ".db", ".sqlite", ".sqlite3", ".parquet", ".pkl", ".pickle", ".joblib", ".pem",
     ".key", ".pyc", ".pyo", ".feather", ".arrow", ".h5", ".hdf5", ".onnx", ".pt", ".pth",
 }
+_PRIVATE_PUBLIC_TEXT = re.compile(
+    r"[A-Za-z]:[/\\]|\\\\|/(?:Users|home|mnt|tmp)/|"
+    r"\b(?:api[_-]?key|secret|token|password|account(?:[_-]?(?:id|number))?)\s*[:=]\s*\S+|"
+    r"\b(?:sk-[A-Za-z0-9_-]{12,}|ghp_[A-Za-z0-9]{12,})\b|"
+    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+    re.IGNORECASE,
+)
 
 
 def now():
@@ -145,6 +152,15 @@ def shareable(value):
     if not shared_source_path(value):
         raise ValueError("local/private path cannot be queued")
     return value
+
+
+def public_commit_text(value, field):
+    """Reject obvious private values from metadata destined for a public commit."""
+    if not isinstance(value, str) or not value.strip() or len(value) > 1000 or any(ord(char) < 32 for char in value):
+        raise ValueError(field + " must be concise single-line public text")
+    if _PRIVATE_PUBLIC_TEXT.search(value):
+        raise ValueError(field + " contains a private path or identifier")
+    return value.strip()
 
 
 def safe_path(root, name):
@@ -319,6 +335,16 @@ def queue(profile, source, spec):
         raise ValueError("producer must be locally authorized and review complete")
     if not spec.get("summary") or not isinstance(spec.get("limitations"), list) or not spec.get("runtime_implications"):
         raise ValueError("summary, limitations and runtime implications required")
+    summary = public_commit_text(spec["summary"], "summary")
+    runtime_implications = public_commit_text(spec["runtime_implications"], "runtime_implications")
+    limitations = [public_commit_text(item, "limitation") for item in spec["limitations"]]
+    scope = spec.get("scope", "unclassified")
+    if scope not in {"shared", "symbol-specific", "unclassified"}:
+        raise ValueError("scope must be shared, symbol-specific or unclassified")
+    details = spec.get("change_details", [])
+    if not isinstance(details, list) or len(details) > 12:
+        raise ValueError("change_details must be a short reviewed list")
+    details = [public_commit_text(item, "change detail") for item in details]
     base = spec["base_commit"]
     if not re.fullmatch("[0-9a-f]{40}", base) or git_text(source, "rev-parse", "HEAD") != base:
         raise ValueError("queue source must be at the reviewed base")
@@ -348,8 +374,9 @@ def queue(profile, source, spec):
     tests = run_checks(source, spec["checks"], expected, Path(profile["evidence_root"]) / record_id)
     record = {"schema_version": 2, "contract_version": VERSION, "id": record_id, "actor": profile["actor"],
               "producer": spec["producer"], "base_commit": base, "source_root": str(Path(source).resolve()),
-              "completed_at_utc": now(), "summary": spec["summary"], "files": files, "fingerprints": expected,
-              "tests": tests, "limitations": spec["limitations"], "runtime_implications": spec["runtime_implications"],
+              "completed_at_utc": now(), "summary": summary, "scope": scope, "change_details": details,
+              "files": files, "fingerprints": expected,
+              "tests": tests, "limitations": limitations, "runtime_implications": runtime_implications,
               "supersedes": spec.get("supersedes", []), "ready": True, "reviewed": True}
     with exclusive(profile["git_lock"]):
         receipts = state(profile)
@@ -528,6 +555,47 @@ def verify_commit(root, record, commit):
             raise ValueError("committed bytes differ from reviewed snapshot")
 
 
+def source_commit_message(record, isolated_tests):
+    """Describe sealed source work without copying local paths or test output."""
+    actor = record["actor"]
+    scope = record.get("scope", "unclassified")
+    if scope == "shared":
+        applicability = "Shared source for Atlas and Scout"
+    elif scope == "symbol-specific":
+        applicability = actor + " symbol-specific material; peer keeps its own symbol settings"
+    elif scope == "unclassified":
+        applicability = "Unclassified source; field-level applicability review required"
+    else:
+        raise ValueError("unknown source scope")
+    summary = public_commit_text(record["summary"], "summary")
+    runtime = public_commit_text(record["runtime_implications"], "runtime_implications")
+    details = record.get("change_details") or [summary]
+    limitations = record["limitations"]
+    lines = [actor + ": " + summary, "", "Producer: " + record["producer"],
+             "Scope: " + applicability, "", "Changes:"]
+    lines.extend("- " + public_commit_text(item, "change detail") for item in details)
+    lines.extend(["", "Owned files:"])
+    lines.extend("- " + item["operation"] + " " + shareable(item["path"]) for item in record["files"])
+    lines.extend(["", "Offline checks:"])
+    for index, test in enumerate(isolated_tests, 1):
+        validate_check(test["argv"])
+        argv = test["argv"][1:]
+        if argv and argv[0] == "-B":
+            argv = argv[1:]
+        kind = argv[1] if argv[0] == "-m" else "repository test script"
+        targets = [part for part in argv if part.startswith("tests/")]
+        label = kind + (" " + ", ".join(targets) if targets else "")
+        lines.append("- " + str(index) + ": " + label + " passed " + test["started_at_utc"] +
+                     " to " + test["completed_at_utc"] + " (output SHA-256 " + test["output_sha256"] + ")")
+    lines.extend(["", "Limitations:"])
+    lines.extend("- " + public_commit_text(item, "limitation") for item in limitations)
+    if not limitations:
+        lines.append("- None recorded")
+    lines.extend(["", "Runtime: " + runtime, "",
+                  "Codex-Author: " + actor, "Completion-Record: " + record["id"], ""])
+    return "\n".join(lines)
+
+
 def publish_source(profile, record_id):
     """Normal own-branch push; durable commit stage before network, exact SHA readback."""
     with exclusive(profile["git_lock"]):
@@ -576,11 +644,7 @@ def publish_source(profile, record_id):
                     prior = git_text(root, "ls-tree", record["base_commit"], "--", item["path"])
                     mode = prior.split()[0] if prior else "100644"
                     git(root, "update-index", "--add", "--cacheinfo", mode + "," + blob + "," + item["path"])
-            body = (profile["actor"] + ": " + record["summary"] + "\n\n"
-                    + "Reviewed immutable completion " + record_id + ".\n"
-                    + "Validation: " + str(len(entry["isolated_tests"])) + " passing offline check commands; exact evidence retained locally.\n"
-                    + "Runtime: " + record["runtime_implications"] + "\n"
-                    + "Codex-Author: " + profile["actor"] + "\nCompletion-Record: " + record_id + "\n")
+            body = source_commit_message(record, entry["isolated_tests"])
             git(root, "-c", "core.hooksPath=", "-c", "commit.gpgsign=false", "commit", "-F", "-", data=body.encode())
             verify_commit(root, record, git_text(root, "rev-parse", "HEAD"))
             entry.update(source_stage="committed", commit_sha=git_text(root, "rev-parse", "HEAD"), committed_at_utc=now())
