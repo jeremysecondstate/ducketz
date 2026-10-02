@@ -33,6 +33,10 @@ from ml.artifacts import (
     write_manifest,
 )
 from ml.training_progress import fit_with_progress
+from ml.stock_trader.cross_horizon_fallback import (
+    POLICY_FIELD as FALLBACK_POLICY_FIELD, policy_for_action_date,
+    verify_policy_metadata as verify_fallback_policy_metadata,
+)
 from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 from ml.current_publication import read_current_publication
 from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend, PriorProbabilityShrinkage
@@ -419,8 +423,11 @@ def run_nightly_gameplan_once(
         str(key): int(value)
         for key, value in option_intents["plan_status"].value_counts().items()
     }
+    fallback_metadata = ({FALLBACK_POLICY_FIELD: policy_for_action_date(action_date)}
+        if independent_stock_horizons and policy_for_action_date(action_date) is not None else {})
     plan_payload = {
         "schema_version": GAMEPLAN_VERSION,
+        **fallback_metadata,
         **probability_metadata,
         "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
         "forecast_contract_version": FORECAST_CONTRACT_VERSION,
@@ -537,6 +544,7 @@ def run_nightly_gameplan_once(
                        else "target_cost_adjusted_positive"),
         configuration={
             "schema_version": GAMEPLAN_VERSION,
+            **fallback_metadata,
             **probability_metadata,
             "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
             "forecast_contract_version": FORECAST_CONTRACT_VERSION,
@@ -2277,8 +2285,10 @@ def _publish_gameplan(
     manifest = verify_manifest(run)
     _verify_source_selection_metadata(run, manifest)
     _verify_probability_target_metadata(run, manifest)
+    fallback_policy = verify_fallback_policy_metadata(run, manifest)
     receipt = {
         "schema_version": GAMEPLAN_RECEIPT_VERSION,
+        **({FALLBACK_POLICY_FIELD: fallback_policy} if fallback_policy is not None else {}),
         **({key: manifest["configuration"][key] for key in ("probability_target_contract", "gameplan_variant")}
            if "probability_target_contract" in manifest.get("configuration", {}) else {}),
         "run_path": run.relative_to(root).as_posix(),
@@ -2430,6 +2440,7 @@ def read_gameplan_run(datastore_root: Path, run_directory: Path) -> GameplanPubl
     receipt_path = run / "receipt.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     _verify_probability_target_metadata(run, manifest, receipt)
+    verify_fallback_policy_metadata(run, manifest, receipt)
     relative = run.relative_to(root).as_posix()
     if (
         receipt.get("schema_version") != GAMEPLAN_RECEIPT_VERSION
@@ -2485,6 +2496,7 @@ def read_current_gameplan(datastore_root: Path) -> GameplanPublication:
         "receipt_checksum_sha256": file_checksum(receipt_path),
     }
     _verify_probability_target_metadata(run, manifest, receipt)
+    verify_fallback_policy_metadata(run, manifest, receipt)
     if (
         receipt.get("schema_version") != GAMEPLAN_RECEIPT_VERSION
         or dict(current) != expected

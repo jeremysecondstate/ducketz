@@ -1,5 +1,19 @@
 # Overnight immutable gameplan
 
+## September 30 prospective cross-horizon fallback
+
+New independent Gameplans for October 1 or later bind the operator-approved
+`hierarchical-bearish-fallback-v1` ownership policy in gameplan.json, manifest
+configuration and receipt. Follow
+[the complete policy](CROSS_HORIZON_BEARISH_FALLBACK.md): normal own-horizon sales
+first, only longer-horizon fallback donors, one donor per forecast, weighted
+small-slot allowances, and a shared 50% daily cap plus 50% per donor allocation.
+The live ledger freezes the first ready daily snapshot; planning remains a
+separate conditional scenario. Old publications and today's active worker stay
+unchanged. Verify policy/source agreement, donor attribution, persistent budget
+accounting, cash/share conservation and zero overnight orders. No new schedule,
+trader start, quality change, or intraday activation is authorized.
+
 ## September 18 Yung Gameplan deployment
 
 The operator explicitly selected **Yung Gameplan (YG)** for the September 18,

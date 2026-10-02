@@ -357,6 +357,9 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     if config.get("preparation_scope") != "STOCK_ONLY" or config.get("target_contract_version") != "independent-stock-targets-v1":
         raise ValueError("Trade planning requires the explicit independent stock-only Gameplan")
     action_date = str(publication.receipt["action_date"])
+    from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
+    fallback_policy = validate_fallback_policy(config.get("cross_horizon_fallback_policy"), action_date)
+    fallback_metadata = {"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}
     source_receipt_hash = file_checksum(source / "receipt.json")
     expected_deadline = pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
@@ -395,7 +398,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         raise ValueError("A forecast claims promotion without verified model authority")
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
-              **probability_metadata,
+              **probability_metadata, **fallback_metadata,
               "source_gameplan_run": source.relative_to(root).as_posix(), "source_receipt_sha256": source_receipt_hash,
               "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
               "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
@@ -437,12 +440,14 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         rows = _plan_working_price_rows(forecasts, planning_snapshot, bands, price_path, policy=policy)
         phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
         try:
-            rows, direction_projection = project_direction_trades(rows, planning_snapshot, price_path, policy=policy, signal_driven=True)
+            rows, direction_projection = project_direction_trades(rows, planning_snapshot, price_path, policy=policy,
+                signal_driven=True, cross_horizon_fallback_policy=fallback_policy)
         except UnavailablePlanningPricePath as unavailable:
             # Complete the informational report without manufacturing prices,
             # fills, ending cash or ending holdings. Other validation errors
             # continue to fail the publication.
             direction_projection = {
+                **fallback_metadata,
                 "status":"UNAVAILABLE_PRICE_REFERENCES", "unavailable_points":unavailable.points,
                 "events":[], "hourly":[], "ending_positions":{}, "summary":{},
                 "orders_placed":0, "broker_orders_enabled":False,
@@ -510,7 +515,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         write_manifest(run, run_timestamp=observed,
                        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *price_files, *refresh_inputs],
                        output_files=outputs, configuration={"schema_version": VERSION, "action_date": action_date,
-                       **probability_metadata,
+                       **probability_metadata, **fallback_metadata,
                        "source_gameplan_run": report["source_gameplan_run"], "source_receipt_sha256": source_receipt_hash,
                        "reference_completion_contract": completion["contract_version"],
                        "allow_reference_forward_fill": True,
@@ -522,7 +527,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         if utc(clock()) >= deadline_at:
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         terminal = {"schema_version": VERSION, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
-                    **probability_metadata,
+                    **probability_metadata, **fallback_metadata,
                     "action_date": action_date, "source_gameplan_run": report["source_gameplan_run"],
                     "source_receipt_sha256": source_receipt_hash, "manifest_sha256": file_checksum(run / "manifest.json"),
                     "forecast_rows": len(rows), "orders_placed": 0, "broker_orders_enabled": False,

@@ -187,6 +187,7 @@ def test_ledger_read_is_query_only_and_identifier_free(tmp_path):
     assert owner["status"] == "OBSERVED_CONSISTENT"
     assert owner["safe_for_planning"] is True
     assert owner["active_allocations"][0]["owned_shares"] == 1
+    assert owner["active_allocations"][0]["allocation_id_sha256"] == hashlib.sha256(b"private-allocation").hexdigest()
     assert owner["active_allocations"][0]["target_start"] == "2026-09-08T11:00:00+00:00"
     assert owner["active_allocations"][0]["target_end"] == "2026-09-10T00:00:00+00:00"
     assert owner["current_broker_reconciliation_performed"] is False

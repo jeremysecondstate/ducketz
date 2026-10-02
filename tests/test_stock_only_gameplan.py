@@ -245,8 +245,12 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
         return result
 
     monkeypatch.setattr(nightly, "_fit_group_model", fit_new_targets)
+    # This September 8 fixture tests the original independent-window contract.
+    # Its fake fit predates the separately verified September 18 raw-price model
+    # metadata; do not silently inherit the current publication default.
     result = nightly.run_nightly_gameplan_once(fixture.root, stock_only=True,
-                                              independent_stock_horizons=True, stock_price_source=price_source, reporter=None)
+                                              independent_stock_horizons=True, stock_price_source=price_source,
+                                              probability_target_contract=nightly.LEGACY_COST_TARGET, reporter=None)
     publication = nightly.read_current_gameplan(fixture.root)
     forecasts = pd.read_parquet(result.run_directory / "forecasts.parquet")
     intents = pd.read_parquet(result.run_directory / "option-strategy-intents.parquet")

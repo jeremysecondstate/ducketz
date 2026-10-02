@@ -31,6 +31,11 @@ REASONS = {
     "HORIZON_EXIT": "Scheduled horizon exit", "LATER_EXPIRY": "Later horizon expiry",
     "UNRESOLVED_EXPIRY": "Unresolved horizon expiry", "NEUTRAL": "Neutral forecast",
     "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON": "No eligible shares in this horizon",
+    "BEARISH_CROSS_HORIZON_FALLBACK": "Capped bearish sale from a longer horizon",
+    "FALLBACK_OWN_OR_UNALLOCATED_INVENTORY_PROTECTED": "Own or unallocated shares protected by prior use or open orders",
+    "FALLBACK_SLOT_OR_DAILY_CAP_EXHAUSTED": "No fallback quota at this entry",
+    "FALLBACK_NO_ELIGIBLE_LONGER_DONOR": "No eligible longer-horizon donor",
+    "FALLBACK_EXTERNAL_PENDING_ORDER": "Pending order is outside horizon ownership",
     "NON_ENTRY_CONTEXT": "Forecast context only", "MODEL_NOT_PROMOTED": "Model not promoted",
     "SYMBOL_ALLOCATION_UNRESOLVED": "Allocation needs resolution",
     "HORIZON_BUY_ALREADY_PENDING": "Buy already pending in this horizon",
@@ -44,7 +49,9 @@ class GameplanError(ValueError):
     """A saved plan is missing, incomplete, unsupported or inconsistent."""
 
 
-def reason_text(reason: str) -> str:
+def reason_text(reason: str, donor_horizon: str | None = None) -> str:
+    if reason == "BEARISH_CROSS_HORIZON_FALLBACK" and donor_horizon:
+        return f"Bearish fallback sale from {donor_horizon} holdings"
     return REASONS.get(reason, reason.replace("_", " ").capitalize())
 
 
@@ -65,6 +72,8 @@ class PlanForecast:
     start: datetime
     end: datetime
     price: float | None
+    fallback_donor_horizon: str | None = None
+    fallback_donor_allocation_id_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +90,8 @@ class PlannedAction:
     forecast_id: str
     source: str = "ledger"
     reserved: float = 0
+    fallback_donor_horizon: str | None = None
+    fallback_donor_allocation_id_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -285,10 +296,20 @@ def _forecast(row: dict, *, projection_available: bool = True) -> PlanForecast:
     price = _number(row.get("trade_price_mid"), optional=True)
     if price is not None and price <= 0:
         raise GameplanError("Saved planning prices must be positive when available")
+    donor_horizon = donor_allocation = None
+    if reason == "BEARISH_CROSS_HORIZON_FALLBACK":
+        from ml.stock_trader.cross_horizon_fallback import donor_horizons
+        donor_horizon, donor_allocation = row.get("fallback_donor_horizon"), row.get("fallback_donor_allocation_id_sha256")
+        if (action != "SELL" or donor_horizon not in donor_horizons(horizon)
+                or not isinstance(donor_allocation, str) or len(donor_allocation) != 64
+                or any(char not in "0123456789abcdef" for char in donor_allocation)
+                or row.get("fallback_trigger_forecast_id") != str(row["id"])
+                or row.get("fallback_trigger_horizon") != horizon):
+            raise GameplanError("Invalid fallback donor or triggering forecast")
     return PlanForecast(str(row["id"]), str(row["symbol"]), horizon, str(row["route"]),
                         str(row["target_role"]), eligible, str(row["model_status"]), probability,
                         direction, action, quantity, reason, start, end,
-                        price)
+                        price, donor_horizon, donor_allocation)
 
 
 def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tuple[str, str]:
@@ -320,9 +341,64 @@ def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tup
     return status, f"Cash projection unavailable: missing price references for {symbols}. Saved forecasts remain available."
 
 
+def _validate_fallback_accounting(ledger: dict, session: str) -> None:
+    from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy, donor_horizons, slot_quota
+    policy = validate_fallback_policy(ledger.get("cross_horizon_fallback_policy"), session)
+    if policy is None:
+        return
+    fallback = ledger["cross_horizon_fallback"]
+    donors, caps = fallback["donors"], fallback["symbol_daily_caps"]
+    if fallback.get("action_date") != session:
+        raise GameplanError("Fallback accounting action date differs")
+    for identifier, donor in donors.items():
+        initial = _number(donor["initial_shares"])
+        if (not isinstance(identifier, str) or len(identifier) != 64
+                or any(char not in "0123456789abcdef" for char in identifier)
+                or donor["horizon"] not in HORIZONS or donor["daily_cap"] != int(initial / 2)):
+            raise GameplanError("Fallback donor baseline or daily cap is invalid")
+    expected_caps = {symbol: int(sum(_number(d["initial_shares"]) for d in donors.values()
+        if d["symbol"] == symbol and d["horizon"] in donor_horizons("1h")) / 2) for symbol in caps}
+    if caps != expected_caps:
+        raise GameplanError("Fallback symbol daily cap differs from its initial holdings")
+    symbol_used, donor_used, slots = dict.fromkeys(caps, 0), dict.fromkeys(donors, 0), set()
+    count = 0
+    for event in ledger["events"]:
+        if event["reason"] != "BEARISH_CROSS_HORIZON_FALLBACK":
+            continue
+        count += 1
+        attribution = event["cross_horizon_fallback"]
+        symbol, horizon, amount = event["symbol"], event["horizon"], event["quantity"]
+        identifier = attribution["donor_allocation_id_sha256"]
+        donor = donors[identifier]
+        key = (symbol, horizon, event["timestamp"])
+        quota = slot_quota(caps[symbol], horizon, event["timestamp"], session)
+        if (type(amount) is not int or amount <= 0 or key in slots or amount > quota
+                or donor["symbol"] != symbol or donor["horizon"] not in donor_horizons(horizon)
+                or attribution.get("policy_version") != policy["policy_version"]
+                or attribution.get("action_date") != session
+                or attribution.get("slot_quota") != quota
+                or attribution.get("symbol_daily_cap") != caps[symbol]
+                or attribution.get("donor_daily_cap") != donor["daily_cap"]
+                or attribution.get("symbol_used_before") != symbol_used[symbol]
+                or attribution.get("donor_used_before") != donor_used[identifier]):
+            raise GameplanError("Fallback event exceeds or disagrees with its frozen quota")
+        symbol_used[symbol] += amount
+        donor_used[identifier] += amount
+        slots.add(key)
+        if (symbol_used[symbol] > caps[symbol] or donor_used[identifier] > donor["daily_cap"]
+                or attribution.get("symbol_used_after") != symbol_used[symbol]
+                or attribution.get("donor_used_after") != donor_used[identifier]
+                or _number(attribution["donor_shares_before"]) - amount != _number(attribution["donor_shares_after"])):
+            raise GameplanError("Fallback cumulative sales or donor shares do not reconcile")
+    if (fallback["symbol_used"] != symbol_used or fallback["events"] != count
+            or any(donors[identifier]["used"] != used for identifier, used in donor_used.items())):
+        raise GameplanError("Fallback summary disagrees with its attributed sales")
+
+
 def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) -> tuple[PlannedAction, ...]:
     if ledger.get("version") != LEDGER_VERSION or ledger.get("status") != "COMPLETE":
         raise GameplanError("The direction ledger is not complete or supported")
+    _validate_fallback_accounting(ledger, session)
     by_id = {row.forecast_id: row for row in forecasts}
     symbols = {row.symbol for row in forecasts}
     actions = []
@@ -334,7 +410,8 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
             raise GameplanError("Duplicate or invalid trade sequence")
         sequences.add(sequence)
         action, reason = event["action"], event["reason"]
-        if (action, reason) not in {("BUY", "BULLISH_BUY"), ("SELL", "BEARISH_SELL"), ("SELL", "HORIZON_EXIT")}:
+        if (action, reason) not in {("BUY", "BULLISH_BUY"), ("SELL", "BEARISH_SELL"), ("SELL", "HORIZON_EXIT"),
+                                   ("SELL", "BEARISH_CROSS_HORIZON_FALLBACK")}:
             raise GameplanError("Unsupported projected trade action")
         symbol, horizon, identifier = str(event["symbol"]), event["horizon"], str(event["forecast_id"])
         if symbol not in symbols or horizon not in HORIZONS:
@@ -354,8 +431,22 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
         price = _number(event["price_base"])
         if price <= 0:
             raise GameplanError("Saved trade prices must be positive")
+        attribution = event.get("cross_horizon_fallback", {})
+        if reason == "BEARISH_CROSS_HORIZON_FALLBACK":
+            if (ledger.get("cross_horizon_fallback_policy") is None
+                    or not isinstance(attribution, dict)
+                    or attribution.get("trigger_forecast_id") != identifier
+                    or attribution.get("trigger_horizon") != horizon
+                    or attribution.get("donor_horizon") != forecast.fallback_donor_horizon
+                    or attribution.get("donor_allocation_id_sha256") != forecast.fallback_donor_allocation_id_sha256
+                    or attribution.get("quantity") != quantity):
+                raise GameplanError("Fallback event attribution disagrees with its source forecast")
+        elif attribution:
+            raise GameplanError("Ordinary projected trade cannot use a fallback donor")
         actions.append(PlannedAction(f"trade:{sequence}", sequence, when, symbol, horizon, action,
-                                     quantity, price, reason, identifier))
+                                     quantity, price, reason, identifier,
+                                     fallback_donor_horizon=attribution.get("donor_horizon"),
+                                     fallback_donor_allocation_id_sha256=attribution.get("donor_allocation_id_sha256")))
     expected = {row.forecast_id for row in forecasts if row.action in {"BUY", "SELL"}}
     if expected != traded_ids:
         raise GameplanError("A projected forecast trade is missing from the direction ledger")
@@ -455,6 +546,22 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 or not frame.action_date.astype(str).eq(selected).all()):
             raise GameplanError("Invalid saved forecast identities, counts or session")
         ledger = _json(run / "direction-ledger.json")
+        from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
+        fallback_policy = validate_fallback_policy(config.get("cross_horizon_fallback_policy"), selected)
+        if any(metadata.get("cross_horizon_fallback_policy") != fallback_policy for metadata in (ledger, report, receipt)):
+            raise GameplanError("Saved fallback policy bindings disagree")
+        if fallback_policy is not None:
+            from ml.stock_trader.cross_horizon_fallback import read_gameplan_fallback_policy
+            source_ref = config.get("source_gameplan_run")
+            if not isinstance(source_ref, str) or not source_ref:
+                raise GameplanError("Saved fallback policy is missing its pinned source")
+            source = (root / source_ref).resolve()
+            if (source.parent != (root / "ml/nightly-gameplan-runs").resolve()
+                    or report.get("source_gameplan_run") != source_ref
+                    or receipt.get("source_gameplan_run") != source_ref
+                    or file_checksum(source / "receipt.json") != receipt.get("source_receipt_sha256")
+                    or read_gameplan_fallback_policy(source, selected) != fallback_policy):
+                raise GameplanError("Saved fallback policy differs from its pinned source")
         projection_status, projection_note = _projection_metadata(ledger, report, frame)
         available = projection_status == "COMPLETE"
         forecasts = tuple(sorted((_forecast(row, projection_available=available) for row in frame.to_dict("records")),
