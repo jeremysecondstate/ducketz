@@ -1,0 +1,84 @@
+{
+  "actor": "Atlas",
+  "artifact_manifest_sha256": "fb9592743cc912b5eaccb51f5a493664dc13b4157f6e97725942e1fdf84eb676",
+  "author": "Jeremy Klein",
+  "authored_at": "2026-10-02T06:15:24-07:00",
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_details": [
+    "Adds per-account and pooled ledger turnover, fees, funding, realized P&L, drawdown, and Qualified versus Research fill counts.",
+    "Pairs stopped-ledger balances with native common-mark endpoint balances and per-coin attribution; the late comparison remains UNSCORED.",
+    "No source/configuration change, retune, or new round; current round 46 continues running under the accepted Paper policy."
+  ],
+  "change_id": "artifact-main:0df335c42c136c3ec493764b76e2e25af30486da",
+  "commit_sha": "0df335c42c136c3ec493764b76e2e25af30486da",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/0df335c42c136c3ec493764b76e2e25af30486da",
+  "common_application_source_changed": false,
+  "files": [
+    {
+      "bytes": 6681,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T131419Z-2e8bbc2e/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.json",
+      "sha256": "cda59f8f0a59acab00a26d15e7db748dcfbaea9bfed98980a34f4c5ccf3f3c5a"
+    },
+    {
+      "bytes": 2418,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T131419Z-2e8bbc2e/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-account-breakdown.md",
+      "sha256": "3d36aa60c7c8ca617d0a234626b947d551463cadcf4e0ad04b65f6f347f03614"
+    },
+    {
+      "bytes": 2966,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T131419Z-2e8bbc2e/artifact-manifest.json",
+      "sha256": "fb9592743cc912b5eaccb51f5a493664dc13b4157f6e97725942e1fdf84eb676"
+    }
+  ],
+  "limitations": [
+    "Only frozen snapshot and committed publication bytes were verified. Producer runtime observations remain dated producer evidence.",
+    "No current source/runtime adoption or new account/provider action was performed by the courier.",
+    "No new source commit/push was performed by this courier. Current peer adoption and common-source parity remain unverified."
+  ],
+  "machine": "pc-original",
+  "main_commit_sha": "0df335c42c136c3ec493764b76e2e25af30486da",
+  "parent_sha": "7f7aa381eed966ddfd73a4efac361a195864a452",
+  "parity_verified": false,
+  "producer": "hyperliquid-paper-improvement",
+  "producer_completed_at_utc": "2026-10-02T13:14:19.824338Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Historical Atlas-only reference copies. Preserve each PC live symbols, Gameplan and runtime. No runtime deployment or loaded-version verification performed by this courier.",
+  "scope": "Atlas-only historical completed operating reference copies; do not apply to Scout live symbols or Gameplan",
+  "stages": {
+    "local_checkout_adoption": "withheld; active writer/runtime absence unestablished",
+    "main_publication": "verified from authenticated fetched Git bytes",
+    "peer_adoption": "unverified",
+    "runtime_deployment": "unverified"
+  },
+  "summary": "Atlas-only completed operating reference artifacts on main: Round 45 per-account turnover, drawdown and forecast-quality breakdown.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T13:19:53.739872Z",
+      "name": "Installed artifact publisher immutable snapshot hashes and local env private-value scan",
+      "started_at_utc": "2026-10-02T13:19:53.397409Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T13:19:53.739872Z",
+      "files": 3,
+      "name": "Exact parent, complete machine namespace diff, manifest and committed blob hashes",
+      "started_at_utc": "2026-10-02T13:19:53.397409Z",
+      "status": "passed"
+    },
+    {
+      "name": "Application software tests",
+      "reason": "No common source changes or new software-suite execution in this courier observation.",
+      "status": "unknown"
+    },
+    {
+      "completed_at_utc": "2026-10-02T13:21:32.595349Z",
+      "name": "Saved producer publication receipt commit, remote readback, parent and manifest binding",
+      "started_at_utc": "2026-10-02T13:21:32.595349Z",
+      "status": "passed"
+    }
+  ]
+}
