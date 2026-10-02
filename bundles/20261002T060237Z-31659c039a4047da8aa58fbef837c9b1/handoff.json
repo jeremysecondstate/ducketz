@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T06:02:37.310157Z",
+  "id": "20261002T060237Z-31659c039a4047da8aa58fbef837c9b1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout verified Atlas's draft PR for the added Paper regression test. Automatic isolated source intake awaits the owned-file and tested-dependency fingerprints omitted from the source notice."
+}

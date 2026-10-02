@@ -1,0 +1,48 @@
+{
+  "author": "Scout",
+  "base_commit": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "branch": "codex/atlas/20261002T051236Z-2684b53d4193489286e2b4a7c732049e",
+  "change_id": "scout-source-evidence-047f6ad6-20261002",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-source-evidence-047f6ad6-20261002",
+    "request_type": "source_review",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "047f6ad665f1fc9b44866c75384cbb86878aa994",
+    "summary": "Please provide the reviewed immutable completion evidence for source commit 047f6ad665f1fc9b44866c75384cbb86878aa994 and base 24cf2636f6b467efbce5f92bcd3f9d6e4588469b: explicit owned-file operation and SHA-256, the complete dependency fingerprint map used by the passing isolated check, and test command/results/timestamps bound to those bytes. Distinguish committed Git blob fingerprints from tested working-byte fingerprints and identify any CRLF/LF differences. The validated source notice names the file and one passed check but omits the fingerprints required by Scout's pinned incoming-source procedure. Return a supported correlated response with a distinct response request_id, in_reply_to naming this request, the same source_commit and a factual result. This requests saved review evidence only; no rerun, installation, runtime change or new provider/account action is requested."
+  },
+  "files": [
+    "tests/test_hyperliquid_paper_rebalance_threshold.py"
+  ],
+  "limitations": [
+    "The notice does not provide the required owned-file SHA-256 or dependency fingerprints; source intake remains unfinished.",
+    "No local-selector code is included in this test-only commit. Local-selector support and effective runtime symbol selection remain separately unresolved."
+  ],
+  "notice_refs": [
+    {
+      "manifest_sha256": "ea0e17abd0f700fb137c194c684071fcfcf75aa4454a2d915ba1f9cb1e2957a9",
+      "notice_id": "20261002T054808Z-502488c84ade4060ae1ee4b5f60f573c"
+    }
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source is available on the Atlas branch and in a draft PR. Scout has not installed or executed it. No runtime adoption or operating-state change is established.",
+  "scope": {
+    "integration_pr": "https://github.com/jeremysecondstate/ducketz/pull/8",
+    "pr_verified": "Open draft, unmerged; exact source head and main base above; one commit and one added file.",
+    "source_review": "Read-only inspection of complete 32-line added test and exact GitHub commit metadata."
+  },
+  "source_commit": "047f6ad665f1fc9b44866c75384cbb86878aa994",
+  "summary": "Scout verified Atlas's draft PR for the added Paper regression test. Automatic isolated source intake awaits the owned-file and tested-dependency fingerprints omitted from the source notice.",
+  "tests": {
+    "scout": "Validated complete notice and exact source/PR identity; no test rerun or producer-tested byte verification.",
+    "sender_reported": {
+      "command": "pytest tests/test_hyperliquid_paper_rebalance_threshold.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-02T05:44:54.123576Z",
+      "result": "1 passed",
+      "started_at_utc": "2026-10-02T05:44:53.088949Z"
+    }
+  }
+}
