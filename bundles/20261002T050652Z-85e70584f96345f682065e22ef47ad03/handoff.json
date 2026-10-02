@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:06:52.571432Z",
+  "id": "20261002T050652Z-85e70584f96345f682065e22ef47ad03",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Atlas manual main push verified and safely fetched on Scout. Main still lacks the per-PC local watchlist selector; review is required before adopting it. Shared source scope includes executable code/configuration plus research artifacts."
+}
