@@ -1,0 +1,418 @@
+{
+  "archive": {
+    "exception_policy_sha256": "793b9f3b0fe62721f0dca410933ab2d491da9602cb1807d22a430bae5d7cdf49",
+    "immutable_snapshots": {
+      "audit": {
+        "bytes": 21654,
+        "path": "scout/scout-audit-20261002T031836Z-r1.json",
+        "sha256": "dc1f39d65f2edfb543ec41791a63f92f1af459c33de114f233e3f23c2d29b1e3"
+      },
+      "manifest": {
+        "bytes": 371080,
+        "path": "scout/scout-common-manifest-20261002T031836Z-r1.json",
+        "sha256": "29158adb401f6187103d9fc977c6545bdfbf3fd37e1e2dbab809425251067476"
+      },
+      "matrix": {
+        "bytes": 113331,
+        "path": "scout/scout-file-matrix-20261002T031836Z-r1.json",
+        "sha256": "a616353c10ed8e04ebd7fbcee27f8e99260d34ef669720d9aff8f8e85e5d4a5d"
+      }
+    },
+    "location": "CODEXSTORE/ducketz/cross-ducketz",
+    "manifest_coverage": {
+      "common_file_paths": 910,
+      "ignored_local_stock_overlay_outside_manifest": true,
+      "installed_helper_candidate_paths": 912,
+      "privacy_review_hold_count": 2,
+      "tracked_stock_default_paths_withheld_digest": 1,
+      "unresolved_mixed_document_count": 1
+    },
+    "manifest_revision": "scout-ready-r1",
+    "purpose": "human reference archive only; not message transport"
+  },
+  "author": "Scout",
+  "base_commit": "51d69e142251e609a7e8f6c0c15eda24ce809f4f",
+  "branch": "codex/scout/20261002T030605Z-3138c653bd9c4749a4beeb7d81271bda",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "cross-ducketz-20261002-source-parity-scout-ready-r1",
+  "commit_sha": "fe3916b1a6512eca7046cf9bafbfd68923b721e3",
+  "comparison_counts": {
+    "atlas_only_shared_change": 4,
+    "atlas_only_shared_path_or_missing_dependency": 8,
+    "common_raw_match": 229,
+    "line_endings_only_mismatch": 599,
+    "missing_dependency_or_unavailable_common_file": 15,
+    "overlapping_common_configuration_difference": 2,
+    "overlapping_conflict_or_shared_change": 16,
+    "projected_common_match_scope_unresolved": 2,
+    "scout_only_shared_change": 36,
+    "scout_only_shared_path_or_missing_dependency": 5,
+    "unresolved_common_stock_defaults": 1,
+    "unresolved_mixed_document_privacy": 1
+  },
+  "dependency_review": {
+    "all_dependency_raw_bytes_match_published_base_commit": true,
+    "owned_files": 24,
+    "private_symbol_digests_exported": false,
+    "reviewed_dependency_paths": 259,
+    "tested_fingerprint_scope": 283
+  },
+  "files": [
+    {
+      "committed_blob_sha256": "a4f6bb244d3d1d49835cfe5cbd3279781b70d9541c04fc801a2f5d2e947cab6c",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "app/ui/gameplan.py",
+      "tested_working_bytes_sha256": "a4f6bb244d3d1d49835cfe5cbd3279781b70d9541c04fc801a2f5d2e947cab6c"
+    },
+    {
+      "committed_blob_sha256": "0c9c84a486f1b5a5640ed2b73a258a3f6c6b097b80dba7d05bea4b50589e8425",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py",
+      "tested_working_bytes_sha256": "0c9c84a486f1b5a5640ed2b73a258a3f6c6b097b80dba7d05bea4b50589e8425"
+    },
+    {
+      "committed_blob_sha256": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+      "tested_working_bytes_sha256": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8"
+    },
+    {
+      "committed_blob_sha256": "d35fb010dd9c07c097c44122995d2c9efe000129e21ca48e85fbf68dd17aa715",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "tested_working_bytes_sha256": "d35fb010dd9c07c097c44122995d2c9efe000129e21ca48e85fbf68dd17aa715"
+    },
+    {
+      "committed_blob_sha256": "5386e71c74dc80b1347fd2527cba0a4acdac1934d2c5b68aaad0d30c36290c29",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "tested_working_bytes_sha256": "5386e71c74dc80b1347fd2527cba0a4acdac1934d2c5b68aaad0d30c36290c29"
+    },
+    {
+      "committed_blob_sha256": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py",
+      "tested_working_bytes_sha256": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333"
+    },
+    {
+      "committed_blob_sha256": "ce6a1c5d890add57e616535cb062ef855fc856661016b61c883f3a9f50de7177",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "tested_working_bytes_sha256": "ce6a1c5d890add57e616535cb062ef855fc856661016b61c883f3a9f50de7177"
+    },
+    {
+      "committed_blob_sha256": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/gameplan_trade_review.py",
+      "tested_working_bytes_sha256": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415"
+    },
+    {
+      "committed_blob_sha256": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "tested_working_bytes_sha256": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869"
+    },
+    {
+      "committed_blob_sha256": "3367550273b5f960428394e6bab380913abce508aab8643364c8ec83df9b2131",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/nightly_gameplan.py",
+      "tested_working_bytes_sha256": "3367550273b5f960428394e6bab380913abce508aab8643364c8ec83df9b2131"
+    },
+    {
+      "committed_blob_sha256": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "ml/stock_trader/cross_horizon_fallback.py",
+      "tested_working_bytes_sha256": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af"
+    },
+    {
+      "committed_blob_sha256": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "ml/stock_trader/fallback_review.py",
+      "tested_working_bytes_sha256": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2"
+    },
+    {
+      "committed_blob_sha256": "141a8a49c9b924452f24378df46378a9c05ee03dd1c0516cf43f22b3e46b3462",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_direction_engine.py",
+      "tested_working_bytes_sha256": "141a8a49c9b924452f24378df46378a9c05ee03dd1c0516cf43f22b3e46b3462"
+    },
+    {
+      "committed_blob_sha256": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/stock_trader/horizon_ledger.py",
+      "tested_working_bytes_sha256": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9"
+    },
+    {
+      "committed_blob_sha256": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "tested_working_bytes_sha256": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14"
+    },
+    {
+      "committed_blob_sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "tests/test_cross_horizon_fallback_ledger.py",
+      "tested_working_bytes_sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b"
+    },
+    {
+      "committed_blob_sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "tests/test_cross_horizon_fallback_policy.py",
+      "tested_working_bytes_sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059"
+    },
+    {
+      "committed_blob_sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "tests/test_cross_horizon_fallback_review.py",
+      "tested_working_bytes_sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a"
+    },
+    {
+      "committed_blob_sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "tests/test_cross_horizon_fallback_runtime.py",
+      "tested_working_bytes_sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872"
+    },
+    {
+      "committed_blob_sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+      "exact_bytes_equal": true,
+      "operation": "add",
+      "path": "tests/test_gameplan_fallback_planning.py",
+      "tested_working_bytes_sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d"
+    },
+    {
+      "committed_blob_sha256": "e758314c510a86333df933231ddc79bf0fbdd3aeca6ca6b5d84ee7367c391c51",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "tests/test_gameplan_quote_clock_recovery.py",
+      "tested_working_bytes_sha256": "e758314c510a86333df933231ddc79bf0fbdd3aeca6ca6b5d84ee7367c391c51"
+    },
+    {
+      "committed_blob_sha256": "aaf1ddc1f055a058d1964a218ed1d11785acdd25142109a9c0a879989dc1bd61",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_snapshot.py",
+      "tested_working_bytes_sha256": "aaf1ddc1f055a058d1964a218ed1d11785acdd25142109a9c0a879989dc1bd61"
+    },
+    {
+      "committed_blob_sha256": "c4aa9edbc0269b719d107ba27c72afdd82f5391192b8891cc3d3835b85da4416",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "tests/test_stock_only_gameplan.py",
+      "tested_working_bytes_sha256": "c4aa9edbc0269b719d107ba27c72afdd82f5391192b8891cc3d3835b85da4416"
+    },
+    {
+      "committed_blob_sha256": "9c7823542fcd652046710b061e2f35e9da7b53ad24f64146f1a9598f72e5b565",
+      "exact_bytes_equal": true,
+      "operation": "modify",
+      "path": "docs/multiple-pcs.md",
+      "tested_working_bytes_sha256": "9c7823542fcd652046710b061e2f35e9da7b53ad24f64146f1a9598f72e5b565"
+    }
+  ],
+  "limitations": [
+    "Candidate is based on the published stock-selector commit, not current main; main integration needs separate overlap and dependency review.",
+    "Inherited selector launcher path-with-spaces concern remains recorded for joint integration.",
+    "One existing model-training test is explicitly deselected under the no-training authority ceiling.",
+    "Existing dirty OPRA work and mixed private application documentation are not taken over by this candidate.",
+    "Historical test claims are not substituted for these newly executed checks; no runtime or profitability claim.",
+    "Verification uses process-only PYTHONSAFEPATH=1 to prevent the pinned verifier directory requests.py from shadowing the third-party requests package. Network blocking and candidate import attestation remain active; initial collection failure is preserved locally.",
+    "Two local infrastructure-input prompts and mixed private historical prose remain held. Actual dirty OPRA bytes are inventoried but excluded from the source publication pending owner review.",
+    "Tracked stock defaults and four mixed JSON projections remain unresolved policy scope; non-stock behavior is not a local exception.",
+    "Raw line-ending mismatches remain visible; matching normalized hashes does not establish byte parity.",
+    "Original df2ab89a itself remains unpublished; fe3916b1 is a reviewed successor with equivalent fallback blobs and separate portable documentation.",
+    "No integration PR is claimed yet: joint main integration awaits explicit overlap/dependency resolution and fresh checks on the actual integrated candidate."
+  ],
+  "next_reconciliation": "Atlas can validate these exact source/archive identities and compare both inventories against the stated main reference under the existing human-authorized case. Resolve shared configuration and ownership before preparing the combined integration candidate. No acknowledgment is requested.",
+  "original_commit_availability": [
+    {
+      "author": "jeremysecondstate",
+      "authored_at": "2026-09-29T01:55:36-07:00",
+      "changed_paths": 27,
+      "commit": "51d69e142251e609a7e8f6c0c15eda24ce809f4f",
+      "note": "Published stock-selector foundation; not an ancestor of the verified main reference.",
+      "parent": "d574661e185da82a2c2743020825c0a2f4cf8c99",
+      "remote_available": true,
+      "tree": "cf827bcb920505952bc3b6ef49d0caa39e4bbf5a"
+    },
+    {
+      "author": "jeremysecondstate",
+      "authored_at": "2026-10-01T10:44:26-07:00",
+      "changed_paths": 23,
+      "commit": "df2ab89af4819552576d068aea68b6b527c634c1",
+      "note": "Original identity remains local. The published successor reproduces its 23 final blobs plus separately reviewed portable two-PC documentation.",
+      "original_commit_remote_available": false,
+      "parent": "51d69e142251e609a7e8f6c0c15eda24ce809f4f",
+      "tree": "f3ea648e72843c9f665c7b0558fa2b9f108bc5f5"
+    }
+  ],
+  "ownership_and_conflicts": [
+    {
+      "disposition": "Preserved dirty source owned by another writer; excluded from this publication.",
+      "paths": [
+        "datafetching/databento_opra_history.py",
+        "datafetching/opra_concurrent_stream.py",
+        "tests/test_opra_concurrent_native_publication.py",
+        "tests/test_opra_concurrent_stream.py",
+        "tests/test_opra_gateway_retry.py"
+      ],
+      "review_issue": "Python 3.13 process-global warning capture across concurrent workers can misclassify an empty response; require owner resolution and deterministic regression coverage before integration. Retry reporter/thread contract also needs review.",
+      "test_evidence": "unknown for current dirty bytes"
+    },
+    {
+      "disposition": "Inherited stock-selector launcher argument quoting with spaces needs joint integration review; no runtime launch performed.",
+      "paths": [
+        "docs/datafetch-ml/start_all_loops.ps1"
+      ]
+    },
+    {
+      "disposition": "Tracked stock defaults and non-stock/common JSON fields remain explicit unresolved classifications; privacy projection is not approval of behavioral exceptions.",
+      "paths": [
+        "datafetching/watchlist.txt",
+        "configs/hyperliquid-markets.json",
+        "configs/hyperliquid-models.json",
+        "configs/hyperliquid-paper.json",
+        "configs/hyperliquid-powder.json"
+      ]
+    },
+    {
+      "disposition": "Local prompt content/private historical prose held; dirty shared guidance ownership unresolved. Portable published documentation is a distinct reviewed candidate.",
+      "paths": [
+        "docs/cross-pc-infrastructure-prompts/20261001/atlas-build-prompt.txt",
+        "docs/cross-pc-infrastructure-prompts/20261001/scout-build-prompt.txt",
+        "AGENTS.md",
+        "docs/multiple-pcs.md"
+      ]
+    }
+  ],
+  "pr_overlap": {
+    "all_seven_open": true,
+    "findings": [
+      "PR1 fallback overlaps this proposal; 21 of the original 23 final fallback blobs match PR1, while two documentation files preserve stock-selector guidance.",
+      "PR2 supplies GitHub coordination foundation. PR4 also contains the Drive extension; do not activate it for source parity. Its preceding local-filename guard can be reviewed separately.",
+      "PR3 and PR5 are sibling proposals with identical code/test blobs and differing configuration. PR6 follows PR5; PR7 follows PR6. Resolve the accepted latest common settings explicitly and do not replay older configurations."
+    ],
+    "observed_at_utc": "2026-10-02T02:59:03.798Z",
+    "urls": [
+      "https://github.com/jeremysecondstate/ducketz/pull/1",
+      "https://github.com/jeremysecondstate/ducketz/pull/2",
+      "https://github.com/jeremysecondstate/ducketz/pull/3",
+      "https://github.com/jeremysecondstate/ducketz/pull/4",
+      "https://github.com/jeremysecondstate/ducketz/pull/5",
+      "https://github.com/jeremysecondstate/ducketz/pull/6",
+      "https://github.com/jeremysecondstate/ducketz/pull/7"
+    ]
+  },
+  "preservation": {
+    "application_source_changed": false,
+    "captured_shared_paths_preserved": 912,
+    "effective_running_process_symbols": "unverified",
+    "existing_stock_count_preserved": 11,
+    "index_changed": false,
+    "private_bindings_preserved": true
+  },
+  "published_at_utc": "2026-10-02T03:18:06.639038Z",
+  "remote_sha_readback": "fe3916b1a6512eca7046cf9bafbfd68923b721e3",
+  "repository": "jeremysecondstate/ducketz",
+  "revision": "scout-ready-r1",
+  "runtime_implications": "Available source proposal only. No main merge, application checkout adoption, installation, scheduler, provider, training, trading or runtime deployment is authorized by publication.",
+  "scope": "Phase 1 Scout actual-source inventory, raw/common-JSON fingerprints, published reviewed successor for the 23-file fallback revision plus portable documentation, and explicit unresolved ownership. The published candidate retains the reviewed 51d69e14 selector base. The current application checkout remains on local df2ab89a and is unchanged.",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/fe3916b1a6512eca7046cf9bafbfd68923b721e3",
+  "status": {
+    "application_checkout_adoption": "not performed",
+    "joint_main_integration": "pending owner/dependency reconciliation and fresh integration checks",
+    "peer_installation": "unverified",
+    "runtime_deployment": "not performed; loaded versions unverified",
+    "source_parity": "pending",
+    "source_publication": "verified"
+  },
+  "summary": "Scout inventory and reviewed fallback/stock-selector source are available for joint reconciliation against main 0407388559d54612603380793fc26a98937697fc. Source parity remains pending.",
+  "tests": [
+    {
+      "candidate": "sealed source candidate",
+      "candidate_import_attestation": true,
+      "completed_at_utc": "2026-10-02T03:06:46.634643Z",
+      "exit_code": 0,
+      "network_blocking": true,
+      "output_sha256": "31126f35037250be06baee1dad83337da227266994a89d75484fb4b670d6cf4d",
+      "result": "345 passed, 1 deselected in 38.80s",
+      "scope": [
+        "tests/test_cross_horizon_fallback_policy.py",
+        "tests/test_cross_horizon_fallback_ledger.py",
+        "tests/test_cross_horizon_fallback_runtime.py",
+        "tests/test_cross_horizon_fallback_review.py",
+        "tests/test_gameplan_fallback_planning.py",
+        "tests/test_gameplan_direction_engine.py",
+        "tests/test_gameplan_direction_runtime.py",
+        "tests/test_independent_stock_runtime.py",
+        "tests/test_gameplan_quote_clock_recovery.py",
+        "tests/test_gameplan_trade_snapshot.py",
+        "tests/test_gameplan_trade_planning.py",
+        "tests/test_stock_only_gameplan.py::test_independent_target_publication_uses_new_labels_and_preserves_native_contract",
+        "tests/test_local_watchlist.py",
+        "tests/test_research_onboarding.py",
+        "tests/test_research_publication.py",
+        "tests/test_symbol_onboarding.py",
+        "-k",
+        "not test_candidate_stock_model_can_be_trained_without_replacing_production",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "started_at_utc": "2026-10-02T03:06:06.299625Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "candidate": "isolated publication candidate",
+      "candidate_import_attestation": true,
+      "completed_at_utc": "2026-10-02T03:15:42.430782Z",
+      "exit_code": 0,
+      "network_blocking": true,
+      "output_sha256": "af3da938a062d89d080479b852d9e58f1ea5d8a6dbbed37faa592ca9c8c67b06",
+      "result": "345 passed, 1 deselected in 41.51s",
+      "scope": [
+        "tests/test_cross_horizon_fallback_policy.py",
+        "tests/test_cross_horizon_fallback_ledger.py",
+        "tests/test_cross_horizon_fallback_runtime.py",
+        "tests/test_cross_horizon_fallback_review.py",
+        "tests/test_gameplan_fallback_planning.py",
+        "tests/test_gameplan_direction_engine.py",
+        "tests/test_gameplan_direction_runtime.py",
+        "tests/test_independent_stock_runtime.py",
+        "tests/test_gameplan_quote_clock_recovery.py",
+        "tests/test_gameplan_trade_snapshot.py",
+        "tests/test_gameplan_trade_planning.py",
+        "tests/test_stock_only_gameplan.py::test_independent_target_publication_uses_new_labels_and_preserves_native_contract",
+        "tests/test_local_watchlist.py",
+        "tests/test_research_onboarding.py",
+        "tests/test_research_publication.py",
+        "tests/test_symbol_onboarding.py",
+        "-k",
+        "not test_candidate_stock_model_can_be_trained_without_replacing_production",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "started_at_utc": "2026-10-02T03:14:59.355523Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ],
+  "verified_main_reference": "0407388559d54612603380793fc26a98937697fc"
+}

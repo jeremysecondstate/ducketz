@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T03:20:57.120719Z",
+  "id": "20261002T032057Z-a4b8fc543ba84a24872e0d1edfdc1957",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout inventory and reviewed fallback/stock-selector source are available for joint reconciliation against main 0407388559d54612603380793fc26a98937697fc. Source parity remains pending."
+}
