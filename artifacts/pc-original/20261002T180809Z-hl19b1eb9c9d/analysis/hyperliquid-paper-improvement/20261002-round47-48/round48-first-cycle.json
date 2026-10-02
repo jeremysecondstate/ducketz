@@ -1,0 +1,756 @@
+{
+  "verified_at_utc": "2026-10-02T17:32:57.316583+00:00",
+  "stage": "trading",
+  "result": "passed",
+  "paper_directory": "C:\\DATASTORE\\hyperliquid\\_paper",
+  "seed_at_utc": "2026-10-02T17:31:28.238959074+00:00",
+  "opening_equity": 44308.78099407436,
+  "opening_pnl": 0.0,
+  "opening_fees": 0.0,
+  "immutable_opening_hashes": {
+    "seed_sha256": "0580e444ed8272a7bef83f02e046b5badca8457612b2056988d02481ba56299d",
+    "opening_cycle_sha256": "47346510ee273769dcba41092667c3635eaa85c4ba907bcde1732d8e22cd41fa",
+    "initial_positions_sha256": "92375a7191ebf1e93f6634ee40269288246a1de0001249b760094f6d46e69dd1",
+    "opening_snapshot_sha256": "e11b1c85cb4f57eebf6f21324173db279e59fdaeb5658758c9dde1d6fc10b303"
+  },
+  "counts": {
+    "cycles": 6,
+    "equity": 24,
+    "initial_positions": 10,
+    "fills": 8,
+    "decisions": 12,
+    "transfers": 0,
+    "funding": 0
+  },
+  "source_reconciliation": {
+    "alex": {
+      "base_collateral": 6559.66070337,
+      "open_orders_not_imported": 0,
+      "read_observations": {
+        "clearinghouseState": {
+          "completed_at_utc": "2026-10-02T17:31:25.047175646+00:00",
+          "exchange_time_ms": 1790962284768,
+          "started_at_utc": "2026-10-02T17:31:24.442680597+00:00"
+        },
+        "frontendOpenOrders": {
+          "completed_at_utc": "2026-10-02T17:31:26.591319323+00:00",
+          "started_at_utc": "2026-10-02T17:31:26.081656694+00:00"
+        },
+        "spotClearinghouseState": {
+          "completed_at_utc": "2026-10-02T17:31:25.572362185+00:00",
+          "started_at_utc": "2026-10-02T17:31:25.047204018+00:00"
+        },
+        "userAbstraction": {
+          "completed_at_utc": "2026-10-02T17:31:26.081607342+00:00",
+          "started_at_utc": "2026-10-02T17:31:25.572388887+00:00"
+        }
+      },
+      "source_account_mode": "unifiedAccount",
+      "source_equity": 6245.8758327449195,
+      "source_perp_equity": 1951.183473,
+      "source_perp_unrealized_pnl": -313.78779,
+      "source_spot_usdc": 6245.87291337,
+      "opening_equity": 6245.869222744919,
+      "source_to_opening_valuation_difference": -0.00661000000036438
+    },
+    "clearpond": {
+      "base_collateral": 3181.09673727,
+      "open_orders_not_imported": 0,
+      "read_observations": {
+        "clearinghouseState": {
+          "completed_at_utc": "2026-10-02T17:31:25.517706156+00:00",
+          "exchange_time_ms": 1790962285238,
+          "started_at_utc": "2026-10-02T17:31:25.044431448+00:00"
+        },
+        "frontendOpenOrders": {
+          "completed_at_utc": "2026-10-02T17:31:26.702137947+00:00",
+          "started_at_utc": "2026-10-02T17:31:26.373227358+00:00"
+        },
+        "spotClearinghouseState": {
+          "completed_at_utc": "2026-10-02T17:31:25.974638224+00:00",
+          "started_at_utc": "2026-10-02T17:31:25.517740965+00:00"
+        },
+        "userAbstraction": {
+          "completed_at_utc": "2026-10-02T17:31:26.373191118+00:00",
+          "started_at_utc": "2026-10-02T17:31:25.974666595+00:00"
+        },
+        "userRole": {
+          "completed_at_utc": "2026-10-02T17:31:25.044382572+00:00",
+          "started_at_utc": "2026-10-02T17:31:24.443091154+00:00"
+        }
+      },
+      "source_account_mode": "unifiedAccount",
+      "source_equity": 32955.15004090096,
+      "source_perp_equity": 0.0,
+      "source_perp_unrealized_pnl": 0.0,
+      "source_spot_usdc": 3181.09673727,
+      "opening_equity": 32955.15004090096,
+      "source_to_opening_valuation_difference": 0.0
+    },
+    "jeremy": {
+      "base_collateral": 5153.63293672,
+      "open_orders_not_imported": 0,
+      "read_observations": {
+        "clearinghouseState": {
+          "completed_at_utc": "2026-10-02T17:31:25.050849438+00:00",
+          "exchange_time_ms": 1790962284768,
+          "started_at_utc": "2026-10-02T17:31:24.442268372+00:00"
+        },
+        "frontendOpenOrders": {
+          "completed_at_utc": "2026-10-02T17:31:26.588792562+00:00",
+          "started_at_utc": "2026-10-02T17:31:26.105716944+00:00"
+        },
+        "spotClearinghouseState": {
+          "completed_at_utc": "2026-10-02T17:31:25.636805058+00:00",
+          "started_at_utc": "2026-10-02T17:31:25.050868988+00:00"
+        },
+        "userAbstraction": {
+          "completed_at_utc": "2026-10-02T17:31:26.105692387+00:00",
+          "started_at_utc": "2026-10-02T17:31:25.636838913+00:00"
+        }
+      },
+      "source_account_mode": "portfolioMargin",
+      "source_equity": 5107.760440428479,
+      "source_perp_equity": 1476.627463,
+      "source_perp_unrealized_pnl": -45.873165000000014,
+      "source_spot_usdc": 5107.75977172,
+      "opening_equity": 5107.7617304284795,
+      "source_to_opening_valuation_difference": 0.0012900000001536682
+    }
+  },
+  "opening_inventory": [
+    {
+      "account": "jeremy",
+      "average_entry": 87.6437,
+      "avg_entry": 87.6437,
+      "coin": "HYPE",
+      "entry_source": "historical_exchange_entry",
+      "kind": "perp",
+      "mark_price": 88.901,
+      "passive": false,
+      "quantity": 70.0,
+      "risk_reference_price": 88.901,
+      "risk_reference_source": "opening_mark",
+      "source_leverage": {
+        "type": "cross",
+        "value": 10
+      },
+      "source_unrealized_pnl": 88.009756,
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "jeremy",
+      "average_entry": 1391.5015,
+      "avg_entry": 1391.5015,
+      "coin": "ZEC",
+      "entry_source": "historical_exchange_entry",
+      "kind": "perp",
+      "mark_price": 1366.0,
+      "passive": false,
+      "quantity": 5.25,
+      "risk_reference_price": 1366.0,
+      "risk_reference_source": "opening_mark",
+      "source_leverage": {
+        "type": "cross",
+        "value": 10
+      },
+      "source_unrealized_pnl": -133.882921,
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "jeremy",
+      "average_entry": 88.924,
+      "avg_entry": 88.924,
+      "coin": "HYPE",
+      "entry_source": "opening_mark_not_historical_cost",
+      "kind": "spot",
+      "mark_price": 88.924,
+      "passive": true,
+      "passive_inherited": true,
+      "quantity": 7.52e-06,
+      "risk_reference_price": 88.924,
+      "risk_reference_source": "opening_mark",
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "alex",
+      "average_entry": 86.1365,
+      "avg_entry": 86.1365,
+      "coin": "HYPE",
+      "entry_source": "historical_exchange_entry",
+      "kind": "perp",
+      "mark_price": 88.901,
+      "passive": false,
+      "quantity": -90.0,
+      "risk_reference_price": 88.901,
+      "risk_reference_source": "opening_mark",
+      "source_leverage": {
+        "type": "cross",
+        "value": 10
+      },
+      "source_unrealized_pnl": -248.798567,
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "alex",
+      "average_entry": 1356.7158,
+      "avg_entry": 1356.7158,
+      "coin": "ZEC",
+      "entry_source": "historical_exchange_entry",
+      "kind": "perp",
+      "mark_price": 1366.0,
+      "passive": false,
+      "quantity": -7.0,
+      "risk_reference_price": 1366.0,
+      "risk_reference_source": "opening_mark",
+      "source_leverage": {
+        "type": "cross",
+        "value": 10
+      },
+      "source_unrealized_pnl": -64.989223,
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "alex",
+      "average_entry": 88.924,
+      "avg_entry": 88.924,
+      "coin": "HYPE",
+      "entry_source": "opening_mark_not_historical_cost",
+      "kind": "spot",
+      "mark_price": 88.924,
+      "passive": true,
+      "passive_inherited": true,
+      "quantity": 3.283e-05,
+      "risk_reference_price": 88.924,
+      "risk_reference_source": "opening_mark",
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "clearpond",
+      "average_entry": 88.924,
+      "avg_entry": 88.924,
+      "coin": "HYPE",
+      "entry_source": "opening_mark_not_historical_cost",
+      "kind": "spot",
+      "mark_price": 88.924,
+      "passive": false,
+      "passive_inherited": false,
+      "quantity": 50.04112969,
+      "risk_reference_price": 88.924,
+      "risk_reference_source": "opening_mark",
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "clearpond",
+      "average_entry": 84727.0,
+      "avg_entry": 84727.0,
+      "coin": "BTC",
+      "entry_source": "opening_mark_not_historical_cost",
+      "kind": "spot",
+      "mark_price": 84727.0,
+      "passive": false,
+      "passive_inherited": false,
+      "quantity": 0.2509938624,
+      "risk_reference_price": 84727.0,
+      "risk_reference_source": "opening_mark",
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "clearpond",
+      "average_entry": 2684.8,
+      "avg_entry": 2684.8,
+      "coin": "ETH",
+      "entry_source": "opening_mark_not_historical_cost",
+      "kind": "spot",
+      "mark_price": 2684.8,
+      "passive": false,
+      "passive_inherited": false,
+      "quantity": 1.0002993,
+      "risk_reference_price": 2684.8,
+      "risk_reference_source": "opening_mark",
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    },
+    {
+      "account": "clearpond",
+      "average_entry": 1365.8,
+      "avg_entry": 1365.8,
+      "coin": "ZEC",
+      "entry_source": "opening_mark_not_historical_cost",
+      "kind": "spot",
+      "mark_price": 1365.8,
+      "passive": false,
+      "passive_inherited": false,
+      "quantity": 1.005004647,
+      "risk_reference_price": 1365.8,
+      "risk_reference_source": "opening_mark",
+      "timestamp_utc": "2026-10-02T17:31:28.238959074+00:00"
+    }
+  ],
+  "quote_observation": {
+    "completed_at_utc": "2026-10-02T17:31:28.238804817+00:00",
+    "markets": {
+      "perp:BTC": {
+        "book_time_utc": "2026-10-02T17:31:27.238000+00:00",
+        "mark": 84716.0
+      },
+      "perp:ETH": {
+        "book_time_utc": "2026-10-02T17:31:27.238000+00:00",
+        "mark": 2685.4
+      },
+      "perp:HYPE": {
+        "book_time_utc": "2026-10-02T17:31:27.238000+00:00",
+        "mark": 88.901
+      },
+      "perp:ZEC": {
+        "book_time_utc": "2026-10-02T17:31:27.238000+00:00",
+        "mark": 1366.0
+      },
+      "spot:BTC": {
+        "book_time_utc": "2026-10-02T17:31:27.743000+00:00",
+        "mark": 84727.0
+      },
+      "spot:ETH": {
+        "book_time_utc": "2026-10-02T17:31:27.743000+00:00",
+        "mark": 2684.8
+      },
+      "spot:HYPE": {
+        "book_time_utc": "2026-10-02T17:31:27.743000+00:00",
+        "mark": 88.924
+      },
+      "spot:ZEC": {
+        "book_time_utc": "2026-10-02T17:31:27.743000+00:00",
+        "mark": 1365.8
+      }
+    },
+    "observed_at_utc": "2026-10-02T17:31:28.238711+00:00",
+    "started_at_utc": "2026-10-02T17:31:26.703274250+00:00"
+  },
+  "latest_committed_at_utc": "2026-10-02T17:32:27.872169+00:00",
+  "latest_portfolio": {
+    "accounts": {
+      "alex": {
+        "account": "alex",
+        "cash": 6262.6023056095,
+        "equity": 6262.60522147161,
+        "fees": 7.8923077605,
+        "free_cash": 6262.6023056095,
+        "funding": 0.0,
+        "gross_exposure": 0.00291586211,
+        "initial_cash": 6559.66070337,
+        "initial_equity": 6245.869222744919,
+        "initial_unrealized_pnl": -313.7944000000002,
+        "net_realized_pnl": -297.05839776050027,
+        "net_transfers": 0.0,
+        "positions": [
+          {
+            "account": "alex",
+            "avg_entry": 88.924,
+            "coin": "HYPE",
+            "kind": "spot",
+            "mark_price": 88.817,
+            "market": "spot:HYPE",
+            "notional": 0.00291586211,
+            "passive": true,
+            "quantity": 3.283e-05,
+            "risk_reference_price": 88.924,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -3.5128100000004446e-06
+          }
+        ],
+        "realized_pnl": -289.1660900000003,
+        "role": "short_perp",
+        "total_pnl": 16.735998726690923,
+        "unrealized_pnl": -3.5128100000004446e-06
+      },
+      "clearpond": {
+        "account": "clearpond",
+        "cash": 32872.079120828996,
+        "equity": 32904.24171962643,
+        "fees": 20.798246441,
+        "free_cash": 32872.079120828996,
+        "funding": 0.0,
+        "gross_exposure": 32.162598797429766,
+        "initial_cash": 3181.09673727,
+        "initial_equity": 32955.15004090096,
+        "initial_unrealized_pnl": 0.0,
+        "net_realized_pnl": -50.8606464410002,
+        "net_transfers": 0.0,
+        "positions": [
+          {
+            "account": "clearpond",
+            "avg_entry": 84727.0,
+            "coin": "BTC",
+            "kind": "spot",
+            "mark_price": 84669.0,
+            "market": "spot:BTC",
+            "notional": 0.3270255455998909,
+            "passive": false,
+            "quantity": 3.862399999998711e-06,
+            "risk_reference_price": 84727.0,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -0.00022401919999992526
+          },
+          {
+            "account": "clearpond",
+            "avg_entry": 2684.8,
+            "coin": "ETH",
+            "kind": "spot",
+            "mark_price": 2682.4,
+            "market": "spot:ETH",
+            "notional": 0.2663623200000654,
+            "passive": false,
+            "quantity": 9.930000000002437e-05,
+            "risk_reference_price": 2684.8,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -0.00023832000000006753
+          },
+          {
+            "account": "clearpond",
+            "avg_entry": 88.924,
+            "coin": "HYPE",
+            "kind": "spot",
+            "mark_price": 88.817,
+            "market": "spot:HYPE",
+            "notional": 16.975565676729715,
+            "passive": false,
+            "quantity": 0.1911296899999968,
+            "risk_reference_price": 88.924,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -0.020450876830002244
+          },
+          {
+            "account": "clearpond",
+            "avg_entry": 1365.8,
+            "coin": "ZEC",
+            "kind": "spot",
+            "mark_price": 1363.3,
+            "market": "spot:ZEC",
+            "notional": 14.59364525510009,
+            "passive": false,
+            "quantity": 0.010704647000000067,
+            "risk_reference_price": 1365.8,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -0.026761617500000168
+          }
+        ],
+        "realized_pnl": -30.062400000000203,
+        "role": "spot",
+        "total_pnl": -50.90832127453177,
+        "unrealized_pnl": -0.0476748335300024
+      },
+      "jeremy": {
+        "account": "jeremy",
+        "cash": 5083.479518970001,
+        "equity": 5080.770036873841,
+        "fees": 5.95669275,
+        "free_cash": 4944.329368970001,
+        "funding": 0.0,
+        "gross_exposure": 136.4406679038395,
+        "initial_cash": 5153.63293672,
+        "initial_equity": 5107.7617304284795,
+        "initial_unrealized_pnl": -45.87187500000036,
+        "net_realized_pnl": -70.15341774999948,
+        "net_transfers": 0.0,
+        "positions": [
+          {
+            "account": "jeremy",
+            "avg_entry": 1391.5015,
+            "coin": "ZEC",
+            "kind": "perp",
+            "mark_price": 1364.4,
+            "market": "perp:ZEC",
+            "notional": 136.43999999999951,
+            "passive": false,
+            "quantity": 0.09999999999999964,
+            "risk_reference_price": 1366.0,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -2.710149999999989
+          },
+          {
+            "account": "jeremy",
+            "avg_entry": 88.924,
+            "coin": "HYPE",
+            "kind": "spot",
+            "mark_price": 88.817,
+            "market": "spot:HYPE",
+            "notional": 0.00066790384,
+            "passive": true,
+            "quantity": 7.52e-06,
+            "risk_reference_price": 88.924,
+            "risk_reference_source": "opening_mark",
+            "side": "long",
+            "unrealized_pnl": -8.046400000001018e-07
+          }
+        ],
+        "realized_pnl": -64.19672499999947,
+        "role": "long_perp",
+        "total_pnl": -26.991693554638914,
+        "unrealized_pnl": -2.710150804639989
+      }
+    },
+    "pooled": {
+      "cash": 44218.1609454085,
+      "equity": 44247.61697797188,
+      "fees": 34.6472469515,
+      "free_cash": 44079.010795408496,
+      "funding": 0.0,
+      "gross_exposure": 168.60618256337926,
+      "initial_cash": 14894.39037736,
+      "initial_equity": 44308.78099407436,
+      "initial_unrealized_pnl": -359.6662750000006,
+      "net_realized_pnl": -418.0724619514999,
+      "net_transfers": 0.0,
+      "positions": [
+        {
+          "account": "alex",
+          "avg_entry": 88.924,
+          "coin": "HYPE",
+          "kind": "spot",
+          "mark_price": 88.817,
+          "market": "spot:HYPE",
+          "notional": 0.00291586211,
+          "passive": true,
+          "quantity": 3.283e-05,
+          "risk_reference_price": 88.924,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -3.5128100000004446e-06
+        },
+        {
+          "account": "clearpond",
+          "avg_entry": 84727.0,
+          "coin": "BTC",
+          "kind": "spot",
+          "mark_price": 84669.0,
+          "market": "spot:BTC",
+          "notional": 0.3270255455998909,
+          "passive": false,
+          "quantity": 3.862399999998711e-06,
+          "risk_reference_price": 84727.0,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -0.00022401919999992526
+        },
+        {
+          "account": "clearpond",
+          "avg_entry": 2684.8,
+          "coin": "ETH",
+          "kind": "spot",
+          "mark_price": 2682.4,
+          "market": "spot:ETH",
+          "notional": 0.2663623200000654,
+          "passive": false,
+          "quantity": 9.930000000002437e-05,
+          "risk_reference_price": 2684.8,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -0.00023832000000006753
+        },
+        {
+          "account": "clearpond",
+          "avg_entry": 88.924,
+          "coin": "HYPE",
+          "kind": "spot",
+          "mark_price": 88.817,
+          "market": "spot:HYPE",
+          "notional": 16.975565676729715,
+          "passive": false,
+          "quantity": 0.1911296899999968,
+          "risk_reference_price": 88.924,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -0.020450876830002244
+        },
+        {
+          "account": "clearpond",
+          "avg_entry": 1365.8,
+          "coin": "ZEC",
+          "kind": "spot",
+          "mark_price": 1363.3,
+          "market": "spot:ZEC",
+          "notional": 14.59364525510009,
+          "passive": false,
+          "quantity": 0.010704647000000067,
+          "risk_reference_price": 1365.8,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -0.026761617500000168
+        },
+        {
+          "account": "jeremy",
+          "avg_entry": 1391.5015,
+          "coin": "ZEC",
+          "kind": "perp",
+          "mark_price": 1364.4,
+          "market": "perp:ZEC",
+          "notional": 136.43999999999951,
+          "passive": false,
+          "quantity": 0.09999999999999964,
+          "risk_reference_price": 1366.0,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -2.710149999999989
+        },
+        {
+          "account": "jeremy",
+          "avg_entry": 88.924,
+          "coin": "HYPE",
+          "kind": "spot",
+          "mark_price": 88.817,
+          "market": "spot:HYPE",
+          "notional": 0.00066790384,
+          "passive": true,
+          "quantity": 7.52e-06,
+          "risk_reference_price": 88.924,
+          "risk_reference_source": "opening_mark",
+          "side": "long",
+          "unrealized_pnl": -8.046400000001018e-07
+        }
+      ],
+      "realized_pnl": -383.425215,
+      "total_pnl": -61.16401610247976,
+      "unrealized_pnl": -2.7578291509799913
+    }
+  },
+  "fill_accounting_checks": [
+    {
+      "fill_id": "fb39f15cc8224267a11597dfa5b86813",
+      "timestamp_utc": "2026-10-02T17:32:27.854766+00:00",
+      "account": "clearpond",
+      "coin": "BTC",
+      "kind": "spot",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 84661.0,
+      "fee": 14.874345072999999,
+      "quantity_before": 0.2509938624,
+      "quantity_delta": -0.25099,
+      "quantity_after": 3.862399999998711e-06,
+      "cash_delta": 21234.190044927,
+      "realized_pnl": -16.56534
+    },
+    {
+      "fill_id": "2be1d4bb94f5456f98070e1a36017917",
+      "timestamp_utc": "2026-10-02T17:32:27.866452+00:00",
+      "account": "clearpond",
+      "coin": "ETH",
+      "kind": "spot",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 2681.305788842232,
+      "fee": 1.8772894350000002,
+      "quantity_before": 1.0002993,
+      "quantity_delta": -1.0002,
+      "quantity_after": 9.930000000002437e-05,
+      "cash_delta": 2679.9647605650002,
+      "realized_pnl": -3.494909999999958
+    },
+    {
+      "fill_id": "e83be014579d45de98b56ae17d95349b",
+      "timestamp_utc": "2026-10-02T17:32:27.868478+00:00",
+      "account": "alex",
+      "coin": "HYPE",
+      "kind": "perp",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 88.7890521111111,
+      "fee": 3.5959566104999996,
+      "quantity_before": -90.0,
+      "quantity_delta": 90.0,
+      "quantity_after": 0.0,
+      "cash_delta": -242.32564661049955,
+      "realized_pnl": -238.72968999999955
+    },
+    {
+      "fill_id": "6097d0f6280049f1b1df6c9a030aa059",
+      "timestamp_utc": "2026-10-02T17:32:27.868478+00:00",
+      "account": "jeremy",
+      "coin": "HYPE",
+      "kind": "perp",
+      "reason": "risk_cap",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 88.772,
+      "fee": 2.796318,
+      "quantity_before": 70.0,
+      "quantity_delta": -70.0,
+      "quantity_after": 0.0,
+      "cash_delta": 76.1846820000007,
+      "realized_pnl": 78.9810000000007
+    },
+    {
+      "fill_id": "6bebc49c492840b7a34bcc6828a2d50f",
+      "timestamp_utc": "2026-10-02T17:32:27.868478+00:00",
+      "account": "clearpond",
+      "coin": "HYPE",
+      "kind": "spot",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 88.77920341023069,
+      "fee": 3.0979503029999997,
+      "quantity_before": 50.04112969,
+      "quantity_delta": -49.85,
+      "quantity_after": 0.1911296899999968,
+      "cash_delta": 4422.545339697,
+      "realized_pnl": -7.218110000000291
+    },
+    {
+      "fill_id": "cd7f2bcfa1a14afc9b64c4c553fcd3e9",
+      "timestamp_utc": "2026-10-02T17:32:27.870696+00:00",
+      "account": "alex",
+      "coin": "ZEC",
+      "kind": "perp",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 1363.921,
+      "fee": 4.29635115,
+      "quantity_before": -7.0,
+      "quantity_delta": 7.0,
+      "quantity_after": 0.0,
+      "cash_delta": -54.73275115000073,
+      "realized_pnl": -50.43640000000073
+    },
+    {
+      "fill_id": "bcdd99e81bc1445586f40c76f4a6618c",
+      "timestamp_utc": "2026-10-02T17:32:27.870696+00:00",
+      "account": "jeremy",
+      "coin": "ZEC",
+      "kind": "perp",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 1363.7,
+      "fee": 3.16037475,
+      "quantity_before": 5.25,
+      "quantity_delta": -5.15,
+      "quantity_after": 0.09999999999999964,
+      "cash_delta": -146.33809975000017,
+      "realized_pnl": -143.17772500000018
+    },
+    {
+      "fill_id": "ac00cb6a7a204807984af24ed2a17f6c",
+      "timestamp_utc": "2026-10-02T17:32:27.870696+00:00",
+      "account": "clearpond",
+      "coin": "ZEC",
+      "kind": "spot",
+      "reason": "signal_rebalance",
+      "policy_id": "88cd1a6a008df9b9",
+      "price": 1363.0,
+      "fee": 0.94866163,
+      "quantity_before": 1.005004647,
+      "quantity_delta": -0.9943,
+      "quantity_after": 0.010704647000000067,
+      "cash_delta": 1354.28223837,
+      "realized_pnl": -2.7840399999999548
+    }
+  ],
+  "verification_limits": [
+    "Account reads and opening quotes are sequential, not atomic.",
+    "Raw account response quantities are not retained separately from normalized seed inventory; quantity/basis checks compare all persisted opening representations.",
+    "Replay checks cash effects of recorded funding; it does not independently fetch settlement rates or oracle prices."
+  ]
+}
