@@ -10,7 +10,7 @@ sys.dont_write_bytecode = True
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from tools.cross_pc import core, drift, installation, notices
+from tools.cross_pc import artifact_publish, core, drift, installation, notices
 
 
 def main():
@@ -29,6 +29,12 @@ def main():
         command.add_argument("--reviewed", action="store_true")
     command = sub.add_parser("publish-source")
     command.add_argument("--id", required=True)
+    command = sub.add_parser("artifact-snapshot")
+    command.add_argument("--source", required=True)
+    command.add_argument("--spec", required=True)
+    command = sub.add_parser("artifact-publish")
+    command.add_argument("--id", required=True)
+    command.add_argument("--worktree", required=True)
     command = sub.add_parser("notice")
     command.add_argument("--spec", required=True)
     command.add_argument("--reviewed", action="store_true")
@@ -78,6 +84,13 @@ def main():
             result = core.verify_candidate(profile, args.id, args.worktree, args.reviewed)
         elif args.action == "publish-source":
             result = core.publish_source(profile, args.id)
+        elif args.action == "artifact-snapshot":
+            receipt = artifact_publish.snapshot(profile, args.source, core.load(args.spec))
+            result = {"id": receipt["id"], "stage": receipt["stage"], "files": len(receipt["files"])}
+        elif args.action == "artifact-publish":
+            receipt = artifact_publish.publish(profile, args.id, args.worktree)
+            result = {"id": receipt["id"], "stage": receipt["stage"],
+                      "commit_sha": receipt.get("commit_sha"), "remote_sha": receipt.get("remote_sha")}
         elif args.action == "notice":
             result = notices.enqueue(profile, core.load(args.spec), reviewed=args.reviewed)
         elif args.action == "deliver":
