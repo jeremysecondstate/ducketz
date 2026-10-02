@@ -4,10 +4,12 @@ import argparse
 import json
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Sequence
+from queue import Empty, Queue
+from typing import Callable, Mapping, Sequence
 
 import pandas as pd
 
@@ -32,6 +34,7 @@ from datafetching.databento_opra_history import (
     OpraCapacityError,
     SyncScope,
     canonical_root,
+    configure_client,
     discover_standard_entitlement,
     publish_health,
     publish_storage_preflight,
@@ -901,6 +904,56 @@ def main(argv: Sequence[str] | None = None) -> int:
                 canonical_adapter.close()
 
 
+def _collect_option_history_preflights(
+    client: object,
+    *,
+    client_factory: Callable[[], object],
+    datastore_root: Path,
+    entitlement: Mapping[str, object],
+    scopes: Sequence[SyncScope],
+) -> list[Mapping[str, object] | Exception]:
+    """Collect exact preflights with at most two clients, retaining scope order."""
+
+    if not scopes:
+        return []
+    pending: Queue[tuple[int, SyncScope]] = Queue()
+    for index, scope in enumerate(scopes):
+        pending.put((index, scope))
+
+    def collect(worker_client: object) -> list[tuple[int, Mapping[str, object] | Exception]]:
+        results: list[tuple[int, Mapping[str, object] | Exception]] = []
+        while True:
+            try:
+                index, scope = pending.get_nowait()
+            except Empty:
+                return results
+            try:
+                result = storage_preflight(
+                    worker_client,
+                    datastore_root=datastore_root,
+                    entitlement=entitlement,
+                    scope=scope,
+                )
+            except Exception as exc:
+                result = exc
+            results.append((index, result))
+
+    clients = [client]
+    if len(scopes) > 1:
+        secondary_client = client_factory()
+        configure_client(secondary_client)
+        clients.append(secondary_client)
+    # Each client stays on one worker. The installed Historical SDK closes
+    # responses inside each request and has no persistent session/close API.
+    with ThreadPoolExecutor(max_workers=len(clients)) as executor:
+        futures = [executor.submit(collect, worker_client) for worker_client in clients]
+        results = [item for future in futures for item in future.result()]
+    # Join every worker before publishing receipts, selecting budgets or using
+    # the original discovery client for downloads. Completion order cannot
+    # change which oldest symbol/schema scopes fit the cumulative run budget.
+    return [result for _index, result in sorted(results, key=lambda item: item[0])]
+
+
 def synchronize_option_history(
     store: ParquetStore,
     *,
@@ -1053,19 +1106,27 @@ def synchronize_option_history(
                 or max_estimated_download_bytes is not None
                 or max_estimated_cost_usd is not None
             )
+            preflights = (
+                _collect_option_history_preflights(
+                    client,
+                    client_factory=lambda: db.Historical(api_key),
+                    datastore_root=store.root_dir,
+                    entitlement=entitlement,
+                    scopes=[plan["scope"] for plan in scope_plans],
+                )
+                if guarded
+                else []
+            )
             selected_plans: list[dict[str, object]] = []
-            for plan in scope_plans:
+            for plan_index, plan in enumerate(scope_plans):
                 symbol = str(plan["symbol"])
                 schema = str(plan["schema"])
                 scope = plan["scope"]
                 if guarded:
                     try:
-                        raw_preflight = storage_preflight(
-                            client,
-                            datastore_root=store.root_dir,
-                            entitlement=entitlement,
-                            scope=scope,
-                        )
+                        raw_preflight = preflights[plan_index]
+                        if isinstance(raw_preflight, Exception):
+                            raise raw_preflight
                         published_preflight = publish_storage_preflight(
                             store.root_dir,
                             raw_preflight,

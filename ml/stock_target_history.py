@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -43,10 +44,22 @@ def _verified_feature_partitions(root: Path, symbol: str, schema: str) -> list[d
         manifest = json.loads(path.read_text(encoding="utf-8"))
         request = manifest["request"]
         if (request.get("dataset") != "XNAS.ITCH" or request.get("schema") != schema
-                or request.get("symbol_scope") != [symbol] or request.get("stype_in") != "raw_symbol"
-                or request.get("storage_contract") != "isolated-cold-start"
-                or request.get("standard_plan_dataset") != PLAN_DATASET_US_EQUITIES):
+                or request.get("symbol_scope") != [symbol] or request.get("stype_in") != "raw_symbol"):
             raise ValueError(f"{symbol}/{schema} feature-history archive has a different source identity")
+        current_contract = (request.get("storage_contract") == "isolated-cold-start"
+                            and request.get("standard_plan_dataset") == PLAN_DATASET_US_EQUITIES)
+        legacy_keys = {"request_id", "dataset", "schema", "symbol_scope", "stype_in",
+                       "start", "end", "storage_path", "storage_contract"}
+        legacy_contract = False
+        if request.get("storage_contract") == "generic" and set(request) == legacy_keys:
+            # The legacy archive writer used default JSON spacing and a
+            # full SHA-256 over these exact eight fields. This recognizes saved
+            # evidence only; it grants no plan authority to new acquisitions.
+            body = {key: value for key, value in request.items() if key != "request_id"}
+            legacy_contract = request["request_id"] == hashlib.sha256(
+                json.dumps(body, sort_keys=True).encode("utf-8")).hexdigest()
+        if not (current_contract or legacy_contract):
+            raise ValueError(f"{symbol}/{schema} feature-history archive has an unverified request contract")
         expected = _entry_storage_path(root, dataset="XNAS.ITCH", market=MARKET_US_EQUITIES,
             schema=schema, symbol=symbol, start=date.fromisoformat(request["start"]),
             end=date.fromisoformat(request["end"]), contract="isolated-cold-start").resolve()
@@ -374,7 +387,7 @@ def _historical_acquisition(root: Path, *, client, manifest: dict, catalog: dict
     for request in manifest["requests"]:
         if request["start"] < bounds["start"] or request["end"] > bounds["end"]:
             raise ValueError("Provider range does not cover the exact stock history request")
-        cost = float(client.metadata.get_cost(**_request_kwargs(request)))
+        cost = float(_metadata_call(client.metadata.get_cost, **_request_kwargs(request)))
         if not math.isfinite(cost) or cost < 0:
             raise ValueError("Provider returned an invalid stock history cost")
         costs.append({"request_id": request["request_id"], "estimated_cost_usd": cost})
@@ -449,7 +462,7 @@ def _live_fallback(root: Path, *, client, manifest: dict, catalog: dict, through
                 raise ValueError(f"Missing {symbol} session {session} is outside Live replay retention; Historical catch-up required")
             request = {"dataset": "XNAS.ITCH", "schema": "ohlcv-1m", "symbols": [symbol],
                        "stype_in": "raw_symbol", "start": start.isoformat(), "end": end.isoformat()}
-            cost = float(client.metadata.get_cost(**request))
+            cost = float(_metadata_call(client.metadata.get_cost, **request))
             if not math.isfinite(cost) or cost < 0:
                 raise ValueError("Provider returned an invalid exact stock session cost")
             planned.append({"symbol": symbol, "session": session, "request": request,
@@ -512,7 +525,7 @@ def _live_subscription_preflight(client, preflight: dict, run: Path) -> None:
     This path cannot purchase or activate a plan/license. Historical get_cost's
     deprecated mode argument is deliberately not used as a Live price quote.
     """
-    prices = client.metadata.list_unit_prices(dataset="XNAS.ITCH")
+    prices = _metadata_call(client.metadata.list_unit_prices, dataset="XNAS.ITCH")
     preflight["generic_unit_prices_informational_only"] = prices
     preflight["live_cost_basis"] = {"basis": "EXISTING_FLAT_SUBSCRIPTION",
         "plan_authority": STANDARD_PLAN_AUTHORITY, "incremental_acquisition_cost_usd": 0.0,

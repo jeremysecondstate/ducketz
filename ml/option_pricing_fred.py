@@ -82,6 +82,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Last economic observation date (YYYY-MM-DD).",
     )
+    parser.add_argument(
+        "--bootstrap-decisions", type=Path,
+        help="Explicit sealed decision-only bootstrap receipt; requires --backfill.",
+    )
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(
         root_dir=args.datastore,
@@ -115,6 +119,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             readiness = verify_and_publish_fred_alfred_readiness(
                 root,
                 import_result=result,
+                bootstrap_decisions=args.bootstrap_decisions,
             )
     except (FredAlfredReadinessError, FredVintageImportError, ValueError) as exc:
         parser.error(str(exc))
@@ -158,10 +163,13 @@ def _request_plan(root: Path, *, args: argparse.Namespace) -> FredAlfredRequestP
         args.observation_start,
         args.observation_end,
     )
+    bootstrap = getattr(args, "bootstrap_decisions", None)
+    if bootstrap is not None and not args.backfill:
+        raise ValueError("--bootstrap-decisions requires --backfill")
     if args.backfill:
         if any(value is not None for value in supplied_bounds):
             raise ValueError("--backfill derives all bounds; do not supply manual dates")
-        return derive_fred_alfred_backfill_plan(root)
+        return derive_fred_alfred_backfill_plan(root, bootstrap_decisions=bootstrap)
     if args.incremental:
         if any(value is not None for value in supplied_bounds):
             raise ValueError(

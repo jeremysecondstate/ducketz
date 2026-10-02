@@ -10,6 +10,9 @@ from datafetching import opra_replay_fallback as fallback
 from datafetching import options_runtime
 
 
+pytestmark = pytest.mark.usefixtures("offline_databento_sdk")
+
+
 def test_completed_action_session_preserves_friday_over_holiday_weekend():
     assert fallback.completed_action_session("2026-09-05T09:00:00Z") == "2026-09-04"
     assert fallback.completed_action_session("2026-09-07T23:00:00Z") == "2026-09-04"

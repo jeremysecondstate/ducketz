@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, replace
@@ -110,7 +111,7 @@ def run_cme_cycle(
     overlap_seconds: Mapping[str, int] | None = None,
     chunk_minutes: Mapping[str, int] | None = None,
     record_limits: Mapping[str, int] | None = None,
-    retry_attempts: int = 6,
+    retry_attempts: int | None = None,
     retry_delay_seconds: float = 4.0,
     now: Callable[[], datetime] | None = None,
     reporter: Callable[[str], None] | None = print,
@@ -119,8 +120,7 @@ def run_cme_cycle(
 
     if max_concurrency not in {1, 2}:
         raise ValueError("CME max_concurrency must be one or two")
-    if retry_attempts < 1:
-        raise ValueError("CME retry_attempts must be positive")
+    _validate_retry_policy(retry_attempts, retry_delay_seconds)
     provider = provider or DatabentoCmeContextProvider()
     clock = now or (lambda: datetime.now(timezone.utc))
     requested_schemas = set(schemas or ())
@@ -439,6 +439,19 @@ def query_chunks(
     return tuple(chunks)
 
 
+def _validate_retry_policy(attempts: int | None, delay_seconds: float) -> None:
+    if attempts is not None and (type(attempts) is not int or attempts < 1):
+        raise ValueError("CME retry_attempts must be None or a positive integer")
+    if isinstance(delay_seconds, bool) or not isinstance(delay_seconds, (int, float)):
+        raise ValueError("CME retry_delay_seconds must be finite and positive")
+    try:
+        valid_delay = math.isfinite(delay_seconds) and delay_seconds > 0
+    except OverflowError:
+        valid_delay = False
+    if not valid_delay:
+        raise ValueError("CME retry_delay_seconds must be finite and positive")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run the independent complete-history CME/L2 collector."
@@ -486,10 +499,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--max-concurrency", type=int, choices=(1, 2), default=1)
-    parser.add_argument("--retry-attempts", type=int, default=6)
+    parser.add_argument(
+        "--retry-attempts", type=int, default=None,
+        help=(
+            "Optional positive attempt limit for transient Databento failures; "
+            "by default retry until recovery or interruption."
+        ),
+    )
     parser.add_argument("--retry-delay-seconds", type=float, default=4.0)
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args(argv)
+    try:
+        _validate_retry_policy(args.retry_attempts, args.retry_delay_seconds)
+    except ValueError as exc:
+        parser.error(str(exc))
     load_repository_environment()
     cadences = {**DEFAULT_CADENCE_SECONDS, **_parse_schema_values(args.cadence)}
     phases = {
@@ -514,8 +537,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("CME phase offsets cannot be negative")
     if any(value < 1 for value in record_limits.values()):
         parser.error("Every CME record limit must be at least one row")
-    if args.retry_attempts < 1 or args.retry_delay_seconds < 0:
-        parser.error("Retry attempts must be positive and delay non-negative")
     store = ParquetStore(args.datastore, target=args.datastore_target)
     schedule = " | ".join(
         f"{schema} every {cadence}s at +{phases.get(schema, 0)}s"
@@ -602,7 +623,7 @@ def _collect_schema(
     overlap: timedelta,
     chunk: timedelta,
     record_limit: int | None,
-    retry_attempts: int,
+    retry_attempts: int | None,
     retry_delay_seconds: float,
     now: Callable[[], datetime],
     reporter: Callable[[str], None] | None,
