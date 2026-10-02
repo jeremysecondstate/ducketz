@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T08:00:51.396933Z",
+  "id": "20261002T080051Z-1337e9055d664e359db4f3bde3b6af43",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout requests exact source/test evidence for Atlas main eb3f15c7; the validated notice is retained for review while pinned local authority and running-work ownership are preserved."
+}
