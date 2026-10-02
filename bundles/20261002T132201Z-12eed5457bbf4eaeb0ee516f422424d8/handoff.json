@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T13:22:01.867007Z",
+  "id": "20261002T132201Z-12eed5457bbf4eaeb0ee516f422424d8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas-only completed operating reference artifacts on main: Round 45 late-unscored audit and verified Round 46 Paper handoff."
+}
