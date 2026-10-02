@@ -1,0 +1,56 @@
+{
+  "recorded_at_utc": "2026-09-30T09:15:15.910074+00:00",
+  "scope": "read-only HYPER model history and saved decision diagnostics",
+  "tests": {
+    "ui_passed": 60,
+    "paper_and_powder_service_passed": 109,
+    "total_passed": 169
+  },
+  "retained_data_verification": {
+    "model_rows": 336,
+    "latest_rows": 24,
+    "source": "C:\\dev\\ducketz\\artifacts\\analysis\\hyper-model-history-20260930\\retained-model-history.json",
+    "as_of_utc": "2026-09-30T09:07:33+00:00"
+  },
+  "visuals": [
+    "peer-retained-1706.png",
+    "peer-retained-880.png"
+  ],
+  "source_sha256": {
+    "app/services/hyperliquid_paper_view.py": "3a63cfead6c942fa5c4403907d970f3ab55358e0d5d646101197d434751fcdaa",
+    "app/services/hyperliquid_powder_view.py": "1aec243946b6edd1651348fc5aa789cb86656166d95b13d37d7c652d6aea3692",
+    "app/ui/hyper_workspace.py": "adaf94ab6b7f2ce9a59a3ccbbc15e8270808ef46097a9497f3ce3b5ce39c9f8b",
+    "tests/test_hyperliquid_paper_view.py": "78f6222fc49f66e5a3052009a516326223998da3a0ffe8fdd7807d9c24f7fa76",
+    "tests/test_hyper_workspace.py": "c9c84933bdeee78b11918e5208a0f89022293f904698fa7252f2b742f31cb68e"
+  },
+  "changes": [
+    "Per-model five-minute probability and exact-report validation history",
+    "Weights, ensemble qualification, expiry, baselines and saved failure reasons",
+    "Latest/history and independent asset filters; stable selection/detail scrolling",
+    "Decision reasons distinguish recorded stale timestamps and expiry during book collection"
+  ],
+  "no_mutations_by_this_followup": [
+    "runtime lifecycle",
+    "model recipe",
+    "Paper policy",
+    "accepted opening",
+    "cadence assessment or advance",
+    "automation schedule",
+    "real accounts or Powder execution"
+  ],
+  "concurrent_maintenance_observed": {
+    "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20260930-paper-round-13",
+    "cycle_id": "20260930-paper-round-13",
+    "evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20260930-paper-round-13",
+    "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+    "expected_upstream_state": "data continues; models operator-controlled",
+    "owner": "paper-self-improvement",
+    "phase": "archived",
+    "powder": "inactive; no real account mutation",
+    "reason": "User-authorized Paper self-improvement and fresh account mirror",
+    "requested_at_utc": "2026-09-30T09:08:35.983924+00:00",
+    "status": "in_progress"
+  },
+  "model_quality_issue_resolved": false,
+  "reload_instruction": "Reopen the Duckets GUI to load Python UI code; Refresh reloads data only."
+}

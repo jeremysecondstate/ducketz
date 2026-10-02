@@ -1,0 +1,36 @@
+{
+  "reviewed_at_utc": "2026-09-30T09:13:49.055892+00:00",
+  "scope": "Read-only peer UI review; no runtime, configuration, schedule, scoring, model deployment, or lifecycle mutation",
+  "tests": {
+    "command": ".venv/Scripts/python.exe -m pytest tests/test_hyper_workspace.py -q",
+    "passed": 57,
+    "duration_seconds": 20.7,
+    "phase": "before final root scroll regression additions"
+  },
+  "finding": {
+    "detail_scroll_reset": "Reported and fixed by root; manually verified same-content refresh preserved yview (0.3,1.0)",
+    "detail_scroll_discoverability": "Visible vertical scrollbar added by root and visually verified"
+  },
+  "visual_review": {
+    "sizes": [
+      [
+        1706,
+        1000
+      ],
+      [
+        880,
+        760
+      ]
+    ],
+    "populated_fixture": "Clearly illustrative test numbers; no native evidence claims",
+    "retained_source": "retained-model-history.json; eligible round12 native archive; as of 2026-09-30T09:07:33+00:00",
+    "retained_latest_rows": 24,
+    "remaining_blockers": []
+  },
+  "images": {
+    "peer-retained-1706.png": "11b0dd492fdc9fceed44e2b7b2d1fef997a5d747d498456ef16b0e687c74ddcb",
+    "peer-retained-880.png": "5cbeb11deb4d002d7e65b0587b4cd2019fbc1f2c18f4d4a512b8a582c5335893",
+    "peer-populated-1706.png": "046d8bbe372f631c53579211a9948aea2a5b783d01982927969c882fc9690104",
+    "peer-populated-880.png": "eca48e5ee5bd99961d93d1808b73a94788eb2a56adc92bad04129342ba2d3bae"
+  }
+}

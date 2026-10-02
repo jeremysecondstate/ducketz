@@ -1,0 +1,1647 @@
+{
+  "captured_at_utc": "2026-09-30T09:07:33.232615+00:00",
+  "diagnostic_only": true,
+  "no_scoring_or_runtime_mutation": true,
+  "decision_counts": {
+    "decisions": 243,
+    "fills": 8,
+    "cycles": 200
+  },
+  "decision_reasons": {
+    "risk_cap": 8,
+    "unqualified_forecast_excluded": 142,
+    "below_size_precision": 33,
+    "below_min_notional": 15,
+    "qualified_forecast_unavailable": 45
+  },
+  "decision_actions": {
+    "fill": 8,
+    "hold": 187,
+    "skip": 48
+  },
+  "missing_forecast_specific_errors": {
+    "Forecast expired while fetching executable books.": 21,
+    "Forecast is stale or has a future timestamp.": 24
+  },
+  "unavailable_observations": [
+    {
+      "decision_id": "618f054419fb48009fb23652d03af0f1",
+      "cycle_id": "stale:BTC:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.710291+00:00",
+      "account": "alex",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "44f30151a982494192dc5a35a6281870",
+        "created_at_utc": "2026-09-30T08:10:10.305299+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "efb9d9decb504f7d89c7eccedf52093d",
+        "created_at_utc": "2026-09-30T08:15:06.869532+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "e7f1b43103854dd29529afb14242c0d1",
+      "cycle_id": "stale:BTC:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.710291+00:00",
+      "account": "jeremy",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "44f30151a982494192dc5a35a6281870",
+        "created_at_utc": "2026-09-30T08:10:10.305299+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "efb9d9decb504f7d89c7eccedf52093d",
+        "created_at_utc": "2026-09-30T08:15:06.869532+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "719d5c6337334b3897f407a08d083dda",
+      "cycle_id": "stale:BTC:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.710291+00:00",
+      "account": "clearpond",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "44f30151a982494192dc5a35a6281870",
+        "created_at_utc": "2026-09-30T08:10:10.305299+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "efb9d9decb504f7d89c7eccedf52093d",
+        "created_at_utc": "2026-09-30T08:15:06.869532+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "cdc19aac143a471b981bac3e6aee2b57",
+      "cycle_id": "stale:ETH:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.720683+00:00",
+      "account": "alex",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "7e712d4b3f5e4679be93764a81cfa722",
+        "created_at_utc": "2026-09-30T08:10:10.376432+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "bb1ef810e6cf47e8a28c443ea1ab73aa",
+        "created_at_utc": "2026-09-30T08:15:06.933320+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "e4610887a4b54d46ba2d4a2ac5365a3a",
+      "cycle_id": "stale:ETH:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.720683+00:00",
+      "account": "jeremy",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "7e712d4b3f5e4679be93764a81cfa722",
+        "created_at_utc": "2026-09-30T08:10:10.376432+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "bb1ef810e6cf47e8a28c443ea1ab73aa",
+        "created_at_utc": "2026-09-30T08:15:06.933320+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "76b430e25965462db50843343fbccf00",
+      "cycle_id": "stale:ETH:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.720683+00:00",
+      "account": "clearpond",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "7e712d4b3f5e4679be93764a81cfa722",
+        "created_at_utc": "2026-09-30T08:10:10.376432+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "bb1ef810e6cf47e8a28c443ea1ab73aa",
+        "created_at_utc": "2026-09-30T08:15:06.933320+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "7aa77d4be1354a4fa10494ea5b576b38",
+      "cycle_id": "stale:HYPE:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.721696+00:00",
+      "account": "alex",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "c737db73dd4a4b8c95957119e9469e65",
+        "created_at_utc": "2026-09-30T08:10:10.446049+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "cbaf5d0eed15486c891c2da270346b11",
+        "created_at_utc": "2026-09-30T08:15:07.005045+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "fe78c12e2cab4750947c654df925f055",
+      "cycle_id": "stale:HYPE:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.721696+00:00",
+      "account": "jeremy",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "c737db73dd4a4b8c95957119e9469e65",
+        "created_at_utc": "2026-09-30T08:10:10.446049+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "cbaf5d0eed15486c891c2da270346b11",
+        "created_at_utc": "2026-09-30T08:15:07.005045+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "bea29af4aa2348cb8d0e35d03c2cbb51",
+      "cycle_id": "stale:HYPE:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.721696+00:00",
+      "account": "clearpond",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "c737db73dd4a4b8c95957119e9469e65",
+        "created_at_utc": "2026-09-30T08:10:10.446049+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "cbaf5d0eed15486c891c2da270346b11",
+        "created_at_utc": "2026-09-30T08:15:07.005045+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "3659013d62944c609a7d2c23e62b8d7f",
+      "cycle_id": "stale:ZEC:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.722708+00:00",
+      "account": "alex",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "228d267bfa114d438618ea40be461441",
+        "created_at_utc": "2026-09-30T08:10:10.514976+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "364733101fbb4c34b1923838043655b8",
+        "created_at_utc": "2026-09-30T08:15:07.071161+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "a4a55832dffe42209a707c32fc886099",
+      "cycle_id": "stale:ZEC:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.722708+00:00",
+      "account": "jeremy",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "228d267bfa114d438618ea40be461441",
+        "created_at_utc": "2026-09-30T08:10:10.514976+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "364733101fbb4c34b1923838043655b8",
+        "created_at_utc": "2026-09-30T08:15:07.071161+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "9d94a1bc7bc94ef7af4310d46939b7ee",
+      "cycle_id": "stale:ZEC:5969187",
+      "timestamp_utc": "2026-09-30T08:15:00.722708+00:00",
+      "account": "clearpond",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "228d267bfa114d438618ea40be461441",
+        "created_at_utc": "2026-09-30T08:10:10.514976+00:00",
+        "target_close_utc": "2026-09-30T08:15:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "364733101fbb4c34b1923838043655b8",
+        "created_at_utc": "2026-09-30T08:15:07.071161+00:00",
+        "decision_close_utc": "2026-09-30T08:15:00+00:00"
+      }
+    },
+    {
+      "decision_id": "ea523d92df1448cdaa375f7f37914b22",
+      "cycle_id": "stale:BTC:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.024763+00:00",
+      "account": "alex",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "60f2e42171b843dc90011080a6b0bffa",
+        "created_at_utc": "2026-09-30T08:20:08.513172+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "7b513a49ba2d4c7b8690bcdf0db4a644",
+        "created_at_utc": "2026-09-30T08:25:10.203664+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "d81616910c314b2cbab653dd6a4c8468",
+      "cycle_id": "stale:BTC:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.024763+00:00",
+      "account": "jeremy",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "60f2e42171b843dc90011080a6b0bffa",
+        "created_at_utc": "2026-09-30T08:20:08.513172+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "7b513a49ba2d4c7b8690bcdf0db4a644",
+        "created_at_utc": "2026-09-30T08:25:10.203664+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "24ac09a3ee974f369b3781e271b7a534",
+      "cycle_id": "stale:BTC:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.024763+00:00",
+      "account": "clearpond",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "60f2e42171b843dc90011080a6b0bffa",
+        "created_at_utc": "2026-09-30T08:20:08.513172+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "7b513a49ba2d4c7b8690bcdf0db4a644",
+        "created_at_utc": "2026-09-30T08:25:10.203664+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "413a2c11f73446c9a99a5ef2d95dee32",
+      "cycle_id": "stale:ETH:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.035814+00:00",
+      "account": "alex",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "c7fe1ca53c1347a588537cf7cbdc9278",
+        "created_at_utc": "2026-09-30T08:20:08.576586+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "f7c337517713426294e5ee2318c36a0f",
+        "created_at_utc": "2026-09-30T08:25:10.275820+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "65a5aeeab52f4ccaae1702ed57bda3e9",
+      "cycle_id": "stale:ETH:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.035814+00:00",
+      "account": "jeremy",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "c7fe1ca53c1347a588537cf7cbdc9278",
+        "created_at_utc": "2026-09-30T08:20:08.576586+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "f7c337517713426294e5ee2318c36a0f",
+        "created_at_utc": "2026-09-30T08:25:10.275820+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "2ca069660c5f46cc974934646c249149",
+      "cycle_id": "stale:ETH:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.035814+00:00",
+      "account": "clearpond",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "c7fe1ca53c1347a588537cf7cbdc9278",
+        "created_at_utc": "2026-09-30T08:20:08.576586+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "f7c337517713426294e5ee2318c36a0f",
+        "created_at_utc": "2026-09-30T08:25:10.275820+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "09db85e8b2414b248a2526a2ae0efcc4",
+      "cycle_id": "stale:HYPE:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.037055+00:00",
+      "account": "alex",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "0dcf4f0d51fb4a3aa2b7f124b448b7f5",
+        "created_at_utc": "2026-09-30T08:20:08.637010+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "b33aec582ce74e3c9d63a4cfcabdc0e7",
+        "created_at_utc": "2026-09-30T08:25:10.344112+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "1207d1a135914850b9f7fd28e5d6675c",
+      "cycle_id": "stale:HYPE:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.037055+00:00",
+      "account": "jeremy",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "0dcf4f0d51fb4a3aa2b7f124b448b7f5",
+        "created_at_utc": "2026-09-30T08:20:08.637010+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "b33aec582ce74e3c9d63a4cfcabdc0e7",
+        "created_at_utc": "2026-09-30T08:25:10.344112+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "fff9e1eba32544daaae2c0b8c9f84ce5",
+      "cycle_id": "stale:HYPE:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.037055+00:00",
+      "account": "clearpond",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "0dcf4f0d51fb4a3aa2b7f124b448b7f5",
+        "created_at_utc": "2026-09-30T08:20:08.637010+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "b33aec582ce74e3c9d63a4cfcabdc0e7",
+        "created_at_utc": "2026-09-30T08:25:10.344112+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "6c509fc86d28403e987a45be2edf7f47",
+      "cycle_id": "stale:ZEC:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.038351+00:00",
+      "account": "alex",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "88139736c7694a99987387b6d642ec82",
+        "created_at_utc": "2026-09-30T08:20:08.697952+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "2bfb58db5da248b4b18cb84b3c6540da",
+        "created_at_utc": "2026-09-30T08:25:10.410009+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "0f1247589881494bbea410af79b8af25",
+      "cycle_id": "stale:ZEC:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.038351+00:00",
+      "account": "jeremy",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "88139736c7694a99987387b6d642ec82",
+        "created_at_utc": "2026-09-30T08:20:08.697952+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "2bfb58db5da248b4b18cb84b3c6540da",
+        "created_at_utc": "2026-09-30T08:25:10.410009+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "aceeff6aa6b445ec9d2f86272ef646cb",
+      "cycle_id": "stale:ZEC:5969189",
+      "timestamp_utc": "2026-09-30T08:25:04.038351+00:00",
+      "account": "clearpond",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "88139736c7694a99987387b6d642ec82",
+        "created_at_utc": "2026-09-30T08:20:08.697952+00:00",
+        "target_close_utc": "2026-09-30T08:25:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "2bfb58db5da248b4b18cb84b3c6540da",
+        "created_at_utc": "2026-09-30T08:25:10.410009+00:00",
+        "decision_close_utc": "2026-09-30T08:25:00+00:00"
+      }
+    },
+    {
+      "decision_id": "285c5e75be34471592b03ba1b6b513c0",
+      "cycle_id": "stale:BTC:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.005604+00:00",
+      "account": "alex",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "0f8adb68d45f4e43b602ed5fa67cee52",
+        "created_at_utc": "2026-09-30T08:45:06.879813+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "c9162a0508b940a3bb0cab9cda4e718d",
+        "created_at_utc": "2026-09-30T08:50:08.523953+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "d08cc048587847d9911647cf4af64b86",
+      "cycle_id": "stale:BTC:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.005604+00:00",
+      "account": "jeremy",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "0f8adb68d45f4e43b602ed5fa67cee52",
+        "created_at_utc": "2026-09-30T08:45:06.879813+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "c9162a0508b940a3bb0cab9cda4e718d",
+        "created_at_utc": "2026-09-30T08:50:08.523953+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "3455008476b64f128b8469a187252d09",
+      "cycle_id": "stale:BTC:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.005604+00:00",
+      "account": "clearpond",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "0f8adb68d45f4e43b602ed5fa67cee52",
+        "created_at_utc": "2026-09-30T08:45:06.879813+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "c9162a0508b940a3bb0cab9cda4e718d",
+        "created_at_utc": "2026-09-30T08:50:08.523953+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "21956addfd434c3297daa5e9c9049f2e",
+      "cycle_id": "stale:ETH:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.006708+00:00",
+      "account": "alex",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "cff92648406949f697a243d1281ddee4",
+        "created_at_utc": "2026-09-30T08:45:06.947577+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "b0c740c2882d4feea9ea805302a2b05c",
+        "created_at_utc": "2026-09-30T08:50:08.594913+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "cf9f0afaba3d4226ad4184fa0495af34",
+      "cycle_id": "stale:ETH:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.006708+00:00",
+      "account": "jeremy",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "cff92648406949f697a243d1281ddee4",
+        "created_at_utc": "2026-09-30T08:45:06.947577+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "b0c740c2882d4feea9ea805302a2b05c",
+        "created_at_utc": "2026-09-30T08:50:08.594913+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "7fdb049223c841eea5594b2d71253497",
+      "cycle_id": "stale:ETH:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.006708+00:00",
+      "account": "clearpond",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "cff92648406949f697a243d1281ddee4",
+        "created_at_utc": "2026-09-30T08:45:06.947577+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "b0c740c2882d4feea9ea805302a2b05c",
+        "created_at_utc": "2026-09-30T08:50:08.594913+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "02d484b9d12f49398c6a53a08a72dea8",
+      "cycle_id": "stale:HYPE:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.007586+00:00",
+      "account": "alex",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "2498f69b2bf649a7a5120cd47e881094",
+        "created_at_utc": "2026-09-30T08:45:07.014801+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "cf0a69c3e3e1481c974a4ae4d349b6c5",
+        "created_at_utc": "2026-09-30T08:50:08.666451+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "abd5354fcf104537add32e0e883d4ffe",
+      "cycle_id": "stale:HYPE:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.007586+00:00",
+      "account": "jeremy",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "2498f69b2bf649a7a5120cd47e881094",
+        "created_at_utc": "2026-09-30T08:45:07.014801+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "cf0a69c3e3e1481c974a4ae4d349b6c5",
+        "created_at_utc": "2026-09-30T08:50:08.666451+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "8537eba7b0f043c4b1b2c3ff4fdb1d1a",
+      "cycle_id": "stale:HYPE:5969194",
+      "timestamp_utc": "2026-09-30T08:50:00.007586+00:00",
+      "account": "clearpond",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast expired while fetching executable books.",
+      "previous_prediction": {
+        "prediction_id": "2498f69b2bf649a7a5120cd47e881094",
+        "created_at_utc": "2026-09-30T08:45:07.014801+00:00",
+        "target_close_utc": "2026-09-30T08:50:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "cf0a69c3e3e1481c974a4ae4d349b6c5",
+        "created_at_utc": "2026-09-30T08:50:08.666451+00:00",
+        "decision_close_utc": "2026-09-30T08:50:00+00:00"
+      }
+    },
+    {
+      "decision_id": "e1aad2d398c3412490376c1fdd115586",
+      "cycle_id": "stale:BTC:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.775977+00:00",
+      "account": "alex",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "0fdd9055f5d04c95ae9793a9c536f493",
+        "created_at_utc": "2026-09-30T08:55:10.188361+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "824382196be745169eeb4923661f9012",
+        "created_at_utc": "2026-09-30T09:00:06.849261+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "b373a35db8dc43a78b3a3b2416e6e2a7",
+      "cycle_id": "stale:BTC:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.775977+00:00",
+      "account": "jeremy",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "0fdd9055f5d04c95ae9793a9c536f493",
+        "created_at_utc": "2026-09-30T08:55:10.188361+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "824382196be745169eeb4923661f9012",
+        "created_at_utc": "2026-09-30T09:00:06.849261+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "eee32afbef334b1aa54d442b627d2f6c",
+      "cycle_id": "stale:BTC:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.775977+00:00",
+      "account": "clearpond",
+      "coin": "BTC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "0fdd9055f5d04c95ae9793a9c536f493",
+        "created_at_utc": "2026-09-30T08:55:10.188361+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "824382196be745169eeb4923661f9012",
+        "created_at_utc": "2026-09-30T09:00:06.849261+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "595d1d6be9b54cca9737c8b8aca07d49",
+      "cycle_id": "stale:ETH:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.786103+00:00",
+      "account": "alex",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "7c30b6cb5ba64e1b96c7963363798e0f",
+        "created_at_utc": "2026-09-30T08:55:10.251319+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "5d449c1e64414d61b5c00fb96a99d35f",
+        "created_at_utc": "2026-09-30T09:00:06.912748+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "4d661358ab134b75970b403825203e68",
+      "cycle_id": "stale:ETH:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.786103+00:00",
+      "account": "jeremy",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "7c30b6cb5ba64e1b96c7963363798e0f",
+        "created_at_utc": "2026-09-30T08:55:10.251319+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "5d449c1e64414d61b5c00fb96a99d35f",
+        "created_at_utc": "2026-09-30T09:00:06.912748+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "dd3ab130c65e46d5aad99e7e2fe8e69b",
+      "cycle_id": "stale:ETH:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.786103+00:00",
+      "account": "clearpond",
+      "coin": "ETH",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "7c30b6cb5ba64e1b96c7963363798e0f",
+        "created_at_utc": "2026-09-30T08:55:10.251319+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "5d449c1e64414d61b5c00fb96a99d35f",
+        "created_at_utc": "2026-09-30T09:00:06.912748+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "d6f2aed045ea417fbd37d2a48c95895a",
+      "cycle_id": "stale:HYPE:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.787032+00:00",
+      "account": "alex",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "b80434dc074146108db305fd05730aa1",
+        "created_at_utc": "2026-09-30T08:55:10.314477+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "a25001f537ba4bbea4c2ee23174329b7",
+        "created_at_utc": "2026-09-30T09:00:06.976815+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "c2f65d779dc646f2972555326f5f89b1",
+      "cycle_id": "stale:HYPE:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.787032+00:00",
+      "account": "jeremy",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "b80434dc074146108db305fd05730aa1",
+        "created_at_utc": "2026-09-30T08:55:10.314477+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "a25001f537ba4bbea4c2ee23174329b7",
+        "created_at_utc": "2026-09-30T09:00:06.976815+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "20fa6b1cb058490dbc76c98c3ebc2228",
+      "cycle_id": "stale:HYPE:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.787032+00:00",
+      "account": "clearpond",
+      "coin": "HYPE",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "b80434dc074146108db305fd05730aa1",
+        "created_at_utc": "2026-09-30T08:55:10.314477+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "a25001f537ba4bbea4c2ee23174329b7",
+        "created_at_utc": "2026-09-30T09:00:06.976815+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "f7c664a51ff1475cba06a5377499e20e",
+      "cycle_id": "stale:ZEC:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.787940+00:00",
+      "account": "alex",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "821205208bf541108f87054aa7d2603b",
+        "created_at_utc": "2026-09-30T08:55:10.377612+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "87d3084a13a14ea68a4ee81ff503a2e4",
+        "created_at_utc": "2026-09-30T09:00:07.044811+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "1d460220b2294b5c8664bc0282dfd057",
+      "cycle_id": "stale:ZEC:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.787940+00:00",
+      "account": "jeremy",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "821205208bf541108f87054aa7d2603b",
+        "created_at_utc": "2026-09-30T08:55:10.377612+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "87d3084a13a14ea68a4ee81ff503a2e4",
+        "created_at_utc": "2026-09-30T09:00:07.044811+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    },
+    {
+      "decision_id": "cf42890204c84933b47efca813c6bc92",
+      "cycle_id": "stale:ZEC:5969196",
+      "timestamp_utc": "2026-09-30T09:00:03.787940+00:00",
+      "account": "clearpond",
+      "coin": "ZEC",
+      "action": "hold",
+      "reason": "qualified_forecast_unavailable",
+      "forecast_id": null,
+      "model_id": null,
+      "specific_error": "Forecast is stale or has a future timestamp.",
+      "previous_prediction": {
+        "prediction_id": "821205208bf541108f87054aa7d2603b",
+        "created_at_utc": "2026-09-30T08:55:10.377612+00:00",
+        "target_close_utc": "2026-09-30T09:00:00+00:00"
+      },
+      "next_prediction": {
+        "prediction_id": "87d3084a13a14ea68a4ee81ff503a2e4",
+        "created_at_utc": "2026-09-30T09:00:07.044811+00:00",
+        "decision_close_utc": "2026-09-30T09:00:00+00:00"
+      }
+    }
+  ],
+  "models": {
+    "BTC": {
+      "model_id": "20260930T090012Z-c17bfda1",
+      "prediction_id": "647d673125d4494ba901931724ce6fc6",
+      "decision_close_utc": "2026-09-30T09:05:00+00:00",
+      "created_at_utc": "2026-09-30T09:05:08.438203+00:00",
+      "target_close_utc": "2026-09-30T09:10:00+00:00",
+      "p_not_down": 0.5254371900332117,
+      "qualification": false,
+      "eligibility_reasons": [
+        "log_loss worse than prior_baseline",
+        "brier_score worse than prior_baseline",
+        "log_loss worse than neutral_baseline",
+        "brier_score worse than neutral_baseline"
+      ],
+      "ensemble_weights": {
+        "logistic": 0.32,
+        "extra_trees": 0.16,
+        "hist_gradient_boosting": 0.16,
+        "mlp": 0.16,
+        "random_forest": 0.2
+      },
+      "metrics": {
+        "logistic": {
+          "rows": 811,
+          "log_loss": 0.6956718816782491,
+          "brier_score": 0.25126153806839463,
+          "accuracy": 0.4796547472256473,
+          "roc_auc": 0.4931369327930494
+        },
+        "extra_trees": {
+          "rows": 811,
+          "log_loss": 0.6951133326182253,
+          "brier_score": 0.2509744788263314,
+          "accuracy": 0.5178791615289766,
+          "roc_auc": 0.5298677277650008
+        },
+        "hist_gradient_boosting": {
+          "rows": 811,
+          "log_loss": 0.6942082529868123,
+          "brier_score": 0.2505304033440714,
+          "accuracy": 0.4919852034525277,
+          "roc_auc": 0.5230198712566471
+        },
+        "mlp": {
+          "rows": 811,
+          "log_loss": 0.6944497172569787,
+          "brier_score": 0.25065031746354216,
+          "accuracy": 0.4907521578298397,
+          "roc_auc": 0.5125883741588483
+        },
+        "random_forest": {
+          "rows": 811,
+          "log_loss": 0.6968113830482311,
+          "brier_score": 0.25182071002935663,
+          "accuracy": 0.4882860665844636,
+          "roc_auc": 0.4963920222927999
+        },
+        "ensemble": {
+          "rows": 811,
+          "log_loss": 0.6949418340762082,
+          "brier_score": 0.250895875328792,
+          "accuracy": 0.49445129469790383,
+          "roc_auc": 0.5080920916535855
+        },
+        "prior_baseline": {
+          "rows": 811,
+          "log_loss": 0.694057826062306,
+          "brier_score": 0.25045519470413746,
+          "accuracy": 0.48951911220715166,
+          "roc_auc": 0.5
+        },
+        "neutral_baseline": {
+          "rows": 811,
+          "log_loss": 0.6931471805599453,
+          "brier_score": 0.25,
+          "accuracy": 0.48951911220715166,
+          "roc_auc": 0.5
+        }
+      },
+      "per_model": {
+        "extra_trees": {
+          "p_down": 0.4613159852549946,
+          "p_not_down": 0.5386840147450054
+        },
+        "hist_gradient_boosting": {
+          "p_down": 0.4801650747356402,
+          "p_not_down": 0.5198349252643598
+        },
+        "logistic": {
+          "p_down": 0.4810431858562705,
+          "p_not_down": 0.5189568141437295
+        },
+        "mlp": {
+          "p_down": 0.4828172449833049,
+          "p_not_down": 0.5171827550166951
+        },
+        "random_forest": {
+          "p_down": 0.46370630848475725,
+          "p_not_down": 0.5362936915152428
+        }
+      },
+      "published_count": 14,
+      "qualified_count": 0,
+      "in_round_published_count": 13,
+      "in_round_delay_after_close_seconds": {
+        "min": 6.849261,
+        "max": 10.305299,
+        "mean": 8.544630999999999
+      },
+      "created_delay_after_close_seconds": {
+        "min": 6.849261,
+        "max": 137.66724,
+        "mean": 17.767674500000002
+      },
+      "p_not_down_range": [
+        0.5097965089038226,
+        0.5411006037643085
+      ],
+      "forward_metrics": {
+        "n": 13,
+        "brier": 0.2537927430263737,
+        "logloss": 0.7007373098267309,
+        "accuracy": 0.38461538461538464,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-09-30T09:05:13.746024+00:00",
+        "by_role": {
+          "active": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          },
+          "research_candidate": {
+            "n": 13,
+            "brier": 0.2537927430263737,
+            "logloss": 0.7007373098267309,
+            "accuracy": 0.38461538461538464
+          }
+        }
+      }
+    },
+    "ETH": {
+      "model_id": "20260930T090017Z-eb4e0d1f",
+      "prediction_id": "10a20c99e5b840b1ae38fa61446da3e6",
+      "decision_close_utc": "2026-09-30T09:05:00+00:00",
+      "created_at_utc": "2026-09-30T09:05:08.499621+00:00",
+      "target_close_utc": "2026-09-30T09:10:00+00:00",
+      "p_not_down": 0.4867774531648262,
+      "qualification": false,
+      "eligibility_reasons": [
+        "log_loss worse than prior_baseline",
+        "brier_score worse than prior_baseline",
+        "log_loss worse than neutral_baseline",
+        "brier_score worse than neutral_baseline"
+      ],
+      "ensemble_weights": {
+        "logistic": 0.32,
+        "extra_trees": 0.16,
+        "hist_gradient_boosting": 0.16,
+        "mlp": 0.16,
+        "random_forest": 0.2
+      },
+      "metrics": {
+        "logistic": {
+          "rows": 811,
+          "log_loss": 0.69347423247566,
+          "brier_score": 0.25016229385484945,
+          "accuracy": 0.5178791615289766,
+          "roc_auc": 0.5127592288511829
+        },
+        "extra_trees": {
+          "rows": 811,
+          "log_loss": 0.6938881102438813,
+          "brier_score": 0.2503698481358201,
+          "accuracy": 0.48581997533908755,
+          "roc_auc": 0.5017515051997811
+        },
+        "hist_gradient_boosting": {
+          "rows": 811,
+          "log_loss": 0.6956943008407948,
+          "brier_score": 0.25126902001934975,
+          "accuracy": 0.4882860665844636,
+          "roc_auc": 0.48874293012224046
+        },
+        "mlp": {
+          "rows": 811,
+          "log_loss": 0.6946007054182025,
+          "brier_score": 0.250712622789661,
+          "accuracy": 0.48951911220715166,
+          "roc_auc": 0.5059356565103692
+        },
+        "random_forest": {
+          "rows": 811,
+          "log_loss": 0.6941324834338913,
+          "brier_score": 0.2504906914065846,
+          "accuracy": 0.49445129469790383,
+          "roc_auc": 0.5008757525998906
+        },
+        "ensemble": {
+          "rows": 811,
+          "log_loss": 0.6938058179422502,
+          "brier_score": 0.25032788429389835,
+          "accuracy": 0.5178791615289766,
+          "roc_auc": 0.5061302681992337
+        },
+        "prior_baseline": {
+          "rows": 811,
+          "log_loss": 0.6935253979029323,
+          "brier_score": 0.25018902801672016,
+          "accuracy": 0.5006165228113441,
+          "roc_auc": 0.5
+        },
+        "neutral_baseline": {
+          "rows": 811,
+          "log_loss": 0.6931471805599453,
+          "brier_score": 0.25,
+          "accuracy": 0.5006165228113441,
+          "roc_auc": 0.5
+        }
+      },
+      "per_model": {
+        "extra_trees": {
+          "p_down": 0.5106033911255471,
+          "p_not_down": 0.4893966088744529
+        },
+        "hist_gradient_boosting": {
+          "p_down": 0.5041426197797496,
+          "p_not_down": 0.49585738022025044
+        },
+        "logistic": {
+          "p_down": 0.5226581930043424,
+          "p_not_down": 0.4773418069956576
+        },
+        "mlp": {
+          "p_down": 0.504232186833341,
+          "p_not_down": 0.4957678131666589
+        },
+        "random_forest": {
+          "p_down": 0.514677067178011,
+          "p_not_down": 0.4853229328219891
+        }
+      },
+      "published_count": 14,
+      "qualified_count": 0,
+      "in_round_published_count": 13,
+      "in_round_delay_after_close_seconds": {
+        "min": 6.912748,
+        "max": 10.376432,
+        "mean": 8.610690307692307
+      },
+      "created_delay_after_close_seconds": {
+        "min": 6.912748,
+        "max": 142.800117,
+        "mean": 18.19564935714286
+      },
+      "p_not_down_range": [
+        0.4722576842329942,
+        0.5215708188648458
+      ],
+      "forward_metrics": {
+        "n": 13,
+        "brier": 0.2423345599761073,
+        "logloss": 0.6778078811132493,
+        "accuracy": 0.7692307692307693,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-09-30T09:05:18.906611+00:00",
+        "by_role": {
+          "active": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          },
+          "research_candidate": {
+            "n": 13,
+            "brier": 0.2423345599761073,
+            "logloss": 0.6778078811132493,
+            "accuracy": 0.7692307692307693
+          }
+        }
+      }
+    },
+    "HYPE": {
+      "model_id": "20260930T090022Z-1ffb8d13",
+      "prediction_id": "9a0fd2521857400baca9b63b79b9718f",
+      "decision_close_utc": "2026-09-30T09:05:00+00:00",
+      "created_at_utc": "2026-09-30T09:05:08.561895+00:00",
+      "target_close_utc": "2026-09-30T09:10:00+00:00",
+      "p_not_down": 0.5113311888171373,
+      "qualification": false,
+      "eligibility_reasons": [
+        "log_loss worse than prior_baseline",
+        "brier_score worse than prior_baseline",
+        "log_loss worse than neutral_baseline",
+        "brier_score worse than neutral_baseline"
+      ],
+      "ensemble_weights": {
+        "logistic": 0.32,
+        "extra_trees": 0.16,
+        "hist_gradient_boosting": 0.16,
+        "mlp": 0.16,
+        "random_forest": 0.2
+      },
+      "metrics": {
+        "logistic": {
+          "rows": 811,
+          "log_loss": 0.6939269491751714,
+          "brier_score": 0.2503889310376834,
+          "accuracy": 0.5030826140567201,
+          "roc_auc": 0.4722536461944556
+        },
+        "extra_trees": {
+          "rows": 811,
+          "log_loss": 0.6932258060563163,
+          "brier_score": 0.25003929211758275,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.4927866778576555
+        },
+        "hist_gradient_boosting": {
+          "rows": 811,
+          "log_loss": 0.6933762467706855,
+          "brier_score": 0.2501144490579595,
+          "accuracy": 0.5018495684340321,
+          "roc_auc": 0.4924947390188422
+        },
+        "mlp": {
+          "rows": 811,
+          "log_loss": 0.6939365188718641,
+          "brier_score": 0.25039166651872125,
+          "accuracy": 0.5117139334155364,
+          "roc_auc": 0.5013137247746597
+        },
+        "random_forest": {
+          "rows": 811,
+          "log_loss": 0.6934181591416487,
+          "brier_score": 0.2501354134948046,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.49051198773856886
+        },
+        "ensemble": {
+          "rows": 811,
+          "log_loss": 0.693480029556976,
+          "brier_score": 0.2501664490558788,
+          "accuracy": 0.499383477188656,
+          "roc_auc": 0.4755926966633824
+        },
+        "prior_baseline": {
+          "rows": 811,
+          "log_loss": 0.6931163003331063,
+          "brier_score": 0.24998455972944905,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.5
+        },
+        "neutral_baseline": {
+          "rows": 811,
+          "log_loss": 0.6931471805599453,
+          "brier_score": 0.25,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.5
+        }
+      },
+      "per_model": {
+        "extra_trees": {
+          "p_down": 0.48813298866747556,
+          "p_not_down": 0.5118670113325244
+        },
+        "hist_gradient_boosting": {
+          "p_down": 0.48524882975515937,
+          "p_not_down": 0.5147511702448406
+        },
+        "logistic": {
+          "p_down": 0.4936406143336277,
+          "p_not_down": 0.5063593856663723
+        },
+        "mlp": {
+          "p_down": 0.4875386710333246,
+          "p_not_down": 0.5124613289666754
+        },
+        "random_forest": {
+          "p_down": 0.48478268141574177,
+          "p_not_down": 0.5152173185842582
+        }
+      },
+      "published_count": 14,
+      "qualified_count": 0,
+      "in_round_published_count": 13,
+      "in_round_delay_after_close_seconds": {
+        "min": 6.976815,
+        "max": 10.446049,
+        "mean": 8.677483923076924
+      },
+      "created_delay_after_close_seconds": {
+        "min": 6.976815,
+        "max": 147.948705,
+        "mean": 18.625428285714285
+      },
+      "p_not_down_range": [
+        0.49960562504199746,
+        0.5190952054084212
+      ],
+      "forward_metrics": {
+        "n": 13,
+        "brier": 0.24982536235794944,
+        "logloss": 0.6927997130810694,
+        "accuracy": 0.6153846153846154,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-09-30T09:05:24.056743+00:00",
+        "by_role": {
+          "active": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          },
+          "research_candidate": {
+            "n": 13,
+            "brier": 0.24982536235794944,
+            "logloss": 0.6927997130810694,
+            "accuracy": 0.6153846153846154
+          }
+        }
+      }
+    },
+    "ZEC": {
+      "model_id": "20260930T090027Z-91d568a0",
+      "prediction_id": "81def9df7efe4145a5a548e8242a9e73",
+      "decision_close_utc": "2026-09-30T09:05:00+00:00",
+      "created_at_utc": "2026-09-30T09:05:08.624419+00:00",
+      "target_close_utc": "2026-09-30T09:10:00+00:00",
+      "p_not_down": 0.5135764222701537,
+      "qualification": false,
+      "eligibility_reasons": [
+        "log_loss worse than prior_baseline",
+        "brier_score worse than prior_baseline",
+        "log_loss worse than neutral_baseline",
+        "brier_score worse than neutral_baseline"
+      ],
+      "ensemble_weights": {
+        "logistic": 0.32,
+        "extra_trees": 0.16,
+        "hist_gradient_boosting": 0.16,
+        "mlp": 0.16,
+        "random_forest": 0.2
+      },
+      "metrics": {
+        "logistic": {
+          "rows": 811,
+          "log_loss": 0.6951709180567471,
+          "brier_score": 0.25098813085905486,
+          "accuracy": 0.5030826140567201,
+          "roc_auc": 0.5070308603680862
+        },
+        "extra_trees": {
+          "rows": 811,
+          "log_loss": 0.6965332841328435,
+          "brier_score": 0.2516562867408357,
+          "accuracy": 0.5178791615289766,
+          "roc_auc": 0.509408945492586
+        },
+        "hist_gradient_boosting": {
+          "rows": 811,
+          "log_loss": 0.6963040133105413,
+          "brier_score": 0.2515590574195873,
+          "accuracy": 0.5018495684340321,
+          "roc_auc": 0.4980111666605846
+        },
+        "mlp": {
+          "rows": 811,
+          "log_loss": 0.6939656120211678,
+          "brier_score": 0.2504079235776822,
+          "accuracy": 0.5030826140567201,
+          "roc_auc": 0.5062158644430659
+        },
+        "random_forest": {
+          "rows": 811,
+          "log_loss": 0.6956865211801253,
+          "brier_score": 0.25125235329229245,
+          "accuracy": 0.5092478421701603,
+          "roc_auc": 0.5112639735308785
+        },
+        "ensemble": {
+          "rows": 811,
+          "log_loss": 0.6949269377133248,
+          "brier_score": 0.250880186268539,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.5085209648578624
+        },
+        "prior_baseline": {
+          "rows": 811,
+          "log_loss": 0.6931100649556958,
+          "brier_score": 0.24998144242371187,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.5
+        },
+        "neutral_baseline": {
+          "rows": 811,
+          "log_loss": 0.6931471805599453,
+          "brier_score": 0.25,
+          "accuracy": 0.5043156596794082,
+          "roc_auc": 0.5
+        }
+      },
+      "per_model": {
+        "extra_trees": {
+          "p_down": 0.47722852705687746,
+          "p_not_down": 0.5227714729431225
+        },
+        "hist_gradient_boosting": {
+          "p_down": 0.4590485762190367,
+          "p_not_down": 0.5409514237809633
+        },
+        "logistic": {
+          "p_down": 0.5172834455121402,
+          "p_not_down": 0.48271655448785983
+        },
+        "mlp": {
+          "p_down": 0.4882938788543152,
+          "p_not_down": 0.5117061211456848
+        },
+        "random_forest": {
+          "p_down": 0.464807590125624,
+          "p_not_down": 0.535192409874376
+        }
+      },
+      "published_count": 14,
+      "qualified_count": 0,
+      "in_round_published_count": 13,
+      "in_round_delay_after_close_seconds": {
+        "min": 7.044811,
+        "max": 10.514976,
+        "mean": 8.743092538461537
+      },
+      "created_delay_after_close_seconds": {
+        "min": 7.044811,
+        "max": 153.072723,
+        "mean": 19.05235185714286
+      },
+      "p_not_down_range": [
+        0.5135282086566529,
+        0.548789349465032
+      ],
+      "forward_metrics": {
+        "n": 13,
+        "brier": 0.258748013546159,
+        "logloss": 0.7106932298683262,
+        "accuracy": 0.38461538461538464,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-09-30T09:05:29.205673+00:00",
+        "by_role": {
+          "active": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          },
+          "research_candidate": {
+            "n": 13,
+            "brier": 0.258748013546159,
+            "logloss": 0.7106932298683262,
+            "accuracy": 0.38461538461538464
+          }
+        }
+      }
+    }
+  },
+  "endpoint": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\hyper-model-history-20260930\\round12-endpoint-20260930T090600Z.json",
+    "sha256": "0bb2216d4e08e7b1fbc96f75fba5a93013738c2b3fce714586bb8146e63aa1ff",
+    "paper_observed_at_utc": "2026-09-30T09:05:54.781425+00:00",
+    "actual_completed_at_utc": "2026-09-30T09:06:16.276832+00:00",
+    "paper_seconds_after_due": 50.854781,
+    "actual_seconds_after_due": 72.350188,
+    "comparison": {
+      "raw_display_equity_edge": -30.64109410590754,
+      "common_mark_equity_edge": -29.762246647500433,
+      "performance_comparable": true,
+      "mirror_baseline_verified": true,
+      "mirror_baseline_reconciliation": {
+        "verified": true,
+        "accounts": {
+          "clearpond": {
+            "source_equity": 31556.97654830797,
+            "opening_equity": 31556.97654830797,
+            "source_perp_unrealized_pnl": 0,
+            "opening_mark_perp_unrealized_pnl": 0,
+            "source_to_opening_valuation_difference": 0.0
+          },
+          "alex": {
+            "source_equity": 7163.691768626571,
+            "opening_equity": 7164.25040862657,
+            "source_perp_unrealized_pnl": -435.90779000000003,
+            "opening_mark_perp_unrealized_pnl": -435.349150000001,
+            "source_to_opening_valuation_difference": 0.5586399999992864
+          },
+          "jeremy": {
+            "source_equity": 5209.04470131608,
+            "opening_equity": 5208.65931631608,
+            "source_perp_unrealized_pnl": 47.251835,
+            "opening_mark_perp_unrealized_pnl": 46.86644999999959,
+            "source_to_opening_valuation_difference": -0.3853850000004968
+          }
+        },
+        "reason": "collateral_inventory_and_valuation_bridge_reconciled"
+      },
+      "zero_external_flows_verified": true,
+      "observation_skew_seconds": 21.495407,
+      "max_observation_skew_seconds": 120,
+      "paper_return_fraction": -0.0008125508841491103,
+      "actual_return_fraction": -0.00013505660468815517,
+      "excess_return_fraction": -0.0006774942794610188,
+      "paper_beating_actual": false,
+      "unchanged_opening_inventory_equity_before_funding": 43923.89516672622,
+      "paper_minus_unchanged_inventory_before_benchmark_funding": -29.70416140749876
+    },
+    "forecast_evidence": {
+      "schema_version": 1,
+      "rule": "qualified-in-round-forecast-v1",
+      "experiment_id": "20260930-paper-round-12",
+      "seed_at_utc": "2026-09-30T08:05:03.926644802+00:00",
+      "endpoint_at_utc": "2026-09-30T09:05:54.781425+00:00",
+      "committed_decision_count": 234,
+      "decision_rows_sha256": "726087347059562abab22defe4b960507b800867d7168686da5483ecdcf7016e",
+      "qualified_decision_count": 0,
+      "valid_qualified_forecast_count": 0,
+      "invalid_qualified_decision_count": 0,
+      "first_valid_witness": null
+    }
+  }
+}

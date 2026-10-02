@@ -1,0 +1,421 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-09-30T09:15:16Z",
+  "completion_id": "20260930T091516Z-hyper-model-history",
+  "details": [
+    "Atlas publication review adopts 19 previously completed exact artifact paths; the original file-producing task is not identified by the saved evidence.",
+    "This machine-local snapshot contains retained model history for BTC, ETH, HYPE, and ZEC, a round-12 endpoint with Paper and actual account-derived data, diagnostics, scripts, and UI images.",
+    "Saved verification at 2026-09-30T09:15:15Z records 169 passing UI and service tests; peer review at 09:13:49Z records 57 passing UI tests. These are historical results and were not rerun for this publication review.",
+    "The five source and test SHA-256 values recorded by the saved UI verification still match the current checkout. Model quality remains unresolved as stated in the diagnosis; these files are historical evidence, not live Scout state."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnose.py",
+      "expected_sha256": "a9faedceb4801bcf8cf762c6fc1082037b775e115f28b72ce70c767679f3051f",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnose.py",
+      "published_sha256": "a9faedceb4801bcf8cf762c6fc1082037b775e115f28b72ce70c767679f3051f",
+      "published_size": 2464,
+      "sha256": "a9faedceb4801bcf8cf762c6fc1082037b775e115f28b72ce70c767679f3051f",
+      "size": 2464,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis-raw.json",
+      "expected_sha256": "9e7a21869c03773afd173788f0d594f2c1f239fe6f92e31d6cb651bb0631834d",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnosis-raw.json",
+      "published_sha256": "9e7a21869c03773afd173788f0d594f2c1f239fe6f92e31d6cb651bb0631834d",
+      "published_size": 324672,
+      "sha256": "9e7a21869c03773afd173788f0d594f2c1f239fe6f92e31d6cb651bb0631834d",
+      "size": 324672,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis.json",
+      "expected_sha256": "e37f1f35c224237a77554c3b3a5869279fc1773555f379d9bba74b27f034141b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnosis.json",
+      "published_sha256": "e37f1f35c224237a77554c3b3a5869279fc1773555f379d9bba74b27f034141b",
+      "published_size": 60773,
+      "sha256": "e37f1f35c224237a77554c3b3a5869279fc1773555f379d9bba74b27f034141b",
+      "size": 60773,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis.md",
+      "expected_sha256": "af182e4513b0e2a4fd146db1f1a787da0718ba4f778167e4eb6edfe89b6fe1d4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnosis.md",
+      "published_sha256": "af182e4513b0e2a4fd146db1f1a787da0718ba4f778167e4eb6edfe89b6fe1d4",
+      "published_size": 5265,
+      "sha256": "af182e4513b0e2a4fd146db1f1a787da0718ba4f778167e4eb6edfe89b6fe1d4",
+      "size": 5265,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/finalize_ui_audit.py",
+      "expected_sha256": "4d740b12c73f7afa6effc03bbd12bab494d29bbaa7b5f82de4d59649bebc36a0",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/finalize_ui_audit.py",
+      "published_sha256": "4d740b12c73f7afa6effc03bbd12bab494d29bbaa7b5f82de4d59649bebc36a0",
+      "published_size": 5247,
+      "sha256": "4d740b12c73f7afa6effc03bbd12bab494d29bbaa7b5f82de4d59649bebc36a0",
+      "size": 5247,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer_render_history.py",
+      "expected_sha256": "461ff229e86d79ea22d7297bc4c8d305ffbdb99e0dccd54603290023782d6243",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer_render_history.py",
+      "published_sha256": "461ff229e86d79ea22d7297bc4c8d305ffbdb99e0dccd54603290023782d6243",
+      "published_size": 2024,
+      "sha256": "461ff229e86d79ea22d7297bc4c8d305ffbdb99e0dccd54603290023782d6243",
+      "size": 2024,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer_render_retained_history.py",
+      "expected_sha256": "05bb696f288df4c95a0fa831780875859311419f37a71ce19f6f0137fd3e32c9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer_render_retained_history.py",
+      "published_sha256": "05bb696f288df4c95a0fa831780875859311419f37a71ce19f6f0137fd3e32c9",
+      "published_size": 2102,
+      "sha256": "05bb696f288df4c95a0fa831780875859311419f37a71ce19f6f0137fd3e32c9",
+      "size": 2102,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-narrow.png",
+      "expected_sha256": "200c3a1c888e4d87c05d9a59a41f66c7c67cf39c60ca7556a864da61888ca4bf",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-narrow.png",
+      "published_sha256": "200c3a1c888e4d87c05d9a59a41f66c7c67cf39c60ca7556a864da61888ca4bf",
+      "published_size": 17655,
+      "sha256": "200c3a1c888e4d87c05d9a59a41f66c7c67cf39c60ca7556a864da61888ca4bf",
+      "size": 17655,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-populated-1706.png",
+      "expected_sha256": "046d8bbe372f631c53579211a9948aea2a5b783d01982927969c882fc9690104",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-populated-1706.png",
+      "published_sha256": "046d8bbe372f631c53579211a9948aea2a5b783d01982927969c882fc9690104",
+      "published_size": 55407,
+      "sha256": "046d8bbe372f631c53579211a9948aea2a5b783d01982927969c882fc9690104",
+      "size": 55407,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-populated-880.png",
+      "expected_sha256": "eca48e5ee5bd99961d93d1808b73a94788eb2a56adc92bad04129342ba2d3bae",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-populated-880.png",
+      "published_sha256": "eca48e5ee5bd99961d93d1808b73a94788eb2a56adc92bad04129342ba2d3bae",
+      "published_size": 30359,
+      "sha256": "eca48e5ee5bd99961d93d1808b73a94788eb2a56adc92bad04129342ba2d3bae",
+      "size": 30359,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-retained-1706.png",
+      "expected_sha256": "11b0dd492fdc9fceed44e2b7b2d1fef997a5d747d498456ef16b0e687c74ddcb",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-retained-1706.png",
+      "published_sha256": "11b0dd492fdc9fceed44e2b7b2d1fef997a5d747d498456ef16b0e687c74ddcb",
+      "published_size": 37294,
+      "sha256": "11b0dd492fdc9fceed44e2b7b2d1fef997a5d747d498456ef16b0e687c74ddcb",
+      "size": 37294,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-retained-880.png",
+      "expected_sha256": "5cbeb11deb4d002d7e65b0587b4cd2019fbc1f2c18f4d4a512b8a582c5335893",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-retained-880.png",
+      "published_sha256": "5cbeb11deb4d002d7e65b0587b4cd2019fbc1f2c18f4d4a512b8a582c5335893",
+      "published_size": 30596,
+      "sha256": "5cbeb11deb4d002d7e65b0587b4cd2019fbc1f2c18f4d4a512b8a582c5335893",
+      "size": 30596,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-ui-review.json",
+      "expected_sha256": "2f61ddfa06ee0198d63a94687dcd05fa815b038638ec8b10d65020bcdb09f1fb",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-ui-review.json",
+      "published_sha256": "2f61ddfa06ee0198d63a94687dcd05fa815b038638ec8b10d65020bcdb09f1fb",
+      "published_size": 1493,
+      "sha256": "2f61ddfa06ee0198d63a94687dcd05fa815b038638ec8b10d65020bcdb09f1fb",
+      "size": 1493,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-wide.png",
+      "expected_sha256": "c3436e9aaf2046ae3548492b53cd6f4331bba49902e105cecd23493664a31ab4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-wide.png",
+      "published_sha256": "c3436e9aaf2046ae3548492b53cd6f4331bba49902e105cecd23493664a31ab4",
+      "published_size": 29838,
+      "sha256": "c3436e9aaf2046ae3548492b53cd6f4331bba49902e105cecd23493664a31ab4",
+      "size": 29838,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/project_retained_history.py",
+      "expected_sha256": "90b79d8993f2b43715677c916411222fbeac089e4d77df56522ea89bbd8db9e2",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/project_retained_history.py",
+      "published_sha256": "90b79d8993f2b43715677c916411222fbeac089e4d77df56522ea89bbd8db9e2",
+      "published_size": 3393,
+      "sha256": "90b79d8993f2b43715677c916411222fbeac089e4d77df56522ea89bbd8db9e2",
+      "size": 3393,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/retained-model-history.json",
+      "expected_sha256": "1127863674e91404b47b01e1d4cf88f411a7b6bbdcd2233eef275b8c09bdbbc1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/retained-model-history.json",
+      "published_sha256": "1127863674e91404b47b01e1d4cf88f411a7b6bbdcd2233eef275b8c09bdbbc1",
+      "published_size": 687279,
+      "sha256": "1127863674e91404b47b01e1d4cf88f411a7b6bbdcd2233eef275b8c09bdbbc1",
+      "size": 687279,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/round12-endpoint-20260930T090600Z.json",
+      "expected_sha256": "0bb2216d4e08e7b1fbc96f75fba5a93013738c2b3fce714586bb8146e63aa1ff",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/round12-endpoint-20260930T090600Z.json",
+      "published_sha256": "0bb2216d4e08e7b1fbc96f75fba5a93013738c2b3fce714586bb8146e63aa1ff",
+      "published_size": 1867410,
+      "sha256": "0bb2216d4e08e7b1fbc96f75fba5a93013738c2b3fce714586bb8146e63aa1ff",
+      "size": 1867410,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/summarize_diagnosis.py",
+      "expected_sha256": "5460ea29c6cd207227f2e8f838c17e2ce56e59d3b5b56ce22a54147b0a2de40b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/summarize_diagnosis.py",
+      "published_sha256": "5460ea29c6cd207227f2e8f838c17e2ce56e59d3b5b56ce22a54147b0a2de40b",
+      "published_size": 4228,
+      "sha256": "5460ea29c6cd207227f2e8f838c17e2ce56e59d3b5b56ce22a54147b0a2de40b",
+      "size": 4228,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/ui-verification.json",
+      "expected_sha256": "e9208c403616da784ad1da8e77ae2a6faf64acb7f9ce95ee3ad504fdf6e9e483",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/ui-verification.json",
+      "published_sha256": "e9208c403616da784ad1da8e77ae2a6faf64acb7f9ce95ee3ad504fdf6e9e483",
+      "published_size": 2659,
+      "sha256": "e9208c403616da784ad1da8e77ae2a6faf64acb7f9ce95ee3ad504fdf6e9e483",
+      "size": 2659,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "a9faedceb4801bcf8cf762c6fc1082037b775e115f28b72ce70c767679f3051f",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnose.py",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "9e7a21869c03773afd173788f0d594f2c1f239fe6f92e31d6cb651bb0631834d",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnosis-raw.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e37f1f35c224237a77554c3b3a5869279fc1773555f379d9bba74b27f034141b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnosis.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "af182e4513b0e2a4fd146db1f1a787da0718ba4f778167e4eb6edfe89b6fe1d4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/diagnosis.md",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "4d740b12c73f7afa6effc03bbd12bab494d29bbaa7b5f82de4d59649bebc36a0",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/finalize_ui_audit.py",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "461ff229e86d79ea22d7297bc4c8d305ffbdb99e0dccd54603290023782d6243",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer_render_history.py",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "05bb696f288df4c95a0fa831780875859311419f37a71ce19f6f0137fd3e32c9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer_render_retained_history.py",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "200c3a1c888e4d87c05d9a59a41f66c7c67cf39c60ca7556a864da61888ca4bf",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-narrow.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "046d8bbe372f631c53579211a9948aea2a5b783d01982927969c882fc9690104",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-populated-1706.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "eca48e5ee5bd99961d93d1808b73a94788eb2a56adc92bad04129342ba2d3bae",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-populated-880.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "11b0dd492fdc9fceed44e2b7b2d1fef997a5d747d498456ef16b0e687c74ddcb",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-retained-1706.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "5cbeb11deb4d002d7e65b0587b4cd2019fbc1f2c18f4d4a512b8a582c5335893",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-retained-880.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "2f61ddfa06ee0198d63a94687dcd05fa815b038638ec8b10d65020bcdb09f1fb",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-ui-review.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "c3436e9aaf2046ae3548492b53cd6f4331bba49902e105cecd23493664a31ab4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/peer-wide.png",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "90b79d8993f2b43715677c916411222fbeac089e4d77df56522ea89bbd8db9e2",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/project_retained_history.py",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "1127863674e91404b47b01e1d4cf88f411a7b6bbdcd2233eef275b8c09bdbbc1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/retained-model-history.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "0bb2216d4e08e7b1fbc96f75fba5a93013738c2b3fce714586bb8146e63aa1ff",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/round12-endpoint-20260930T090600Z.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "5460ea29c6cd207227f2e8f838c17e2ce56e59d3b5b56ce22a54147b0a2de40b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/summarize_diagnosis.py",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e9208c403616da784ad1da8e77ae2a6faf64acb7f9ce95ee3ad504fdf6e9e483",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyper-model-history-20260930/ui-verification.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "machine-local",
+  "source_head": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+  "summary": "Archive Atlas Hyperliquid model-history diagnosis and UI review artifacts",
+  "symbols": []
+}
