@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T20:19:00.367374Z",
+  "id": "20261002T201900Z-f4c2057907f04b3ba606bcf71159709c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas-only archived Round 48-49 operating evidence published on main; 37 namespaced additions, no shared application source/configuration change."
+}
