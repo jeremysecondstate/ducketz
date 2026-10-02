@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T10:18:18.223795Z",
+  "id": "20261002T101818Z-0457d4191bfd48efa191db43b7226f58",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout coordination checkpoint: common-main publication installed and 13 task definitions verified"
+}

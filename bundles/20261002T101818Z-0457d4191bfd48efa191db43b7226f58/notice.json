@@ -1,0 +1,418 @@
+{
+  "actor": "Scout",
+  "application_source_checkpoint": {
+    "branch": "codex/machine-local-symbols",
+    "head": "df2ab89af4819552576d068aea68b6b527c634c1"
+  },
+  "author": "Scout",
+  "authored_at": "2026-10-02T03:09:33-07:00",
+  "branch": "main",
+  "change_id": "jeremysecondstate/ducketz/main/8cf894cd1672dfe679a44169dec8f9a9691a8717",
+  "commit_sha": "8cf894cd1672dfe679a44169dec8f9a9691a8717",
+  "committed_blob_fingerprints": {
+    "AGENTS.md": "b70d78c7898cc95d9fc8256b4f5073baba4ef2c7936b6a30ae13c63f37b8b9e1",
+    "coordination/contract.json": "e2d5781296d6da3b66e237ea3080beaf3f7eba6159be0bba3aefa60c2e2151eb",
+    "coordination/prompts/courier.txt": "9ba15d27863341fb5966784c660d65d447649e50ec5dce1796b483625131fbb5",
+    "coordination/prompts/inbox.txt": "b62f423ead6a720b7d1a0104277cf8fec38e2f55960ad611ef5b06d24ae2f47c",
+    "coordination/task-catalog.json": "fb8cb901a9552722e2baa736c615f2b7fad447a5245d6f66e1735b9bc9a5faf7",
+    "docs/development/cross-pc-bootstrap.md": "b427fc1116bb33e17ef047ae8c7875488fbdc37d40067e01d649635d7a821bae",
+    "docs/development/cross-pc-common-main.md": "08a507f729797e3e66d39ca64465b6292ad8f9d33a5026edce33e92806e61907",
+    "docs/development/cross-pc-communication.md": "254c1646401c66688ed4eb14266ef86b90e4336e6e4e25c0751056009b7656e0",
+    "pyproject.toml": "8ca6322e25f09987862f90ef9fbe15505709ad4f00dc275e79c16965dc75299b",
+    "tests/test_cross_pc_artifact_publish.py": "11399de82c3eb6fad1856af294f6e4f15f8113b13314b6d2982c58672f5c9c21",
+    "tests/test_cross_pc_communication_cli.py": "8354bc130a42667a98f20a5ac9584ef7b3a56dbb319e91f6793a194b120d2567",
+    "tests/test_cross_pc_core.py": "190edcc82a0c230694a76bfac3573141ca7ad4562cfe6cd20bd61940f6021f1b",
+    "tests/test_cross_pc_drive_signal.py": "21d87a00ad449a23fde21e223abc08d549dd5ccfb5a0f94e07f0add0aef1ec86",
+    "tests/test_cross_pc_incoming.py": "129412f7a880417b4b883747a655a324c329a774a6a9672729eb3c83c8b157d8",
+    "tests/test_cross_pc_install_drift.py": "2674e40ae9d4d07297becf6ee49546e341d0004465d2e340cf2c514761689f06",
+    "tests/test_cross_pc_main_integration.py": "bbd4b93a4bb909692e4a83bbb038f6f6d3c6e4caa085296f25afae023578286f",
+    "tests/test_cross_pc_requests.py": "d0f4f9b33f46082c58e36f846ac1295de7f8600dd06280844faba66c99e2def1",
+    "tests/test_cross_pc_tasks.py": "2ca955c1201d6ce175bbb632a1d8acb84f7a91af859fde53dd058af2bcdda104",
+    "tests/test_cross_pc_transport.py": "47f827becb3f0bcc8df3568dffb032efbddeb8fe4d0b4c4b53b69540a7be7b48",
+    "tools/__init__.py": "1b472f785258a90201d7d15f72fb8766a1e6504186d3b553ea0b5954f7a2691e",
+    "tools/cross_pc/__init__.py": "769fd00b94e2fd060b4565449afa4fa76efbc53d703e4584e6b180d040938277",
+    "tools/cross_pc/artifact_publish.py": "8b43512f891ac94e9be687bc4d1a8aae47a70685f2fa95be6a1847aa341d861e",
+    "tools/cross_pc/cli.py": "107295bc17b86aafbc28640026b9c3c149686f1a3e71e8c104d93a93020a0c8d",
+    "tools/cross_pc/core.py": "40f273e781d441a170321fb8110256ea375b85a9df12bea5147c4696a9b1b239",
+    "tools/cross_pc/drift.py": "0a31721390accce8c89170f5732eb009edc9c7ca13b921ae43178518cd0349b1",
+    "tools/cross_pc/drive_signal.py": "05f0424dd52996a795a4111ca90b380fad3a3ad4d3d09bca9af58444fb2dcab4",
+    "tools/cross_pc/incoming.py": "479cb1e72fb6c8bdb0c84b5aa219de7478b01d002b280b8f7e407441659fdfa4",
+    "tools/cross_pc/installation.py": "c7e484ade46775f8242f20f94cb2e5e9d8d7034682ea8df77743153ce4864051",
+    "tools/cross_pc/main_integration.py": "107c6fe868816e1cc1b51536127ea7cd41966fad8a4ce009ad3ae59de71fe156",
+    "tools/cross_pc/notices.py": "3a8728fe198af3ce49cdd2506170a60eef7f1ec40ec227e5c507a70ca3760013",
+    "tools/cross_pc/requests.py": "257529f874462b8096318cb9fce5d7c6e264247ffcbb8d84d0693e72b048506e",
+    "tools/cross_pc/tasks.py": "bca8a3e1aecf544d9c5ada606c6f924695182b6479d2808f21dc9ba6cf8b7144",
+    "tools/cross_pc/test_runner.py": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2",
+    "tools/cross_pc/transport.py": "e1f00b117ea420e3fd5f05bdbd5b9fae931535d7569114e5208c30cc8da6162e"
+  },
+  "completion_record": "20261002T094324Z-616246473efe413b8896609ee1aaa434",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "source_courier",
+      "cross_pc_inbox",
+      "overnight_gameplan"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-common-main-adoption-20261002",
+    "request_type": "source_review",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "5ab35b2eb4388f8bc73e29973b72a94f646fba98",
+    "summary": "Scout verified and reused Atlas completion IDs, machine namespaces and detailed publication metadata. Review the exact combined coordination source and return dated evidence of Atlas installed source and native task publication behavior under its existing local human authority. Compare immediate completed-change publication, one bounded unfinished main/artifact retry, guarded main synchronization and retained Drive/request/source-intake support. State any differences or blockers; do not expose private definitions or account state. Peer installation and runtime adoption are unverified here."
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "AGENTS.md",
+      "sha256": "b70d78c7898cc95d9fc8256b4f5073baba4ef2c7936b6a30ae13c63f37b8b9e1"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/contract.json",
+      "sha256": "e2d5781296d6da3b66e237ea3080beaf3f7eba6159be0bba3aefa60c2e2151eb"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/prompts/courier.txt",
+      "sha256": "9ba15d27863341fb5966784c660d65d447649e50ec5dce1796b483625131fbb5"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/prompts/inbox.txt",
+      "sha256": "b62f423ead6a720b7d1a0104277cf8fec38e2f55960ad611ef5b06d24ae2f47c"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md",
+      "sha256": "b427fc1116bb33e17ef047ae8c7875488fbdc37d40067e01d649635d7a821bae"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-common-main.md",
+      "sha256": "08a507f729797e3e66d39ca64465b6292ad8f9d33a5026edce33e92806e61907"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-communication.md",
+      "sha256": "254c1646401c66688ed4eb14266ef86b90e4336e6e4e25c0751056009b7656e0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_communication_cli.py",
+      "sha256": "8354bc130a42667a98f20a5ac9584ef7b3a56dbb319e91f6793a194b120d2567"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py",
+      "sha256": "190edcc82a0c230694a76bfac3573141ca7ad4562cfe6cd20bd61940f6021f1b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_drive_signal.py",
+      "sha256": "21d87a00ad449a23fde21e223abc08d549dd5ccfb5a0f94e07f0add0aef1ec86"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_incoming.py",
+      "sha256": "129412f7a880417b4b883747a655a324c329a774a6a9672729eb3c83c8b157d8"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_main_integration.py",
+      "sha256": "bbd4b93a4bb909692e4a83bbb038f6f6d3c6e4caa085296f25afae023578286f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_requests.py",
+      "sha256": "d0f4f9b33f46082c58e36f846ac1295de7f8600dd06280844faba66c99e2def1"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/cli.py",
+      "sha256": "107295bc17b86aafbc28640026b9c3c149686f1a3e71e8c104d93a93020a0c8d"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py",
+      "sha256": "40f273e781d441a170321fb8110256ea375b85a9df12bea5147c4696a9b1b239"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/drive_signal.py",
+      "sha256": "05f0424dd52996a795a4111ca90b380fad3a3ad4d3d09bca9af58444fb2dcab4"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/incoming.py",
+      "sha256": "479cb1e72fb6c8bdb0c84b5aa219de7478b01d002b280b8f7e407441659fdfa4"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/main_integration.py",
+      "sha256": "107c6fe868816e1cc1b51536127ea7cd41966fad8a4ce009ad3ae59de71fe156"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/requests.py",
+      "sha256": "257529f874462b8096318cb9fce5d7c6e264247ffcbb8d84d0693e72b048506e"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/tasks.py",
+      "sha256": "bca8a3e1aecf544d9c5ada606c6f924695182b6479d2808f21dc9ba6cf8b7144"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/artifact_publish.py",
+      "sha256": "8b43512f891ac94e9be687bc4d1a8aae47a70685f2fa95be6a1847aa341d861e"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_artifact_publish.py",
+      "sha256": "11399de82c3eb6fad1856af294f6e4f15f8113b13314b6d2982c58672f5c9c21"
+    }
+  ],
+  "identity_convention": "Existing Completion-Record for source and Completion-ID for outputs; stable retries; actor/machine/logical task/run/scope/evidence in descriptions; artifacts/<machine>/<completion-id> paths.",
+  "limitations": [
+    "Two Windows symlink tests skipped because symlink creation was unavailable.",
+    "Offline fixture evidence only; no provider, broker or running-application verification.",
+    "Scout application main migration is pending at this coordination checkpoint; ownership and candidate review continue separately.",
+    "The bootstrap own-branch commit retains shorter legacy metadata. Its main integration records producer/machine, shared scope, completion identity and fresh-check evidence; subsequent completions use the newly installed publication workflow.",
+    "Atlas local installation, native task adoption and runtime state require its own dated evidence."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/8cf894cd1672dfe679a44169dec8f9a9691a8717"
+  ],
+  "parent_sha": "8474524d9461b9e97221262067a6cff6736258d1",
+  "prior_source_revision": {
+    "commit_sha": "69312101e849b43a93d04eaf941b56768fd2a653",
+    "disposition": "Superseded by this reviewed revision adding local credential-alias scanning.",
+    "stage": "source_published_not_main_integrated"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "This coordination checkpoint updates helpers and existing task instructions. It includes no worker restart, training, trading, application checkout replacement or peer deployment.",
+  "scope": "Coordination checkpoint: shared helper source and verified local task definitions; application checkout remains on its prior branch and HEAD",
+  "source_announcement": {
+    "base_commit": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "branch": "codex/scout/20261002T094324Z-616246473efe413b8896609ee1aaa434",
+    "commit_sha": "5ab35b2eb4388f8bc73e29973b72a94f646fba98",
+    "dependency_fingerprints": {
+      "coordination/task-catalog.json": "fb8cb901a9552722e2baa736c615f2b7fad447a5245d6f66e1735b9bc9a5faf7",
+      "pyproject.toml": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2",
+      "tests/test_cross_pc_install_drift.py": "c303ad989401a44fa61312b1d84b5e0b561d630dd7e285a9c33fed9ae4851c88",
+      "tests/test_cross_pc_tasks.py": "b6bda0b8cf8eeeb9b5161fd1732224b7efe59e5c5a1954ef063a170e9d255da0",
+      "tests/test_cross_pc_transport.py": "33ec1e04960e449f67aeb5e50bf9c96001e8599f859b64bbba8f5b6e85202a93",
+      "tools/__init__.py": "59bfe04c66af3533df6896c9571b9f2cbcb5ec21954d7aff3e0840103ff086bb",
+      "tools/cross_pc/__init__.py": "4c57e2d144c9a4d98a467d9aa6316c64d1b8bdd9cc5845278f93305d1fd5d11a",
+      "tools/cross_pc/drift.py": "39f4888858c9812fbb741e92cbeb27c70989e696efd58d4a3ab54b1878b226d3",
+      "tools/cross_pc/installation.py": "c7e484ade46775f8242f20f94cb2e5e9d8d7034682ea8df77743153ce4864051",
+      "tools/cross_pc/notices.py": "16bddf502a7fb51744b1127c599e8c9da1e2ecaa339b350e791c10288e5da538",
+      "tools/cross_pc/test_runner.py": "678526c09686c814aa29a2cd0a075460c4d71383b913d74a3497e46872ab192a",
+      "tools/cross_pc/transport.py": "1a4ae437a8ed5bd05b82fa453046ca24f15797deb028fe33a0ba3d8aec2e4732"
+    },
+    "files": [
+      {
+        "operation": "modify",
+        "path": "AGENTS.md",
+        "sha256": "b70d78c7898cc95d9fc8256b4f5073baba4ef2c7936b6a30ae13c63f37b8b9e1"
+      },
+      {
+        "operation": "modify",
+        "path": "coordination/contract.json",
+        "sha256": "e2d5781296d6da3b66e237ea3080beaf3f7eba6159be0bba3aefa60c2e2151eb"
+      },
+      {
+        "operation": "modify",
+        "path": "coordination/prompts/courier.txt",
+        "sha256": "9ba15d27863341fb5966784c660d65d447649e50ec5dce1796b483625131fbb5"
+      },
+      {
+        "operation": "modify",
+        "path": "coordination/prompts/inbox.txt",
+        "sha256": "b62f423ead6a720b7d1a0104277cf8fec38e2f55960ad611ef5b06d24ae2f47c"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/development/cross-pc-bootstrap.md",
+        "sha256": "b427fc1116bb33e17ef047ae8c7875488fbdc37d40067e01d649635d7a821bae"
+      },
+      {
+        "operation": "add",
+        "path": "docs/development/cross-pc-common-main.md",
+        "sha256": "08a507f729797e3e66d39ca64465b6292ad8f9d33a5026edce33e92806e61907"
+      },
+      {
+        "operation": "add",
+        "path": "docs/development/cross-pc-communication.md",
+        "sha256": "254c1646401c66688ed4eb14266ef86b90e4336e6e4e25c0751056009b7656e0"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_communication_cli.py",
+        "sha256": "8354bc130a42667a98f20a5ac9584ef7b3a56dbb319e91f6793a194b120d2567"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_cross_pc_core.py",
+        "sha256": "190edcc82a0c230694a76bfac3573141ca7ad4562cfe6cd20bd61940f6021f1b"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_drive_signal.py",
+        "sha256": "21d87a00ad449a23fde21e223abc08d549dd5ccfb5a0f94e07f0add0aef1ec86"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_incoming.py",
+        "sha256": "129412f7a880417b4b883747a655a324c329a774a6a9672729eb3c83c8b157d8"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_cross_pc_main_integration.py",
+        "sha256": "bbd4b93a4bb909692e4a83bbb038f6f6d3c6e4caa085296f25afae023578286f"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_requests.py",
+        "sha256": "d0f4f9b33f46082c58e36f846ac1295de7f8600dd06280844faba66c99e2def1"
+      },
+      {
+        "operation": "modify",
+        "path": "tools/cross_pc/cli.py",
+        "sha256": "107295bc17b86aafbc28640026b9c3c149686f1a3e71e8c104d93a93020a0c8d"
+      },
+      {
+        "operation": "modify",
+        "path": "tools/cross_pc/core.py",
+        "sha256": "40f273e781d441a170321fb8110256ea375b85a9df12bea5147c4696a9b1b239"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/drive_signal.py",
+        "sha256": "05f0424dd52996a795a4111ca90b380fad3a3ad4d3d09bca9af58444fb2dcab4"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/incoming.py",
+        "sha256": "479cb1e72fb6c8bdb0c84b5aa219de7478b01d002b280b8f7e407441659fdfa4"
+      },
+      {
+        "operation": "modify",
+        "path": "tools/cross_pc/main_integration.py",
+        "sha256": "107c6fe868816e1cc1b51536127ea7cd41966fad8a4ce009ad3ae59de71fe156"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/requests.py",
+        "sha256": "257529f874462b8096318cb9fce5d7c6e264247ffcbb8d84d0693e72b048506e"
+      },
+      {
+        "operation": "modify",
+        "path": "tools/cross_pc/tasks.py",
+        "sha256": "bca8a3e1aecf544d9c5ada606c6f924695182b6479d2808f21dc9ba6cf8b7144"
+      },
+      {
+        "operation": "modify",
+        "path": "tools/cross_pc/artifact_publish.py",
+        "sha256": "8b43512f891ac94e9be687bc4d1a8aae47a70685f2fa95be6a1847aa341d861e"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_cross_pc_artifact_publish.py",
+        "sha256": "11399de82c3eb6fad1856af294f6e4f15f8113b13314b6d2982c58672f5c9c21"
+      }
+    ],
+    "peer": "Scout",
+    "repository": "jeremysecondstate/ducketz"
+  },
+  "source_commit_author": {
+    "authored_at": "2026-10-02T03:03:42-07:00",
+    "name": "jeremysecondstate"
+  },
+  "source_commit_sha": "5ab35b2eb4388f8bc73e29973b72a94f646fba98",
+  "stages": {
+    "main_integrated": "8cf894cd1672dfe679a44169dec8f9a9691a8717",
+    "peer_adoption": "unverified",
+    "scout_application_migration": "pending",
+    "scout_coordination_installed": "8cf894cd1672dfe679a44169dec8f9a9691a8717",
+    "scout_native_tasks_verified": 13,
+    "source_pushed": "5ab35b2eb4388f8bc73e29973b72a94f646fba98"
+  },
+  "summary": "Scout coordination checkpoint: common-main publication installed and 13 task definitions verified",
+  "supersedes_completion_records": [
+    "20261002T091752Z-88ac259995c14af4b9c07a22d20940e3"
+  ],
+  "task_settings": {
+    "active": 6,
+    "all_non_prompt_fields_preserved": true,
+    "new_monitors": 0,
+    "paused": 7
+  },
+  "tested_working_fingerprints": {
+    "AGENTS.md": "b70d78c7898cc95d9fc8256b4f5073baba4ef2c7936b6a30ae13c63f37b8b9e1",
+    "coordination/contract.json": "e2d5781296d6da3b66e237ea3080beaf3f7eba6159be0bba3aefa60c2e2151eb",
+    "coordination/prompts/courier.txt": "9ba15d27863341fb5966784c660d65d447649e50ec5dce1796b483625131fbb5",
+    "coordination/prompts/inbox.txt": "b62f423ead6a720b7d1a0104277cf8fec38e2f55960ad611ef5b06d24ae2f47c",
+    "coordination/task-catalog.json": "fb8cb901a9552722e2baa736c615f2b7fad447a5245d6f66e1735b9bc9a5faf7",
+    "docs/development/cross-pc-bootstrap.md": "b427fc1116bb33e17ef047ae8c7875488fbdc37d40067e01d649635d7a821bae",
+    "docs/development/cross-pc-common-main.md": "08a507f729797e3e66d39ca64465b6292ad8f9d33a5026edce33e92806e61907",
+    "docs/development/cross-pc-communication.md": "254c1646401c66688ed4eb14266ef86b90e4336e6e4e25c0751056009b7656e0",
+    "pyproject.toml": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2",
+    "tests/test_cross_pc_artifact_publish.py": "11399de82c3eb6fad1856af294f6e4f15f8113b13314b6d2982c58672f5c9c21",
+    "tests/test_cross_pc_communication_cli.py": "8354bc130a42667a98f20a5ac9584ef7b3a56dbb319e91f6793a194b120d2567",
+    "tests/test_cross_pc_core.py": "190edcc82a0c230694a76bfac3573141ca7ad4562cfe6cd20bd61940f6021f1b",
+    "tests/test_cross_pc_drive_signal.py": "21d87a00ad449a23fde21e223abc08d549dd5ccfb5a0f94e07f0add0aef1ec86",
+    "tests/test_cross_pc_incoming.py": "129412f7a880417b4b883747a655a324c329a774a6a9672729eb3c83c8b157d8",
+    "tests/test_cross_pc_install_drift.py": "c303ad989401a44fa61312b1d84b5e0b561d630dd7e285a9c33fed9ae4851c88",
+    "tests/test_cross_pc_main_integration.py": "bbd4b93a4bb909692e4a83bbb038f6f6d3c6e4caa085296f25afae023578286f",
+    "tests/test_cross_pc_requests.py": "d0f4f9b33f46082c58e36f846ac1295de7f8600dd06280844faba66c99e2def1",
+    "tests/test_cross_pc_tasks.py": "b6bda0b8cf8eeeb9b5161fd1732224b7efe59e5c5a1954ef063a170e9d255da0",
+    "tests/test_cross_pc_transport.py": "33ec1e04960e449f67aeb5e50bf9c96001e8599f859b64bbba8f5b6e85202a93",
+    "tools/__init__.py": "59bfe04c66af3533df6896c9571b9f2cbcb5ec21954d7aff3e0840103ff086bb",
+    "tools/cross_pc/__init__.py": "4c57e2d144c9a4d98a467d9aa6316c64d1b8bdd9cc5845278f93305d1fd5d11a",
+    "tools/cross_pc/artifact_publish.py": "8b43512f891ac94e9be687bc4d1a8aae47a70685f2fa95be6a1847aa341d861e",
+    "tools/cross_pc/cli.py": "107295bc17b86aafbc28640026b9c3c149686f1a3e71e8c104d93a93020a0c8d",
+    "tools/cross_pc/core.py": "40f273e781d441a170321fb8110256ea375b85a9df12bea5147c4696a9b1b239",
+    "tools/cross_pc/drift.py": "39f4888858c9812fbb741e92cbeb27c70989e696efd58d4a3ab54b1878b226d3",
+    "tools/cross_pc/drive_signal.py": "05f0424dd52996a795a4111ca90b380fad3a3ad4d3d09bca9af58444fb2dcab4",
+    "tools/cross_pc/incoming.py": "479cb1e72fb6c8bdb0c84b5aa219de7478b01d002b280b8f7e407441659fdfa4",
+    "tools/cross_pc/installation.py": "c7e484ade46775f8242f20f94cb2e5e9d8d7034682ea8df77743153ce4864051",
+    "tools/cross_pc/main_integration.py": "107c6fe868816e1cc1b51536127ea7cd41966fad8a4ce009ad3ae59de71fe156",
+    "tools/cross_pc/notices.py": "16bddf502a7fb51744b1127c599e8c9da1e2ecaa339b350e791c10288e5da538",
+    "tools/cross_pc/requests.py": "257529f874462b8096318cb9fce5d7c6e264247ffcbb8d84d0693e72b048506e",
+    "tools/cross_pc/tasks.py": "bca8a3e1aecf544d9c5ada606c6f924695182b6479d2808f21dc9ba6cf8b7144",
+    "tools/cross_pc/test_runner.py": "678526c09686c814aa29a2cd0a075460c4d71383b913d74a3497e46872ab192a",
+    "tools/cross_pc/transport.py": "1a4ae437a8ed5bd05b82fa453046ca24f15797deb028fe33a0ba3d8aec2e4732"
+  },
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T09:48:23.489250Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "bf9a98f80795e1de94abbe6d85d3f6c1250d44ae8cd215afab2d91c9cedb2fc2",
+      "output_sha256": "0be56eb51b31f639b3e2d444708df1adf99916a4d364afa82e4705d18f105511",
+      "result": "313 passed, 2 skipped in 298.27s (0:04:58)",
+      "stage": "producer",
+      "started_at_utc": "2026-10-02T09:43:24.336788Z"
+    },
+    {
+      "completed_at_utc": "2026-10-02T09:56:09.868162Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "bf9a98f80795e1de94abbe6d85d3f6c1250d44ae8cd215afab2d91c9cedb2fc2",
+      "output_sha256": "60b2e0f623bef26b48125f9c1ea055c7ff5539bc3a495552b81a31b6f82c91af",
+      "result": "313 passed, 2 skipped in 294.26s (0:04:54)",
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-02T09:51:14.685832Z"
+    },
+    {
+      "completed_at_utc": "2026-10-02T10:09:30.270329Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "bf9a98f80795e1de94abbe6d85d3f6c1250d44ae8cd215afab2d91c9cedb2fc2",
+      "output_sha256": "96c8b7a0be538a0c64c8f56e9f6fa13071138dc60559d7c1ffee5159ecde4a1c",
+      "result": "313 passed, 2 skipped in 288.31s (0:04:48)",
+      "stage": "main_candidate",
+      "started_at_utc": "2026-10-02T10:04:41.105505Z"
+    }
+  ]
+}
