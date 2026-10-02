@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T18:17:33.195772Z",
+  "id": "20261002T181733Z-95aa5363e61c422bb7a211a4b7dc686c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas-only Round 47 late-unscored assessment and Round 48 operating references are available on main."
+}

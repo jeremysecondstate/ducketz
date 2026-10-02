@@ -1,0 +1,213 @@
+{
+  "actor": "Atlas",
+  "artifact_manifest_sha256": "c1b4e6fa334d43fec692e6fed8039061667c3a2b9e43f1d1b2361dee12ee361c",
+  "author": "Jeremy Klein",
+  "author_time": "2026-10-02T11:11:48-07:00",
+  "branch": "main",
+  "change_id": "commit:jeremysecondstate/ducketz:main:dfdb328e812e4ee5fe004f70c666deb3f023212d",
+  "commit_sha": "dfdb328e812e4ee5fe004f70c666deb3f023212d",
+  "commit_time": "2026-10-02T11:11:48-07:00",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/dfdb328e812e4ee5fe004f70c666deb3f023212d",
+  "completed_at_utc": "2026-10-02T18:10:06.124128Z",
+  "completion_id": "20261002T180809Z-hl19b1eb9c9d",
+  "files": [
+    {
+      "bytes": 6622,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-48-audit.md",
+      "sha256": "d1bbf9fbf836dd1738ea4ccb71469fc3be367853059596af1091d21c25d1053f"
+    },
+    {
+      "bytes": 16753,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-48-audit.json",
+      "sha256": "4aa010e989a57baeba5c06f0c215c9a3b165235afdfec08f9a349b380560f801"
+    },
+    {
+      "bytes": 1892136,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-closing-comparison.json",
+      "sha256": "ecdbaa04e282b0243fb3da4f594d04286fada684518726376ba686dce84dbef7"
+    },
+    {
+      "bytes": 2679,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-cadence-assessment.json",
+      "sha256": "893d410a352cf50e187aa8b6adf90a5667b05cd5568ce7a99aa1846052ec2413"
+    },
+    {
+      "bytes": 307,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-archive-verification.json",
+      "sha256": "9ae90258c7ca6a797359cafdb7e0f4059a79f41682d29ba508018874b27edd7e"
+    },
+    {
+      "bytes": 10145792,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-paper-ledger.sqlite3",
+      "sha256": "3195fa01ab0873812754d341511205a04b6c1bbe2ae65b8a638ca9d38c3f60d7"
+    },
+    {
+      "bytes": 16760,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-operation.json",
+      "sha256": "57e297e966480af595c33d9247ba0a85c40232151bbc12bb8463af450dee4c42"
+    },
+    {
+      "bytes": 9390,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-deployment.json",
+      "sha256": "16055f5af1bf4492e9d5f0e168934d4b250937ab6f7acbf46a03437083ea713c"
+    },
+    {
+      "bytes": 12768,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-opening-public-account-reads.json",
+      "sha256": "40fe4bee0097934c662962626180c34543e0545df58d1d6244a11e383f4bd9e1"
+    },
+    {
+      "bytes": 1418,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-opening-verification.json",
+      "sha256": "c303ab032d8a3e0a1cb5e7a6fb1b9fe7a920f620e3beab8d52e581287f632db7"
+    },
+    {
+      "bytes": 23829,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-opening.json",
+      "sha256": "27a9e9b538e57935bfc97aa3c9af5a09b30204b09b19b8db4900a59cdd999e89"
+    },
+    {
+      "bytes": 25748,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-first-cycle.json",
+      "sha256": "d0bac2e15d3d729c9fc9054b9e5a012839700310ae7786f838329017f2fb3df0"
+    },
+    {
+      "bytes": 31693,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-closeout-health.json",
+      "sha256": "9e9c7890f44dfad17daba732cb093573a992a2c9238683650848b9bce0959f83"
+    },
+    {
+      "bytes": 14930,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/artifact-manifest.json",
+      "sha256": "c1b4e6fa334d43fec692e6fed8039061667c3a2b9e43f1d1b2361dee12ee361c"
+    }
+  ],
+  "limitations": [
+    "Round 47 was assessed late_unscored; its observations do not establish a scored improvement.",
+    "Operational checks are dated producer evidence. The courier did not repeat broker/provider calls or validate a current running version.",
+    "The producer supplied no timestamp for the source-open-orders check; its time is unknown.",
+    "Application software tests were not run for this artifact-only commit.",
+    "Scout installation, task update, source parity and runtime adoption remain unverified."
+  ],
+  "parent_sha": "04a92a41dd30594e6a954b408582e678f9980998",
+  "practical_changes": [
+    "Adds a frozen Round 47 late-unscored assessment, audit, preserved ledger and archive verification.",
+    "Adds dated Round 48 opening, lifecycle, first-cycle and health reference artifacts.",
+    "The complete commit contains thirteen payloads and one manifest under the Atlas machine namespace; common application source and configuration did not change."
+  ],
+  "producer": "hyperliquid-paper-improvement",
+  "published_at_utc": "2026-10-02T18:11:53.518907Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": [
+    "Git main availability and producer historical runtime observations are separate facts.",
+    "Atlas local main remains at 99532621db0d42dfe8c655300cc93abda81240d5; fast-forward is withheld because active operating processes were observed and exclusive writer absence is unestablished.",
+    "This courier observation changes no application installation, running process, trading, training, ownership or cadence and grants no peer authority."
+  ],
+  "scope": "Atlas-only completed operating references in artifacts/pc-original; do not apply these records to Scout's live symbols, Gameplan or operating bindings.",
+  "summary": "Atlas-only Round 47 late-unscored assessment and Round 48 operating references are available on main.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T18:15:57.089577Z",
+      "evidence": "saved artifact publisher receipt and sealed snapshot",
+      "name": "Installed immutable snapshot hashes and private-value exclusion scan",
+      "started_at_utc": "2026-10-02T18:15:57.047381Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T18:15:57.659349Z",
+      "files": 14,
+      "name": "Exact parent, complete namespace diff, manifest, committed byte sizes and SHA-256 hashes",
+      "started_at_utc": "2026-10-02T18:15:57.089577Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T18:15:57.659349Z",
+      "name": "Publication receipt commit, parent and remote readback binding",
+      "started_at_utc": "2026-10-02T18:15:57.089577Z",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:21:18.598753+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "native cadence assessment",
+      "status": "late_unscored"
+    },
+    {
+      "at_utc": "2026-10-02T18:08:09.028380+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "archive SQLite integrity and checksum reconciliation",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:31:28.322018+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "opening verification",
+      "status": "passed"
+    },
+    {
+      "at_utc": "unknown",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "source open orders",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:31:55.900515+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "prepared health",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:34:01.479656+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "advancing health",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:32:57.316583+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "first-cycle verifier",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:44:47.775723+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "closeout health",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-02T17:34:16.062638+00:00",
+      "evidence": "producer audit at the exact published commit",
+      "independently_rerun": false,
+      "name": "native lifecycle",
+      "status": "completed"
+    },
+    {
+      "at_utc": "unknown",
+      "name": "Application source/configuration tests",
+      "reason": "No application source or configuration changed in this commit.",
+      "status": "not_run"
+    }
+  ]
+}
