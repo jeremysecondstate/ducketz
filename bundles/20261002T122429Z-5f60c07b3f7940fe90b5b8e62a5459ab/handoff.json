@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T12:24:29.233276Z",
+  "id": "20261002T122429Z-5f60c07b3f7940fe90b5b8e62a5459ab",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Scout published and integrated a three-file shared-source revision that preserves publisher-backed missing-history Gameplan abstentions, validates execution slots and adds offline regression coverage. Atlas verified identical exact final bytes on the owner branch and main."
+}

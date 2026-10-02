@@ -1,0 +1,104 @@
+{
+  "author": {
+    "actor": "Scout",
+    "git_author": "Scout",
+    "machine": "pc-new",
+    "producer": "human-authorized-development",
+    "source_git_author": "jeremysecondstate"
+  },
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "observed-shared-source:f73130f245ad6957690781fcabdc52674cd1aa67:main:cb133c309a074a9c3cf2004a756cadfc914da1e3",
+  "commit_sha": "cb133c309a074a9c3cf2004a756cadfc914da1e3",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/cb133c309a074a9c3cf2004a756cadfc914da1e3",
+  "cross_pc_parity_verified": false,
+  "files": [
+    {
+      "bytes": 75716,
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "sha256": "5501e4920030342dcdf41f6c0d685047aa0a2da065a08d2e55c85b8f06864cfe"
+    },
+    {
+      "bytes": 7153,
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py",
+      "sha256": "5646d43c7130436ec4d9b3d40f90f9c5ce8696ce171f05d421ffc3091eba54db"
+    },
+    {
+      "bytes": 9602,
+      "operation": "add",
+      "path": "tests/test_gameplan_execution_abstention.py",
+      "sha256": "5ccb1cd134bd7508c794cae6bb426fd77d4448f621771dffba521aea8482b20b"
+    }
+  ],
+  "limitations": [
+    "Peer-reported source and integration offline passes, timestamps and output hashes are committed metadata. Atlas did not run those suites or independently verify their output bytes.",
+    "Scout reports twelve champion-suite fixture failures for missing gameplan.json reproduced at the reviewed base and excluded from the seven-suite passing command; that reproduction is not independently verified here.",
+    "Scout reports offline synthetic fixtures with shared watchlist, no provider, broker or running-process verification, separate unpublished frozen-artifact diagnosis, and safe-path mode required by its installed verifier.",
+    "No fresh same-reference Scout working-byte inventory, current local helper/task installation or loaded runtime evidence was supplied. Cross-PC parity remains unverified.",
+    "Atlas local main remains at 99532621db0d42dfe8c655300cc93abda81240d5. Tracked status is clean and no incoming/untracked path collision was found; active writer/runtime absence is not established, so adoption remains withheld.",
+    "Existing files include line-ending changes; exact final-byte hashes include those bytes. Logical content was inspected using the diff with end-of-line whitespace ignored."
+  ],
+  "main_integration_final_bytes_verified": true,
+  "observation_type": "peer_common_source_main_integration",
+  "observations": [
+    {
+      "authored_at_utc": "2026-10-02T12:13:30Z",
+      "branch": "codex/scout/20261002T120937Z-5d1032418edc4b67bad43b740bb4061a",
+      "commit_sha": "f73130f245ad6957690781fcabdc52674cd1aa67",
+      "git_author": "jeremysecondstate",
+      "parent_sha": "9795e96da25962e1dbb931634158d81f12973a96",
+      "ref": "refs/heads/codex/scout/20261002T120937Z-5d1032418edc4b67bad43b740bb4061a",
+      "stage": "owner_branch_source_available"
+    },
+    {
+      "authored_at_utc": "2026-10-02T12:15:22Z",
+      "branch": "main",
+      "commit_sha": "cb133c309a074a9c3cf2004a756cadfc914da1e3",
+      "git_author": "Scout",
+      "parent_sha": "9795e96da25962e1dbb931634158d81f12973a96",
+      "ref": "refs/heads/main",
+      "stage": "common_source_integrated_final_bytes_verified"
+    }
+  ],
+  "parent_sha": "9795e96da25962e1dbb931634158d81f12973a96",
+  "peer_installation_verified": false,
+  "peer_runtime_adoption_verified": false,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires separate reviewed local installation and controlled worker reload. Source/main publication changes no loaded process or order authority. Atlas performed no checkout replacement, installation, worker start/restart, deployment, provider/broker/trade/training call, funds or schedule action.",
+  "scope": "Shared Gameplan execution behavior, documentation and offline tests for Atlas and Scout. This diff adds no symbol configuration, live Gameplan output or machine-specific operating artifact.",
+  "source_branch": "codex/scout/20261002T120937Z-5d1032418edc4b67bad43b740bb4061a",
+  "source_commit_sha": "f73130f245ad6957690781fcabdc52674cd1aa67",
+  "source_commit_url": "https://github.com/jeremysecondstate/ducketz/commit/f73130f245ad6957690781fcabdc52674cd1aa67",
+  "source_parent_sha": "9795e96da25962e1dbb931634158d81f12973a96",
+  "summary": "Scout published and integrated a three-file shared-source revision that preserves publisher-backed missing-history Gameplan abstentions, validates execution slots and adds offline regression coverage. Atlas verified identical exact final bytes on the owner branch and main.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T12:24:03.447472Z",
+      "files": 3,
+      "name": "Exact fetched refs, complete three-path operation inventory, identical trees/modes and branch/main final-byte equality",
+      "started_at_utc": "2026-10-02T12:24:02.616491Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T12:12:35.167623Z",
+      "evidence": "Committed source metadata only; invocation details, test output and execution not independently verified by Atlas.",
+      "name": "Scout source candidate seven offline suites",
+      "peer_reported_check": "pytest tests/test_gameplan_execution_abstention.py, tests/test_gameplan_execution.py, tests/test_gameplan_deployment_execution.py, tests/test_independent_stock_session.py, tests/test_gameplan_direction_runtime.py, tests/test_nightly_gameplan.py, tests/test_stock_direction_policy.py",
+      "peer_reported_output_sha256": "fc744969e4826bd8aaf3e5317ea11a1a8fce996a5359603bf88dda7146afca01",
+      "peer_reported_status": "passed",
+      "started_at_utc": "2026-10-02T12:11:32.885157Z",
+      "status": "unknown"
+    },
+    {
+      "completed_at_utc": "2026-10-02T12:15:21.928076Z",
+      "evidence": "Committed main metadata only; command, test output and execution not independently verified by Atlas.",
+      "name": "Scout actual main integration candidate offline check",
+      "peer_reported_output_sha256": "d225235c1ce2c21b6ed5051832504655bd488a14bb5c51f64c3bcd6d2c8e4d71",
+      "peer_reported_status": "passed",
+      "started_at_utc": "2026-10-02T12:14:19.371818Z",
+      "status": "unknown"
+    }
+  ]
+}
