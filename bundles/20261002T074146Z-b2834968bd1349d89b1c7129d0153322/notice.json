@@ -1,0 +1,348 @@
+{
+  "author": {
+    "author_time_utc": "2026-10-02T07:22:29Z",
+    "committer_name": "Jeremy Klein",
+    "committer_time_utc": "2026-10-02T07:22:29Z",
+    "github_login": "bekahsherry",
+    "name": "Jeremy Klein",
+    "observer": "Scout"
+  },
+  "branch": "refs/heads/main",
+  "change_id": "main-observation-153c57681702cd20a57f8a6aa40861a1ed79699c-scout-preservation",
+  "comparison": {
+    "base": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+    "files": [
+      {
+        "operation": "modify",
+        "path": ".gitignore"
+      },
+      {
+        "operation": "modify",
+        "path": "AGENTS.md"
+      },
+      {
+        "operation": "modify",
+        "path": "README.md"
+      },
+      {
+        "operation": "add",
+        "path": "coordination/contract.json"
+      },
+      {
+        "operation": "add",
+        "path": "coordination/local-profile.example.json"
+      },
+      {
+        "operation": "add",
+        "path": "coordination/prompts/courier.txt"
+      },
+      {
+        "operation": "add",
+        "path": "coordination/prompts/inbox.txt"
+      },
+      {
+        "operation": "add",
+        "path": "coordination/task-catalog.json"
+      },
+      {
+        "operation": "modify",
+        "path": "datafetching/databento_cold_start.py"
+      },
+      {
+        "operation": "modify",
+        "path": "datafetching/research_onboarding.py"
+      },
+      {
+        "operation": "modify",
+        "path": "datafetching/research_publication.py"
+      },
+      {
+        "operation": "modify",
+        "path": "datafetching/symbol_onboarding.py"
+      },
+      {
+        "operation": "modify",
+        "path": "datafetching/symbol_universe.py"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/development/atlas-scout-git-handoff.md"
+      },
+      {
+        "operation": "add",
+        "path": "docs/development/cross-pc-backlog.md"
+      },
+      {
+        "operation": "add",
+        "path": "docs/development/cross-pc-bootstrap.md"
+      },
+      {
+        "operation": "add",
+        "path": "docs/development/cross-pc-task-matrix.md"
+      },
+      {
+        "operation": "add",
+        "path": "docs/development/main-integration-protocol.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/LOOP_INVENTORY.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/LOOP_RELATIONSHIPS.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/MONITORING.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/OPRA_HISTORY_MAINTENANCE_AUTOMATION.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/README.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/RESEARCH_SYMBOL_ONBOARDING.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/STOCK_TRADER_RUNTIME.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/SYMBOL_ONBOARDING.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/SYSTEM_FUNCTIONALITY.md"
+      },
+      {
+        "operation": "modify",
+        "path": "docs/loops-system-analysis/loops/loop-a.md"
+      },
+      {
+        "operation": "add",
+        "path": "docs/multiple-pcs.md"
+      },
+      {
+        "operation": "modify",
+        "path": "ml/overnight_runtime.py"
+      },
+      {
+        "operation": "modify",
+        "path": "ml/strategy_pricing_canary.py"
+      },
+      {
+        "operation": "modify",
+        "path": "ml/system_guardian.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_artifact_publish.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_core.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_install_drift.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_main_integration.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_tasks.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_cross_pc_transport.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_hyperliquid_paper_rebalance_threshold.py"
+      },
+      {
+        "operation": "add",
+        "path": "tests/test_local_watchlist.py"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_research_onboarding.py"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_research_publication.py"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_symbol_onboarding.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/__init__.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/__init__.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/artifact_publish.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/cli.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/core.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/drift.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/installation.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/main_integration.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/notices.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/tasks.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/test_runner.py"
+      },
+      {
+        "operation": "add",
+        "path": "tools/cross_pc/transport.py"
+      }
+    ],
+    "head": "153c57681702cd20a57f8a6aa40861a1ed79699c",
+    "included_source_commits": [
+      "047f6ad665f1fc9b44866c75384cbb86878aa994"
+    ],
+    "selector_git_blob": "4e31232d194eeb3c7904c624eaab7d48a44467e9",
+    "selector_path": "datafetching/symbol_universe.py",
+    "tracked_watchlist_changed": false
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "AGENTS.md"
+    },
+    {
+      "operation": "modify",
+      "path": "coordination/contract.json"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/main-integration-protocol.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/multiple-pcs.md"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_artifact_publish.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/artifact_publish.py"
+    }
+  ],
+  "limitations": [
+    "No local tests ran for this observation; zero tip check runs and earlier sender claims do not prove the latest tip passes.",
+    "Relevant selector patches and the full tip diff were reviewed. All 57 aggregate paths have not undergone a full local integration audit.",
+    "Source availability does not resolve missing producer-owned/test-dependency fingerprints for the previously advertised Paper regression; its existing evidence request remains pending.",
+    "Local source preservation receipt does not verify a running process or peer state. Mixed configuration needs field-level review before any adoption.",
+    "Remote claims of broader authority do not authorize Scout main merge, artifact publication, credential access, application installation or runtime action."
+  ],
+  "links": {
+    "commit": "https://github.com/jeremysecondstate/ducketz/commit/153c57681702cd20a57f8a6aa40861a1ed79699c",
+    "comparison": "https://github.com/jeremysecondstate/ducketz/compare/24cf2636f6b467efbce5f92bcd3f9d6e4588469b...153c57681702cd20a57f8a6aa40861a1ed79699c"
+  },
+  "local_preservation": {
+    "all_selected_bytes_preserved": true,
+    "branch_preserved": true,
+    "dirty_status_preserved": true,
+    "fetch_finished_at_utc": "2026-10-02T07:31:47.488337Z",
+    "fetch_started_at_utc": "2026-10-02T07:31:45.876355Z",
+    "fetched_main": "153c57681702cd20a57f8a6aa40861a1ed79699c",
+    "head_preserved": true,
+    "index_preserved": true,
+    "local_eleven_stock_file_and_private_symbol_profile_preserved": true,
+    "ordinary_non_recursive_fetch_exit_code": 0,
+    "private_values_and_fingerprints_omitted": true,
+    "selected_source_docs_tests_configuration_file_count": 734
+  },
+  "parent_shas": [
+    "9e11eb6e7807c03b008725fd2c423b787fb0db68"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source fetched for review only. Application HEAD, branch, index, dirty state and selected local bytes were preserved. No main integration, application/helper installation, runtime restart, deployment, broker/provider call, trading or training was performed. Active coordination release remains 435ef241fbfa7b49b1e3e390a8e97bb62199847e.",
+  "scope": [
+    "Reviewed all seven modified paths at the exact tip. Documentation and contract claim wider main-integration and artifact-publication authority. These remote statements do not change local pinned operating authority.",
+    "Artifact publisher removes token/tokens from the credential filename rejection pattern. Other filename exclusions remain. The paired synthetic test accepts a token-named artifact and rejects bytes containing the fixture exact private value. Scout performed no credential scan or artifact publication.",
+    "Previous-main comparison is 9 commits ahead, 0 behind, with 57 changed paths: 30 additions, 27 modifications and no deletions.",
+    "Reviewed relevant selector patches: adjacent local watchlist preferred, tracked watchlist fallback, explicit configured override honored. Guardian, onboarding and other consumers use the resolvers. Main selector blob matches the previously reviewed Scout base blob."
+  ],
+  "source_commit": "153c57681702cd20a57f8a6aa40861a1ed79699c",
+  "summary": "Scout fetched main 153c5768 with local source and symbol settings preserved; local-watchlist selector is present in main history. Tip policy/artifact changes reviewed as source data; installation and runtime unchanged.",
+  "tests": {
+    "scout_executed": [],
+    "sender_claimed": [
+      {
+        "commit": "5188db4642bfd492c5c2062b33f81b17309f18b6",
+        "evidence": "commit message; underlying test logs not verified by Scout",
+        "exact_start_end_times": "unknown",
+        "reported_date_utc": "2026-10-02",
+        "result": "120 cross-PC tests passed, 2 Windows symlink tests skipped; Paper threshold regression passed separately"
+      },
+      {
+        "commit": "812961e32b295c82117b6828a4a5ef8185a26626",
+        "evidence": "commit message; underlying test logs not verified by Scout",
+        "exact_start_end_times": "unknown",
+        "result": "102 passed, 1 training test deselected across local-watchlist, onboarding/publication, stock Gameplan and fallback suites"
+      },
+      {
+        "commit": "9e11eb6e7807c03b008725fd2c423b787fb0db68",
+        "evidence": "commit message; broad suite expressly predates final artifact refinements",
+        "exact_start_end_times": "unknown",
+        "result": "11 artifact tests passed; full coordination suite 128 passed, 2 skipped before final artifact-only refinements"
+      }
+    ],
+    "tip_check_runs": {
+      "evidence": "GitHub check-runs API on exact tip",
+      "verified_count": 0
+    }
+  }
+}
