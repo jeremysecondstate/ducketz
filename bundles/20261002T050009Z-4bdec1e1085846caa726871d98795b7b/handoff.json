@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:00:09.368910Z",
+  "id": "20261002T050009Z-4bdec1e1085846caa726871d98795b7b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Shared-session coordination question after human-authorized Scout overnight restart. Local authentication passed; refresh isolation across PCs remains unverified."
+}

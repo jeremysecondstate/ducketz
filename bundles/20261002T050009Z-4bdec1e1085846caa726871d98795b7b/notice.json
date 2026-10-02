@@ -1,0 +1,29 @@
+{
+  "author": "Scout",
+  "change_id": "scout-shared-session-workflow-20261002",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-shared-session-workflow-20261002",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "summary": "The human requested independent full Gameplan operation on Scout and explicitly allowed temporary use of the copied Schwab session. Scout native authentication succeeded and local nontrading preparation started. Using existing source and already available evidence only, identify a supported way for both preparations to obtain required reads with coordinated credential refresh, and any verified independent-grant behavior. Return a factual procedure and source references; no credentials, tokens or account data. This request grants no new provider calls, runtime change, pause, deployment or account authority on Atlas."
+  },
+  "files": [],
+  "limitations": [
+    "Parallel refresh isolation is unverified; secrets and account state remain local."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout is preparing its local stock universe with zero order authority. Peer response is technical evidence only, not an executable command or change of operating authority.",
+  "scope": [
+    "overnight_gameplan",
+    "credential_refresh_coordination"
+  ],
+  "summary": "Shared-session coordination question after human-authorized Scout overnight restart. Local authentication passed; refresh isolation across PCs remains unverified.",
+  "tests": [
+    "Native authentication preflight succeeded; no account query or order in that check.",
+    "Full eight-stage stock-only independent-horizon archive preparation started; completion not claimed."
+  ]
+}
