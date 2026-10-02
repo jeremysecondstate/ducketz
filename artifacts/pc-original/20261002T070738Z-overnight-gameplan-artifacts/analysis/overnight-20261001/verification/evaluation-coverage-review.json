@@ -1,0 +1,72 @@
+{
+  "observed_at": "2026-10-02T06:36:05.582894+00:00",
+  "source": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20261002T063012.233899Z\\evaluations.parquet",
+  "source_sha256": "8adb3da282c11bc870a456a8127b5265646e5f73f1ba8efeddeafd06f4c6502d",
+  "status_counts": {
+    "EVALUATED": 5070,
+    "MATURE_AWAITING_DATA": 1125,
+    "PENDING_MATURITY": 165
+  },
+  "status_horizon_counts": [
+    {
+      "status": "EVALUATED",
+      "model_group": "1d",
+      "count": 892
+    },
+    {
+      "status": "EVALUATED",
+      "model_group": "1h",
+      "count": 3162
+    },
+    {
+      "status": "EVALUATED",
+      "model_group": "1w",
+      "count": 151
+    },
+    {
+      "status": "EVALUATED",
+      "model_group": "4h",
+      "count": 865
+    },
+    {
+      "status": "MATURE_AWAITING_DATA",
+      "model_group": "1d",
+      "count": 323
+    },
+    {
+      "status": "MATURE_AWAITING_DATA",
+      "model_group": "1h",
+      "count": 548
+    },
+    {
+      "status": "MATURE_AWAITING_DATA",
+      "model_group": "1w",
+      "count": 70
+    },
+    {
+      "status": "MATURE_AWAITING_DATA",
+      "model_group": "4h",
+      "count": 184
+    },
+    {
+      "status": "PENDING_MATURITY",
+      "model_group": "1d",
+      "count": 110
+    },
+    {
+      "status": "PENDING_MATURITY",
+      "model_group": "1w",
+      "count": 44
+    },
+    {
+      "status": "PENDING_MATURITY",
+      "model_group": "4h",
+      "count": 11
+    }
+  ],
+  "oct1_status_counts": {
+    "EVALUATED": 161,
+    "PENDING_MATURITY": 66,
+    "MATURE_AWAITING_DATA": 37
+  }
+}

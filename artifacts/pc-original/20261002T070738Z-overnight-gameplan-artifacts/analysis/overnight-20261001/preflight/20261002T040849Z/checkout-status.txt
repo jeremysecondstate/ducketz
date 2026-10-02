@@ -1,0 +1,55 @@
+ M app/services/hyperliquid_paper_view.py
+ M app/services/hyperliquid_powder_view.py
+ M app/ui/gameplan.py
+ M app/ui/gameplan_data.py
+ M app/ui/hyper_workspace.py
+ M configs/hyperliquid-models.json
+ M configs/hyperliquid-paper.json
+ M configs/hyperliquid-powder.json
+ M docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md
+ M docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md
+ M docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md
+ M docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md
+ M ml/gameplan_cash_ledger.py
+ M ml/gameplan_trade_planning.py
+ M ml/gameplan_trade_review.py
+ M ml/gameplan_trade_snapshot.py
+ M ml/hyperliquid_model_config.py
+ M ml/hyperliquid_models.py
+ M ml/hyperliquid_paper_cadence.py
+ M ml/hyperliquid_paper_forecast_evidence.py
+ M ml/hyperliquid_paper_review.py
+ M ml/hyperliquid_paper_runtime.py
+ M ml/nightly_gameplan.py
+ M ml/stock_trader/gameplan_direction_engine.py
+ M ml/stock_trader/horizon_ledger.py
+ M ml/stock_trader/independent_runtime.py
+ M tests/test_gameplan_quote_clock_recovery.py
+ M tests/test_gameplan_trade_snapshot.py
+ M tests/test_hyper_workspace.py
+ M tests/test_hyperliquid_model_config.py
+ M tests/test_hyperliquid_paper_policy.py
+ M tests/test_hyperliquid_paper_review.py
+ M tests/test_hyperliquid_paper_runtime.py
+ M tests/test_hyperliquid_paper_view.py
+ M tests/test_hyperliquid_powder_view.py
+ M tests/test_stock_only_gameplan.py
+?? AGENTS.md
+?? artifacts/analysis/cross-horizon-fallback-20260930/
+?? artifacts/analysis/fallback-session-reviews/
+?? artifacts/analysis/overnight-20261001/
+?? configs/hyperliquid-powder-policy.json
+?? docs/cross-pc-infrastructure-prompts/
+?? docs/hyperliquid-system-analysis/research/
+?? docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md
+?? ml/stock_trader/cross_horizon_fallback.py
+?? ml/stock_trader/fallback_review.py
+?? tests/test_cross_horizon_fallback_ledger.py
+?? tests/test_cross_horizon_fallback_policy.py
+?? tests/test_cross_horizon_fallback_review.py
+?? tests/test_cross_horizon_fallback_runtime.py
+?? tests/test_gameplan_fallback_planning.py
+?? tests/test_hyperliquid_paper_exploration.py
+?? tests/test_hyperliquid_paper_exploratory_cadence.py
+?? tests/test_hyperliquid_paper_rebalance_threshold.py
+?? tests/test_hyperliquid_probability_shrinkage.py

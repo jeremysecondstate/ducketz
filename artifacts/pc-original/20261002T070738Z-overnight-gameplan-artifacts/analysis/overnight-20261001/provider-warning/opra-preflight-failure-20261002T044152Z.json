@@ -1,0 +1,331 @@
+{
+  "observed_at_utc": "2026-10-02T04:41:52.656822+00:00",
+  "native_run_id": "20261002T040848.225355Z",
+  "status": "CURRENT_NATIVE_STAGE_RUNNING_INITIAL_SCOPE_PREFLIGHT_FAILED",
+  "native_status": "RUNNING",
+  "native_stage": "loop_a_close_fetch",
+  "failure": {
+    "provider": "databento",
+    "dataset": "OPRA.PILLAR",
+    "schema": "cbbo-1m",
+    "symbol": "AAPL.OPT",
+    "operation": "metadata.get_cost",
+    "exception": "OpraSyncError caused by ReadTimeout",
+    "attempts": 3,
+    "timeout_seconds": 30,
+    "retry_delays_seconds": [
+      1,
+      2
+    ],
+    "evidence": [
+      {
+        "line": 1220,
+        "text": "OPRA symbol/schema history preflight failed: symbol=AAPL; schema=cbbo-1m; OpraSyncError: cbbo-1m estimated cost failed after 3 attempts: ReadTimeout: HTTPSConnectionPool(host='hist.databento.com', port=443): Read timed out. (read timeout=30)"
+      }
+    ],
+    "exact_failed_request_scope_reconstructed_from_native_plan": {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "start": "2026-09-28",
+      "end": "2026-10-02",
+      "symbols": [
+        "AAPL.OPT"
+      ],
+      "stype_in": "parent"
+    },
+    "reconstruction_basis": "Cursor completed_through Oct1 minus native3-day overlap=Sep28;20-day lookback floorSep12 is earlier; current entitled exclusive endOct2;30-day max catchup does not bind. Request kwargs use parent symbology.",
+    "failed_scope_preflight_receipt_present": false,
+    "note": "Log emits no per-error timestamp; observation time is not asserted as provider error time. Size and record count calls precede cost but their returned values were not saved in a complete preflight receipt."
+  },
+  "entitlement_evidence": {
+    "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\entitlement.json",
+    "sha256": "a051b007b9868665f71e9858e0d450c7f1b624eb4b1a44215b151a938477d464",
+    "observed_at": "2026-10-02T04:30:59.676155+00:00",
+    "schema": {
+      "configured_included_start": "2025-10-02",
+      "dataset_start": "2013-04-01",
+      "entitled_end": "2026-10-02",
+      "entitled_start": "2025-10-02",
+      "included_history_policy": {
+        "unit": "months",
+        "value": 12
+      },
+      "level": "L1"
+    },
+    "provider_range": {
+      "end": "2026-10-02T00:00:00.000000000Z",
+      "start": "2013-04-01T00:00:00.000000000Z"
+    }
+  },
+  "cursor_evidence": {
+    "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\cbbo-1m.json",
+    "sha256": "bbd8e5ad8b65309e76c5eb044e29f07d7217de60883094fb38a74ac20f16e2a4",
+    "payload": {
+      "completed_through": "2026-10-01",
+      "dataset": "OPRA.PILLAR",
+      "lookback_policy": {
+        "unit": "days",
+        "value": 20
+      },
+      "provider": "databento-opra",
+      "provider_symbol": "AAPL.OPT",
+      "requested_start": "2026-09-11",
+      "schema": "cbbo-1m",
+      "schema_version": "options-opra-symbol-history-v5",
+      "symbol": "AAPL",
+      "updated_at": "2026-10-01T05:00:13.924388+00:00"
+    }
+  },
+  "log_snapshot": {
+    "bytes": 102729,
+    "sha256": "9c55d0722a86d8d35a2f65a10fdbed2d15fc4a0e4c7a8af7e4ba2f9b8e4db9d7"
+  },
+  "currently_successful_preflights": [
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AAPL.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "f1ac98248e462d81238fda7e169cbef1e1d5e574dbd16c8010000a0371a85557",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "AAPL.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:31:23.019882+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AMZN.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "18455d8ff4f206f925c3416e1133240726eda40c534e22278213012d43282ea6",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:32:05.902677+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\COST.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "c2a3f26c3807c0138531aa3d655ed117f41515d70dde9bfd79cd8bac4ca63266",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:34:20.495197+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\CROX.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "cabbf9ff46e0fd4d765e0542568e5bbcaa8b38e36bfb1644ae9b0c61cf45967b",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:34:38.687616+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\GOOG.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "a079523ccb1e4ed2032a3af742e498ee39a5f2390389b6048a25a245bb05a1eb",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:32:37.476512+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\IONQ.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "7b6f0a1a301ed4c20543f643a3a18ac3241fd2832016e341b5c5ff6c1504b343",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:35:16.965911+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\MU.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "aaae93a0581c091bf270786b08e110b11cf601891e184283f32c62f0569c1133",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "MU.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:33:09.346592+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\NVDA.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "3fe7a2c8ae78ed9bdb4dbcddea94164583a5a66c7aaa05a7577e70cdd8e3a596",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:33:19.294967+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\PATH.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "7f425284c7a5902e3cdc5bc28384df4cba238d2f176e6dfbf1e5d4faa610c5d6",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "PATH.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:34:45.884294+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\SNDK.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "b832e8bd9a577bc5b8ba93c2219803df0ec578dedcf67113cb60c25dd2bc7003",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "SNDK.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:34:00.711907+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\TWST.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "91699364f6960b13062a80512f5ccf410a61be43b25554a52edc737520115386",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "TWST.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:34:56.747268+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\AMZN.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "ee7b09ea195f9d1b1db5b23b50116ab8b8f406cf3873ca730a42512dfe27a1a9",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:39:26.803536+00:00",
+      "cost": 0.0
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\GOOG.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "257f47275db26e444c82366f0ff5dba7951b71c0a5dd9312d0f7ffa29ddf499b",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "generated_at": "2026-10-02T04:40:22.497871+00:00",
+      "cost": 0.0
+    }
+  ],
+  "native_behavior": {
+    "per_scope_catch": "options_runtime.py1060-1084 increments failed and continues other plans; failed plan is not selected for synchronize or cursor advancement.",
+    "existing_live_fallback": "orchestrate.py396 passes --live-replay-fallback; options_runtime.py1216-1246 may complete exact missing OPRA session and then recomputes failures from final exact cursors.",
+    "terminal_if_unresolved": "options_history.py173 returns1 for remaining failed/capacity scopes; orchestrate.py335 returns1 for failed maintenance; overnight_runtime.py471 raises on nonzero stage exit and seals FAILED receipt.",
+    "potential_native_self_recovery": true,
+    "resume_conditions": "Only after terminal FAILED/CANCELLED receipt, process absence, unchanged receipt/log hashes and unexpired Oct2 11:00Z deadline; verify changed evidence (successful exact failed-scope zero-cost and finite count/size metadata, provider-range and capacity checks) before one native existing-run stage resume. Success of unrelated scopes alone is insufficient.",
+    "resume_granularity": "Native resume begins failed loop_a_close_fetch stage; OPRA uses retained partition receipts and incremental cursors. Base subcycle is inside the failed stage, not an independently completed overnight stage."
+  },
+  "source_evidence": [
+    {
+      "path": "datafetching/options_runtime.py",
+      "sha256": "2465a776ef0a970bc475f25da80c22537da644af28098a428b138c5216e0a850"
+    },
+    {
+      "path": "datafetching/options_history.py",
+      "sha256": "eda021d0e5eb4f307b2def0457bae19d51346d453006536a785d4d05f2501a86"
+    },
+    {
+      "path": "datafetching/databento_opra_history.py",
+      "sha256": "bd3da2639170b748a7f30199b26b387f7dffdaeff72695f589550c46071b449a"
+    },
+    {
+      "path": "datafetching/orchestrate.py",
+      "sha256": "b94fd3fc8fc3b759efd9ee1a61247ee326f1653c481635c6c43660ce85611812"
+    },
+    {
+      "path": "datafetching/opra_replay_fallback.py",
+      "sha256": "4c3fe0f8ab7a8f31bddc224a895caa6720c9aa466ba25646bd7b02db8d5b4a92"
+    },
+    {
+      "path": "ml/overnight_runtime.py",
+      "sha256": "113b22908c82d845290d394dd64d0b232bee0ff5dff4ef9626120335593a03a5"
+    }
+  ],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "source_edits": 0,
+  "runtime_actions": 0
+}

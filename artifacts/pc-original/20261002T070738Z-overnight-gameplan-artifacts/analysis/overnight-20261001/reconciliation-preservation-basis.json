@@ -1,0 +1,60 @@
+{
+  "schema_version": "overnight-native-reconciliation-preservation-basis-v1",
+  "captured_at": "2026-10-02T04:14:18.203477+00:00",
+  "status": "PASS",
+  "checks": {
+    "native_receipt_reconciled": true,
+    "native_independent_verifier_pass": true,
+    "before_ledger_exact_baseline": true,
+    "after_ledger_exact_post_reference": true,
+    "native_plan_bound": true,
+    "zero_new_fills": true,
+    "zero_assignment_releases": true,
+    "zero_order_actions": true,
+    "zero_pending_and_blocks": true,
+    "preserved_controls_environment_launcher_and_watchlist": true,
+    "preserved_entry_and_recovery_claims": true,
+    "preserved_trader_session_status_file": true,
+    "preserved_last_stock_decision_run": true,
+    "preserved_immutable_october1_sources": true,
+    "preserved_automation_schedule_model_policy_metadata": true,
+    "preserved_git_identity": true,
+    "preserved_repository_source_hashes": true,
+    "preserved_windows_launcher_configuration": true,
+    "only_expected_ledger_tables_changed": true,
+    "frozen_fallback_baseline_preserved": true
+  },
+  "original_baseline": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-baseline.json",
+  "post_reconciliation_reference": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-post-reconciliation.json",
+  "native_receipt": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preflight\\reconciliation\\native-reconciliation.json",
+  "native_verification": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preflight\\reconciliation\\native-reconciliation-verification.json",
+  "native_plan": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preflight\\reconciliation\\reconciliation-plan.json",
+  "bindings": {
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-baseline.json": "070a743365ed302cb7d5d35aa0e5f136579336612b22e7b4c93b2a747c85e84a",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-post-reconciliation.json": "47d75e80c53ad8f06a57b49f6e2a91d877db3b2145f99e4cfc2c06e20a4daae7",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preflight\\reconciliation\\native-reconciliation.json": "8160488345dae2d827c2529ed865522380432307233474e5c4c86e89788827f5",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preflight\\reconciliation\\native-reconciliation-verification.json": "aef583736d81fca9170ed5d4bc4474b23ababa1cc970408f6ede6311e16f24d6",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preflight\\reconciliation\\reconciliation-plan.json": "7aa6bc27f52037d8bf758fc66f90c17a1ac7d1ff1cd6574596aa631547192b65"
+  },
+  "allowed_ledger_delta": {
+    "reservations": {
+      "before": "725e2ba29d836fead818a3c838fee2b020cea5557bcdefe2886a6c6417b3a666",
+      "after": "5b265d955a13dd11a825b16490954095cc5279476bc007735790f387c8e89c19",
+      "before_count": 729,
+      "after_count": 729
+    },
+    "evidence": {
+      "before": "42282eca967298566daab932c5ce7d66074bd9fe374d25d905329ecaa9d6fcc3",
+      "after": "897e7012a0c85a7d7fadc7a93797b42c79f22a0291c465991a5c4c86e4607fa8",
+      "before_count": 31663,
+      "after_count": 31667
+    },
+    "snapshots": {
+      "before": "28c3ee5174e2b5e20ebf450665ceea62269677448fab2cddde93d94f78167bf4",
+      "after": "017fb5d0280ef793c28f3d0385baa49983084797cbcc32869489d9496d309a2a",
+      "before_count": 20879,
+      "after_count": 20880
+    }
+  },
+  "summary": "Three exact terminal-confirmed zero-fill reservations released by native reconciliation. Existing fills, allocations, assignments, frozen fallback day, controls, claims, schedules, sources and old publications preserved. One ready zero-budget portfolio snapshot and four audit rows added. Final audit compares operational ledger to this post-reconciliation reference and all other invariants to the original prelaunch baseline."
+}

@@ -1,0 +1,229 @@
+{
+  "reviewed_at": "2026-10-02T06:45:09.574125+00:00",
+  "status": "SAVED_COHORT_BOUNDARIES_VERIFIED",
+  "publication": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z",
+  "action_date": "2026-10-02",
+  "groups": {
+    "1d": {
+      "saved_rows": 29822,
+      "sha256": "c3ec49baea9d7ff24707d3d0b68792a21bfa1c50c70d19da58a37e31fc6182d9",
+      "boundary_quality": {
+        "admitted_rows_by_route": {
+          "1d@D+1": 5982,
+          "1d@D+2": 5987,
+          "1d@D+3": 5989,
+          "1d@D+4": 5984,
+          "1d@D+5": 5985
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 5421,
+          "AMZN": 5257,
+          "COST": 1704,
+          "CROX": 300,
+          "GOOG": 4231,
+          "IONQ": 1805,
+          "MU": 4113,
+          "NVDA": 5257,
+          "PATH": 954,
+          "SNDK": 860,
+          "TWST": 25
+        },
+        "aligned_rows": 29927,
+        "candidate_rows": 85565,
+        "conflicting_minute_rows_excluded": 0,
+        "enforced": true,
+        "excluded_rows": 55638,
+        "excluded_rows_by_route": {
+          "1d@D+1": 11153,
+          "1d@D+2": 11137,
+          "1d@D+3": 11124,
+          "1d@D+4": 11118,
+          "1d@D+5": 11106
+        },
+        "maximum_boundary_gap_seconds": 300.0,
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_dataset": "XNAS.ITCH",
+        "target_price_source_contract": "xnas-itch-archive-v1"
+      },
+      "post_boundary_source_quality_excluded_rows": 105,
+      "raw_direction_labels_and_price_returns_reproduced": true,
+      "all_saved_boundaries_within_300_seconds": true,
+      "native_causal_feature_clocks_verified": true,
+      "execution_source_cutoff_before_target_start": true,
+      "opening_gap_research_rows_starting_before_source_availability": 0,
+      "duplicate_natural_targets": 0
+    },
+    "1h": {
+      "saved_rows": 172276,
+      "sha256": "19d5d544b9fb4e023dc18755634a70037f3cc321e787272a2d164a41cc88f9d7",
+      "boundary_quality": {
+        "admitted_rows_by_route": {
+          "1h@04:00": 10511,
+          "1h@05:00": 11012,
+          "1h@06:00": 12936,
+          "1h@07:00": 17053,
+          "1h@08:00": 17044,
+          "1h@09:00": 17031,
+          "1h@10:00": 16963,
+          "1h@11:00": 16976,
+          "1h@12:00": 17014,
+          "1h@13:00": 10348,
+          "1h@14:00": 7910,
+          "1h@15:00": 6933,
+          "1h@16:00": 4740,
+          "1h@gap": 6022
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 21930,
+          "AMZN": 21418,
+          "COST": 14963,
+          "CROX": 14284,
+          "GOOG": 19420,
+          "IONQ": 13410,
+          "MU": 19055,
+          "NVDA": 21465,
+          "PATH": 10645,
+          "SNDK": 4172,
+          "TWST": 11731
+        },
+        "aligned_rows": 172493,
+        "candidate_rows": 239890,
+        "conflicting_minute_rows_excluded": 0,
+        "enforced": true,
+        "excluded_rows": 67397,
+        "excluded_rows_by_route": {
+          "1h@04:00": 6624,
+          "1h@05:00": 6123,
+          "1h@06:00": 4199,
+          "1h@07:00": 82,
+          "1h@08:00": 91,
+          "1h@09:00": 104,
+          "1h@10:00": 172,
+          "1h@11:00": 159,
+          "1h@12:00": 121,
+          "1h@13:00": 6787,
+          "1h@14:00": 9225,
+          "1h@15:00": 10202,
+          "1h@16:00": 12395,
+          "1h@gap": 11113
+        },
+        "maximum_boundary_gap_seconds": 300.0,
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_dataset": "XNAS.ITCH",
+        "target_price_source_contract": "xnas-itch-archive-v1"
+      },
+      "post_boundary_source_quality_excluded_rows": 217,
+      "raw_direction_labels_and_price_returns_reproduced": true,
+      "all_saved_boundaries_within_300_seconds": true,
+      "native_causal_feature_clocks_verified": true,
+      "execution_source_cutoff_before_target_start": true,
+      "opening_gap_research_rows_starting_before_source_availability": 6007,
+      "duplicate_natural_targets": 0
+    },
+    "1w": {
+      "saved_rows": 5874,
+      "sha256": "c251d0a3e200c5572fe3f1870c3eb6774d5158e2631a27eaf14d5d168d4bcad1",
+      "boundary_quality": {
+        "admitted_rows_by_route": {
+          "1w@D+5": 5963
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 1086,
+          "AMZN": 1051,
+          "COST": 340,
+          "CROX": 62,
+          "GOOG": 849,
+          "IONQ": 358,
+          "MU": 815,
+          "NVDA": 1052,
+          "PATH": 170,
+          "SNDK": 170,
+          "TWST": 10
+        },
+        "aligned_rows": 5963,
+        "candidate_rows": 17091,
+        "conflicting_minute_rows_excluded": 0,
+        "enforced": true,
+        "excluded_rows": 11128,
+        "excluded_rows_by_route": {
+          "1w@D+5": 11128
+        },
+        "maximum_boundary_gap_seconds": 300.0,
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_dataset": "XNAS.ITCH",
+        "target_price_source_contract": "xnas-itch-archive-v1"
+      },
+      "post_boundary_source_quality_excluded_rows": 89,
+      "raw_direction_labels_and_price_returns_reproduced": true,
+      "all_saved_boundaries_within_300_seconds": true,
+      "native_causal_feature_clocks_verified": true,
+      "execution_source_cutoff_before_target_start": true,
+      "opening_gap_research_rows_starting_before_source_availability": 0,
+      "duplicate_natural_targets": 0
+    },
+    "4h": {
+      "saved_rows": 43071,
+      "sha256": "51996b37356d03ba3300e53f75302abdfb8e73c0b723de18aeaca2ba7a41b246",
+      "boundary_quality": {
+        "admitted_rows_by_route": {
+          "4h@04:00": 12400,
+          "4h@08:00": 16990,
+          "4h@12:00": 8387,
+          "4h@16:00": 5360
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 5893,
+          "AMZN": 5684,
+          "COST": 3766,
+          "CROX": 2932,
+          "GOOG": 4992,
+          "IONQ": 3251,
+          "MU": 4954,
+          "NVDA": 5756,
+          "PATH": 2660,
+          "SNDK": 1088,
+          "TWST": 2161
+        },
+        "aligned_rows": 43137,
+        "candidate_rows": 68529,
+        "conflicting_minute_rows_excluded": 0,
+        "enforced": true,
+        "excluded_rows": 25392,
+        "excluded_rows_by_route": {
+          "4h@04:00": 4735,
+          "4h@08:00": 145,
+          "4h@12:00": 8748,
+          "4h@16:00": 11764
+        },
+        "maximum_boundary_gap_seconds": 300.0,
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_dataset": "XNAS.ITCH",
+        "target_price_source_contract": "xnas-itch-archive-v1"
+      },
+      "post_boundary_source_quality_excluded_rows": 66,
+      "raw_direction_labels_and_price_returns_reproduced": true,
+      "all_saved_boundaries_within_300_seconds": true,
+      "native_causal_feature_clocks_verified": true,
+      "execution_source_cutoff_before_target_start": true,
+      "opening_gap_research_rows_starting_before_source_availability": 0,
+      "duplicate_natural_targets": 0
+    }
+  },
+  "finding": "The warnings describe intended five-minute endpoint exclusions. Saved source contracts, observed-price arithmetic, raw-direction labels, causal clocks and counts verify; no conflicting minute rows or concrete repair cause observed.",
+  "helper_diagnosis": "The first unsaved probe incorrectly required source availability before every target start. Native non-entry opening-gap research spans prior17:00 through04:00 and can use causal prior daily evidence available17:05. This review applies the native causal-clock verifier to all rows and the target-start constraint only to execution rows.",
+  "limitations": [
+    "Saved cohort columns, hashes and arithmetic verified; native observations/cohorts are not independently regenerated here.",
+    "Full archive/model inference and complete native audit remain pending COMPLETE."
+  ],
+  "provider_calls": 0,
+  "production_mutations": 0,
+  "heavy_final_audit_started": false,
+  "verifier": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\review_target_boundary_quality.py",
+    "sha256": "56940c26b6b742e8f351049189272d543651c74e0fb465a72c3a7fbd6776d6d6"
+  }
+}

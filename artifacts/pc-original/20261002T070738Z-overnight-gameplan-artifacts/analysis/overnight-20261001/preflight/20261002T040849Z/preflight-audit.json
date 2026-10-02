@@ -1,0 +1,1403 @@
+{
+  "observed_at_utc": "2026-10-02T04:08:49.477303+00:00",
+  "read_only": true,
+  "source_changed": false,
+  "coordination": {
+    "active": {
+      "commit": "7860a4a958193abb1943f13f56f6a445c28d8f61",
+      "contract_version": "cross-pc-v2",
+      "manifest_sha256": "f96c7771290c7d624200eadeac88abf4081903f89681e6fc1c7d2a3bf121afe4",
+      "previous": null,
+      "release_root": "C:\\dev\\ducketz\\scratch\\cross-pc\\releases\\7860a4a958193abb1943f13f56f6a445c28d8f61"
+    },
+    "file_count": 19,
+    "manifest_matches": true,
+    "mismatches": [],
+    "native_verify": {
+      "verified": true,
+      "commit": "7860a4a958193abb1943f13f56f6a445c28d8f61",
+      "files": 19
+    }
+  },
+  "checkout": {
+    "head": "0407388559d54612603380793fc26a98937697fc",
+    "branch": "main",
+    "origin": "https://github.com/jeremysecondstate/ducketz.git",
+    "status": [
+      " M app/services/hyperliquid_paper_view.py",
+      " M app/services/hyperliquid_powder_view.py",
+      " M app/ui/gameplan.py",
+      " M app/ui/gameplan_data.py",
+      " M app/ui/hyper_workspace.py",
+      " M configs/hyperliquid-models.json",
+      " M configs/hyperliquid-paper.json",
+      " M configs/hyperliquid-powder.json",
+      " M docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md",
+      " M docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md",
+      " M docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      " M docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      " M ml/gameplan_cash_ledger.py",
+      " M ml/gameplan_trade_planning.py",
+      " M ml/gameplan_trade_review.py",
+      " M ml/gameplan_trade_snapshot.py",
+      " M ml/hyperliquid_model_config.py",
+      " M ml/hyperliquid_models.py",
+      " M ml/hyperliquid_paper_cadence.py",
+      " M ml/hyperliquid_paper_forecast_evidence.py",
+      " M ml/hyperliquid_paper_review.py",
+      " M ml/hyperliquid_paper_runtime.py",
+      " M ml/nightly_gameplan.py",
+      " M ml/stock_trader/gameplan_direction_engine.py",
+      " M ml/stock_trader/horizon_ledger.py",
+      " M ml/stock_trader/independent_runtime.py",
+      " M tests/test_gameplan_quote_clock_recovery.py",
+      " M tests/test_gameplan_trade_snapshot.py",
+      " M tests/test_hyper_workspace.py",
+      " M tests/test_hyperliquid_model_config.py",
+      " M tests/test_hyperliquid_paper_policy.py",
+      " M tests/test_hyperliquid_paper_review.py",
+      " M tests/test_hyperliquid_paper_runtime.py",
+      " M tests/test_hyperliquid_paper_view.py",
+      " M tests/test_hyperliquid_powder_view.py",
+      " M tests/test_stock_only_gameplan.py",
+      "?? AGENTS.md",
+      "?? artifacts/analysis/cross-horizon-fallback-20260930/",
+      "?? artifacts/analysis/fallback-session-reviews/",
+      "?? artifacts/analysis/overnight-20261001/",
+      "?? configs/hyperliquid-powder-policy.json",
+      "?? docs/cross-pc-infrastructure-prompts/",
+      "?? docs/hyperliquid-system-analysis/research/",
+      "?? docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+      "?? ml/stock_trader/cross_horizon_fallback.py",
+      "?? ml/stock_trader/fallback_review.py",
+      "?? tests/test_cross_horizon_fallback_ledger.py",
+      "?? tests/test_cross_horizon_fallback_policy.py",
+      "?? tests/test_cross_horizon_fallback_review.py",
+      "?? tests/test_cross_horizon_fallback_runtime.py",
+      "?? tests/test_gameplan_fallback_planning.py",
+      "?? tests/test_hyperliquid_paper_exploration.py",
+      "?? tests/test_hyperliquid_paper_exploratory_cadence.py",
+      "?? tests/test_hyperliquid_paper_rebalance_threshold.py",
+      "?? tests/test_hyperliquid_probability_shrinkage.py"
+    ],
+    "index_sha256": "7e0705c0baf891905118a6b69e1b43d10643a969c11340b579d0e1da3672df4e",
+    "full_shared_parity": "unverified; scoped exact fallback hashes below"
+  },
+  "fallback": {
+    "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "progress_status": "APPLIED",
+    "receipt_status": "APPLIED",
+    "progress_manifest_matches": true,
+    "receipt_manifest_matches": true,
+    "progress_equals_receipt": true,
+    "owned_files": [
+      {
+        "path": "app/ui/gameplan.py",
+        "expected": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+        "installed": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+        "sealed": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+        "published_blob": "a4f6bb244d3d1d49835cfe5cbd3279781b70d9541c04fc801a2f5d2e947cab6c",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "a4f6bb244d3d1d49835cfe5cbd3279781b70d9541c04fc801a2f5d2e947cab6c",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "app/ui/gameplan_data.py",
+        "expected": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+        "installed": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+        "sealed": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+        "published_blob": "0c9c84a486f1b5a5640ed2b73a258a3f6c6b097b80dba7d05bea4b50589e8425",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "0c9c84a486f1b5a5640ed2b73a258a3f6c6b097b80dba7d05bea4b50589e8425",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+        "expected": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "installed": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "sealed": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "published_blob": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+        "expected": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+        "installed": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+        "sealed": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+        "published_blob": "89c472255e518bd4522fa92e5ff70b756cad3dc7370b9c29d1059d1c013d6f37",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "89c472255e518bd4522fa92e5ff70b756cad3dc7370b9c29d1059d1c013d6f37",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+        "expected": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+        "installed": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+        "sealed": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+        "published_blob": "51af6b570d8146696e72b15d270c3595830afd1d078f3b442f289675b784eee9",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "51af6b570d8146696e72b15d270c3595830afd1d078f3b442f289675b784eee9",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/gameplan_cash_ledger.py",
+        "expected": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+        "installed": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+        "sealed": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+        "published_blob": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/gameplan_trade_planning.py",
+        "expected": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+        "installed": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+        "sealed": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+        "published_blob": "ce6a1c5d890add57e616535cb062ef855fc856661016b61c883f3a9f50de7177",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "ce6a1c5d890add57e616535cb062ef855fc856661016b61c883f3a9f50de7177",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/gameplan_trade_review.py",
+        "expected": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+        "installed": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+        "sealed": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+        "published_blob": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/gameplan_trade_snapshot.py",
+        "expected": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+        "installed": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+        "sealed": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+        "published_blob": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/nightly_gameplan.py",
+        "expected": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+        "installed": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+        "sealed": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+        "published_blob": "3367550273b5f960428394e6bab380913abce508aab8643364c8ec83df9b2131",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "3367550273b5f960428394e6bab380913abce508aab8643364c8ec83df9b2131",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/stock_trader/cross_horizon_fallback.py",
+        "expected": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+        "installed": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+        "sealed": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+        "published_blob": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "ml/stock_trader/fallback_review.py",
+        "expected": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+        "installed": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+        "sealed": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+        "published_blob": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "ml/stock_trader/gameplan_direction_engine.py",
+        "expected": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+        "installed": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+        "sealed": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+        "published_blob": "141a8a49c9b924452f24378df46378a9c05ee03dd1c0516cf43f22b3e46b3462",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "141a8a49c9b924452f24378df46378a9c05ee03dd1c0516cf43f22b3e46b3462",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/stock_trader/horizon_ledger.py",
+        "expected": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+        "installed": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+        "sealed": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+        "published_blob": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "ml/stock_trader/independent_runtime.py",
+        "expected": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+        "installed": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+        "sealed": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+        "published_blob": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "tests/test_cross_horizon_fallback_ledger.py",
+        "expected": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+        "installed": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+        "sealed": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+        "published_blob": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "tests/test_cross_horizon_fallback_policy.py",
+        "expected": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "installed": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "sealed": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "published_blob": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "tests/test_cross_horizon_fallback_review.py",
+        "expected": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+        "installed": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+        "sealed": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+        "published_blob": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "tests/test_cross_horizon_fallback_runtime.py",
+        "expected": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+        "installed": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+        "sealed": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+        "published_blob": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "tests/test_gameplan_fallback_planning.py",
+        "expected": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+        "installed": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+        "sealed": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+        "published_blob": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+        "published_matches_installed_exact": true,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+        "publication_classification": "exact_bytes"
+      },
+      {
+        "path": "tests/test_gameplan_quote_clock_recovery.py",
+        "expected": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+        "installed": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+        "sealed": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+        "published_blob": "e758314c510a86333df933231ddc79bf0fbdd3aeca6ca6b5d84ee7367c391c51",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "e758314c510a86333df933231ddc79bf0fbdd3aeca6ca6b5d84ee7367c391c51",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "tests/test_gameplan_trade_snapshot.py",
+        "expected": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+        "installed": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+        "sealed": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+        "published_blob": "aaf1ddc1f055a058d1964a218ed1d11785acdd25142109a9c0a879989dc1bd61",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "aaf1ddc1f055a058d1964a218ed1d11785acdd25142109a9c0a879989dc1bd61",
+        "publication_classification": "line_endings_only"
+      },
+      {
+        "path": "tests/test_stock_only_gameplan.py",
+        "expected": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+        "installed": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+        "sealed": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+        "published_blob": "c4aa9edbc0269b719d107ba27c72afdd82f5391192b8891cc3d3835b85da4416",
+        "published_matches_installed_exact": false,
+        "published_matches_installed_after_line_ending_normalization": true,
+        "installed_lf_sha256": "c4aa9edbc0269b719d107ba27c72afdd82f5391192b8891cc3d3835b85da4416",
+        "publication_classification": "line_endings_only"
+      }
+    ],
+    "dependencies": [
+      {
+        "path": "app/__init__.py",
+        "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "installed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "app/config.py",
+        "expected": "20f1b5f3110cf48ebdf962c38ade6d23153b209dd53859d075962e151391e65e",
+        "installed": "20f1b5f3110cf48ebdf962c38ade6d23153b209dd53859d075962e151391e65e"
+      },
+      {
+        "path": "app/hyperliquid_accounts.py",
+        "expected": "76f89f2f23251482357fa2a10f3d210cb8d2392ffa91bc39e46769d277a529b2",
+        "installed": "76f89f2f23251482357fa2a10f3d210cb8d2392ffa91bc39e46769d277a529b2"
+      },
+      {
+        "path": "app/models/__init__.py",
+        "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "installed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "app/models/market_data.py",
+        "expected": "026eab22a38b25035584aa6a615eaae5d8bafbc68f25b5d62d793bb997fea3cf",
+        "installed": "026eab22a38b25035584aa6a615eaae5d8bafbc68f25b5d62d793bb997fea3cf"
+      },
+      {
+        "path": "app/models/option_management.py",
+        "expected": "c8cd27bef3679035872745f818ceb93de50958e67c2895c38b9ff7c5456a0eda",
+        "installed": "c8cd27bef3679035872745f818ceb93de50958e67c2895c38b9ff7c5456a0eda"
+      },
+      {
+        "path": "app/models/portfolio.py",
+        "expected": "69dccaacda3901c65e0af9984c3f9b2dcd71a9a086ee7f9a2abb156d0849f438",
+        "installed": "69dccaacda3901c65e0af9984c3f9b2dcd71a9a086ee7f9a2abb156d0849f438"
+      },
+      {
+        "path": "app/services/__init__.py",
+        "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "installed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "app/services/databento_cme_context.py",
+        "expected": "59d0d44e8ce3cba999821c38ad61acc86a2c9555a5e19382f116e6a463283ffd",
+        "installed": "59d0d44e8ce3cba999821c38ad61acc86a2c9555a5e19382f116e6a463283ffd"
+      },
+      {
+        "path": "app/services/databento_market_data.py",
+        "expected": "5b4c818e0ad74a8b7212324dd4461908737781a801f1d8854d40097bf861e840",
+        "installed": "5b4c818e0ad74a8b7212324dd4461908737781a801f1d8854d40097bf861e840"
+      },
+      {
+        "path": "app/services/databento_retry.py",
+        "expected": "668c8bfc73948e1989a6bb80008f6f53a10901b47c851c5d6295a68941eada9d",
+        "installed": "668c8bfc73948e1989a6bb80008f6f53a10901b47c851c5d6295a68941eada9d"
+      },
+      {
+        "path": "app/services/fmp_corporate_data.py",
+        "expected": "d7b2049f33e30ee2b7b0e2391bf532e58ce318e62a13988af46f6f2d7b3fa73b",
+        "installed": "d7b2049f33e30ee2b7b0e2391bf532e58ce318e62a13988af46f6f2d7b3fa73b"
+      },
+      {
+        "path": "app/services/fmp_macro_context.py",
+        "expected": "6a189dfd866b579ac9c49111c40a5d4b31f91d45c7ad6ae7b7ff02b9002cd01e",
+        "installed": "6a189dfd866b579ac9c49111c40a5d4b31f91d45c7ad6ae7b7ff02b9002cd01e"
+      },
+      {
+        "path": "app/services/hyperliquid.py",
+        "expected": "9c18098c40901f9a90913b21057a18755c37cf6ab1d0f4df43e10a85710f3d04",
+        "installed": "9c18098c40901f9a90913b21057a18755c37cf6ab1d0f4df43e10a85710f3d04"
+      },
+      {
+        "path": "app/services/hyperliquid_markets.py",
+        "expected": "cba985f41eb5cfed7902a0dc5f1489f61b9a820d6651b820e3a07d150c9d5ce8",
+        "installed": "cba985f41eb5cfed7902a0dc5f1489f61b9a820d6651b820e3a07d150c9d5ce8"
+      },
+      {
+        "path": "app/services/market_fetch_specs.py",
+        "expected": "e30678ad34b71daac98d9bfba4d7f2d2c2b6f2b09a382b82c1915ffa7eaabe4c",
+        "installed": "e30678ad34b71daac98d9bfba4d7f2d2c2b6f2b09a382b82c1915ffa7eaabe4c"
+      },
+      {
+        "path": "app/services/schwab.py",
+        "expected": "fb93eb7aa7735f6a3bd7c1a8fa62381795da6f5cd17aff5f258f5488842d6433",
+        "installed": "fb93eb7aa7735f6a3bd7c1a8fa62381795da6f5cd17aff5f258f5488842d6433"
+      },
+      {
+        "path": "app/services/schwab_market_data.py",
+        "expected": "e5333b971204960ff3f128dcaedbf615dcd140d8793fb5cf82b3de6ffb5274ac",
+        "installed": "e5333b971204960ff3f128dcaedbf615dcd140d8793fb5cf82b3de6ffb5274ac"
+      },
+      {
+        "path": "app/services/schwab_option_management.py",
+        "expected": "59d02ffa5223df6dae22bf7b69723dadf26a551f34a96b7e086ed4f62e6883b2",
+        "installed": "59d02ffa5223df6dae22bf7b69723dadf26a551f34a96b7e086ed4f62e6883b2"
+      },
+      {
+        "path": "app/services/schwab_order_fields.py",
+        "expected": "4c7b60eb8142296d82560da879faecd9440a9cc6a8b3a71eeef27391907d8b4a",
+        "installed": "4c7b60eb8142296d82560da879faecd9440a9cc6a8b3a71eeef27391907d8b4a"
+      },
+      {
+        "path": "app/services/schwab_policy_inputs.py",
+        "expected": "0c1970128fce12cbb6215bf5dcf0b0cc8d77d7e8643fb6449afa77e7c100a9c8",
+        "installed": "0c1970128fce12cbb6215bf5dcf0b0cc8d77d7e8643fb6449afa77e7c100a9c8"
+      },
+      {
+        "path": "app/services/schwab_retry.py",
+        "expected": "f1edecab4060e834b922fb79f7886216a6c6375079c84ea2479c989cb964dbef",
+        "installed": "f1edecab4060e834b922fb79f7886216a6c6375079c84ea2479c989cb964dbef"
+      },
+      {
+        "path": "app/services/schwab_stock_orders.py",
+        "expected": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+        "installed": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261"
+      },
+      {
+        "path": "app/services/schwab_strategy_orders.py",
+        "expected": "ff733bd9fed40887aff461b508346b7c6f7423020a8b993321e00cb21878b22b",
+        "installed": "ff733bd9fed40887aff461b508346b7c6f7423020a8b993321e00cb21878b22b"
+      },
+      {
+        "path": "app/services/schwab_token_store.py",
+        "expected": "108fa5f86417f7780f4491c0e44e366e00babccea5fa664476e2336a3643e62f",
+        "installed": "108fa5f86417f7780f4491c0e44e366e00babccea5fa664476e2336a3643e62f"
+      },
+      {
+        "path": "app/services/sec_capital_structure.py",
+        "expected": "853497a03c21b937e3f0b3c2631b4154c1af4c1d2147f0427983bf9cd6889a70",
+        "installed": "853497a03c21b937e3f0b3c2631b4154c1af4c1d2147f0427983bf9cd6889a70"
+      },
+      {
+        "path": "app/ui/__init__.py",
+        "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "installed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "app/ui/gameplan_widgets.py",
+        "expected": "57a2b303978fb984727c08226e091ce170fc5261f49a5229e3934ad9c5b34a91",
+        "installed": "57a2b303978fb984727c08226e091ce170fc5261f49a5229e3934ad9c5b34a91"
+      },
+      {
+        "path": "app/ui/theme.py",
+        "expected": "3969456456ab476ecee1b8316aaea3f8dafcb0e8383932a393b6d59c2e1f4261",
+        "installed": "3969456456ab476ecee1b8316aaea3f8dafcb0e8383932a393b6d59c2e1f4261"
+      },
+      {
+        "path": "datafetching/__init__.py",
+        "expected": "d88c3d81d7ff4c83c7c450c5fca1a6b927d2ae2d4ad887d971b2e9fb60c3ddc2",
+        "installed": "d88c3d81d7ff4c83c7c450c5fca1a6b927d2ae2d4ad887d971b2e9fb60c3ddc2"
+      },
+      {
+        "path": "datafetching/bar_consolidation.py",
+        "expected": "c328eae4715cd850b30bd7917ee38cdef2f6bec765e809e906b5872659ccf461",
+        "installed": "c328eae4715cd850b30bd7917ee38cdef2f6bec765e809e906b5872659ccf461"
+      },
+      {
+        "path": "datafetching/bar_readiness.py",
+        "expected": "9e760e130138985cb9e3708315279a412845d7db4be0bc3b26c6330e541c6b28",
+        "installed": "9e760e130138985cb9e3708315279a412845d7db4be0bc3b26c6330e541c6b28"
+      },
+      {
+        "path": "datafetching/bar_schema.py",
+        "expected": "b275f022b90865e2706ebfc20f8ac27ee1abb7f557fa2263288f5710f5df9448",
+        "installed": "b275f022b90865e2706ebfc20f8ac27ee1abb7f557fa2263288f5710f5df9448"
+      },
+      {
+        "path": "datafetching/bar_timing.py",
+        "expected": "0d089c362cd303afe23917818f3329ce49200881474a59c101b8b61ddb8f3cc3",
+        "installed": "0d089c362cd303afe23917818f3329ce49200881474a59c101b8b61ddb8f3cc3"
+      },
+      {
+        "path": "datafetching/calculated_features.py",
+        "expected": "98c937a3f2feb3ea19d2f86132a3d1328a5e5d2904b5308ce5e6e2fd1f7e753b",
+        "installed": "98c937a3f2feb3ea19d2f86132a3d1328a5e5d2904b5308ce5e6e2fd1f7e753b"
+      },
+      {
+        "path": "datafetching/cme_cross_asset_context.py",
+        "expected": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c",
+        "installed": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c"
+      },
+      {
+        "path": "datafetching/cme_history.py",
+        "expected": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+        "installed": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d"
+      },
+      {
+        "path": "datafetching/cme_runtime.py",
+        "expected": "a67ceb0219d13e2f02874da134f95b05caeca88228a0e0b2ed86a55a6e67f259",
+        "installed": "a67ceb0219d13e2f02874da134f95b05caeca88228a0e0b2ed86a55a6e67f259"
+      },
+      {
+        "path": "datafetching/continuation.py",
+        "expected": "53fcea2beddf7af92d78e4d743c29a75778a712f77861ad91fb81911b54e8d9e",
+        "installed": "53fcea2beddf7af92d78e4d743c29a75778a712f77861ad91fb81911b54e8d9e"
+      },
+      {
+        "path": "datafetching/databento_archive.py",
+        "expected": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83",
+        "installed": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83"
+      },
+      {
+        "path": "datafetching/databento_cold_start.py",
+        "expected": "d92a8cb408f547b4761b009905e8423355fd4a38c426fbd65eb387d69f613950",
+        "installed": "d92a8cb408f547b4761b009905e8423355fd4a38c426fbd65eb387d69f613950"
+      },
+      {
+        "path": "datafetching/databento_fetch.py",
+        "expected": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6",
+        "installed": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6"
+      },
+      {
+        "path": "datafetching/databento_history_policy.py",
+        "expected": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b",
+        "installed": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b"
+      },
+      {
+        "path": "datafetching/databento_opra_history.py",
+        "expected": "bd3da2639170b748a7f30199b26b387f7dffdaeff72695f589550c46071b449a",
+        "installed": "bd3da2639170b748a7f30199b26b387f7dffdaeff72695f589550c46071b449a"
+      },
+      {
+        "path": "datafetching/databento_opra_replay.py",
+        "expected": "7d732b72c85fbe1ff9b4e332ca9a901e0ddcddf55890f4181503027380746b94",
+        "installed": "7d732b72c85fbe1ff9b4e332ca9a901e0ddcddf55890f4181503027380746b94"
+      },
+      {
+        "path": "datafetching/databento_storage.py",
+        "expected": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9",
+        "installed": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9"
+      },
+      {
+        "path": "datafetching/databento_xnas_replay.py",
+        "expected": "d7530152e9095e646bb8e0a9a3e9f2c32f9fdae7011093f31fabdd0fe1658ae9",
+        "installed": "d7530152e9095e646bb8e0a9a3e9f2c32f9fdae7011093f31fabdd0fe1658ae9"
+      },
+      {
+        "path": "datafetching/decision_time.py",
+        "expected": "d2a7999ab12882bb05acc7272e2e7bf7e89b860ab67f9745ab7610a737ebbe83",
+        "installed": "d2a7999ab12882bb05acc7272e2e7bf7e89b860ab67f9745ab7610a737ebbe83"
+      },
+      {
+        "path": "datafetching/derived_bars.py",
+        "expected": "b0dab0ca1e1c7c0a37d1600ff4419824fb1dcebe1f9533aa6ca58eae8b8d1be8",
+        "installed": "b0dab0ca1e1c7c0a37d1600ff4419824fb1dcebe1f9533aa6ca58eae8b8d1be8"
+      },
+      {
+        "path": "datafetching/fmp_energy_context.py",
+        "expected": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d",
+        "installed": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d"
+      },
+      {
+        "path": "datafetching/fmp_fetch.py",
+        "expected": "34ccde56ff3ba0bf6b75f51b3643ca1544852ec75ff2a5a8d20607937a10ae24",
+        "installed": "34ccde56ff3ba0bf6b75f51b3643ca1544852ec75ff2a5a8d20607937a10ae24"
+      },
+      {
+        "path": "datafetching/fred_fetch.py",
+        "expected": "8e908a379a660bcd7b42c031282e2cfdefa1d763a75d9b5e4fea76bbb6ee042e",
+        "installed": "8e908a379a660bcd7b42c031282e2cfdefa1d763a75d9b5e4fea76bbb6ee042e"
+      },
+      {
+        "path": "datafetching/fred_vintages.py",
+        "expected": "ea9f9e74eaf6039b43d98aa462df22333aef92e3834fed3a3fc2b84174ff2212",
+        "installed": "ea9f9e74eaf6039b43d98aa462df22333aef92e3834fed3a3fc2b84174ff2212"
+      },
+      {
+        "path": "datafetching/history_scope.py",
+        "expected": "9906f4a42920bc1e648c07a464a91d07bcca0fab614edf40d18df69a7fe7a844",
+        "installed": "9906f4a42920bc1e648c07a464a91d07bcca0fab614edf40d18df69a7fe7a844"
+      },
+      {
+        "path": "datafetching/ids.py",
+        "expected": "c6b24f6de78145cc9cb8e1b6a1589974504ea68fdacbf66702321549fe453847",
+        "installed": "c6b24f6de78145cc9cb8e1b6a1589974504ea68fdacbf66702321549fe453847"
+      },
+      {
+        "path": "datafetching/layout.py",
+        "expected": "67efcc0f866fefb0065f61e13ce1ff4335d027c21ee5e98f8e9a3c3d8d08d872",
+        "installed": "67efcc0f866fefb0065f61e13ce1ff4335d027c21ee5e98f8e9a3c3d8d08d872"
+      },
+      {
+        "path": "datafetching/loop_a_cycle.py",
+        "expected": "0f7aa515a82ed4634c2f622749be8d25e20be4378499f599b377bf1c19d98004",
+        "installed": "0f7aa515a82ed4634c2f622749be8d25e20be4378499f599b377bf1c19d98004"
+      },
+      {
+        "path": "datafetching/main.py",
+        "expected": "d490f3a101d91eb39cf0f89a0758b586748f73b84e36d0ee2d39dc5b6bb53ba6",
+        "installed": "d490f3a101d91eb39cf0f89a0758b586748f73b84e36d0ee2d39dc5b6bb53ba6"
+      },
+      {
+        "path": "datafetching/observability.py",
+        "expected": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e",
+        "installed": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e"
+      },
+      {
+        "path": "datafetching/opra_replay_fallback.py",
+        "expected": "4c3fe0f8ab7a8f31bddc224a895caa6720c9aa466ba25646bd7b02db8d5b4a92",
+        "installed": "4c3fe0f8ab7a8f31bddc224a895caa6720c9aa466ba25646bd7b02db8d5b4a92"
+      },
+      {
+        "path": "datafetching/options_runtime.py",
+        "expected": "2465a776ef0a970bc475f25da80c22537da644af28098a428b138c5216e0a850",
+        "installed": "2465a776ef0a970bc475f25da80c22537da644af28098a428b138c5216e0a850"
+      },
+      {
+        "path": "datafetching/orchestrate.py",
+        "expected": "b94fd3fc8fc3b759efd9ee1a61247ee326f1653c481635c6c43660ce85611812",
+        "installed": "b94fd3fc8fc3b759efd9ee1a61247ee326f1653c481635c6c43660ce85611812"
+      },
+      {
+        "path": "datafetching/parquet_store.py",
+        "expected": "cc444e189e71b23bf8f62f53609bc3ca194f7b5e0e2f2dfb85bbaf3671008216",
+        "installed": "cc444e189e71b23bf8f62f53609bc3ca194f7b5e0e2f2dfb85bbaf3671008216"
+      },
+      {
+        "path": "datafetching/pricing_barrier.py",
+        "expected": "3eeaf8be2d847c60589c03eff1fe872cd230c424f4cb22934246abca8245b710",
+        "installed": "3eeaf8be2d847c60589c03eff1fe872cd230c424f4cb22934246abca8245b710"
+      },
+      {
+        "path": "datafetching/quote_liquidity.py",
+        "expected": "df43d84e8c23dba819a1fc0bcf7f6619951828dcc3995ee012b8526359f94c31",
+        "installed": "df43d84e8c23dba819a1fc0bcf7f6619951828dcc3995ee012b8526359f94c31"
+      },
+      {
+        "path": "datafetching/readiness_lane.py",
+        "expected": "a07f376a8f74aa1f89df5c970403dbd1dbe5704eed40e6d76005f5cf0152e886",
+        "installed": "a07f376a8f74aa1f89df5c970403dbd1dbe5704eed40e6d76005f5cf0152e886"
+      },
+      {
+        "path": "datafetching/runtime_lock.py",
+        "expected": "266b676261f7a58a195597f5a2b4a295ff5e80f295c16a2a3b40ee139271a8df",
+        "installed": "266b676261f7a58a195597f5a2b4a295ff5e80f295c16a2a3b40ee139271a8df"
+      },
+      {
+        "path": "datafetching/schwab_fetch.py",
+        "expected": "0460d78a7ed69807ef7b09fa9e6be256446a1f0cb63aab5a40e75462977cc944",
+        "installed": "0460d78a7ed69807ef7b09fa9e6be256446a1f0cb63aab5a40e75462977cc944"
+      },
+      {
+        "path": "datafetching/sec_events.py",
+        "expected": "232422dbd69cf3aa0901b636c09d6ff0f27c69eefbf8312ac02e1a46a2f8bb33",
+        "installed": "232422dbd69cf3aa0901b636c09d6ff0f27c69eefbf8312ac02e1a46a2f8bb33"
+      },
+      {
+        "path": "datafetching/sec_fetch.py",
+        "expected": "d4f9e0df1bbac9692fcb23f9cea7f8428c831be58761a4d1a30dc9dcbe2484f0",
+        "installed": "d4f9e0df1bbac9692fcb23f9cea7f8428c831be58761a4d1a30dc9dcbe2484f0"
+      },
+      {
+        "path": "datafetching/symbol_onboarding.py",
+        "expected": "1435a6526528797a47ce2e7bd2fca82ac4e0082efbf9bbae5fdc74d1cee886bc",
+        "installed": "1435a6526528797a47ce2e7bd2fca82ac4e0082efbf9bbae5fdc74d1cee886bc"
+      },
+      {
+        "path": "datafetching/symbol_universe.py",
+        "expected": "bf82001a81aca136484ed9fb6c024349207687fea7dc4af9961fa1ffb9fa0da9",
+        "installed": "bf82001a81aca136484ed9fb6c024349207687fea7dc4af9961fa1ffb9fa0da9"
+      },
+      {
+        "path": "datafetching/watchlist.txt",
+        "expected": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+        "installed": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f"
+      },
+      {
+        "path": "datafetching/xnas_replay_archive.py",
+        "expected": "4f8c5856f5bfad75980f8f94e3d2fbd002f831bd915e8ccaae5ff6a64813f1d7",
+        "installed": "4f8c5856f5bfad75980f8f94e3d2fbd002f831bd915e8ccaae5ff6a64813f1d7"
+      },
+      {
+        "path": "fundamentals/__init__.py",
+        "expected": "7c38d1c6b6508babb6c87ff729e744f10ef71ee256a45f0a37e6b64167797d54",
+        "installed": "7c38d1c6b6508babb6c87ff729e744f10ef71ee256a45f0a37e6b64167797d54"
+      },
+      {
+        "path": "fundamentals/calculation.py",
+        "expected": "bd9bfc737d3241f425f49dc7683ff96a357e76d2fcf2a756b9adb737c0541df0",
+        "installed": "bd9bfc737d3241f425f49dc7683ff96a357e76d2fcf2a756b9adb737c0541df0"
+      },
+      {
+        "path": "fundamentals/join.py",
+        "expected": "19bda9d78a16eb80ca1c00d296c48f37d69e0b5369ef46fed979d6b9adc350f4",
+        "installed": "19bda9d78a16eb80ca1c00d296c48f37d69e0b5369ef46fed979d6b9adc350f4"
+      },
+      {
+        "path": "fundamentals/main.py",
+        "expected": "073821e7749a1702940d516da5a339647250ebb5139015c66b612849c794519c",
+        "installed": "073821e7749a1702940d516da5a339647250ebb5139015c66b612849c794519c"
+      },
+      {
+        "path": "fundamentals/parquet_io.py",
+        "expected": "081efb3b9feb05ab8dce59c854fc9e33d01c600e87f03c7d9ae935374de3c9d3",
+        "installed": "081efb3b9feb05ab8dce59c854fc9e33d01c600e87f03c7d9ae935374de3c9d3"
+      },
+      {
+        "path": "fundamentals/point_in_time.py",
+        "expected": "e38057bd356b611c02f54000c9f7b9c5fc5ef11a049981aa07b0d345dca3adcc",
+        "installed": "e38057bd356b611c02f54000c9f7b9c5fc5ef11a049981aa07b0d345dca3adcc"
+      },
+      {
+        "path": "ml/__init__.py",
+        "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "installed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "ml/artifacts.py",
+        "expected": "6234eed2445a67e6d1e2970374f8de8fecaad06cfb7ececbbe2072a4e5b752e8",
+        "installed": "6234eed2445a67e6d1e2970374f8de8fecaad06cfb7ececbbe2072a4e5b752e8"
+      },
+      {
+        "path": "ml/calendars.py",
+        "expected": "d4956b0221778e46ae44e1408a44605ef4df22eef2faa819deb636f5d35a4b39",
+        "installed": "d4956b0221778e46ae44e1408a44605ef4df22eef2faa819deb636f5d35a4b39"
+      },
+      {
+        "path": "ml/calibration.py",
+        "expected": "a525fd7a9e9697b9d70945474a8387b137bbfca9b5d7d9650058d717cbbb32fa",
+        "installed": "a525fd7a9e9697b9d70945474a8387b137bbfca9b5d7d9650058d717cbbb32fa"
+      },
+      {
+        "path": "ml/contracts.py",
+        "expected": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564",
+        "installed": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564"
+      },
+      {
+        "path": "ml/current_publication.py",
+        "expected": "094dfa9afd8b789f746eb4e6090d925e1462d9fc53ef5d6001ab3880de2a20da",
+        "installed": "094dfa9afd8b789f746eb4e6090d925e1462d9fc53ef5d6001ab3880de2a20da"
+      },
+      {
+        "path": "ml/directional_forecast_evaluation.py",
+        "expected": "04d8bb069b17a64feaa5c7b9781d92265311ad549b7e4c34d23098814546cb57",
+        "installed": "04d8bb069b17a64feaa5c7b9781d92265311ad549b7e4c34d23098814546cb57"
+      },
+      {
+        "path": "ml/directional_forecasts.py",
+        "expected": "fcb27a76d0ae404ff04669c47c6ebc2ab18817e08e2341a56e10e58094fddcaa",
+        "installed": "fcb27a76d0ae404ff04669c47c6ebc2ab18817e08e2341a56e10e58094fddcaa"
+      },
+      {
+        "path": "ml/gameplan_actuals_review.py",
+        "expected": "c979a927a8f6f0b8554bc68d39a43f172cf092fc0260f9a3f2e1875f79ee3081",
+        "installed": "c979a927a8f6f0b8554bc68d39a43f172cf092fc0260f9a3f2e1875f79ee3081"
+      },
+      {
+        "path": "ml/gameplan_archive_features.py",
+        "expected": "8a9f8be444e1431e4713cfa57fa1e375159b4f5fe64e593264384f025ee2a197",
+        "installed": "8a9f8be444e1431e4713cfa57fa1e375159b4f5fe64e593264384f025ee2a197"
+      },
+      {
+        "path": "ml/gameplan_archive_integration.py",
+        "expected": "fc9dc08dc06d16eb57adb45841a561a6776545ca46a687fb28a276767faa2601",
+        "installed": "fc9dc08dc06d16eb57adb45841a561a6776545ca46a687fb28a276767faa2601"
+      },
+      {
+        "path": "ml/gameplan_archive_seconds.py",
+        "expected": "5c745f2e795dfdec8a890a832cd5abe59c69e7fe9cbea56a1c1b55b19691d246",
+        "installed": "5c745f2e795dfdec8a890a832cd5abe59c69e7fe9cbea56a1c1b55b19691d246"
+      },
+      {
+        "path": "ml/gameplan_champions.py",
+        "expected": "a98f2831033a508ff74e5b19d57d5aa9fc9c7138523313768f99df156c66889a",
+        "installed": "a98f2831033a508ff74e5b19d57d5aa9fc9c7138523313768f99df156c66889a"
+      },
+      {
+        "path": "ml/gameplan_deployment.py",
+        "expected": "d6b9bc9076e2661ad1ce7a773632f43904f454a2bbf9b0e417b8531278be270d",
+        "installed": "d6b9bc9076e2661ad1ce7a773632f43904f454a2bbf9b0e417b8531278be270d"
+      },
+      {
+        "path": "ml/gameplan_development_selection.py",
+        "expected": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a",
+        "installed": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a"
+      },
+      {
+        "path": "ml/gameplan_estimators.py",
+        "expected": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2",
+        "installed": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2"
+      },
+      {
+        "path": "ml/gameplan_evaluation.py",
+        "expected": "154f6f18bcfa3c463e6881b4228d5f811deff653102bc796ea6af6d18a7c73a0",
+        "installed": "154f6f18bcfa3c463e6881b4228d5f811deff653102bc796ea6af6d18a7c73a0"
+      },
+      {
+        "path": "ml/gameplan_price_bands.py",
+        "expected": "ab43a3b36bf9958b4692d668204cf443cbb58184f4c0632d1f6e7d13305bca99",
+        "installed": "ab43a3b36bf9958b4692d668204cf443cbb58184f4c0632d1f6e7d13305bca99"
+      },
+      {
+        "path": "ml/gameplan_price_completion.py",
+        "expected": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0",
+        "installed": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0"
+      },
+      {
+        "path": "ml/gameplan_probability_target.py",
+        "expected": "78744f567ee87603de3137353482c03bf739a7a8661743ac75b1168577007b3d",
+        "installed": "78744f567ee87603de3137353482c03bf739a7a8661743ac75b1168577007b3d"
+      },
+      {
+        "path": "ml/gameplan_promotion.py",
+        "expected": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1",
+        "installed": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1"
+      },
+      {
+        "path": "ml/gameplan_source_selection.py",
+        "expected": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3",
+        "installed": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3"
+      },
+      {
+        "path": "ml/independent_stock_targets.py",
+        "expected": "d083d8454ab8c81866a8b892fb27866b0c2ee2b3558b7585b4a72307826d8016",
+        "installed": "d083d8454ab8c81866a8b892fb27866b0c2ee2b3558b7585b4a72307826d8016"
+      },
+      {
+        "path": "ml/option_pricing/__init__.py",
+        "expected": "cbe926bcf69cc090d120ca88f75a9d85b3cacca2ca3a4ef9488a98fe021478d3",
+        "installed": "cbe926bcf69cc090d120ca88f75a9d85b3cacca2ca3a4ef9488a98fe021478d3"
+      },
+      {
+        "path": "ml/option_pricing/black_scholes.py",
+        "expected": "37a838a75b752d46ceb6d3eb5324eceb2a94ba30b24c470666938d13ea933470",
+        "installed": "37a838a75b752d46ceb6d3eb5324eceb2a94ba30b24c470666938d13ea933470"
+      },
+      {
+        "path": "ml/option_pricing/causal.py",
+        "expected": "92a35c597f629a0cba99a38634e40f03b6fb95cf7ba331c6ecf5e47864748a7b",
+        "installed": "92a35c597f629a0cba99a38634e40f03b6fb95cf7ba331c6ecf5e47864748a7b"
+      },
+      {
+        "path": "ml/option_pricing/dividends.py",
+        "expected": "2e477411595f80f7b708688f060e799cb8adb26173314a85dbb61159b2e8a0e1",
+        "installed": "2e477411595f80f7b708688f060e799cb8adb26173314a85dbb61159b2e8a0e1"
+      },
+      {
+        "path": "ml/option_pricing/model.py",
+        "expected": "680674d0e15be60b7f923563f50b4bd6665a1e4bc98c981fea43c72e29b0438e",
+        "installed": "680674d0e15be60b7f923563f50b4bd6665a1e4bc98c981fea43c72e29b0438e"
+      },
+      {
+        "path": "ml/option_pricing/opra.py",
+        "expected": "7dee8fe1f6c744a71b34de6fe8da98cd1b1e1e9ff3a1acd735d944dc355fb514",
+        "installed": "7dee8fe1f6c744a71b34de6fe8da98cd1b1e1e9ff3a1acd735d944dc355fb514"
+      },
+      {
+        "path": "ml/option_pricing/opra_materialization.py",
+        "expected": "6fd590492ea420201ad8d91b19ee9d31a7d06131a343e60dc29650e8c90ac28e",
+        "installed": "6fd590492ea420201ad8d91b19ee9d31a7d06131a343e60dc29650e8c90ac28e"
+      },
+      {
+        "path": "ml/option_pricing/policies.py",
+        "expected": "0435494ab712a187dc45ed3ce4ac3e7026214a33100eb1ca67e67a840002b9c0",
+        "installed": "0435494ab712a187dc45ed3ce4ac3e7026214a33100eb1ca67e67a840002b9c0"
+      },
+      {
+        "path": "ml/option_pricing/publication.py",
+        "expected": "b5ad7b88749948a6cce06682eef367d3a28cc78007d34cf8d7352f6c4bc5fcf1",
+        "installed": "b5ad7b88749948a6cce06682eef367d3a28cc78007d34cf8d7352f6c4bc5fcf1"
+      },
+      {
+        "path": "ml/option_pricing/rates.py",
+        "expected": "a2b99a33f4fd1ed35557581c6ea92b601afc2cf65efe0179c03f2a12e0344b2f",
+        "installed": "a2b99a33f4fd1ed35557581c6ea92b601afc2cf65efe0179c03f2a12e0344b2f"
+      },
+      {
+        "path": "ml/option_pricing/schwab_materialization.py",
+        "expected": "b4fe9176d706c031ef2beaf2f4cb7e123b2f082eff999b1977440cf0f7ee88c0",
+        "installed": "b4fe9176d706c031ef2beaf2f4cb7e123b2f082eff999b1977440cf0f7ee88c0"
+      },
+      {
+        "path": "ml/option_pricing/shadow_model.py",
+        "expected": "1eca0b613033f0b592b142b9e89afbfb80e61664c3c5dd602012c9ba4de88954",
+        "installed": "1eca0b613033f0b592b142b9e89afbfb80e61664c3c5dd602012c9ba4de88954"
+      },
+      {
+        "path": "ml/option_pricing/target_outcome.py",
+        "expected": "53cf4b88a174a40c06bfd27554a29d20987665843f1ed18653b3777925f3eaa4",
+        "installed": "53cf4b88a174a40c06bfd27554a29d20987665843f1ed18653b3777925f3eaa4"
+      },
+      {
+        "path": "ml/option_pricing/weighting.py",
+        "expected": "c9e56e72da8dd2d33304961aebc82d0e553885201a8fab4b5a654789594a96ff",
+        "installed": "c9e56e72da8dd2d33304961aebc82d0e553885201a8fab4b5a654789594a96ff"
+      },
+      {
+        "path": "ml/parquet_contracts.py",
+        "expected": "24dc6026baf27a819e02cf02170d2ce1f70f6f72c18cdf4c930789a5c7980947",
+        "installed": "24dc6026baf27a819e02cf02170d2ce1f70f6f72c18cdf4c930789a5c7980947"
+      },
+      {
+        "path": "ml/preparation_deadline.py",
+        "expected": "749c35fc08c62ec5d6de91a91c856ac07d039eeca0879c03c95bc4cff6796552",
+        "installed": "749c35fc08c62ec5d6de91a91c856ac07d039eeca0879c03c95bc4cff6796552"
+      },
+      {
+        "path": "ml/stock_direction_policy.py",
+        "expected": "7797ddaabe0aec686df618e3cbf356f18bde4aaf3b072fcbcd3e3c142e332bab",
+        "installed": "7797ddaabe0aec686df618e3cbf356f18bde4aaf3b072fcbcd3e3c142e332bab"
+      },
+      {
+        "path": "ml/stock_target_prices.py",
+        "expected": "f9f52937ea14232365c04c2ae9302f946bf29a7ded31482e8db47df7c3d155da",
+        "installed": "f9f52937ea14232365c04c2ae9302f946bf29a7ded31482e8db47df7c3d155da"
+      },
+      {
+        "path": "ml/stock_trader/__init__.py",
+        "expected": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312",
+        "installed": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312"
+      },
+      {
+        "path": "ml/stock_trader/contracts.py",
+        "expected": "eaab042163ea44ef3da945043eafa7d90959b0f928bc5148cf5a7b9c25419ead",
+        "installed": "eaab042163ea44ef3da945043eafa7d90959b0f928bc5148cf5a7b9c25419ead"
+      },
+      {
+        "path": "ml/stock_trader/control.py",
+        "expected": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4",
+        "installed": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4"
+      },
+      {
+        "path": "ml/stock_trader/engine.py",
+        "expected": "f0d034120ab916113359bea43c5f423a71372cbb12c8864b65080ed7469dca23",
+        "installed": "f0d034120ab916113359bea43c5f423a71372cbb12c8864b65080ed7469dca23"
+      },
+      {
+        "path": "ml/stock_trader/fixed_horizon_budget.py",
+        "expected": "06651eeb504f4103e10310d6fac71adad72b1f8a62f495b302b870f1ffdb2abc",
+        "installed": "06651eeb504f4103e10310d6fac71adad72b1f8a62f495b302b870f1ffdb2abc"
+      },
+      {
+        "path": "ml/stock_trader/fixed_horizon_engine.py",
+        "expected": "dfbf5b8ef6aed29556c313cb5736880d18c3741c50b84b12fd3b3ef050eaeb0c",
+        "installed": "dfbf5b8ef6aed29556c313cb5736880d18c3741c50b84b12fd3b3ef050eaeb0c"
+      },
+      {
+        "path": "ml/stock_trader/gameplan.py",
+        "expected": "7bfa48a0bc3bbd5076bf8a089cebd034fcede1d7dfd30de44be60172f2fc84ee",
+        "installed": "7bfa48a0bc3bbd5076bf8a089cebd034fcede1d7dfd30de44be60172f2fc84ee"
+      },
+      {
+        "path": "ml/stock_trader/gameplan_execution.py",
+        "expected": "86245d610f112eac0beaf9b39842ab0e77cbac44cc606714241c680379f7c04f",
+        "installed": "86245d610f112eac0beaf9b39842ab0e77cbac44cc606714241c680379f7c04f"
+      },
+      {
+        "path": "ml/stock_trader/handoff.py",
+        "expected": "2843c9c6cad8e4e4ee51177bd06ceb4ba285c2da199fd0df2eebfd25e989e91f",
+        "installed": "2843c9c6cad8e4e4ee51177bd06ceb4ba285c2da199fd0df2eebfd25e989e91f"
+      },
+      {
+        "path": "ml/stock_trader/horizon_broker.py",
+        "expected": "764adfcf4d484f4e78175db9864281b5b178e9cfe3056fe34f2be3dd093a538a",
+        "installed": "764adfcf4d484f4e78175db9864281b5b178e9cfe3056fe34f2be3dd093a538a"
+      },
+      {
+        "path": "ml/stock_trader/independent_engine.py",
+        "expected": "f4f1387cb4afaf9dcb4374eaeb21be810891fe69351db08caa3d08f722c83b8a",
+        "installed": "f4f1387cb4afaf9dcb4374eaeb21be810891fe69351db08caa3d08f722c83b8a"
+      },
+      {
+        "path": "ml/stock_trader/independent_signals.py",
+        "expected": "ffd793f2037817a83a51d1755e4db6158c193216abfdc05fbd12434df70a87a2",
+        "installed": "ffd793f2037817a83a51d1755e4db6158c193216abfdc05fbd12434df70a87a2"
+      },
+      {
+        "path": "ml/stock_trader/independent_training.py",
+        "expected": "1bfa5df652bfec0734b14e2a22432f9ff77b6900fb598acd35615bb1258289e8",
+        "installed": "1bfa5df652bfec0734b14e2a22432f9ff77b6900fb598acd35615bb1258289e8"
+      },
+      {
+        "path": "ml/stock_trader/inputs.py",
+        "expected": "31b154c5f5f95b971abbe30cbcc40b4c7f26c4d9df65451d096094ccafaad664",
+        "installed": "31b154c5f5f95b971abbe30cbcc40b4c7f26c4d9df65451d096094ccafaad664"
+      },
+      {
+        "path": "ml/stock_trader/market_features.py",
+        "expected": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f",
+        "installed": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f"
+      },
+      {
+        "path": "ml/stock_trader/model.py",
+        "expected": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21",
+        "installed": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21"
+      },
+      {
+        "path": "ml/stock_trader/price_comparison.py",
+        "expected": "ab7d0565c86742d42da1134faa67e43958c9c8cf30e06c3cf21a66be1e0a0a08",
+        "installed": "ab7d0565c86742d42da1134faa67e43958c9c8cf30e06c3cf21a66be1e0a0a08"
+      },
+      {
+        "path": "ml/stock_trader/publication.py",
+        "expected": "510c5a7b5878d61babdc7dceefd94f9a5460f19de6eb8b841ad73daca714ef19",
+        "installed": "510c5a7b5878d61babdc7dceefd94f9a5460f19de6eb8b841ad73daca714ef19"
+      },
+      {
+        "path": "ml/stock_trader/quote_recovery.py",
+        "expected": "0a567e5f3683dc5b4c25c50c6bfd44198233a97d6e42e6811f18dd69604d747c",
+        "installed": "0a567e5f3683dc5b4c25c50c6bfd44198233a97d6e42e6811f18dd69604d747c"
+      },
+      {
+        "path": "ml/stock_trader/runtime.py",
+        "expected": "0740f5c2e1cf51601e2d239eb3a22cc3c3dbb56255f712ef24ff52bdbf53c483",
+        "installed": "0740f5c2e1cf51601e2d239eb3a22cc3c3dbb56255f712ef24ff52bdbf53c483"
+      },
+      {
+        "path": "ml/stock_trader/scope_qualification.py",
+        "expected": "fa2949e7978672e4e4693f855589dd3d33b1f7e7d44e5241171d1a2786ea4323",
+        "installed": "fa2949e7978672e4e4693f855589dd3d33b1f7e7d44e5241171d1a2786ea4323"
+      },
+      {
+        "path": "ml/stock_trader/session.py",
+        "expected": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+        "installed": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784"
+      },
+      {
+        "path": "ml/stock_trader/sizing_policy.py",
+        "expected": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b",
+        "installed": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b"
+      },
+      {
+        "path": "ml/stock_trader/state.py",
+        "expected": "b46aede4763428cc7035580b1a5d75073da0a08621e9959889d680940cfdd13b",
+        "installed": "b46aede4763428cc7035580b1a5d75073da0a08621e9959889d680940cfdd13b"
+      },
+      {
+        "path": "ml/stock_trader/training.py",
+        "expected": "2477f58a2ddac3f3d343ebd68030e2e9dfb65eab29a2114e6f11766d534d82f2",
+        "installed": "2477f58a2ddac3f3d343ebd68030e2e9dfb65eab29a2114e6f11766d534d82f2"
+      },
+      {
+        "path": "ml/strategy_publication.py",
+        "expected": "85c9afea6b3847091c4c9cac6d83f73f5fe10b9e7dc9531cf60410c691bfcf87",
+        "installed": "85c9afea6b3847091c4c9cac6d83f73f5fe10b9e7dc9531cf60410c691bfcf87"
+      },
+      {
+        "path": "ml/strategy_selection/__init__.py",
+        "expected": "c7607996a84d1880eaa730c89be0f90f10810605cf9a7cf061a71b53cf115618",
+        "installed": "c7607996a84d1880eaa730c89be0f90f10810605cf9a7cf061a71b53cf115618"
+      },
+      {
+        "path": "ml/strategy_selection/contracts.py",
+        "expected": "09dcf220550469f155b8a77831443b4d7a54383b3474b850613a7ad78ee7a11d",
+        "installed": "09dcf220550469f155b8a77831443b4d7a54383b3474b850613a7ad78ee7a11d"
+      },
+      {
+        "path": "ml/strategy_selection/registry.py",
+        "expected": "3315230795138559468ef97a107317c99d31121d4baaa27d8076e4f798149b5e",
+        "installed": "3315230795138559468ef97a107317c99d31121d4baaa27d8076e4f798149b5e"
+      },
+      {
+        "path": "ml/training_progress.py",
+        "expected": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e",
+        "installed": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e"
+      },
+      {
+        "path": "ml/universe.py",
+        "expected": "f3943cc7724d174edff7b5ffa0cfd704f3072249ea1ede4689cfbeacb3e1b6ae",
+        "installed": "f3943cc7724d174edff7b5ffa0cfd704f3072249ea1ede4689cfbeacb3e1b6ae"
+      },
+      {
+        "path": "options/__init__.py",
+        "expected": "d543497ee2c04039f08be971bc166098606be42546f98d8af346676037cc3839",
+        "installed": "d543497ee2c04039f08be971bc166098606be42546f98d8af346676037cc3839"
+      },
+      {
+        "path": "options/databento_live.py",
+        "expected": "b5de1175ec6d311d6d320fdfda963acc2f20003f59d62a52e5f8235a0b0ad83b",
+        "installed": "b5de1175ec6d311d6d320fdfda963acc2f20003f59d62a52e5f8235a0b0ad83b"
+      },
+      {
+        "path": "options/features.py",
+        "expected": "6ad3ce1f6b4675554c3c63c47ad2360430e2a7af32f41b44d6be5216a61d9795",
+        "installed": "6ad3ce1f6b4675554c3c63c47ad2360430e2a7af32f41b44d6be5216a61d9795"
+      },
+      {
+        "path": "options/pending_capture.py",
+        "expected": "c8066efa30c0d125bf335d6e5af5f4cc3efdcc39b5091fb1a1956f7f9a80fa8c",
+        "installed": "c8066efa30c0d125bf335d6e5af5f4cc3efdcc39b5091fb1a1956f7f9a80fa8c"
+      },
+      {
+        "path": "options/providers.py",
+        "expected": "9e1039bdb4ba88dc15cb10fae0dc5bdfa27d3a8e6a85748e71348bd36e7dd3ec",
+        "installed": "9e1039bdb4ba88dc15cb10fae0dc5bdfa27d3a8e6a85748e71348bd36e7dd3ec"
+      },
+      {
+        "path": "options/publication.py",
+        "expected": "a01a9b7ede9e8784d253aab0144ce8826efe21fc3e5f9a598e76680ad45e8d6d",
+        "installed": "a01a9b7ede9e8784d253aab0144ce8826efe21fc3e5f9a598e76680ad45e8d6d"
+      },
+      {
+        "path": "options/snapshot.py",
+        "expected": "4e04b22df196083b68f4f2f3701f54f1d502852127080472133a9acce2945132",
+        "installed": "4e04b22df196083b68f4f2f3701f54f1d502852127080472133a9acce2945132"
+      },
+      {
+        "path": "signals/__init__.py",
+        "expected": "abe2ba42f1c9840993346ed9e5aed91c3f3ddcb576985bd2ad584aace314a98e",
+        "installed": "abe2ba42f1c9840993346ed9e5aed91c3f3ddcb576985bd2ad584aace314a98e"
+      },
+      {
+        "path": "signals/calculation.py",
+        "expected": "87fc464eff18de90e8774cb13473d7bafd9a1f8fc4d5d32429262d90b342656e",
+        "installed": "87fc464eff18de90e8774cb13473d7bafd9a1f8fc4d5d32429262d90b342656e"
+      },
+      {
+        "path": "signals/consensus.py",
+        "expected": "eb04baea217d212ef1bcc7ab341212aec8d0eaf996ddb8196faf074b004940f2",
+        "installed": "eb04baea217d212ef1bcc7ab341212aec8d0eaf996ddb8196faf074b004940f2"
+      },
+      {
+        "path": "signals/fundamental_context.py",
+        "expected": "eaf5cdd2071be3627d01fce470d5eecdb77a55c14716539712712a67ea6865a2",
+        "installed": "eaf5cdd2071be3627d01fce470d5eecdb77a55c14716539712712a67ea6865a2"
+      },
+      {
+        "path": "signals/main.py",
+        "expected": "9d244418148e4e8f2b8e54d7d9b1ca7462d3de39e3f8dab366b38c550641dc16",
+        "installed": "9d244418148e4e8f2b8e54d7d9b1ca7462d3de39e3f8dab366b38c550641dc16"
+      },
+      {
+        "path": "signals/parquet_io.py",
+        "expected": "273be5f456e59528d5285411f3a989de754effcc4f0fdf0b39b92a5c845a3257",
+        "installed": "273be5f456e59528d5285411f3a989de754effcc4f0fdf0b39b92a5c845a3257"
+      },
+      {
+        "path": "signals/technical_lifecycle.py",
+        "expected": "1b6ad7873524baab8954abacfe1fcf833aab7ce81eac1d7f4ca7f33cc137d938",
+        "installed": "1b6ad7873524baab8954abacfe1fcf833aab7ce81eac1d7f4ca7f33cc137d938"
+      },
+      {
+        "path": "technicals/__init__.py",
+        "expected": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a",
+        "installed": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a"
+      },
+      {
+        "path": "technicals/calculations/__init__.py",
+        "expected": "c175d278fb0f8a970562e8f0c13996341d03aebabad77b7c8edbe211477f782c",
+        "installed": "c175d278fb0f8a970562e8f0c13996341d03aebabad77b7c8edbe211477f782c"
+      },
+      {
+        "path": "technicals/calculations/bar_shape.py",
+        "expected": "c1947e689fee7dfdde277d2d6da001a64a7b9360e88c34d11f7e81c9dfe61c43",
+        "installed": "c1947e689fee7dfdde277d2d6da001a64a7b9360e88c34d11f7e81c9dfe61c43"
+      },
+      {
+        "path": "technicals/calculations/breakout_pressure.py",
+        "expected": "2fd6a81a0ea610d4a95758b4eacb19f944a35aaa550b5ecc684d90351bc3082c",
+        "installed": "2fd6a81a0ea610d4a95758b4eacb19f944a35aaa550b5ecc684d90351bc3082c"
+      },
+      {
+        "path": "technicals/calculations/market_regime.py",
+        "expected": "7aff1fb28a04cd075612cdd47a9448a9f237c18b97157769dea6ae0d6e2a0ae9",
+        "installed": "7aff1fb28a04cd075612cdd47a9448a9f237c18b97157769dea6ae0d6e2a0ae9"
+      },
+      {
+        "path": "technicals/calculations/session_aware_breakout.py",
+        "expected": "387e7efda73ff720705819e54f1d0708363a2a8e93acafe82fd4e2211aa3a231",
+        "installed": "387e7efda73ff720705819e54f1d0708363a2a8e93acafe82fd4e2211aa3a231"
+      },
+      {
+        "path": "technicals/calculations/weekly_context.py",
+        "expected": "dad7f6c806cfc98949b2425c6bc63337ddeec1dfc43674a388801a3137d51d54",
+        "installed": "dad7f6c806cfc98949b2425c6bc63337ddeec1dfc43674a388801a3137d51d54"
+      },
+      {
+        "path": "technicals/main.py",
+        "expected": "51f51610928621b27733bd43e98d12b0c90b1c443b25def424f6d7b88f78e707",
+        "installed": "51f51610928621b27733bd43e98d12b0c90b1c443b25def424f6d7b88f78e707"
+      },
+      {
+        "path": "technicals/parquet_io.py",
+        "expected": "553bac54936e22685960451f275f12fedd94ff520807fe267e489c839f898ebb",
+        "installed": "553bac54936e22685960451f275f12fedd94ff520807fe267e489c839f898ebb"
+      },
+      {
+        "path": "technicals/split_adjustments.py",
+        "expected": "a71e2d0e4433118b07d473fd702df5e6e8e713b5d287120823991bf54ecb8ade",
+        "installed": "a71e2d0e4433118b07d473fd702df5e6e8e713b5d287120823991bf54ecb8ade"
+      }
+    ],
+    "dependency_mismatches": [],
+    "published_commit": "be760388063a0fa3099c1cc445ba758be69ceb23",
+    "remote_ref": "be760388063a0fa3099c1cc445ba758be69ceb23\trefs/heads/codex/cross-horizon-bearish-fallback-20260930",
+    "remote_matches": true,
+    "published_changed_files_exact": true,
+    "post_verification_status": "PASS",
+    "post_verification_exit_code": 0,
+    "post_manifest_matches": true,
+    "post_test_log_matches": true,
+    "post_before_equals_after": true,
+    "deployment_evidence_hash_checks": [
+      {
+        "path": "candidate-manifest.json",
+        "expected": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+        "actual": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252"
+      },
+      {
+        "path": "apply-progress.json",
+        "expected": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+        "actual": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad"
+      },
+      {
+        "path": "apply-receipt.json",
+        "expected": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+        "actual": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad"
+      },
+      {
+        "path": "post-deployment-verification-attempt2.json",
+        "expected": "575cbc319f12e417cc781d9327e8d5cef1d05c1e03bad9c2b39f4894d4e40491",
+        "actual": "575cbc319f12e417cc781d9327e8d5cef1d05c1e03bad9c2b39f4894d4e40491"
+      },
+      {
+        "path": "post-deployment-tests-be87ef0f9655428d847736405e2f314f.log",
+        "expected": "d561fe52d5a916814ed624352a1e2a7570b865c4bf585d18ce567bd0bd8a59ff",
+        "actual": "d561fe52d5a916814ed624352a1e2a7570b865c4bf585d18ce567bd0bd8a59ff"
+      },
+      {
+        "path": "production-preservation-before.json",
+        "expected": "8347ee78c4745e4ea9664061ab152fae2abb69d725ae4bfe661bfd821d17b3d8",
+        "actual": "8347ee78c4745e4ea9664061ab152fae2abb69d725ae4bfe661bfd821d17b3d8"
+      },
+      {
+        "path": "production-preservation-after.json",
+        "expected": "6d59a113a98f22a54c6ac3be0e2c5259feee7b7e7780c05a1e9be072da9dc52b",
+        "actual": "6d59a113a98f22a54c6ac3be0e2c5259feee7b7e7780c05a1e9be072da9dc52b"
+      },
+      {
+        "path": "post-deployment-git-verification.json",
+        "expected": "9110d9a4106ee93afb2b0aaa0636b08af175b388563dbf6aedbea8571cd2dc56",
+        "actual": "9110d9a4106ee93afb2b0aaa0636b08af175b388563dbf6aedbea8571cd2dc56"
+      }
+    ],
+    "deployment_evidence_mismatches": [],
+    "reinstall_required": false,
+    "duplicate_publication_required": false,
+    "owned_installation_mismatches": [],
+    "published_exact_byte_mismatches": [
+      {
+        "path": "app/ui/gameplan.py",
+        "expected": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+        "installed": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+        "sealed": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+        "published_blob": "a4f6bb244d3d1d49835cfe5cbd3279781b70d9541c04fc801a2f5d2e947cab6c"
+      },
+      {
+        "path": "app/ui/gameplan_data.py",
+        "expected": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+        "installed": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+        "sealed": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+        "published_blob": "0c9c84a486f1b5a5640ed2b73a258a3f6c6b097b80dba7d05bea4b50589e8425"
+      },
+      {
+        "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+        "expected": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+        "installed": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+        "sealed": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+        "published_blob": "89c472255e518bd4522fa92e5ff70b756cad3dc7370b9c29d1059d1c013d6f37"
+      },
+      {
+        "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+        "expected": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+        "installed": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+        "sealed": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+        "published_blob": "51af6b570d8146696e72b15d270c3595830afd1d078f3b442f289675b784eee9"
+      },
+      {
+        "path": "ml/gameplan_cash_ledger.py",
+        "expected": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+        "installed": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+        "sealed": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+        "published_blob": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333"
+      },
+      {
+        "path": "ml/gameplan_trade_planning.py",
+        "expected": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+        "installed": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+        "sealed": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+        "published_blob": "ce6a1c5d890add57e616535cb062ef855fc856661016b61c883f3a9f50de7177"
+      },
+      {
+        "path": "ml/gameplan_trade_review.py",
+        "expected": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+        "installed": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+        "sealed": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+        "published_blob": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415"
+      },
+      {
+        "path": "ml/gameplan_trade_snapshot.py",
+        "expected": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+        "installed": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+        "sealed": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+        "published_blob": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869"
+      },
+      {
+        "path": "ml/nightly_gameplan.py",
+        "expected": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+        "installed": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+        "sealed": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+        "published_blob": "3367550273b5f960428394e6bab380913abce508aab8643364c8ec83df9b2131"
+      },
+      {
+        "path": "ml/stock_trader/gameplan_direction_engine.py",
+        "expected": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+        "installed": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+        "sealed": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+        "published_blob": "141a8a49c9b924452f24378df46378a9c05ee03dd1c0516cf43f22b3e46b3462"
+      },
+      {
+        "path": "ml/stock_trader/horizon_ledger.py",
+        "expected": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+        "installed": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+        "sealed": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+        "published_blob": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9"
+      },
+      {
+        "path": "ml/stock_trader/independent_runtime.py",
+        "expected": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+        "installed": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+        "sealed": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+        "published_blob": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14"
+      },
+      {
+        "path": "tests/test_gameplan_quote_clock_recovery.py",
+        "expected": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+        "installed": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+        "sealed": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+        "published_blob": "e758314c510a86333df933231ddc79bf0fbdd3aeca6ca6b5d84ee7367c391c51"
+      },
+      {
+        "path": "tests/test_gameplan_trade_snapshot.py",
+        "expected": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+        "installed": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+        "sealed": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+        "published_blob": "aaf1ddc1f055a058d1964a218ed1d11785acdd25142109a9c0a879989dc1bd61"
+      },
+      {
+        "path": "tests/test_stock_only_gameplan.py",
+        "expected": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+        "installed": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+        "sealed": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+        "published_blob": "c4aa9edbc0269b719d107ba27c72afdd82f5391192b8891cc3d3835b85da4416"
+      }
+    ],
+    "published_content_conflicts": [],
+    "published_line_ending_only_count": 15,
+    "published_exact_byte_count": 8
+  },
+  "limits": [
+    "No runtime version or peer deployment claim",
+    "No provider, broker, training, supervision or source write action",
+    "Read-only exact-byte audit; does not rerun passing offline suite"
+  ],
+  "clarified_at_utc": "2026-10-02T04:09:21.644863+00:00"
+}

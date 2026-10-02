@@ -1,0 +1,655 @@
+{
+  "reviewed_at": "2026-10-02T06:41:43.814480+00:00",
+  "status": "SAVED_REPORT_QUALITY_VERIFIED",
+  "native_status_at_review": "RUNNING",
+  "publication": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z",
+  "action_date": "2026-10-02",
+  "published_at": "2026-10-02T06:40:41.950933+00:00",
+  "groups": {
+    "1d": {
+      "promotion_status": "PROMOTED",
+      "failed_promotion_checks": [],
+      "gate_arithmetic_reproduced": true,
+      "policy_version": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25094365502706995,
+          "baseline": 0.2506886812599417,
+          "allowed_excess": 0.005,
+          "margin_to_maximum": 0.00474502623287175,
+          "strictly_beats_baseline": false
+        },
+        "log_loss": {
+          "assessment": 0.6950439713121489,
+          "baseline": 0.6945248548199756,
+          "allowed_excess": 0.01,
+          "margin_to_maximum": 0.0094808835078267,
+          "strictly_beats_baseline": false
+        }
+      },
+      "selected_family": "regularized-logistic-c0.001",
+      "selected_on_minimum_development_log_loss": true,
+      "calibration_selection_excludes_assessment": true,
+      "deployment": null,
+      "forecast_status_counts": {
+        "PROMOTED": 55
+      },
+      "minimum_exact_symbol_route_fitted_rows": 2,
+      "partition_rows": {
+        "assessment_rows": 2283,
+        "calibration_rows": 2326,
+        "selection_rows": 2110,
+        "train_rows": 22892
+      },
+      "partition_clusters": {
+        "assessment": 63,
+        "calibration": 63,
+        "selection": 63,
+        "train": 995
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.40538249357232703,
+          0.7058862106665847
+        ],
+        "calibrated_probability_range": [
+          0.3491449007828843,
+          0.6199120111384931
+        ],
+        "calibration_positive_rate": 0.5180567497850387,
+        "calibration_rows": 2326,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.3491449007828843,
+          0.6199120111384931
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "boundary_warning": {
+        "candidate_rows": 85565,
+        "aligned_rows": 29927,
+        "excluded_rows": 55638,
+        "excluded_fraction": 0.650242505697423,
+        "conflicting_minute_rows_excluded": 0,
+        "excluded_rows_by_route": {
+          "1d@D+1": 11153,
+          "1d@D+2": 11137,
+          "1d@D+3": 11124,
+          "1d@D+4": 11118,
+          "1d@D+5": 11106
+        },
+        "delta_from_previous": {
+          "candidate_rows": 55,
+          "aligned_rows": 35,
+          "excluded_rows": 20
+        },
+        "excluded_route_delta_from_previous": {
+          "1d@D+1": 4,
+          "1d@D+2": 4,
+          "1d@D+3": 4,
+          "1d@D+4": 4,
+          "1d@D+5": 4
+        },
+        "post_boundary_quality_excluded_rows": 105,
+        "final_cohort_rows": 29822,
+        "cohort_ranges_by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 5396
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 5232
+          },
+          "COST": {
+            "first_action_date": "2020-03-03",
+            "last_action_date": "2026-10-01",
+            "rows": 1704
+          },
+          "CROX": {
+            "first_action_date": "2020-09-25",
+            "last_action_date": "2026-07-17",
+            "rows": 300
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-30",
+            "last_action_date": "2026-10-01",
+            "rows": 4221
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-09-29",
+            "rows": 1805
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 4093
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 5232
+          },
+          "PATH": {
+            "first_action_date": "2021-05-20",
+            "last_action_date": "2026-09-17",
+            "rows": 954
+          },
+          "SNDK": {
+            "first_action_date": "2025-04-03",
+            "last_action_date": "2026-10-01",
+            "rows": 860
+          },
+          "TWST": {
+            "first_action_date": "2021-03-23",
+            "last_action_date": "2026-09-29",
+            "rows": 25
+          }
+        }
+      }
+    },
+    "1h": {
+      "promotion_status": "PROMOTED",
+      "failed_promotion_checks": [],
+      "gate_arithmetic_reproduced": true,
+      "policy_version": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2503064382284155,
+          "baseline": 0.24999964217210202,
+          "allowed_excess": 0.005,
+          "margin_to_maximum": 0.00469320394368652,
+          "strictly_beats_baseline": false
+        },
+        "log_loss": {
+          "assessment": 0.6937764501386282,
+          "baseline": 0.693146464904107,
+          "allowed_excess": 0.01,
+          "margin_to_maximum": 0.0093700147654788,
+          "strictly_beats_baseline": false
+        }
+      },
+      "selected_family": "hist-gradient",
+      "selected_on_minimum_development_log_loss": true,
+      "calibration_selection_excludes_assessment": true,
+      "deployment": null,
+      "forecast_status_counts": {
+        "PROMOTED": 154
+      },
+      "minimum_exact_symbol_route_fitted_rows": 1,
+      "partition_rows": {
+        "assessment_rows": 8063,
+        "calibration_rows": 8134,
+        "selection_rows": 7410,
+        "train_rows": 148656
+      },
+      "partition_clusters": {
+        "assessment": 63,
+        "calibration": 63,
+        "selection": 63,
+        "train": 1907
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.3866332678855068,
+          0.6596374043400232
+        ],
+        "calibrated_probability_range": [
+          0.3923922456463008,
+          0.662045691039305
+        ],
+        "calibration_positive_rate": 0.5087287927219081,
+        "calibration_rows": 8134,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.3923922456463008,
+          0.662045691039305
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "boundary_warning": {
+        "candidate_rows": 239890,
+        "aligned_rows": 172493,
+        "excluded_rows": 67397,
+        "excluded_fraction": 0.28094960190087126,
+        "conflicting_minute_rows_excluded": 0,
+        "excluded_rows_by_route": {
+          "1h@04:00": 6624,
+          "1h@05:00": 6123,
+          "1h@06:00": 4199,
+          "1h@07:00": 82,
+          "1h@08:00": 91,
+          "1h@09:00": 104,
+          "1h@10:00": 172,
+          "1h@11:00": 159,
+          "1h@12:00": 121,
+          "1h@13:00": 6787,
+          "1h@14:00": 9225,
+          "1h@15:00": 10202,
+          "1h@16:00": 12395,
+          "1h@gap": 11113
+        },
+        "delta_from_previous": {
+          "candidate_rows": 154,
+          "aligned_rows": 125,
+          "excluded_rows": 29
+        },
+        "excluded_route_delta_from_previous": {
+          "1h@04:00": 3,
+          "1h@05:00": 3,
+          "1h@06:00": 2,
+          "1h@07:00": 0,
+          "1h@08:00": 0,
+          "1h@09:00": 0,
+          "1h@10:00": 0,
+          "1h@11:00": 0,
+          "1h@12:00": 0,
+          "1h@13:00": 4,
+          "1h@14:00": 4,
+          "1h@15:00": 4,
+          "1h@16:00": 4,
+          "1h@gap": 5
+        },
+        "post_boundary_quality_excluded_rows": 217,
+        "final_cohort_rows": 172276,
+        "cohort_ranges_by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 21887
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 21376
+          },
+          "COST": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 14941
+          },
+          "CROX": {
+            "first_action_date": "2018-05-31",
+            "last_action_date": "2026-10-01",
+            "rows": 14284
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 19384
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-10-01",
+            "rows": 13410
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 19025
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 21421
+          },
+          "PATH": {
+            "first_action_date": "2021-05-20",
+            "last_action_date": "2026-10-01",
+            "rows": 10645
+          },
+          "SNDK": {
+            "first_action_date": "2025-03-25",
+            "last_action_date": "2026-10-01",
+            "rows": 4172
+          },
+          "TWST": {
+            "first_action_date": "2018-11-30",
+            "last_action_date": "2026-10-01",
+            "rows": 11731
+          }
+        }
+      }
+    },
+    "1w": {
+      "promotion_status": "PROMOTED",
+      "failed_promotion_checks": [],
+      "gate_arithmetic_reproduced": true,
+      "policy_version": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25207294571304095,
+          "baseline": 0.2518966286664774,
+          "allowed_excess": 0.005,
+          "margin_to_maximum": 0.00482368295343645,
+          "strictly_beats_baseline": false
+        },
+        "log_loss": {
+          "assessment": 0.6973206896396682,
+          "baseline": 0.6969669319077516,
+          "allowed_excess": 0.01,
+          "margin_to_maximum": 0.0096462422680834,
+          "strictly_beats_baseline": false
+        }
+      },
+      "selected_family": "regularized-logistic-c0.001-prior-shrinkage-w0.25",
+      "selected_on_minimum_development_log_loss": true,
+      "calibration_selection_excludes_assessment": true,
+      "deployment": null,
+      "forecast_status_counts": {
+        "PROMOTED": 11
+      },
+      "minimum_exact_symbol_route_fitted_rows": 8,
+      "partition_rows": {
+        "assessment_rows": 471,
+        "calibration_rows": 451,
+        "selection_rows": 436,
+        "train_rows": 4431
+      },
+      "partition_clusters": {
+        "assessment": 63,
+        "calibration": 59,
+        "selection": 59,
+        "train": 922
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.4902385409255213,
+          0.5822282140194249
+        ],
+        "calibrated_probability_range": [
+          0.5248449339141336,
+          0.5791002087276911
+        ],
+        "calibration_positive_rate": 0.6541019955654102,
+        "calibration_rows": 451,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.5248449339141336,
+          0.5791002087276911
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "boundary_warning": {
+        "candidate_rows": 17091,
+        "aligned_rows": 5963,
+        "excluded_rows": 11128,
+        "excluded_fraction": 0.651102919665321,
+        "conflicting_minute_rows_excluded": 0,
+        "excluded_rows_by_route": {
+          "1w@D+5": 11128
+        },
+        "delta_from_previous": {
+          "candidate_rows": 11,
+          "aligned_rows": 7,
+          "excluded_rows": 4
+        },
+        "excluded_route_delta_from_previous": {
+          "1w@D+5": 4
+        },
+        "post_boundary_quality_excluded_rows": 89,
+        "final_cohort_rows": 5874,
+        "cohort_ranges_by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-19",
+            "last_action_date": "2026-09-25",
+            "rows": 1066
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-20",
+            "last_action_date": "2026-09-25",
+            "rows": 1031
+          },
+          "COST": {
+            "first_action_date": "2019-09-19",
+            "last_action_date": "2026-09-25",
+            "rows": 337
+          },
+          "CROX": {
+            "first_action_date": "2021-04-29",
+            "last_action_date": "2026-07-13",
+            "rows": 62
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-20",
+            "last_action_date": "2026-09-25",
+            "rows": 835
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-09-23",
+            "rows": 357
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-09-25",
+            "rows": 804
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-20",
+            "last_action_date": "2026-09-25",
+            "rows": 1032
+          },
+          "PATH": {
+            "first_action_date": "2021-05-21",
+            "last_action_date": "2026-09-10",
+            "rows": 170
+          },
+          "SNDK": {
+            "first_action_date": "2025-05-29",
+            "last_action_date": "2026-09-25",
+            "rows": 170
+          },
+          "TWST": {
+            "first_action_date": "2021-03-12",
+            "last_action_date": "2026-08-20",
+            "rows": 10
+          }
+        }
+      }
+    },
+    "4h": {
+      "promotion_status": "PROMOTED",
+      "failed_promotion_checks": [],
+      "gate_arithmetic_reproduced": true,
+      "policy_version": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.24978189967538092,
+          "baseline": 0.2500993981550452,
+          "allowed_excess": 0.005,
+          "margin_to_maximum": 0.00531749847966428,
+          "strictly_beats_baseline": true
+        },
+        "log_loss": {
+          "assessment": 0.692710515564013,
+          "baseline": 0.6933459922677875,
+          "allowed_excess": 0.01,
+          "margin_to_maximum": 0.0106354767037745,
+          "strictly_beats_baseline": true
+        }
+      },
+      "selected_family": "hist-gradient",
+      "selected_on_minimum_development_log_loss": true,
+      "calibration_selection_excludes_assessment": true,
+      "deployment": null,
+      "forecast_status_counts": {
+        "PROMOTED": 44
+      },
+      "minimum_exact_symbol_route_fitted_rows": 24,
+      "partition_rows": {
+        "assessment_rows": 2223,
+        "calibration_rows": 2244,
+        "selection_rows": 1880,
+        "train_rows": 36709
+      },
+      "partition_clusters": {
+        "assessment": 63,
+        "calibration": 63,
+        "selection": 63,
+        "train": 1903
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.35258947688029324,
+          0.6114597497563697
+        ],
+        "calibrated_probability_range": [
+          0.3578931152107089,
+          0.5954325092061628
+        ],
+        "calibration_positive_rate": 0.5200534759358288,
+        "calibration_rows": 2244,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "raw_probability_range": [
+          0.3578931152107089,
+          0.5954325092061628
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "boundary_warning": {
+        "candidate_rows": 68529,
+        "aligned_rows": 43137,
+        "excluded_rows": 25392,
+        "excluded_fraction": 0.37052926498270805,
+        "conflicting_minute_rows_excluded": 0,
+        "excluded_rows_by_route": {
+          "4h@04:00": 4735,
+          "4h@08:00": 145,
+          "4h@12:00": 8748,
+          "4h@16:00": 11764
+        },
+        "delta_from_previous": {
+          "candidate_rows": 44,
+          "aligned_rows": 35,
+          "excluded_rows": 9
+        },
+        "excluded_route_delta_from_previous": {
+          "4h@04:00": 1,
+          "4h@08:00": 0,
+          "4h@12:00": 3,
+          "4h@16:00": 5
+        },
+        "post_boundary_quality_excluded_rows": 66,
+        "final_cohort_rows": 43071,
+        "cohort_ranges_by_symbol": {
+          "AAPL": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 5879
+          },
+          "AMZN": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 5670
+          },
+          "COST": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 3761
+          },
+          "CROX": {
+            "first_action_date": "2018-05-31",
+            "last_action_date": "2026-10-01",
+            "rows": 2932
+          },
+          "GOOG": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 4982
+          },
+          "IONQ": {
+            "first_action_date": "2021-11-01",
+            "last_action_date": "2026-10-01",
+            "rows": 3251
+          },
+          "MU": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 4946
+          },
+          "NVDA": {
+            "first_action_date": "2019-09-18",
+            "last_action_date": "2026-10-01",
+            "rows": 5741
+          },
+          "PATH": {
+            "first_action_date": "2021-05-20",
+            "last_action_date": "2026-10-01",
+            "rows": 2660
+          },
+          "SNDK": {
+            "first_action_date": "2025-03-25",
+            "last_action_date": "2026-10-01",
+            "rows": 1088
+          },
+          "TWST": {
+            "first_action_date": "2018-11-30",
+            "last_action_date": "2026-10-01",
+            "rows": 2161
+          }
+        }
+      }
+    }
+  },
+  "forecast_rows": 264,
+  "forecast_status_counts": {
+    "PROMOTED": 264
+  },
+  "all_fresh_groups_promoted": true,
+  "non_boundary_fit_warning_or_error_events": [],
+  "boundary_interpretation": "Counts preserve the same five-minute source policy and prior sparse-boundary pattern; no conflict rows. Current count deltas reconcile exactly with the new session. This is consistent with observed-price availability limits, not evidence of a fitting defect. Exact archive/cohort reproduction remains the separate root final audit.",
+  "repair_finding": "No failed directional assessment group or concrete source/fitting defect identified in bounded saved-report evidence; no justified repair or unchanged retraining proposed.",
+  "limits": [
+    "This is not final native completion verification.",
+    "No raw source archive or full cohort regeneration performed.",
+    "Saved estimator inference and complete source/partition reproduction remain root final audit.",
+    "Sparse valid histories remain narrow evidence even where a pooled group is promoted.",
+    "Sizing qualification is separate and must be reviewed when its report is durable."
+  ],
+  "evidence": {
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z\\receipt.json": {
+      "sha256": "81d6a571c52379cfa0f7919b4470e81063aab56ece19fc9d4c15edf6b1d3ff28",
+      "bytes": 1993
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z\\manifest.json": {
+      "sha256": "77da2ca76f3479459692fdb85bd16e3d4370b77f7a97f5efc2b47b5f6458b2c4",
+      "bytes": 995881
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z\\model-reports.json": {
+      "sha256": "6c52f0bb57006476bbee7e8095b308f67825dceb0b797a3333aaa14ed3c475d7",
+      "bytes": 128086
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z\\forecasts.parquet": {
+      "sha256": "3a0ec3db5558288510cdfc7635ddd792f742313a6c873a31e05cf1fe2c85b936",
+      "bytes": 60543
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261002T063014.996205Z\\archive-history.json": {
+      "sha256": "9f460629d35447ac9e9b96eb12aef140627e4332abe4cd96b8768115856e70f9",
+      "bytes": 193002
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\model-reports.json": {
+      "sha256": "d2a39d3f0ac59a6182fba3c3e0b7e9a61ffc13bf82bfffb2ffbd7052722446a4",
+      "bytes": 127497
+    },
+    "C:\\DATASTORE\\ml\\overnight-runs\\20261002T040848.225355Z\\gameplan_publication.log": {
+      "sha256": "91d543fa5cdccce0c3ae1cae51c0042ea9a76d760975c21634e9f0ca3fae9edd",
+      "bytes": 4234274
+    }
+  },
+  "heavy_final_audit_started": false,
+  "source_modifications": 0,
+  "provider_calls": 0,
+  "orders_placed": 0
+}

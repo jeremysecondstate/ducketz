@@ -1,0 +1,2426 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED",
+  "observed_at_utc": "2026-10-02T06:55:08.804597+00:00",
+  "completed_at_utc": "2026-10-02T06:55:08.878636+00:00",
+  "action_date": "2026-10-01",
+  "review_report": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\fallback-session-reviews\\20261002T064859Z-20261001\\report.json",
+    "sha256": "3168ee72ec6a7bd4eb5a773be1b3fa821b70fb4bae784e65cc00599f0f541dff"
+  },
+  "review_manifest": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\fallback-session-reviews\\20261002T064859Z-20261001\\manifest.json",
+    "sha256": "e0141386b908f271e1d10441558bb664d45a06452307fba62b5cc800439f14e7"
+  },
+  "ledger_observation": {
+    "mode": "SQLite mode=ro, PRAGMA query_only=ON, one BEGIN transaction rolled back",
+    "query_only": 1,
+    "read_completed_at": "2026-10-02T06:55:08.875314+00:00",
+    "latest_snapshot_at": "2026-10-02T04:12:36.476797+00:00",
+    "raw_account_broker_reservation_allocation_and_fill_ids_omitted": true
+  },
+  "errors": [],
+  "summary": {
+    "sales_counts": {
+      "fallback_orders_requested": 68,
+      "normal_sell_orders_requested": 21,
+      "fallback_orders_with_fills": 65,
+      "normal_sell_orders_with_fills": 20,
+      "fallback_shares_filled": 310,
+      "normal_sell_shares_filled": 133,
+      "outstanding_fallback_orders": 0,
+      "outstanding_fallback_shares": 0
+    },
+    "fallback_status_counts": {
+      "FILLED": 65,
+      "CANCELLED": 3
+    },
+    "normal_sale_status_counts": {
+      "FILLED": 20,
+      "CANCELLED": 1
+    },
+    "fallback_requested_shares": 314,
+    "fallback_terminal_unfilled_released_shares": 4,
+    "fallback_unknown_shares": 0,
+    "total_symbol_daily_cap": 579,
+    "total_donor_daily_cap": 577
+  },
+  "symbol_caps": [
+    {
+      "symbol": "AAPL",
+      "daily_cap": 30,
+      "filled_plus_reserved": 13,
+      "remaining": 17,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 4
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 3
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 3
+        }
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "daily_cap": 13,
+      "filled_plus_reserved": 5,
+      "remaining": 8,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 2
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 2
+        }
+      ]
+    },
+    {
+      "symbol": "COST",
+      "daily_cap": 3,
+      "filled_plus_reserved": 1,
+      "remaining": 2,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 0
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 1
+        }
+      ]
+    },
+    {
+      "symbol": "CROX",
+      "daily_cap": 26,
+      "filled_plus_reserved": 2,
+      "remaining": 24,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 3
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 3
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 3
+        }
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "daily_cap": 10,
+      "filled_plus_reserved": 5,
+      "remaining": 5,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 1
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 1
+        }
+      ]
+    },
+    {
+      "symbol": "IONQ",
+      "daily_cap": 156,
+      "filled_plus_reserved": 104,
+      "remaining": 52,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 13
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 20
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 7
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 7
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 13
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 7
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 7
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 13
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 7
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 6
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 7
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 13
+        }
+      ]
+    },
+    {
+      "symbol": "MU",
+      "daily_cap": 3,
+      "filled_plus_reserved": 2,
+      "remaining": 1,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 0
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 1
+        }
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "daily_cap": 22,
+      "filled_plus_reserved": 4,
+      "remaining": 18,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 3
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 2
+        }
+      ]
+    },
+    {
+      "symbol": "PATH",
+      "daily_cap": 279,
+      "filled_plus_reserved": 162,
+      "remaining": 117,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 11
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 23
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 35
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 11
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 23
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 11
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 23
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 11
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 12
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 11
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 24
+        }
+      ]
+    },
+    {
+      "symbol": "SNDK",
+      "daily_cap": 4,
+      "filled_plus_reserved": 3,
+      "remaining": 1,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 0
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 1
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 1
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 0
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 1
+        }
+      ]
+    },
+    {
+      "symbol": "TWST",
+      "daily_cap": 33,
+      "filled_plus_reserved": 9,
+      "remaining": 24,
+      "slot_quotas": [
+        {
+          "hour": 4,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 4,
+          "horizon": "4h",
+          "quota": 3
+        },
+        {
+          "hour": 4,
+          "horizon": "1d",
+          "quota": 4
+        },
+        {
+          "hour": 5,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 6,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 7,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 8,
+          "horizon": "4h",
+          "quota": 3
+        },
+        {
+          "hour": 9,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 10,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 11,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 12,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 12,
+          "horizon": "4h",
+          "quota": 2
+        },
+        {
+          "hour": 13,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 14,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 15,
+          "horizon": "1h",
+          "quota": 1
+        },
+        {
+          "hour": 16,
+          "horizon": "1h",
+          "quota": 2
+        },
+        {
+          "hour": 16,
+          "horizon": "4h",
+          "quota": 3
+        }
+      ]
+    }
+  ],
+  "donor_caps": [
+    {
+      "donor_allocation_id_sha256": "f875fd425a0f1a4ef501fe1d31d0aad772b8e560ecf99236e99575faac1ddd1b",
+      "symbol": "AMZN",
+      "horizon": "4h",
+      "daily_cap": 2,
+      "filled_plus_reserved": 0,
+      "remaining": 2
+    },
+    {
+      "donor_allocation_id_sha256": "86d6f3390063bdaeaf6c732fc59f4d4d7b1c912d30fc970f90edf7fc9750cdd8",
+      "symbol": "IONQ",
+      "horizon": "4h",
+      "daily_cap": 0,
+      "filled_plus_reserved": 0,
+      "remaining": 0
+    },
+    {
+      "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+      "symbol": "AAPL",
+      "horizon": "1w",
+      "daily_cap": 21,
+      "filled_plus_reserved": 5,
+      "remaining": 16
+    },
+    {
+      "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+      "symbol": "AMZN",
+      "horizon": "1w",
+      "daily_cap": 11,
+      "filled_plus_reserved": 5,
+      "remaining": 6
+    },
+    {
+      "donor_allocation_id_sha256": "6a5243525188a36052165172abde358c4e8d61e9170d254e996c2059f0b48ae4",
+      "symbol": "NVDA",
+      "horizon": "4h",
+      "daily_cap": 0,
+      "filled_plus_reserved": 0,
+      "remaining": 0
+    },
+    {
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "symbol": "PATH",
+      "horizon": "1w",
+      "daily_cap": 279,
+      "filled_plus_reserved": 162,
+      "remaining": 117
+    },
+    {
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "symbol": "IONQ",
+      "horizon": "1w",
+      "daily_cap": 156,
+      "filled_plus_reserved": 104,
+      "remaining": 52
+    },
+    {
+      "donor_allocation_id_sha256": "f9f46dca13b6e426464993d882667f0aaae9f2a13af4b62341dd82d8d06a1b86",
+      "symbol": "MU",
+      "horizon": "1w",
+      "daily_cap": 3,
+      "filled_plus_reserved": 2,
+      "remaining": 1
+    },
+    {
+      "donor_allocation_id_sha256": "00e72dc7313c6bf3f96c9cbc32433eae335739d7b523959c20d346362b964049",
+      "symbol": "SNDK",
+      "horizon": "1w",
+      "daily_cap": 4,
+      "filled_plus_reserved": 3,
+      "remaining": 1
+    },
+    {
+      "donor_allocation_id_sha256": "37fbf813973e1e7324c054609ab222ce2bf9d2e113b636d1a61e262b78bed0ce",
+      "symbol": "TWST",
+      "horizon": "4h",
+      "daily_cap": 3,
+      "filled_plus_reserved": 0,
+      "remaining": 3
+    },
+    {
+      "donor_allocation_id_sha256": "90b262dd93e0a085e1b6b342caf2fcc804948cdf228065011474e682968e1b5d",
+      "symbol": "CROX",
+      "horizon": "4h",
+      "daily_cap": 0,
+      "filled_plus_reserved": 0,
+      "remaining": 0
+    },
+    {
+      "donor_allocation_id_sha256": "bfadfc280f4e9eda1f31606939a79257e42a265a58561faf67b83768bb7fb643",
+      "symbol": "NVDA",
+      "horizon": "1w",
+      "daily_cap": 19,
+      "filled_plus_reserved": 1,
+      "remaining": 18
+    },
+    {
+      "donor_allocation_id_sha256": "d7ee3ca36f49e0f58ce19fc94b0fead6146f1f47d969235807123d6d77f044b1",
+      "symbol": "COST",
+      "horizon": "1w",
+      "daily_cap": 3,
+      "filled_plus_reserved": 1,
+      "remaining": 2
+    },
+    {
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "symbol": "AAPL",
+      "horizon": "1d",
+      "daily_cap": 8,
+      "filled_plus_reserved": 8,
+      "remaining": 0
+    },
+    {
+      "donor_allocation_id_sha256": "d8f2d277c34adb7ab2788a9c6e6c7d045b1e34ebd409cd7027eae44d22e816fd",
+      "symbol": "CROX",
+      "horizon": "1w",
+      "daily_cap": 25,
+      "filled_plus_reserved": 2,
+      "remaining": 23
+    },
+    {
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "symbol": "TWST",
+      "horizon": "1w",
+      "daily_cap": 30,
+      "filled_plus_reserved": 9,
+      "remaining": 21
+    },
+    {
+      "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+      "symbol": "GOOG",
+      "horizon": "1w",
+      "daily_cap": 10,
+      "filled_plus_reserved": 5,
+      "remaining": 5
+    },
+    {
+      "donor_allocation_id_sha256": "ba3c361faa6e29471a247ec539628d2f11ddd1c198f23f07d6f5a639db6cd62d",
+      "symbol": "NVDA",
+      "horizon": "1d",
+      "daily_cap": 3,
+      "filled_plus_reserved": 3,
+      "remaining": 0
+    }
+  ],
+  "recorded_terminal_and_fill_evidence": [
+    {
+      "reservation_ref": "290a39a61f6ffff87307225816977267e34786ca9172d7c02238295f407eaf87",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T11:01:26.603712+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "61b4672a96678bd5e8bb1aaa0963b75f4e65b2f14842b3c04efbc1928560c4c9",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T11:01:26.603712+00:00",
+      "requested_quantity": 4,
+      "filled_all_dates": 4,
+      "filled_on_action_date": 4,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "a374a1b3dac940e418a46a2b9c148ff44675f5e486099ac2b674d870837d9353",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T11:01:26.603712+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d35570a44042b4243135aa4d56738cbf2ff966bf962950b2939f2faab4cb729d",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T11:01:26.603712+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "56c9512b5baf49b96c0d284d8e0b9a59d0c476587ef283d703b4952c567b017a",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T11:01:26.603712+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "a983a4c02e2b0df7ac1d8f257cbe89cd3a23ed4f7ca5609d36c27fb2924c4827",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T11:01:26.603712+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "ca41548ac7a9a197c7a1f66c7f181cbb7c3b4d1705b05109ee08aefae1a4c56d",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:01:18.872274+00:00",
+      "requested_quantity": 15,
+      "filled_all_dates": 15,
+      "filled_on_action_date": 15,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "af326949ee339feefa210f94f7779e37fb0405a7c4d37ef39813f5dd696d4026",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:01:18.872274+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 2,
+      "filled_on_action_date": 2,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1404b159d4073bd84c2930024cea71f6ae61d0a0a94604d5248f0ab5ce419f08",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:01:18.872274+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "aa78a7758d64484f1552b59dfa6cf94b401b91daaee2588517178eb556f2bf90",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:01:18.872274+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b866adb9677e0c638542ad2fc8924f9c9f0b59e3213a366108fa2bcaa3be6f5e",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:01:18.872274+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b7810179847202bdcb30e20beb1050d4dcc1d66582f3cd045f6f9019a25766b2",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:01:18.872274+00:00",
+      "requested_quantity": 12,
+      "filled_all_dates": 12,
+      "filled_on_action_date": 12,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d2aa4ec2e020ea020f96dbd07fd2ab4e1386b23b2a3a727783760f671f641932",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T12:04:57.634745+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "e85d3a4b2c94126b79fa7618abe47bb2c78c9da7be3a064dd3faf78e3859e7e2",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 16,
+      "filled_all_dates": 16,
+      "filled_on_action_date": 16,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4a5f49248e3e56a0092c45aa9ec2db3de43368e71459db6ef01bb730b5a787a6",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 2,
+      "filled_on_action_date": 2,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "7582da870c24ed31ec9309eb62f6cb0d4f191ec776b6332607b5122a87732f76",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "73bdfe098d7725bb036be0359795593a86fb8e81d7a0b8a2a5428737199478a0",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "2c915c0e2864b1581d82d6e505bf37444e9967a93b1934e7688371b2833c0d5f",
+      "kind": "fallback",
+      "status": "CANCELLED",
+      "recorded_broker_status": "CANCELED",
+      "observed_at": "2026-10-01T13:30:24.711473+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 0,
+      "filled_on_action_date": 0,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d7eaf67d600f2291930d46fc81b3849c8ac1805369803538525916881a63ba57",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "8ca4eba37a19ad2c40706cf75342801b6a62ebffaec78fe56dd988c13e5601f8",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 7,
+      "filled_all_dates": 7,
+      "filled_on_action_date": 7,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "f5f0f552d686e9dc0b48200e2f2941ea74424932b2d002cd8c6c38aeb92714c0",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "25f4ce167cdd5ae1c03e1a2bce77713c09328b2433f30918e4d7841d40df8543",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T13:01:18.137020+00:00",
+      "requested_quantity": 12,
+      "filled_all_dates": 12,
+      "filled_on_action_date": 12,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "dccb63fc8f74139baaca109c1a5466d7c1d05309def0574a9a9712a56813ab53",
+      "kind": "fallback",
+      "status": "CANCELLED",
+      "recorded_broker_status": "CANCELED",
+      "observed_at": "2026-10-01T13:30:24.711473+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 0,
+      "filled_on_action_date": 0,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "3f6a4e766a76245432e03c8b61f4f5b7da1560de750906b306e59f2418e8f8ae",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T14:01:28.947246+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b341a29522a47aa1081ac426b7c7506ffa81eed36e494820c7df71ebaad6ae08",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T14:01:28.947246+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b5c26c32ad8c0afed60197877b9c2d6235ff2de2871c7c9bbd90cbe69ca065f2",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T14:01:28.947246+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "f50fffac4ffb39356d46a14bcd95f31718b5ae2b0f5998f4b9465698e95e0a8b",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T14:01:28.947246+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1a820b0e6885ee7ce28a00060601a6b4826572307aa65b0a06daa4f3809ad794",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T14:01:28.947246+00:00",
+      "requested_quantity": 11,
+      "filled_all_dates": 11,
+      "filled_on_action_date": 11,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "ea237437caccb8e0d18141a329771e788d812f86f5404b2e2b13ae39e1c6b2df",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T14:01:28.947246+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "7a9667ffaf9b3aea41adf2f079f63dae99476c5b68155663c82d3a137f227500",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "bb61107be4ddc4fd87ee0ef0ae329be09f1e3d606fbcd0d6f94d43da18fa0278",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 7,
+      "filled_all_dates": 7,
+      "filled_on_action_date": 7,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "5a6507e21b48fcd330844258dcb1dc9ee25ac8236911305a569bb732faf6cee4",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 12,
+      "filled_all_dates": 12,
+      "filled_on_action_date": 12,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "400069df8ce9f74da1bae5370ba80d70abaf33bbb0198d0bc1f4799b07d4b034",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4e6951f753229b2318476d9ca375a75812321580624adc14a60e1c90564b1483",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d46f30a381e7517305cdb1ae81364e019d8a367e37509ff1b783c67686cdaead",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 13,
+      "filled_all_dates": 13,
+      "filled_on_action_date": 13,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "2be3b7da00b112bf2772fc4a1c12d712bdb89d84ada6f3f24ca136697e86a1bf",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 23,
+      "filled_all_dates": 23,
+      "filled_on_action_date": 23,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "bd511c3d1e2c763fac8721c7bde7a4200d00b492563f3d4f3e72b08fcee882bb",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T15:01:26.379589+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "5ee4a70f980ff02c26dc995ae99be9e733b9322200f71b9d6c0d4b2621549bad",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T16:01:20.838357+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "9fdd543ec4e3053fb9f95f4175f37b341afa27dd26cf248502917858a3741e18",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T16:01:20.838357+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "efc0a87b6861237cea4cc97c5ebd7784891ca37e1b53c092b7845ae3cd9e2ace",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T16:02:43.437135+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "f5e10ec14b8d99bb78fcb617c04d65cf563eb0810ba25b75ebe961a2acb6d91a",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T16:01:20.838357+00:00",
+      "requested_quantity": 12,
+      "filled_all_dates": 12,
+      "filled_on_action_date": 12,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "72abefc8f9ebdd0d31af22253a245a253955e94f8eac187504b7946b62f96077",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T16:01:20.838357+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d9afef44fa49f65c90555deab65cb5da4f9a379fe664bbdaee24637f276dfca0",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T17:01:20.208079+00:00",
+      "requested_quantity": 8,
+      "filled_all_dates": 8,
+      "filled_on_action_date": 8,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "981eabce618c511e36cd7b2e4f83b3253795b5b4c7c736f2bedc8a7c2641bc33",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T17:01:20.208079+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "6e77b28aee1b7051bf808dea18e8180e869007c4bb625c38e09e5bb0f3294ac8",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T17:01:20.208079+00:00",
+      "requested_quantity": 7,
+      "filled_all_dates": 7,
+      "filled_on_action_date": 7,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "8d52705992e66a2ced6d4a1e1cd5122f14de26cebd07941f012fdebf0d70bec2",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T17:01:20.208079+00:00",
+      "requested_quantity": 11,
+      "filled_all_dates": 11,
+      "filled_on_action_date": 11,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4bdf45156f0f23d49abd9b7b91296c66ded86ade7b5e1f302f07e9c8c748999b",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T17:01:20.208079+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 2,
+      "filled_on_action_date": 2,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "a4415faa2f9923be466044e80a7c85c2abe887eb47c98b95d95519b05013dd90",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T18:01:21.233040+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "662df8dbd25d23486b08137aadd068cf5631feb1da9d4e792bbbe3f13da2e3ca",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T18:01:21.233040+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4e3cddcc3c399ebd23d6810a8449f0f50113f1d9b5aa0314fdcd3581a2ce28d6",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 10,
+      "filled_all_dates": 10,
+      "filled_on_action_date": 10,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "f59a8974610c7af84e9b11b6b14daa561e10074738249df804460836425a39a1",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 3,
+      "filled_all_dates": 3,
+      "filled_on_action_date": 3,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b1253c3ea1916e6a994c607757a1aaae6f59d0d6dc186b79117ab497077d04e2",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 2,
+      "filled_on_action_date": 2,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b21bc229ab6f84413544acb943101f6c1b3d49fff528827fcea9a7357d75e5d2",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "05bc91bcc87e62e986fab60e2065f58f8fdaf7345288b195d3939e82056bf850",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d9188639d7f6124415ac91f4bc1b0d424f90a8b428c5a5e5e7b50ccb2bed5389",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 20,
+      "filled_all_dates": 20,
+      "filled_on_action_date": 20,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1e9ded5ba6af91aa40506c25558b80ab760ad7559790ac67eeb95993ea2a06c7",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d43d839c905949743dd6d134e29f0b758c1f240f181e8601e774fb4a6125cf0f",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4a67ca1585a5a314b815649c9c60d47c3843d902143133ee298d4d22b54d9263",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "da0df7492e9f617d2bc2507dc460e38933744c71cc2c530df84de5ebca138f83",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 2,
+      "filled_on_action_date": 2,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "28940dc861ebe5abe6adc48d19804fa5fa064e6ca5a500d2bea30166df61de71",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "6bb4d1312993811e8169cc62ede92204bab6e2951d29de265f0524d9537c9308",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 13,
+      "filled_all_dates": 13,
+      "filled_on_action_date": 13,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1b1dc83e9a8756e536b2382d4714a257059a4c6186da4ec90f86bf19895ff45f",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 23,
+      "filled_all_dates": 23,
+      "filled_on_action_date": 23,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "16155592ffe7977854badb6bc25dc4d5dc3e597cb58a7747f5c4ff6046eac4ed",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T19:01:25.386817+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "7c33749b5750d4384d3e706cc47c5aed213617c67b89c2d5d46500ec5899b0d9",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:06:17.946440+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "063a87800af956119e237e93b7c2c82891ccd5da1bb3bf11bdf190f9c4b5fa4b",
+      "kind": "normal_sell",
+      "status": "CANCELLED",
+      "recorded_broker_status": "CANCELED",
+      "observed_at": "2026-10-02T04:12:36.475954+00:00",
+      "requested_quantity": 26,
+      "filled_all_dates": 0,
+      "filled_on_action_date": 0,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "2ea64df35221e401933308c0a826808b34ffa8c271727accb0476bfd2cf6a904",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:06:17.946440+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "018cc3802dc301bc6bf17b8c8f0d4b06b0e004595e9b462b8c42c229685c2dc2",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:06:17.946440+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "7d1278c617f309d7685d237521ae495f83bf5dbb890e87f73a47347479f8573b",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:06:17.946440+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "58aec942b8bd84f52f3433f6eb542bd397f602ca4a0e59373217dd0021b5925b",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:06:17.946440+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4774d49cd190f7e1231dde89d333aebca8185668fa53dcb9b895d9377c56a1bb",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:07:05.840626+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1011d360b6fd0d265b8f993d81e0ccafea83291beff6b45cd750c695514625ee",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T20:06:17.946440+00:00",
+      "requested_quantity": 11,
+      "filled_all_dates": 11,
+      "filled_on_action_date": 11,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1bf9a4aae7ef322ab1f25e61223b1e660e05dd6cbd3ad8b234deb25b67512b80",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T21:03:49.972238+00:00",
+      "requested_quantity": 3,
+      "filled_all_dates": 3,
+      "filled_on_action_date": 3,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "bba776a836becd78da574e45dbbcb9bc28dd7433c97f8bb314e9ef46b2afc72f",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T21:01:18.720958+00:00",
+      "requested_quantity": 2,
+      "filled_all_dates": 2,
+      "filled_on_action_date": 2,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "4c1199cfb39dd92bd347d92da535298f11de955283e0c54177e3fee26ab732cc",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T21:01:18.720958+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "3c56480c8437493f493413a736231d406fe8a06ba32c5420666ea9698e585c1e",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T21:01:18.720958+00:00",
+      "requested_quantity": 7,
+      "filled_all_dates": 7,
+      "filled_on_action_date": 7,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "a0bf708a54bd6c50c9099e0d449844067743fddfa484293ad59d1eb81e6eb095",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T21:01:18.720958+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "d87281c23855ef866950badfbcdb61b2502195a8ab243ed85fa3c37c5e68a1ac",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T21:01:18.720958+00:00",
+      "requested_quantity": 12,
+      "filled_all_dates": 12,
+      "filled_on_action_date": 12,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "825ad15faefa94a15609d10bb8bc2ca1769e0dc7dd89013edfb84bcb0d87187e",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T22:01:21.487735+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "c5b0ce8f43e169aa27fcd861e1c9f31d235ca94aa06248d8f1399d321dcd9591",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T22:01:21.487735+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "c859b87b09439901a96716b4b996e51a8a8b57807a5fbf0009fef9154872bb68",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T22:01:21.487735+00:00",
+      "requested_quantity": 6,
+      "filled_all_dates": 6,
+      "filled_on_action_date": 6,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "8c1e8f3df3f6db099f7b31d2da318be59b14a7ff1ab1071e7f1fc502450022a6",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T22:01:21.487735+00:00",
+      "requested_quantity": 12,
+      "filled_all_dates": 12,
+      "filled_on_action_date": 12,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "b829502f66b7919c3033df58efe41a803f2bd8d168abd14bf54a3fa2ef4cf02d",
+      "kind": "fallback",
+      "status": "CANCELLED",
+      "recorded_broker_status": "EXPIRED",
+      "observed_at": "2026-10-02T04:12:36.475954+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 0,
+      "filled_on_action_date": 0,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "f3095bd162a0acc313b7e160b45e078e839e9d8548aea446a5f559c017ea3bb5",
+      "kind": "normal_sell",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 26,
+      "filled_all_dates": 26,
+      "filled_on_action_date": 26,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "25731df6478809ddabafa5f83fa9b124c9e9e11c9be6889dd71a2e226fcd7df4",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "1b1a6d1422ab865788c608d103a4e522b28529ea327dbcbd6bf800ca7e3ddad4",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "aa1b33e332ffe0708de92c25146b9b503957690f435e34aa928c3ae3d9c1f46a",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 7,
+      "filled_all_dates": 7,
+      "filled_on_action_date": 7,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "767fc33b1db5723b7b81661481a6d1d54af7e89a83b048baa6e73f9f6afaa57c",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 11,
+      "filled_all_dates": 11,
+      "filled_on_action_date": 11,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "568c0e6b499c7b23c4f924682ed2379723bf6123f460d795699c83fbf4688b1f",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 13,
+      "filled_all_dates": 13,
+      "filled_on_action_date": 13,
+      "matches_recorded_cumulative_order_evidence": true
+    },
+    {
+      "reservation_ref": "a7addf35fa2d7ab83d73a5c4f94d538041c5538794960f6105e311521d2c8137",
+      "kind": "fallback",
+      "status": "FILLED",
+      "recorded_broker_status": "FILLED",
+      "observed_at": "2026-10-01T23:01:23.774066+00:00",
+      "requested_quantity": 1,
+      "filled_all_dates": 1,
+      "filled_on_action_date": 1,
+      "matches_recorded_cumulative_order_evidence": true
+    }
+  ],
+  "normal_sales_separate": [
+    {
+      "reservation_ref": "290a39a61f6ffff87307225816977267e34786ca9172d7c02238295f407eaf87",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 1,
+      "requested_quantity": 1
+    },
+    {
+      "reservation_ref": "61b4672a96678bd5e8bb1aaa0963b75f4e65b2f14842b3c04efbc1928560c4c9",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 4,
+      "requested_quantity": 4
+    },
+    {
+      "reservation_ref": "a374a1b3dac940e418a46a2b9c148ff44675f5e486099ac2b674d870837d9353",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 1,
+      "requested_quantity": 1
+    },
+    {
+      "reservation_ref": "d35570a44042b4243135aa4d56738cbf2ff966bf962950b2939f2faab4cb729d",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 1,
+      "requested_quantity": 1
+    },
+    {
+      "reservation_ref": "56c9512b5baf49b96c0d284d8e0b9a59d0c476587ef283d703b4952c567b017a",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 1,
+      "requested_quantity": 1
+    },
+    {
+      "reservation_ref": "a983a4c02e2b0df7ac1d8f257cbe89cd3a23ed4f7ca5609d36c27fb2924c4827",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 6,
+      "requested_quantity": 6
+    },
+    {
+      "reservation_ref": "ca41548ac7a9a197c7a1f66c7f181cbb7c3b4d1705b05109ee08aefae1a4c56d",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 15,
+      "requested_quantity": 15
+    },
+    {
+      "reservation_ref": "af326949ee339feefa210f94f7779e37fb0405a7c4d37ef39813f5dd696d4026",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 2,
+      "requested_quantity": 2
+    },
+    {
+      "reservation_ref": "e85d3a4b2c94126b79fa7618abe47bb2c78c9da7be3a064dd3faf78e3859e7e2",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 16,
+      "requested_quantity": 16
+    },
+    {
+      "reservation_ref": "d9afef44fa49f65c90555deab65cb5da4f9a379fe664bbdaee24637f276dfca0",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 8,
+      "requested_quantity": 8
+    },
+    {
+      "reservation_ref": "4e3cddcc3c399ebd23d6810a8449f0f50113f1d9b5aa0314fdcd3581a2ce28d6",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 10,
+      "requested_quantity": 10
+    },
+    {
+      "reservation_ref": "f59a8974610c7af84e9b11b6b14daa561e10074738249df804460836425a39a1",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 3,
+      "requested_quantity": 3
+    },
+    {
+      "reservation_ref": "b1253c3ea1916e6a994c607757a1aaae6f59d0d6dc186b79117ab497077d04e2",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 2,
+      "requested_quantity": 2
+    },
+    {
+      "reservation_ref": "b21bc229ab6f84413544acb943101f6c1b3d49fff528827fcea9a7357d75e5d2",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 1,
+      "requested_quantity": 1
+    },
+    {
+      "reservation_ref": "05bc91bcc87e62e986fab60e2065f58f8fdaf7345288b195d3939e82056bf850",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 6,
+      "requested_quantity": 6
+    },
+    {
+      "reservation_ref": "d9188639d7f6124415ac91f4bc1b0d424f90a8b428c5a5e5e7b50ccb2bed5389",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 20,
+      "requested_quantity": 20
+    },
+    {
+      "reservation_ref": "7c33749b5750d4384d3e706cc47c5aed213617c67b89c2d5d46500ec5899b0d9",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 6,
+      "requested_quantity": 6
+    },
+    {
+      "reservation_ref": "063a87800af956119e237e93b7c2c82891ccd5da1bb3bf11bdf190f9c4b5fa4b",
+      "requested_today": true,
+      "status": "CANCELLED",
+      "filled_on_action_date": 0,
+      "requested_quantity": 26
+    },
+    {
+      "reservation_ref": "2ea64df35221e401933308c0a826808b34ffa8c271727accb0476bfd2cf6a904",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 1,
+      "requested_quantity": 1
+    },
+    {
+      "reservation_ref": "1bf9a4aae7ef322ab1f25e61223b1e660e05dd6cbd3ad8b234deb25b67512b80",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 3,
+      "requested_quantity": 3
+    },
+    {
+      "reservation_ref": "f3095bd162a0acc313b7e160b45e078e839e9d8548aea446a5f559c017ea3bb5",
+      "requested_today": true,
+      "status": "FILLED",
+      "filled_on_action_date": 26,
+      "requested_quantity": 26
+    }
+  ],
+  "checks": {
+    "report_hash_size_and_observation_binding": true,
+    "baseline_matches_native_record": true,
+    "symbol_initial_donor_conservation_and_half_caps": true,
+    "donor_half_caps": true,
+    "exact_18_slot_24_weight_integer_quotas": true,
+    "unique_trigger_no_retry_quota_reset": true,
+    "per_order_and_aggregate_slot_limits": true,
+    "all_counts_match_independent_ledger_projection": true,
+    "terminal_state_and_cumulative_fill_evidence": true,
+    "actual_fallback_sales_separate_from_normal_sales": true
+  },
+  "limitations": [
+    "Ledger-recorded broker evidence is verified offline; no fresh broker confirmation requested.",
+    "Audit proves observed caps and saved ownership/source/slot bindings; it does not replay every historical quote, risk or route-absence decision.",
+    "Normal sales are outside fallback budgets. Counts are not hypothetical planning, realized profit, or evidence to adjust 50%."
+  ],
+  "provider_calls": 0,
+  "broker_calls": 0,
+  "ledger_mutations": 0,
+  "source_changes": 0,
+  "orders": 0
+}

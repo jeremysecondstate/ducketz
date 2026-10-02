@@ -1,0 +1,45 @@
+{
+  "captured_at": "2026-10-02T04:13:01.906470+00:00",
+  "status": "PASS",
+  "checks": {
+    "native_and_independent_fallback_usage_2026-10-01": true
+  },
+  "usage": {
+    "2026-10-01": {
+      "symbol_usage": {
+        "AAPL": 13,
+        "CROX": 2,
+        "IONQ": 104,
+        "PATH": 162,
+        "TWST": 9,
+        "AMZN": 5,
+        "COST": 1,
+        "GOOG": 5,
+        "MU": 2,
+        "NVDA": 4,
+        "SNDK": 3
+      },
+      "frozen_symbol_caps": {
+        "AAPL": 30,
+        "AMZN": 13,
+        "COST": 3,
+        "CROX": 26,
+        "GOOG": 10,
+        "IONQ": 156,
+        "MU": 3,
+        "NVDA": 22,
+        "PATH": 279,
+        "SNDK": 4,
+        "TWST": 33
+      },
+      "donor_usage_count": 13
+    }
+  },
+  "helper_sha256": "55d4dfa6131af6871673c6fb9f41e6a281a1004c382d1b73b2318d966e52a665",
+  "plan_sha256": "7aa6bc27f52037d8bf758fc66f90c17a1ac7d1ff1cd6574596aa631547192b65",
+  "ledger_sha256": "252febdd2bceab3a021c9694dd39a03b8312e0c795a1af0aee1f3e1fe44d5fb4",
+  "production_writes": 0,
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "order_actions": 0
+}

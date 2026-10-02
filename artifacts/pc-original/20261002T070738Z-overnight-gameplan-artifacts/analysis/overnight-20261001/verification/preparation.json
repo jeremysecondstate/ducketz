@@ -1,0 +1,72 @@
+{
+  "prepared_at": "2026-10-02T04:11:39.465424+00:00",
+  "files": [
+    {
+      "name": "verify_completed_run.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\verify_completed_run.py",
+      "source_sha256": "6f91b9cd72de1dd2b47dcbdddebc409c4904d6b0e40f065010ac6e6fc0fcfd79",
+      "adapted_sha256": "3e842891206c56a3b662c84c7072cb508942a21bd231e68b5e19cd564827f685"
+    },
+    {
+      "name": "verify_archive_history.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\verify_archive_history.py",
+      "source_sha256": "e47d4d85d9a870c787e177090993162239169daf7df032dd1383de8142885c42",
+      "adapted_sha256": "7e90b4a9aad7c7065a4f53f80c4e7e55665e18b5c933ecf4112a06461dab594d"
+    },
+    {
+      "name": "verify_yg_completion.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\verify_yg_completion.py",
+      "source_sha256": "9211049bce54104adb74e267a97b4745a22f55e1ae0661a20074e9a753967be7",
+      "adapted_sha256": "ec4b9de315541ddaec20e7aa4012ddc8e9ea698ba3e3d45fe1cb4f9bd43bda45"
+    },
+    {
+      "name": "fallback_checks.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\fallback_checks.py",
+      "source_sha256": "3dbf28cd9d06152b22d4a3f5cfe581e475a3e8d9f6ecea5f6b81c8f075fb117b",
+      "adapted_sha256": "e9a78facc01981c203105ff87688c803855bfa9c41ab935a32b703802f91c0dc"
+    },
+    {
+      "name": "audit_environment.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\audit_environment.py",
+      "source_sha256": "9301d0f3d60d1128fc464b9f9de0740197f20efc03fd51e6f2194636b649e9cc",
+      "adapted_sha256": "f0b8ad54dfd91c6a7f47f9584c768f5f3670d6f95ccb4980188eedb5be3865f0"
+    },
+    {
+      "name": "run_final_checks.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\run_final_checks.py",
+      "source_sha256": "d7530afc48844eb91ae2f7b101382707e9d515d8d97037907a51cae5de1c6e79",
+      "adapted_sha256": "2010f4bd7d89a42b05ac78d4884bb3bb87a4d04c594e3311a66bfa1ab70308f4"
+    },
+    {
+      "name": "validate_helpers.py",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\validate_helpers.py",
+      "source_sha256": "bc668836865c41280ae79ae94c81d36af59d2bde4235f9b0343837faa4fb70bf",
+      "adapted_sha256": "f5664396a2e71e743cedde740d569f69259ad519fff4a98204c45b7d97964250"
+    }
+  ],
+  "original_run": "20261002T040848.225355Z",
+  "source_date": "2026-10-01",
+  "action_date": "2026-10-02",
+  "deadline": "2026-10-02T11:00:00Z",
+  "reviewed_base_commit": "0407388559d54612603380793fc26a98937697fc",
+  "source_files_in_baseline": 341,
+  "source_changes_since_previous_audit": [
+    {
+      "path": "ml/hyperliquid_model_config.py",
+      "prior_sha256": "ed543820563ef4600cd5de5d8e040dea89551c92db659694cf9106aa517dc9f6",
+      "current_sha256": "19029da90839fae806465400142c32325686b5c71545118f7d2bb54f3385bf44"
+    },
+    {
+      "path": "ml/hyperliquid_models.py",
+      "prior_sha256": "a3717d1480b641bb9673f44fbc81640e8320026800916f0e9359b6a14d19189f",
+      "current_sha256": "0292d8e17fe4b9420310e01e3cee4ceb4f7fb8bac3a48fb3a6c906c2fb133b64"
+    }
+  ],
+  "policy": "hierarchical-bearish-fallback-v1",
+  "production_mutations": 0,
+  "limitations": [
+    "Heavy audits require native COMPLETE and are not run during preparation.",
+    "Provider metadata warning follow-up and controls/schedule/ledger preservation are separate root evidence.",
+    "Current all-ml/datafetching source baseline detects concurrent changes; drift requires explicit review."
+  ]
+}

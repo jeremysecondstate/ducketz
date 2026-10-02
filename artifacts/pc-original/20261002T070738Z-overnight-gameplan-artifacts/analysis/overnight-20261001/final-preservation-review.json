@@ -1,0 +1,119 @@
+{
+  "schema_version": "overnight-final-preservation-review-v1",
+  "captured_at": "2026-10-02T06:50:51.928712+00:00",
+  "status": "FAIL",
+  "checks": {
+    "literal_preservation_exception_exactly_git_identity": true,
+    "all_other_operational_preservation_checks_pass": true,
+    "attributed_exception_checks_pass": true,
+    "git_identity_exactly_prior_attributed_state": true,
+    "source_deltas_exactly_prior_three_attributed_tests": true,
+    "original_and_post_reconciliation_evidence_unchanged": true,
+    "original_baseline_not_overwritten": true,
+    "all341_preparation_source_files_unchanged": true,
+    "all23_sealed_fallback_files_match": true,
+    "all176_sealed_fallback_dependencies_match": true,
+    "trader_terminal_same_october1_session": true,
+    "no_trader_or_overnight_worker_process": true,
+    "ledger_zero_pending_reservations_and_blocks": true,
+    "apply-progress.json_applied_bound": true,
+    "apply-receipt.json_applied_bound": true,
+    "no_new_git_status_entries": false
+  },
+  "literal_final_audit_status": "REVIEW_REQUIRED",
+  "literal_exception": "preserved_git_identity=false retained, never overridden",
+  "git_identity": {
+    "head": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+    "branch": "main",
+    "index": {
+      "C:\\dev\\ducketz\\.git\\index": {
+        "exists": true,
+        "sha256": "e8356853a389cf72a4d4e2ed2ef618a7dffe05a06b47404b027f5d9d46fea786",
+        "size": 378629
+      }
+    }
+  },
+  "git_status": [
+    "?? artifacts/analysis/fallback-session-reviews/20261002T064859Z-20261001/",
+    "?? artifacts/analysis/overnight-20261001/",
+    "?? tests/test_hyperliquid_paper_rebalance_threshold.py"
+  ],
+  "source_deltas": {
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_config.py": {
+      "baseline": {
+        "exists": true,
+        "sha256": "7bf428f3674c75fb83559f204d205730ac74f9e0b84d33e992930235191ae8ad",
+        "size": 9825
+      },
+      "current": {
+        "exists": true,
+        "sha256": "672894192ebc507d1f6bc74a5de876adff75b258d801d28c7c4ca2e5f5bc5ac0",
+        "size": 9930
+      }
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_policy.py": {
+      "baseline": {
+        "exists": true,
+        "sha256": "0dce039a71ab18b0cf9c52b6b049560e90cd530269a9128265b74b7b99636fb5",
+        "size": 19185
+      },
+      "current": {
+        "exists": true,
+        "sha256": "852115ab82da104915c25460cc5f6ee9f56ce4d3d2c69eb98de6743c3805854a",
+        "size": 19184
+      }
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_rebalance_threshold.py": {
+      "baseline": {
+        "exists": true,
+        "sha256": "681963f3d428dafc19007ffa3f91c01b50aa92591370a4f31682a90902a0ef78",
+        "size": 1126
+      },
+      "current": {
+        "exists": true,
+        "sha256": "712b84e6a0adf35e1fc3bbea5b540d8405e3a1e41b9caa815bfa17c9874b23bd",
+        "size": 1323
+      }
+    }
+  },
+  "concurrent_attribution": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\concurrent-git-source-attribution.json",
+    "sha256": "f7dac057f34cc83f7cb445f06ae4494668d63fbfe7e60e07c949f189f9a83549",
+    "evidence_statement": "Exact previously reviewed separate main commit and three Hyperliquid test deltas; no further Git/index/source delta observed."
+  },
+  "worker_observation": {
+    "observed_at": "2026-10-02T06:50:51.928849+00:00",
+    "matching_processes": [],
+    "uninspected_relevant_process_ids": []
+  },
+  "ledger": {
+    "logical_sha256": "4d8d1fbb54d10e28b3770ddcd55c3073599ae3fecc389c8b6944c0feba7b0e82",
+    "pending_reservation_count": 0,
+    "persistent_block_count": 0,
+    "table_counts": {
+      "allocations": 202,
+      "blocks": 0,
+      "cancellations": 11,
+      "evidence": 31667,
+      "fallback_days": 1,
+      "fills": 764,
+      "inventory_assignments": 7,
+      "metadata": 2,
+      "reservations": 729,
+      "snapshots": 20880
+    }
+  },
+  "evidence_bindings": {
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-final.json": "4bd28fa49f906f727c99db7ddd03251222b482bdcc15ea7a2420e4179e0edf49",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\concurrent-git-source-attribution.json": "f7dac057f34cc83f7cb445f06ae4494668d63fbfe7e60e07c949f189f9a83549",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\reconciliation-preservation-basis.json": "9207f72431184f24ecd3d68fd7e38b0fd3acc44ce40f058d938ba24374f99a94",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-baseline.json": "070a743365ed302cb7d5d35aa0e5f136579336612b22e7b4c93b2a747c85e84a",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-post-reconciliation.json": "47d75e80c53ad8f06a57b49f6e2a91d877db3b2145f99e4cfc2c06e20a4daae7",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\audit-environment-baseline.json": "50d28829b496e413b01a076854f92ffaa6c623e13f6f9e86f53f0a5bd7e3b49d",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\candidate-manifest.json": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\apply-progress.json": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\apply-receipt.json": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json": "c523945348292e1942d0d4ecbb2faacac2df9de37d39895f6c01f95d41164791"
+  },
+  "scope": "Read-only local verification; original baseline retained. No production mutation, source edit, broker/provider call, order action, checkout or index write requested. Git commands used GIT_OPTIONAL_LOCKS=0."
+}

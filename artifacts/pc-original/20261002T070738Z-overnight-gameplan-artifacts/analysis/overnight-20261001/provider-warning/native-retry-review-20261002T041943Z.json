@@ -1,0 +1,115 @@
+{
+  "status": "TRANSIENT_GATEWAY_ERROR_RECOVERED_BY_NATIVE_RETRY",
+  "observed_at_utc": "2026-10-02T04:19:43.884226+00:00",
+  "native_run_id": "20261002T040848.225355Z",
+  "dataset": "GLBX.MDP3",
+  "scope": "READ_ONLY_NATIVE_REQUEST_AUDIT",
+  "log_sha256": "9842c9d67d5f37a8510918ad1bc43b63fec767070af8931b521977679b5dd7db",
+  "log_bytes": 19894,
+  "request_evidence": [
+    {
+      "line": 135,
+      "text": "[2026-10-02T04:17:46.092610Z] START provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-10-02T03:10:00Z..2026-10-02T04:10:00Z try=1"
+    },
+    {
+      "line": 136,
+      "text": "[2026-10-02T04:18:46.450333Z] END   provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-10-02T03:10:00Z..2026-10-02T04:10:00Z try=1 elapsed=60353.8ms rows=? op=failed status=error error=BentoServerError"
+    },
+    {
+      "line": 137,
+      "text": "[Databento] CME cme_context_bbo-1m attempt 1/75 failed with a transient BentoServerError: 504 The remote gateway timed out.. Retrying in 4.0s; press Ctrl+C to stop."
+    },
+    {
+      "line": 138,
+      "text": "[2026-10-02T04:18:50.451994Z] START provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-10-02T03:10:00Z..2026-10-02T04:10:00Z try=2"
+    },
+    {
+      "line": 139,
+      "text": "[2026-10-02T04:18:53.951229Z] END   provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-10-02T03:10:00Z..2026-10-02T04:10:00Z try=2 elapsed=3499.0ms rows=300 op=fetched status=ok"
+    },
+    {
+      "line": 140,
+      "text": "[Databento] CME cme_context_bbo-1m succeeded on attempt 2."
+    }
+  ],
+  "retry_policy": {
+    "retryable_http_statuses": [
+      429,
+      500,
+      502,
+      503,
+      504
+    ],
+    "delay_seconds": 4.0,
+    "maximum_attempts": 75,
+    "note": "The source limit bounds attempt count plus delays; individual provider request durations also count toward elapsed time."
+  },
+  "captures": [
+    {
+      "scope": "CME_CONTEXT",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "sha256": "7fd7c8831e514c1fa02f5cd954c58bbce257ebd60a730e12716fe3ef2eab80d9",
+      "rows": 300,
+      "metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "initial_range_start": "2026-10-02 03:10:00+00:00",
+          "initial_range_end": "2026-10-02 04:10:00+00:00",
+          "effective_range_start": "2026-10-02 03:10:00+00:00",
+          "effective_range_end": "2026-10-02 04:10:00+00:00",
+          "limit": 5000,
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "min_market_timestamp": "2026-10-02 03:09:35.033395575+00:00",
+      "max_market_timestamp": "2026-10-02 04:08:59.976378481+00:00"
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "sha256": "48f90fa50aa156402aa4434efb8344e528e85986159065d3a02d8c872c9b648f",
+      "rows": 240,
+      "metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "initial_range_start": "2026-10-02 03:10:00+00:00",
+          "initial_range_end": "2026-10-02 04:10:00+00:00",
+          "effective_range_start": "2026-10-02 03:10:00+00:00",
+          "effective_range_end": "2026-10-02 04:10:00+00:00",
+          "limit": 5000,
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT"
+        }
+      ],
+      "min_market_timestamp": "2026-10-02 03:09:35.033395575+00:00",
+      "max_market_timestamp": "2026-10-02 04:08:59.976378481+00:00"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": "app/services/databento_retry.py",
+      "sha256": "668c8bfc73948e1989a6bb80008f6f53a10901b47c851c5d6295a68941eada9d"
+    },
+    {
+      "path": "datafetching/databento_fetch.py",
+      "sha256": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6"
+    }
+  ],
+  "degraded_warning_observed": false,
+  "metadata_calls": 0,
+  "market_data_calls": 0,
+  "broker_calls": 0,
+  "production_writes": 0,
+  "source_edits": 0,
+  "limitations": [
+    "Successful retry establishes delivered rows, not global schema completeness.",
+    "Gateway504 is separate from provider dataset-condition flags."
+  ]
+}

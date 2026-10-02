@@ -1,0 +1,97 @@
+{
+  "checked_at": "2026-10-02T04:11:47.819592+00:00",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "ALL_HELPERS_AST_PARSE",
+      "status": "PASS"
+    },
+    {
+      "name": "EXACT_DEPLOYMENT_AND_SOURCE_BASELINE",
+      "status": "UNCHANGED",
+      "source_files": 341,
+      "baseline_recorded_at": "2026-10-02T04:11:39.465424+00:00",
+      "candidate_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+      "current_apply_progress_and_receipt": "EXACT_APPLIED"
+    },
+    {
+      "name": "run_final_checks.py completion guard",
+      "status": "PASS",
+      "exit_code": 2
+    },
+    {
+      "name": "verify_completed_run.py completion guard",
+      "status": "PASS",
+      "exit_code": 2
+    },
+    {
+      "name": "INDEPENDENT_DONOR_CAP_SLOT_AND_SHARE_AUDIT",
+      "status": "PASS",
+      "result": {
+        "policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+        "scheduled_expiry_sales": 0,
+        "horizon_ownership_rollforward": "VERIFIED",
+        "fallback_policy_version": "hierarchical-bearish-fallback-v1",
+        "planning_donor_hashes": 1,
+        "independent_quota_rows": 19,
+        "weighted_fallback_slots_per_symbol": 18,
+        "symbol_daily_caps": {
+          "AAPL": 150
+        },
+        "symbol_used": {
+          "AAPL": 81
+        },
+        "fallback_event_count": 13,
+        "normal_sale_event_count": 0,
+        "basis": "CONDITIONAL_PLANNING_FILLS_ONLY",
+        "unique_instruction_events": 13,
+        "live_baseline_or_live_fills_verified": false,
+        "model_assessment_separate_from_manual_instructions": true
+      }
+    },
+    {
+      "name": "REJECTS quota changed",
+      "status": "PASS"
+    },
+    {
+      "name": "REJECTS donor hash changed",
+      "status": "PASS"
+    },
+    {
+      "name": "REJECTS daily cap inflated",
+      "status": "PASS"
+    },
+    {
+      "name": "REJECTS usage reset",
+      "status": "PASS"
+    },
+    {
+      "name": "REJECTS wrong donor horizon",
+      "status": "PASS"
+    },
+    {
+      "name": "REJECTS expiry inserted",
+      "status": "PASS"
+    },
+    {
+      "name": "NORMAL_SALE_UNCAPPED_AND_EXCLUDED_AS_DONOR",
+      "status": "PASS"
+    }
+  ],
+  "scope": "AST, early completion guards, exact source hashes and synthetic in-memory planning arithmetic.",
+  "source_archive_checks_started": false,
+  "provider_calls": 0,
+  "account_calls": 0,
+  "production_mutations": 0,
+  "orders_placed": 0,
+  "helper_hashes": {
+    "audit_environment.py": "f0b8ad54dfd91c6a7f47f9584c768f5f3670d6f95ccb4980188eedb5be3865f0",
+    "fallback_checks.py": "e9a78facc01981c203105ff87688c803855bfa9c41ab935a32b703802f91c0dc",
+    "prepare_helpers.py": "1383d20944a3a66bc8d8484c4bd450a6854868f6df8cd47d81a2a6f442775c72",
+    "run_final_checks.py": "2010f4bd7d89a42b05ac78d4884bb3bb87a4d04c594e3311a66bfa1ab70308f4",
+    "validate_helpers.py": "f5664396a2e71e743cedde740d569f69259ad519fff4a98204c45b7d97964250",
+    "verify_archive_history.py": "7e90b4a9aad7c7065a4f53f80c4e7e55665e18b5c933ecf4112a06461dab594d",
+    "verify_completed_run.py": "3e842891206c56a3b662c84c7072cb508942a21bd231e68b5e19cd564827f685",
+    "verify_yg_completion.py": "ec4b9de315541ddaec20e7aa4012ddc8e9ea698ba3e3d45fe1cb4f9bd43bda45"
+  }
+}

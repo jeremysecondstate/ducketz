@@ -1,0 +1,81 @@
+{
+  "captured_at": "2026-10-02T04:12:39.973467+00:00",
+  "scope": "LOCAL_READ_ONLY_SAVED_EVIDENCE_NO_BROKER_PROVIDER_RECONCILIATION_OR_ORDER_ACTIONS",
+  "status": "NATIVE_RECONCILIATION_REVIEW_REQUIRED",
+  "pending": [
+    {
+      "symbol": "CROX",
+      "horizon": "1h",
+      "side": "SELL",
+      "quantity": 26,
+      "filled": 0,
+      "status": "WORKING",
+      "last_evidence_at": "2026-10-02T00:00:00.011026+00:00",
+      "fallback_policy_version": null,
+      "trigger_horizon": null,
+      "owner_horizon": null,
+      "slot_quota": null
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1w",
+      "side": "SELL",
+      "quantity": 1,
+      "filled": 0,
+      "status": "WORKING",
+      "last_evidence_at": "2026-10-02T00:00:00.011026+00:00",
+      "fallback_policy_version": "hierarchical-bearish-fallback-v1",
+      "trigger_horizon": "1h",
+      "owner_horizon": "1w",
+      "slot_quota": 1
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "4h",
+      "side": "BUY",
+      "quantity": 26,
+      "filled": 0,
+      "status": "WORKING",
+      "last_evidence_at": "2026-10-02T00:00:00.011026+00:00",
+      "fallback_policy_version": null,
+      "trigger_horizon": null,
+      "owner_horizon": null,
+      "slot_quota": null
+    }
+  ],
+  "persistent_blocks": 0,
+  "native_reconciliation_guard_status": "OFFLINE_GUARDS_VERIFIED",
+  "latest_trader_state": {
+    "status": "FINISHED_WITH_ERRORS",
+    "action_date": "2026-10-01",
+    "as_of": null
+  },
+  "active_watchlist": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "onboarding_active_match": true,
+  "activation_sha256": "d9ebc672034b7af269c136666e3c5c6b590603dff89ef24d6c9e52eef6823d28",
+  "prior_final_baseline": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\preservation-final.json",
+  "source_delta_paths_since_prior_final": [
+    "AGENTS.md",
+    "docs\\cross-pc-infrastructure-prompts\\20261001\\atlas-build-prompt.txt",
+    "docs\\cross-pc-infrastructure-prompts\\20261001\\scout-build-prompt.txt",
+    "ml\\hyperliquid_model_config.py",
+    "ml\\hyperliquid_models.py",
+    "tests\\test_hyperliquid_model_config.py",
+    "tests\\test_hyperliquid_paper_policy.py",
+    "tests\\test_hyperliquid_paper_rebalance_threshold.py",
+    "tests\\test_hyperliquid_probability_shrinkage.py"
+  ],
+  "interpretation": "Working reservations are saved broker evidence at session end, not proof of current broker status. Exact terminal matching-account order history followed by newer coherent portfolio is required; no release inferred. Root owns any native maintenance."
+}

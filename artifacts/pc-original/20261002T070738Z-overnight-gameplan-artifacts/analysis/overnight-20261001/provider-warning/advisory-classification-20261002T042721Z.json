@@ -1,0 +1,36 @@
+{
+  "native_run_id": "20261002T040848.225355Z",
+  "observed_at_utc": "2026-10-02T04:27:21.454006+00:00",
+  "status": "CURRENT_CAPTURE_AND_LOCAL_GUARDS_CLASSIFIED",
+  "evidence": {
+    "capture-review-20261002T042250Z.json": "59293bbf0a252e87eea2690c779a07f6e36a47feceef28d14a6916a6c9fc2411",
+    "local-advisory-detail-20261002T042636Z.json": "707652d3098ed4c6be05c69025366fb62c9b20dace4dd19f4e99bc4674bc8864",
+    "native-retry-review-20261002T041943Z.json": "c517cb1b0c36c0a9c2777935c550ff64623b42cacfdaaa8254afd5bcfd30013a"
+  },
+  "source_hashes": {
+    "datafetching/databento_fetch.py": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6",
+    "datafetching/parquet_store.py": "cc444e189e71b23bf8f62f53609bc3ca194f7b5e0e2f2dfb85bbaf3671008216",
+    "datafetching/fmp_energy_context.py": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d"
+  },
+  "classification": [
+    {
+      "provider": "databento",
+      "count": 2,
+      "kind": "CURRENT_MBP_LIMIT_SATURATION",
+      "support": "Current raw/normalized captures contain5000rows and request_limit_saturated=true for both CME_CONTEXT and CME_CONTRACTS. Native saturated branch records advisory and omits event-history persistence; nonempty limit_saturated_requests skips derived context materialization.",
+      "diagnostic_timestamp_note": "Saved diagnostics retain2026-10-01receipt andSept30range metadata; id,fetched_at,range fields are excluded from content equality. Use current capture evidence for this cycle ranges."
+    },
+    {
+      "provider": "fmp",
+      "count": 1,
+      "kind": "PERSISTING_HISTORICAL_QUOTE_CLOCK_SKEW",
+      "support": "Read-only calculation against current source reproduces retainedSept2FmpEnergyContextQualityError exactly. FiveSept2USO rows exceed5second skew; current receipt isOct2. No new current-day skew is established."
+    }
+  ],
+  "provider_degraded_warning_observed": false,
+  "metadata_calls": 0,
+  "provider_calls": 0,
+  "production_writes": 0,
+  "source_changes": 0,
+  "remaining": "Verify completed base-cycle summary and fresh model manifests after native publication."
+}

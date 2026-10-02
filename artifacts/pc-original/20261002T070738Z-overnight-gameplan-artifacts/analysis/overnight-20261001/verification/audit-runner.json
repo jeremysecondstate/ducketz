@@ -1,0 +1,71 @@
+{
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "started_at": "2026-10-02T06:48:28.804755+00:00",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20261002T040848.225355Z",
+  "implementation_before": {
+    "status": "UNCHANGED",
+    "source_files": 341,
+    "baseline_recorded_at": "2026-10-02T04:11:39.465424+00:00",
+    "candidate_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "current_apply_progress_and_receipt": "EXACT_APPLIED"
+  },
+  "checks": [
+    {
+      "check": "verify_completed_run",
+      "started_at": "2026-10-02T06:48:28.843157+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\verify_completed_run.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20261002T040848.225355Z"
+      ],
+      "exit_code": 0,
+      "finished_at": "2026-10-02T07:03:21.782500+00:00",
+      "seconds": 892.881
+    },
+    {
+      "check": "verify_yg_completion",
+      "started_at": "2026-10-02T07:03:21.782971+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\verify_yg_completion.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20261002T040848.225355Z",
+        "--output",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\yg-completion.json"
+      ],
+      "exit_code": 0,
+      "finished_at": "2026-10-02T07:03:35.607260+00:00",
+      "seconds": 13.823
+    }
+  ],
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "production_mutations": 0,
+  "implementation_after": {
+    "status": "UNCHANGED",
+    "source_files": 341,
+    "baseline_recorded_at": "2026-10-02T04:11:39.465424+00:00",
+    "candidate_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "current_apply_progress_and_receipt": "EXACT_APPLIED"
+  },
+  "evidence": {
+    "completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\completion-audit.json",
+      "sha256": "6d08bd3034257f356909568e9f473046741f8dfd0801f346e1ddcb6574c2b201"
+    },
+    "yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\yg-completion.json",
+      "sha256": "82b99d2bd3f18ae4e4629cb613fe5b325d50bd0bceee9abca8f556cb51b51b2f"
+    }
+  },
+  "limitations": [
+    "Conditional planning does not establish live fallback baseline, fills or realized profit.",
+    "Provider warning metadata follow-up and controls/schedule/ledger preservation are separate operator evidence.",
+    "Archive native hashes/header/normalized consistency are verified; every raw DBN record is not replayed.",
+    "All research statuses and missing actual outcomes remain explicitly reported."
+  ],
+  "finished_at": "2026-10-02T07:03:35.652089+00:00"
+}

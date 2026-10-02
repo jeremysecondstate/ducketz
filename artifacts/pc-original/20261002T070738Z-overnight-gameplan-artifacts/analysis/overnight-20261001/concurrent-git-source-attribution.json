@@ -1,0 +1,143 @@
+{
+  "schema_version": "overnight-concurrent-source-attribution-v1",
+  "captured_at": "2026-10-02T06:32:13.521395+00:00",
+  "status": "VERIFIED_STOCK_SOURCE_PRESERVED_CONCURRENT_GIT_AND_TEST_CHANGES",
+  "checks": {
+    "head_parent_equals_original_reviewed_base": true,
+    "same_main_branch": true,
+    "no_staged_changes": true,
+    "head_matches_local_main_notice": true,
+    "only_attributed_three_test_paths_changed": true,
+    "all_operational_preservation_checks_except_git_identity": true,
+    "341_preparation_source_bytes_unchanged": true,
+    "sealed23_installed_bytes_match": true,
+    "sealed176_dependency_bytes_match": true,
+    "apply-progress.json_applied_bound": true,
+    "apply-receipt.json_applied_bound": true,
+    "exact_committed_test_bytes_tests/test_hyperliquid_model_config.py": true,
+    "exact_committed_test_bytes_tests/test_hyperliquid_paper_policy.py": true,
+    "exact_ready_test_bytes_tests/test_hyperliquid_paper_rebalance_threshold.py": true
+  },
+  "original_git_identity": {
+    "head": "0407388559d54612603380793fc26a98937697fc",
+    "branch": "main",
+    "index": {
+      "C:\\dev\\ducketz\\.git\\index": {
+        "exists": true,
+        "sha256": "7e0705c0baf891905118a6b69e1b43d10643a969c11340b579d0e1da3672df4e",
+        "size": 363126
+      }
+    }
+  },
+  "observed_git_identity": {
+    "head": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+    "branch": "main",
+    "index": {
+      "C:\\dev\\ducketz\\.git\\index": {
+        "exists": true,
+        "sha256": "e8356853a389cf72a4d4e2ed2ef618a7dffe05a06b47404b027f5d9d46fea786",
+        "size": 378629
+      }
+    }
+  },
+  "git_parent": "0407388559d54612603380793fc26a98937697fc",
+  "head_reflog": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b HEAD@{2026-10-01T21:56:06-07:00} commit: Add detailed research and configuration notes for September 30 explorations.",
+  "git_status": [
+    "?? artifacts/analysis/overnight-20261001/",
+    "?? tests/test_hyperliquid_paper_rebalance_threshold.py"
+  ],
+  "source_hash_delta_count": 3,
+  "source_hash_deltas": {
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_config.py": {
+      "baseline": {
+        "exists": true,
+        "sha256": "7bf428f3674c75fb83559f204d205730ac74f9e0b84d33e992930235191ae8ad",
+        "size": 9825
+      },
+      "current": {
+        "exists": true,
+        "sha256": "672894192ebc507d1f6bc74a5de876adff75b258d801d28c7c4ca2e5f5bc5ac0",
+        "size": 9930
+      }
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_policy.py": {
+      "baseline": {
+        "exists": true,
+        "sha256": "0dce039a71ab18b0cf9c52b6b049560e90cd530269a9128265b74b7b99636fb5",
+        "size": 19185
+      },
+      "current": {
+        "exists": true,
+        "sha256": "852115ab82da104915c25460cc5f6ee9f56ce4d3d2c69eb98de6743c3805854a",
+        "size": 19184
+      }
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_rebalance_threshold.py": {
+      "baseline": {
+        "exists": true,
+        "sha256": "681963f3d428dafc19007ffa3f91c01b50aa92591370a4f31682a90902a0ef78",
+        "size": 1126
+      },
+      "current": {
+        "exists": true,
+        "sha256": "712b84e6a0adf35e1fc3bbea5b540d8405e3a1e41b9caa815bfa17c9874b23bd",
+        "size": 1323
+      }
+    }
+  },
+  "attribution": {
+    "tests/test_hyperliquid_model_config.py": {
+      "evidence": "Exact blob in separately authored local main commit; commit also recorded by Atlas main notice",
+      "source_commit": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+      "author_name": "Jeremy Klein",
+      "sha256": "672894192ebc507d1f6bc74a5de876adff75b258d801d28c7c4ca2e5f5bc5ac0",
+      "limitation": "Commit metadata and Atlas factual notice identify origin; this audit did not observe the originating edit session or infer operating authority."
+    },
+    "tests/test_hyperliquid_paper_policy.py": {
+      "evidence": "Exact blob in separately authored local main commit; commit also recorded by Atlas main notice",
+      "source_commit": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+      "author_name": "Jeremy Klein",
+      "sha256": "852115ab82da104915c25460cc5f6ee9f56ce4d3d2c69eb98de6743c3805854a",
+      "limitation": "Commit metadata and Atlas factual notice identify origin; this audit did not observe the originating edit session or infer operating authority."
+    },
+    "tests/test_hyperliquid_paper_rebalance_threshold.py": {
+      "evidence": "Separate hyperliquid-paper-improvement ready record and successful isolated courier publication",
+      "ready_record": "C:\\dev\\ducketz\\scratch\\cross-pc\\ready\\20261002T051236Z-2684b53d4193489286e2b4a7c732049e.json",
+      "producer": "hyperliquid-paper-improvement",
+      "source_commit": "047f6ad665f1fc9b44866c75384cbb86878aa994",
+      "pushed_remote_sha": "047f6ad665f1fc9b44866c75384cbb86878aa994",
+      "current_source_stage": "pushed",
+      "runtime_stage": "not_deployed",
+      "sha256": "712b84e6a0adf35e1fc3bbea5b540d8405e3a1e41b9caa815bfa17c9874b23bd"
+    }
+  },
+  "fallback_files": 23,
+  "fallback_dependencies": 176,
+  "preparation_source_count": 341,
+  "evidence_bindings": {
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-baseline.json": "070a743365ed302cb7d5d35aa0e5f136579336612b22e7b4c93b2a747c85e84a",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\preservation-concurrent-git-review.json": "2372a112b22d8a0fc4903556047d5208ca25f0a3c5087684400049d5be873e63",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\candidate-manifest.json": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\apply-progress.json": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\apply-receipt.json": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\audit-environment-baseline.json": "50d28829b496e413b01a076854f92ffaa6c623e13f6f9e86f53f0a5bd7e3b49d",
+    "C:\\dev\\ducketz\\scratch\\cross-pc\\main-notice-24cf2636f6b467efbce5f92bcd3f9d6e4588469b.json": "0ce8a6daf86a20a9d6068636981dd0ddaed49fecc47cdec8937dc5800d8c3609",
+    "C:\\dev\\ducketz\\scratch\\cross-pc\\ready\\20261002T051236Z-2684b53d4193489286e2b4a7c732049e.json": "40d51ddc7b7d22b41122e9c424336d8aa9cc56087d6d6a5d2331d75209d58ae4",
+    "C:\\dev\\ducketz\\scratch\\cross-pc\\git-receipts-v2.json": "9baadc10eec77a881f66947b42b8f4162baea9a0df9389a281e2334712787501",
+    "C:\\dev\\ducketz\\scratch\\cross-pc\\source-notice-paper-threshold-20261002.json": "b8d5c5999144f7736b47f95feb996015e2591c4d075fea2c11de4b9a8428b15e"
+  },
+  "interpretation": "The overnight source and controls are unchanged. The main commit recorded prior checkout work, while three unrelated Hyperliquid test files differ from the immutable prelaunch bytes. Preserve original baseline and literal preserved_git_identity=false; final reporting must attribute this independent commit and exact test changes rather than claim the entire checkout was unchanged. No training restart or fallback reinstallation is justified by this Git identity change.",
+  "limitations": [
+    "No new test suite run for unrelated Hyperliquid changes; their external evidence remains separately attributed.",
+    "One initial git status inspection used default optional locking and could refresh index cache metadata; no stage/commit/reset/checkout or source operation was issued by this audit. Subsequent git calls used GIT_OPTIONAL_LOCKS=0.",
+    "The 742-file preservation inventory covers its declared source roots and suffixes, not every repository artifact or config. The separate 341 preparation fingerprints and exact fallback 23+176 dependencies were all checked.",
+    "Publication, main integration, local installed bytes and running process version remain distinct. No peer state or live trader deployment is asserted."
+  ],
+  "source_writes": 0,
+  "control_writes": 0,
+  "ledger_writes": 0,
+  "git_stage_commit_reset_checkout_actions": 0,
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "order_actions": 0
+}

@@ -1,0 +1,178 @@
+{
+  "observed_at_utc": "2026-10-02T05:06:29.194457+00:00",
+  "native_run_id": "20261002T040848.225355Z",
+  "status": "QUIET_COST_SCOPE_COMPLETED_DURING_INSPECTION",
+  "observations": [
+    "At05:04-05:05Z COST.OPT Oct1 full-day staging contained only provider.dbn.zst.",
+    "During the following read, staging had atomically moved to published destination; COST receipt records05:05:23.863403Z and cursor advanced at05:05:24.189479Z.",
+    "CROX subsequently completed; no restart or repair is indicated by this quiet period."
+  ],
+  "source_interpretation": "databento_opra_history.py2240-2247 waits inside native timeseries.get_range before normalization/publication; lack of intermediate log is consistent with bounded download work. No exact internal Python stack or retry count was inspected.",
+  "evidence": [
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\cbbo-1m\\COST.OPT\\dates\\2026-10-01\\segments\\full-day\\receipt.json",
+      "sha256": "3c2f1f755ce150340e74eefb3f7432842fa6d42787b9de646f6aa17e68a97fd7",
+      "payload": {
+        "dataset": "OPRA.PILLAR",
+        "manifest_checksum_sha256": "3f4673cbdbb1479661df85c4efc083755460dc9f4ea950d416664a4cd4201d36",
+        "normalized_checksum_sha256": "d578c34035f310da764b2feb175670bc22d7c5bafe3a6f8f14d280cc0c10c89d",
+        "partition_date": "2026-10-01",
+        "partition_end": "2026-10-02T00:00:00+00:00",
+        "partition_start": "2026-10-01T00:00:00+00:00",
+        "provider": "databento-opra",
+        "provider_duplicate_rows_removed": 0,
+        "published_at": "2026-10-02T05:05:23.863403+00:00",
+        "raw_checksum_sha256": "5d6c35c5347b664a3c3218be98b2d4a60462c211353e3522fea780e9f9c53558",
+        "schema": "cbbo-1m",
+        "schema_version": "databento-opra-partition-receipt-v1",
+        "time_segment": null
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\cbbo-1m\\COST.OPT\\dates\\2026-10-01\\segments\\full-day\\manifest.json",
+      "sha256": "3f4673cbdbb1479661df85c4efc083755460dc9f4ea950d416664a4cd4201d36",
+      "payload": {
+        "dataset": "OPRA.PILLAR",
+        "level": "L1",
+        "normalized": {
+          "checksum_sha256": "d578c34035f310da764b2feb175670bc22d7c5bafe3a6f8f14d280cc0c10c89d",
+          "columns": [
+            "ts_event",
+            "rtype",
+            "publisher_id",
+            "instrument_id",
+            "side",
+            "price",
+            "size",
+            "flags",
+            "bid_px_00",
+            "ask_px_00",
+            "bid_sz_00",
+            "ask_sz_00",
+            "bid_pb_00",
+            "ask_pb_00",
+            "symbol",
+            "ts_recv"
+          ],
+          "duplicate_natural_key_rate": 0.0,
+          "duplicate_natural_key_rows": 0,
+          "earliest_event_timestamp": "2026-10-01T13:30:01.407585045+00:00",
+          "earliest_partition_timestamp": "2026-10-01T13:30:01.407585045+00:00",
+          "event_timestamp_column": "ts_event",
+          "latest_event_timestamp": "2026-10-01T19:59:58.348225762+00:00",
+          "latest_partition_timestamp": "2026-10-01T19:59:58.348225762+00:00",
+          "natural_key_columns": [
+            "ts_recv",
+            "publisher_id",
+            "instrument_id",
+            "symbol"
+          ],
+          "null_counts": {
+            "ask_pb_00": 0,
+            "ask_px_00": 0,
+            "ask_sz_00": 0,
+            "bid_pb_00": 0,
+            "bid_px_00": 89276,
+            "bid_sz_00": 0,
+            "flags": 0,
+            "instrument_id": 0,
+            "price": 984596,
+            "publisher_id": 0,
+            "rtype": 0,
+            "side": 0,
+            "size": 0,
+            "symbol": 0,
+            "ts_event": 984596,
+            "ts_recv": 0
+          },
+          "null_rates": {
+            "ask_pb_00": 0.0,
+            "ask_px_00": 0.0,
+            "ask_sz_00": 0.0,
+            "bid_pb_00": 0.0,
+            "bid_px_00": 0.07097344021165788,
+            "bid_sz_00": 0.0,
+            "flags": 0.0,
+            "instrument_id": 0.0,
+            "price": 0.7827430142326885,
+            "publisher_id": 0.0,
+            "rtype": 0.0,
+            "side": 0.0,
+            "size": 0.0,
+            "symbol": 0.0,
+            "ts_event": 0.7827430142326885,
+            "ts_recv": 0.0
+          },
+          "parquet_schema": "ts_event: timestamp[ns, tz=UTC]\nrtype: uint8\npublisher_id: uint16\ninstrument_id: uint32\nside: large_string\nprice: double\nsize: uint32\nflags: uint8\nbid_px_00: double\nask_px_00: double\nbid_sz_00: uint32\nask_sz_00: uint32\nbid_pb_00: uint16\nask_pb_00: uint16\nsymbol: large_string\nts_recv: timestamp[ns, tz=UTC]\n-- schema metadata --\npandas: '{\"index_columns\": [\"ts_recv\"], \"column_indexes\": [{\"name\": null,' + 2098",
+          "partition_timestamp_column": "ts_event",
+          "path": "normalized.parquet",
+          "provider_duplicate_rows_removed": 0,
+          "row_count": 1257879,
+          "size_bytes": 14851104
+        },
+        "partition_date": "2026-10-01",
+        "partition_end": "2026-10-02T00:00:00+00:00",
+        "partition_start": "2026-10-01T00:00:00+00:00",
+        "provider": "databento-opra",
+        "provider_delivery": {
+          "mode": "timeseries-stream"
+        },
+        "provider_entitlement": {
+          "configured_included_start": "2025-10-02",
+          "dataset_start": "2013-04-01",
+          "entitled_end": "2026-10-02",
+          "entitled_start": "2025-10-02",
+          "included_history_policy": {
+            "unit": "months",
+            "value": 12
+          },
+          "level": "L1"
+        },
+        "published_at": "2026-10-02T05:05:23.863403+00:00",
+        "raw": {
+          "checksum_sha256": "5d6c35c5347b664a3c3218be98b2d4a60462c211353e3522fea780e9f9c53558",
+          "path": "provider.dbn.zst",
+          "size_bytes": 25220523
+        },
+        "request": {
+          "dataset": "OPRA.PILLAR",
+          "end": "2026-10-02T00:00:00+00:00",
+          "schema": "cbbo-1m",
+          "start": "2026-10-01T00:00:00+00:00",
+          "stype_in": "parent",
+          "symbols": [
+            "COST.OPT"
+          ]
+        },
+        "schema": "cbbo-1m",
+        "schema_version": "databento-opra-partition-v1",
+        "symbol_scope": "COST.OPT",
+        "sync_version": "databento-opra-standard-sync-v1",
+        "time_segment": null
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\cbbo-1m.json",
+      "sha256": "7cfcda0da6a99e9824bb5f980e3883fb49c05b81f40e1816a7db3ce07abe6800",
+      "payload": {
+        "completed_through": "2026-10-02",
+        "dataset": "OPRA.PILLAR",
+        "lookback_policy": {
+          "unit": "days",
+          "value": 20
+        },
+        "provider": "databento-opra",
+        "provider_symbol": "COST.OPT",
+        "requested_start": "2026-09-12",
+        "schema": "cbbo-1m",
+        "schema_version": "options-opra-symbol-history-v5",
+        "symbol": "COST",
+        "updated_at": "2026-10-02T05:05:24.189479+00:00"
+      }
+    }
+  ],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "source_changes": 0,
+  "runtime_actions": 0
+}

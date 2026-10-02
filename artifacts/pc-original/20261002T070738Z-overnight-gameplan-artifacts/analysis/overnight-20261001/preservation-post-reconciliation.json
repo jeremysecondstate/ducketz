@@ -1,0 +1,4440 @@
+{
+  "captured_at": "2026-10-02T04:13:35.832441+00:00",
+  "scope": "LOCAL_READ_ONLY_HASHES_AND_SANITIZED_METADATA_NO_BROKER_PROVIDER_LOCK_OR_PRODUCTION_WRITE",
+  "native_run": "PRELAUNCH_OCTOBER1_SOURCE_OCTOBER2_ACTION",
+  "controls_environment_launcher_and_watchlist": {
+    "C:\\DATASTORE\\controls\\gameplan-stock-trader\\operator-intent.txt": {
+      "exists": true,
+      "sha256": "f2a16447372b31a6ef3e2ee462a6e63167d45d1571cf85a6d5eb047383ad9f4b",
+      "size": 37
+    },
+    "C:\\DATASTORE\\controls\\loop-c\\current\\halt-control.json": {
+      "exists": true,
+      "sha256": "2b770863ce342da7fd405808d8d7320e8259496354610293871219800f7e9566",
+      "size": 274
+    },
+    "C:\\DATASTORE\\controls\\loop-c\\current\\risk-approval.json": {
+      "exists": true,
+      "sha256": "ee2c3823a2f4bc324742ef99e65d676b01d2f7d49c62060401204f7b953e0b28",
+      "size": 2647
+    },
+    "C:\\DATASTORE\\controls\\stock-trader\\operator-intent.txt": {
+      "exists": true,
+      "sha256": "c0f3a622f8f97a062af6b641454f4c63e20542e193fc47dfb7027b60b7af7c84",
+      "size": 29
+    },
+    "C:\\dev\\ducketz\\.env": {
+      "exists": true,
+      "sha256": "422795841ce713febe7815512a55103a4d9e531c2a0ec0147d9c4a9546f6d852",
+      "size": 5118
+    },
+    "C:\\dev\\ducketz\\datafetching\\watchlist.txt": {
+      "exists": true,
+      "sha256": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+      "size": 196
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\start_stock_session.ps1": {
+      "exists": true,
+      "sha256": "d39e8f06007eb78eab8ad3adf2826b326d2b505c649960cbf001ec74680a15a4",
+      "size": 12657
+    },
+    "C:\\dev\\ducketz\\Start-Gameplan-Trader.cmd": {
+      "exists": true,
+      "sha256": "07cec07c05d28a0d738915ba7d1eb418fd104d62a67d316384c50421f4cca505",
+      "size": 401
+    }
+  },
+  "ledger": {
+    "physical_files": {
+      "C:\\DATASTORE\\state\\independent-stock-trader\\holdings.sqlite3": {
+        "exists": true,
+        "sha256": "252febdd2bceab3a021c9694dd39a03b8312e0c795a1af0aee1f3e1fe44d5fb4",
+        "size": 64638976
+      },
+      "C:\\DATASTORE\\state\\independent-stock-trader\\holdings.sqlite3-shm": {
+        "exists": false,
+        "sha256": null,
+        "size": null
+      },
+      "C:\\DATASTORE\\state\\independent-stock-trader\\holdings.sqlite3-wal": {
+        "exists": false,
+        "sha256": null,
+        "size": null
+      }
+    },
+    "table_counts": {
+      "allocations": 202,
+      "blocks": 0,
+      "cancellations": 11,
+      "evidence": 31667,
+      "fallback_days": 1,
+      "fills": 764,
+      "inventory_assignments": 7,
+      "metadata": 2,
+      "reservations": 729,
+      "snapshots": 20880
+    },
+    "table_sha256": {
+      "allocations": "b7006c1502d69e1e9edb2b0c67a5f09d0d37b39e2f2dccd1e33579b50e22c391",
+      "blocks": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "cancellations": "04466d79f095397bdcd12b8662fee8be1cf2541564942cc61a8b28fe955bf11c",
+      "evidence": "897e7012a0c85a7d7fadc7a93797b42c79f22a0291c465991a5c4c86e4607fa8",
+      "fallback_days": "9c41d7e95d4814284d5100018d16a30d48f4c2f46192156a74dc63739e5747ac",
+      "fills": "66ed430f4e107611d2ec298e4831e1d4cd500602609488ddf95aba0a9fcc6eb6",
+      "inventory_assignments": "1dd30b62293a41fe6403f19f739b91a381ae2b76cbf4e0dbdbaeba644dbe3b16",
+      "metadata": "d7db7ae731b017725a0483369055b8fc033defa96ad2db1597bfcf2dd6d52202",
+      "reservations": "5b265d955a13dd11a825b16490954095cc5279476bc007735790f387c8e89c19",
+      "snapshots": "017fb5d0280ef793c28f3d0385baa49983084797cbcc32869489d9496d309a2a"
+    },
+    "logical_sha256": "4d8d1fbb54d10e28b3770ddcd55c3073599ae3fecc389c8b6944c0feba7b0e82",
+    "reservation_status_counts": {
+      "FILLED": 693,
+      "CANCELLED": 34,
+      "REJECTED": 2
+    },
+    "pending_reservation_count": 0,
+    "persistent_block_count": 0,
+    "physical_files_unchanged_during_read": true
+  },
+  "entry_and_recovery_claims": {
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T170000Z.json": {
+      "exists": true,
+      "sha256": "5b756619fc78c0c08a1426cdd35f3250870ca025439287d58d76b9d298181591",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T180000Z.json": {
+      "exists": true,
+      "sha256": "701620455433d373855f6940d6c3d9efec76aa3ae1701c3c3b69fe4eac484a9a",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T190000Z.json": {
+      "exists": true,
+      "sha256": "1bb13c2a645ca27e1aebea73b42ff48f26aadd896fff41d9d0b2d7da53041159",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T200000Z.json": {
+      "exists": true,
+      "sha256": "ed5d185013f724caa463129480378250edaacdfa267f24309baf14f10ed69a5a",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T210000Z.json": {
+      "exists": true,
+      "sha256": "8dd1fb6009fd1b10a8dacc8fc4da31fd21008aec43a0c5a48e9d5ff617b03ef4",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T220000Z.json": {
+      "exists": true,
+      "sha256": "e63c34d58a3b3b15b5dfeba28687af1404a7258660370fb4dcb5fcc2b4e1bdc0",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260908T230000Z.json": {
+      "exists": true,
+      "sha256": "45a192a63e568f898894d02925429edb1ba3fb85aab9f26db33cc41b3254c55c",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T110000Z.json": {
+      "exists": true,
+      "sha256": "6e422dc55137813aa2084abd20a0da4849bfdcbd6b17847b227bd126deb49f19",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T120000Z.json": {
+      "exists": true,
+      "sha256": "ea9a32098ab9667291bfc457fee2571a09fbf7f43ccdcf8f43e82482a614be86",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T130000Z.json": {
+      "exists": true,
+      "sha256": "7a2b9fa3537fefc08b6b371657fb98ae2e19b0965c1a138e9f412b875e3fc9d4",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T140000Z.json": {
+      "exists": true,
+      "sha256": "6611b429f7f65384f0cb74fc2c590281af443a58afa79fc82b2def0c20d236d1",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T150000Z.json": {
+      "exists": true,
+      "sha256": "f6e759b395db149ab3912683f3a01abcad728e5c5ca888862c4628df6e25814f",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T160000Z.json": {
+      "exists": true,
+      "sha256": "7e83f448dcb0de4d4a10de8425ce003a593fd863c1487a2c82158c885cfea426",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T170000Z.json": {
+      "exists": true,
+      "sha256": "0740277afe819eb1b1744e15efbca2d52f20c6505795c8a3a50644032bb4e0bb",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T180000Z.json": {
+      "exists": true,
+      "sha256": "af46b2a02811d30ab3f6555dbb4848863e183bbfd51ebe687a371427e609033a",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T190000Z.json": {
+      "exists": true,
+      "sha256": "2d3caf25ebb10caad3c0b06962b9b28be972a995f554aac4b1342a6527bc82a0",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T200000Z.json": {
+      "exists": true,
+      "sha256": "e47447465231ce0582e5e20de5bfb3a4f216516a20112f2c8ffd25b5f055018b",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T210000Z.json": {
+      "exists": true,
+      "sha256": "cf2126d01c7632a464ef047c651528573b85005ec7f5d708b240af9fbc450d93",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T220000Z.json": {
+      "exists": true,
+      "sha256": "aff37784625565f21cd92dd15ef68faa45acf767d3226ae64f9aedabb7cabca1",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260909T230000Z.json": {
+      "exists": true,
+      "sha256": "631f58032407fb7bf963d696c45d13b7fda33c37eef4bee6f4a00a241a7dd31a",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T110000Z.json": {
+      "exists": true,
+      "sha256": "dc134d7c65fc0a478c495a57573bf8640552719e47dd0d01568cf3cc6d84e64f",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T120000Z.json": {
+      "exists": true,
+      "sha256": "526859a95eb7497308fa9d34de59fb455efed761ae25de542077710c4a3d0811",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T130000Z.json": {
+      "exists": true,
+      "sha256": "9b3800cee4c27c950f56e0695891b65b4ee6a383d823888a5e93c6a9cbb6124c",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T140000Z.json": {
+      "exists": true,
+      "sha256": "fa609bdd6539fb3cc71a2cebe3b84619cfbe6948d4e0cafb26cab5339354ce3a",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T150000Z.json": {
+      "exists": true,
+      "sha256": "1a73a7950840682ad96c111f7b863f0b85883f45a0227520531ab6b9fcc89f11",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T160000Z.json": {
+      "exists": true,
+      "sha256": "57cf8f395f239ea1a295fad3ed31e1cccdedfc83bcb1213550a43d73d9b29947",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T170000Z.json": {
+      "exists": true,
+      "sha256": "a4fe962ca05116edef80f987543c2838989be7c0bf6312f4938519a831d144a3",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T180000Z.json": {
+      "exists": true,
+      "sha256": "e257da0b50edfc8c78bc864df1fca9101c37a0cef64579df132a4ca816653ec0",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T190000Z.json": {
+      "exists": true,
+      "sha256": "477801b5fac1b83fc7afa6696fb64f9f616e83719c9e4de4157ab27032bae40a",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T200000Z.json": {
+      "exists": true,
+      "sha256": "71d8e10c9aa819dcf79a9a238380481305871d68d2370f89e3b272b65849f1bb",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T210000Z.json": {
+      "exists": true,
+      "sha256": "118ebed617468f089c05fbcae8d1c23217d813d3622e13f5ce34362646fbf03f",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T220000Z.json": {
+      "exists": true,
+      "sha256": "4c88d71f3940fab2804e79acf1a47972ba7f63e07554fb5dfbe86c9615b36a4d",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260910T230000Z.json": {
+      "exists": true,
+      "sha256": "9b304516e3380b429cadb9b4b12935468aa589ad81c6c71af616eef84f5c9fbe",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T110000Z.json": {
+      "exists": true,
+      "sha256": "3c386b7a4237e1e41b51866479e14763636a2e3db7d22ddd846a00ec367147b4",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T120000Z.json": {
+      "exists": true,
+      "sha256": "cb46780eb1a654ca901bfb63b2a8cb7b2fe186b1f25fd6824e6ef477fad1585c",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T130000Z.json": {
+      "exists": true,
+      "sha256": "4bc1ddb1a8b0895e78acdf2a0d77105280875fe61852f5c1ef7a7d20dd0f8bec",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T140000Z.json": {
+      "exists": true,
+      "sha256": "97c96752ce94d704441eb52b310660af2ebefc1050142ac7020544f6e2f61405",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T150000Z.json": {
+      "exists": true,
+      "sha256": "6048dbd6e10b8a41a572f0da6f779f49b533a900d6b0ec2fb968af04d8e495b9",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T160000Z.json": {
+      "exists": true,
+      "sha256": "9a3775893509a7ca4a08e32bcc51a479435e051057992aae28d4c7544eb04b97",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T170000Z.json": {
+      "exists": true,
+      "sha256": "387e8b934d5d008f0d1107da7ef9447b1875b050d98ef256390ebee89a682d79",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T180000Z.json": {
+      "exists": true,
+      "sha256": "f84934da9915ec91bd5946442b90335b9f186873d675d309574910d91cf2ad10",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T190000Z.json": {
+      "exists": true,
+      "sha256": "1212c40ce0aec97fa946b65c3ead4e3f2b2d11efe7fefa0c85d6b051d1c90a31",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T200000Z.json": {
+      "exists": true,
+      "sha256": "f7356809eeee93c9f7a6f3e5c62ad639506b99e30bcdcac4e74749312eab66cc",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T210000Z.json": {
+      "exists": true,
+      "sha256": "7acd956718c96e6b89118e1bcb1d95a444d7db330ff4cf2d03285540fbd78188",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T220000Z.json": {
+      "exists": true,
+      "sha256": "38ccd2c9d6cfa5a19354de9aaac2acd3ecd89ceb5d0f0563753b378f03662637",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260911T230000Z.json": {
+      "exists": true,
+      "sha256": "7f9e30d26de807d1a09e3682ede16f32fc2443339bc698aa23c5d44ea73f8a3e",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T110000Z.json": {
+      "exists": true,
+      "sha256": "8be6119fd10bf8148663af787bf33b0d371966d4f02fe0f851cf1ab6a1839b08",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T120000Z.json": {
+      "exists": true,
+      "sha256": "3c0298aa0a39ffcde3f5328dfdec47986036f09409f249316f35723f75cb6eba",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T130000Z.json": {
+      "exists": true,
+      "sha256": "82320cc32f1ce885622c7feeec873251a0cfb474451182b848dd006aa12c8146",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\entry-slots\\20260914T140000Z.json": {
+      "exists": true,
+      "sha256": "642a9f4adeef237a92124b8848673d9320e2e99a36758c1968b4f471b3bb4ab4",
+      "size": 85
+    },
+    "C:\\DATASTORE\\state\\independent-stock-trader\\quote-recovery-slots\\87c0cbe725dcab43e35f17e58430a6a7bae308705ddc6dec2b38f08fd273ba1b.json": {
+      "exists": true,
+      "sha256": "496a110c17776392118da0977743895fb826bff4d11380eb7277d7bc8c64cfa6",
+      "size": 453
+    }
+  },
+  "trader_session_status_file": {
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json": {
+      "exists": true,
+      "sha256": "c523945348292e1942d0d4ecbb2faacac2df9de37d39895f6c01f95d41164791",
+      "size": 1680
+    }
+  },
+  "trader_status": {
+    "status": "FINISHED_WITH_ERRORS",
+    "action_date": "2026-10-01",
+    "as_of": null
+  },
+  "last_stock_decision_run": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20261002T000002.756828Z",
+  "immutable_october1_sources": {
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z": {
+      "action_date": "2026-10-01",
+      "files": {
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\archive-history.json": {
+          "exists": true,
+          "sha256": "83bd11b2e57749db5c7809f325082da20f0042bb63d7bf81407e25dfa610eed3",
+          "size": 187771
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\forecasts.parquet": {
+          "exists": true,
+          "sha256": "58e84d895a7cf8f9ffa62c263b92e840f06199d71da8fee1efb76ba8178051fb",
+          "size": 60479
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\gameplan.json": {
+          "exists": true,
+          "sha256": "d1894b21d5bdb6a041a27581263bb05cac1da3edcbaf0bb8a555f2d86d16b745",
+          "size": 553866
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\manifest.json": {
+          "exists": true,
+          "sha256": "6d4d8902026e2013d95b3ef850132952bd26a7ba5953a49b6437f33bf7d6bd93",
+          "size": 958012
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\model-reports.json": {
+          "exists": true,
+          "sha256": "d2a39d3f0ac59a6182fba3c3e0b7e9a61ffc13bf82bfffb2ffbd7052722446a4",
+          "size": 127497
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1d\\model.joblib": {
+          "exists": true,
+          "sha256": "e0fcc812d973daffc59f6138c598f90c3901c903d52422f0378ea66fc2224871",
+          "size": 13402
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1h\\model.joblib": {
+          "exists": true,
+          "sha256": "d30c73159043640dc01d852c4d624e834a6280b2c0e2666577c7884420d5822d",
+          "size": 287285
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1w\\model.joblib": {
+          "exists": true,
+          "sha256": "51e7afe68b773d59cc5d2a92209be80b4aa174042c8e7bf46c5d97fe7ff348d5",
+          "size": 17686
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\4h\\model.joblib": {
+          "exists": true,
+          "sha256": "3602599b0e876c78a7007b6cdd5602f8be1edfdb7b7ae21acb255a6b5a8fff61",
+          "size": 207868
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\option-strategy-intents.parquet": {
+          "exists": true,
+          "sha256": "20159ba56e31884d7f2b0a067046e3219503ce5429121af86b863a30f7518fd7",
+          "size": 23652
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\prior-gameplan-evaluations.parquet": {
+          "exists": true,
+          "sha256": "11aa1598546c22c5f1457b5a154b6e998e1adc8c2222cde087b7f6a759973844",
+          "size": 273527
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\receipt.json": {
+          "exists": true,
+          "sha256": "0c663d699ce6a255d4ad72bf8201acc04933f2d1ca3b9da6cee25ac2a6913b51",
+          "size": 1993
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1d.parquet": {
+          "exists": true,
+          "sha256": "4f454d4734e33c78a6d1a663ab4e08e46b673f521182a478a10edf495fc9aaa2",
+          "size": 3455601
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1h.parquet": {
+          "exists": true,
+          "sha256": "e902d01f8ab15dfd85aa65204e1ee78d5e583e286019282faab7a11cd1970bb0",
+          "size": 11532965
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1w.parquet": {
+          "exists": true,
+          "sha256": "6af1c757d8e60b898cb00a63fcd503e658eb33d836a3e75f1c83395bd8663bcc",
+          "size": 1958748
+        },
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-4h.parquet": {
+          "exists": true,
+          "sha256": "28e00307e42724810b10b11fd18562136b3200c1414b2779a378db10cf119ec5",
+          "size": 6795978
+        }
+      },
+      "checks": {
+        "archive-history.json": true,
+        "forecasts.parquet": true,
+        "gameplan.json": true,
+        "model-reports.json": true,
+        "models/1d/model.joblib": true,
+        "models/1h/model.joblib": true,
+        "models/1w/model.joblib": true,
+        "models/4h/model.joblib": true,
+        "option-strategy-intents.parquet": true,
+        "prior-gameplan-evaluations.parquet": true,
+        "training-cohort-1d.parquet": true,
+        "training-cohort-1h.parquet": true,
+        "training-cohort-1w.parquet": true,
+        "training-cohort-4h.parquet": true,
+        "manifest_receipt_binding": true,
+        "source_action_date": true
+      }
+    },
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z": {
+      "action_date": "2026-10-01",
+      "files": {
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\account-snapshot.json": {
+          "exists": true,
+          "sha256": "aaa943b280db61f8c8e9cc628ba366c6a0d2b09755de5074734f82c54f137cba",
+          "size": 17915
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\direction-ledger.json": {
+          "exists": true,
+          "sha256": "c8a7166f8829db53ab4dd73419a5b365d8e576e4fa6c678753ffc9d02154e228",
+          "size": 175644
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\Gameplan.md": {
+          "exists": true,
+          "sha256": "08da106a61bd77cb5415173477b52b6b96c2611d5fe4e7492cb3a1d558c77b28",
+          "size": 112192
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\manifest.json": {
+          "exists": true,
+          "sha256": "24ec02714ec1703da9ebc137e6c3b8acdb070dc223fddabfe8e32263bb5e2782",
+          "size": 320948
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\planning-price-path.json": {
+          "exists": true,
+          "sha256": "5e2633d583e09b7cfe477e7b1142d4ef836bc68ad150a538132eecbc47e2b50e",
+          "size": 11868195
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\planning-reference-completion.json": {
+          "exists": true,
+          "sha256": "65d662d599f13daae032590f37798c3096dd6243b2c107806b1be952e76ff556",
+          "size": 1513886
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\price-bands.json": {
+          "exists": true,
+          "sha256": "dfbb0aa00baed28c3a591b4b2c8dbe72dd36a638efd627dd0138f55f199ec02a",
+          "size": 11106631
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\receipt.json": {
+          "exists": true,
+          "sha256": "11314c60f6ebf75d05f11990731e914abc6867cc5780b426bcd1a4a58d363155",
+          "size": 2036
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\report.json": {
+          "exists": true,
+          "sha256": "df9f2ad7fbbb3c57a80f722651e42a71105b39aeaec5cd09885cd42394df0d30",
+          "size": 2372885
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\synthetic-reference-bars.parquet": {
+          "exists": true,
+          "sha256": "7bbddcbac78e894241e7050e0d94b9731f99dd7972df300fab5c90063f55f083",
+          "size": 15403
+        },
+        "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\trade-plan.parquet": {
+          "exists": true,
+          "sha256": "d35e3f73fdbe2185f1ffe6135c1d751f01b04da89477e3acdd028ee2d0c57122",
+          "size": 126569
+        }
+      },
+      "checks": {
+        "Gameplan.md": true,
+        "account-snapshot.json": true,
+        "direction-ledger.json": true,
+        "planning-price-path.json": true,
+        "planning-reference-completion.json": true,
+        "price-bands.json": true,
+        "report.json": true,
+        "synthetic-reference-bars.parquet": true,
+        "trade-plan.parquet": true,
+        "manifest_receipt_binding": true,
+        "source_action_date": true
+      }
+    }
+  },
+  "windows_launcher_configuration": [
+    {
+      "name": "Ducketz Independent Stock Session",
+      "task_path": "\\",
+      "actions": [
+        {
+          "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "WorkingDirectory": "C:\\dev\\ducketz",
+          "arguments_sha256": "990b03759baf80be01b28eebc474ebbe78ab34c42eca523d608b9606980e44e4",
+          "recognized_flags": []
+        }
+      ],
+      "triggers": [
+        {
+          "Enabled": true,
+          "StartBoundary": "2026-09-08T03:55:00",
+          "EndBoundary": null,
+          "DaysOfWeek": 62,
+          "WeeksInterval": 1,
+          "DaysInterval": null
+        }
+      ],
+      "settings": {
+        "Enabled": false,
+        "StartWhenAvailable": true,
+        "WakeToRun": true,
+        "RestartCount": 5,
+        "RestartInterval": "PT1M",
+        "MultipleInstances": 2,
+        "ExecutionTimeLimit": "PT14H"
+      },
+      "action_configuration_sha256": "89649b1f56479c14bc30fcea8d0c449a984ca2c4f930668286716d98fad8e493",
+      "observed_task_state": "Disabled"
+    }
+  ],
+  "automation_schedule_model_policy_metadata": [
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\install-gameplan-fallback-after-close\\automation.toml",
+      "sha256": "6e042e9651f17aa7520f27bc2f544e35786c8413c83c40ec022abd553c6c7c76",
+      "metadata": {
+        "id": "install-gameplan-fallback-after-close",
+        "kind": "heartbeat",
+        "name": "Install Gameplan fallback after close",
+        "status": "ACTIVE",
+        "rrule": "FREQ=DAILY;COUNT=1;BYHOUR=17;BYMINUTE=10;BYSECOND=0"
+      },
+      "policy_prompt_sha256": "d4eda0ac31be15a364418845a89df8059950f058932a355961af29a7750e1d44"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loop-c-weekly-operator-review\\automation.toml",
+      "sha256": "8af7c7495fe542a7488324175003349c5ae8e2b4cd379d43bcddcab2ddba4045",
+      "metadata": {
+        "id": "loop-c-weekly-operator-review",
+        "kind": "cron",
+        "name": "Loops Gameplan Weekly Review",
+        "status": "ACTIVE",
+        "rrule": "FREQ=WEEKLY;BYDAY=SA;BYHOUR=9;BYMINUTE=0",
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "medium",
+        "execution_environment": "local"
+      },
+      "policy_prompt_sha256": "a4f6c3fb48b2c4eef422ef22eccb1fd3fbe9cfe2617cdbaf65d898b809f18c90"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-hourly-operations\\automation.toml",
+      "sha256": "3f1c9d9eabda3a10e19195214e0f64318cc8979c46f6254eb1c5894834b0ccc1",
+      "metadata": {
+        "id": "loops-hourly-operations",
+        "kind": "cron",
+        "name": "Loops Overnight Gameplan",
+        "status": "ACTIVE",
+        "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+        "model": "gpt-6-astra",
+        "reasoning_effort": "ultra",
+        "notification_policy": "failed_runs_only",
+        "execution_environment": "local"
+      },
+      "policy_prompt_sha256": "a2e6eaf8a6baf8b1de8461b323c50d7ead2568d06bf5bca3da57b16ea3212aa4"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-options-strategy-paper-tracking\\automation.toml",
+      "sha256": "1ccaf8ead64bc384d00bf842775b2c41f422eebe02700ba5f7d4e4adcf20c378",
+      "metadata": {
+        "id": "loops-options-strategy-paper-tracking",
+        "kind": "cron",
+        "name": "Loops Options Strategy Paper Tracking",
+        "status": "PAUSED",
+        "rrule": "FREQ=WEEKLY;BYDAY=TU,WE,TH,FR,SA;BYHOUR=0;BYMINUTE=17",
+        "model": "gpt-6-astra",
+        "reasoning_effort": "max",
+        "notification_policy": "failed_runs_only",
+        "execution_environment": "local"
+      },
+      "policy_prompt_sha256": "4981eb63f66a9cde4c21e66bee960d5c780a135d7e60fadec0f6341c84ca8519"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-stock-trader-daily-adaptation\\automation.toml",
+      "sha256": "a7d906e92fef7c2a9634a61cf636ed1e316782ffe9beb86d53dd4d93a1205751",
+      "metadata": {
+        "id": "loops-stock-trader-daily-adaptation",
+        "kind": "cron",
+        "name": "Loops Operations Watch",
+        "status": "ACTIVE",
+        "rrule": "FREQ=MINUTELY;INTERVAL=90;BYSECOND=0",
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "low",
+        "execution_environment": "local"
+      },
+      "policy_prompt_sha256": "3a81d6e4ee394128566012bda323fa0c5d54d308d3a34757960737740e33edd2"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-stock-trader-live-shadow\\automation.toml",
+      "sha256": "c9deff747e9b7e8539affb5f9c3735b3f4c75e41a8ff00fb5a479c2ad16728b8",
+      "metadata": {
+        "id": "loops-stock-trader-live-shadow",
+        "kind": "cron",
+        "name": "Loops Stock Trader \u00e2\u20ac\u201d Daytime Supervision",
+        "status": "ACTIVE",
+        "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55",
+        "model": "gpt-5.6-luna",
+        "reasoning_effort": "low",
+        "execution_environment": "local"
+      },
+      "policy_prompt_sha256": "bfdf69cbdfbb9917295068f6558bfb324880e33f4a450ec24fa5a00ab094ea2a"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\loops-weekly-opportunity-research\\automation.toml",
+      "sha256": "34117b4d1a07afac95006590840250fc0780b720c048276c370177a80107fc52",
+      "metadata": {
+        "id": "loops-weekly-opportunity-research",
+        "kind": "heartbeat",
+        "name": "Loops Weekly Opportunity Research",
+        "status": "ACTIVE",
+        "rrule": "FREQ=WEEKLY;BYDAY=SU;BYHOUR=9;BYMINUTE=0"
+      },
+      "policy_prompt_sha256": "fe734d7466b2395a9b971f6054018bce98a7a8af8c0d7b49e96e5a6474e5bf32"
+    },
+    {
+      "path": "C:\\Users\\7980X\\.codex\\automations\\september-9-gameplan-review\\automation.toml",
+      "sha256": "e2a4554584e71712102ee2f8fd3099fd97464f9062704a5609ae9573e1717593",
+      "metadata": {
+        "id": "september-9-gameplan-review",
+        "kind": "heartbeat",
+        "name": "September 9 Gameplan review",
+        "status": "PAUSED",
+        "rrule": "FREQ=MINUTELY;INTERVAL=30"
+      },
+      "policy_prompt_sha256": "dea2f397107465040a06a037a8df720b41d4dc7dde6d70b9f10877e79821b128"
+    }
+  ],
+  "git_identity": {
+    "head": "0407388559d54612603380793fc26a98937697fc",
+    "branch": "main",
+    "index": {
+      "C:\\dev\\ducketz\\.git\\index": {
+        "exists": true,
+        "sha256": "7e0705c0baf891905118a6b69e1b43d10643a969c11340b579d0e1da3672df4e",
+        "size": 363126
+      }
+    }
+  },
+  "repository_source_hashes": {
+    "C:\\dev\\ducketz\\AGENTS.md": {
+      "exists": true,
+      "sha256": "a6cca31bb93fa1fbfb7a9051a78ed71d009d9acecfdd8b0cfc22f76a329509c9",
+      "size": 2084
+    },
+    "C:\\dev\\ducketz\\app\\__init__.py": {
+      "exists": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "C:\\dev\\ducketz\\app\\config.py": {
+      "exists": true,
+      "sha256": "20f1b5f3110cf48ebdf962c38ade6d23153b209dd53859d075962e151391e65e",
+      "size": 1608
+    },
+    "C:\\dev\\ducketz\\app\\hyperliquid_accounts.py": {
+      "exists": true,
+      "sha256": "76f89f2f23251482357fa2a10f3d210cb8d2392ffa91bc39e46769d277a529b2",
+      "size": 3291
+    },
+    "C:\\dev\\ducketz\\app\\main.py": {
+      "exists": true,
+      "sha256": "6fed782644809585e122638cb230c4dbe0a1c2c52e2c5af04da999bb209e21ee",
+      "size": 4809
+    },
+    "C:\\dev\\ducketz\\app\\models\\__init__.py": {
+      "exists": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "C:\\dev\\ducketz\\app\\models\\market_data.py": {
+      "exists": true,
+      "sha256": "026eab22a38b25035584aa6a615eaae5d8bafbc68f25b5d62d793bb997fea3cf",
+      "size": 752
+    },
+    "C:\\dev\\ducketz\\app\\models\\option_management.py": {
+      "exists": true,
+      "sha256": "c8cd27bef3679035872745f818ceb93de50958e67c2895c38b9ff7c5456a0eda",
+      "size": 14434
+    },
+    "C:\\dev\\ducketz\\app\\models\\past_positions.py": {
+      "exists": true,
+      "sha256": "e8e1a768671fc3b40c1d1b501b82ea5d3b51275a29483d7ea2cd74762fcd53c5",
+      "size": 5697
+    },
+    "C:\\dev\\ducketz\\app\\models\\portfolio.py": {
+      "exists": true,
+      "sha256": "69dccaacda3901c65e0af9984c3f9b2dcd71a9a086ee7f9a2abb156d0849f438",
+      "size": 1970
+    },
+    "C:\\dev\\ducketz\\app\\services\\__init__.py": {
+      "exists": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "C:\\dev\\ducketz\\app\\services\\aggregate.py": {
+      "exists": true,
+      "sha256": "ecc35a3ff43172c2e7fdf1903c22152978a95385af28dce98195425f6e6bc078",
+      "size": 1697
+    },
+    "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py": {
+      "exists": true,
+      "sha256": "59d0d44e8ce3cba999821c38ad61acc86a2c9555a5e19382f116e6a463283ffd",
+      "size": 32315
+    },
+    "C:\\dev\\ducketz\\app\\services\\databento_market_data.py": {
+      "exists": true,
+      "sha256": "5b4c818e0ad74a8b7212324dd4461908737781a801f1d8854d40097bf861e840",
+      "size": 18816
+    },
+    "C:\\dev\\ducketz\\app\\services\\databento_retry.py": {
+      "exists": true,
+      "sha256": "668c8bfc73948e1989a6bb80008f6f53a10901b47c851c5d6295a68941eada9d",
+      "size": 4868
+    },
+    "C:\\dev\\ducketz\\app\\services\\fmp_corporate_data.py": {
+      "exists": true,
+      "sha256": "d7b2049f33e30ee2b7b0e2391bf532e58ce318e62a13988af46f6f2d7b3fa73b",
+      "size": 10972
+    },
+    "C:\\dev\\ducketz\\app\\services\\fmp_macro_context.py": {
+      "exists": true,
+      "sha256": "6a189dfd866b579ac9c49111c40a5d4b31f91d45c7ad6ae7b7ff02b9002cd01e",
+      "size": 22271
+    },
+    "C:\\dev\\ducketz\\app\\services\\hyperliquid.py": {
+      "exists": true,
+      "sha256": "9c18098c40901f9a90913b21057a18755c37cf6ab1d0f4df43e10a85710f3d04",
+      "size": 25437
+    },
+    "C:\\dev\\ducketz\\app\\services\\hyperliquid_account_history.py": {
+      "exists": true,
+      "sha256": "6cca6642b1287761981b80a526d860d876275df7c59bbec818f426c0b01ef696",
+      "size": 7384
+    },
+    "C:\\dev\\ducketz\\app\\services\\hyperliquid_markets.py": {
+      "exists": true,
+      "sha256": "cba985f41eb5cfed7902a0dc5f1489f61b9a820d6651b820e3a07d150c9d5ce8",
+      "size": 4227
+    },
+    "C:\\dev\\ducketz\\app\\services\\hyperliquid_paper_view.py": {
+      "exists": true,
+      "sha256": "3a63cfead6c942fa5c4403907d970f3ab55358e0d5d646101197d434751fcdaa",
+      "size": 49186
+    },
+    "C:\\dev\\ducketz\\app\\services\\hyperliquid_powder_view.py": {
+      "exists": true,
+      "sha256": "1aec243946b6edd1651348fc5aa789cb86656166d95b13d37d7c652d6aea3692",
+      "size": 7949
+    },
+    "C:\\dev\\ducketz\\app\\services\\hyperliquid_trading.py": {
+      "exists": true,
+      "sha256": "70d6ffd2f066c6b6167a8bf2a650166170c6eb7be9b5e709b96b0fedd228ba59",
+      "size": 15254
+    },
+    "C:\\dev\\ducketz\\app\\services\\market_fetch_specs.py": {
+      "exists": true,
+      "sha256": "e30678ad34b71daac98d9bfba4d7f2d2c2b6f2b09a382b82c1915ffa7eaabe4c",
+      "size": 4923
+    },
+    "C:\\dev\\ducketz\\app\\services\\option_exercise.py": {
+      "exists": true,
+      "sha256": "d844214a3854485209ea3abd8e18d9415b080294b0b36c010cc8076c8024a33e",
+      "size": 4857
+    },
+    "C:\\dev\\ducketz\\app\\services\\option_exit_plans.py": {
+      "exists": true,
+      "sha256": "e0799e2e0d8c0e63c8356a1aed0f16f890194061dea415d307aba4d6771d4458",
+      "size": 20142
+    },
+    "C:\\dev\\ducketz\\app\\services\\option_order_review.py": {
+      "exists": true,
+      "sha256": "28948d2681e7ef7bd02afe16a4f5061aae94b03542bc42514fca1c60c8cec416",
+      "size": 67166
+    },
+    "C:\\dev\\ducketz\\app\\services\\option_rolls.py": {
+      "exists": true,
+      "sha256": "5387e8072ad33f4736eb8c4bd6e8cf280e66d24c3f3ba50dd75459576a4a8a95",
+      "size": 52742
+    },
+    "C:\\dev\\ducketz\\app\\services\\option_time_exits.py": {
+      "exists": true,
+      "sha256": "09ddaf1768fcf92434c371613ad0b6afc2232b68d0854147c5f0afe0eb98b42c",
+      "size": 16043
+    },
+    "C:\\dev\\ducketz\\app\\services\\options_chat.py": {
+      "exists": true,
+      "sha256": "72b21d59a0b69f2c6719d0cf5d42cc1c32a46f79287efd5892d2aea01e206f69",
+      "size": 5510
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab.py": {
+      "exists": true,
+      "sha256": "fb93eb7aa7735f6a3bd7c1a8fa62381795da6f5cd17aff5f258f5488842d6433",
+      "size": 46876
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_market_data.py": {
+      "exists": true,
+      "sha256": "e5333b971204960ff3f128dcaedbf615dcd140d8793fb5cf82b3de6ffb5274ac",
+      "size": 8627
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_option_management.py": {
+      "exists": true,
+      "sha256": "59d02ffa5223df6dae22bf7b69723dadf26a551f34a96b7e086ed4f62e6883b2",
+      "size": 25081
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_order_fields.py": {
+      "exists": true,
+      "sha256": "4c7b60eb8142296d82560da879faecd9440a9cc6a8b3a71eeef27391907d8b4a",
+      "size": 2266
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_past_positions.py": {
+      "exists": true,
+      "sha256": "f0df4a5a10891e6d1b86aa2971f15bcd166f8269289b078ae3f8263de3b445b7",
+      "size": 62187
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_policy_inputs.py": {
+      "exists": true,
+      "sha256": "0c1970128fce12cbb6215bf5dcf0b0cc8d77d7e8643fb6449afa77e7c100a9c8",
+      "size": 64583
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_retry.py": {
+      "exists": true,
+      "sha256": "f1edecab4060e834b922fb79f7886216a6c6375079c84ea2479c989cb964dbef",
+      "size": 4650
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_stock_orders.py": {
+      "exists": true,
+      "sha256": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+      "size": 9872
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_strategy_orders.py": {
+      "exists": true,
+      "sha256": "ff733bd9fed40887aff461b508346b7c6f7423020a8b993321e00cb21878b22b",
+      "size": 22401
+    },
+    "C:\\dev\\ducketz\\app\\services\\schwab_token_store.py": {
+      "exists": true,
+      "sha256": "108fa5f86417f7780f4491c0e44e366e00babccea5fa664476e2336a3643e62f",
+      "size": 14099
+    },
+    "C:\\dev\\ducketz\\app\\services\\sec_capital_structure.py": {
+      "exists": true,
+      "sha256": "853497a03c21b937e3f0b3c2631b4154c1af4c1d2147f0427983bf9cd6889a70",
+      "size": 29444
+    },
+    "C:\\dev\\ducketz\\app\\services\\strategy_order_review.py": {
+      "exists": true,
+      "sha256": "a29495b0d3407692ff6e385f74fa80a82920ba837c7a92419682dd40182bc7a7",
+      "size": 40015
+    },
+    "C:\\dev\\ducketz\\app\\services\\strategy_portfolio_impact.py": {
+      "exists": true,
+      "sha256": "68426be0a66009e4c343f00a53e63260f0b3c6c47d61be2aecc1b710960c0736",
+      "size": 26896
+    },
+    "C:\\dev\\ducketz\\app\\ui\\__init__.py": {
+      "exists": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "C:\\dev\\ducketz\\app\\ui\\assets\\hyperliquid\\README.md": {
+      "exists": true,
+      "sha256": "21db687d53825dc62c931f59bed67acc4b4ed92da89d9e1b1635601edf7124ca",
+      "size": 1115
+    },
+    "C:\\dev\\ducketz\\app\\ui\\assets\\security_marks\\README.md": {
+      "exists": true,
+      "sha256": "6884ebd623c0ae172ef5ee2609851689b023efce301092d772246f17790fb05b",
+      "size": 2240
+    },
+    "C:\\dev\\ducketz\\app\\ui\\background_tasks.py": {
+      "exists": true,
+      "sha256": "e39578d968700190102fedf25b308367a8e9eba8e2e392c0f556cf00455a238f",
+      "size": 737
+    },
+    "C:\\dev\\ducketz\\app\\ui\\ducket_bucket.py": {
+      "exists": true,
+      "sha256": "3abed7eb0606155906128868a0a0f142b6b845da2d7d21cdeda5c9683c1de6d2",
+      "size": 67024
+    },
+    "C:\\dev\\ducketz\\app\\ui\\gameplan.py": {
+      "exists": true,
+      "sha256": "33c9d3c0505b8493d5c72287f6da7c37575741b0e547a0eb7f32d548a8e69c89",
+      "size": 49475
+    },
+    "C:\\dev\\ducketz\\app\\ui\\gameplan_data.py": {
+      "exists": true,
+      "sha256": "3897b0344cbb6471e8e0ce5f26d1a325b5b5799bd2a4b0b51807baf3ead91380",
+      "size": 32886
+    },
+    "C:\\dev\\ducketz\\app\\ui\\gameplan_stats.py": {
+      "exists": true,
+      "sha256": "d264159a71c95dc3f71ec1c6ced0eb91bdc1b4cbc78064aaf7a70829f8908b04",
+      "size": 35489
+    },
+    "C:\\dev\\ducketz\\app\\ui\\gameplan_stats_data.py": {
+      "exists": true,
+      "sha256": "d1945ae9725e5d0af36530fa33c922f5feffd919ba47e5bea5c5ff0ef9ba7ed1",
+      "size": 14712
+    },
+    "C:\\dev\\ducketz\\app\\ui\\gameplan_widgets.py": {
+      "exists": true,
+      "sha256": "57a2b303978fb984727c08226e091ce170fc5261f49a5229e3934ad9c5b34a91",
+      "size": 2007
+    },
+    "C:\\dev\\ducketz\\app\\ui\\hyper_workspace.py": {
+      "exists": true,
+      "sha256": "adaf94ab6b7f2ce9a59a3ccbbc15e8270808ef46097a9497f3ce3b5ce39c9f8b",
+      "size": 107726
+    },
+    "C:\\dev\\ducketz\\app\\ui\\hyperliquid_controls.py": {
+      "exists": true,
+      "sha256": "66123716ab7cd3f450aade64ff36d97a2d60636a779a30142a6c10fd8c009560",
+      "size": 12853
+    },
+    "C:\\dev\\ducketz\\app\\ui\\hyperliquid_workspace.py": {
+      "exists": true,
+      "sha256": "562f8fa094f5523a43db92ab61f102fe94b0cb871f7da1c61471156f251b1455",
+      "size": 56705
+    },
+    "C:\\dev\\ducketz\\app\\ui\\option_exercise.py": {
+      "exists": true,
+      "sha256": "75c6cb11166b8e31708d8798bad45043e6d25e0f9a6f1bf7fbe4e5a300f37eea",
+      "size": 5744
+    },
+    "C:\\dev\\ducketz\\app\\ui\\option_exit_plans.py": {
+      "exists": true,
+      "sha256": "a910e9016cebacd8503641e571d4d7a5e14c7a20623eafdcafb7181c5ae6cc3a",
+      "size": 84736
+    },
+    "C:\\dev\\ducketz\\app\\ui\\option_order_review.py": {
+      "exists": true,
+      "sha256": "ee50b07492bbd904f45f33896a528cbdf009f2322cec4fd39926a21bfd6d0888",
+      "size": 48358
+    },
+    "C:\\dev\\ducketz\\app\\ui\\option_rolls.py": {
+      "exists": true,
+      "sha256": "c5f1b28e120ee041f43a6a7db04d6234dd3d84d93173393569ce3febcb794477",
+      "size": 72226
+    },
+    "C:\\dev\\ducketz\\app\\ui\\option_templates.py": {
+      "exists": true,
+      "sha256": "dcaf68f570d60a0315fe8dff96ca1ec4d45f21e47b9405403ce555fe66c9e54a",
+      "size": 7262
+    },
+    "C:\\dev\\ducketz\\app\\ui\\options_chat.py": {
+      "exists": true,
+      "sha256": "2afdb74f43411b74153a0738718c33eedb4bcdc5d5bfd53fa72b6b7d56168a64",
+      "size": 32122
+    },
+    "C:\\dev\\ducketz\\app\\ui\\options_management.py": {
+      "exists": true,
+      "sha256": "2528da99ad2d5f9a67a89b5e7849d66ffa12fd462f1e043a72ba817a1286f589",
+      "size": 89934
+    },
+    "C:\\dev\\ducketz\\app\\ui\\options_strategies.py": {
+      "exists": true,
+      "sha256": "c2f273e64378b0dd4c579063e249521441b889d61633587be7d07c96cc37268b",
+      "size": 109248
+    },
+    "C:\\dev\\ducketz\\app\\ui\\options_strategy_data.py": {
+      "exists": true,
+      "sha256": "076a4f8f358d038f2b2693a70741f6c98649ece01bddc3d638babde76aa58be7",
+      "size": 34339
+    },
+    "C:\\dev\\ducketz\\app\\ui\\past_positions.py": {
+      "exists": true,
+      "sha256": "54de791d3e11e503bc29c8c772435b2499961a1122117784a7a434f249a64950",
+      "size": 50559
+    },
+    "C:\\dev\\ducketz\\app\\ui\\rolling_forecast_data.py": {
+      "exists": true,
+      "sha256": "217ed1f3ec1a448e7ec81887c57e9b03b03d342dfda06ffe9c4d0b51c87c68f7",
+      "size": 93105
+    },
+    "C:\\dev\\ducketz\\app\\ui\\rolling_forecasts.py": {
+      "exists": true,
+      "sha256": "9f162d157ca48ad250991e260316b1e866e543b11402089c40de0e21f7fbd009",
+      "size": 99210
+    },
+    "C:\\dev\\ducketz\\app\\ui\\schwab_duckets.py": {
+      "exists": true,
+      "sha256": "84f2135ed2eaec05d056874ddae1f40caf677cf741dc674e386e46f835c1d9e6",
+      "size": 99923
+    },
+    "C:\\dev\\ducketz\\app\\ui\\schwab_order_messages.py": {
+      "exists": true,
+      "sha256": "226e68c8e6d20f5947dd8d42b116d1dd4fed332b52ba937f78d107395c367d37",
+      "size": 6386
+    },
+    "C:\\dev\\ducketz\\app\\ui\\theme.py": {
+      "exists": true,
+      "sha256": "3969456456ab476ecee1b8316aaea3f8dafcb0e8383932a393b6d59c2e1f4261",
+      "size": 427
+    },
+    "C:\\dev\\ducketz\\Check-Hyperliquid-Powder.cmd": {
+      "exists": true,
+      "sha256": "9174cd153a1b712a3e316d18c4d9fe2f32b92be87f97f6e76c04e2e19b82a93e",
+      "size": 247
+    },
+    "C:\\dev\\ducketz\\datafetching\\__init__.py": {
+      "exists": true,
+      "sha256": "d88c3d81d7ff4c83c7c450c5fca1a6b927d2ae2d4ad887d971b2e9fb60c3ddc2",
+      "size": 419
+    },
+    "C:\\dev\\ducketz\\datafetching\\bar_consolidation.py": {
+      "exists": true,
+      "sha256": "c328eae4715cd850b30bd7917ee38cdef2f6bec765e809e906b5872659ccf461",
+      "size": 4762
+    },
+    "C:\\dev\\ducketz\\datafetching\\bar_readiness.py": {
+      "exists": true,
+      "sha256": "9e760e130138985cb9e3708315279a412845d7db4be0bc3b26c6330e541c6b28",
+      "size": 24615
+    },
+    "C:\\dev\\ducketz\\datafetching\\bar_schema.py": {
+      "exists": true,
+      "sha256": "b275f022b90865e2706ebfc20f8ac27ee1abb7f557fa2263288f5710f5df9448",
+      "size": 8494
+    },
+    "C:\\dev\\ducketz\\datafetching\\bar_timing.py": {
+      "exists": true,
+      "sha256": "0d089c362cd303afe23917818f3329ce49200881474a59c101b8b61ddb8f3cc3",
+      "size": 12039
+    },
+    "C:\\dev\\ducketz\\datafetching\\calculated_features.py": {
+      "exists": true,
+      "sha256": "98c937a3f2feb3ea19d2f86132a3d1328a5e5d2904b5308ce5e6e2fd1f7e753b",
+      "size": 7318
+    },
+    "C:\\dev\\ducketz\\datafetching\\cme_cross_asset_context.py": {
+      "exists": true,
+      "sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c",
+      "size": 38391
+    },
+    "C:\\dev\\ducketz\\datafetching\\cme_history.py": {
+      "exists": true,
+      "sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+      "size": 31029
+    },
+    "C:\\dev\\ducketz\\datafetching\\cme_runtime.py": {
+      "exists": true,
+      "sha256": "a67ceb0219d13e2f02874da134f95b05caeca88228a0e0b2ed86a55a6e67f259",
+      "size": 31736
+    },
+    "C:\\dev\\ducketz\\datafetching\\continuation.py": {
+      "exists": true,
+      "sha256": "53fcea2beddf7af92d78e4d743c29a75778a712f77861ad91fb81911b54e8d9e",
+      "size": 2444
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_archive.py": {
+      "exists": true,
+      "sha256": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83",
+      "size": 33247
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_cold_start.py": {
+      "exists": true,
+      "sha256": "d92a8cb408f547b4761b009905e8423355fd4a38c426fbd65eb387d69f613950",
+      "size": 100267
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_fetch.py": {
+      "exists": true,
+      "sha256": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6",
+      "size": 57808
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_history_policy.py": {
+      "exists": true,
+      "sha256": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b",
+      "size": 1909
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_opra_history.py": {
+      "exists": true,
+      "sha256": "bd3da2639170b748a7f30199b26b387f7dffdaeff72695f589550c46071b449a",
+      "size": 136318
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_opra_replay.py": {
+      "exists": true,
+      "sha256": "7d732b72c85fbe1ff9b4e332ca9a901e0ddcddf55890f4181503027380746b94",
+      "size": 18709
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_storage.py": {
+      "exists": true,
+      "sha256": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9",
+      "size": 3549
+    },
+    "C:\\dev\\ducketz\\datafetching\\databento_xnas_replay.py": {
+      "exists": true,
+      "sha256": "d7530152e9095e646bb8e0a9a3e9f2c32f9fdae7011093f31fabdd0fe1658ae9",
+      "size": 28174
+    },
+    "C:\\dev\\ducketz\\datafetching\\datastore_hygiene.py": {
+      "exists": true,
+      "sha256": "5bac413c5b03544ab651b744fa13904278e75c61661b4bedf785c5ebf540274d",
+      "size": 41141
+    },
+    "C:\\dev\\ducketz\\datafetching\\decision_time.py": {
+      "exists": true,
+      "sha256": "d2a7999ab12882bb05acc7272e2e7bf7e89b860ab67f9745ab7610a737ebbe83",
+      "size": 19285
+    },
+    "C:\\dev\\ducketz\\datafetching\\derived_bars.py": {
+      "exists": true,
+      "sha256": "b0dab0ca1e1c7c0a37d1600ff4419824fb1dcebe1f9533aa6ca58eae8b8d1be8",
+      "size": 18363
+    },
+    "C:\\dev\\ducketz\\datafetching\\equity_dataset_migration.py": {
+      "exists": true,
+      "sha256": "8289f15d44ca9d89a21c9e0ef0e004b225703d00a55c53778a2418db2cfc946d",
+      "size": 18110
+    },
+    "C:\\dev\\ducketz\\datafetching\\fmp_energy_context.py": {
+      "exists": true,
+      "sha256": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d",
+      "size": 12684
+    },
+    "C:\\dev\\ducketz\\datafetching\\fmp_fetch.py": {
+      "exists": true,
+      "sha256": "34ccde56ff3ba0bf6b75f51b3643ca1544852ec75ff2a5a8d20607937a10ae24",
+      "size": 10698
+    },
+    "C:\\dev\\ducketz\\datafetching\\fred_alfred_readiness.py": {
+      "exists": true,
+      "sha256": "ec6b14e59879db47c704b0d1ee68416f9eaa5483d9ce6fb470c362cf31017269",
+      "size": 30695
+    },
+    "C:\\dev\\ducketz\\datafetching\\fred_alfred_runtime.py": {
+      "exists": true,
+      "sha256": "2a7960da4bda285ec40521f052dcf91887b81e65d5825a513492311f24b50224",
+      "size": 10988
+    },
+    "C:\\dev\\ducketz\\datafetching\\fred_fetch.py": {
+      "exists": true,
+      "sha256": "8e908a379a660bcd7b42c031282e2cfdefa1d763a75d9b5e4fea76bbb6ee042e",
+      "size": 10151
+    },
+    "C:\\dev\\ducketz\\datafetching\\fred_vintage_import.py": {
+      "exists": true,
+      "sha256": "36f95821100489d0dd055503aa25bb708dad1e551c723b2492d97466f1a507ed",
+      "size": 28921
+    },
+    "C:\\dev\\ducketz\\datafetching\\fred_vintages.py": {
+      "exists": true,
+      "sha256": "ea9f9e74eaf6039b43d98aa462df22333aef92e3834fed3a3fc2b84174ff2212",
+      "size": 27193
+    },
+    "C:\\dev\\ducketz\\datafetching\\history_scope.py": {
+      "exists": true,
+      "sha256": "9906f4a42920bc1e648c07a464a91d07bcca0fab614edf40d18df69a7fe7a844",
+      "size": 1554
+    },
+    "C:\\dev\\ducketz\\datafetching\\hyperliquid_candles.py": {
+      "exists": true,
+      "sha256": "652cd9509e3c12228c997d03e84b0674a88cf67e1c218b111507246f40737320",
+      "size": 11057
+    },
+    "C:\\dev\\ducketz\\datafetching\\ids.py": {
+      "exists": true,
+      "sha256": "c6b24f6de78145cc9cb8e1b6a1589974504ea68fdacbf66702321549fe453847",
+      "size": 14169
+    },
+    "C:\\dev\\ducketz\\datafetching\\layout.py": {
+      "exists": true,
+      "sha256": "67efcc0f866fefb0065f61e13ce1ff4335d027c21ee5e98f8e9a3c3d8d08d872",
+      "size": 4983
+    },
+    "C:\\dev\\ducketz\\datafetching\\loop_a_cycle.py": {
+      "exists": true,
+      "sha256": "0f7aa515a82ed4634c2f622749be8d25e20be4378499f599b377bf1c19d98004",
+      "size": 11365
+    },
+    "C:\\dev\\ducketz\\datafetching\\main.py": {
+      "exists": true,
+      "sha256": "d490f3a101d91eb39cf0f89a0758b586748f73b84e36d0ee2d39dc5b6bb53ba6",
+      "size": 13682
+    },
+    "C:\\dev\\ducketz\\datafetching\\observability.py": {
+      "exists": true,
+      "sha256": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e",
+      "size": 6671
+    },
+    "C:\\dev\\ducketz\\datafetching\\opra_replay_fallback.py": {
+      "exists": true,
+      "sha256": "4c3fe0f8ab7a8f31bddc224a895caa6720c9aa466ba25646bd7b02db8d5b4a92",
+      "size": 12115
+    },
+    "C:\\dev\\ducketz\\datafetching\\options_history.py": {
+      "exists": true,
+      "sha256": "eda021d0e5eb4f307b2def0457bae19d51346d453006536a785d4d05f2501a86",
+      "size": 8412
+    },
+    "C:\\dev\\ducketz\\datafetching\\options_runtime.py": {
+      "exists": true,
+      "sha256": "2465a776ef0a970bc475f25da80c22537da644af28098a428b138c5216e0a850",
+      "size": 67339
+    },
+    "C:\\dev\\ducketz\\datafetching\\orchestrate.py": {
+      "exists": true,
+      "sha256": "b94fd3fc8fc3b759efd9ee1a61247ee326f1653c481635c6c43660ce85611812",
+      "size": 32857
+    },
+    "C:\\dev\\ducketz\\datafetching\\parquet_store.py": {
+      "exists": true,
+      "sha256": "cc444e189e71b23bf8f62f53609bc3ca194f7b5e0e2f2dfb85bbaf3671008216",
+      "size": 44983
+    },
+    "C:\\dev\\ducketz\\datafetching\\pricing_barrier.py": {
+      "exists": true,
+      "sha256": "3eeaf8be2d847c60589c03eff1fe872cd230c424f4cb22934246abca8245b710",
+      "size": 8148
+    },
+    "C:\\dev\\ducketz\\datafetching\\quote_liquidity.py": {
+      "exists": true,
+      "sha256": "df43d84e8c23dba819a1fc0bcf7f6619951828dcc3995ee012b8526359f94c31",
+      "size": 12506
+    },
+    "C:\\dev\\ducketz\\datafetching\\readiness_lane.py": {
+      "exists": true,
+      "sha256": "a07f376a8f74aa1f89df5c970403dbd1dbe5704eed40e6d76005f5cf0152e886",
+      "size": 15680
+    },
+    "C:\\dev\\ducketz\\datafetching\\README.md": {
+      "exists": true,
+      "sha256": "51aa187e0dc85897d79d5334015dd5a6ad40051c13a58efa2c92585fb5814419",
+      "size": 11190
+    },
+    "C:\\dev\\ducketz\\datafetching\\research_corporate_history.py": {
+      "exists": true,
+      "sha256": "4659f090051eaae9746b323863637516c2488c4000372e6552f8aec9c41d1c0a",
+      "size": 8032
+    },
+    "C:\\dev\\ducketz\\datafetching\\research_onboarding.py": {
+      "exists": true,
+      "sha256": "ddc18abb0d1decbf9a0725aba2cd4f28f4d8ebe8a2f3e830af43e74d8bf80f70",
+      "size": 38986
+    },
+    "C:\\dev\\ducketz\\datafetching\\research_ownership.py": {
+      "exists": true,
+      "sha256": "868655f6c58dbb7077eeb1dab045a881f3eac04884d1d4b3c9e59b585d5a14e4",
+      "size": 4047
+    },
+    "C:\\dev\\ducketz\\datafetching\\research_publication.py": {
+      "exists": true,
+      "sha256": "4b011f107de2b462fb0cab3eb0e5956d4da5660556ec13e89758487fbf982faf",
+      "size": 7329
+    },
+    "C:\\dev\\ducketz\\datafetching\\runtime_lock.py": {
+      "exists": true,
+      "sha256": "266b676261f7a58a195597f5a2b4a295ff5e80f295c16a2a3b40ee139271a8df",
+      "size": 7210
+    },
+    "C:\\dev\\ducketz\\datafetching\\schwab_fetch.py": {
+      "exists": true,
+      "sha256": "0460d78a7ed69807ef7b09fa9e6be256446a1f0cb63aab5a40e75462977cc944",
+      "size": 22128
+    },
+    "C:\\dev\\ducketz\\datafetching\\sec_events.py": {
+      "exists": true,
+      "sha256": "232422dbd69cf3aa0901b636c09d6ff0f27c69eefbf8312ac02e1a46a2f8bb33",
+      "size": 9008
+    },
+    "C:\\dev\\ducketz\\datafetching\\sec_fetch.py": {
+      "exists": true,
+      "sha256": "d4f9e0df1bbac9692fcb23f9cea7f8428c831be58761a4d1a30dc9dcbe2484f0",
+      "size": 6993
+    },
+    "C:\\dev\\ducketz\\datafetching\\SESSION_AWARE_BARS.md": {
+      "exists": true,
+      "sha256": "dd1fcae76c8ef284a0570628d69fd9cea93f9c1af5e05e76f8a6e23452c9e766",
+      "size": 5479
+    },
+    "C:\\dev\\ducketz\\datafetching\\stock_trader_operator_intent.example.txt": {
+      "exists": true,
+      "sha256": "cc5e8b4546537cc7ecdbcb6c7c847a55ef2937d89a440d0291f1db8bdb9fb9f9",
+      "size": 29
+    },
+    "C:\\dev\\ducketz\\datafetching\\symbol_onboarding.py": {
+      "exists": true,
+      "sha256": "1435a6526528797a47ce2e7bd2fca82ac4e0082efbf9bbae5fdc74d1cee886bc",
+      "size": 28283
+    },
+    "C:\\dev\\ducketz\\datafetching\\symbol_universe.py": {
+      "exists": true,
+      "sha256": "bf82001a81aca136484ed9fb6c024349207687fea7dc4af9961fa1ffb9fa0da9",
+      "size": 1191
+    },
+    "C:\\dev\\ducketz\\datafetching\\watchlist.txt": {
+      "exists": true,
+      "sha256": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+      "size": 196
+    },
+    "C:\\dev\\ducketz\\datafetching\\xnas_replay_archive.py": {
+      "exists": true,
+      "sha256": "4f8c5856f5bfad75980f8f94e3d2fbd002f831bd915e8ccaae5ff6a64813f1d7",
+      "size": 17374
+    },
+    "C:\\dev\\ducketz\\docs\\broker-auth.md": {
+      "exists": true,
+      "sha256": "ba1d46ea6ff141ed7c1bcb0c75cc09be6109fd7333deedd39c0611f9dac50048",
+      "size": 2048
+    },
+    "C:\\dev\\ducketz\\docs\\cross-pc-infrastructure-prompts\\20261001\\atlas-build-prompt.txt": {
+      "exists": true,
+      "sha256": "1c5ef9137adf271c86268b08c754c1b3c66b8caf99de878ada11676845b775d7",
+      "size": 10751
+    },
+    "C:\\dev\\ducketz\\docs\\cross-pc-infrastructure-prompts\\20261001\\scout-build-prompt.txt": {
+      "exists": true,
+      "sha256": "599921af2b699438aab25571fbdd6ad690ee20fe4a881c83798f5c83c449139f",
+      "size": 9101
+    },
+    "C:\\dev\\ducketz\\docs\\databento-plan\\databento_standard_plan_data_access.md": {
+      "exists": true,
+      "sha256": "261fdf8b35be4b1e35333d01f0ceb9115481e57342bbbd5f9c12b9f263a8ce10",
+      "size": 40715
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\databento-cold-start.md": {
+      "exists": true,
+      "sha256": "1048b45b23f53560c96bbd5f4943422283ce5e0e5edf9eff025c05a1af422f50",
+      "size": 18883
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\fred-alfred-causal-ingestion.md": {
+      "exists": true,
+      "sha256": "ac3bb3225a4aac30942b561b00a02bc6ca530b3b213c51ab8f83b43abc99cea9",
+      "size": 3062
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\options-opra-history.md": {
+      "exists": true,
+      "sha256": "3ada0e031f549023dd7d746319044a1fa02893b9d700a886f86e073b0597df3f",
+      "size": 11279
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\start_all_loops.ps1": {
+      "exists": true,
+      "sha256": "184f7805b6bb0915f39c3ed7364257a80b7eb9c50ab9e1c4325985ae0e3e5acf",
+      "size": 14509
+    },
+    "C:\\dev\\ducketz\\docs\\datafetch-ml\\start_stock_session.ps1": {
+      "exists": true,
+      "sha256": "d39e8f06007eb78eab8ad3adf2826b326d2b505c649960cbf001ec74680a15a4",
+      "size": 12657
+    },
+    "C:\\dev\\ducketz\\docs\\development\\atlas-scout-git-handoff.md": {
+      "exists": true,
+      "sha256": "c23472e3685ab574f1efcf72e0635e366274ec8f5dbc4077e2193097d904bd9a",
+      "size": 5090
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\BLACK-SCHOLES-OP.md": {
+      "exists": true,
+      "sha256": "d42e8f508312bbe4ce3955b3cdc5226a2f56b851867da671dbd4eac91b03c491",
+      "size": 51192
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\CU-ML-FUNDVAL.md": {
+      "exists": true,
+      "sha256": "8e911a6c6fbbe1a5e5a36e8b51b22847fad08d5b2d3173f6acbd4374fc215eea",
+      "size": 130689
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\HU-EARNINGS-ML.md": {
+      "exists": true,
+      "sha256": "e617e162d5e9f5d3531304329e141c1f3ac9be8ad831756a325b34cea5d90fdb",
+      "size": 83480
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\HU-ML-OPTIONS.md": {
+      "exists": true,
+      "sha256": "b5cc8492d75080e8e48c3a3c33a5759ad0b37ccbb291f487d3842f3955e5cc9f",
+      "size": 58545
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\NYU-FUND-ML.md": {
+      "exists": true,
+      "sha256": "00d7ac11f37887e28c2700041e520251ab70a100b99330c81fe712fd727d5a7a",
+      "size": 155327
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\NYU-ML-FINVAL.md": {
+      "exists": true,
+      "sha256": "7012910dcb78d3207708e54f1d863cdb908fb7c362cffa7310fc4bd431c37953",
+      "size": 200810
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\NYUCU-FEATURE.md": {
+      "exists": true,
+      "sha256": "b03757cf29a1174e2f5a65907688ceecd9617b739a6366145744604ef2c7b88f",
+      "size": 10552
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\options\\UH-OPTIONS-OVERVIEW.md": {
+      "exists": true,
+      "sha256": "7017457dfb9497b73d9de07b362853660403f360b775f03c75af83301d2f304e",
+      "size": 16099
+    },
+    "C:\\dev\\ducketz\\docs\\edu\\stocks\\nyu-strat.md": {
+      "exists": true,
+      "sha256": "2586f8131a38c96b18a5e30bc381ed23f7764a66b9ed57cfde99e0ceb447c34c",
+      "size": 60047
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\concept-a-prediction-metrics-september-10.json": {
+      "exists": true,
+      "sha256": "9585af8eea734f4771c9e1f800e622fbedda22b31c9ff060fe003078247ad232",
+      "size": 24163
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\concept-data-september-10.json": {
+      "exists": true,
+      "sha256": "9e6e99483f6e9076780d7e830c482b49f079ab129dd701da52a71fb93b65a15c",
+      "size": 59380
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\CONCEPT_A_PREDICTION_EDIT_PROMPT.md": {
+      "exists": true,
+      "sha256": "c8edbe8f476578fec7ca49d9edf3118fe8f45f272b8370f74a0a3846fa1e1c3c",
+      "size": 7659
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\CONCEPT_A_PREDICTION_METRICS.md": {
+      "exists": true,
+      "sha256": "7f462e0eeadf9d3c993e9e8a48c5e4571c470ab2277b978a63d81167baa36a0f",
+      "size": 4310
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\CONCEPT_PROMPTS.md": {
+      "exists": true,
+      "sha256": "e30e18ffecb0d19829295c8df5a22b253ccb37072e5992783a5537fa61b13ad2",
+      "size": 17738
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\DESIGN_CONCEPTS.md": {
+      "exists": true,
+      "sha256": "1e3f6628850c4270b253235a06e1680b580757c8c99bdaa719ac1a80d6f75618",
+      "size": 5919
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-stats-tab-design-ui\\IMPLEMENTATION.md": {
+      "exists": true,
+      "sha256": "211358079b1280806624bbdd54fc95a0451ab48ea5f63686eb504d0965ffa1f4",
+      "size": 4489
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-tab-design-ui\\CONCEPT_PROMPTS.md": {
+      "exists": true,
+      "sha256": "86399cae695c9f5eb65b46e77e1742c2ce517431dc84efeff4db04ad5703b9a3",
+      "size": 16346
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-tab-design-ui\\DESIGN_CONCEPTS.md": {
+      "exists": true,
+      "sha256": "ab4cf2573f95615f4962770badcf728efd5adf7119e42040c6c0d3f67a9f3873",
+      "size": 6001
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-tab-design-ui\\IMPLEMENTATION.md": {
+      "exists": true,
+      "sha256": "b1aeba9411fa46b889dceba6468c91f888beae413f56ba5e61539513c667a517",
+      "size": 6181
+    },
+    "C:\\dev\\ducketz\\docs\\gameplan-tab-design-ui\\plan-design-data-september-14.json": {
+      "exists": true,
+      "sha256": "02d243dd21ff4e013e0dd60376927e46692007e89bb7bf47c9e306e606619387",
+      "size": 79156
+    },
+    "C:\\dev\\ducketz\\docs\\hype-trading-perps-system-pitch\\BRAINSTORM-PROMPT.md": {
+      "exists": true,
+      "sha256": "5f15afed27e0b01879302a6e5b47ca55cb9b18ba26d6b962ddd9aa13e06f664b",
+      "size": 1814
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-data-pipeline.md": {
+      "exists": true,
+      "sha256": "919030cc11d5e235d6794fbb7aad46ac85be1e4223fdafbe5d58aed9b0b406c2",
+      "size": 15299
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\2026-09-13-clearpond-multi-asset\\IMPLEMENTATION.md": {
+      "exists": true,
+      "sha256": "2ef7baf86a6f23bd13bec5ad989d6063b0779de251b32578f8e1c9187a3216a9",
+      "size": 8741
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\2026-09-13-clearpond-multi-asset\\PROMPTS.md": {
+      "exists": true,
+      "sha256": "57e6fe640a03279034a4d90e03b22cd3e7c0388fdd469901dd2b5488caf11c4d",
+      "size": 18302
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\2026-09-13-clearpond-multi-asset\\README.md": {
+      "exists": true,
+      "sha256": "fe134074ae19cb67b0370cb809f9046e40a813d1aadef8333d0636c092cbad81",
+      "size": 6497
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\2026-09-13-clearpond-multi-asset\\REVISIONS.md": {
+      "exists": true,
+      "sha256": "e54188eb4ad4174f74327c8e055ed3d8015fd8f88a0a31f7370fd57ace61aef1",
+      "size": 4329
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\hyper-2026-09-25\\HYPER_DESIGN.md": {
+      "exists": true,
+      "sha256": "18968c3240056088259facce3dc998fbf43446526e28e4a9dd44236b3d0f3dbf",
+      "size": 17489
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\hyper-2026-09-25\\IMPLEMENTATION.md": {
+      "exists": true,
+      "sha256": "51d0ccc077d2005b4d672992d89c532f67f9e2a912e397de5e43efa94c61da27",
+      "size": 9254
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\hyper-2026-09-25\\PROMPTS-v2.md": {
+      "exists": true,
+      "sha256": "5144fea66d019b8d50dc85c00020603b33efc1417af26fc2cfdbf94733cb8638",
+      "size": 3813
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\hyper-2026-09-25\\PROMPTS.md": {
+      "exists": true,
+      "sha256": "c419f00bd5cacaa7f0309c5a6ac50bda0ab225e316222c725c46cb10fa6886f3",
+      "size": 10904
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\hyper-2026-09-25\\UI_IMPLEMENTATION_HANDOFF.md": {
+      "exists": true,
+      "sha256": "a754346d07a22cbf1a35f7439ae8f3f852dbee0af1c2d757a5f04e88bce77a1a",
+      "size": 8095
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-duckets-design-ui\\HYPERLIQUID_DUCKETS_CONCEPTS.md": {
+      "exists": true,
+      "sha256": "18eb289e4b68dc316e7a54c39541fb9512d9eae7065281e945673a51fc95a0cb",
+      "size": 5811
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-models.md": {
+      "exists": true,
+      "sha256": "a2a7b100bfaaf8aa5c797f20e45bb83fe90bd74fb1fda3caa8c5dca0b199f165",
+      "size": 22077
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-paper.md": {
+      "exists": true,
+      "sha256": "c4825514f4e3c803b437267926f8e5a2aaee5fb3be13af508588264502eaee7e",
+      "size": 21054
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-701515-btc-fresh-mirror.md": {
+      "exists": true,
+      "sha256": "b2e413e71a9fab3aa3d5b42e6db2d35dc2996d55ccf4a378414059d4ed208d75",
+      "size": 11003
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-book-vwap-paper.md": {
+      "exists": true,
+      "sha256": "ebd5aa93f83a999abecb5ce31d7c88bef4b96818407cfcb96a745f1e3c692833",
+      "size": 6252
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-corrected-paper-mirror.md": {
+      "exists": true,
+      "sha256": "f2a8f8b77f28cb39b1df427b8b65a5f7ec16e63289d027f2ee60aef312bd9f12",
+      "size": 9750
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-expanded-models-70-15-15.md": {
+      "exists": true,
+      "sha256": "9dbbead4768b5e59ebe2080ca10bd7100b21880902646cecf60f0d1ba7d71832",
+      "size": 13911
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-fresh-entry-4pp-paper.md": {
+      "exists": true,
+      "sha256": "9dde0cbe45e26e736a40baf1a83f7b05e4dc8e55073a250b61571329932efccf",
+      "size": 3991
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-legacy-classical-model-audit.md": {
+      "exists": true,
+      "sha256": "512b4f01b3863c1a04f3523eb304c6238a8fc97b8c3d6e2f058ad12944fb2bfe",
+      "size": 12359
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-legacy-neural-model-audit.md": {
+      "exists": true,
+      "sha256": "a19104cfaae84b4bb9cbb741faffa094e8bb562c6f233ea538503373977acf07",
+      "size": 12479
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-model-cadence-15m.md": {
+      "exists": true,
+      "sha256": "fbcfcd8a7c0b69d7c13c72bd36b4b9b6cb094cba50588d43a63f7b3f257cfde5",
+      "size": 3047
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-model-comparison-and-paper-refresh.md": {
+      "exists": true,
+      "sha256": "702fe162392a923215b2fa2757e0adb7ff15207359bc0f1c087d13842aef319d",
+      "size": 6319
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-paper-decision-gates.md": {
+      "exists": true,
+      "sha256": "784a6369cd2b0a7c78741bc4ef4dcc526ffd71884910542efb746441f4f41db2",
+      "size": 6306
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-paper-forecast-rollover.md": {
+      "exists": true,
+      "sha256": "f4c110dacfb9e2549d3c888bd379497359e2ddef63dffaf1410922c6f0acf536",
+      "size": 6802
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-paper-quote-retry.md": {
+      "exists": true,
+      "sha256": "e96bdf8e3f0b411f229b1e346cac2e6b25b51e447af89159aab250f32ab6f7dd",
+      "size": 5156
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-paper-restart-reconstruction.md": {
+      "exists": true,
+      "sha256": "2939d06cad348647e734d31cf75779bed1e514ebda3cd6fb3154573970699e5a",
+      "size": 21931
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-paper-retune-fresh-mirror.md": {
+      "exists": true,
+      "sha256": "f6c080816e9b1b2349045968480d1ed0ebe28816969da32ba8bb078bb3d5a4aa",
+      "size": 5971
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-paper-session-recovery.md": {
+      "exists": true,
+      "sha256": "189cdffa2d5dcdd82c8ee0cd86401f4d14000b30ed93354ad1bc151d6ee9bd04",
+      "size": 4416
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-qualified-only-paper.md": {
+      "exists": true,
+      "sha256": "8a248c7925a34079fb6e9b4eacf45d6b9046bd561d58312433e08f68a794caf0",
+      "size": 7304
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-shared-49-51-paper.md": {
+      "exists": true,
+      "sha256": "2a182392b7b13589de3749a7d581d5fe54a24035bd0c01d762d772f6de5ec93b",
+      "size": 3982
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-26-training-regularization-and-budget.md": {
+      "exists": true,
+      "sha256": "b444c87937727c50699e95b8ca429ccfa29c3b909c8e63c5ee2140261741a618",
+      "size": 3473
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-28-five-minute-paper-launch.md": {
+      "exists": true,
+      "sha256": "69dd77b615a8bc64a346e962c6ffdb87356bc7bc865390fba4fbc9cef4d616e0",
+      "size": 6662
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-28-operations-watch-2343z.md": {
+      "exists": true,
+      "sha256": "6eb5ddf43366ea40a90814786658e7088cdd9096d4a2afa0a005692e8bad5eef",
+      "size": 2454
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-28-paper-round-02.md": {
+      "exists": true,
+      "sha256": "1b98dd6debfc7489191f2c598c9f12feb2a938d2671365eb8111249e0916ea9c",
+      "size": 9497
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-28-paper-round-03.md": {
+      "exists": true,
+      "sha256": "b2990980eb05496de7d2ade903a95e444d51c7df8f8c1117ae41f43681ac584d",
+      "size": 16446
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-28-self-improvement-first-cycle.md": {
+      "exists": true,
+      "sha256": "631268990f6c5ca350e77c3742dae79e248e307dd7315ca00f0097953a78602e",
+      "size": 10212
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-28-two-hour-paper-ladder.md": {
+      "exists": true,
+      "sha256": "f87d93f65e9394d3efa56ecf3bc3c00ebd8f3ba0dae6407bcd8c906195257e46",
+      "size": 10859
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-loss-penalty.md": {
+      "exists": true,
+      "sha256": "72e245f7cb043181ec3549c51cd187605bdbc45e869ece6ed2d4cc16c271f14d",
+      "size": 4675
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-04.md": {
+      "exists": true,
+      "sha256": "24bcb6f5bb2a758a7fa3e513e2c3e460d533e6a027261621a001b94a9934aa40",
+      "size": 9722
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-05.md": {
+      "exists": true,
+      "sha256": "e1b633b8d6e99c5b8ae6cc7d0f66589f64cfe707d6c4b237115948472c6ed25d",
+      "size": 10680
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-06.md": {
+      "exists": true,
+      "sha256": "d8d744ee04738ef16b266215b60ff03b913f72b1b4af70aacc3da58f77ec5bfd",
+      "size": 11087
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-07.md": {
+      "exists": true,
+      "sha256": "fa30c81a954f599fed5e2775a4b9b9a8b02f3724892c531aba3e3f60453003d2",
+      "size": 11186
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-08.md": {
+      "exists": true,
+      "sha256": "a815c9b709470da4f8791c1258c5575c10a3e423522410b12a69a12ea205bf87",
+      "size": 13891
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-09.md": {
+      "exists": true,
+      "sha256": "159158343b72167a0012db713bfbbdcfdadeb4016ff2a733748327bb1ef26cdc",
+      "size": 13715
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-10.md": {
+      "exists": true,
+      "sha256": "c74947cea4710d061f730bcbb229cd4c282fc188bdabf6877429cc0190311764",
+      "size": 20641
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\audits\\2026-09-29-paper-round-11.md": {
+      "exists": true,
+      "sha256": "5fd51e84e91078d28daa4392789f1a9d7e614aab98895e05234806cfb4d119ec",
+      "size": 15942
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\CHANGELOG.md": {
+      "exists": true,
+      "sha256": "59b003bb1411a0d6178ade4de7d24ede9a5dc9e5d0111e0038fc492555065761",
+      "size": 24334
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\HANDOFF_2026-09-26_PAPER_RESTART.md": {
+      "exists": true,
+      "sha256": "20ca5e8751084f0a052eb3b51437eccfd3d28ee53c8b5d6f87c143c889668f9f",
+      "size": 12085
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\LOOP_INVENTORY.md": {
+      "exists": true,
+      "sha256": "4edc797498bfb6878d52b03ab7e9389fd4968966677a560887c980ae848fd7da",
+      "size": 8956
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\LOOP_MAP.md": {
+      "exists": true,
+      "sha256": "4e26b7e11893d549405882cc99dc92a4089af5318131e55ec71cbf52bd3d9db0",
+      "size": 6236
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\loops\\market-data.md": {
+      "exists": true,
+      "sha256": "04a1b03ed67e8359add8fe0f5190f60c39c7f7cfd5ea7de057b07fbb6c380e8a",
+      "size": 9278
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\loops\\models.md": {
+      "exists": true,
+      "sha256": "29bf2c700e0b43b035f5e4fee7c10b4e80bc56c89e5d4372362d9ab5322717d4",
+      "size": 14819
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\loops\\paper.md": {
+      "exists": true,
+      "sha256": "4b784b1e2a1970d7107c688f80454b77726c4d57d709c991fa9a4d8089880db3",
+      "size": 11580
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\MAINTENANCE.md": {
+      "exists": true,
+      "sha256": "f5f6c70365ea52f2ac43581540f3126b8b4fc7bb1b342855c890bd78e29c2d51",
+      "size": 7739
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\MONITORING.md": {
+      "exists": true,
+      "sha256": "2a58c160ae71365f4abb1aac85c0adf73dc98b14cd0c4086bdb14019f132a3ff",
+      "size": 19065
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\OPERATIONS_WATCH.md": {
+      "exists": true,
+      "sha256": "3ccb75177306956e9ef757c88de1a307aa0311260b5d7ccd0b6256e765894f85",
+      "size": 28770
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\PAPER_ACCOUNTING_AND_RISK.md": {
+      "exists": true,
+      "sha256": "d3948b53f277bb4e50b040a0d79a3518c7dc8297617121215dc92f84aeea82ec",
+      "size": 20015
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\PAPER_IMPROVEMENT.md": {
+      "exists": true,
+      "sha256": "0d5e417ffa6c25b3715cf7f212bc7f289f8550f1efc6929df5907baf44601b43",
+      "size": 22757
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\POWDER_ACTIVATION.md": {
+      "exists": true,
+      "sha256": "b0d16a4d56d92090e6ad734d3b327ba71052b9f25425db8c3920140e695d7e56",
+      "size": 10294
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\README.md": {
+      "exists": true,
+      "sha256": "688d2909042fa380e0600fcf9dfac4ec1f6c120879b4660b062ea73799a49972",
+      "size": 12252
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\research\\2026-09-30-bullish-allocation.md": {
+      "exists": true,
+      "sha256": "4e027a1adda4cc32ad60892e0e43c7ae51be54c3cb268881c9c550a8bee6f3fb",
+      "size": 5575
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\research\\2026-09-30-bullish-allocation20-paper.md": {
+      "exists": true,
+      "sha256": "d429c1faad5641861328078544f81c996ef72c7cfab3be725e2678afcfeffab2",
+      "size": 3196
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\research\\2026-09-30-five-family-weighting.md": {
+      "exists": true,
+      "sha256": "d91c9c0942f2d9d7e49236af8c5c1d0adaa234abcd2e35ac972eb9ed739b40a1",
+      "size": 5237
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\research\\2026-09-30-saturation24-paper.md": {
+      "exists": true,
+      "sha256": "a69a8faad7e9ac1d6a5e55a9d208f18dafec2808bb23d5d54aa0495f7db4be3f",
+      "size": 5824
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\SYSTEM_FUNCTIONALITY.md": {
+      "exists": true,
+      "sha256": "c296dcd93a7187d4437a8022665ec91e7a1f24db4cc13dd0a1d05cb80b1fc7c3",
+      "size": 8669
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-system-analysis\\UI_AND_DATA_CONTRACTS.md": {
+      "exists": true,
+      "sha256": "5a58d85aa82818f3b933f439228f9e8545b811474d91f438c220a06b1f911bad",
+      "size": 12246
+    },
+    "C:\\dev\\ducketz\\docs\\hyperliquid-timings.md": {
+      "exists": true,
+      "sha256": "581baca0e3afe0237d4c0c1365ae383376ded0ae9efac06c5870a6ba0ed44c14",
+      "size": 5983
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\AUDIT.md": {
+      "exists": true,
+      "sha256": "9673739cca2ac031f8a8d493fe258951cbafd831845b64c4a61bd9bea143ff65",
+      "size": 16735
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\automations-after-supervision.json": {
+      "exists": true,
+      "sha256": "3488ffad70cb4e1da151604ae8ece14230c5a0c20f975846c5e5506b65e1804a",
+      "size": 8434
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\automations-before-supervision.json": {
+      "exists": true,
+      "sha256": "3e58c9377a08dca284d3eb1599f6ea19354b49b384d6f34d078c288cc3229708",
+      "size": 6705
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\diagnose_four_hour_calibration.py": {
+      "exists": true,
+      "sha256": "4b54c9e456e892507db477fc47b54f48af70b5fda6a3e80d0fd96f8eb0d03a6a",
+      "size": 4801
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\evidence.json": {
+      "exists": true,
+      "sha256": "528e07c856101eb1b93a9adf198d9190949a6f9b1e4d57149f7179e7a5819aeb",
+      "size": 122757
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\four-hour-calibration-evidence.json": {
+      "exists": true,
+      "sha256": "c85dead94ccee008ff2756e1a0912b98932c4dcc332b0e1109750ddba2fbef0b",
+      "size": 3138
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\four-hour-calibration-tests.txt": {
+      "exists": true,
+      "sha256": "1acd9383ab2cf6fb1e52b456e29f81d3d1e30db11f54bc219cd785d5e3ecd253",
+      "size": 1115
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\FOUR_HOUR_CALIBRATION.md": {
+      "exists": true,
+      "sha256": "96a0b7cbd609bd4d5ecea2c36c149690266ca2b55afded9f2dd9ac4d4a6f3ef8",
+      "size": 12309
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\gameplan-session-fix-validation.json": {
+      "exists": true,
+      "sha256": "17e5f6cb43b7f72a01c8b6b4d4e4e3879495db58c665e0001be034d8226cb0d9",
+      "size": 1625
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\investigate_four_hour_model.py": {
+      "exists": true,
+      "sha256": "161a2efe2a18cc7e05a3634dd81cccdcc152c9a5e7199d8ae0c9a4a4b1f86869",
+      "size": 8540
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\old-prediction-cleanup-plan.json": {
+      "exists": true,
+      "sha256": "f40dfdf2d6b027694961db31cc973ae009d8ff1624f236f601a1ffc5fd3d3d3b",
+      "size": 160408
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\refit_boundary_aligned_four_hour.py": {
+      "exists": true,
+      "sha256": "d718cf2198d44060b837424407d40bd7d72fadee282967b8e88d6194390b5975",
+      "size": 5316
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\supervision-tests.txt": {
+      "exists": true,
+      "sha256": "9acf97dbbb853b758694c26ba13d2856c973efc5205ad5c082d4722248590fb0",
+      "size": 208
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\supervision-update-evidence.json": {
+      "exists": true,
+      "sha256": "50f1baab9110b67a8e867118a0f848a5fefa286c216fc6eb0deb02ebd6149e20",
+      "size": 2320
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\SUPERVISION_UPDATE.md": {
+      "exists": true,
+      "sha256": "fc7a978fd7087fc5125c9ca04bad574441839a76ec02ad40952f08ab4b462a01",
+      "size": 6622
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\audits\\2026-09-04\\validate_trader_proposal.py": {
+      "exists": true,
+      "sha256": "0d6134fed08c0c97210248cebc0d117a9799c4eb0b87d8963629e531a9b39d08",
+      "size": 3410
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\CROSS_HORIZON_BEARISH_FALLBACK.md": {
+      "exists": true,
+      "sha256": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+      "size": 6961
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\DATASTORE_HYGIENE.md": {
+      "exists": true,
+      "sha256": "ba3a51d30840dd21e33dad7899935c1be75ef01c9bbb434e9355b4a585c90dd9",
+      "size": 7674
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\HOURLY_AUTOMATION.md": {
+      "exists": true,
+      "sha256": "73e0f009b39bc295ce46093462bee6fb55751cbfd96c276e5f3854251047a3a8",
+      "size": 1325
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\HOURLY_TRADER_LOOP_C_HANDOFF_PROMPT.md": {
+      "exists": true,
+      "sha256": "99c8f2d4934312c8418fffd5407a7d25a286d65aebec45242a54fe53d3d2fcb7",
+      "size": 540
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\INDEPENDENT_STOCK_HORIZONS.md": {
+      "exists": true,
+      "sha256": "30b03446c1a9ec1084819df5aeca267e5f7e192615cd59907180d54ac2f623d5",
+      "size": 34603
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\LOOP_C_RISK_CALCULUS.md": {
+      "exists": true,
+      "sha256": "7a3f07bb0f06544beea0776e0665f97ff94b7ed1ef41276de53bf90d4112cccb",
+      "size": 8833
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\LOOP_C_ROLLOUT_PLAN.md": {
+      "exists": true,
+      "sha256": "ca016b5e3c21a62df8ca24eb6226a68cff72be93085548a5d291cabc771bf6db",
+      "size": 8400
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\LOOP_INVENTORY.md": {
+      "exists": true,
+      "sha256": "8e5d319c3e36371e2a81e2c0f20c9aa9d7c80779f0be2df035f03c054a3ab8a7",
+      "size": 7084
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\LOOP_MAP.md": {
+      "exists": true,
+      "sha256": "67da2375b24b3393c67bdd2af57325332d029972259400b542bafc8d330cfd46",
+      "size": 5149
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\LOOP_RELATIONSHIPS.md": {
+      "exists": true,
+      "sha256": "6297e75f8f82f20678abb06bab46b6f3d5c0ecef0592b9aef843b45a31ad5160",
+      "size": 6343
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\active-pricing-loop-3.md": {
+      "exists": true,
+      "sha256": "e1fad74c2eb3095cc4857bc306fbfb776c87d30cc79c25459f310fd521167b4d",
+      "size": 29415
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\cme-inline-history.md": {
+      "exists": true,
+      "sha256": "1782f59f33386a5ae0aaddbeaa24af4322742c41b2b9188c28141bfea5c83f59",
+      "size": 1996
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\cme-l2-runtime.md": {
+      "exists": true,
+      "sha256": "b86e4e01b144f968fd2e2e021a5af2de98e5fd68a8edae86ac1ec58cee289133",
+      "size": 16727
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\daily-alfred-runtime.md": {
+      "exists": true,
+      "sha256": "e508fd13908a20fe89bb636321a82dc2d87569a54ec6d71af04194cb86b56209",
+      "size": 16265
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\directional-loop-b.md": {
+      "exists": true,
+      "sha256": "cfcdfe83f1a575b03fee3ab3367a56ec52a6b3adf2125a41a721ddceae848d43",
+      "size": 22931
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\loop-a.md": {
+      "exists": true,
+      "sha256": "c2d729eaa7187201b84af38d9fc0030c0bb847c867f65b588f00334e549d8518",
+      "size": 23398
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\options-capture-loop-4.md": {
+      "exists": true,
+      "sha256": "205c4038f3d874443678a8fe0602eff2f94cf4adf521bb8c669905b7fac8e1d0",
+      "size": 25037
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\loops\\strategy-runtime.md": {
+      "exists": true,
+      "sha256": "86976312c9322b899e7047689a4fe115aeb44e8820d2333b0e7dcae6ba609899",
+      "size": 23063
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\LOOPS_SYSTEM_MIND_MAP.md": {
+      "exists": true,
+      "sha256": "88f005f5956be780b10d279826eae97e20f7532a3b1c4e2a93a86d2ff8ccf825",
+      "size": 1755
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\MONITORING.md": {
+      "exists": true,
+      "sha256": "778cc41c5cf5fc6345e0587081684e8f547a22ef765834f95b322862e86fa591",
+      "size": 10732
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\NIGHTLY_GAMEPLAN.md": {
+      "exists": true,
+      "sha256": "8503aaa9ed87f5f8d6e3f7f791f511a065f424283cddd1bff05f9274be03011d",
+      "size": 74768
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\OPRA_HISTORY_MAINTENANCE_AUTOMATION.md": {
+      "exists": true,
+      "sha256": "74232e0450853fd1f299d0bbe29d586041374a84ead02e74072125a54f25fd9b",
+      "size": 6817
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\OPTIONS_STRATEGY_ML_UPGRADE.md": {
+      "exists": true,
+      "sha256": "b1d3353809473d7870b77ba06f3df1c925276466901de985a89da9cf9a459c77",
+      "size": 6042
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\OPTIONS_STRATEGY_PAPER_AUTOMATION.md": {
+      "exists": true,
+      "sha256": "42bc108797c160c9756bdc24e49743669ede0a0708a775277d0f492901b6cf48",
+      "size": 6363
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\POOLED_SEQUENCE_LOOP_C.md": {
+      "exists": true,
+      "sha256": "0f75dc8280a7c22e53244321c1a678fe81c304b478ab0e5461e95a011b1c8f31",
+      "size": 14725
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\PREDICTION_CONTRIBUTION_MATRIX.md": {
+      "exists": true,
+      "sha256": "a9e4e890a5fabbb4bad7442fc1abcb1ed9df1b3d19270144631ab02d6232e636",
+      "size": 2832
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\README.md": {
+      "exists": true,
+      "sha256": "e6f00e19c92f51b263d005b2ce3628ae89a0ae0ab641b45766dd936fd765d4a2",
+      "size": 11897
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\RESEARCH_SYMBOL_ONBOARDING.md": {
+      "exists": true,
+      "sha256": "37c3ee79c37fb9fc327aa8c815e4c5a9d7b2a02ecef67323e311d38bd4148813",
+      "size": 16673
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\STOCK_TRADER_AUTOMATION.md": {
+      "exists": true,
+      "sha256": "a346be076c2453438ce6e45b457f46f1e626d9bf589ec5cd8df5f8e8586a0195",
+      "size": 2985
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\STOCK_TRADER_RUNTIME.md": {
+      "exists": true,
+      "sha256": "9682677c1179414704bec2cc8d3f6437905266ed07e5fe09be7e438a7cd244ab",
+      "size": 23430
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\SYMBOL_ONBOARDING.md": {
+      "exists": true,
+      "sha256": "6a4894884f1048a13d14d200d751d36b50954dbdb8491c913e95466f3a998409",
+      "size": 29781
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\SYMBOL_ONBOARDING_PROPOSAL.md": {
+      "exists": true,
+      "sha256": "335fbf735f958df3640d26b0e03133521d8182f6db1556a09e72248c54829748",
+      "size": 12866
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\SYSTEM_FUNCTIONALITY.md": {
+      "exists": true,
+      "sha256": "f8d785bcc740eca53c0ef05b75591bf0919818a016760f4ff7b3bcf929f302f4",
+      "size": 11171
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\templates\\loop-c-broker-snapshot.example.json": {
+      "exists": true,
+      "sha256": "f380510dcafdadd43b826904881528dcab3a56be6b590dbcfe23e8b03c77c918",
+      "size": 431
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\templates\\loop-c-halt-control.example.json": {
+      "exists": true,
+      "sha256": "34aeba1cdd0c7fe30d773addece0dda7a386ecb4f7731ac8dab1bb593851b6d1",
+      "size": 217
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\templates\\loop-c-portfolio-snapshot.example.json": {
+      "exists": true,
+      "sha256": "3a93bf01f3d9ef7d5dafa33772b4c329ff851de708858aca632ea71d80276625",
+      "size": 579
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\templates\\loop-c-risk-approval.example.json": {
+      "exists": true,
+      "sha256": "770849844b553fe84c7ea831dddae55f1450f681e2d5215e0077c7e20ec4c1e1",
+      "size": 2349
+    },
+    "C:\\dev\\ducketz\\docs\\loops-system-analysis\\WEEKLY_REVIEW_AUTOMATION.md": {
+      "exists": true,
+      "sha256": "7436f67875c931ee038cde8dce0b8b6b5099d76e1a005d727d52850975582771",
+      "size": 1812
+    },
+    "C:\\dev\\ducketz\\docs\\opportunity-research\\DOSSIER.md": {
+      "exists": true,
+      "sha256": "2e5b86e8625c6193e0ccfa9476c63c9363761c58418bb6eec1876889d554b8a3",
+      "size": 7575
+    },
+    "C:\\dev\\ducketz\\docs\\opportunity-research\\SCORECARD.md": {
+      "exists": true,
+      "sha256": "e086cf3defd5fbe5be5c1db618c87c6ab168e3f1abf71c8382a994453c261ab7",
+      "size": 5041
+    },
+    "C:\\dev\\ducketz\\docs\\opportunity-research\\TRACKING.md": {
+      "exists": true,
+      "sha256": "07e1d6173f3858a3a55206defcea56cd1ff1cefb1eceb338fec3bd0883b97235",
+      "size": 5636
+    },
+    "C:\\dev\\ducketz\\docs\\opportunity-research\\WORKFLOW.md": {
+      "exists": true,
+      "sha256": "511e7efd646c04d918fa8d5a049cbbadb3ac58afeeb2b283c79e752ef57e6198",
+      "size": 8235
+    },
+    "C:\\dev\\ducketz\\docs\\options-management-design-ui\\README.md": {
+      "exists": true,
+      "sha256": "1ea3abbb8f49d56dbe24f0c8b7781e39e52a7fdc4864f3ade6f9f63b21a2f87b",
+      "size": 11509
+    },
+    "C:\\dev\\ducketz\\docs\\options-management-design-ui\\UI_WORK_PLAN.md": {
+      "exists": true,
+      "sha256": "6c2a5f88c4fbf1995da37acae9df849d49d4c44993371983a14bbfa010c2f13d",
+      "size": 31133
+    },
+    "C:\\dev\\ducketz\\docs\\rolling-forecasts-design-ui\\CODEX_IMPLEMENTATION_PROMPT_ROLLING_FORECASTS.md": {
+      "exists": true,
+      "sha256": "ff7e4a8ea0961b383426edd44e585c89c2fa07f79503c481bf458012bc140d25",
+      "size": 11693
+    },
+    "C:\\dev\\ducketz\\docs\\rolling-forecasts-design-ui\\VISUAL_ADDITION_CONCEPTS.md": {
+      "exists": true,
+      "sha256": "5add789f7ebcaf0dea79e203cbdcf4eb7f686683eb7b6fc1986dce35f40f9ded",
+      "size": 2799
+    },
+    "C:\\dev\\ducketz\\docs\\schwab\\schwab-api-endpoints.md": {
+      "exists": true,
+      "sha256": "d641d0d675bf8f042b4eadb4985cad6ddf666841622ba762dafdff9868d6b3df",
+      "size": 554
+    },
+    "C:\\dev\\ducketz\\docs\\schwab\\schwab-market-data-endpoints.txt": {
+      "exists": true,
+      "sha256": "ddb1b0a0a5bef3b6f7ae034cea866493205ae8d1793bc6ebbc27ecdbaf036289",
+      "size": 172
+    },
+    "C:\\dev\\ducketz\\docs\\schwab\\schwab-retail-endpoints.txt": {
+      "exists": true,
+      "sha256": "9986f9b6723aef6e3e9d3b932c33bed7297e44a3cd10a7c52f45c3467be87b80",
+      "size": 304
+    },
+    "C:\\dev\\ducketz\\docs\\schwab-duckets-design-ui\\CODEX_IMPLEMENTATION_PROMPT_SCHWAB_DUCKETS_TAB.md": {
+      "exists": true,
+      "sha256": "4cb50d3ae2ee01f8256c3ac1db75087fc84733095cad32e0e08a50205e49670d",
+      "size": 18870
+    },
+    "C:\\dev\\ducketz\\ml\\__init__.py": {
+      "exists": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "C:\\dev\\ducketz\\ml\\artifacts.py": {
+      "exists": true,
+      "sha256": "6234eed2445a67e6d1e2970374f8de8fecaad06cfb7ececbbe2072a4e5b752e8",
+      "size": 6865
+    },
+    "C:\\dev\\ducketz\\ml\\calendars.py": {
+      "exists": true,
+      "sha256": "d4956b0221778e46ae44e1408a44605ef4df22eef2faa819deb636f5d35a4b39",
+      "size": 45167
+    },
+    "C:\\dev\\ducketz\\ml\\calibration.py": {
+      "exists": true,
+      "sha256": "a525fd7a9e9697b9d70945474a8387b137bbfca9b5d7d9650058d717cbbb32fa",
+      "size": 7860
+    },
+    "C:\\dev\\ducketz\\ml\\contracts.py": {
+      "exists": true,
+      "sha256": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564",
+      "size": 9196
+    },
+    "C:\\dev\\ducketz\\ml\\current_publication.py": {
+      "exists": true,
+      "sha256": "094dfa9afd8b789f746eb4e6090d925e1462d9fc53ef5d6001ab3880de2a20da",
+      "size": 14501
+    },
+    "C:\\dev\\ducketz\\ml\\datasets\\__init__.py": {
+      "exists": true,
+      "sha256": "49190f5a8a73530106d599b383a016ad1d244f31f907b1e4959cdbd82ea51b0e",
+      "size": 1166
+    },
+    "C:\\dev\\ducketz\\ml\\datasets\\families.py": {
+      "exists": true,
+      "sha256": "35fd0e6af2b7c203f6908ef7b45223035521a48161c739d88f06ffa34678ab99",
+      "size": 56583
+    },
+    "C:\\dev\\ducketz\\ml\\datasets\\point_in_time.py": {
+      "exists": true,
+      "sha256": "470d5a3af6a7339026312c87ad4230f3b20f8b7705bd660d3b3a8ffc4e1cc072",
+      "size": 28825
+    },
+    "C:\\dev\\ducketz\\ml\\datasets\\technical.py": {
+      "exists": true,
+      "sha256": "a0fd018de4250a051955a5d0481f6dfa7752c03f12f0e2146fc001b4e7a206bc",
+      "size": 16018
+    },
+    "C:\\dev\\ducketz\\ml\\directional_forecast_evaluation.py": {
+      "exists": true,
+      "sha256": "04d8bb069b17a64feaa5c7b9781d92265311ad549b7e4c34d23098814546cb57",
+      "size": 3989
+    },
+    "C:\\dev\\ducketz\\ml\\directional_forecasts.py": {
+      "exists": true,
+      "sha256": "fcb27a76d0ae404ff04669c47c6ebc2ab18817e08e2341a56e10e58094fddcaa",
+      "size": 12995
+    },
+    "C:\\dev\\ducketz\\ml\\feature_registry.py": {
+      "exists": true,
+      "sha256": "aa67e7d4a156e8f2126de598e8b566e807f1dc58c089aac19907625e646c875f",
+      "size": 52761
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_actuals_review.py": {
+      "exists": true,
+      "sha256": "c979a927a8f6f0b8554bc68d39a43f172cf092fc0260f9a3f2e1875f79ee3081",
+      "size": 37568
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_archive_features.py": {
+      "exists": true,
+      "sha256": "8a9f8be444e1431e4713cfa57fa1e375159b4f5fe64e593264384f025ee2a197",
+      "size": 25639
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_archive_integration.py": {
+      "exists": true,
+      "sha256": "fc9dc08dc06d16eb57adb45841a561a6776545ca46a687fb28a276767faa2601",
+      "size": 5464
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_archive_seconds.py": {
+      "exists": true,
+      "sha256": "5c745f2e795dfdec8a890a832cd5abe59c69e7fe9cbea56a1c1b55b19691d246",
+      "size": 17244
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_cash_ledger.py": {
+      "exists": true,
+      "sha256": "2cd9931302e73fdf371987e12593ba647c57a97d91b13f7fe712939e2873977b",
+      "size": 33085
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_champions.py": {
+      "exists": true,
+      "sha256": "a98f2831033a508ff74e5b19d57d5aa9fc9c7138523313768f99df156c66889a",
+      "size": 11834
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_deployment.py": {
+      "exists": true,
+      "sha256": "d6b9bc9076e2661ad1ce7a773632f43904f454a2bbf9b0e417b8531278be270d",
+      "size": 33006
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_development_selection.py": {
+      "exists": true,
+      "sha256": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a",
+      "size": 8644
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_estimators.py": {
+      "exists": true,
+      "sha256": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2",
+      "size": 2291
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_evaluation.py": {
+      "exists": true,
+      "sha256": "154f6f18bcfa3c463e6881b4228d5f811deff653102bc796ea6af6d18a7c73a0",
+      "size": 27236
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_executor.py": {
+      "exists": true,
+      "sha256": "ed4630feeb868506a0a0e89fe2248bb3552d9eaf7c2235aaad6128383e1e5b06",
+      "size": 8156
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_price_bands.py": {
+      "exists": true,
+      "sha256": "ab43a3b36bf9958b4692d668204cf443cbb58184f4c0632d1f6e7d13305bca99",
+      "size": 31719
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_price_completion.py": {
+      "exists": true,
+      "sha256": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0",
+      "size": 18043
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_probability_target.py": {
+      "exists": true,
+      "sha256": "78744f567ee87603de3137353482c03bf739a7a8661743ac75b1168577007b3d",
+      "size": 2099
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_promotion.py": {
+      "exists": true,
+      "sha256": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1",
+      "size": 6637
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_source_selection.py": {
+      "exists": true,
+      "sha256": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3",
+      "size": 9760
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_stock_trader.py": {
+      "exists": true,
+      "sha256": "3ad1e5a1927a6debb722c5bd33d28617f602b989e475399777c2da3666a3cb4c",
+      "size": 7520
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_trade_planning.py": {
+      "exists": true,
+      "sha256": "6e9f899ffbacc180b7c354ea5d03849a9929c2bcc331cd4cf069d2ce496c9b80",
+      "size": 41845
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_trade_review.py": {
+      "exists": true,
+      "sha256": "61dddc47f4a1b7b2d27e6bfe64090f11ccf29f573646261bf9dc70b7ba77c97e",
+      "size": 40425
+    },
+    "C:\\dev\\ducketz\\ml\\gameplan_trade_snapshot.py": {
+      "exists": true,
+      "sha256": "6d40982f20ccc5258c8852d19c3407784648257b62daf3f0f47c8b9e926687eb",
+      "size": 26810
+    },
+    "C:\\dev\\ducketz\\ml\\horizons.py": {
+      "exists": true,
+      "sha256": "9bccc0087a22314d202d3517327bb1a587987b9c7bb7c67fb4bf8f6ed5033386",
+      "size": 18670
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_coordinator.py": {
+      "exists": true,
+      "sha256": "6bf72c74eaaab7ab5369ba89bc87a39d4f8e27e7fd4452413442c8fbf5d09cba",
+      "size": 18469
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_coordinator_config.py": {
+      "exists": true,
+      "sha256": "cae383d54497cb8e79c065078da110add075ebd85e652d111b6a298aef0f3b4c",
+      "size": 6096
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_data_loop.py": {
+      "exists": true,
+      "sha256": "1d3dc2001b02e1f0d642164f9032098bf14bf8027a0029e4dcb5cdee815d51fb",
+      "size": 17563
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_data_pipeline.py": {
+      "exists": true,
+      "sha256": "d7c3de821fdb0cf67a4a06e1da87882595a1f2a92e897908c5ae55d4f685b01c",
+      "size": 20559
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_forecast_reader.py": {
+      "exists": true,
+      "sha256": "1a6a423ec6669fe06a16fe26088c64c905ca399f138308242bb8b12f47d68738",
+      "size": 4861
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_model_artifacts.py": {
+      "exists": true,
+      "sha256": "ec358c5053638ea9e3915dcac3bc9a86124318a629958b066109ade3a5f2db76",
+      "size": 14407
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_model_config.py": {
+      "exists": true,
+      "sha256": "19029da90839fae806465400142c32325686b5c71545118f7d2bb54f3385bf44",
+      "size": 8936
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_model_research.py": {
+      "exists": true,
+      "sha256": "70f5836a6b335c88d20c20f40642e63d16cb0c3aa27347bede6f59edc68df8a2",
+      "size": 23440
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_model_runtime.py": {
+      "exists": true,
+      "sha256": "d6f35237a5e8cdedb27cc236147b8d54ef70d75536deeb0542cfd02839f4ca3c",
+      "size": 24241
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_models.py": {
+      "exists": true,
+      "sha256": "0292d8e17fe4b9420310e01e3cee4ceb4f7fb8bac3a48fb3a6c906c2fb133b64",
+      "size": 35350
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_cadence.py": {
+      "exists": true,
+      "sha256": "fb84a1133e4f51a5b20563460c7aaedd86f1a1ca53eb18ebe7abd6ce30b3645d",
+      "size": 32198
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_comparison.py": {
+      "exists": true,
+      "sha256": "06413f6b2c6d7a173b96763c4f8bc6abd251b187416950b45dc60fa38dece61f",
+      "size": 23958
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_forecast_evidence.py": {
+      "exists": true,
+      "sha256": "7760314dfa36a945419d5dae32c93a678667416b8a5f4de099b379129ebe790b",
+      "size": 12826
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_health.py": {
+      "exists": true,
+      "sha256": "a3f2c96fa54ebceb54768c14fb56e96574425c3787ce474f4036d0bc813868e0",
+      "size": 14275
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_ledger.py": {
+      "exists": true,
+      "sha256": "be0a775cceac0d9d35f058c85742931d6a5584fe3308bc25744d74ad1d0efc5e",
+      "size": 30914
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_market.py": {
+      "exists": true,
+      "sha256": "db61a69042739127038d322352d18a7e084678cbcfeb3565ae2bd0d79a5e881d",
+      "size": 22971
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_policy.py": {
+      "exists": true,
+      "sha256": "8493e54dfe1e9e89a2cedcdcecbbede4abb536a815c2295bd191f171ebdf6038",
+      "size": 14167
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_review.py": {
+      "exists": true,
+      "sha256": "0b61cb5459898301d67cc5d5625527b06d81258f9bf237043aba739dbbde9050",
+      "size": 39263
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_runtime.py": {
+      "exists": true,
+      "sha256": "c1ab09de599d7988063552da4ecd31eff5e208732c51fff51df6fd3bfa2d1fab",
+      "size": 39968
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_seed.py": {
+      "exists": true,
+      "sha256": "e3abd2c195dc2bf3a64a874fc563ba8f5fa5de76ce00ade60c39455bd90d2bf2",
+      "size": 11588
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_paper_verify.py": {
+      "exists": true,
+      "sha256": "d1a786c46f57b997c50306866e44356755ae4a5880e28d4a3278e05c7329f25a",
+      "size": 17115
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_powder_exchange.py": {
+      "exists": true,
+      "sha256": "3ebcded4984b4480437c1bc5489776b20fcf43e3000554bd158e1c73c3d460c1",
+      "size": 31606
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_powder_ledger.py": {
+      "exists": true,
+      "sha256": "5f4b399062be1b3122707af23e46c01672290a00dede98c6bfef3b3379c01ae2",
+      "size": 20485
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_powder_lock.py": {
+      "exists": true,
+      "sha256": "cb2a3be78f33a67c790a1ed4cf1263cff4adf4f0e663a23c92f8429eb61e640f",
+      "size": 1988
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_powder_runtime.py": {
+      "exists": true,
+      "sha256": "710e76f820cb19fbf0ec5bc40284e02db2eddd2ef83e9714ab46f8f2b316e5ef",
+      "size": 36121
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_research_classical.py": {
+      "exists": true,
+      "sha256": "9b9ae6c04287a2a57e17696e5ac89381001d873dac36549147bf5d381b01b042",
+      "size": 5252
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_research_sequences.py": {
+      "exists": true,
+      "sha256": "4a65963f86ca904c1823d998efcca52ddf9ee8261e9f6ea2be35918812240772",
+      "size": 9709
+    },
+    "C:\\dev\\ducketz\\ml\\hyperliquid_timings.py": {
+      "exists": true,
+      "sha256": "b91b63393dd9a15f4cca5a105a9e2859c2b0f04eb422cf5ca5964dbbb1adb74b",
+      "size": 17932
+    },
+    "C:\\dev\\ducketz\\ml\\independent_stock_targets.py": {
+      "exists": true,
+      "sha256": "d083d8454ab8c81866a8b892fb27866b0c2ee2b3558b7585b4a72307826d8016",
+      "size": 15823
+    },
+    "C:\\dev\\ducketz\\ml\\live_evidence.py": {
+      "exists": true,
+      "sha256": "7b7924a4af016e0f8808db8d440c15df891a5da4e9ec1dfbe9d7aaf314a2c361",
+      "size": 1096
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\__init__.py": {
+      "exists": true,
+      "sha256": "aed31022a4d6f10455656ea676c3f0f340bacca632b309da489a3f606eed13d8",
+      "size": 388
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\engine.py": {
+      "exists": true,
+      "sha256": "b610521b36f4609fadb4cd1d6d128f658d25f9758ce186fae0fde6a572b7b195",
+      "size": 13956
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\events.py": {
+      "exists": true,
+      "sha256": "b2cdde5a88de98c9cf2df0c91eb24b864a29cd2c9909cc8dd33c91084409d93f",
+      "size": 2134
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\inputs.py": {
+      "exists": true,
+      "sha256": "578ba6f3843c2b0aa6122698349dcafb523cd7d65caaaf142723e10ef91052cd",
+      "size": 21105
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\operator_controls.py": {
+      "exists": true,
+      "sha256": "29a150aaeee3d9f0ebb75d7b81b0b8e79808d53f01c40ba6e8d6db7133866a18",
+      "size": 13363
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\paper_ledger.py": {
+      "exists": true,
+      "sha256": "8d79c25b19e5631b0dd7578c981259d2cf2649d60b095e633a88f7ad72e7f75b",
+      "size": 41353
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\policy.py": {
+      "exists": true,
+      "sha256": "339bdf6f7b82e9a4131e751d99e7eb49328722a0b1f9f4903aa7547b562e0fe7",
+      "size": 6701
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\publication.py": {
+      "exists": true,
+      "sha256": "87a3bd06c73e9bd8f14be5213c6fd65397a80b2014c1c84c75b2ffe2c8637cf5",
+      "size": 5778
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\risk_proposal.py": {
+      "exists": true,
+      "sha256": "3a63c240aac7aceef94c5c439819ac2630c75d12c566506b0bce4752bc56d655",
+      "size": 20939
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\rollout.py": {
+      "exists": true,
+      "sha256": "67c156729c7528fdabf587c508c4ca9655ca25b7c9a0a92c1b3a557eb1f5a228",
+      "size": 4183
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\runtime.py": {
+      "exists": true,
+      "sha256": "6e344e6b01d6831acdf3aba7796a33713b98c799d088ca279773d857775a3855",
+      "size": 16987
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\schwab_snapshot.py": {
+      "exists": true,
+      "sha256": "4518ebe0d300e83aeaa208495ab0015db7128253297a65a8fd5bb4052ea89d38",
+      "size": 28499
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\weekly_review.py": {
+      "exists": true,
+      "sha256": "88533bb99aaa58e7e56bd4219940d8f3fb71d2ae459f81e2317d5f6dd390a37c",
+      "size": 51177
+    },
+    "C:\\dev\\ducketz\\ml\\loop_c\\weekly_scheduler_memory.py": {
+      "exists": true,
+      "sha256": "5e72cfc4af4bda725d5f1255b3550f5c88ae6441c8b89f40b8323d68ea51ca6a",
+      "size": 17258
+    },
+    "C:\\dev\\ducketz\\ml\\macro_ablation.py": {
+      "exists": true,
+      "sha256": "49ccd495d1d3378490ef9976a007c98392ab44a3aa5c5c417f2049fa4b51ad48",
+      "size": 17764
+    },
+    "C:\\dev\\ducketz\\ml\\model_features.py": {
+      "exists": true,
+      "sha256": "dade3b552b1791b34d7cf5f399cf71777e5c471e84d11d260aa0e873b7113156",
+      "size": 3699
+    },
+    "C:\\dev\\ducketz\\ml\\model_runtime.py": {
+      "exists": true,
+      "sha256": "ecfe2e6258f86cbc6424987f03427537aa0c75f49e8828156cadc58fed6bdd54",
+      "size": 33186
+    },
+    "C:\\dev\\ducketz\\ml\\models\\__init__.py": {
+      "exists": true,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "C:\\dev\\ducketz\\ml\\models\\registry.py": {
+      "exists": true,
+      "sha256": "ebf6e4a341ced098b33f928cc53474fa093641717c055ddfd8275ae19d209204",
+      "size": 8958
+    },
+    "C:\\dev\\ducketz\\ml\\nightly_gameplan.py": {
+      "exists": true,
+      "sha256": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+      "size": 119491
+    },
+    "C:\\dev\\ducketz\\ml\\nightly_strategy_execution_coherence_ablation.py": {
+      "exists": true,
+      "sha256": "8bfeb5ccdc0cbd1c1aa03399f1f1acbb13815258aef22e418d7289604736eba7",
+      "size": 91529
+    },
+    "C:\\dev\\ducketz\\ml\\nightly_target_source_ablation.py": {
+      "exists": true,
+      "sha256": "18fd87c7951afc1bb24ef29ea7503907c4322911f8f3f56fe8821a2fbd6faa1d",
+      "size": 49345
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\__init__.py": {
+      "exists": true,
+      "sha256": "269d8611133c66931cf3dd8f88d0b2ee3ce14376706a95b2422548e53368743e",
+      "size": 85
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\__main__.py": {
+      "exists": true,
+      "sha256": "c01abddca242eadfe1b16a3dd750efb46eaabffb652dda8fbabe3a082046310a",
+      "size": 6918
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\policy.py": {
+      "exists": true,
+      "sha256": "3309187f28e5b567b20f7124ecad180ffccdac7f0b4fe5189e6843ee2c509b0b",
+      "size": 9633
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\providers.py": {
+      "exists": true,
+      "sha256": "a6f77237a546d4856738d8efb101a7e6736193f0f8d223c02524a7e932b26cf2",
+      "size": 3236
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\storage.py": {
+      "exists": true,
+      "sha256": "17f8347ba621ad153220d175301c9a6e9d76502b9341d909ae3262b15cb95556",
+      "size": 7529
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\tracking.py": {
+      "exists": true,
+      "sha256": "92615b6c91691ed46fbc722dfbcd63bd14cb65a4e21e010f255e8c3962ee236e",
+      "size": 6314
+    },
+    "C:\\dev\\ducketz\\ml\\opportunity_research\\workflow.py": {
+      "exists": true,
+      "sha256": "cefb575d1297868d6e8073df99f3f18418ff60e58f9dab866507c4af8fff60a5",
+      "size": 15156
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\__init__.py": {
+      "exists": true,
+      "sha256": "cbe926bcf69cc090d120ca88f75a9d85b3cacca2ca3a4ef9488a98fe021478d3",
+      "size": 610
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\black_scholes.py": {
+      "exists": true,
+      "sha256": "37a838a75b752d46ceb6d3eb5324eceb2a94ba30b24c470666938d13ea933470",
+      "size": 7769
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\candidate.py": {
+      "exists": true,
+      "sha256": "e1d93130643b219a2cb1edde422790b779ecbfd9a51ae9f71b91674ae7cb92ed",
+      "size": 30156
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\causal.py": {
+      "exists": true,
+      "sha256": "92a35c597f629a0cba99a38634e40f03b6fb95cf7ba331c6ecf5e47864748a7b",
+      "size": 79794
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\constraints.py": {
+      "exists": true,
+      "sha256": "8dc138890ef3ea1a9c445e498594768aa0a7f8519bc50000be657150a9528fdb",
+      "size": 8950
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\consumers.py": {
+      "exists": true,
+      "sha256": "2331e579644dafbcaf1ea36ed55b00912829f0566586f84f06f651a6c0553695",
+      "size": 19859
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\dividends.py": {
+      "exists": true,
+      "sha256": "2e477411595f80f7b708688f060e799cb8adb26173314a85dbb61159b2e8a0e1",
+      "size": 14621
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\eligibility.py": {
+      "exists": true,
+      "sha256": "2db3165145f75270524ffe7545024108e38fd66f08f7bcffdddd8e24903928bc",
+      "size": 82189
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\lineage.py": {
+      "exists": true,
+      "sha256": "356d2aba08806e05b51a92abc9dc78167d1fe68b42b71b54ee05b8f683495805",
+      "size": 22379
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\lockbox.py": {
+      "exists": true,
+      "sha256": "3b3790826bf94566d309916aaba1b37a8cf5b5c72a4a9a800ad6a3aa4e97994b",
+      "size": 26975
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\loop_native_eligibility.py": {
+      "exists": true,
+      "sha256": "be43f8ec45ce52286e50ef8c6342b5abd6bbe33eb9eb3b12dd035e3026bd52aa",
+      "size": 33584
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\model.py": {
+      "exists": true,
+      "sha256": "680674d0e15be60b7f923563f50b4bd6665a1e4bc98c981fea43c72e29b0438e",
+      "size": 48034
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\operations.py": {
+      "exists": true,
+      "sha256": "6ae2442aef08a24f8b8245e7efa8462e0fbb4c1cb9add769eb13b1687c57bea5",
+      "size": 32653
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\opra.py": {
+      "exists": true,
+      "sha256": "7dee8fe1f6c744a71b34de6fe8da98cd1b1e1e9ff3a1acd735d944dc355fb514",
+      "size": 12648
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\opra_materialization.py": {
+      "exists": true,
+      "sha256": "6fd590492ea420201ad8d91b19ee9d31a7d06131a343e60dc29650e8c90ac28e",
+      "size": 28398
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\policies.py": {
+      "exists": true,
+      "sha256": "0435494ab712a187dc45ed3ce4ac3e7026214a33100eb1ca67e67a840002b9c0",
+      "size": 9288
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\prediction.py": {
+      "exists": true,
+      "sha256": "9392de14871aaf5fc99599122f4e799f3bbd7da16921a0d9a992f4fa61060ca4",
+      "size": 33153
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\publication.py": {
+      "exists": true,
+      "sha256": "b5ad7b88749948a6cce06682eef367d3a28cc78007d34cf8d7352f6c4bc5fcf1",
+      "size": 35496
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\rates.py": {
+      "exists": true,
+      "sha256": "a2b99a33f4fd1ed35557581c6ea92b601afc2cf65efe0179c03f2a12e0344b2f",
+      "size": 17637
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\reporting.py": {
+      "exists": true,
+      "sha256": "2ed87f21d9805f38a3283437afbcb6ec8bef72f4dd4ff9bacbe08008d3b14eda",
+      "size": 30953
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\research_benchmark.py": {
+      "exists": true,
+      "sha256": "a4335d29b6e2227efefedf5830226cd50f02dc57ab3c7a7ba2b0f66e099f7e87",
+      "size": 8479
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\schwab_materialization.py": {
+      "exists": true,
+      "sha256": "b4fe9176d706c031ef2beaf2f4cb7e123b2f082eff999b1977440cf0f7ee88c0",
+      "size": 118200
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\shadow_model.py": {
+      "exists": true,
+      "sha256": "1eca0b613033f0b592b142b9e89afbfb80e61664c3c5dd602012c9ba4de88954",
+      "size": 60759
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\strategy_outcomes.py": {
+      "exists": true,
+      "sha256": "6f4bfffaedeb3037c5b712008a79df791909376bf91debfeaf42888b50409a89",
+      "size": 38254
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\strategy_shadow.py": {
+      "exists": true,
+      "sha256": "7ec7dd79f0b327465249183f67ff77301a84675c69b2a548b8d1af9a0cb86db5",
+      "size": 51363
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\target_outcome.py": {
+      "exists": true,
+      "sha256": "53cf4b88a174a40c06bfd27554a29d20987665843f1ed18653b3777925f3eaa4",
+      "size": 35033
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing\\weighting.py": {
+      "exists": true,
+      "sha256": "c9e56e72da8dd2d33304961aebc82d0e553885201a8fab4b5a654789594a96ff",
+      "size": 5457
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_admin.py": {
+      "exists": true,
+      "sha256": "4c9c5e9c891f2b286cba91321d128d9326039b5574fbac1cab3603a1e6be26b9",
+      "size": 26515
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_fred.py": {
+      "exists": true,
+      "sha256": "fd95eb6efcbbe95cad1fa761d71ff0e370cec4823f2f3228411945f65a9e97eb",
+      "size": 6870
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_lockbox.py": {
+      "exists": true,
+      "sha256": "b4e74275621983f25fdd028add10904ca4e19bccec61c9755ab9475482fc8cd2",
+      "size": 2020
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_loop_native_worker.py": {
+      "exists": true,
+      "sha256": "01adda739762d22e546e04d2cfe125b7ceaa6ab8ee84d261632e6d929d903357",
+      "size": 9775
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_opra.py": {
+      "exists": true,
+      "sha256": "966c4a8bfcfd26fccee48d735444b3f74066826c2937771c499014b03d0e4984",
+      "size": 4708
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_opra_replay.py": {
+      "exists": true,
+      "sha256": "306f91356cbc75144cf2a12adaa8d4aa2807cc939550426d210377b52ddccee7",
+      "size": 22982
+    },
+    "C:\\dev\\ducketz\\ml\\option_pricing_runtime.py": {
+      "exists": true,
+      "sha256": "ee8398cfec7eaec7543733c6fe767a97d3411e0a6bcc6b31a379cd7d9d059e80",
+      "size": 106637
+    },
+    "C:\\dev\\ducketz\\ml\\overnight_runtime.py": {
+      "exists": true,
+      "sha256": "113b22908c82d845290d394dd64d0b232bee0ff5dff4ef9626120335593a03a5",
+      "size": 46397
+    },
+    "C:\\dev\\ducketz\\ml\\parquet_contracts.py": {
+      "exists": true,
+      "sha256": "24dc6026baf27a819e02cf02170d2ce1f70f6f72c18cdf4c930789a5c7980947",
+      "size": 35949
+    },
+    "C:\\dev\\ducketz\\ml\\prediction_runtime.py": {
+      "exists": true,
+      "sha256": "4a9070d7dda0aad0f617d703b60eca797d7b892777cd3927a15a3afe32ad49ad",
+      "size": 20009
+    },
+    "C:\\dev\\ducketz\\ml\\preparation_deadline.py": {
+      "exists": true,
+      "sha256": "749c35fc08c62ec5d6de91a91c856ac07d039eeca0879c03c95bc4cff6796552",
+      "size": 2746
+    },
+    "C:\\dev\\ducketz\\ml\\preprocessing.py": {
+      "exists": true,
+      "sha256": "1352ab5f0b0ae93cea177fb72649c92fd840b4e6717b57755c4800c5590c3b80",
+      "size": 7067
+    },
+    "C:\\dev\\ducketz\\ml\\readiness.py": {
+      "exists": true,
+      "sha256": "3a6fd4b762b47f89114e12c6b216fa016eae81cd48c49bb589a02b8cb84ac7f3",
+      "size": 25589
+    },
+    "C:\\dev\\ducketz\\ml\\README.md": {
+      "exists": true,
+      "sha256": "dd42c9dea8c3643b6fe24b1e9bce10d96126e8d5dafd51bd79595f6d7984eb45",
+      "size": 24195
+    },
+    "C:\\dev\\ducketz\\ml\\rolling_materialization.py": {
+      "exists": true,
+      "sha256": "f67ce52a35fe35ec103d7c2ae5bc28d34a3dbe42cbbe000cc8d374c91e3990ea",
+      "size": 58524
+    },
+    "C:\\dev\\ducketz\\ml\\rolling_samples.py": {
+      "exists": true,
+      "sha256": "d15df4b93b50a2d5e67edfc5ad7bae2a5603c51163162a0028fc0e287f0552bb",
+      "size": 34025
+    },
+    "C:\\dev\\ducketz\\ml\\runtime_pipeline.py": {
+      "exists": true,
+      "sha256": "d0fb9f5229f1cd2ef6e15f9fee96254bc110ad9cf0ab665e0fccaa839496c0d4",
+      "size": 160316
+    },
+    "C:\\dev\\ducketz\\ml\\scheduler_handoff.py": {
+      "exists": true,
+      "sha256": "93e976d967318c1de68de14a69a618b4d8d3e242c1558acac4ebac33cd3c159a",
+      "size": 19214
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\__init__.py": {
+      "exists": true,
+      "sha256": "548d63769e3068b75e83315902344591572dec31f129ec3f93cad88c7e9a4cdc",
+      "size": 605
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\consumer.py": {
+      "exists": true,
+      "sha256": "a8cc68a3b8ee2204ec7152a462768df460c9549914f0f73679af30d2289fcaca",
+      "size": 10251
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\contracts.py": {
+      "exists": true,
+      "sha256": "314a85908f743935d78e9d8e3dd104a3fc64c907204f6870e139949fa9ae3bf7",
+      "size": 5225
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\dataset.py": {
+      "exists": true,
+      "sha256": "742411eefcd227ff138b95273fecc68afc7430f885df7079f879296d3700f623",
+      "size": 13414
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\inference.py": {
+      "exists": true,
+      "sha256": "686d5aa9fdcdb3bb1625e49d119bd2e520576d58265a9e2f9b6d94ac0d95e2cd",
+      "size": 11109
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\inference_runtime.py": {
+      "exists": true,
+      "sha256": "5d830caa14168ae39b28714e9d87f9fb551a7c9446d05b43dbe885dffc5d7269",
+      "size": 10754
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\model.py": {
+      "exists": true,
+      "sha256": "87e4afa3eab3a8565171367361bfb95ab36f270b6f7cdec5fe275306b4fca68f",
+      "size": 6585
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\preregistration.py": {
+      "exists": true,
+      "sha256": "0ee10d7a04daa0bb048e80e6e4d5f8928b3b1756a2868f3d8773bcba742589ab",
+      "size": 20204
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\preregistration_proposal.py": {
+      "exists": true,
+      "sha256": "bfc9d4e023111dd7cd939c248b47fb0a20332a34de9a984f0c8507c4d80184b9",
+      "size": 7169
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\publication.py": {
+      "exists": true,
+      "sha256": "0d180cfcc96f2994e6ac485e20b133fcdf956737b2997bf2d14d0d07903993f3",
+      "size": 8402
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\runtime.py": {
+      "exists": true,
+      "sha256": "b57c73e0c4323b27c9a23b01b7793160874177b1ddb4a59174f35899bcbbfc20",
+      "size": 26314
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\surface.py": {
+      "exists": true,
+      "sha256": "95f83969d5ef3143e7ac88e8c8b7c24b666874ca494ba257bd39446144774875",
+      "size": 23522
+    },
+    "C:\\dev\\ducketz\\ml\\sequence_encoder\\training.py": {
+      "exists": true,
+      "sha256": "e39eace4c51cb5b6949e5591f5a7c7cc9aa2823350515b3ddd3865549fa6a037",
+      "size": 11282
+    },
+    "C:\\dev\\ducketz\\ml\\splits\\__init__.py": {
+      "exists": true,
+      "sha256": "fee73d9c45268d4a8b80a0d5afda27a459b6ad9904eba0419031c95c2a15137c",
+      "size": 74
+    },
+    "C:\\dev\\ducketz\\ml\\stock_direction_policy.py": {
+      "exists": true,
+      "sha256": "7797ddaabe0aec686df618e3cbf356f18bde4aaf3b072fcbcd3e3c142e332bab",
+      "size": 592
+    },
+    "C:\\dev\\ducketz\\ml\\stock_target_backfill.py": {
+      "exists": true,
+      "sha256": "d80e2931170a6706a9af23853f81361313e06095957ee48128d12604de3f6557",
+      "size": 14933
+    },
+    "C:\\dev\\ducketz\\ml\\stock_target_history.py": {
+      "exists": true,
+      "sha256": "b3d5ec5eacd670b56804b8619ccd1bc34f43b3edf47df53e9dfb3241e5d088bd",
+      "size": 38028
+    },
+    "C:\\dev\\ducketz\\ml\\stock_target_prices.py": {
+      "exists": true,
+      "sha256": "f9f52937ea14232365c04c2ae9302f946bf29a7ded31482e8db47df7c3d155da",
+      "size": 10218
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\__init__.py": {
+      "exists": true,
+      "sha256": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312",
+      "size": 160
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\audit.py": {
+      "exists": true,
+      "sha256": "40012563e5ba7a1423f8b6325c2169d135195306daae1ecdd293a7023f224cf2",
+      "size": 34167
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\contracts.py": {
+      "exists": true,
+      "sha256": "eaab042163ea44ef3da945043eafa7d90959b0f928bc5148cf5a7b9c25419ead",
+      "size": 10143
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\control.py": {
+      "exists": true,
+      "sha256": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4",
+      "size": 2903
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\cross_horizon_fallback.py": {
+      "exists": true,
+      "sha256": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af",
+      "size": 6320
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\daily_adaptation.py": {
+      "exists": true,
+      "sha256": "f2069ef1898ef2669cf9a9dfe64de3591c06f660ca08338aabf6341e3acd4f8e",
+      "size": 4490
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\engine.py": {
+      "exists": true,
+      "sha256": "f0d034120ab916113359bea43c5f423a71372cbb12c8864b65080ed7469dca23",
+      "size": 21912
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\execution_lifecycle.py": {
+      "exists": true,
+      "sha256": "7b39ae139d607cd811308db33c304b1a098119eb02d03b25821bd0165cab3b28",
+      "size": 16899
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\fallback_review.py": {
+      "exists": true,
+      "sha256": "ae9ebe85a7eade15157d70c7ba07312c594eb91fcf8e65291869d263e20f56f2",
+      "size": 11395
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\fixed_horizon_budget.py": {
+      "exists": true,
+      "sha256": "06651eeb504f4103e10310d6fac71adad72b1f8a62f495b302b870f1ffdb2abc",
+      "size": 11281
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\fixed_horizon_engine.py": {
+      "exists": true,
+      "sha256": "dfbf5b8ef6aed29556c313cb5736880d18c3741c50b84b12fd3b3ef050eaeb0c",
+      "size": 16524
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\gameplan.py": {
+      "exists": true,
+      "sha256": "7bfa48a0bc3bbd5076bf8a089cebd034fcede1d7dfd30de44be60172f2fc84ee",
+      "size": 19983
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\gameplan_direction_engine.py": {
+      "exists": true,
+      "sha256": "f4cba9bb9814b0ba5d6dbdaa7b6d90f9e4807d5e7ed0f48cbd3de7f272977bde",
+      "size": 24521
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\gameplan_execution.py": {
+      "exists": true,
+      "sha256": "86245d610f112eac0beaf9b39842ab0e77cbac44cc606714241c680379f7c04f",
+      "size": 5297
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\handoff.py": {
+      "exists": true,
+      "sha256": "2843c9c6cad8e4e4ee51177bd06ceb4ba285c2da199fd0df2eebfd25e989e91f",
+      "size": 17104
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\horizon_broker.py": {
+      "exists": true,
+      "sha256": "764adfcf4d484f4e78175db9864281b5b178e9cfe3056fe34f2be3dd093a538a",
+      "size": 13903
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\horizon_ledger.py": {
+      "exists": true,
+      "sha256": "5bb23712f9344eb6760ea5bfd38a0765e269f13d7ebe2fb7e8cf5622dc6a3a26",
+      "size": 63766
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\independent_engine.py": {
+      "exists": true,
+      "sha256": "f4f1387cb4afaf9dcb4374eaeb21be810891fe69351db08caa3d08f722c83b8a",
+      "size": 10744
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\independent_runtime.py": {
+      "exists": true,
+      "sha256": "ccbacd1fc23b0d9eac77fd4df772b53b5b493f44122ded9561786732583f0e35",
+      "size": 53968
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\independent_session.py": {
+      "exists": true,
+      "sha256": "56280de6333016a8b4849b2436803e7d49eb0cd5bcd2a74b6be5d577e699bea3",
+      "size": 21061
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\independent_signals.py": {
+      "exists": true,
+      "sha256": "ffd793f2037817a83a51d1755e4db6158c193216abfdc05fbd12434df70a87a2",
+      "size": 19064
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\independent_training.py": {
+      "exists": true,
+      "sha256": "1bfa5df652bfec0734b14e2a22432f9ff77b6900fb598acd35615bb1258289e8",
+      "size": 55120
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\inputs.py": {
+      "exists": true,
+      "sha256": "31b154c5f5f95b971abbe30cbcc40b4c7f26c4d9df65451d096094ccafaad664",
+      "size": 6292
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\market_features.py": {
+      "exists": true,
+      "sha256": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f",
+      "size": 2049
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\model.py": {
+      "exists": true,
+      "sha256": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21",
+      "size": 25854
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\price_comparison.py": {
+      "exists": true,
+      "sha256": "ab7d0565c86742d42da1134faa67e43958c9c8cf30e06c3cf21a66be1e0a0a08",
+      "size": 3328
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\publication.py": {
+      "exists": true,
+      "sha256": "510c5a7b5878d61babdc7dceefd94f9a5460f19de6eb8b841ad73daca714ef19",
+      "size": 19074
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\quote_recovery.py": {
+      "exists": true,
+      "sha256": "0a567e5f3683dc5b4c25c50c6bfd44198233a97d6e42e6811f18dd69604d747c",
+      "size": 5422
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\reconciliation.py": {
+      "exists": true,
+      "sha256": "5d359aa371f739a98e01f7010831a31f80cb6b892e135b31ed92941a86c528c8",
+      "size": 10300
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\runtime.py": {
+      "exists": true,
+      "sha256": "0740f5c2e1cf51601e2d239eb3a22cc3c3dbb56255f712ef24ff52bdbf53c483",
+      "size": 54596
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\scope_qualification.py": {
+      "exists": true,
+      "sha256": "fa2949e7978672e4e4693f855589dd3d33b1f7e7d44e5241171d1a2786ea4323",
+      "size": 5337
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\session.py": {
+      "exists": true,
+      "sha256": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+      "size": 9178
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\sizing_policy.py": {
+      "exists": true,
+      "sha256": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b",
+      "size": 497
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\state.py": {
+      "exists": true,
+      "sha256": "b46aede4763428cc7035580b1a5d75073da0a08621e9959889d680940cfdd13b",
+      "size": 16889
+    },
+    "C:\\dev\\ducketz\\ml\\stock_trader\\training.py": {
+      "exists": true,
+      "sha256": "2477f58a2ddac3f3d343ebd68030e2e9dfb65eab29a2114e6f11766d534d82f2",
+      "size": 25424
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_pricing_canary.py": {
+      "exists": true,
+      "sha256": "b4a9eac7c84d57b6ea9685b02d5ff497066f4f2890fcd68ddd80af281e18b6e1",
+      "size": 16843
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_profit_training.py": {
+      "exists": true,
+      "sha256": "3bfa8cbcfcde21e4a32a0a727d6d6d3a4ba848fd35e39fcec551a09fccc05552",
+      "size": 52429
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_profit_training_runtime.py": {
+      "exists": true,
+      "sha256": "bba67de64e79e4f9b03b8012abf1251004c9e3c9d39ba6cdf73dd6fe4fc82c0d",
+      "size": 20719
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_publication.py": {
+      "exists": true,
+      "sha256": "85c9afea6b3847091c4c9cac6d83f73f5fe10b9e7dc9531cf60410c691bfcf87",
+      "size": 9982
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_runtime.py": {
+      "exists": true,
+      "sha256": "128eb277b095833fcd8923dcf10f91186e0aa00532e42ec980def96f099056ec",
+      "size": 31222
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\__init__.py": {
+      "exists": true,
+      "sha256": "c7607996a84d1880eaa730c89be0f90f10810605cf9a7cf061a71b53cf115618",
+      "size": 368
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\candidates.py": {
+      "exists": true,
+      "sha256": "87f8273183b7574e0e53832a5f8504d8badbd51ed523c8cbf0055dd0ba61179f",
+      "size": 29638
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\chain.py": {
+      "exists": true,
+      "sha256": "e0ccefad871291e6e35d30491452d3cf73472f3b47ec179dc8119e5314690c19",
+      "size": 41569
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\contracts.py": {
+      "exists": true,
+      "sha256": "09dcf220550469f155b8a77831443b4d7a54383b3474b850613a7ad78ee7a11d",
+      "size": 8422
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\market_state.py": {
+      "exists": true,
+      "sha256": "70680129c21d9116d750c78238bccbb9e9d3455dde1574f8d6cab2c169759e0f",
+      "size": 14660
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\model.py": {
+      "exists": true,
+      "sha256": "651b1c024eed24a153199993d7729322ee8378175a8e6ead740a1bf807194561",
+      "size": 54210
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\opra_cache.py": {
+      "exists": true,
+      "sha256": "ddb5b1feee5ff1e6291643d32936efa5d7444dcfd23288e84371a90e8c9e6122",
+      "size": 40119
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\outcome_store.py": {
+      "exists": true,
+      "sha256": "f0fc48e81810c246405818bfdb6bfca44b6e9cb19d08e6bfdfa238846dfdb50a",
+      "size": 10974
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\registry.py": {
+      "exists": true,
+      "sha256": "3315230795138559468ef97a107317c99d31121d4baaa27d8076e4f798149b5e",
+      "size": 13081
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\research_trace.py": {
+      "exists": true,
+      "sha256": "f848e09e1bc4500bcca0912a32f05832b6aa6f4b95e9cb1684a3d9769bc30e43",
+      "size": 4125
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\runtime.py": {
+      "exists": true,
+      "sha256": "73e73c7fce83286c3e2fdffd1228f77cf210f9a8ead47c9537b68f970f43fd6a",
+      "size": 53288
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_selection\\slow_model.py": {
+      "exists": true,
+      "sha256": "7cdeb72e86401925bcb02f8b243edf73c7da801ac54dec7e549d148cfaf312b9",
+      "size": 13855
+    },
+    "C:\\dev\\ducketz\\ml\\strategy_value_challenger.py": {
+      "exists": true,
+      "sha256": "9e1d78ac58348407525bc3a5eca423aeafaa2325ab36a97d35e0e49319045512",
+      "size": 66419
+    },
+    "C:\\dev\\ducketz\\ml\\system_guardian.py": {
+      "exists": true,
+      "sha256": "373ccfbbd0a3c976fa8960cba755fd94269528992beb6a069b81aeb3d7e105b1",
+      "size": 108007
+    },
+    "C:\\dev\\ducketz\\ml\\system_monitor.py": {
+      "exists": true,
+      "sha256": "2f31e141f1bdc033f59363813b03d05b9b41d1e81de29a727da28e60d605b7c2",
+      "size": 157460
+    },
+    "C:\\dev\\ducketz\\ml\\timing.py": {
+      "exists": true,
+      "sha256": "6157ee95d01e1e6e8525f0dbdc6fdf64776c6ee57f013c994a69b3d54f15ab90",
+      "size": 6883
+    },
+    "C:\\dev\\ducketz\\ml\\training_progress.py": {
+      "exists": true,
+      "sha256": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e",
+      "size": 2209
+    },
+    "C:\\dev\\ducketz\\ml\\universe.py": {
+      "exists": true,
+      "sha256": "f3943cc7724d174edff7b5ffa0cfd704f3072249ea1ede4689cfbeacb3e1b6ae",
+      "size": 6528
+    },
+    "C:\\dev\\ducketz\\pyproject.toml": {
+      "exists": true,
+      "sha256": "dfd02b88c8001983f753a3030ebe5afce7b0167479743b5596559a5763f01df9",
+      "size": 3305
+    },
+    "C:\\dev\\ducketz\\README.md": {
+      "exists": true,
+      "sha256": "cf50912675e70ccb78b52b2601e1c8c270159a83a145d365579700a8665a4718",
+      "size": 1014
+    },
+    "C:\\dev\\ducketz\\requirements.txt": {
+      "exists": true,
+      "sha256": "0801547633cc24aee37d57576e659ac54663b2d053db6b059a6aaf4d474a0725",
+      "size": 1536
+    },
+    "C:\\dev\\ducketz\\Start-Gameplan-Trader.cmd": {
+      "exists": true,
+      "sha256": "07cec07c05d28a0d738915ba7d1eb418fd104d62a67d316384c50421f4cca505",
+      "size": 401
+    },
+    "C:\\dev\\ducketz\\Start-Hyperliquid-Powder.cmd": {
+      "exists": true,
+      "sha256": "a919d80aae0d7c27e1a6c00ea39a373b74f5c857392039eda7ff29cbf11ff6f8",
+      "size": 262
+    },
+    "C:\\dev\\ducketz\\Stop-Hyperliquid-Powder.cmd": {
+      "exists": true,
+      "sha256": "88696d0d197522a5dcba92493b43bcda213de23fcd4b7b7aceeb3d4f2343b55f",
+      "size": 248
+    },
+    "C:\\dev\\ducketz\\tests\\fixtures\\schwab_account_and_orders.json": {
+      "exists": true,
+      "sha256": "436b1d5294a3e05a8d20fa6a15e2591bc1ec801d507e89f45d5d2adda6a6e579",
+      "size": 3931
+    },
+    "C:\\dev\\ducketz\\tests\\gameplan_fixture.py": {
+      "exists": true,
+      "sha256": "be3c8d0a3725cde1e470e4bea2cc623eebe95a1c075ef87d4e6f9f8644fbfd2f",
+      "size": 6807
+    },
+    "C:\\dev\\ducketz\\tests\\gameplan_stats_fixture.py": {
+      "exists": true,
+      "sha256": "7fbb0de527f101097d24390245d0d2bbe34efaaf4bc402bf56f7bafbb15e9418",
+      "size": 3924
+    },
+    "C:\\dev\\ducketz\\tests\\test_app_main.py": {
+      "exists": true,
+      "sha256": "abe774885f51b78308d1e7adedc5ad2f998e5c7adda8f785799a54ce78072768",
+      "size": 1674
+    },
+    "C:\\dev\\ducketz\\tests\\test_bar_timing.py": {
+      "exists": true,
+      "sha256": "80b6689bd50a2c87c8fdd1e690a1763c10e1d3da57e66fbb9891ca55e75a58d3",
+      "size": 1196
+    },
+    "C:\\dev\\ducketz\\tests\\test_cme_cross_asset_context.py": {
+      "exists": true,
+      "sha256": "4bda6f3ed10ea08630e71fcecc08ec01b66e6c87154c5316e285f7a88771db79",
+      "size": 28031
+    },
+    "C:\\dev\\ducketz\\tests\\test_cme_runtime.py": {
+      "exists": true,
+      "sha256": "1cd7ea278f0422c3fbb30f137d64e6c801cc4fa90ce7ab95cdee4652c61bf11e",
+      "size": 22809
+    },
+    "C:\\dev\\ducketz\\tests\\test_cross_horizon_fallback_ledger.py": {
+      "exists": true,
+      "sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+      "size": 18757
+    },
+    "C:\\dev\\ducketz\\tests\\test_cross_horizon_fallback_policy.py": {
+      "exists": true,
+      "sha256": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+      "size": 5193
+    },
+    "C:\\dev\\ducketz\\tests\\test_cross_horizon_fallback_review.py": {
+      "exists": true,
+      "sha256": "3c86b39cb1cdc93ce17b1bbae7f0b77b9df5af3c5dd37998f636251c7d21390a",
+      "size": 7739
+    },
+    "C:\\dev\\ducketz\\tests\\test_cross_horizon_fallback_runtime.py": {
+      "exists": true,
+      "sha256": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+      "size": 12704
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_archive_bridge.py": {
+      "exists": true,
+      "sha256": "a941b3bf818fa94a3940ba3d321954d36b0c54433471cfc45c8932e875a9bcfe",
+      "size": 6538
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_cme_context.py": {
+      "exists": true,
+      "sha256": "d280159e4e556c1667961b7d6c3ab4eca6e0661f5f03cddce6571e936a31774a",
+      "size": 4018
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_cold_start.py": {
+      "exists": true,
+      "sha256": "2a81dc6a667ae975e1f40e60545f6b0299a7972643d5ff728ab45c0fda39690b",
+      "size": 45664
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_derived_bars.py": {
+      "exists": true,
+      "sha256": "1178ab380ff265b62534d6f17b1d53cf0d463ffcce430a1d503a2015869ef1ea",
+      "size": 16961
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_opra_live.py": {
+      "exists": true,
+      "sha256": "3a3b3beea0680ef00143a59df3d37f76bc41b0fcd73bfe06ed2edb8274efe757",
+      "size": 40723
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_opra_replay.py": {
+      "exists": true,
+      "sha256": "7b1964aa140fca28c1a853589a175568a67dfce8908596e7eefb92159d24974d",
+      "size": 9276
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_retry.py": {
+      "exists": true,
+      "sha256": "6ab76df936f59295429db5d350f5a2c8b9c4b3ddfb76419a441f98a4a9223519",
+      "size": 1399
+    },
+    "C:\\dev\\ducketz\\tests\\test_databento_xnas_replay.py": {
+      "exists": true,
+      "sha256": "c72611f70361c846988bb92915097cfa09063d8e3f6d96c03d46d39781cfaceb",
+      "size": 22117
+    },
+    "C:\\dev\\ducketz\\tests\\test_datastore_hygiene.py": {
+      "exists": true,
+      "sha256": "89cc37a71506408cfa24111ca1c5ef324cad9d524dd989cd43246f3492dd854e",
+      "size": 5596
+    },
+    "C:\\dev\\ducketz\\tests\\test_directional_forecasts.py": {
+      "exists": true,
+      "sha256": "febd0efd47ef21771f8ff793c023af2189a9352007cf3f0b1ae693d7bfe512de",
+      "size": 8247
+    },
+    "C:\\dev\\ducketz\\tests\\test_ducket_bucket_app.py": {
+      "exists": true,
+      "sha256": "58c5934616b5da8b18802bb63db32505a026c903b08f65c60d4da8ec6d2348f3",
+      "size": 2484
+    },
+    "C:\\dev\\ducketz\\tests\\test_equity_dataset_migration.py": {
+      "exists": true,
+      "sha256": "c1e2bd3419a622535a29c9f18ae53922fe81768abe14897b67d12328a6f81897",
+      "size": 4136
+    },
+    "C:\\dev\\ducketz\\tests\\test_fixed_horizon_budget.py": {
+      "exists": true,
+      "sha256": "49712b60ad09a276bdc67dea09242cdb69253ab191b2c492941f51b38d4013c7",
+      "size": 7978
+    },
+    "C:\\dev\\ducketz\\tests\\test_fixed_horizon_engine.py": {
+      "exists": true,
+      "sha256": "6e06f6686f9b1d7cf0e8ab9720303dad4cc10fc5bea67731a2ca58a738809ff1",
+      "size": 15342
+    },
+    "C:\\dev\\ducketz\\tests\\test_fmp_corporate_data.py": {
+      "exists": true,
+      "sha256": "f7a9d30169d119dc4af7872f6117500ea66757f290c90dbc136554307f956a73",
+      "size": 1705
+    },
+    "C:\\dev\\ducketz\\tests\\test_fmp_energy_context.py": {
+      "exists": true,
+      "sha256": "a0e95d263d1b9e221161d84a8fb304029fc3e037c48f88a2f05da0c1e4ab746a",
+      "size": 15506
+    },
+    "C:\\dev\\ducketz\\tests\\test_fred_alfred_causal_pipeline.py": {
+      "exists": true,
+      "sha256": "8c045200f1e487e7846cb19ae53b2707c68b8b9cd38fffb3325d520537266b12",
+      "size": 20910
+    },
+    "C:\\dev\\ducketz\\tests\\test_fred_fetch.py": {
+      "exists": true,
+      "sha256": "6e77eed2f7f2b66c4b4d33a84216e3aba19a4f5e336fbb79169a5d4104c1d10a",
+      "size": 6110
+    },
+    "C:\\dev\\ducketz\\tests\\test_fred_vintage_import.py": {
+      "exists": true,
+      "sha256": "e2734f23ae5cbaf1552d29865e7e716ef21dce295a3f804674e50d8f6d40af25",
+      "size": 8070
+    },
+    "C:\\dev\\ducketz\\tests\\test_fundamental_calculation.py": {
+      "exists": true,
+      "sha256": "485821f62e84e1ab4ef8a8275287487af258c5fade3457ab72d0b71d4f184121",
+      "size": 4055
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_actuals_review.py": {
+      "exists": true,
+      "sha256": "e60844df62348d08f0e48658376df38731d12a793a47ed676c63c4996d73ef31",
+      "size": 29369
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_archive_features.py": {
+      "exists": true,
+      "sha256": "578005159fb664ce772ab8f313e3674fd47cdc4e37c26c2e70fcbd49a8acdc36",
+      "size": 15619
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_archive_integration.py": {
+      "exists": true,
+      "sha256": "b17ee08bd37c3ee44d628550cdb35184dbbc26b5b039cab7d9415229c0ba91fb",
+      "size": 4386
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_archive_seconds.py": {
+      "exists": true,
+      "sha256": "cb7a2c05ecbc8d75b91ef4b379aa2baf379a2772c2e103f555f0d18d03f51c9a",
+      "size": 13350
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_cash_ledger.py": {
+      "exists": true,
+      "sha256": "7ac9c5e845112e11284832b06d6f7391e746110bacb36c9a0c96787bb84f8d60",
+      "size": 14485
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_champions.py": {
+      "exists": true,
+      "sha256": "4586d09a970fdce761cc672870d61d91b879601099c51ef3c9fc2c02cff67e44",
+      "size": 11280
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_data.py": {
+      "exists": true,
+      "sha256": "35f02e30ed1e5a31863407615e575a9e9e8d43ef40c319bfbe131c40e4b2e384",
+      "size": 12626
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_deployment_execution.py": {
+      "exists": true,
+      "sha256": "0d280847e0556a74da4ba7b2ab29175b8996513ee4d3c9f4d3bc75b47a819af0",
+      "size": 12106
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_deployment_handoff.py": {
+      "exists": true,
+      "sha256": "5bb5e90f5de295908e6e9cf578db7924dc088517dc09b5a7dc0365e3644010de",
+      "size": 28654
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_development_selection.py": {
+      "exists": true,
+      "sha256": "2bf36e732c5e4d39e087ef399f200685841e7309e9ba90ebf7173763da3ae753",
+      "size": 8389
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_direction_engine.py": {
+      "exists": true,
+      "sha256": "8f390c0dee25962f0bdecfbe4e6b35a144aafe8c6e9501b15b61cb7bb249c55f",
+      "size": 19106
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_direction_runtime.py": {
+      "exists": true,
+      "sha256": "ebcc64c9be8396f97c53872e55148683f5119b7e240de433474e0175fd797534",
+      "size": 17335
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_direction_snapshot.py": {
+      "exists": true,
+      "sha256": "ee7594a48d9d21470e86957e3b6da186323176bb2e780f8d14edb6324aea63a0",
+      "size": 6911
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_estimator_portability.py": {
+      "exists": true,
+      "sha256": "93464bc6e0934ef78882f0e3f7e44e46f7c0a804565a835e79198c547fd1581b",
+      "size": 2334
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_evaluation.py": {
+      "exists": true,
+      "sha256": "03e8429aae49bbb9c4cca6c6c0cf5d5221085e7410a3333706af1f16bd896eee",
+      "size": 14803
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_execution.py": {
+      "exists": true,
+      "sha256": "011e528a0d6c9acd2fd5d8bb01608a38163dbfc02e85bdbd25020c9e551bf739",
+      "size": 11132
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_fallback_planning.py": {
+      "exists": true,
+      "sha256": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+      "size": 18982
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_price_bands.py": {
+      "exists": true,
+      "sha256": "47ee4db894c45da8e3adf110ad254bf117d82c97fa8ee88585c4eb55eb3aeb9a",
+      "size": 24964
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_price_completion.py": {
+      "exists": true,
+      "sha256": "12f3917b5fb8ba33fe8d0e998e8e902512f4a66e316a5fa68fa9cd45f7705547",
+      "size": 15127
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_probability_shrinkage.py": {
+      "exists": true,
+      "sha256": "0d042e18266de0ce1eff07f8c48ed5112dd3ef06d94a7b54f7255789015b54bb",
+      "size": 5844
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_probability_target.py": {
+      "exists": true,
+      "sha256": "a0e9e0798e6c6af5f3a7746c8b15dfdb2374a0773f52a055f340fcc4befd2430",
+      "size": 7258
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_promotion.py": {
+      "exists": true,
+      "sha256": "fb264a8abed6798f0a2c0bd7a2b5f4393aefae9c655e1b3ee456ef46e68bb94f",
+      "size": 4584
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_quote_clock_recovery.py": {
+      "exists": true,
+      "sha256": "be4699284139f2a4117a9b05fce968c6dc64402ec3e41eb1a6f61870846a5f43",
+      "size": 6314
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_quote_recovery.py": {
+      "exists": true,
+      "sha256": "499bac225bf43029fffedeec173207f02781f6e3890c399ba91fadf8d6caddd8",
+      "size": 8453
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_raw_calibration_eligibility.py": {
+      "exists": true,
+      "sha256": "0887106c689b29a46572519f1f419c7e8e747307a9d69a66b8e936bfc5ebb821",
+      "size": 4230
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_source_selection.py": {
+      "exists": true,
+      "sha256": "4c44e59e0ee4efa77b4cf541b414831ca2f196e8418e5c547d0076cd13d2a663",
+      "size": 8741
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_stats_data.py": {
+      "exists": true,
+      "sha256": "3ca044bd5130b3af8a5ecb28db09bf944a78a0d794c6461b264fdeb8748d938c",
+      "size": 7694
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_stats_ui.py": {
+      "exists": true,
+      "sha256": "37afdfce04c94c8ba061f7c026a5aae1045dbdf014bd8233c9a5168f9b24a52f",
+      "size": 5515
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_stock_trader.py": {
+      "exists": true,
+      "sha256": "dab217017c584733ec040e2ebabc425842fb4464957c9e2eff4169369ad125e3",
+      "size": 11779
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_trade_planning.py": {
+      "exists": true,
+      "sha256": "b40d91e534175c11fafa5af99af23711f36a7c97794b9c3de362dd0ccfcb44e1",
+      "size": 32098
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_trade_review.py": {
+      "exists": true,
+      "sha256": "93dc5475a7d0585be39dd36bbf662c6453269bbed1a5d49ea91229d0ea2fc68b",
+      "size": 14904
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_trade_snapshot.py": {
+      "exists": true,
+      "sha256": "7a3794a01a0f1344a0a28faed00a349eddd6fc01e4304eb78bb79b2e510887a1",
+      "size": 21238
+    },
+    "C:\\dev\\ducketz\\tests\\test_gameplan_ui.py": {
+      "exists": true,
+      "sha256": "2593eef81ab963543337f6c9b44b9c72f0ea54b37854d1124a9c6f03fecc6b8b",
+      "size": 13044
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyper_workspace.py": {
+      "exists": true,
+      "sha256": "c9c84933bdeee78b11918e5208a0f89022293f904698fa7252f2b742f31cb68e",
+      "size": 49981
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_account_history.py": {
+      "exists": true,
+      "sha256": "3515d4497900e2dfbfc8a055ad237a6a48ea6267677627d411a9c24aaf63255a",
+      "size": 5800
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_catchup.py": {
+      "exists": true,
+      "sha256": "da580a89e4a50147da3a0284e612af00d2150f8f512f06072f6fc9723353cba0",
+      "size": 7822
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_coordinator.py": {
+      "exists": true,
+      "sha256": "cb7cc58abe64dbe189544bc25c94c8e3228c8d95147255aa53a81f600c59ba9f",
+      "size": 24454
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_coordinator_config.py": {
+      "exists": true,
+      "sha256": "3770af8ffde24794b4d75167dd63ae88dbf578e54a4d83fe21dbad370ce582a9",
+      "size": 5967
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_data_loop.py": {
+      "exists": true,
+      "sha256": "6700325d0328fb3dd3547e772de36a0161aaa8860258be73e263299dcb0bfca4",
+      "size": 17587
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_data_pipeline.py": {
+      "exists": true,
+      "sha256": "b297813c61f10e99462d99a96df629d6a9182dd8c7aa44849a4aa69bc96a14b3",
+      "size": 6582
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_duckets_ui.py": {
+      "exists": true,
+      "sha256": "3151a7fd57cab616effb3ed851d4c120234bbcb506c014688bd4b2f12db65e0c",
+      "size": 17546
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_features.py": {
+      "exists": true,
+      "sha256": "d14ad38b5cadc66436c25a2f895375f9b605051bbce4e9959d27c9b846d6b2fd",
+      "size": 6369
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_forecast_reader.py": {
+      "exists": true,
+      "sha256": "d0d116392f3d0d1a8d3fc83370850f541de71d2cf6989ae359c104cae27888bb",
+      "size": 5095
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_market_data.py": {
+      "exists": true,
+      "sha256": "42fa7688aeb49d57950adc00f84dabe84d82187f3b6e274dcd2a6ef94b3232c6",
+      "size": 5492
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_artifacts.py": {
+      "exists": true,
+      "sha256": "56855a4465eca60d501755ad2e36e6e4d0b779904f959fe7c4f59e57bbaa31b5",
+      "size": 13307
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_config.py": {
+      "exists": true,
+      "sha256": "7bf428f3674c75fb83559f204d205730ac74f9e0b84d33e992930235191ae8ad",
+      "size": 9825
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_recipe.py": {
+      "exists": true,
+      "sha256": "efbe3783a88fa5bdf52a1a886c79311d2661f9e4c8d97ef381291a338472ebb6",
+      "size": 3751
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_research.py": {
+      "exists": true,
+      "sha256": "09631c6ebb129d54e4ff09bf9f675ed7a10bf597cc8c0debcc3137e45b243100",
+      "size": 10755
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_model_runtime.py": {
+      "exists": true,
+      "sha256": "bf984ea605c19d3d028af7a29b76ce8cdc87ae98e12d824171ca7c5f9fa42311",
+      "size": 27136
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_models.py": {
+      "exists": true,
+      "sha256": "db593b57cbcbd275c56899a834b8a34a7ee3972846c6c888f908e8a24c15e7a0",
+      "size": 25514
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_cadence.py": {
+      "exists": true,
+      "sha256": "a1fd69a5fbbb50ecb7e8c2ad245af13eb1d6eb32c82a157f0c4036fea517eb92",
+      "size": 35322
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_comparison.py": {
+      "exists": true,
+      "sha256": "c5ba0850c96ec005fc5c219fa209182a2a1608a334de0067cb97e3bbb41b5f0e",
+      "size": 9625
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_exploration.py": {
+      "exists": true,
+      "sha256": "b789d69cea0694fc7ebebad45bd89415d983d5129fe2d8c07fbd75ec51f0bdb8",
+      "size": 7564
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_exploratory_cadence.py": {
+      "exists": true,
+      "sha256": "19c3903d0255981ddebf0f029d7bdffb099e18acf4caef43cf75b3ee3ae19f52",
+      "size": 8776
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_health.py": {
+      "exists": true,
+      "sha256": "31f52dc2d3671ec5f0be03612ae685f91d4c28e582957a5e8c4ce3d7357fdea2",
+      "size": 6271
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_ledger.py": {
+      "exists": true,
+      "sha256": "9b0ab1cd1e5f7074591cddb6df215719d24bafa3b7ac1be7664054e4f91037af",
+      "size": 18751
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_market.py": {
+      "exists": true,
+      "sha256": "d01d0a826b9700cfb73378f0d0d9638505e64bf7b6fcf6967b8abcf12f486134",
+      "size": 16225
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_policy.py": {
+      "exists": true,
+      "sha256": "0dce039a71ab18b0cf9c52b6b049560e90cd530269a9128265b74b7b99636fb5",
+      "size": 19185
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_rebalance_threshold.py": {
+      "exists": true,
+      "sha256": "681963f3d428dafc19007ffa3f91c01b50aa92591370a4f31682a90902a0ef78",
+      "size": 1126
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_review.py": {
+      "exists": true,
+      "sha256": "2aa74b26e045d0b3ff0e1a9563993216d585f3d36e21c81fc2823b51e226a0bd",
+      "size": 18400
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_runtime.py": {
+      "exists": true,
+      "sha256": "7c70c907776b0edc5423cb6c694e5499b3e1f79dae025bd33c34c43ca1f3fa6b",
+      "size": 77323
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_seed.py": {
+      "exists": true,
+      "sha256": "c0a94149d21e2a01aeb89e5057f21fd3976420bbf5504cc787347f821f96d15a",
+      "size": 12791
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_paper_view.py": {
+      "exists": true,
+      "sha256": "78f6222fc49f66e5a3052009a516326223998da3a0ffe8fdd7807d9c24f7fa76",
+      "size": 47254
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_powder_exchange.py": {
+      "exists": true,
+      "sha256": "e131c5fc4ba8388159c391f0be95339eec03df9a0c9b50289cb80b133524a76b",
+      "size": 23769
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_powder_ledger.py": {
+      "exists": true,
+      "sha256": "fcd8746be7025d9c765590c751b5743be6ee4bd688bc0f098b8d084c6fc9e3f3",
+      "size": 9528
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_powder_runtime.py": {
+      "exists": true,
+      "sha256": "79b5bca9b6ed8e25fd8d3cb9d722389e216f74980e2d41642546a411b5573f91",
+      "size": 21063
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_powder_view.py": {
+      "exists": true,
+      "sha256": "b1f8277fb764130844ac385d067fdfdb9ccee906ad3f0b79405717edae7f0e5f",
+      "size": 3156
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_probability_shrinkage.py": {
+      "exists": true,
+      "sha256": "db410abd3dd7e031ccd766dfb8a9c2e9863b5005ea997925a2009a45b09f83e8",
+      "size": 11124
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_random_forest.py": {
+      "exists": true,
+      "sha256": "009a26fd963b9b9f150767e0ff46338d027e26434cecd772e478f6cbbc613bb9",
+      "size": 3156
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_research_classical.py": {
+      "exists": true,
+      "sha256": "89be2103a92839d3c4fa067c901e1ea0ba30af4764d1dc0f4c70c87827bb07f1",
+      "size": 5084
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_research_sequences.py": {
+      "exists": true,
+      "sha256": "f5182773a2f5d502ab3d4504c6859a966efcae7c1831b61a3b03cebee46d4580",
+      "size": 5513
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_service.py": {
+      "exists": true,
+      "sha256": "c6b52492a65b3fcddfc9258e7098eb7992e1629466fbce4814c7f9d401a4e23f",
+      "size": 4301
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_timings.py": {
+      "exists": true,
+      "sha256": "cbc0e5df874fbff9b4203acbc989ee29fde57cdc9e180884831d0a904784ce13",
+      "size": 13182
+    },
+    "C:\\dev\\ducketz\\tests\\test_hyperliquid_workspace_services.py": {
+      "exists": true,
+      "sha256": "1a7d9aef15a35391fbc7b28bb08b40861de09f7534ab462555e54a14871b037c",
+      "size": 9978
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_enrichment_archive_admission.py": {
+      "exists": true,
+      "sha256": "480c8a49c0d6b117198a578af4682ea2a2614f2f5c8dc84d560228425a9c3e8f",
+      "size": 7597
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_loop_isolation.py": {
+      "exists": true,
+      "sha256": "3b030586123af7d5febee9040e3abf5185ed48799c2be6a3d1f1f02cae0daea5",
+      "size": 8190
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_engine.py": {
+      "exists": true,
+      "sha256": "d875ade3a488d1dbd7261953f075cdb550dc7944372061de68c54093afb8fb76",
+      "size": 4950
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_enrichment.py": {
+      "exists": true,
+      "sha256": "5dc5df267f5fd5d4534f831dd7c37a78f6e66b5f8c186533f313545a5cf90edd",
+      "size": 27025
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_forecast_ui.py": {
+      "exists": true,
+      "sha256": "c4622d4089721b0046630eb7cfe54ff2993f3c635bc927cc562fafe00c3609fc",
+      "size": 6014
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_runtime.py": {
+      "exists": true,
+      "sha256": "c80d5464bf9920aa9eb9630a8b2e59ba039dbb8cce8f5ea05a89ba14e218dbce",
+      "size": 26348
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_session.py": {
+      "exists": true,
+      "sha256": "72706d9ddacaac808d8aa65da56ca6cff2cb0532e124fbc50f92e5983b48dd8a",
+      "size": 27882
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_signals.py": {
+      "exists": true,
+      "sha256": "430775f688aafc2e1674441e5bb996e5ef7848e83730cce02b604aad10d5bda9",
+      "size": 20737
+    },
+    "C:\\dev\\ducketz\\tests\\test_independent_stock_targets.py": {
+      "exists": true,
+      "sha256": "856a0674506cdee87831799e131e2671da5967a2f6d591c41eca7b79fa2fd4d5",
+      "size": 16868
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_a_batch_fetching.py": {
+      "exists": true,
+      "sha256": "33c8883561517bc69802a3113d1fef1d30973a306224a2b5b19c47e87c0d2603",
+      "size": 22704
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_a_cycle.py": {
+      "exists": true,
+      "sha256": "deda0705ed9e17eaced28a859d2bb44884c5e10d72ecf436c652a68411172cc8",
+      "size": 5231
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_a_integration.py": {
+      "exists": true,
+      "sha256": "1bfd8fe5846472fa4da8e673f936dd12b87f2877899ecad3c7efb896cdd2ce47",
+      "size": 13713
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_a_orchestration.py": {
+      "exists": true,
+      "sha256": "09e8e384b6febd19e4bf7f58f1ffea097d3ad1b3d61c8e30c7b395b5d0ba1ddb",
+      "size": 24056
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_a_point_in_time_families.py": {
+      "exists": true,
+      "sha256": "6e6bbce56147d0e59734586299cbb66cc50cc641b94fd094f16a65cb9bfc3564",
+      "size": 20287
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_c.py": {
+      "exists": true,
+      "sha256": "f036b69f68d6e2278f876b77b360996561f8ba7b2ef133dd21f80b2282bd3f01",
+      "size": 17939
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_c_paper_ledger.py": {
+      "exists": true,
+      "sha256": "5ee4d397bcf5a8f79ebe51e977669399895943a9d3a4da6a11b563e501262f09",
+      "size": 8076
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_c_schwab_snapshot.py": {
+      "exists": true,
+      "sha256": "8af15f5a7fc0e19f799fd3c731ceec3706edd1805e22ddb75a335b1c06049951",
+      "size": 13446
+    },
+    "C:\\dev\\ducketz\\tests\\test_loop_c_weekly_scheduler_memory.py": {
+      "exists": true,
+      "sha256": "99353a6691c0b5cb6424e6ffe649228ba81ee78f99a25dba8b481e10a70f41b0",
+      "size": 4826
+    },
+    "C:\\dev\\ducketz\\tests\\test_market_cycle_coordination.py": {
+      "exists": true,
+      "sha256": "e1b8536a75d1548d4b36c7ed7d61d3ae480cea08c0f2aff6927f08f355d5ea48",
+      "size": 17397
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_4h_feature_contract.py": {
+      "exists": true,
+      "sha256": "a96d8e41b3630b66fe7227142d81e81b19dc6df7498c626867fd36cd8d40b9f7",
+      "size": 9097
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_calibration.py": {
+      "exists": true,
+      "sha256": "9b48133d8d55ce07cc6cf10b62ca860c6ef61316eef1c5513a4136db6de34074",
+      "size": 2430
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_four_hour_model_runtime.py": {
+      "exists": true,
+      "sha256": "ba1ec824a756c8c3d37474b8f4604f5ee50d3bdd4ae674a8aacf6ebdaf7f7023",
+      "size": 23813
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_four_hour_targets.py": {
+      "exists": true,
+      "sha256": "5610be0a73ebde1853ce3ca8185f8a4bb9e80a20d167214e77b148b0151b16a0",
+      "size": 27558
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_frozen_weekly_runtime.py": {
+      "exists": true,
+      "sha256": "a935f34ead316e6355706be185d3652fa309bc8738b7af0a757fdadd2048fead",
+      "size": 34956
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_loop_a_all_family_wiring.py": {
+      "exists": true,
+      "sha256": "c6bd7336b74416b7c9bad09f30fe34c19dcf4c2913027831cdd5d705c0e81ad7",
+      "size": 28889
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_point_in_time_ingestion.py": {
+      "exists": true,
+      "sha256": "d64683d8b0e7d51c05a626e3e87cde6a92d44efe4d1417f1baecd87360146be9",
+      "size": 33746
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_prediction_runtime.py": {
+      "exists": true,
+      "sha256": "af6a8c2b8b576dc7114c0b28099b447f77718f42d8c9a11015ba9f10329cba90",
+      "size": 12707
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_readiness.py": {
+      "exists": true,
+      "sha256": "90862eab33f8f4039262434006b7b635e6d1c19ccb81b6e2baa8601db0c2f3d5",
+      "size": 13291
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_required_feature_preprocessing.py": {
+      "exists": true,
+      "sha256": "2fdc291f3935e1c01478da6f5fec33605d45250aef4b77d6f1e6d07785222333",
+      "size": 4071
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_rolling_horizons.py": {
+      "exists": true,
+      "sha256": "656d59386284714c50496ccd71f2e452c27d1cfc855208e225b20749a980bd0b",
+      "size": 31298
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_runtime_pipeline.py": {
+      "exists": true,
+      "sha256": "921b908bd0fdc6e27ad9528135ca68317475638cee3b7e600cb430a56edcbf6b",
+      "size": 96772
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_semantic_feature_contract.py": {
+      "exists": true,
+      "sha256": "ebfc890f86c1f9d520e2fdbe33904351ff93b3ee9e5f82e6e39ecae03c3331f1",
+      "size": 12859
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_strategy_selection.py": {
+      "exists": true,
+      "sha256": "f83fb66d7dd83129630c1b7217d98016f979a52c3c4a058c475b4f9c4cee290f",
+      "size": 78442
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_universe.py": {
+      "exists": true,
+      "sha256": "e450eecf7a3d47614abfaa54f0a91d017b5b249ae25aa50dc208d212b77a4251",
+      "size": 778
+    },
+    "C:\\dev\\ducketz\\tests\\test_ml_weekly_context_model_runtime.py": {
+      "exists": true,
+      "sha256": "1e620dde5435396ab5d223c0d1133696ae20df9dcfd3cf90913d2a83fbf4c5b8",
+      "size": 20543
+    },
+    "C:\\dev\\ducketz\\tests\\test_nightly_gameplan.py": {
+      "exists": true,
+      "sha256": "5cb384a5cda3d523260c405450a0ede8a47986fea37756e675ce00cf2d827155",
+      "size": 21496
+    },
+    "C:\\dev\\ducketz\\tests\\test_nightly_gameplan_target_quality.py": {
+      "exists": true,
+      "sha256": "304b8a39a21c05766fde061ccde6d3e0cff77ced44c0fe45f876653a6127d442",
+      "size": 3725
+    },
+    "C:\\dev\\ducketz\\tests\\test_nightly_strategy_execution_coherence_ablation.py": {
+      "exists": true,
+      "sha256": "7689c27b3198937aec446d42d9b545418ef2e6781fb41dcccc61b18e5bc7fd85",
+      "size": 11038
+    },
+    "C:\\dev\\ducketz\\tests\\test_nightly_target_source_ablation.py": {
+      "exists": true,
+      "sha256": "1c3cb915d79d5281a700d19e2f2d2cac7836303e15f586b5359631e2d7cbe902",
+      "size": 1134
+    },
+    "C:\\dev\\ducketz\\tests\\test_non_ml_parquet_ids.py": {
+      "exists": true,
+      "sha256": "9e391c5fc2040ed1a127d7652d34c6c152e69b18d3b383a18bb332f1abdfaa05",
+      "size": 35045
+    },
+    "C:\\dev\\ducketz\\tests\\test_normalized_bar_id_preservation.py": {
+      "exists": true,
+      "sha256": "8f8a559e5dec099bc016dca6dcd9acc1233f20f1448a0de7b3a9231940b77f54",
+      "size": 5867
+    },
+    "C:\\dev\\ducketz\\tests\\test_normalized_bar_schema.py": {
+      "exists": true,
+      "sha256": "c5d89f1c0bcf08d352ef9e24f24af5ae08476c53921c0bc649944c7d404fdc0c",
+      "size": 16505
+    },
+    "C:\\dev\\ducketz\\tests\\test_opportunity_research.py": {
+      "exists": true,
+      "sha256": "3045f3508e33cc18c438916ad8409782f2ae08e11ebfebd6e7e9a8fad188f2d1",
+      "size": 18244
+    },
+    "C:\\dev\\ducketz\\tests\\test_opra_replay_fallback.py": {
+      "exists": true,
+      "sha256": "7650b658b1e4f3a973ed6517a81273b69111b6fcf51e62e13d9f5e41582d0893",
+      "size": 17652
+    },
+    "C:\\dev\\ducketz\\tests\\test_opra_replay_publication.py": {
+      "exists": true,
+      "sha256": "77860439cec041805594bbca444cf9cc9e80dbd21a69a9e5b8d8c2de84e518e4",
+      "size": 12034
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_exercise.py": {
+      "exists": true,
+      "sha256": "960d3e93246a9281a749c9c09935903e1192c8f51a36b5426d51c1d8f3015f5b",
+      "size": 3641
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_exit_plans.py": {
+      "exists": true,
+      "sha256": "820155b559c3330127dc35be7f2c63bc019b454c3d404f424294e9dc9e01e6b1",
+      "size": 17956
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_management.py": {
+      "exists": true,
+      "sha256": "a7a40e7579b17a394a70fa5313f1eab854caae9020fbd2f3f40638d77eb4e32a",
+      "size": 24941
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_order_review.py": {
+      "exists": true,
+      "sha256": "7fb68031cbfa3d63c94c7f820070782df1bee92a100d8385ec70daaaba4db0bb",
+      "size": 36787
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_core.py": {
+      "exists": true,
+      "sha256": "41114561fd4a30a0e172621238643b223a19dd72c03e8649e93866ed82bb69fc",
+      "size": 30739
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_eligibility_v2.py": {
+      "exists": true,
+      "sha256": "624cf08301cf03b62323dad0205e5dbd82c55cb61f0672d428bae1c638fcb523",
+      "size": 15259
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_loop_native_bsgp.py": {
+      "exists": true,
+      "sha256": "9f901d72d89772858be39403d2f8af06b80c4ecff0ad5218d8c50e9a082861e2",
+      "size": 54889
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_opra.py": {
+      "exists": true,
+      "sha256": "77862ed95d3279fbbdf0eb5421b0c6d9087315902d438bde1b1e656139749ff5",
+      "size": 74998
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_protocol_v2.py": {
+      "exists": true,
+      "sha256": "5c4f36751a311395173e1425a4eb2fcf3232bbcb03c56abcc87547af047e5e30",
+      "size": 34757
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_publication.py": {
+      "exists": true,
+      "sha256": "5570d4584933b3c0bc66f4dbdf745cfde4785b7b57ebd8d048c0ecac96ea00f7",
+      "size": 15906
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_shadow_consumers.py": {
+      "exists": true,
+      "sha256": "c450e7f4adadce88bdae05e424929cb1004defed394342c6628f8bd8bab80419",
+      "size": 51936
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_pricing_underlying_gap_proposal.py": {
+      "exists": true,
+      "sha256": "6cd95331c0e58d4f35ebd0991497e0f2ef289e1fe1476b4dc0b57aa92bfa0e52",
+      "size": 2165
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_publication.py": {
+      "exists": true,
+      "sha256": "a9c18e040547a69b94d4a28802eb242f22ca0e66b84333efb761074a2078372c",
+      "size": 27603
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_rolls.py": {
+      "exists": true,
+      "sha256": "f694a8be0fb731c142b5fc29347f30a6dd8e6a67d84799227826d0b3db8dd1b2",
+      "size": 24749
+    },
+    "C:\\dev\\ducketz\\tests\\test_option_templates.py": {
+      "exists": true,
+      "sha256": "ba7c754e93b948e413a0d36526b32c3e0a42de0a3301bfe3a9e8ae94c038f78f",
+      "size": 1720
+    },
+    "C:\\dev\\ducketz\\tests\\test_options_chat.py": {
+      "exists": true,
+      "sha256": "42165ce29672587e2b8adc0aa88ab9cb2a8c5b2d4b69cbf991082a3350bfa5e4",
+      "size": 12130
+    },
+    "C:\\dev\\ducketz\\tests\\test_options_strategy_ui.py": {
+      "exists": true,
+      "sha256": "0b1a53b6ea326e61e9dde9f78d8d21c2f96650830bc47fc2eee995eacb55bd65",
+      "size": 73385
+    },
+    "C:\\dev\\ducketz\\tests\\test_overnight_supervision.py": {
+      "exists": true,
+      "sha256": "69a691214cb5edf7ef9958d02be58e00a4bded1853fdab0f148ba9a230ab80b6",
+      "size": 39938
+    },
+    "C:\\dev\\ducketz\\tests\\test_parquet_id_contract.py": {
+      "exists": true,
+      "sha256": "6a9cf4eec9e7f5e60b3b1baf5c47dc1f85cbac52e2c8cd7dea58c5522c4f974f",
+      "size": 9784
+    },
+    "C:\\dev\\ducketz\\tests\\test_past_positions.py": {
+      "exists": true,
+      "sha256": "1b1a0b764ae78f187082ffdf389b6cf8ac3c147da99979b3d915d69b095c67ae",
+      "size": 24391
+    },
+    "C:\\dev\\ducketz\\tests\\test_preparation_deadline.py": {
+      "exists": true,
+      "sha256": "338bb8f53713a0a9a8e9a7c6a1eed32e251046cd30aa0225680541f1d6588268",
+      "size": 5582
+    },
+    "C:\\dev\\ducketz\\tests\\test_pricing_options_sequencing.py": {
+      "exists": true,
+      "sha256": "30c240b162644c1393734e60d20ad8718bdb7c5a7b881e03930b3acbf798bda2",
+      "size": 73758
+    },
+    "C:\\dev\\ducketz\\tests\\test_research_onboarding.py": {
+      "exists": true,
+      "sha256": "a922ec0c29fc80fe501f395327edab8b65e59222056ac384f45b0d52285670b2",
+      "size": 14212
+    },
+    "C:\\dev\\ducketz\\tests\\test_research_ownership.py": {
+      "exists": true,
+      "sha256": "9d7cc30f180d049de672f6d152ff7bc9dd4841d04aafd7dd9f268c589fdb8c0a",
+      "size": 2921
+    },
+    "C:\\dev\\ducketz\\tests\\test_research_publication.py": {
+      "exists": true,
+      "sha256": "d87a4a236a572670e591e0cf2926dff7fa58658f6b7914b7c08f999f7956062a",
+      "size": 1872
+    },
+    "C:\\dev\\ducketz\\tests\\test_runtime_ui_integration.py": {
+      "exists": true,
+      "sha256": "857fd52a209b0d8fb67533993d60fa9ea5523f6ba567589354811b919d557f1a",
+      "size": 34930
+    },
+    "C:\\dev\\ducketz\\tests\\test_scheduler_handoff.py": {
+      "exists": true,
+      "sha256": "d5e3889f162dfc14b4bd9259193c0201180be03b7764a39d27c6c9232b3369bd",
+      "size": 5412
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_duckets_ui.py": {
+      "exists": true,
+      "sha256": "fd8e177ad5fa6c21c56db6fc4ef35a31ede029eb87a7c2378e0528bbe048f655",
+      "size": 18473
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_loop_a_features.py": {
+      "exists": true,
+      "sha256": "c03b3e2ea363ca93e162c2e203b237e5d4042321f03f4f32dd4bbf716782e01f",
+      "size": 26070
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_order_fields.py": {
+      "exists": true,
+      "sha256": "7e5272d3a99e084b5a1893d6e062ccc71702a6ddbbadc12c6c9946e35348aa7b",
+      "size": 2484
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_portfolio.py": {
+      "exists": true,
+      "sha256": "abe113944eb19f74cda34ef571c220d0cf906341f3385ab22b8341f219330614",
+      "size": 55306
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_quote_freshness.py": {
+      "exists": true,
+      "sha256": "028f3d3c22821730ad071d1a63ce1d5905c7c0ac3711b32c42c5f6f57c696102",
+      "size": 2194
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_retry.py": {
+      "exists": true,
+      "sha256": "3d5b6d6dc61903f08f30d85762200d973e1f2313a2adf748e6200cbd06aae22d",
+      "size": 3722
+    },
+    "C:\\dev\\ducketz\\tests\\test_schwab_stock_orders.py": {
+      "exists": true,
+      "sha256": "7f39ace86707e168a74a8eb07a6f9ca413d67d1faea5939fd6dfaa8ce7582928",
+      "size": 11074
+    },
+    "C:\\dev\\ducketz\\tests\\test_sequence_encoder.py": {
+      "exists": true,
+      "sha256": "8a012e3fb279ec595ce0eaf5c9b57392776a5478fa8b7115db4e9739fda8fd6f",
+      "size": 16016
+    },
+    "C:\\dev\\ducketz\\tests\\test_sequence_preregistration.py": {
+      "exists": true,
+      "sha256": "5d919f2f86d9e60b65480f1d91d859fc6e024abca8d6447eb6b496a4ede451af",
+      "size": 8228
+    },
+    "C:\\dev\\ducketz\\tests\\test_start_stock_session.ps1": {
+      "exists": true,
+      "sha256": "830953db7551bfd98d497e3309067b7e7408804af9549bbfdfb52c59eae5b65a",
+      "size": 10533
+    },
+    "C:\\dev\\ducketz\\tests\\test_start_stock_session_exit.ps1": {
+      "exists": true,
+      "sha256": "1325f4a67aea28710c2cb83f8ee93d65a108c5e25d2d204f2660ca1c3085cfa9",
+      "size": 2953
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_direction_policy.py": {
+      "exists": true,
+      "sha256": "3d55e503430a0557b18bd536d51ec33c017d69cf65c383ba04d981ffdd542e17",
+      "size": 672
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_horizon_broker.py": {
+      "exists": true,
+      "sha256": "dd2ffb2385a753e8b2fa279a623592851ab36a7611a7ecc15335c4d134336a59",
+      "size": 14975
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_horizon_ledger.py": {
+      "exists": true,
+      "sha256": "6705ff0c6955237813263667136ca6742aa7c3cf7bad04d1a72c799b70dc2eac",
+      "size": 19966
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_horizon_schwab_context.py": {
+      "exists": true,
+      "sha256": "0858bfe3ddf8ece746b5beae6081f7525f93fa675fd2e53df16058effd391703",
+      "size": 5754
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_only_gameplan.py": {
+      "exists": true,
+      "sha256": "39239745606a0782979951ae57d0830d24b0a7cf3b1563aed1cf42be6e07213c",
+      "size": 18004
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_scope_qualification.py": {
+      "exists": true,
+      "sha256": "0d3ac4f0ee7cff153c6874cffef2e0b5e3dac27a70e1c81855e1ef65bf4386e1",
+      "size": 4925
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_target_backfill.py": {
+      "exists": true,
+      "sha256": "c59f637d4dca6aad37b47ae3d7f530ded184a97e066e523dd1030be14f38c6e6",
+      "size": 12899
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_target_history.py": {
+      "exists": true,
+      "sha256": "dd83ffccde8e6bea0518dfc963d54c0274032871be3a243bdf9fb9cc0541f797",
+      "size": 18041
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_target_history_fallback.py": {
+      "exists": true,
+      "sha256": "5ef289e54ad247094a4a39898cf13de4ab9d7ba6658dad236a57243d09d67189",
+      "size": 16163
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_target_prices.py": {
+      "exists": true,
+      "sha256": "dd3f906bd21d1b2fda49365134b52569633754e8f0561cbbcb705cd799f8bd1f",
+      "size": 7922
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_trader.py": {
+      "exists": true,
+      "sha256": "8d10b7d8dd4bb71ba2c5581ecfd79e7e4e63307e22fbf1f6501c8785ad6b1c54",
+      "size": 89328
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_trader_atomic_publication.py": {
+      "exists": true,
+      "sha256": "e346a33fcd54a192294f2ebfdfd3d326b046480449bc1d4c00d7092e426658cd",
+      "size": 3319
+    },
+    "C:\\dev\\ducketz\\tests\\test_stock_trader_cash_state.py": {
+      "exists": true,
+      "sha256": "cac0aadf1c6d987e848798a752c0d6ed0ae050038136fba171360d643f1a34fd",
+      "size": 6386
+    },
+    "C:\\dev\\ducketz\\tests\\test_strategy_opra_cache.py": {
+      "exists": true,
+      "sha256": "cbdd19ca99d9a67ea8208039b1adac81d91e0e7aa4d430db1241363754f1addc",
+      "size": 8754
+    },
+    "C:\\dev\\ducketz\\tests\\test_strategy_order_review.py": {
+      "exists": true,
+      "sha256": "126356863700286a3a3b1b9e87c48a4bd4c42f14fc794abdc4ba14491b2bcc40",
+      "size": 14904
+    },
+    "C:\\dev\\ducketz\\tests\\test_strategy_pricing_canary.py": {
+      "exists": true,
+      "sha256": "3aa22462d4c29e708a2fa4e591cdf7dd7c1b4951fbe446b37d1f89c308cea1ed",
+      "size": 3318
+    },
+    "C:\\dev\\ducketz\\tests\\test_strategy_profit_training.py": {
+      "exists": true,
+      "sha256": "68599999aa3e340404ad81001fde75df39fc0f35ef22ca9cea70dcc3d4dcf41e",
+      "size": 15398
+    },
+    "C:\\dev\\ducketz\\tests\\test_strategy_replay_partitions.py": {
+      "exists": true,
+      "sha256": "24b87445e64763ea338d5f277ebbbd5a8a74139853191184a961e3288e4a3f5d",
+      "size": 7475
+    },
+    "C:\\dev\\ducketz\\tests\\test_strategy_value_challenger.py": {
+      "exists": true,
+      "sha256": "bde697d39cc9a9708a982d763ec867e48be8f6159a860548dd1a014c8504eb07",
+      "size": 10953
+    },
+    "C:\\dev\\ducketz\\tests\\test_structured_timing.py": {
+      "exists": true,
+      "sha256": "c594a7f4794a6793645e1d62c29607400f6f74f6d9a2a2dbbbc4815527526888",
+      "size": 2734
+    },
+    "C:\\dev\\ducketz\\tests\\test_symbol_onboarding.py": {
+      "exists": true,
+      "sha256": "c1d5a322ea5c85968596c740ea1dda1bef5cb9bf398833108b7688ba6430af0f",
+      "size": 11991
+    },
+    "C:\\dev\\ducketz\\tests\\test_system_guardian.py": {
+      "exists": true,
+      "sha256": "104eb460c2aaa46d2334c45d88d768e300979cd3b3c23e37b1669c766887f565",
+      "size": 55185
+    },
+    "C:\\dev\\ducketz\\tests\\test_system_monitor.py": {
+      "exists": true,
+      "sha256": "f25031a7be61660c6cf02c570445073415ca9193ece2eaad24fcb5aaede79ceb",
+      "size": 50929
+    },
+    "C:\\dev\\ducketz\\tests\\test_technical_bar_shape.py": {
+      "exists": true,
+      "sha256": "cf9e27c6952a46d2773a607ce79617493bda1f2d7375795f4bf89870b83b14b8",
+      "size": 6988
+    },
+    "C:\\dev\\ducketz\\tests\\test_technical_weekly_context.py": {
+      "exists": true,
+      "sha256": "3c2db12fc821c98e53bcddec9712aa521330729aeb4a2523e422bfb75e05e90a",
+      "size": 7945
+    },
+    "C:\\dev\\ducketz\\tests\\test_training_progress.py": {
+      "exists": true,
+      "sha256": "7690c454889ac38d23fdf54930e606cf2d00925f28ef50656b1180d875024262",
+      "size": 2082
+    },
+    "C:\\dev\\ducketz\\tests\\test_ui_rolling_forecasts.py": {
+      "exists": true,
+      "sha256": "d7fb6c2894e36031f3c11eb70406482a877678a1cc73c847e8899c334d28eb2f",
+      "size": 76480
+    },
+    "C:\\dev\\ducketz\\tests\\test_ui_symbol_onboarding.py": {
+      "exists": true,
+      "sha256": "8dd56a8290a52476b0f805847ab7c964b22ef44066c35bc16e46d1965125150a",
+      "size": 4478
+    },
+    "C:\\dev\\ducketz\\tests\\test_xnas_replay_archive.py": {
+      "exists": true,
+      "sha256": "7216f4bcbb801f1b1e1d71539dac7d694019251ec90e633fd4a3bbce74fe9a83",
+      "size": 15312
+    },
+    "C:\\dev\\ducketz\\tests\\visual_gameplan_fixture.py": {
+      "exists": true,
+      "sha256": "820bea49079a35f65f44bd49fabe6cd1a675590328212f5a85de8c9445a35a31",
+      "size": 2498
+    },
+    "C:\\dev\\ducketz\\tests\\visual_gameplan_stats_fixture.py": {
+      "exists": true,
+      "sha256": "486e644529672cc3c172e2434e167c1b5c72c02096c8a929c91c13c18e3941b2",
+      "size": 2441
+    },
+    "C:\\dev\\ducketz\\tests\\visual_hyper_workspace_fixture.py": {
+      "exists": true,
+      "sha256": "38f6e9781e1fe5015eaba4549e9f0d579c8965f55a88c02fe21d6da7fe4fc789",
+      "size": 18061
+    },
+    "C:\\dev\\ducketz\\tests\\visual_hyperliquid_duckets_fixture.py": {
+      "exists": true,
+      "sha256": "56dc76bb99c5d798ad4af20823eb65d2a3cdfcb82903fa8ce084890c4dc9b1b0",
+      "size": 6608
+    },
+    "C:\\dev\\ducketz\\tests\\visual_option_management_fixture.py": {
+      "exists": true,
+      "sha256": "3eb8f5ef74517f5b585e66b71d2ab7ef52eb01bc9f956d4c3821c7fa4a038464",
+      "size": 20486
+    },
+    "C:\\dev\\ducketz\\tests\\visual_option_order_review_fixture.py": {
+      "exists": true,
+      "sha256": "c5431ad8366e918647dd16bccd5c150b4a8e47c61d6caf245d46228d893d22b0",
+      "size": 7057
+    },
+    "C:\\dev\\ducketz\\tests\\visual_options_strategy_discover_fixture.py": {
+      "exists": true,
+      "sha256": "0b7eb9d993e8c0d47a132ae592e259caa3a3ebfcb0c6784991351bcd0c2164be",
+      "size": 7615
+    },
+    "C:\\dev\\ducketz\\tests\\visual_past_positions_fixture.py": {
+      "exists": true,
+      "sha256": "bc0b2307a202c95bb641507783e8c457a9923d7789ee1425ca9585383cc10615",
+      "size": 11510
+    },
+    "C:\\dev\\ducketz\\tests\\visual_rolling_forecast_fixture.py": {
+      "exists": true,
+      "sha256": "b5213c63d3f62a56df62b71f636173e1465426502cade5e5b351554d82de8588",
+      "size": 4949
+    },
+    "C:\\dev\\ducketz\\tests\\visual_schwab_duckets_fixture.py": {
+      "exists": true,
+      "sha256": "1b8b8f4a9fe679a1a514212deb93d997528fcffb0f56828b3f056818bd3d63ee",
+      "size": 12516
+    }
+  },
+  "excluded_from_invariants": [
+    "Active overnight supervision claim and locks",
+    "Latest pointers",
+    "New nightly provider data, model, publication and review outputs",
+    "Automation memory files",
+    "Windows task dynamic observed state"
+  ],
+  "repository_source_drift_policy": "Compare separately and attribute from evidence; unrelated concurrent edits are not automatically this task mutation.",
+  "checks": {
+    "repository_sources_unchanged_during_capture": true,
+    "git_head_branch_index_unchanged_during_capture": true,
+    "ledger_physical_files_unchanged_during_capture": true,
+    "controls_unchanged_during_capture": true,
+    "old_immutable_source_bindings_valid": true
+  },
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "order_actions": 0,
+  "production_writes": 0,
+  "status": "BASELINE_CAPTURED"
+}

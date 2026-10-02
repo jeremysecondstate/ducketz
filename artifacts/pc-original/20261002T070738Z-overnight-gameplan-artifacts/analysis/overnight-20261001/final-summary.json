@@ -1,0 +1,109 @@
+{
+  "schema_version": "overnight-final-local-summary-v1",
+  "completed_at": "2026-10-02T07:07:16.697746+00:00",
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "source_session": "2026-10-01",
+  "action_date": "2026-10-02",
+  "native_completed_at": "2026-10-02T06:47:23.794889+00:00",
+  "native_stages_complete": 8,
+  "original_deadline": "2026-10-02T11:00:00Z",
+  "forecasts": 264,
+  "intents": 264,
+  "augmented_rows": 264,
+  "configured_symbols": 11,
+  "opra_scopes": 33,
+  "overnight_orders": 0,
+  "models": {
+    "1h": {
+      "status": "PROMOTED",
+      "brier": 0.2503064382284155,
+      "log_loss": 0.6937764501386282,
+      "baseline_brier": 0.24999964217210202,
+      "baseline_log_loss": 0.693146464904107,
+      "rows": 8063
+    },
+    "4h": {
+      "status": "PROMOTED",
+      "brier": 0.24978189967538092,
+      "log_loss": 0.692710515564013,
+      "baseline_brier": 0.2500993981550452,
+      "baseline_log_loss": 0.6933459922677875,
+      "rows": 2223
+    },
+    "1d": {
+      "status": "PROMOTED",
+      "brier": 0.25094365502706995,
+      "log_loss": 0.6950439713121489,
+      "baseline_brier": 0.2506886812599417,
+      "baseline_log_loss": 0.6945248548199756,
+      "rows": 2283
+    },
+    "1w": {
+      "status": "PROMOTED",
+      "brier": 0.25207294571304095,
+      "log_loss": 0.6973206896396682,
+      "baseline_brier": 0.2518966286664774,
+      "baseline_log_loss": 0.6969669319077516,
+      "rows": 471
+    }
+  },
+  "learned_sizing_qualified_scopes": 0,
+  "source_changes_by_this_task": [],
+  "source_publication_queued": false,
+  "existing_fallback_commit": "be760388063a0fa3099c1cc445ba758be69ceb23",
+  "fallback_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+  "fallback_installation": "Current apply-progress and apply-receipt both exact APPLIED;23 installed files and176 dependencies verified",
+  "source_preservation": "341 preparation files unchanged; concurrent main advance and3 unrelated Hyperliquid test changes separately attributed",
+  "source_head_observed": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "native_run": "C:/DATASTORE/ml/overnight-runs/20261002T040848.225355Z",
+  "gameplan": "C:/DATASTORE/ml/gameplan-trade-plan-runs/20261002T064252.251864Z/Gameplan.md",
+  "actuals": "C:/DATASTORE/ml/gameplan-actuals-review-runs/20261002T064641.608198Z/Gameplan-results.md",
+  "fallback_review": "C:/dev/ducketz/artifacts/analysis/fallback-session-reviews/20261002T064859Z-20261001/report.json",
+  "actuals_coverage": {
+    "evaluated": 161,
+    "pending": 66,
+    "missing_observations": 37,
+    "prices_compared": 137,
+    "prices_missing": 17
+  },
+  "cumulative_coverage": {
+    "evaluated": 5070,
+    "pending": 165,
+    "mature_missing": 1125
+  },
+  "carried_current_references_minutes": {
+    "CROX": 99,
+    "IONQ": 9,
+    "PATH": 8,
+    "TWST": 8
+  },
+  "fallback_observed": {
+    "filled_shares": 310,
+    "filled_orders": 65,
+    "cancelled_orders": 3,
+    "terminal_unfilled_released": 4,
+    "open_or_unknown": 0,
+    "normal_sell_shares": 133,
+    "all_symbol_donor_slot_caps_pass": true
+  },
+  "reconciliation": "Three conclusively terminal zero-fill reservations released using verified native GET-only post-close evidence; no order action",
+  "coordination_run_fingerprint": "786b183697f31dff98e97db4c61abf16eecb803bff9c3ff3495d99f95387588a",
+  "supervision_released_at": "2026-10-02T07:05:54.113304+00:00",
+  "lease_helper_stopped": true,
+  "limitations": [
+    "Only4h beats both directional baselines; other groups pass approved v2 tolerances.",
+    "Learned sizing fitted but unqualified; manual policy unchanged.",
+    "Synthetic planning closing references assume no trades; not exchange observations or live quotes.",
+    "Actuals are market observations, not fills or realized profit.",
+    "CME limited captures excluded from Gameplan; no claim of full original CME request coverage.",
+    "Peer installation/runtime adoption not verified; generated account/data/model/receipt evidence remains private."
+  ],
+  "evidence": {
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\audit-runner.json": "81f5466e886b5451fac7b2a8c7570239d9fd1d3c4f6c65cc7c5248fd802bd4ed",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\completion-audit.json": "6d08bd3034257f356909568e9f473046741f8dfd0801f346e1ddcb6574c2b201",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\verification\\yg-completion.json": "82b99d2bd3f18ae4e4629cb613fe5b325d50bd0bceee9abca8f556cb51b51b2f",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\final-preservation-review-complete.json": "58c568bea6afb9e2d0771c6fc56545d89a7d9198fbb832fcf5cf50b7fc1e8c20",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\fallback-review-audit\\audit-20261002T065508Z.json": "fff41ae372275ebb3f678079921c4eee353228bff6ec7fb1f96f815ab4cbcc5a",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\concurrent-git-source-attribution.json": "f7dac057f34cc83f7cb445f06ae4494668d63fbfe7e60e07c949f189f9a83549"
+  }
+}

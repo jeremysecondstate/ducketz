@@ -1,0 +1,144 @@
+{
+  "observed_at_utc": "2026-10-02T04:26:36.411414+00:00",
+  "native_run_id": "20261002T040848.225355Z",
+  "status": "LOCAL_ADVISORIES_CLASSIFIED_BASE_CYCLE_STILL_RUNNING",
+  "diagnostics": [
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\diagnostics\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "sha256": "1893621cab3133ca74e73f4fcbb0a155c3c248286d56f4a355e8ebc962edfc53",
+      "records": [
+        {
+          "id": "2026-10-01T04:19:16.435561Z",
+          "symbol": "CME_CONTEXT",
+          "source": "databento",
+          "category": "macro",
+          "request_key": "cme_context_mbp-10",
+          "fetched_at": "2026-10-01 04:19:16.435561+00:00",
+          "severity": "advisory",
+          "advisory_type": "CmeCrossAssetQualityError",
+          "advisory_message": "CME request was limit-saturated; event history not advanced",
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_symbol": "CME_CONTEXT",
+          "provider_stype_in": "continuous",
+          "cme_context_group": "context",
+          "cme_request_key": "cme_context_mbp-10",
+          "range_start": "2026-09-30 20:13:58.794703+00:00",
+          "range_end": "2026-09-30 20:14:45.669703+00:00",
+          "initial_range_start": "2026-09-30 19:49:45.669703+00:00",
+          "initial_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "effective_range_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "empty_window_expansion_count": 0,
+          "latest_event_timestamp": "2026-09-30 20:14:05.667212055+00:00",
+          "cme_schema_status": "CURRENT",
+          "macro_context_kind": "cme_futures_cross_asset",
+          "limit": 5000,
+          "provider_rows_preserved": true
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\diagnostics\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "sha256": "68458c45eb45ac82b28abe3662d8fa7277c271beda54c03ab9b2f815eda24c39",
+      "records": [
+        {
+          "id": "2026-10-01T04:21:42.441155Z",
+          "symbol": "CME_CONTRACTS",
+          "source": "databento",
+          "category": "macro",
+          "request_key": "cme_contracts_mbp-10",
+          "fetched_at": "2026-10-01 04:21:42.441155+00:00",
+          "severity": "advisory",
+          "advisory_type": "CmeCrossAssetQualityError",
+          "advisory_message": "CME request was limit-saturated; event history not advanced",
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_symbol": "CME_CONTRACTS",
+          "provider_stype_in": "raw_symbol",
+          "cme_context_group": "contracts",
+          "cme_request_key": "cme_contracts_mbp-10",
+          "range_start": "2026-09-30 20:13:58.794703+00:00",
+          "range_end": "2026-09-30 20:14:45.669703+00:00",
+          "initial_range_start": "2026-09-30 19:49:45.669703+00:00",
+          "initial_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "effective_range_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "empty_window_expansion_count": 0,
+          "latest_event_timestamp": "2026-09-30 20:14:07.448471565+00:00",
+          "cme_schema_status": "CURRENT",
+          "macro_context_kind": "cme_futures_cross_asset",
+          "limit": 5000,
+          "provider_rows_preserved": true
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\macro\\ENERGY_CONTEXT\\energy-context\\fmp\\diagnostics\\ENERGY_CONTEXT_energy-context.parquet",
+      "sha256": "4d709269b4a540747e0a0b90dd4049d4bb0df1547603dadaab17fa073bee2c3f",
+      "records": [
+        {
+          "id": "2026-09-02T13:33:58.706546Z",
+          "symbol": "ENERGY_CONTEXT",
+          "source": "fmp",
+          "category": "macro",
+          "request_key": "energy-context",
+          "fetched_at": "2026-09-02 13:33:58.706546+00:00",
+          "severity": "advisory",
+          "advisory_type": "FmpEnergyContextQualityError",
+          "advisory_message": "FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)",
+          "calculation": "energy-context",
+          "input_policy": "persisted_rows_only",
+          "provider_rows_preserved": true
+        }
+      ]
+    }
+  ],
+  "fmp_source": {
+    "path": "C:\\DATASTORE\\pools\\macro\\CLUSD\\quote\\fmp\\normalized\\CLUSD_quote.parquet",
+    "sha256": "98baf7081a5d84f93c6bfe4760acb1e011a496f16910fc5681f492161903da8a",
+    "rows": 1500,
+    "latest_receipt": "2026-10-02 04:22:51.584980+00:00"
+  },
+  "fmp_reproduction": {
+    "status": "REPRODUCED_REJECTION",
+    "type": "FmpEnergyContextQualityError",
+    "message": "FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)"
+  },
+  "fmp_skew_violations": [
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 13:34:06+00:00",
+      "receipt": "2026-09-02 13:33:56.529297+00:00",
+      "skew_seconds": 9.470703
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 13:57:26+00:00",
+      "receipt": "2026-09-02 13:57:16.832938+00:00",
+      "skew_seconds": 9.167062
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 14:26:55+00:00",
+      "receipt": "2026-09-02 14:26:48.014251+00:00",
+      "skew_seconds": 6.985749
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 14:33:10+00:00",
+      "receipt": "2026-09-02 14:33:02.278161+00:00",
+      "skew_seconds": 7.721839
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 14:55:56+00:00",
+      "receipt": "2026-09-02 14:55:47.561564+00:00",
+      "skew_seconds": 8.438436
+    }
+  ],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "source_edits": 0,
+  "orders": 0
+}

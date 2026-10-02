@@ -1,0 +1,3589 @@
+{
+  "schema_version": 1,
+  "status": "LOOP_B_CME_TRACE_VERIFIED",
+  "started_at_utc": "2026-10-02T06:28:03.040433+00:00",
+  "completed_at_utc": "2026-10-02T06:28:03.325032+00:00",
+  "native_run_id": "20261002T040848.225355Z",
+  "publication_run": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z",
+  "publication_manifest_sha256": "763beac21b7b369496797bd2383fef44979b370c627f57fa2fa58b6594f7c5ba",
+  "publication_receipt_sha256": "76c7e46b566f470047633d592c3272942aa96635e57e020aae9efc2a47d5117d",
+  "pointer_evidence": {
+    "path": "C:\\DATASTORE\\ml\\latest\\run.json",
+    "sha256": "5e58a417f74fc2583e0a1ce1b00c97ae9a8cca2ba70c9b207ba822ad111dc98c",
+    "current": {
+      "manifest_checksum_sha256": "763beac21b7b369496797bd2383fef44979b370c627f57fa2fa58b6594f7c5ba",
+      "promoted_at": "2026-10-02T06:20:39.611581+00:00",
+      "receipt_checksum_sha256": "76c7e46b566f470047633d592c3272942aa96635e57e020aae9efc2a47d5117d",
+      "run_path": "ml/runs/20261002T055557.616329Z",
+      "run_timestamp": "2026-10-02T05:55:57.616329+00:00"
+    }
+  },
+  "current_capture_audit": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\provider-warning\\capture-review-20261002T042250Z.json",
+    "sha256": "59293bbf0a252e87eea2690c779a07f6e36a47feceef28d14a6916a6c9fc2411"
+  },
+  "completed_loop_a_log": {
+    "path": "C:\\DATASTORE\\ml\\overnight-runs\\20261002T040848.225355Z\\loop_a_close_fetch.log",
+    "sha256": "725e5e327e312362d9ffb29a9d179afcc0ef739d4b8d6ecbbb0fe7120e15a919",
+    "degraded_warning_lines": []
+  },
+  "checks": {
+    "publication_binds_manifest": true,
+    "publication_run_matches": true,
+    "pointer_matches_run_and_manifest": true,
+    "pointer_receipt_hash_matches": true,
+    "all_outputs_match": true,
+    "no_route_errors": true,
+    "all_cme_input_hashes_match": true,
+    "derived_view_has_no_october1_or_later_windows": true,
+    "current_capture_paths_and_hashes_absent_from_cme_bindings": true,
+    "no_hot_or_current_partition_source_bound": true,
+    "all_nine_model_traces_pass": true,
+    "no_degraded_warning_in_completed_loop_a_log": true
+  },
+  "errors": [],
+  "verified_outputs": [
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z\\evaluations.parquet",
+      "expected_sha256": "c2e4f2b36c8805049446f469c837298747f1e134c73d972f555b6a3bc506e99a",
+      "actual_sha256": "c2e4f2b36c8805049446f469c837298747f1e134c73d972f555b6a3bc506e99a",
+      "size": 894419,
+      "matches": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z\\intelligence.parquet",
+      "expected_sha256": "89a000731df22c264a8eb391b4cd5b6873c09089e9ea53aaf96fc0be53e3298b",
+      "actual_sha256": "89a000731df22c264a8eb391b4cd5b6873c09089e9ea53aaf96fc0be53e3298b",
+      "size": 18498,
+      "matches": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z\\monitoring.parquet",
+      "expected_sha256": "b49c7d8954f3dc7b2bf99685992444a4ba07378b3516e6e3594045359f47e509",
+      "actual_sha256": "b49c7d8954f3dc7b2bf99685992444a4ba07378b3516e6e3594045359f47e509",
+      "size": 16012,
+      "matches": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z\\predictions.parquet",
+      "expected_sha256": "d9814dee4d735c49850e51e05989b1b327079e5f202cf677ea4e17877134c3b8",
+      "actual_sha256": "d9814dee4d735c49850e51e05989b1b327079e5f202cf677ea4e17877134c3b8",
+      "size": 205623,
+      "matches": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z\\samples.parquet",
+      "expected_sha256": "feeafec2c717e9dd7cd5d9f635a112ccbcd711981683d6c913f930e75b1bd4e4",
+      "actual_sha256": "feeafec2c717e9dd7cd5d9f635a112ccbcd711981683d6c913f930e75b1bd4e4",
+      "size": 45585707,
+      "matches": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z\\sequence-encoder-shadow.json",
+      "expected_sha256": "796363fadbdf472789cb8c51e7088f261d1a56dfa31514440a5dd4c0017d8464",
+      "actual_sha256": "796363fadbdf472789cb8c51e7088f261d1a56dfa31514440a5dd4c0017d8464",
+      "size": 328,
+      "matches": true
+    }
+  ],
+  "cme_input_evidence": [
+    {
+      "checksum_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+      "modified_time_ns": 1787127149899711300,
+      "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+      "size": 15288,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+        "expected_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+        "actual_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+        "size": 15288,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+      "modified_time_ns": 1787127149914318600,
+      "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+      "size": 8205,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+        "expected_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+        "actual_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+        "size": 8205,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+      "modified_time_ns": 1786933954599726700,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 1985,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+        "actual_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+        "size": 1985,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+      "modified_time_ns": 1786933954606725900,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+        "actual_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+      "modified_time_ns": 1786933978947830300,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 1985,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+        "actual_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+        "size": 1985,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+      "modified_time_ns": 1786933978954847600,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+        "actual_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+      "modified_time_ns": 1786933997264923900,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 1987,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+        "actual_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+        "size": 1987,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+      "modified_time_ns": 1786933997272925700,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+        "actual_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+      "modified_time_ns": 1786933939280474100,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 1985,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+        "actual_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+        "size": 1985,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+      "modified_time_ns": 1786933939288487300,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+        "actual_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+      "modified_time_ns": 1786933965520706400,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 1985,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+        "actual_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+        "size": 1985,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+      "modified_time_ns": 1786933965528222900,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+        "actual_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+      "modified_time_ns": 1786921987128312300,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 2057,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+        "actual_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+        "size": 2057,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+      "modified_time_ns": 1786921987136849000,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+        "actual_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+      "modified_time_ns": 1786922133673693800,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 2057,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+        "actual_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+        "size": 2057,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+      "modified_time_ns": 1786922133681784000,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+        "actual_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+      "modified_time_ns": 1786922159180480200,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 2059,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+        "actual_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+        "size": 2059,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+      "modified_time_ns": 1786922159188479600,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+        "actual_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+      "modified_time_ns": 1786921894732364900,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 2057,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+        "actual_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+        "size": 2057,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+      "modified_time_ns": 1786921894740365500,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+        "actual_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+      "modified_time_ns": 1786922052953304500,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "size": 2057,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "expected_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+        "actual_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+        "size": 2057,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+      "modified_time_ns": 1786922052963501000,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "expected_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+        "actual_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+      "modified_time_ns": 1786933002005396900,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+      "size": 2955,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+        "expected_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+        "actual_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+        "size": 2955,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+      "modified_time_ns": 1786933002012948600,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+        "expected_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+        "actual_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+      "modified_time_ns": 1786933286471402600,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+      "size": 2956,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+        "expected_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+        "actual_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+        "size": 2956,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+      "modified_time_ns": 1786933286479920900,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+        "expected_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+        "actual_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+      "modified_time_ns": 1786933412042410400,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+      "size": 2955,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+        "expected_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+        "actual_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+        "size": 2955,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+      "modified_time_ns": 1786933412051625200,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+        "expected_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+        "actual_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+      "modified_time_ns": 1786932929003696000,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+      "size": 2953,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+        "expected_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+        "actual_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+        "size": 2953,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+      "modified_time_ns": 1786932929012788800,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+        "expected_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+        "actual_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+        "size": 455,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+      "modified_time_ns": 1786933201132273800,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+      "size": 2955,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+        "expected_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+        "actual_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+        "size": 2955,
+        "matches": true
+      }
+    },
+    {
+      "checksum_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+      "modified_time_ns": 1786933201139784700,
+      "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+      "size": 455,
+      "status": "present",
+      "verification": {
+        "path": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+        "expected_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+        "actual_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+        "size": 455,
+        "matches": true
+      }
+    }
+  ],
+  "bound_derived_view": {
+    "path": "C:\\DATASTORE\\pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+    "sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+    "rows": 13,
+    "first_window_start": "2026-08-14 07:00:00+00:00",
+    "last_window_end": "2026-08-14 21:00:00+00:00",
+    "last_available_at": "2026-08-14 21:01:00+00:00",
+    "october1_or_later_windows": 0,
+    "windows": [
+      {
+        "window_start": "2026-08-14 07:00:00+00:00",
+        "window_end": "2026-08-14 08:00:00+00:00",
+        "available_at": "2026-08-14 08:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 09:00:00+00:00",
+        "window_end": "2026-08-14 10:00:00+00:00",
+        "available_at": "2026-08-14 10:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 10:00:00+00:00",
+        "window_end": "2026-08-14 11:00:00+00:00",
+        "available_at": "2026-08-14 11:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 11:00:00+00:00",
+        "window_end": "2026-08-14 12:00:00+00:00",
+        "available_at": "2026-08-14 12:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 12:00:00+00:00",
+        "window_end": "2026-08-14 13:00:00+00:00",
+        "available_at": "2026-08-14 13:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 13:00:00+00:00",
+        "window_end": "2026-08-14 14:00:00+00:00",
+        "available_at": "2026-08-14 14:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 14:00:00+00:00",
+        "window_end": "2026-08-14 15:00:00+00:00",
+        "available_at": "2026-08-14 15:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 15:00:00+00:00",
+        "window_end": "2026-08-14 16:00:00+00:00",
+        "available_at": "2026-08-14 16:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 16:00:00+00:00",
+        "window_end": "2026-08-14 17:00:00+00:00",
+        "available_at": "2026-08-14 17:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 17:00:00+00:00",
+        "window_end": "2026-08-14 18:00:00+00:00",
+        "available_at": "2026-08-14 18:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 18:00:00+00:00",
+        "window_end": "2026-08-14 19:00:00+00:00",
+        "available_at": "2026-08-14 19:00:00+00:00"
+      },
+      {
+        "window_start": "2026-08-14 19:00:00+00:00",
+        "window_end": "2026-08-14 20:00:00+00:00",
+        "available_at": "2026-08-14 20:00:00.000588434+00:00"
+      },
+      {
+        "window_start": "2026-08-14 20:00:00+00:00",
+        "window_end": "2026-08-14 21:00:00+00:00",
+        "available_at": "2026-08-14 21:01:00+00:00"
+      }
+    ]
+  },
+  "model_count": 9,
+  "models": [
+    {
+      "horizon": "1h",
+      "model_name": "logistic-1h",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1h\\logistic-1h\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "6e2707e41b64119a7ad44fe6a10164611be83a180c5bb4d5b6f787ff9bb18ad9",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1h\\logistic-1h\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "47192233e6ce1246ae807727d25bef41f7633005a109e449c66a50be762a4f58",
+        "actual_sha256": "47192233e6ce1246ae807727d25bef41f7633005a109e449c66a50be762a4f58",
+        "size": 19159,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2026-09-15T14:05:00+00:00",
+      "training_rows": 27576,
+      "calibration_rows": 880,
+      "assessment_rows": 880,
+      "selected_cme_features": [
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return",
+        "cme__relative_spread",
+        "cme__book_imbalance"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 201098,
+        "non_null_rows_any_selected_cme": 282,
+        "first_non_null_decision": "2026-08-14 10:05:00+00:00",
+        "last_non_null_decision": "2026-08-14 21:05:00+00:00",
+        "non_null_by_column": {
+          "cme__nq_return_1h": 282,
+          "cme__es_return_1h": 282,
+          "cme__small_cap_breadth": 282,
+          "cme__tech_breadth": 282,
+          "cme__gold_return": 282,
+          "cme__crude_return": 282,
+          "cme__relative_spread": 282,
+          "cme__book_imbalance": 282
+        },
+        "october1_or_later_rows": 77,
+        "october1_or_later_non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0,
+          "cme__relative_spread": 0,
+          "cme__book_imbalance": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 7,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "4h",
+      "model_name": "logistic-4h",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\4h\\logistic-4h\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "0f24acca8a15fa24274b4bb2073eb0741e3d00f57c092773edfc73a850e6821a",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\4h\\logistic-4h\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "f032d79f03c7b14a6aba4611e85e7700f48581a4a1207be3640ee13fa20c7f98",
+        "actual_sha256": "f032d79f03c7b14a6aba4611e85e7700f48581a4a1207be3640ee13fa20c7f98",
+        "size": 19159,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2026-08-06T15:05:00+00:00",
+      "training_rows": 9474,
+      "calibration_rows": 1262,
+      "assessment_rows": 1249,
+      "selected_cme_features": [
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return",
+        "cme__relative_spread",
+        "cme__book_imbalance"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 90981,
+        "non_null_rows_any_selected_cme": 119,
+        "first_non_null_decision": "2026-08-14 10:05:00+00:00",
+        "last_non_null_decision": "2026-08-14 21:05:00+00:00",
+        "non_null_by_column": {
+          "cme__nq_return_1h": 119,
+          "cme__es_return_1h": 119,
+          "cme__small_cap_breadth": 119,
+          "cme__tech_breadth": 119,
+          "cme__gold_return": 119,
+          "cme__crude_return": 119,
+          "cme__relative_spread": 119,
+          "cme__book_imbalance": 119
+        },
+        "october1_or_later_rows": 99,
+        "october1_or_later_non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0,
+          "cme__relative_spread": 0,
+          "cme__book_imbalance": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 9,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1d",
+      "model_name": "logistic-1d",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1d\\logistic-1d\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "f3a22142d3df2ce6604587137b56c9f9d20ecac993841f49752042f3fc23be5e",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1d\\logistic-1d\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "c7de70e4b34d010901663c20a973327bc11518fdf93c99932d2721c8030c7b8d",
+        "actual_sha256": "c7de70e4b34d010901663c20a973327bc11518fdf93c99932d2721c8030c7b8d",
+        "size": 34807,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-08-14T20:05:00+00:00",
+      "training_rows": 5561,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1w",
+      "model_name": "logistic-1w",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1w\\logistic-1w\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "4009668cabfc240f5278aae592cafb9fd6f5acc5c9dcf44f1b98b7877c80b582",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1w\\logistic-1w\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "6a39a4b7e2a44497ce580a1049385993b319bb86dd68e8e0daba0a6e3429b187",
+        "actual_sha256": "6a39a4b7e2a44497ce580a1049385993b319bb86dd68e8e0daba0a6e3429b187",
+        "size": 33303,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-08-07T20:05:00+00:00",
+      "training_rows": 5506,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1w-d1",
+      "model_name": "logistic-1w-d1",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1w-d1\\logistic-1w-d1\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "0c3624b018e0496661c8f7a4a6c80bd781a2960bd2c31b92be0636f1373ecd34",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1w-d1\\logistic-1w-d1\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "442b357a4cfb203f350a6e11a8cc65cc7fbbe10b3b0b7b3e8e9b85057be19571",
+        "actual_sha256": "442b357a4cfb203f350a6e11a8cc65cc7fbbe10b3b0b7b3e8e9b85057be19571",
+        "size": 33239,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-08-14T20:05:00+00:00",
+      "training_rows": 5561,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1w-d2",
+      "model_name": "logistic-1w-d2",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1w-d2\\logistic-1w-d2\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "bc1d9635b9efa5d0a3328d8fd4fcd1d0b43be4e6f407a9206387cb6edc9a4a12",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1w-d2\\logistic-1w-d2\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "17f254d4c87daf5ace37d2c3a1fe5fec6db6b2691754b41169a32ec158083c53",
+        "actual_sha256": "17f254d4c87daf5ace37d2c3a1fe5fec6db6b2691754b41169a32ec158083c53",
+        "size": 33239,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-08-22T20:05:00+00:00",
+      "training_rows": 5627,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1w-d3",
+      "model_name": "logistic-1w-d3",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1w-d3\\logistic-1w-d3\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "202289bb9ddf01be981386a8e109a5d31ae5b8f3db9e10f3e0dacab07af098d2",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1w-d3\\logistic-1w-d3\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "f42a3e811e448df1e3ef3cb86f46380e7210f40e9b10c3739d82f7c22120ca22",
+        "actual_sha256": "f42a3e811e448df1e3ef3cb86f46380e7210f40e9b10c3739d82f7c22120ca22",
+        "size": 33239,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-09-02T20:05:00+00:00",
+      "training_rows": 5693,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1w-d4",
+      "model_name": "logistic-1w-d4",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1w-d4\\logistic-1w-d4\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "7d25ea173470c6151bcc1f76c679c6239f7528eb8691e27862a414010a2bb09a",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1w-d4\\logistic-1w-d4\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "53b6926bab7e803d5418346740e166c70a53e39b8ea34e5563927b8c5adc42ed",
+        "actual_sha256": "53b6926bab7e803d5418346740e166c70a53e39b8ea34e5563927b8c5adc42ed",
+        "size": 33239,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-09-10T20:05:00+00:00",
+      "training_rows": 5759,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    },
+    {
+      "horizon": "1w-d5",
+      "model_name": "logistic-1w-d5",
+      "model_version": "20261002T055557.616329Z",
+      "manifest_path": "C:\\DATASTORE\\ml\\models\\1w-d5\\logistic-1w-d5\\20261002T055557.616329Z\\manifest.json",
+      "manifest_sha256": "eb189b00db0acc40c8170e1f7da67fc6507ce086471c27a76f58265228a45aee",
+      "model_file": {
+        "path": "C:\\DATASTORE\\ml\\models\\1w-d5\\logistic-1w-d5\\20261002T055557.616329Z\\model.joblib",
+        "expected_sha256": "705e5abcc13defeeedca8406afceb8cecc2b45ad9d275468f2239da05fef7d36",
+        "actual_sha256": "705e5abcc13defeeedca8406afceb8cecc2b45ad9d275468f2239da05fef7d36",
+        "size": 33239,
+        "matches": true
+      },
+      "checks": {
+        "identity_matches": true,
+        "model_version_matches_current_run": true,
+        "feature_set_matches_publication": true,
+        "model_blob_matches": true,
+        "model_cme_bindings_match_exact_publication_set": true,
+        "october1_and_later_cme_values_absent": true
+      },
+      "trained_at": "2026-10-02T05:55:57.616329+00:00",
+      "training_through": "2025-09-17T20:05:00+00:00",
+      "training_rows": 5814,
+      "calibration_rows": 693,
+      "assessment_rows": 693,
+      "selected_cme_features": [
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return"
+      ],
+      "cme_source_bindings": [
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+          "model_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "publication_sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+          "matches": true
+        },
+        {
+          "path": "pools\\cme\\features\\cross-asset-context\\databento\\1h.archive-lineage.json",
+          "model_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "publication_sha256": "ead0e9dcdc8005a2e917d065f8beec6339a29e46f08c55bd8071519b364913bf",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "publication_sha256": "5dbb75018ed357b6eb87bfb8aab522abf6f816a1c6f3b1f816a77dada4eefa0d",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "publication_sha256": "aca4a28e534686c61d717773ea260a865c4093b610ea5c3bae42224418002eb2",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "publication_sha256": "f79db569822fd38bd493c4e1f269866bf1b3a109a3918d58b188bf2c5937a6de",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "publication_sha256": "a7df008c4dd87d423fe51dff93f08beddc4e8870100b98b8aa66ee518b4057d1",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "publication_sha256": "e83b18f0b9fe546ced4d82a20804442cec14a3d5b2963ff2abf127fbefb98602",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "publication_sha256": "726374a9a8c780b9ef92218d4b2b381503b602a650a86d6030e66db70b956075",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "publication_sha256": "3fce81369bb80dd505e15e9f129f898c2d69d26577f85728df695fb09d9b218c",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "publication_sha256": "3a35472b9515d11c481ed758d0815e6688962e069af256ad821fd390a79e7b64",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "publication_sha256": "4002421f553f8840766665b18a0d75444ef5a387962b3b93b66a871dca3b3192",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\ohlcv-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "publication_sha256": "4e40970172ab60a32687899e8c7d162b397aae456caf253168c331e27e4b7cb4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "publication_sha256": "41d26e9e994f57af1c9986588d59343df577b02d846793f4e45aec2c542d2982",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\ES.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "publication_sha256": "633cee4f9963c7eb3b58e454476ea66fe2140268c99362adfc7cb9b4b9067fb9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "publication_sha256": "a9f24fb2e00b872d73fdc951a7fabe22f9703841053c59c6f6d3c326e5b7e8b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\NQ.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "publication_sha256": "cd12e256f41c664fb09a80ce89238d83bb4bd9aa430c71dbc49fa79d1bc71e8e",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "publication_sha256": "7419599f8ce39433fe1b04b9f9debe87bd6ce425f1d75a6e5b4c65d7fe154388",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\RTY.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "publication_sha256": "1983762eefda2942194605aba09d8e9a4e7236b34e255449f26c6fb40e2166f0",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "publication_sha256": "68b58718de46092f026f916869ef3d3ecf7f59275dd9ed8c867c5a236004d0b3",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\CL.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "publication_sha256": "1fadbb55faf96fe9e53edefeddf3543154d426f53e05846b0dd830f41caa8402",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+          "model_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "publication_sha256": "d8f4e3f09b6f4aa78fe94243b9367cd26c1c52be8e81d1649b2ebd721b4c5fe6",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\bbo-1m\\GC.V.0\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+          "model_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "publication_sha256": "82a5787d61a85be04cf4bd1bfc76d9115d97ee6d4d5cb9a73e978c7cef193ddb",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "publication_sha256": "345c70ea7aa4fadaf81b4ae0e37ba8ae8073fd8e1fae875a2c9b6f88f4613dd7",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\ES.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "publication_sha256": "7b53fc63a967ac8e6874ce5d961c90e46a27186f9aa35c1b10360c9067648462",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "publication_sha256": "66f80a3f6a521e071391985c358aa3a7910e1549bab5825e353062a8580d0656",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\NQ.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "publication_sha256": "bf3c70446c98fff86df4e1b54aaaabeca048b65441e37e52d48f8e9e162244a9",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "publication_sha256": "8085b1426b794d1deb2aba78730539faba0bacc288d9168725ed12135818e109",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\RTY.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "publication_sha256": "d8b186c0409dbc89ca76ab370d6614e7380a2f3a494215e52ae645650e3ea2aa",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "publication_sha256": "3ea9d0713c4494186f647ed2079d8821160dcb2005ee81d01babd0bcdf74caf4",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\CL.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "publication_sha256": "58d738e77c68a0f8bd8dc61dee858fa098881a70dec611f6e8ac83ae9f6e7611",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\manifest.json",
+          "model_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "publication_sha256": "9060d064bdb93708b525d099c4edd8276ab9a36e91f2ed82480bc35d9463b4d8",
+          "matches": true
+        },
+        {
+          "path": "market-data\\databento\\cme\\GLBX.MDP3\\mbp-10\\GC.V.0\\windows\\2026-08-14_to_2026-08-15\\receipt.json",
+          "model_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "publication_sha256": "9aba23d747d607f58fe166824a82356a82f48553d7914fbd7fa068a55dfebc0f",
+          "matches": true
+        }
+      ],
+      "saved_samples": {
+        "rows": 7299,
+        "non_null_rows_any_selected_cme": 0,
+        "first_non_null_decision": null,
+        "last_non_null_decision": null,
+        "non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_rows": 11,
+        "october1_or_later_non_null_by_column": {
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0
+        },
+        "october1_or_later_per_symbol": [
+          {
+            "symbol": "AAPL",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "AMZN",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "COST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "CROX",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "GOOG",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "IONQ",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "MU",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "NVDA",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "PATH",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "SNDK",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          },
+          {
+            "symbol": "TWST",
+            "rows": 1,
+            "non_null_cme_rows": 0
+          }
+        ]
+      },
+      "current_native_capture_use": "EXCLUDED_FROM_BOUND_CME_SOURCE_VIEW",
+      "qualification": "CME feature selection can use older observations or missing-value handling; it does not establish current capture use."
+    }
+  ],
+  "pricing_evidence_summary": {
+    "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+    "downstream_training_eligible": false,
+    "model_admission_by_horizon": {
+      "1d": {
+        "effective_model_feature_set": "loop-a-all-v3-1d",
+        "failed_routes": [
+          "AAPL|1d",
+          "AMZN|1d",
+          "COST|1d",
+          "CROX|1d",
+          "GOOG|1d",
+          "IONQ|1d",
+          "MU|1d",
+          "NVDA|1d",
+          "PATH|1d",
+          "SNDK|1d",
+          "TWST|1d"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1d"
+      },
+      "1h": {
+        "effective_model_feature_set": "loop-a-all-v1-1h",
+        "failed_routes": [
+          "AAPL|1h",
+          "AMZN|1h",
+          "COST|1h",
+          "CROX|1h",
+          "GOOG|1h",
+          "IONQ|1h",
+          "MU|1h",
+          "NVDA|1h",
+          "PATH|1h",
+          "SNDK|1h",
+          "TWST|1h"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v2-1h"
+      },
+      "1w": {
+        "effective_model_feature_set": "loop-a-all-v3-1w",
+        "failed_routes": [
+          "AAPL|1w",
+          "AMZN|1w",
+          "COST|1w",
+          "CROX|1w",
+          "GOOG|1w",
+          "IONQ|1w",
+          "MU|1w",
+          "NVDA|1w",
+          "PATH|1w",
+          "SNDK|1w",
+          "TWST|1w"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+      },
+      "1w-d1": {
+        "effective_model_feature_set": "loop-a-all-v3-1w",
+        "failed_routes": [
+          "AAPL|1w-d1",
+          "AMZN|1w-d1",
+          "COST|1w-d1",
+          "CROX|1w-d1",
+          "GOOG|1w-d1",
+          "IONQ|1w-d1",
+          "MU|1w-d1",
+          "NVDA|1w-d1",
+          "PATH|1w-d1",
+          "SNDK|1w-d1",
+          "TWST|1w-d1"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+      },
+      "1w-d2": {
+        "effective_model_feature_set": "loop-a-all-v3-1w",
+        "failed_routes": [
+          "AAPL|1w-d2",
+          "AMZN|1w-d2",
+          "COST|1w-d2",
+          "CROX|1w-d2",
+          "GOOG|1w-d2",
+          "IONQ|1w-d2",
+          "MU|1w-d2",
+          "NVDA|1w-d2",
+          "PATH|1w-d2",
+          "SNDK|1w-d2",
+          "TWST|1w-d2"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+      },
+      "1w-d3": {
+        "effective_model_feature_set": "loop-a-all-v3-1w",
+        "failed_routes": [
+          "AAPL|1w-d3",
+          "AMZN|1w-d3",
+          "COST|1w-d3",
+          "CROX|1w-d3",
+          "GOOG|1w-d3",
+          "IONQ|1w-d3",
+          "MU|1w-d3",
+          "NVDA|1w-d3",
+          "PATH|1w-d3",
+          "SNDK|1w-d3",
+          "TWST|1w-d3"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+      },
+      "1w-d4": {
+        "effective_model_feature_set": "loop-a-all-v3-1w",
+        "failed_routes": [
+          "AAPL|1w-d4",
+          "AMZN|1w-d4",
+          "COST|1w-d4",
+          "CROX|1w-d4",
+          "GOOG|1w-d4",
+          "IONQ|1w-d4",
+          "MU|1w-d4",
+          "NVDA|1w-d4",
+          "PATH|1w-d4",
+          "SNDK|1w-d4",
+          "TWST|1w-d4"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+      },
+      "1w-d5": {
+        "effective_model_feature_set": "loop-a-all-v3-1w",
+        "failed_routes": [
+          "AAPL|1w-d5",
+          "AMZN|1w-d5",
+          "COST|1w-d5",
+          "CROX|1w-d5",
+          "GOOG|1w-d5",
+          "IONQ|1w-d5",
+          "MU|1w-d5",
+          "NVDA|1w-d5",
+          "PATH|1w-d5",
+          "SNDK|1w-d5",
+          "TWST|1w-d5"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+      },
+      "4h": {
+        "effective_model_feature_set": "loop-a-all-v1-4h",
+        "failed_routes": [
+          "AAPL|4h",
+          "AMZN|4h",
+          "COST|4h",
+          "CROX|4h",
+          "GOOG|4h",
+          "IONQ|4h",
+          "MU|4h",
+          "NVDA|4h",
+          "PATH|4h",
+          "SNDK|4h",
+          "TWST|4h"
+        ],
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_admitted": false,
+        "pricing_family_selected": true,
+        "requested_feature_set": "loop-a-all-bsgp-active-v2-4h"
+      }
+    }
+  },
+  "conclusion": "All nine saved Loop B model manifests bind the same verified 32 older CME archive/view inputs. Current native CME narrowed/saturated captures are absent from these bindings. The bound derived view has August 14 windows only; all October 1 and later saved CME sample values are missing. Older real CME values exist for 1h/4h. Missing handling does not constitute current provider observations.",
+  "limitations": [
+    "No fresh provider quality metadata was requested because this completed Loop A emitted no degraded-data warning. This does not resolve prior provider quality flags.",
+    "This audit verifies saved bindings, bytes and feature values, not fitted model execution or a new model qualification.",
+    "Gameplan model tracing remains separate and pending until its new publication is available."
+  ],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "model_loads_or_fits": 0,
+  "orders": 0
+}

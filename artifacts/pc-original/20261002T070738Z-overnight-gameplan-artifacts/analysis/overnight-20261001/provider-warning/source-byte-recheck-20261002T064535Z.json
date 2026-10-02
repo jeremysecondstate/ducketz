@@ -1,0 +1,38 @@
+{
+  "observed_at_utc": "2026-10-02T06:45:35.580996+00:00",
+  "status": "VERIFIED",
+  "head": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "baseline_head": "0407388559d54612603380793fc26a98937697fc",
+  "candidate_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+  "checks": {
+    "stock_audit_baseline": {
+      "count": 341,
+      "mismatches": []
+    },
+    "deployed_fallback_owned": {
+      "count": 23,
+      "mismatches": []
+    },
+    "deployed_fallback_dependencies": {
+      "count": 176,
+      "mismatches": []
+    }
+  },
+  "receipts": [
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\apply-progress.json",
+      "sha256": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+      "status": "APPLIED",
+      "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+      "matches_manifest": true
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\cross-horizon-fallback-20260930\\apply-receipt.json",
+      "sha256": "7cab7ccf560156305243824d388a65843ce3c73380d3de961060a62e818fe8ad",
+      "status": "APPLIED",
+      "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+      "matches_manifest": true
+    }
+  ],
+  "interpretation": "Concurrent HEAD advancement does not change these exact verified stock source bytes; no broker/provider/runtime/control/source or Git mutations performed."
+}

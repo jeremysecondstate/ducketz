@@ -1,0 +1,2030 @@
+{
+  "schema_version": "hierarchical-bearish-fallback-review-v1",
+  "action_date": "2026-10-01",
+  "reviewed_at": "2026-10-02T06:48:59.694181+00:00",
+  "fill_date_timezone": "America/Los_Angeles",
+  "observation_scope": "Ledger-recorded orders and broker-confirmed fills; no broker requests or counterfactual profit.",
+  "read_only": true,
+  "baseline": {
+    "baseline_ref": "395c159cbefe6ab29b00aa3f6d7041692515baafaffc9f6da7448dd56beae290",
+    "observed_at": "2026-10-01T11:01:09.389655+00:00",
+    "source_fingerprint": "84fe3266156f7ee740b30f23a3a38940c63d5251364d784336a62448eff947bb",
+    "policy_version": "hierarchical-bearish-fallback-v1",
+    "symbols": {
+      "AAPL": {
+        "daily_cap": 30,
+        "initial_owned_longer_horizon_shares": 60
+      },
+      "AMZN": {
+        "daily_cap": 13,
+        "initial_owned_longer_horizon_shares": 27
+      },
+      "COST": {
+        "daily_cap": 3,
+        "initial_owned_longer_horizon_shares": 7
+      },
+      "CROX": {
+        "daily_cap": 26,
+        "initial_owned_longer_horizon_shares": 52
+      },
+      "GOOG": {
+        "daily_cap": 10,
+        "initial_owned_longer_horizon_shares": 21
+      },
+      "IONQ": {
+        "daily_cap": 156,
+        "initial_owned_longer_horizon_shares": 313
+      },
+      "MU": {
+        "daily_cap": 3,
+        "initial_owned_longer_horizon_shares": 6
+      },
+      "NVDA": {
+        "daily_cap": 22,
+        "initial_owned_longer_horizon_shares": 45
+      },
+      "PATH": {
+        "daily_cap": 279,
+        "initial_owned_longer_horizon_shares": 558
+      },
+      "SNDK": {
+        "daily_cap": 4,
+        "initial_owned_longer_horizon_shares": 9
+      },
+      "TWST": {
+        "daily_cap": 33,
+        "initial_owned_longer_horizon_shares": 66
+      }
+    },
+    "donors": [
+      {
+        "donor_allocation_id_sha256": "f875fd425a0f1a4ef501fe1d31d0aad772b8e560ecf99236e99575faac1ddd1b",
+        "symbol": "AMZN",
+        "horizon": "4h",
+        "initial_owned_shares": 4,
+        "daily_cap": 2
+      },
+      {
+        "donor_allocation_id_sha256": "86d6f3390063bdaeaf6c732fc59f4d4d7b1c912d30fc970f90edf7fc9750cdd8",
+        "symbol": "IONQ",
+        "horizon": "4h",
+        "initial_owned_shares": 1,
+        "daily_cap": 0
+      },
+      {
+        "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+        "symbol": "AAPL",
+        "horizon": "1w",
+        "initial_owned_shares": 43,
+        "daily_cap": 21
+      },
+      {
+        "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+        "symbol": "AMZN",
+        "horizon": "1w",
+        "initial_owned_shares": 23,
+        "daily_cap": 11
+      },
+      {
+        "donor_allocation_id_sha256": "6a5243525188a36052165172abde358c4e8d61e9170d254e996c2059f0b48ae4",
+        "symbol": "NVDA",
+        "horizon": "4h",
+        "initial_owned_shares": 1,
+        "daily_cap": 0
+      },
+      {
+        "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+        "symbol": "PATH",
+        "horizon": "1w",
+        "initial_owned_shares": 558,
+        "daily_cap": 279
+      },
+      {
+        "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+        "symbol": "IONQ",
+        "horizon": "1w",
+        "initial_owned_shares": 312,
+        "daily_cap": 156
+      },
+      {
+        "donor_allocation_id_sha256": "f9f46dca13b6e426464993d882667f0aaae9f2a13af4b62341dd82d8d06a1b86",
+        "symbol": "MU",
+        "horizon": "1w",
+        "initial_owned_shares": 6,
+        "daily_cap": 3
+      },
+      {
+        "donor_allocation_id_sha256": "00e72dc7313c6bf3f96c9cbc32433eae335739d7b523959c20d346362b964049",
+        "symbol": "SNDK",
+        "horizon": "1w",
+        "initial_owned_shares": 9,
+        "daily_cap": 4
+      },
+      {
+        "donor_allocation_id_sha256": "37fbf813973e1e7324c054609ab222ce2bf9d2e113b636d1a61e262b78bed0ce",
+        "symbol": "TWST",
+        "horizon": "4h",
+        "initial_owned_shares": 6,
+        "daily_cap": 3
+      },
+      {
+        "donor_allocation_id_sha256": "90b262dd93e0a085e1b6b342caf2fcc804948cdf228065011474e682968e1b5d",
+        "symbol": "CROX",
+        "horizon": "4h",
+        "initial_owned_shares": 1,
+        "daily_cap": 0
+      },
+      {
+        "donor_allocation_id_sha256": "bfadfc280f4e9eda1f31606939a79257e42a265a58561faf67b83768bb7fb643",
+        "symbol": "NVDA",
+        "horizon": "1w",
+        "initial_owned_shares": 38,
+        "daily_cap": 19
+      },
+      {
+        "donor_allocation_id_sha256": "d7ee3ca36f49e0f58ce19fc94b0fead6146f1f47d969235807123d6d77f044b1",
+        "symbol": "COST",
+        "horizon": "1w",
+        "initial_owned_shares": 7,
+        "daily_cap": 3
+      },
+      {
+        "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+        "symbol": "AAPL",
+        "horizon": "1d",
+        "initial_owned_shares": 17,
+        "daily_cap": 8
+      },
+      {
+        "donor_allocation_id_sha256": "d8f2d277c34adb7ab2788a9c6e6c7d045b1e34ebd409cd7027eae44d22e816fd",
+        "symbol": "CROX",
+        "horizon": "1w",
+        "initial_owned_shares": 51,
+        "daily_cap": 25
+      },
+      {
+        "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+        "symbol": "TWST",
+        "horizon": "1w",
+        "initial_owned_shares": 60,
+        "daily_cap": 30
+      },
+      {
+        "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+        "symbol": "GOOG",
+        "horizon": "1w",
+        "initial_owned_shares": 21,
+        "daily_cap": 10
+      },
+      {
+        "donor_allocation_id_sha256": "ba3c361faa6e29471a247ec539628d2f11ddd1c198f23f07d6f5a639db6cd62d",
+        "symbol": "NVDA",
+        "horizon": "1d",
+        "initial_owned_shares": 6,
+        "daily_cap": 3
+      }
+    ]
+  },
+  "fallback_orders": [
+    {
+      "reservation_ref": "1a820b0e6885ee7ce28a00060601a6b4826572307aa65b0a06daa4f3809ad794",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@07:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 11,
+      "slot_quota": 11,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 11,
+      "filled_quantity_on_action_date": 11,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 11,
+          "price": "13.095",
+          "executed_at": "2026-10-01T14:01:21+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "1011d360b6fd0d265b8f993d81e0ccafea83291beff6b45cd750c695514625ee",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@13:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 11,
+      "slot_quota": 11,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 11,
+      "filled_quantity_on_action_date": 11,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 11,
+          "price": "13.32",
+          "executed_at": "2026-10-01T20:06:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "73bdfe098d7725bb036be0359795593a86fb8e81d7a0b8a2a5428737199478a0",
+      "symbol": "COST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:COST:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "d7ee3ca36f49e0f58ce19fc94b0fead6146f1f47d969235807123d6d77f044b1",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "910.91",
+          "executed_at": "2026-10-01T13:01:07+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "3f6a4e766a76245432e03c8b61f4f5b7da1560de750906b306e59f2418e8f8ae",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@07:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "329.575",
+          "executed_at": "2026-10-01T14:01:17+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "16155592ffe7977854badb6bc25dc4d5dc3e597cb58a7747f5c4ff6046eac4ed",
+      "symbol": "SNDK",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:SNDK:4h@12:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "00e72dc7313c6bf3f96c9cbc32433eae335739d7b523959c20d346362b964049",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "1784.47",
+          "executed_at": "2026-10-01T19:01:18+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "d7eaf67d600f2291930d46fc81b3849c8ac1805369803538525916881a63ba57",
+      "symbol": "GOOG",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:GOOG:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "346.7796",
+          "executed_at": "2026-10-01T13:01:09+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "7d1278c617f309d7685d237521ae495f83bf5dbb890e87f73a47347479f8573b",
+      "symbol": "AMZN",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AMZN:1h@13:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "248.25",
+          "executed_at": "2026-10-01T20:06:08+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "25731df6478809ddabafa5f83fa9b124c9e9e11c9be6889dd71a2e226fcd7df4",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@16:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "330.53",
+          "executed_at": "2026-10-01T23:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "5a6507e21b48fcd330844258dcb1dc9ee25ac8236911305a569bb732faf6cee4",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@08:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 12,
+      "slot_quota": 12,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 12,
+      "filled_quantity_on_action_date": 12,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 12,
+          "price": "13.067",
+          "executed_at": "2026-10-01T15:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "7a9667ffaf9b3aea41adf2f079f63dae99476c5b68155663c82d3a137f227500",
+      "symbol": "AMZN",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AMZN:1h@08:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "246.65",
+          "executed_at": "2026-10-01T15:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "d2aa4ec2e020ea020f96dbd07fd2ab4e1386b23b2a3a727783760f671f641932",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@05:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "193.45",
+          "executed_at": "2026-10-01T12:04:41+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "4bdf45156f0f23d49abd9b7b91296c66ded86ade7b5e1f302f07e9c8c748999b",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@10:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 2,
+      "slot_quota": 2,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 2,
+      "filled_quantity_on_action_date": 2,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 2,
+          "price": "196.525",
+          "executed_at": "2026-10-01T17:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "aa1b33e332ffe0708de92c25146b9b503957690f435e34aa928c3ae3d9c1f46a",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@16:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 7,
+      "slot_quota": 7,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 7,
+      "filled_quantity_on_action_date": 7,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 7,
+          "price": "44.04",
+          "executed_at": "2026-10-01T23:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "662df8dbd25d23486b08137aadd068cf5631feb1da9d4e792bbbe3f13da2e3ca",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@11:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "190.1131",
+          "executed_at": "2026-10-01T18:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "b829502f66b7919c3033df58efe41a803f2bd8d168abd14bf54a3fa2ef4cf02d",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@15:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "CANCELLED",
+      "filled_quantity_all_dates": 0,
+      "filled_quantity_on_action_date": 0,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 1,
+      "fills_on_action_date": []
+    },
+    {
+      "reservation_ref": "8c1e8f3df3f6db099f7b31d2da318be59b14a7ff1ab1071e7f1fc502450022a6",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@15:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 12,
+      "slot_quota": 12,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 12,
+      "filled_quantity_on_action_date": 12,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 12,
+          "price": "13.34",
+          "executed_at": "2026-10-01T22:01:11+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "72abefc8f9ebdd0d31af22253a245a253955e94f8eac187504b7946b62f96077",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@09:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "198.26",
+          "executed_at": "2026-10-01T16:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "2c915c0e2864b1581d82d6e505bf37444e9967a93b1934e7688371b2833c0d5f",
+      "symbol": "CROX",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:CROX:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "d8f2d277c34adb7ab2788a9c6e6c7d045b1e34ebd409cd7027eae44d22e816fd",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "CANCELLED",
+      "filled_quantity_all_dates": 0,
+      "filled_quantity_on_action_date": 0,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 1,
+      "fills_on_action_date": []
+    },
+    {
+      "reservation_ref": "825ad15faefa94a15609d10bb8bc2ca1769e0dc7dd89013edfb84bcb0d87187e",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@15:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "330.16",
+          "executed_at": "2026-10-01T22:01:09+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "a0bf708a54bd6c50c9099e0d449844067743fddfa484293ad59d1eb81e6eb095",
+      "symbol": "NVDA",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:NVDA:1h@14:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "bfadfc280f4e9eda1f31606939a79257e42a265a58561faf67b83768bb7fb643",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "231.1732",
+          "executed_at": "2026-10-01T21:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "4a67ca1585a5a314b815649c9c60d47c3843d902143133ee298d4d22b54d9263",
+      "symbol": "NVDA",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:NVDA:1h@12:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "ba3c361faa6e29471a247ec539628d2f11ddd1c198f23f07d6f5a639db6cd62d",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "232.08",
+          "executed_at": "2026-10-01T19:01:15+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "f50fffac4ffb39356d46a14bcd95f31718b5ae2b0f5998f4b9465698e95e0a8b",
+      "symbol": "NVDA",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:NVDA:1h@07:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "ba3c361faa6e29471a247ec539628d2f11ddd1c198f23f07d6f5a639db6cd62d",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "230.065",
+          "executed_at": "2026-10-01T14:01:20+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "c859b87b09439901a96716b4b996e51a8a8b57807a5fbf0009fef9154872bb68",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@15:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 6,
+      "slot_quota": 6,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 6,
+      "filled_quantity_on_action_date": 6,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 6,
+          "price": "44.0246",
+          "executed_at": "2026-10-01T22:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "1b1dc83e9a8756e536b2382d4714a257059a4c6186da4ec90f86bf19895ff45f",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:4h@12:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 23,
+      "slot_quota": 23,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 23,
+      "filled_quantity_on_action_date": 23,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 23,
+          "price": "13.375",
+          "executed_at": "2026-10-01T19:01:18+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "d87281c23855ef866950badfbcdb61b2502195a8ab243ed85fa3c37c5e68a1ac",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@14:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 12,
+      "slot_quota": 12,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 12,
+      "filled_quantity_on_action_date": 12,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 12,
+          "price": "13.35",
+          "executed_at": "2026-10-01T21:01:11+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "f5e10ec14b8d99bb78fcb617c04d65cf563eb0810ba25b75ebe961a2acb6d91a",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@09:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 12,
+      "slot_quota": 12,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 12,
+      "filled_quantity_on_action_date": 12,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 12,
+          "price": "13.1801",
+          "executed_at": "2026-10-01T16:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "8ca4eba37a19ad2c40706cf75342801b6a62ebffaec78fe56dd988c13e5601f8",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 7,
+      "slot_quota": 7,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 7,
+      "filled_quantity_on_action_date": 7,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 7,
+          "price": "44.166",
+          "executed_at": "2026-10-01T13:01:09+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "b866adb9677e0c638542ad2fc8924f9c9f0b59e3213a366108fa2bcaa3be6f5e",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@05:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 6,
+      "slot_quota": 6,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 6,
+      "filled_quantity_on_action_date": 6,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 6,
+          "price": "44.275",
+          "executed_at": "2026-10-01T12:01:11+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "d43d839c905949743dd6d134e29f0b758c1f240f181e8601e774fb4a6125cf0f",
+      "symbol": "MU",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:MU:1h@12:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "f9f46dca13b6e426464993d882667f0aaae9f2a13af4b62341dd82d8d06a1b86",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "1089.09",
+          "executed_at": "2026-10-01T19:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "25f4ce167cdd5ae1c03e1a2bce77713c09328b2433f30918e4d7841d40df8543",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 12,
+      "slot_quota": 12,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 12,
+      "filled_quantity_on_action_date": 12,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 12,
+          "price": "13.2252",
+          "executed_at": "2026-10-01T13:01:11+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "4774d49cd190f7e1231dde89d333aebca8185668fa53dcb9b895d9377c56a1bb",
+      "symbol": "NVDA",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:NVDA:1h@13:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "ba3c361faa6e29471a247ec539628d2f11ddd1c198f23f07d6f5a639db6cd62d",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "230.76",
+          "executed_at": "2026-10-01T20:07:00+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "8d52705992e66a2ced6d4a1e1cd5122f14de26cebd07941f012fdebf0d70bec2",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@10:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 11,
+      "slot_quota": 11,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 11,
+      "filled_quantity_on_action_date": 11,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 11,
+          "price": "13.255",
+          "executed_at": "2026-10-01T17:01:12+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "28940dc861ebe5abe6adc48d19804fa5fa064e6ca5a500d2bea30166df61de71",
+      "symbol": "GOOG",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:GOOG:4h@12:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "335.43",
+          "executed_at": "2026-10-01T19:01:19+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "1e9ded5ba6af91aa40506c25558b80ab760ad7559790ac67eeb95993ea2a06c7",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@12:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 1,
+      "slot_quota": 2,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "329.73",
+          "executed_at": "2026-10-01T19:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "f5f0f552d686e9dc0b48200e2f2941ea74424932b2d002cd8c6c38aeb92714c0",
+      "symbol": "MU",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:MU:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "f9f46dca13b6e426464993d882667f0aaae9f2a13af4b62341dd82d8d06a1b86",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "1053.5972",
+          "executed_at": "2026-10-01T13:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "efc0a87b6861237cea4cc97c5ebd7784891ca37e1b53c092b7845ae3cd9e2ace",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@09:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 6,
+      "slot_quota": 6,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 6,
+      "filled_quantity_on_action_date": 6,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 6,
+          "price": "43.93",
+          "executed_at": "2026-10-01T16:02:20+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "bba776a836becd78da574e45dbbcb9bc28dd7433c97f8bb314e9ef46b2afc72f",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@14:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+      "requested_quantity": 2,
+      "slot_quota": 2,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 2,
+      "filled_quantity_on_action_date": 2,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 2,
+          "price": "330.067",
+          "executed_at": "2026-10-01T21:01:08+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "58aec942b8bd84f52f3433f6eb542bd397f602ca4a0e59373217dd0021b5925b",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@13:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 6,
+      "slot_quota": 6,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 6,
+      "filled_quantity_on_action_date": 6,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 6,
+          "price": "43.9324",
+          "executed_at": "2026-10-01T20:06:09+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "d46f30a381e7517305cdb1ae81364e019d8a367e37509ff1b783c67686cdaead",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:4h@08:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 13,
+      "slot_quota": 13,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 13,
+      "filled_quantity_on_action_date": 13,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 13,
+          "price": "44.1343",
+          "executed_at": "2026-10-01T15:01:15+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "981eabce618c511e36cd7b2e4f83b3253795b5b4c7c736f2bedc8a7c2641bc33",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@10:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "327.89",
+          "executed_at": "2026-10-01T17:01:11+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "1b1a6d1422ab865788c608d103a4e522b28529ea327dbcbd6bf800ca7e3ddad4",
+      "symbol": "GOOG",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:GOOG:1h@16:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "335.9",
+          "executed_at": "2026-10-01T23:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "c5b0ce8f43e169aa27fcd861e1c9f31d235ca94aa06248d8f1399d321dcd9591",
+      "symbol": "AMZN",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AMZN:1h@15:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "248.705",
+          "executed_at": "2026-10-01T22:01:09+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "1404b159d4073bd84c2930024cea71f6ae61d0a0a94604d5248f0ab5ce419f08",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@05:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "332.5101",
+          "executed_at": "2026-10-01T12:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "ea237437caccb8e0d18141a329771e788d812f86f5404b2e2b13ae39e1c6b2df",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@07:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "197.5",
+          "executed_at": "2026-10-01T14:01:22+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "bb61107be4ddc4fd87ee0ef0ae329be09f1e3d606fbcd0d6f94d43da18fa0278",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@08:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 7,
+      "slot_quota": 7,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 7,
+      "filled_quantity_on_action_date": 7,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 7,
+          "price": "44.12",
+          "executed_at": "2026-10-01T15:01:12+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "2be3b7da00b112bf2772fc4a1c12d712bdb89d84ada6f3f24ca136697e86a1bf",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:4h@08:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 23,
+      "slot_quota": 23,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 23,
+      "filled_quantity_on_action_date": 23,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 23,
+          "price": "13.065",
+          "executed_at": "2026-10-01T15:01:16+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "9fdd543ec4e3053fb9f95f4175f37b341afa27dd26cf248502917858a3741e18",
+      "symbol": "AMZN",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AMZN:1h@09:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "247.13",
+          "executed_at": "2026-10-01T16:01:12+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "3c56480c8437493f493413a736231d406fe8a06ba32c5420666ea9698e585c1e",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@14:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 7,
+      "slot_quota": 7,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 7,
+      "filled_quantity_on_action_date": 7,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 7,
+          "price": "44.0047",
+          "executed_at": "2026-10-01T21:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "4c1199cfb39dd92bd347d92da535298f11de955283e0c54177e3fee26ab732cc",
+      "symbol": "GOOG",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:GOOG:1h@14:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "335.4042",
+          "executed_at": "2026-10-01T21:01:09+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "400069df8ce9f74da1bae5370ba80d70abaf33bbb0198d0bc1f4799b07d4b034",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@08:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "198.88",
+          "executed_at": "2026-10-01T15:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "018cc3802dc301bc6bf17b8c8f0d4b06b0e004595e9b462b8c42c229685c2dc2",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@13:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "330.4825",
+          "executed_at": "2026-10-01T20:06:08+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "da0df7492e9f617d2bc2507dc460e38933744c71cc2c530df84de5ebca138f83",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@12:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 2,
+      "slot_quota": 2,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 2,
+      "filled_quantity_on_action_date": 2,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 2,
+          "price": "194.385",
+          "executed_at": "2026-10-01T19:01:16+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "6e77b28aee1b7051bf808dea18e8180e869007c4bb625c38e09e5bb0f3294ac8",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@10:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 7,
+      "slot_quota": 7,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 7,
+      "filled_quantity_on_action_date": 7,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 7,
+          "price": "44.135",
+          "executed_at": "2026-10-01T17:01:12+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "5ee4a70f980ff02c26dc995ae99be9e733b9322200f71b9d6c0d4b2621549bad",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@09:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "327.63",
+          "executed_at": "2026-10-01T16:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "4e6951f753229b2318476d9ca375a75812321580624adc14a60e1c90564b1483",
+      "symbol": "GOOG",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:GOOG:4h@08:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "337.59",
+          "executed_at": "2026-10-01T15:01:14+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "767fc33b1db5723b7b81661481a6d1d54af7e89a83b048baa6e73f9f6afaa57c",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@16:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 11,
+      "slot_quota": 11,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 11,
+      "filled_quantity_on_action_date": 11,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 11,
+          "price": "13.3415",
+          "executed_at": "2026-10-01T23:01:15+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "4a5f49248e3e56a0092c45aa9ec2db3de43368e71459db6ef01bb730b5a787a6",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 2,
+      "slot_quota": 2,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 2,
+      "filled_quantity_on_action_date": 2,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 2,
+          "price": "331.1248",
+          "executed_at": "2026-10-01T13:01:06+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "7582da870c24ed31ec9309eb62f6cb0d4f191ec776b6332607b5122a87732f76",
+      "symbol": "AMZN",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AMZN:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "251.2",
+          "executed_at": "2026-10-01T13:01:07+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "aa78a7758d64484f1552b59dfa6cf94b401b91daaee2588517178eb556f2bf90",
+      "symbol": "CROX",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:CROX:1h@05:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "d8f2d277c34adb7ab2788a9c6e6c7d045b1e34ebd409cd7027eae44d22e816fd",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "116.025",
+          "executed_at": "2026-10-01T12:01:10+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "a4415faa2f9923be466044e80a7c85c2abe887eb47c98b95d95519b05013dd90",
+      "symbol": "AAPL",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:AAPL:1h@11:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1d",
+      "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "328.815",
+          "executed_at": "2026-10-01T18:01:13+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "bd511c3d1e2c763fac8721c7bde7a4200d00b492563f3d4f3e72b08fcee882bb",
+      "symbol": "SNDK",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:SNDK:4h@08:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "00e72dc7313c6bf3f96c9cbc32433eae335739d7b523959c20d346362b964049",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "1729.09",
+          "executed_at": "2026-10-01T15:01:17+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "6bb4d1312993811e8169cc62ede92204bab6e2951d29de265f0524d9537c9308",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:4h@12:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 13,
+      "slot_quota": 13,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 13,
+      "filled_quantity_on_action_date": 13,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 13,
+          "price": "44.1",
+          "executed_at": "2026-10-01T19:01:17+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "b5c26c32ad8c0afed60197877b9c2d6235ff2de2871c7c9bbd90cbe69ca065f2",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:1h@07:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 6,
+      "slot_quota": 6,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 6,
+      "filled_quantity_on_action_date": 6,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 6,
+          "price": "44.3819",
+          "executed_at": "2026-10-01T14:01:19+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "a7addf35fa2d7ab83d73a5c4f94d538041c5538794960f6105e311521d2c8137",
+      "symbol": "SNDK",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:SNDK:4h@16:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "00e72dc7313c6bf3f96c9cbc32433eae335739d7b523959c20d346362b964049",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "1781.6",
+          "executed_at": "2026-10-01T23:01:16+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "b7810179847202bdcb30e20beb1050d4dcc1d66582f3cd045f6f9019a25766b2",
+      "symbol": "PATH",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:PATH:1h@05:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+      "requested_quantity": 12,
+      "slot_quota": 12,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 12,
+      "filled_quantity_on_action_date": 12,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 12,
+          "price": "13.14",
+          "executed_at": "2026-10-01T12:01:11+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "b341a29522a47aa1081ac426b7c7506ffa81eed36e494820c7df71ebaad6ae08",
+      "symbol": "CROX",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:CROX:1h@07:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "d8f2d277c34adb7ab2788a9c6e6c7d045b1e34ebd409cd7027eae44d22e816fd",
+      "requested_quantity": 1,
+      "slot_quota": 1,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 1,
+      "filled_quantity_on_action_date": 1,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 1,
+          "price": "119.03",
+          "executed_at": "2026-10-01T14:01:18+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "568c0e6b499c7b23c4f924682ed2379723bf6123f460d795699c83fbf4688b1f",
+      "symbol": "IONQ",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:IONQ:4h@16:00",
+      "trigger_horizon": "4h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+      "requested_quantity": 13,
+      "slot_quota": 13,
+      "status": "FILLED",
+      "filled_quantity_all_dates": 13,
+      "filled_quantity_on_action_date": 13,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 0,
+      "fills_on_action_date": [
+        {
+          "quantity": 10,
+          "price": "44.04",
+          "executed_at": "2026-10-01T23:01:15+00:00"
+        },
+        {
+          "quantity": 3,
+          "price": "44.04",
+          "executed_at": "2026-10-01T23:01:15+00:00"
+        }
+      ]
+    },
+    {
+      "reservation_ref": "dccb63fc8f74139baaca109c1a5466d7c1d05309def0574a9a9712a56813ab53",
+      "symbol": "TWST",
+      "origin_action_date": "2026-10-01",
+      "trigger_forecast_id": "2026-10-01:TWST:1h@06:00",
+      "trigger_horizon": "1h",
+      "donor_horizon": "1w",
+      "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+      "requested_quantity": 2,
+      "slot_quota": 2,
+      "status": "CANCELLED",
+      "filled_quantity_all_dates": 0,
+      "filled_quantity_on_action_date": 0,
+      "outstanding_reserved_quantity": 0,
+      "unknown_reserved_quantity": 0,
+      "terminal_unfilled_released_quantity": 2,
+      "fills_on_action_date": []
+    }
+  ],
+  "daily_budget_usage": {
+    "definition": "Confirmed fallback fills on this Pacific date plus all outstanding fallback reservations, including prior-day carryovers.",
+    "symbols": {
+      "AAPL": {
+        "daily_cap": 30,
+        "filled_plus_reserved": 13,
+        "remaining": 17
+      },
+      "AMZN": {
+        "daily_cap": 13,
+        "filled_plus_reserved": 5,
+        "remaining": 8
+      },
+      "COST": {
+        "daily_cap": 3,
+        "filled_plus_reserved": 1,
+        "remaining": 2
+      },
+      "CROX": {
+        "daily_cap": 26,
+        "filled_plus_reserved": 2,
+        "remaining": 24
+      },
+      "GOOG": {
+        "daily_cap": 10,
+        "filled_plus_reserved": 5,
+        "remaining": 5
+      },
+      "IONQ": {
+        "daily_cap": 156,
+        "filled_plus_reserved": 104,
+        "remaining": 52
+      },
+      "MU": {
+        "daily_cap": 3,
+        "filled_plus_reserved": 2,
+        "remaining": 1
+      },
+      "NVDA": {
+        "daily_cap": 22,
+        "filled_plus_reserved": 4,
+        "remaining": 18
+      },
+      "PATH": {
+        "daily_cap": 279,
+        "filled_plus_reserved": 162,
+        "remaining": 117
+      },
+      "SNDK": {
+        "daily_cap": 4,
+        "filled_plus_reserved": 3,
+        "remaining": 1
+      },
+      "TWST": {
+        "daily_cap": 33,
+        "filled_plus_reserved": 9,
+        "remaining": 24
+      }
+    },
+    "donors": [
+      {
+        "donor_allocation_id_sha256": "f875fd425a0f1a4ef501fe1d31d0aad772b8e560ecf99236e99575faac1ddd1b",
+        "symbol": "AMZN",
+        "horizon": "4h",
+        "daily_cap": 2,
+        "filled_plus_reserved": 0,
+        "remaining": 2
+      },
+      {
+        "donor_allocation_id_sha256": "86d6f3390063bdaeaf6c732fc59f4d4d7b1c912d30fc970f90edf7fc9750cdd8",
+        "symbol": "IONQ",
+        "horizon": "4h",
+        "daily_cap": 0,
+        "filled_plus_reserved": 0,
+        "remaining": 0
+      },
+      {
+        "donor_allocation_id_sha256": "241bfd569b73872ff469fadc93bcf0c27e492edc7875071d10bce87dfda549df",
+        "symbol": "AAPL",
+        "horizon": "1w",
+        "daily_cap": 21,
+        "filled_plus_reserved": 5,
+        "remaining": 16
+      },
+      {
+        "donor_allocation_id_sha256": "8a1b758dbefa39bca1d93d2c2024b8710d04bb8bda66917a75028c7eddecb715",
+        "symbol": "AMZN",
+        "horizon": "1w",
+        "daily_cap": 11,
+        "filled_plus_reserved": 5,
+        "remaining": 6
+      },
+      {
+        "donor_allocation_id_sha256": "6a5243525188a36052165172abde358c4e8d61e9170d254e996c2059f0b48ae4",
+        "symbol": "NVDA",
+        "horizon": "4h",
+        "daily_cap": 0,
+        "filled_plus_reserved": 0,
+        "remaining": 0
+      },
+      {
+        "donor_allocation_id_sha256": "8351c290e12af36dccc3867b253869b5ef0e9ecf12c7847f9df8f30c499e74bb",
+        "symbol": "PATH",
+        "horizon": "1w",
+        "daily_cap": 279,
+        "filled_plus_reserved": 162,
+        "remaining": 117
+      },
+      {
+        "donor_allocation_id_sha256": "8bea5a64d392db4c48d9a09a9202f275a58349bc70217a27069124467d3c12cf",
+        "symbol": "IONQ",
+        "horizon": "1w",
+        "daily_cap": 156,
+        "filled_plus_reserved": 104,
+        "remaining": 52
+      },
+      {
+        "donor_allocation_id_sha256": "f9f46dca13b6e426464993d882667f0aaae9f2a13af4b62341dd82d8d06a1b86",
+        "symbol": "MU",
+        "horizon": "1w",
+        "daily_cap": 3,
+        "filled_plus_reserved": 2,
+        "remaining": 1
+      },
+      {
+        "donor_allocation_id_sha256": "00e72dc7313c6bf3f96c9cbc32433eae335739d7b523959c20d346362b964049",
+        "symbol": "SNDK",
+        "horizon": "1w",
+        "daily_cap": 4,
+        "filled_plus_reserved": 3,
+        "remaining": 1
+      },
+      {
+        "donor_allocation_id_sha256": "37fbf813973e1e7324c054609ab222ce2bf9d2e113b636d1a61e262b78bed0ce",
+        "symbol": "TWST",
+        "horizon": "4h",
+        "daily_cap": 3,
+        "filled_plus_reserved": 0,
+        "remaining": 3
+      },
+      {
+        "donor_allocation_id_sha256": "90b262dd93e0a085e1b6b342caf2fcc804948cdf228065011474e682968e1b5d",
+        "symbol": "CROX",
+        "horizon": "4h",
+        "daily_cap": 0,
+        "filled_plus_reserved": 0,
+        "remaining": 0
+      },
+      {
+        "donor_allocation_id_sha256": "bfadfc280f4e9eda1f31606939a79257e42a265a58561faf67b83768bb7fb643",
+        "symbol": "NVDA",
+        "horizon": "1w",
+        "daily_cap": 19,
+        "filled_plus_reserved": 1,
+        "remaining": 18
+      },
+      {
+        "donor_allocation_id_sha256": "d7ee3ca36f49e0f58ce19fc94b0fead6146f1f47d969235807123d6d77f044b1",
+        "symbol": "COST",
+        "horizon": "1w",
+        "daily_cap": 3,
+        "filled_plus_reserved": 1,
+        "remaining": 2
+      },
+      {
+        "donor_allocation_id_sha256": "bd7d37bc771ab868581ccc3570b219eb445bafbeb57236687277168b2e643ce6",
+        "symbol": "AAPL",
+        "horizon": "1d",
+        "daily_cap": 8,
+        "filled_plus_reserved": 8,
+        "remaining": 0
+      },
+      {
+        "donor_allocation_id_sha256": "d8f2d277c34adb7ab2788a9c6e6c7d045b1e34ebd409cd7027eae44d22e816fd",
+        "symbol": "CROX",
+        "horizon": "1w",
+        "daily_cap": 25,
+        "filled_plus_reserved": 2,
+        "remaining": 23
+      },
+      {
+        "donor_allocation_id_sha256": "54b50c8fb6b8203d39dfddeb95ca751d2b0297bdfb5e988358c6997e80e958ae",
+        "symbol": "TWST",
+        "horizon": "1w",
+        "daily_cap": 30,
+        "filled_plus_reserved": 9,
+        "remaining": 21
+      },
+      {
+        "donor_allocation_id_sha256": "785bb7ca817d41e4dfa8c4a79c86b95ae85d95e2110dbf0aaaf7dfac2a2a92a8",
+        "symbol": "GOOG",
+        "horizon": "1w",
+        "daily_cap": 10,
+        "filled_plus_reserved": 5,
+        "remaining": 5
+      },
+      {
+        "donor_allocation_id_sha256": "ba3c361faa6e29471a247ec539628d2f11ddd1c198f23f07d6f5a639db6cd62d",
+        "symbol": "NVDA",
+        "horizon": "1d",
+        "daily_cap": 3,
+        "filled_plus_reserved": 3,
+        "remaining": 0
+      }
+    ]
+  },
+  "sales_counts": {
+    "fallback_orders_requested": 68,
+    "normal_sell_orders_requested": 21,
+    "fallback_orders_with_fills": 65,
+    "normal_sell_orders_with_fills": 20,
+    "fallback_shares_filled": 310,
+    "normal_sell_shares_filled": 133,
+    "outstanding_fallback_orders": 0,
+    "outstanding_fallback_shares": 0
+  },
+  "read_started_at": "2026-10-02T06:48:59.694185+00:00",
+  "query_snapshot": "One SQLite read-only BEGIN transaction; recorded evidence, not a fresh broker observation.",
+  "latest_recorded_snapshot_at": "2026-10-02T04:12:36.476797+00:00",
+  "status": "OBSERVED",
+  "read_completed_at": "2026-10-02T06:48:59.723330+00:00"
+}

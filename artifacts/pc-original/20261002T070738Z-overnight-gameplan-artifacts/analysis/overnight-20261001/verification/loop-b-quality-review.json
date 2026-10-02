@@ -1,0 +1,673 @@
+{
+  "reviewed_at": "2026-10-02T06:33:00.901989+00:00",
+  "status": "LOOP_B_REPORTS_VERIFIED_WITH_LIMITATIONS",
+  "run": "C:\\DATASTORE\\ml\\runs\\20261002T055557.616329Z",
+  "publication_manifest_sha256": "763beac21b7b369496797bd2383fef44979b370c627f57fa2fa58b6594f7c5ba",
+  "require_all_routes": true,
+  "route_errors": {},
+  "routes_ready": 99,
+  "models_fitted": 9,
+  "publication_counts": {
+    "actionable_ordinary_routes": 33,
+    "backtest_prediction_rows": 6980,
+    "carried_active_live_rows": 0,
+    "expired_fresh_live_rows_pruned": 0,
+    "fresh_live_rows": 55,
+    "in_progress_ordinary_routes": 0,
+    "retained_frozen_weekly_live_rows": 0,
+    "total_prediction_rows": 7035
+  },
+  "pricing": {
+    "downstream_training_eligible": false,
+    "failed_routes": 99,
+    "subfamily_checks": 594,
+    "passed_subfamilies": 0,
+    "thresholds": {
+      "minimum_complete_row_fraction": 0.8,
+      "minimum_distinct_surface_targets": 20,
+      "minimum_fresh_joined_row_fraction": 0.8
+    },
+    "complete_fraction_range": [
+      0.0,
+      0.014084507042253521
+    ],
+    "distinct_targets_range": [
+      0,
+      1
+    ],
+    "join_counts": {
+      "JOINED": 213,
+      "NO_PRIOR_PUBLICATION": 348320,
+      "STALE": 8672
+    },
+    "source_authorities": [
+      "ml/option-pricing-runs/20260820T200404.173684Z"
+    ],
+    "admission_identical_to_prior_run": true,
+    "all_model_opx_features_excluded": true
+  },
+  "models": {
+    "1h": {
+      "path": "C:\\DATASTORE\\ml\\models\\1h\\logistic-1h\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "6e2707e41b64119a7ad44fe6a10164611be83a180c5bb4d5b6f787ff9bb18ad9",
+      "feature_set": "loop-a-all-v1-1h",
+      "offline_evaluation": {
+        "assessment_end": "2026-09-23T18:05:00+00:00",
+        "assessment_rows": 880,
+        "assessment_start": "2026-09-18T17:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": false,
+        "beats_training_base_rate_log_loss": false,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.6454545454545455,
+          "brier_score": 0.2295189039276557,
+          "log_loss": 0.6515420252833324,
+          "roc_auc": 0.533684881726255
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 880,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.6454545454545455,
+          "brier_score": 0.2293595041322314,
+          "log_loss": 0.6513672566607475,
+          "probability": 0.33181818181818185,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 4,
+          "assessment_below_support": 0,
+          "assessment_outside_support": 4,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.5242477958305035,
+          "raw_probability_min": 0.08998987392630677
+        },
+        "lockbox": {
+          "end": "2026-10-01T22:00:00+00:00",
+          "rows": 1728,
+          "start": "2026-09-23T21:00:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 80
+        },
+        "previous_period_direction_accuracy": 0.5375,
+        "raw_model": {
+          "accuracy_at_0_5": 0.6431818181818182,
+          "brier_score": 0.23295949971652893,
+          "log_loss": 0.6597723801440089,
+          "roc_auc": 0.533684881726255
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.6454545454545455,
+          "brier_score": 0.2293714706457042,
+          "log_loss": 0.6513942482999653,
+          "probability": 0.3315564258775747,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": false
+    },
+    "4h": {
+      "path": "C:\\DATASTORE\\ml\\models\\4h\\logistic-4h\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "0f24acca8a15fa24274b4bb2073eb0741e3d00f57c092773edfc73a850e6821a",
+      "feature_set": "loop-a-all-v1-4h",
+      "offline_evaluation": {
+        "assessment_end": "2026-08-28T15:05:00+00:00",
+        "assessment_rows": 1249,
+        "assessment_start": "2026-08-18T16:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": true,
+        "beats_training_base_rate_log_loss": true,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.5796637309847879,
+          "brier_score": 0.2422115559890507,
+          "log_loss": 0.6775124921370715,
+          "roc_auc": 0.5573392444872179
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 1262,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.5788630904723779,
+          "brier_score": 0.24378078616760815,
+          "log_loss": 0.680656667137438,
+          "probability": 0.4215530903328051,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 3,
+          "assessment_below_support": 0,
+          "assessment_outside_support": 3,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.6506463536167916,
+          "raw_probability_min": 0.31660157584096427
+        },
+        "lockbox": {
+          "end": "2026-10-01T19:30:00+00:00",
+          "rows": 2547,
+          "start": "2026-08-28T19:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 64
+        },
+        "previous_period_direction_accuracy": 0.5268214571657326,
+        "raw_model": {
+          "accuracy_at_0_5": 0.567654123298639,
+          "brier_score": 0.2441046605976468,
+          "log_loss": 0.6813614110386227,
+          "roc_auc": 0.5573392444872179
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5788630904723779,
+          "brier_score": 0.24663484887716638,
+          "log_loss": 0.6864116218949984,
+          "probability": 0.4745619590458096,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": false
+    },
+    "1d": {
+      "path": "C:\\DATASTORE\\ml\\models\\1d\\logistic-1d\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "f3a22142d3df2ce6604587137b56c9f9d20ecac993841f49752042f3fc23be5e",
+      "feature_set": "loop-a-all-v3-1d",
+      "offline_evaluation": {
+        "assessment_end": "2026-02-13T21:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-11-13T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": false,
+        "beats_training_base_rate_log_loss": false,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.4675324675324675,
+          "brier_score": 0.2504638218923933,
+          "log_loss": 0.6940748788738257,
+          "roc_auc": 0.5
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "CONSTRAINED_TO_CONSTANT_NONDECREASING_MAP",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.4675324675324675,
+          "brier_score": 0.2504638218923933,
+          "log_loss": 0.6940748788738257,
+          "probability": 0.5064935064935064,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 5,
+          "assessment_below_support": 0,
+          "assessment_outside_support": 5,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.6980114746888125,
+          "raw_probability_min": 0.108454665337963
+        },
+        "lockbox": {
+          "end": "2026-08-18T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-02-18T14:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.48917748917748916,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5295815295815296,
+          "brier_score": 0.2604620608951454,
+          "log_loss": 0.7165393263733503,
+          "roc_auc": 0.5145789420857172
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5324675324675324,
+          "brier_score": 0.24900861088388862,
+          "log_loss": 0.6911632921284295,
+          "probability": 0.47545405502607446,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": true
+    },
+    "1w": {
+      "path": "C:\\DATASTORE\\ml\\models\\1w\\logistic-1w\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "4009668cabfc240f5278aae592cafb9fd6f5acc5c9dcf44f1b98b7877c80b582",
+      "feature_set": "loop-a-all-v3-1w",
+      "offline_evaluation": {
+        "assessment_end": "2026-02-12T21:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-11-12T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": true,
+        "beats_training_base_rate_log_loss": true,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.5165945165945166,
+          "brier_score": 0.2498733253330952,
+          "log_loss": 0.692893617805835,
+          "roc_auc": 0.5134244976236138
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.5165945165945166,
+          "brier_score": 0.2499765746518993,
+          "log_loss": 0.6931017504785913,
+          "probability": 0.5324675324675324,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 16,
+          "assessment_below_support": 0,
+          "assessment_outside_support": 16,
+          "clip_to_observed_probability_range": true,
+          "raw_probability_max": 0.6722950473109134,
+          "raw_probability_min": 0.1785526891407407
+        },
+        "lockbox": {
+          "end": "2026-08-18T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-02-18T14:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.5021645021645021,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5007215007215007,
+          "brier_score": 0.26732440563733284,
+          "log_loss": 0.7312607275678976,
+          "roc_auc": 0.513482865004586
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.4834054834054834,
+          "brier_score": 0.25062668722384,
+          "log_loss": 0.6944009005303697,
+          "probability": 0.48656011623683254,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": true
+    },
+    "1w-d1": {
+      "path": "C:\\DATASTORE\\ml\\models\\1w-d1\\logistic-1w-d1\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "0c3624b018e0496661c8f7a4a6c80bd781a2960bd2c31b92be0636f1373ecd34",
+      "feature_set": "loop-a-all-v3-1w",
+      "offline_evaluation": {
+        "assessment_end": "2026-02-13T21:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-11-13T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": false,
+        "beats_training_base_rate_log_loss": false,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.4675324675324675,
+          "brier_score": 0.2504638218923933,
+          "log_loss": 0.6940748788738257,
+          "roc_auc": 0.5
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "CONSTRAINED_TO_CONSTANT_NONDECREASING_MAP",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.4675324675324675,
+          "brier_score": 0.2504638218923933,
+          "log_loss": 0.6940748788738257,
+          "probability": 0.5064935064935064,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 9,
+          "assessment_below_support": 0,
+          "assessment_outside_support": 9,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.6820482991292033,
+          "raw_probability_min": 0.18096293192705273
+        },
+        "lockbox": {
+          "end": "2026-08-18T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-02-18T14:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.48917748917748916,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5382395382395382,
+          "brier_score": 0.2609919275958209,
+          "log_loss": 0.7177210839645927,
+          "roc_auc": 0.510196058750711
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5324675324675324,
+          "brier_score": 0.24900861088388862,
+          "log_loss": 0.6911632921284295,
+          "probability": 0.47545405502607446,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": true
+    },
+    "1w-d2": {
+      "path": "C:\\DATASTORE\\ml\\models\\1w-d2\\logistic-1w-d2\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "bc1d9635b9efa5d0a3328d8fd4fcd1d0b43be4e6f407a9206387cb6edc9a4a12",
+      "feature_set": "loop-a-all-v3-1w",
+      "offline_evaluation": {
+        "assessment_end": "2026-02-24T21:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-11-21T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": true,
+        "beats_training_base_rate_log_loss": false,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.5108225108225108,
+          "brier_score": 0.24978279533148587,
+          "log_loss": 0.6927127843182066,
+          "roc_auc": 0.5377777033701093
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.46464646464646464,
+          "brier_score": 0.2511572121961732,
+          "log_loss": 0.695462232241736,
+          "probability": 0.5137085137085137,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 0,
+          "assessment_below_support": 0,
+          "assessment_outside_support": 0,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.8815551354454081,
+          "raw_probability_min": 0.17714495504701053
+        },
+        "lockbox": {
+          "end": "2026-09-28T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-02-27T14:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.5180375180375181,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5367965367965368,
+          "brier_score": 0.2539880536077131,
+          "log_loss": 0.702497222853867,
+          "roc_auc": 0.5377777033701093
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5353535353535354,
+          "brier_score": 0.24886169077547005,
+          "log_loss": 0.6908691983739379,
+          "probability": 0.47520881464368225,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": true
+    },
+    "1w-d3": {
+      "path": "C:\\DATASTORE\\ml\\models\\1w-d3\\logistic-1w-d3\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "202289bb9ddf01be981386a8e109a5d31ae5b8f3db9e10f3e0dacab07af098d2",
+      "feature_set": "loop-a-all-v3-1w",
+      "offline_evaluation": {
+        "assessment_end": "2026-03-04T21:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-12-02T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": true,
+        "beats_training_base_rate_log_loss": true,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.5468975468975469,
+          "brier_score": 0.24804109253062603,
+          "log_loss": 0.6892271944390885,
+          "roc_auc": 0.5710778583119008
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.47474747474747475,
+          "brier_score": 0.2501952112341724,
+          "log_loss": 0.6935376100289863,
+          "probability": 0.5036075036075036,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 0,
+          "assessment_below_support": 13,
+          "assessment_outside_support": 13,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.9788967968458759,
+          "raw_probability_min": 0.23756479357439308
+        },
+        "lockbox": {
+          "end": "2026-09-29T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-03-10T13:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.4906204906204906,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5483405483405484,
+          "brier_score": 0.24926716063517942,
+          "log_loss": 0.6930066151720843,
+          "roc_auc": 0.5710778583119008
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5252525252525253,
+          "brier_score": 0.2493677371792317,
+          "log_loss": 0.691882136620638,
+          "probability": 0.47707711224310556,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": true
+    },
+    "1w-d4": {
+      "path": "C:\\DATASTORE\\ml\\models\\1w-d4\\logistic-1w-d4\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "7d25ea173470c6151bcc1f76c679c6239f7528eb8691e27862a414010a2bb09a",
+      "feature_set": "loop-a-all-v3-1w",
+      "offline_evaluation": {
+        "assessment_end": "2026-03-12T20:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-12-10T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": true,
+        "beats_training_base_rate_log_loss": true,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.5252525252525253,
+          "brier_score": 0.2484258814547343,
+          "log_loss": 0.6899968730613508,
+          "roc_auc": 0.5582030011183255
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.5223665223665224,
+          "brier_score": 0.2495018209303924,
+          "log_loss": 0.6921504961193974,
+          "probability": 0.4790764790764791,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 0,
+          "assessment_below_support": 20,
+          "assessment_outside_support": 20,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.9776785620784926,
+          "raw_probability_min": 0.23374547751217925
+        },
+        "lockbox": {
+          "end": "2026-09-30T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-03-19T13:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.5050505050505051,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5512265512265512,
+          "brier_score": 0.25312726402351243,
+          "log_loss": 0.7017029912781858,
+          "roc_auc": 0.5582030011183255
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5223665223665224,
+          "brier_score": 0.2495000687787167,
+          "log_loss": 0.6921469854469089,
+          "probability": 0.47820802222608094,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": true
+    },
+    "1w-d5": {
+      "path": "C:\\DATASTORE\\ml\\models\\1w-d5\\logistic-1w-d5\\20261002T055557.616329Z\\manifest.json",
+      "sha256": "eb189b00db0acc40c8170e1f7da67fc6507ce086471c27a76f58265228a45aee",
+      "feature_set": "loop-a-all-v3-1w",
+      "offline_evaluation": {
+        "assessment_end": "2026-03-19T20:05:00+00:00",
+        "assessment_rows": 693,
+        "assessment_start": "2025-12-17T21:05:00+00:00",
+        "assessment_used_for_calibration": false,
+        "assessment_used_for_training": false,
+        "beats_calibration_base_rate_log_loss": true,
+        "beats_training_base_rate_log_loss": true,
+        "calibrated_model": {
+          "accuracy_at_0_5": 0.5468975468975469,
+          "brier_score": 0.24881312469649963,
+          "log_loss": 0.69077395595568,
+          "roc_auc": 0.546198791247426
+        },
+        "calibration_admission": {
+          "assessment_rows_used": 0,
+          "calibration_rows_used": 693,
+          "effective_method": "platt",
+          "lockbox_rows_used": 0,
+          "policy_version": "probability-calibration-nondecreasing-or-identity-v1",
+          "requested_method": "platt",
+          "status": "ADMITTED",
+          "training_rows_used": 0
+        },
+        "calibration_base_rate": {
+          "accuracy_at_0_5": 0.5353535353535354,
+          "brier_score": 0.24942477756330567,
+          "log_loss": 0.6919966110329915,
+          "probability": 0.4906204906204906,
+          "roc_auc": 0.5
+        },
+        "calibration_support": {
+          "assessment_above_support": 0,
+          "assessment_below_support": 1,
+          "assessment_outside_support": 1,
+          "clip_to_observed_probability_range": false,
+          "raw_probability_max": 0.9273437051978367,
+          "raw_probability_min": 0.08361472566644595
+        },
+        "lockbox": {
+          "end": "2026-10-01T13:30:00+00:00",
+          "rows": 1386,
+          "start": "2026-03-27T13:30:00+00:00",
+          "status": "CLOSED_UNTOUCHED_UNSCORED",
+          "target_clusters": 126
+        },
+        "previous_period_direction_accuracy": 0.5093795093795094,
+        "raw_model": {
+          "accuracy_at_0_5": 0.5512265512265512,
+          "brier_score": 0.2563327064032538,
+          "log_loss": 0.7126509703706984,
+          "roc_auc": 0.546198791247426
+        },
+        "status": "OFFLINE_EVALUATED_CANDIDATE",
+        "training_base_rate": {
+          "accuracy_at_0_5": 0.5353535353535354,
+          "brier_score": 0.248923463533016,
+          "log_loss": 0.6909930163331659,
+          "probability": 0.47781217750258,
+          "roc_auc": 0.5
+        }
+      },
+      "exact_same_offline_evaluation_as_prior": false
+    }
+  },
+  "conclusion": "No required route failure. Optional Pricing exclusion is consistent with the same old sparse authority and native admission policy. LoopB daily and weekly-day-one constant calibration remains explicitly reported; no new defect established. These candidate assessments are not independent Gameplan promotion or sizing qualification.",
+  "limitations": [
+    "Bounded saved-report/hash/arithmetic review; no saved estimator inference or training rerun.",
+    "Independent Gameplan publication and complete native audit remain pending."
+  ],
+  "source_changes": 0,
+  "provider_calls": 0,
+  "orders_placed": 0,
+  "production_mutations": 0,
+  "heavy_final_audit_started": false
+}

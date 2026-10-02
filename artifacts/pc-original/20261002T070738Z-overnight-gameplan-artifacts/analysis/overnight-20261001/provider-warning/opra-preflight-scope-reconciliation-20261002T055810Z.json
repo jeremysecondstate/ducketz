@@ -1,0 +1,783 @@
+{
+  "status": "PASS",
+  "observed_at_utc": "2026-10-02T05:58:10.351158+00:00",
+  "native_run_id": "20261002T040848.225355Z",
+  "prior_native_partition_verification": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20261001\\provider-warning\\opra-source-session-verification-20261002T055655Z.json",
+    "sha256": "a413ad0a23b78ec3e2da3871c07e7dfe48ed3ab3c8122112ea74ce4ec6589292",
+    "status": "OPRA_SOURCE_SESSION_VERIFIED"
+  },
+  "checks": {
+    "entitlement_semantic_hash": true,
+    "all_exact_scope_checks": true,
+    "selected_estimate_matches_native": true,
+    "selected_cost_zero": true,
+    "replay_bytes_matches_native": true,
+    "combined_estimate_and_replay_below_native_ceiling": true
+  },
+  "totals": {
+    "historical_selected_estimate_bytes": 1694800904,
+    "historical_selected_cost_usd": 0.0,
+    "replay_raw_bytes": 807920384
+  },
+  "preflights": [
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AAPL.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "f1ac98248e462d81238fda7e169cbef1e1d5e574dbd16c8010000a0371a85557",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "AAPL.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AMZN.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "18455d8ff4f206f925c3416e1133240726eda40c534e22278213012d43282ea6",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\GOOG.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "a079523ccb1e4ed2032a3af742e498ee39a5f2390389b6048a25a245bb05a1eb",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\MU.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "aaae93a0581c091bf270786b08e110b11cf601891e184283f32c62f0569c1133",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "MU.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\NVDA.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "3fe7a2c8ae78ed9bdb4dbcddea94164583a5a66c7aaa05a7577e70cdd8e3a596",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\SNDK.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "b832e8bd9a577bc5b8ba93c2219803df0ec578dedcf67113cb60c25dd2bc7003",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "SNDK.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\COST.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "c2a3f26c3807c0138531aa3d655ed117f41515d70dde9bfd79cd8bac4ca63266",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\CROX.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "cabbf9ff46e0fd4d765e0542568e5bbcaa8b38e36bfb1644ae9b0c61cf45967b",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\PATH.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "7f425284c7a5902e3cdc5bc28384df4cba238d2f176e6dfbf1e5d4faa610c5d6",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "PATH.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\TWST.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "91699364f6960b13062a80512f5ccf410a61be43b25554a52edc737520115386",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "TWST.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\IONQ.OPT\\2026-09-26_to_2026-10-02\\preflight.json",
+      "sha256": "7b6f0a1a301ed4c20543f643a3a18ac3241fd2832016e341b5c5ff6c1504b343",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-26",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\AMZN.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "ee7b09ea195f9d1b1db5b23b50116ab8b8f406cf3873ca730a42512dfe27a1a9",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\GOOG.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "257f47275db26e444c82366f0ff5dba7951b71c0a5dd9312d0f7ffa29ddf499b",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\NVDA.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "5cccf1a6013130e94470e71ec529b1037ae765db9a218186a8e7304e7fa25ba5",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\COST.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "a9fa17bcbd33230575a7baf253c8d7bcebccf80597146c590f3ea0cd61114f02",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\CROX.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "bf6ca6402a69c0685ec759d4b570bdadcc30ef888108b25b2e6a316ce5f4b035",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\IONQ.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "49bc70ef41c0b28e4285d7b82816fac3466534ab5595aa1099c0e13bf2eead28",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\AAPL.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "df52670716931fcd18b32695af8214449a3972d4428ad29ec3bda86027edf947",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "AAPL.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\AMZN.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "444f8805e318f444f419c6db39ea3204d9bab8b5069597560c1ce02b139e6be1",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\GOOG.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "8368189bcf7636b8563293ea99a96f4abafd1bcf82168f6c55df229807cf9c4c",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\MU.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "70bd2b7aafd9976b4c6eab8fa315ce664a2c52c55644c21ceaae66f6f478d566",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "MU.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\NVDA.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "2f22ba7b3a0fb6b5cfb2c24779f5debc3cdee7ea67e9809a22c0f9512f2c9cb7",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\SNDK.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "55c498d5885f6874e4e8aa0d5dc68e34da1ce25b48523bd3d32917b9e7941b7e",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "SNDK.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\COST.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "6598227ca9135b5778025be6d4d37511a5a84c34ec2c8e5f114bf9e11772e772",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\CROX.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "4fd1cbbd4598d557e534fcf83b81310d4ede0d6b0341302273de21e89a040d92",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\PATH.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "9abf60b97ed55b3389f2076394e893cfb24b3331d02aa934649935bbaaba935f",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "PATH.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\TWST.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "d5e5435d37851b8b5d9e42d857cda624e85969b5a50d85d0deaf93d644c4c27d",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "TWST.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\IONQ.OPT\\2026-09-28_to_2026-10-02\\preflight.json",
+      "sha256": "1ea45e0769bcb1c4d3183272ed9a85fa55c976d2c7f417a974d5d38a3f165808",
+      "scope": {
+        "end": "2026-10-02",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-28",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "provider_range": {
+        "end": "2026-10-02T00:00:00.000000000Z",
+        "start": "2013-04-01T00:00:00.000000000Z"
+      },
+      "checks": {
+        "nested_scope_matches": true,
+        "provider_range": true,
+        "included_entitlement_range": true,
+        "source_session_covered": true,
+        "finite_nonnegative_integer_size_records": true,
+        "capacity_formula": true,
+        "capacity_zero_shortfall": true
+      }
+    }
+  ],
+  "provider_calls": 0,
+  "production_writes": 0
+}
