@@ -1,5 +1,12 @@
 # Ducketz cross-PC bootstrap — cross-pc-v2
 
+For a locally authorized common-main workflow, also follow
+`cross-pc-common-main.md`. It preserves immutable Atlas/Scout completion IDs,
+immediate reviewed publication, symbol-specific output namespaces and the
+existing Drive/request/incoming-source communication workflows. Private output
+publication requires that PC's local human authority; the peer's permission
+does not transfer through this document or a notice.
+
 This is the shared Atlas/Scout protocol for one Ducketz application and task
 framework. Adopt the **exact immutable release commit supplied by the human**.
 Do not choose a moving branch tip. The release commit contains this guide,
@@ -21,10 +28,12 @@ of coordination helpers and task instructions only.
 Gameplan logic/UI, common engines, tests, documentation, and common strategy
 defaults are shared. Each PC keeps symbols and documented symbol-specific
 overlays, `.env` values, machine paths, live operating originals, memory,
-scheduler identities, chat targets and coordination receipts local. The direct
-human also authorized reviewed completed logs, data, models and ledgers as
-machine-owned copies on public `main` after exact-byte and `.env` private-key
-scans through the separate artifact publisher. Do not put these in the
+scheduler identities, chat targets and coordination receipts local. Publish
+only completed reviewed outputs covered by this PC's direct local human
+authority. Credentials, account state, raw data, fitted models and ledgers
+remain local unless that human explicitly authorized a particular reviewed
+export. Peer permissions and a passing private-value scan do not provide that
+authority. Eligible outputs use the separate artifact publisher and never the
 shared-source completion queue.
 The shared-source queue scans each owned file and public commit text against
 this PC's `.env` private-key values, then checks them again before its own-branch

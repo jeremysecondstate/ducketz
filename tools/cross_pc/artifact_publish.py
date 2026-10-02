@@ -32,6 +32,11 @@ _CHUNK = 1024 * 1024
 _COMPRESSION_THRESHOLD = 50 * 1024 * 1024
 _MAX_FILES = 200
 _MAX_BYTES = 2 * 1024 * 1024 * 1024
+_MAX_ENV_BYTES = 1024 * 1024
+_MAX_ENV_ENTRIES = 4096
+_MAX_ENV_VALUE_BYTES = 64 * 1024
+_MAX_ENV_ALIAS_DEPTH = 16
+_ENV_ALIAS = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}\Z")
 
 
 def _fail(message: str):
@@ -116,13 +121,20 @@ def _source_file(root: Path, name: str) -> Path:
 
 
 def _secret_values(env_path: Path) -> list[bytes]:
+    """Scan literals and bounded whole-value aliases defined in this file only."""
     if not env_path.is_file() or env_path.is_symlink():
         _fail("local .env is required for private-value scanning")
     try:
-        raw = env_path.read_text(encoding="utf-8-sig")
+        with env_path.open("rb") as reader:
+            encoded = reader.read(_MAX_ENV_BYTES + 1)
+        if len(encoded) > _MAX_ENV_BYTES:
+            _fail("local .env exceeds the private-scan size limit")
+        raw = encoded.decode("utf-8-sig")
     except (OSError, UnicodeError):
         _fail("local .env cannot be scanned")
-    values: set[bytes] = set()
+    entries: dict[str, str] = {}
+    keys: set[str] = set()
+    aliases: dict[str, str] = {}
     for line in raw.splitlines():
         stripped = line.strip()
         if stripped.startswith("export "):
@@ -135,15 +147,42 @@ def _secret_values(env_path: Path) -> list[bytes]:
         key, value = key.strip(), value.strip()
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
             _fail("local .env contains a malformed key")
-        if value[:1] in {'"', "'"} and value[-1:] == value[:1]:
+        if key.casefold() in keys:
+            _fail("local .env contains ambiguous duplicate keys")
+        if len(entries) >= _MAX_ENV_ENTRIES:
+            _fail("local .env exceeds the private-scan entry limit")
+        if len(value) >= 2 and value[:1] in {'"', "'"} and value[-1:] == value[:1]:
             value = value[1:-1]
         elif value[:1] in {'"', "'"} or value[-1:] in {'"', "'"}:
             _fail("local .env contains an unterminated quoted value")
         else:
             value = re.split(r"\s+#", value, maxsplit=1)[0].rstrip()
-        if _SENSITIVE_NAME.search(key) and value.startswith("${"):
-            _fail("local .env contains an unresolved credential reference")
-        if _SENSITIVE_NAME.search(key) and len(value) >= 4:
+        if len(value.encode("utf-8")) > _MAX_ENV_VALUE_BYTES:
+            _fail("local .env exceeds the private-scan value limit")
+        alias = _ENV_ALIAS.fullmatch(value)
+        if "${" in value and alias is None:
+            _fail("local .env contains an unsupported credential reference")
+        keys.add(key.casefold())
+        entries[key] = value
+        if alias:
+            aliases[key] = alias.group(1)
+    values: set[bytes] = set()
+    for key in entries:
+        cursor = key
+        visited: set[str] = set()
+        while cursor in aliases:
+            if cursor in visited:
+                _fail("local .env contains a cyclic credential reference")
+            if len(visited) >= _MAX_ENV_ALIAS_DEPTH:
+                _fail("local .env credential reference exceeds the depth limit")
+            visited.add(cursor)
+            cursor = aliases[cursor]
+            if cursor not in entries:
+                _fail("local .env contains an unresolved credential reference")
+        value = entries[cursor]
+        if visited and not value:
+            _fail("local .env contains an empty credential reference")
+        if _SENSITIVE_NAME.search(key) and (visited or len(value) >= 4):
             values.add(value.encode("utf-8"))
     return sorted(values, key=len, reverse=True)
 
