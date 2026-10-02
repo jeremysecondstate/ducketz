@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T10:19:08.865593Z",
+  "id": "20261002T101908Z-2e5d005b1b3d4436a59e8dcd89cefa36",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the reviewed unversioned historical-artifact backlog and reconciled the local Git status."
+}
