@@ -1,0 +1,64 @@
+{
+  "artifact_manifest_sha256": "e68df26de81ca41ab39134ab39ea6431d9d438f719ba77c8abf4444dad1df987",
+  "author": {
+    "actor": "Atlas",
+    "git_author": "Jeremy Klein",
+    "producer": "hyperliquid-paper-improvement"
+  },
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "artifact-publication:20261002T110515Z-81fb1ffc",
+  "commit_sha": "d3e5f3ce8811506f32aaad7621a8fb1a0d12183d",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/d3e5f3ce8811506f32aaad7621a8fb1a0d12183d",
+  "files": [
+    {
+      "bytes": 11510,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T110515Z-81fb1ffc/analysis/hyperliquid-paper-improvement/20261002-round44-45/round44-45-publication-review.md",
+      "sha256": "d172c2d1cf067d47c38cd085d5eb92f67a33fc96640f45522ccd40e7074913a1"
+    },
+    {
+      "bytes": 2272,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T110515Z-81fb1ffc/artifact-manifest.json",
+      "sha256": "e68df26de81ca41ab39134ab39ea6431d9d438f719ba77c8abf4444dad1df987"
+    }
+  ],
+  "limitations": [
+    "Adds one review document and its manifest, supplementing the already published 25-file Paper archive. Round 44 remains late_unscored.",
+    "Producer operational checks remain historical evidence at their recorded times. Fresh courier verification covers immutable snapshots, private-value exclusion and committed byte hashes only.",
+    "No archived code, source software tests, providers or brokers were run by the courier. Scout adoption and current runtime versions remain unverified.",
+    "Atlas application checkout remains on an older main revision; active-writer/runtime absence has not been established, so adoption is withheld."
+  ],
+  "observation_type": "artifact_source_availability",
+  "parent_sha": "daa87b5a7ee84ef773182773dd69a4466cfe974f",
+  "producer_completed_at_utc": "2026-10-02T11:05:15.425839Z",
+  "published_at_utc": "2026-10-02T11:06:21.686170Z",
+  "related_artifact_commit_sha": "daa87b5a7ee84ef773182773dd69a4466cfe974f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Artifact publication availability only. Courier performed no application installation, checkout replacement, broker/provider/trade/training call, runtime start/restart/deployment or schedule change.",
+  "scope": "Atlas-only historical Paper publication review in artifacts/pc-original. No common application-source edits; do not apply this operating reference to Scout live symbols or Gameplan.",
+  "summary": "Atlas published the exact path/hash, operational-check and limitations review for its prior Round 44/45 Paper archive.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T11:19:35.641949Z",
+      "name": "Immutable snapshot hashes and local env private-value scan",
+      "payload_files": 1,
+      "started_at_utc": "2026-10-02T11:19:35.454600Z",
+      "status": "passed"
+    },
+    {
+      "commit_sha": "d3e5f3ce8811506f32aaad7621a8fb1a0d12183d",
+      "completed_at_utc": "2026-10-02T11:19:35.641949Z",
+      "files": 2,
+      "name": "Exact parent, complete machine namespace diff, manifest and committed blob hashes",
+      "started_at_utc": "2026-10-02T11:19:35.454600Z",
+      "status": "passed"
+    },
+    {
+      "name": "Source software tests",
+      "reason": "No source changes or software-suite result in this artifact publication.",
+      "status": "unknown"
+    }
+  ]
+}

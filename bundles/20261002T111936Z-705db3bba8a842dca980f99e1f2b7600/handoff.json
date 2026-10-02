@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T11:19:36.101370Z",
+  "id": "20261002T111936Z-705db3bba8a842dca980f99e1f2b7600",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the exact path/hash, operational-check and limitations review for its prior Round 44/45 Paper archive."
+}
