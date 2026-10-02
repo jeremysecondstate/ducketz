@@ -87,14 +87,25 @@ def _utc(value: str) -> float:
 
 
 def _path(value: str) -> str:
-    core.relative(value)
-    if not value.startswith("artifacts/") or value.startswith("artifacts/pc-original/") or value.startswith("artifacts/pc-new/"):
-        _fail("source must be a live artifacts/ path outside publication namespaces")
+    try:
+        core.relative(value)
+    except ValueError:
+        _fail("unsafe repository-relative artifact source path")
+    parts = value.split("/")
+    if len(parts) >= 2 and parts[0].casefold() == "artifacts" and parts[1].casefold() in {"pc-original", "pc-new"}:
+        _fail("already-published machine namespace cannot be a source")
     if any(part.lower() in {".git", "scratch", "secrets", "credentials"} or _CREDENTIAL_PATH.search(part) or
-           part.lower().startswith(".env") or part.lower().endswith((".key", ".pem", ".p12"))
-           for part in value.split("/")):
+           part.lower().startswith(".env") or part.lower().endswith((".key", ".pem", ".p12", ".pfx", ".p8", ".jks"))
+           for part in parts):
         _fail("credential or private path cannot be published")
     return value
+
+
+def _destination(profile: dict, completion_id: str, source: str, compression: str) -> str:
+    parts = source.split("/")
+    relative = "/".join(parts[1:]) if len(parts) > 1 and parts[0].casefold() == "artifacts" else source
+    result = f'artifacts/{profile["machine"]}/{completion_id}/' + relative
+    return result + (".gz" if compression == "gzip" else "")
 
 
 def _source_file(root: Path, name: str) -> Path:
@@ -241,6 +252,7 @@ def _metadata(spec: dict, profile: dict, secrets: list[bytes]) -> dict:
         _fail("spec must list one to 200 exact artifact paths")
     normalized = []
     seen = set()
+    destinations = set()
     for entry in paths:
         if not isinstance(entry, dict) or set(entry) - {"path", "operation", "compression", "supersedes", "owned", "expected_sha256"}:
             _fail("artifact entry has unsupported fields")
@@ -256,6 +268,10 @@ def _metadata(spec: dict, profile: dict, secrets: list[bytes]) -> dict:
         compression = entry.get("compression", "none")
         if compression not in {"none", "gzip"} or (operation == "delete" and compression != "none"):
             _fail("invalid artifact compression")
+        destination = _destination(profile, completion_id, name, compression)
+        if destination.casefold() in destinations:
+            _fail("different source paths map to the same published destination")
+        destinations.add(destination.casefold())
         expected_sha = entry.get("expected_sha256")
         if operation != "delete" and (not isinstance(expected_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha)):
             _fail("each completed artifact needs an exact reviewed SHA-256")
@@ -329,7 +345,7 @@ def snapshot(profile: dict, source_root: str | Path, spec: dict, env_path: str |
         try:
             for entry in metadata["paths"]:
                 name = entry["path"]
-                destination = f'artifacts/{profile["machine"]}/{completion_id}/' + name[len("artifacts/"):]
+                destination = _destination(profile, completion_id, name, entry["compression"])
                 if entry["operation"] == "delete":
                     if core.safe_path(source_root, name).exists():
                         _fail("deleted artifact path still exists")
@@ -350,7 +366,6 @@ def snapshot(profile: dict, source_root: str | Path, spec: dict, env_path: str |
                 if size >= _COMPRESSION_THRESHOLD and entry["compression"] != "gzip":
                     _fail("large artifact requires deterministic gzip compression")
                 if entry["compression"] == "gzip":
-                    destination += ".gz"
                     compressed = core.safe_path(root, "compressed/" + name + ".gz")
                     published_sha, published_size = _compress_snapshot(target, compressed, digest, size)
                     _scan_file(compressed, secrets)

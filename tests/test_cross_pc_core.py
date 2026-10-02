@@ -70,6 +70,29 @@ def test_immutable_snapshot_and_later_source_mutation(setup):
     assert core.plan(profile)["source_blocker"]
 
 
+def test_queue_rejects_exact_local_env_key_value_in_source(setup):
+    root, profile, spec = setup
+    (root / ".env").write_text("API_KEY=VERY_PRIVATE_FIXTURE_TOKEN_12345\n")
+    (root / "app/gameplan.py").write_text("TOKEN = 'VERY_PRIVATE_FIXTURE_TOKEN_12345'\n")
+    with pytest.raises(ValueError, match="exact local .env value"):
+        core.queue(profile, root, spec)
+    assert not Path(profile["state_path"]).exists()
+
+
+def test_publication_rechecks_current_env_values_before_source_push(setup, tmp_path):
+    root, profile, spec = setup
+    (root / ".env").write_text("API_KEY=unrelated-fixture-value\n")
+    record = core.queue(profile, root, spec)
+    tree = candidate(tmp_path, root, spec["base_commit"])
+    core.prepare_candidate(profile, record["id"], tree)
+    core.verify_candidate(profile, record["id"], tree, reviewed=True)
+    (root / ".env").write_text("API_KEY=symbol: 3\n")
+    with pytest.raises(ValueError, match="exact local .env value"):
+        core.publish_source(profile, record["id"])
+    branch = profile["branch_prefix"] + record["id"]
+    assert not run(tree, "ls-remote", "--heads", "origin", "refs/heads/" + branch)
+
+
 def test_dependency_mutation_and_mutation_during_test(setup):
     root, profile, spec = setup
     record = core.queue(profile, root, spec)

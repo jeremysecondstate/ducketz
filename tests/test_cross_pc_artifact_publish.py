@@ -104,6 +104,70 @@ def test_exact_main_publication_is_namespaced_and_idempotent(site):
     assert publisher.publish(profile, record["id"], worktree)["commit_sha"] == result["commit_sha"]
 
 
+def test_completed_data_and_ml_outputs_publish_with_full_relative_paths(site):
+    root, worktree, remote, profile = site
+    data_name = "data/overnight-20261001/holdings.sqlite3"
+    ml_name = "ml/runs/overnight-20261001/model-report.json"
+    token_name = "data/overnight-20261001/schwab_tokens.json"
+    data_raw = b"SQLite format 3\x00synthetic completed holdings\n"
+    ml_raw = b'{"model":"fixture","result":"complete"}\n'
+    token_raw = b'{"marker":"synthetic non-key fixture"}\n'
+    output(root, data_name, data_raw)
+    output(root, ml_name, ml_raw)
+    output(root, token_name, token_raw)
+    before = (git(root, "rev-parse", "HEAD"), git(root, "status", "--porcelain"), (root / ".git/index").read_bytes())
+    reviewed_spec = spec(root, data_name)
+    reviewed_spec["paths"].append({"path": ml_name, "operation": "add", "compression": "none", "owned": True,
+                                   "expected_sha256": hashlib.sha256(ml_raw).hexdigest()})
+    reviewed_spec["paths"].append({"path": token_name, "operation": "add", "compression": "none", "owned": True,
+                                   "expected_sha256": hashlib.sha256(token_raw).hexdigest()})
+    record = publisher.snapshot(profile, root, reviewed_spec)
+    published = publisher.publish(profile, record["id"], worktree)
+    prefix = f'artifacts/pc-original/{record["id"]}/'
+    assert published["stage"] == "pushed"
+    assert remote_blob(remote, prefix + data_name) == data_raw
+    assert remote_blob(remote, prefix + ml_name) == ml_raw
+    assert remote_blob(remote, prefix + token_name) == token_raw
+    manifest = json.loads(remote_blob(remote, prefix + "artifact-manifest.json"))
+    assert {item["path"]: item["destination"] for item in manifest["files"]} == {
+        data_name: prefix + data_name, ml_name: prefix + ml_name, token_name: prefix + token_name}
+    assert before == (git(root, "rev-parse", "HEAD"), git(root, "status", "--porcelain"),
+                      (root / ".git/index").read_bytes())
+    assert publisher.publish(profile, record["id"], worktree)["commit_sha"] == published["commit_sha"]
+
+
+@pytest.mark.parametrize("name", ["data/.env", ".git/config", "scratch/run.json",
+                                      "ml/credentials/private.json",
+                                      "data/private.key", "data/client.pfx",
+                                      "artifacts/pc-original/old/result.json",
+                                      "artifacts/pc-new/old/result.json", "../private.txt",
+                                      "C:/private.txt"])
+def test_private_and_published_source_paths_are_rejected(name):
+    with pytest.raises(publisher.ArtifactPublishError):
+        publisher._path(name)
+
+
+def test_distinct_sources_cannot_map_to_one_destination(site):
+    root, _, _, profile = site
+    legacy = "artifacts/data/overnight-20261001/report.json"
+    direct = "data/overnight-20261001/report.json"
+    output(root, legacy, b"legacy\n")
+    output(root, direct, b"direct\n")
+    reviewed_spec = spec(root, legacy)
+    reviewed_spec["paths"].append({"path": direct, "operation": "add", "compression": "none", "owned": True,
+                                   "expected_sha256": hashlib.sha256((root / direct).read_bytes()).hexdigest()})
+    with pytest.raises(publisher.ArtifactPublishError, match="same published destination"):
+        publisher.snapshot(profile, root, reviewed_spec)
+
+
+def test_non_artifacts_output_still_scans_env_values(site):
+    root, _, _, profile = site
+    name = "data/overnight-20261001/private.bin"
+    output(root, name, b"prefix VERY_PRIVATE_FIXTURE_TOKEN_12345 suffix")
+    with pytest.raises(publisher.ArtifactPublishError, match="exact local .env value"):
+        publisher.snapshot(profile, root, spec(root, name))
+
+
 @pytest.mark.parametrize("raw", [b"token=VERY_PRIVATE_FIXTURE_TOKEN_12345\n",
                                     b"\x00\xffVERY_PRIVATE_FIXTURE_TOKEN_12345\x00"])
 def test_exact_env_values_block_text_and_binary_without_echo(site, raw):
