@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T00:04:38.485633Z",
+  "id": "20261002T000438Z-83f680a0ea344027bb521094090e8185",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Published prospective factor 0.65 following the reviewed 0.70 source; source and separate main integration candidates each passed 322 offline tests; draft PR 6 is open."
+}
