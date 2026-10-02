@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T07:49:11.706361Z",
+  "id": "20261002T074911Z-760102156ce642549729f86c97b7c680",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published tested common Ducketz source and 89 completed overnight outputs on main for two-PC coordination."
+}

@@ -1,0 +1,823 @@
+{
+  "author": "Atlas",
+  "base_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "branch": "main",
+  "change_id": "central-hub-main:eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+  "commit_sha": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+  "commits": [
+    {
+      "scope": "reviewed common source, coordination helpers and portable Scout watchlist selector",
+      "sha": "153c57681702cd20a57f8a6aa40861a1ed79699c",
+      "url": "https://github.com/jeremysecondstate/ducketz/commit/153c57681702cd20a57f8a6aa40861a1ed79699c"
+    },
+    {
+      "scope": "89 Atlas completed operating files plus exact-hash manifest in machine namespace",
+      "sha": "3ffcd954156d731f7bd5ca433579859d32c4d4f5",
+      "url": "https://github.com/jeremysecondstate/ducketz/commit/3ffcd954156d731f7bd5ca433579859d32c4d4f5"
+    },
+    {
+      "scope": "artifact publisher long-path and interrupted-commit fix",
+      "sha": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+      "url": "https://github.com/jeremysecondstate/ducketz/commit/eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb"
+    }
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "path": ".gitignore",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "AGENTS.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "README.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/fallback-session-reviews/20261002T064859Z-20261001/manifest.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/fallback-session-reviews/20261002T064859Z-20261001/report.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/concurrent-git-source-attribution.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/fallback-review-audit/audit-20261002T065508Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/final-preservation-review-complete.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/final-preservation-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/final-summary.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/inventory_private_outputs.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/STOP",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/active.txt",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/incremental-health.jsonl",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/incremental-logs.jsonl",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/latest.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/monitor.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/observations.jsonl",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/renewals.jsonl",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/lease-monitor/target-run.txt",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/monitor-observations.jsonl",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/monitor-offsets.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/monitor_run.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/ownership-local-audit.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/20261002T040849Z/checkout-status.txt",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/20261002T040849Z/preflight-audit.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/20261002T040849Z/shared-byte-drift.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/fallback-usage-offline-verification.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/holdings-before-reconciliation.sqlite3.gz",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/holdings-native-rehearsal.sqlite3.gz",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/native-reconciliation-tests.xml",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/native-reconciliation-verification.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/native-reconciliation.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/native_reconcile.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/prepare_reconciliation_plan.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/reconciliation-plan.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preflight/reconciliation/verify_native_reconciliation.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preservation-baseline.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preservation-concurrent-git-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preservation-final.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preservation-post-reconciliation-verified.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preservation-post-reconciliation.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/preservation_audit.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/advisory-classification-20261002T042721Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/audit_fallback_review.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/capture-review-20261002T042250Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/gameplan-model-trace-20261002T064449Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/local-advisory-detail-20261002T042636Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/local-advisory-review-20261002T043057Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/loop-b-model-trace-20261002T062803Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/native-retry-review-20261002T041943Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/opra-cost-progress-20261002T050629Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/opra-preflight-failure-20261002T044152Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/opra-preflight-failure-followup-20261002T044244Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/opra-preflight-scope-reconciliation-20261002T055810Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/opra-source-session-verification-20261002T055655Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/review_advisories.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/source-byte-recheck-20261002T064535Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/trace_gameplan_cme.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/trace_loop_b_cme.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/provider-warning/verify_opra_source_session.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/reconciliation-preservation-basis.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/supervision-token.txt",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/README.txt",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/audit-environment-baseline.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/audit-runner.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/audit_environment.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/completion-audit.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/evaluation-coverage-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/fallback_checks.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/fresh-directional-quality-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/fresh-sizing-and-direction-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/helper-review-tests.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/loop-b-quality-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/model-audit-stdout.log",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/ownership.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/preparation.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/prepare_helpers.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/review_fresh_directional_quality.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/review_fresh_sizing_and_directions.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/review_stock_history_stage.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/review_target_boundary_quality.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/run_final_checks.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/stock-history-stage-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/target-boundary-quality-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/validate_helpers.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/verify_archive_history.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/verify_completed_run-stderr.log",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/verify_completed_run.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/verify_yg_completion-stderr.log",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/verify_yg_completion.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/analysis/overnight-20261001/verification/yg-completion.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T070738Z-overnight-gameplan-artifacts/artifact-manifest.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "coordination/contract.json",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "coordination/local-profile.example.json",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "coordination/prompts/courier.txt",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "coordination/prompts/inbox.txt",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "coordination/task-catalog.json",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "datafetching/databento_cold_start.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "datafetching/research_onboarding.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "datafetching/research_publication.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "datafetching/symbol_onboarding.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "datafetching/symbol_universe.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/atlas-scout-git-handoff.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-backlog.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-bootstrap.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-task-matrix.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/main-integration-protocol.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/LOOP_INVENTORY.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/LOOP_RELATIONSHIPS.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/MONITORING.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/OPRA_HISTORY_MAINTENANCE_AUTOMATION.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/README.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/RESEARCH_SYMBOL_ONBOARDING.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/STOCK_TRADER_RUNTIME.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/SYMBOL_ONBOARDING.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/SYSTEM_FUNCTIONALITY.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/loops/loop-a.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "docs/multiple-pcs.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/overnight_runtime.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/strategy_pricing_canary.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/system_guardian.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_artifact_publish.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_core.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_install_drift.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_main_integration.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_tasks.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_transport.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_hyperliquid_paper_rebalance_threshold.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_local_watchlist.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_research_onboarding.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_research_publication.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_symbol_onboarding.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/__init__.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/__init__.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/artifact_publish.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/cli.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/core.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/drift.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/installation.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/main_integration.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/notices.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/tasks.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/test_runner.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "add",
+      "path": "tools/cross_pc/transport.py",
+      "scope": "shared-source"
+    }
+  ],
+  "human_request_relay": {
+    "evidence_requested": [
+      "Scout local branch/HEAD and classification of each dirty or unpushed path, including the nine paths visible in the earlier screenshot",
+      "verified origin/main and exact adopted HEAD or collision blocker",
+      "shared-byte comparison at the same exact reference plus explicit field-level symbol exceptions",
+      "before/after hashes of local symbol/profile bindings without their raw values",
+      "pinned helper manifest and native task readback preserving cadence, state, model, effort, notification and continuity",
+      "actual offline checks with UTC times and results; source installation and loaded runtime version recorded separately"
+    ],
+    "provenance": "direct human request to Atlas on 2026-10-02; this notice conveys it as reference evidence, not new authority from a peer notice",
+    "request": "Implement the same central-hub workflow on Scout: keep common code on main, preserve Scout's eleven-stock and documented symbol-specific settings, label symbol-specific commits with actor and practical details, make each scheduled task publish its exact completed owned changes immediately after review and .env private-key scanning, and keep the existing five-minute monitors checking author/branch/SHA and conditionally fetching/fast-forwarding main."
+  },
+  "limitations": [
+    "Scout's local unpushed branch and dirty files were unavailable to Atlas; Scout local main adoption is unverified.",
+    "Scout installed helper, native scheduled-task definitions, symbol preservation and running-process version are unverified.",
+    "Atlas updated its own checkout and pinned helper; no application runtime was restarted or deployed.",
+    "Historical untracked outputs outside this completed 89-file inventory remain pending owner and byte review."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source and completed outputs are available on GitHub; neither PC's running application version follows from a push or checkout fast-forward.",
+  "scope": "Common Gameplan/UI/engine behavior, portable stock selector, strategy defaults and coordination helpers now share main. Atlas completed run output is under artifacts/pc-original/... and is not Scout's live symbols or Gameplan. The 89 original file hashes and two reversible SQLite gzip hashes are in the manifest. No .env private-key value was found in the published exact bytes.",
+  "summary": "Atlas published tested common Ducketz source and 89 completed overnight outputs on main for two-PC coordination.",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cross_pc_core.py",
+        "tests/test_cross_pc_install_drift.py",
+        "tests/test_cross_pc_main_integration.py",
+        "tests/test_cross_pc_tasks.py",
+        "tests/test_cross_pc_transport.py",
+        "tests/test_cross_pc_artifact_publish.py",
+        "tests/test_local_watchlist.py",
+        "tests/test_research_onboarding.py",
+        "tests/test_research_publication.py",
+        "tests/test_symbol_onboarding.py",
+        "tests/test_hyperliquid_paper_rebalance_threshold.py"
+      ],
+      "completed_at_utc": "2026-10-02T07:26:35Z",
+      "result": "211 passed, 2 skipped",
+      "scope": "exact common-source integration candidate",
+      "started_at_utc": "2026-10-02T07:22:58Z"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_cross_pc_artifact_publish.py"
+      ],
+      "completed_at_utc": "unknown",
+      "result": "12 passed",
+      "scope": "final artifact publisher bugfix",
+      "started_at_utc": "unknown"
+    }
+  ]
+}
