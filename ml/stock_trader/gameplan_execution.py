@@ -6,6 +6,7 @@ needs the saved symbol, direction, allocation horizon and holding window.
 from __future__ import annotations
 
 import json
+from numbers import Real
 from pathlib import Path
 
 import pandas as pd
@@ -49,6 +50,51 @@ def execution_frame(root: Path, *, action_date: str):
     return frame, run
 
 
+def _saved_abstention(row):
+    """Honor the publisher's explicit no-history direction without changing p."""
+    if (str(row["direction"]).upper() != "NO_EDGE"
+            or row.get("model_status") != "RESEARCH_NO_TARGET_HISTORY"):
+        return False
+    fields = ["symbol_fitted_target_rows"]
+    if (row.get("target_contract_version") == "independent-stock-targets-v1"
+            or "symbol_route_fitted_target_rows" in row):
+        fields.append("symbol_route_fitted_target_rows")
+    counts = []
+    for name in fields:
+        value = row.get(name)
+        count = finite(value)
+        if (isinstance(value, bool) or not isinstance(value, Real) or count is None
+                or count < 0 or not count.is_integer()):
+            raise ValueError("Gameplan abstention has invalid fitted history for " + str(row["id"]))
+        counts.append(count)
+    if 0 not in counts:
+        raise ValueError("Gameplan abstention lacks zero fitted history for " + str(row["id"]))
+    return True
+
+
+def _validated_instructions(frame):
+    """Validate every selected slot, including rows that emit no signal."""
+    from ml.stock_direction_policy import stock_direction
+
+    seen = set()
+    instructions = []
+    for row in frame.to_dict("records"):
+        key = (str(row["symbol"]), str(row["model_group"]), row["target_window_start"])
+        if key[1] not in {"1h", "4h", "1d", "1w"} or key in seen:
+            raise ValueError("Gameplan has an unsupported or duplicated stock allocation")
+        seen.add(key)
+        probability = finite(row["calibrated_probability"])
+        if probability is None or not 0 <= probability <= 1:
+            raise ValueError("Gameplan probability is invalid for " + str(row["id"]))
+        abstention = _saved_abstention(row)
+        expected = stock_direction(probability)
+        direction = str(row["direction"]).upper()
+        if not abstention and direction != expected and not (direction == "NEUTRAL" and expected == "NO_EDGE"):
+            raise ValueError("Gameplan direction disagrees with its saved probability for " + str(row["id"]))
+        instructions.append((row, probability, abstention))
+    return instructions
+
+
 def load_execution_signals(root: Path, *, as_of):
     now = utc(as_of)
     local = now.tz_convert("America/Los_Angeles")
@@ -58,16 +104,10 @@ def load_execution_signals(root: Path, *, as_of):
         return {}, ()
     due = frame.loc[frame.target_window_start.eq(start)]
     signals = {}
-    for row in due.to_dict("records"):
+    for row, probability, abstention in _validated_instructions(due):
+        if abstention:
+            continue
         key = (str(row["symbol"]), str(row["model_group"]))
-        if key[1] not in {"1h", "4h", "1d", "1w"} or key in signals:
-            raise ValueError("Gameplan has an unsupported or duplicated stock allocation")
-        probability = finite(row["calibrated_probability"])
-        if probability is None or not 0 <= probability <= 1:
-            raise ValueError("Gameplan probability is invalid for " + str(row["id"]))
-        from ml.stock_direction_policy import stock_direction
-        if str(row["direction"]).upper() not in {stock_direction(probability), "NEUTRAL" if stock_direction(probability) == "NO_EDGE" else ""}:
-            raise ValueError("Gameplan direction disagrees with its saved probability")
         end = utc(row["target_window_end"])
         signals[key] = PredictionSignal(
             symbol=key[0], primary_horizon=key[1], prediction_id=str(row["id"]),
@@ -90,7 +130,10 @@ def load_execution_signals(root: Path, *, as_of):
 def execution_preflight(root: Path, *, action_date):
     try:
         frame, run = execution_frame(root, action_date=action_date.isoformat())
+        instructions = _validated_instructions(frame)
         return {"status": "READY", "reason": "SAVED_GAMEPLAN_TRADING_INSTRUCTIONS",
-                "execution_window_count": len(frame), "run_path": str(run)}
+                "execution_window_count": len(frame),
+                "saved_abstention_count": sum(abstention for _, _, abstention in instructions),
+                "run_path": str(run)}
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
         return {"status": "NOT_READY", "reason": "GAMEPLAN_TRADING_INSTRUCTIONS_UNAVAILABLE", "error": str(exc)}
