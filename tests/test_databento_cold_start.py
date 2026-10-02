@@ -12,6 +12,8 @@ import pytest
 import datafetching.databento_cold_start as cold_start
 
 
+pytestmark = pytest.mark.usefixtures("offline_databento_sdk")
+
 AS_OF = date(2026, 8, 15)
 CME_DATASET = "GLBX.MDP3"
 EQUITIES_DATASET = "XNAS.ITCH"
@@ -436,7 +438,8 @@ def test_metadata_call_retries_only_transient_server_failures() -> None:
         nonlocal attempts
         attempts += 1
         if attempts < 3:
-            raise RuntimeError("504 The remote gateway timed out")
+            from requests.exceptions import ReadTimeout
+            raise ReadTimeout("gateway read timed out")
         return 17
 
     assert cold_start._metadata_call(
@@ -444,7 +447,7 @@ def test_metadata_call_retries_only_transient_server_failures() -> None:
         _retry_sleeper=delays.append,
     ) == 17
     assert attempts == 3
-    assert delays == [1.0, 2.0]
+    assert delays == [4.0, 4.0]
 
     with pytest.raises(cold_start.ColdStartError, match=r"after 1 attempt\(s\)"):
         cold_start._metadata_call(
@@ -869,7 +872,7 @@ def test_transient_truncated_stream_retries_in_a_fresh_attempt_then_succeeds(
     destination = Path(str(request["storage_path"]))
     assert [path.parent.name for path in paths] == ["attempt-001", "attempt-002"]
     assert paths[0].is_file()
-    assert sleeps == [1.0]
+    assert sleeps == [4.0]
     cold_start._verify_generic_partition(destination, request)
 
 
@@ -943,6 +946,11 @@ def test_matching_truncated_streams_submit_and_resume_exact_batch_fallback(
             return [path]
 
     batch = Batch()
+    def download_once(batch_api, *, job_id, filename, target):
+        assert batch_api is batch and job_id == "GLBX-TEST-BATCH"
+        assert filename == batch_filename
+        target.write_bytes(batch_payload)
+    monkeypatch.setattr(cold_start, "_download_batch_file_once", download_once)
     client = SimpleNamespace(timeseries=TimeSeries(), batch=batch)
     monkeypatch.setattr(
         cold_start,
@@ -971,7 +979,7 @@ def test_matching_truncated_streams_submit_and_resume_exact_batch_fallback(
     assert state["job_id"] == "GLBX-TEST-BATCH"
     assert batch.submit_calls == 1
     assert len(partial_paths) == cold_start.GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD
-    assert sleeps == [1.0, 2.0, 5.0]
+    assert sleeps == [4.0, 4.0, 5.0]
 
     batch.ready = True
     cold_start._download_generic_entry(
@@ -997,7 +1005,7 @@ def test_matching_truncated_streams_submit_and_resume_exact_batch_fallback(
     }
 
 
-def test_exhausted_transient_generic_retries_stop_with_all_attempts_retained(
+def test_persistent_generic_retries_exceed_old_limits_and_preserve_all_partials(
     tmp_path: Path,
 ) -> None:
     from databento.common.error import BentoError
@@ -1009,28 +1017,26 @@ def test_exhausted_transient_generic_retries_stop_with_all_attempts_retained(
         def get_range(self, **kwargs: object) -> object:
             path = Path(str(kwargs["path"]))
             paths.append(path)
-            path.write_bytes(b"partial")
-            raise BentoError("Error streaming response: Response ended prematurely")
+            path.write_bytes(b"partial" if len(paths) <= 80 else b"provider data")
+            if len(paths) <= 80:
+                raise BentoError("Error streaming response: Response ended prematurely")
+            return _ParquetStore()
 
     sleeps: list[float] = []
-    with pytest.raises(
-        cold_start.ColdStartInfrastructureError,
-        match="exhausted transient retries",
-    ):
-        cold_start._download_generic_entry(
-            SimpleNamespace(timeseries=TimeSeries()),
-            datastore_root=tmp_path,
-            request=request,
-            reporter=None,
-            _retry_sleeper=sleeps.append,
-        )
+    cold_start._download_generic_entry(
+        SimpleNamespace(timeseries=TimeSeries()),
+        datastore_root=tmp_path,
+        request=request,
+        reporter=None,
+        _retry_sleeper=sleeps.append,
+    )
     assert [path.parent.name for path in paths] == [
-        f"attempt-{attempt:03d}" for attempt in range(1, 12)
+        f"attempt-{attempt:03d}" for attempt in range(1, 82)
     ]
-    assert sleeps == [1.0, 2.0, 4.0, 8.0, 16.0, 30.0, 30.0, 30.0, 30.0, 29.0]
-    assert sum(sleeps) == 180.0
-    assert all(path.is_file() for path in paths)
-    assert not Path(str(request["storage_path"])).exists()
+    assert sleeps == [4.0] * 80
+    assert sum(sleeps) > 180.0
+    assert all(path.read_bytes() == b"partial" for path in paths[:-1])
+    cold_start._verify_generic_partition(Path(str(request["storage_path"])), request)
 
 
 def test_nontransient_provider_error_is_not_retried(tmp_path: Path) -> None:
@@ -1056,6 +1062,28 @@ def test_nontransient_provider_error_is_not_retried(tmp_path: Path) -> None:
         )
     assert calls == 1
     assert sleeps == []
+
+
+def test_local_conversion_error_with_network_context_does_not_refetch(tmp_path):
+    from requests.exceptions import ReadTimeout
+    request = _generic_request(tmp_path)
+    calls, sleeps = [], []
+    class BrokenStore:
+        def to_parquet(self, *args, **kwargs):
+            try:
+                raise ReadTimeout("earlier remote context")
+            except ReadTimeout:
+                raise PermissionError("local parquet output denied")
+    def get_range(**kwargs):
+        calls.append(kwargs)
+        Path(kwargs["path"]).write_bytes(b"retained native bytes")
+        return BrokenStore()
+    with pytest.raises(PermissionError):
+        cold_start._download_generic_entry(SimpleNamespace(timeseries=SimpleNamespace(get_range=get_range)),
+            datastore_root=tmp_path, request=request, reporter=None, _retry_sleeper=sleeps.append)
+    assert len(calls) == 1 and not sleeps
+    assert Path(calls[0]["path"]).read_bytes() == b"retained native bytes"
+    assert not Path(request["storage_path"]).exists()
 
 
 def test_reduced_quality_warning_remains_visible_and_is_recorded(

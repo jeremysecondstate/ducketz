@@ -7,11 +7,14 @@ import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+from requests.exceptions import HTTPError
 
 from app.services.databento_cme_context import DatabentoCmeContextSpec
+from datafetching import cme_runtime
 from datafetching.cme_history import (
     CmeCursor,
     cme_normalized_event_paths,
@@ -275,7 +278,7 @@ def test_quiet_market_cursor_advances_by_successful_endpoint(tmp_path: Path) -> 
         store,
         provider=provider,
         retry_attempts=1,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         now=lambda: datetime(2026, 8, 5, 10, 1, 1, tzinfo=UTC),
         reporter=None,
     )
@@ -299,7 +302,7 @@ def test_quiet_market_cursor_advances_by_successful_endpoint(tmp_path: Path) -> 
         store,
         provider=provider,
         retry_attempts=1,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         now=lambda: datetime(2026, 8, 5, 10, 2, 1, tzinfo=UTC),
         reporter=None,
     )
@@ -317,7 +320,13 @@ def test_quiet_market_cursor_advances_by_successful_endpoint(tmp_path: Path) -> 
     assert cursor.queried_through == pd.Timestamp("2026-08-05T10:02:00Z")
 
 
-def test_endpoint_discovery_retries_transient_databento_failure(tmp_path: Path) -> None:
+def test_endpoint_discovery_retries_transient_databento_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pauses = []
+    retry = cme_runtime.call_with_persistent_databento_retry
+    monkeypatch.setattr(cme_runtime, "call_with_persistent_databento_retry",
+                        lambda operation, **kwargs: retry(operation, sleep=pauses.append, **kwargs))
     provider = _TransientDiscoveryProvider(
         _spec(
             start="2026-08-05T10:00:00Z",
@@ -329,12 +338,13 @@ def test_endpoint_discovery_retries_transient_databento_failure(tmp_path: Path) 
         ParquetStore(tmp_path),
         provider=provider,
         retry_attempts=2,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         now=lambda: datetime(2026, 8, 5, 10, 1, 1, tzinfo=UTC),
         reporter=None,
     )
 
     assert provider.discovery_attempts == 2
+    assert pauses == [4.0]
     assert result.schemas_succeeded == 1
     assert result.schemas_failed == 0
 
@@ -390,7 +400,7 @@ def test_large_recovery_gap_publishes_latest_lane_and_checkpoints_one_chunk(
         ParquetStore(tmp_path),
         provider=provider,
         retry_attempts=1,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         now=lambda: datetime(2026, 8, 5, 10, 20, 1, tzinfo=UTC),
         reporter=None,
     )
@@ -506,7 +516,7 @@ def test_saturated_cme_request_splits_without_advancing_past_missing_rows(
         provider=provider,
         record_limits={"mbp-10": 2},
         retry_attempts=1,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         now=lambda: datetime(2026, 8, 5, 10, 0, 6, tzinfo=UTC),
         reporter=None,
     )
@@ -540,7 +550,7 @@ def test_cme_concurrency_two_is_bounded_and_faster_on_independent_requests(
         provider=serial_provider,
         max_concurrency=1,
         retry_attempts=1,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         reporter=None,
     )
     serial_elapsed = time.perf_counter() - started
@@ -552,7 +562,7 @@ def test_cme_concurrency_two_is_bounded_and_faster_on_independent_requests(
         provider=concurrent_provider,
         max_concurrency=2,
         retry_attempts=1,
-        retry_delay_seconds=0,
+        retry_delay_seconds=4,
         reporter=None,
     )
     concurrent_elapsed = time.perf_counter() - started
@@ -650,7 +660,7 @@ class _TransientDiscoveryProvider(_QuietProvider):
     def specs(self) -> tuple[DatabentoCmeContextSpec, ...]:
         self.discovery_attempts += 1
         if self.discovery_attempts == 1:
-            raise RuntimeError("504 The remote gateway timed out")
+            raise HTTPError("synthetic gateway timeout", response=SimpleNamespace(status_code=504, headers={}))
         return super().specs()
 
 

@@ -7,6 +7,7 @@ import json
 import math
 import re
 import shutil
+import sys
 import time
 import warnings
 import zipfile
@@ -21,6 +22,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+
+from app.services.databento_retry import call_with_persistent_databento_retry
 
 from datafetching.databento_storage import (
     MARKET_OPRA,
@@ -61,7 +64,8 @@ OPRA_STRATEGY_HISTORY_SCHEMAS = ("ohlcv-1h", "cbbo-1m", "definition")
 
 METADATA_TIMEOUT_SECONDS = 30
 TIMESERIES_TIMEOUT_SECONDS = 300
-DOWNLOAD_MAX_ATTEMPTS = 3
+METADATA_MAX_ATTEMPTS = None
+DOWNLOAD_MAX_ATTEMPTS = None
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2.0
 MAX_EXACT_VALIDATION_ROWS = 25_000_000
@@ -345,8 +349,16 @@ def synchronize(
     fail_fast: bool = False,
     batch_download: bool = False,
     refresh_health: bool = True,
+    partition_workers: int = 1,
+    partition_client_factory: Callable[[], object] | None = None,
+    partition_metrics_callback: Callable[[Mapping[str, object]], None] | None = None,
 ) -> SyncResult:
     """Download, normalize, publish, and verify immutable OPRA partitions."""
+
+    if type(partition_workers) is not int or not 1 <= partition_workers <= 40:
+        raise ValueError("OPRA partition_workers must be an integer from 1 to 40")
+    if partition_workers > 1 and (not callable(partition_client_factory) or batch_download):
+        raise ValueError("Concurrent streaming requires independent clients and batch_download=False")
 
     root = canonical_root(datastore_root)
     root.mkdir(parents=True, exist_ok=True)
@@ -396,6 +408,23 @@ def synchronize(
             plan=plan,
             reporter=reporter,
             fail_fast=fail_fast,
+        )
+    elif partition_workers > 1:
+        from datafetching.opra_concurrent_stream import execute_concurrent_stream_plan
+
+        progress = execute_concurrent_stream_plan(
+            native=sys.modules[__name__],
+            planning_client=client,
+            client_factory=partition_client_factory,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            symbols=scope.symbols,
+            plan=plan,
+            reporter=reporter,
+            fail_fast=fail_fast,
+            max_partitions=scope.max_partitions,
+            workers=partition_workers,
+            metrics_callback=partition_metrics_callback,
         )
     else:
         progress = _execute_stream_plan(
@@ -2231,6 +2260,19 @@ def _download_partition(
     }
     kwargs = dict(request)
     kwargs["path"] = raw_path
+
+    def retain_partial_download(_error: Exception, _attempt: int) -> None:
+        nonlocal staging, raw_path, parquet_path
+        if raw_path.exists():
+            # The SDK opens downloads exclusively and can retain a Windows
+            # handle after a stream failure. Preserve that entire attempt and
+            # put the retry in a fresh sibling, outside the published partition.
+            staging = _next_attempt_directory(staging.parent)
+            staging.mkdir(parents=True, exist_ok=False)
+            raw_path = staging / "provider.dbn.zst"
+            parquet_path = staging / "normalized.parquet"
+            kwargs["path"] = raw_path
+
     store: object | None = None
     partially_resolved_symbol_count = 0
     partially_resolved_symbols_checksum: str | None = None
@@ -2243,6 +2285,8 @@ def _download_partition(
                     getattr(client, "timeseries").get_range,
                     kwargs=kwargs,
                     operation=f"{schema} {day} download",
+                    maximum_attempts=DOWNLOAD_MAX_ATTEMPTS,
+                    before_retry=retain_partial_download,
                 )
             except OpraSyncError as exc:
                 if _unresolved_parent_request(exc, symbols=symbols):
@@ -2586,16 +2630,36 @@ def _repair_batch_ohlcv_symbol_mapping(
         "stype_in": "instrument_id",
         "stype_out": "instrument_id",
     }
+    if definition_path.exists():
+        raise FileExistsError("Point-in-time definition destination already exists")
+    # The SDK can leave a partial file open on Windows. Keep every request
+    # outside the partition staging directory, including the first attempt.
+    attempt_root = definition_path.parent.with_name(
+        f"{definition_path.parent.name}-definition-downloads"
+    )
+    attempt_directory = _next_attempt_directory(attempt_root)
+    attempt_directory.mkdir(parents=True, exist_ok=False)
+    download_path = attempt_directory / definition_path.name
+    request_kwargs = {**request, "path": download_path}
+
+    def retain_partial_definition(_error: Exception, _attempt: int) -> None:
+        nonlocal download_path
+        if download_path.exists():
+            next_directory = _next_attempt_directory(attempt_root)
+            next_directory.mkdir(parents=True, exist_ok=False)
+            download_path = next_directory / definition_path.name
+            request_kwargs["path"] = download_path
+
     definition_store: object | None = None
     try:
         definition_store = _retry(
             getattr(client, "timeseries").get_range,
-            kwargs={**request, "path": definition_path},
+            kwargs=request_kwargs,
             operation=f"{schema} {day} point-in-time definition lookup",
-            maximum_attempts=1,
+            before_retry=retain_partial_definition,
         )
         _validate_dbn_request_metadata(definition_store, request=request)
-        if not definition_path.is_file() or definition_path.stat().st_size == 0:
+        if not download_path.is_file() or download_path.stat().st_size == 0:
             raise OpraSyncError(
                 "Databento point-in-time definition lookup retained no native DBN"
             )
@@ -2618,6 +2682,8 @@ def _repair_batch_ohlcv_symbol_mapping(
         definition_store = None
         gc.collect()
 
+    with download_path.open("rb") as source, definition_path.open("xb") as destination:
+        shutil.copyfileobj(source, destination)
     _fill_null_symbols(parquet_path, resolved)
     remaining = _normalized_symbol_null_rows(parquet_path)
     if not remaining.empty:
@@ -3411,21 +3477,28 @@ def _retry(
     *,
     kwargs: Mapping[str, object],
     operation: str,
-    maximum_attempts: int = DOWNLOAD_MAX_ATTEMPTS,
+    maximum_attempts: int | None = METADATA_MAX_ATTEMPTS,
+    before_retry: Callable[[Exception, int], None] | None = None,
+    reporter: Callable[[str], None] | None = print,
 ) -> object:
-    last_error: Exception | None = None
-    for attempt in range(1, maximum_attempts + 1):
-        try:
-            return function(**kwargs)
-        except Exception as exc:
-            last_error = exc
-            if attempt < maximum_attempts:
-                time.sleep(min(2 ** (attempt - 1), 4))
-    assert last_error is not None
-    raise OpraSyncError(
-        f"{operation} failed after {maximum_attempts} attempts: "
-        f"{type(last_error).__name__}: {last_error}"
-    ) from last_error
+    """Keep a request pending through remote outages; retain explicit stop errors."""
+    if maximum_attempts is not None and (
+        type(maximum_attempts) is not int or maximum_attempts < 1
+    ):
+        raise ValueError("maximum_attempts must be a positive integer or None")
+    try:
+        return call_with_persistent_databento_retry(
+            lambda: function(**kwargs),
+            operation_name=operation,
+            max_attempts=maximum_attempts,
+            sleep=time.sleep,
+            reporter=reporter,
+            before_retry=before_retry,
+        )
+    except Exception as exc:
+        raise OpraSyncError(
+            f"{operation} failed: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def _date_text(value: object) -> str:

@@ -271,33 +271,40 @@ block rather than after every daily partition or parent-symbol request. Physical
 Parquet compaction is deliberately separate: existing consumers continue to see
 the established daily paths during the accelerated cold-start resume.
 
-Generic CME and US-equity downloads use up to ten retries after the initial
-provider call for transient stream or network failures (for example a
-prematurely ended response, connection reset/timeout, or HTTP 502/503/504).
-Exponential backoff is capped at 30 seconds per retry and at three minutes in
-total, excluding time spent inside the provider calls themselves. Each call
-writes to a new readable `attempt-NNN` directory. Failed and interrupted
-attempts remain beneath `market-data\databento\.staging` for inspection; they
-are never overwritten or treated as complete. Authentication, entitlement,
-invalid schema/symbol, and other non-transient provider failures are not
-retried.
+Generic CME and US-equity downloads and metadata requests retry recognized
+remote read failures until success or interruption. HTTP 500/502/503/504,
+verified read timeouts, connection resets and truncated response failures use
+the shared Databento retry classifier. Attempts are separated by four seconds,
+or a longer provider Retry-After. There is no attempt or elapsed retry budget.
+Authentication, entitlement, HTTP 429, invalid requests, local storage and
+publication failures stop immediately. Native supervision and stage deadlines
+still apply; Ctrl+C propagates.
+
+Each stream call writes to a new readable `attempt-NNN` directory without a
+fixed upper count. Failed and interrupted attempts remain beneath
+`market-data\databento\.staging` for inspection. Parquet conversion, validation
+and publication run after the retry boundary so local failures cannot trigger
+another provider request.
 
 When three small failed attempts have the same byte-for-byte partial response,
-or ordinary streaming retries otherwise exhaust, the generic downloader uses
-Databento's batch API for that same preflighted request. It requests one DBN/Zstd
-file with `split_duration=none`, records the job ID and request checksum in
-`batch-fallback.json`, polls the job, and downloads the provider file through
-the SDK's resumable batch downloader. The provider-reported size and SHA-256,
-the local raw checksum, normalized Parquet bounds, partition manifest, and
-receipt must all verify before atomic publication. A malformed job, unexpected
-job state, expired job, unsafe filename, multiple DBN files, or checksum
-mismatch fails closed.
+the generic downloader uses Databento's batch API for that same preflighted
+request. An exclusive `batch-submission-intent.json` is written before the POST.
+A saved intent without a verified job ID requires reconciliation; restarting
+cannot blindly submit another potentially accepted job. A successful response
+binds the job ID and request checksum in `batch-fallback.json`, which later
+runs reuse. Existing historical batch state remains readable.
 
-Batch fallback state is durable. If the command is interrupted while the job is
-queued, processing, or downloading, rerunning the identical execution command
-reuses the recorded job rather than submitting and billing another job. Retained
-matching partials also cause a resumed run to choose the batch path immediately
-instead of repeating a known-bad stream.
+Job polling and file metadata use the same persistent retry policy. A narrow
+single-file downloader uses the installed SDK's documented
+`GET /v{version}/batch/download/{job_id}/{filename}` endpoint on the fixed
+`https://hist.databento.com` origin with the existing client's authentication.
+It follows no redirects and accepts no provider-supplied download URL. This
+avoids the SDK batch downloader's internal retry loops. Every failed download
+is preserved in a fresh `batch-downloads/attempt-NNN` directory.
+The provider-reported size and SHA-256, local raw checksum, normalized Parquet
+bounds, partition manifest and receipt must verify before atomic publication.
+Malformed metadata, unsafe names, unexpected/expired job states and checksum
+mismatches stop without being retried.
 
 Before making another provider request, resume checks retained staging for the
 same exact manifest request. A staging attempt is published only after its

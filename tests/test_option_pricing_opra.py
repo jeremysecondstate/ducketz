@@ -28,6 +28,9 @@ from ml.artifacts import file_checksum
 from ml.option_pricing.strategy_shadow import load_strategy_pricing_evidence
 
 
+pytestmark = pytest.mark.usefixtures("offline_databento_sdk")
+
+
 class _Metadata:
     TIMEOUT = 0
 

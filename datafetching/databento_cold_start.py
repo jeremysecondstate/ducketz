@@ -27,14 +27,18 @@ from collections import Counter
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
+from itertools import count
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
+from urllib.parse import quote, urlsplit
 
 import pandas as pd
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from requests import exceptions as requests_exceptions
-from urllib3 import exceptions as urllib3_exceptions
+import requests
+from requests.auth import HTTPBasicAuth
+
+from app.services.databento_retry import call_with_persistent_databento_retry
 
 from datafetching.cme_runtime import load_repository_environment
 from datafetching.databento_history_policy import (
@@ -76,10 +80,6 @@ PROGRESS_VERSION = "databento-cold-start-progress-v1"
 BATCH_FALLBACK_VERSION = "databento-cold-start-batch-fallback-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
-METADATA_MAX_ATTEMPTS = 3
-GENERIC_DOWNLOAD_MAX_RETRIES = 10
-GENERIC_DOWNLOAD_RETRY_WINDOW_SECONDS = 3 * 60
-GENERIC_DOWNLOAD_MAX_BACKOFF_SECONDS = 30
 GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD = 3
 GENERIC_BATCH_FALLBACK_SIGNATURE_MAX_BYTES = 1024**2
 GENERIC_BATCH_FALLBACK_POLL_SECONDS = 5
@@ -1374,80 +1374,17 @@ def _download_generic_entry(
             _poll_sleeper=_retry_sleeper,
         )
         return
-    last_error: Exception | None = None
-    retry_wait_seconds = 0.0
-    maximum_attempts = GENERIC_DOWNLOAD_MAX_RETRIES + 1
-    for provider_attempt in range(1, maximum_attempts + 1):
-        staging = _next_attempt_directory(staging_base)
-        staging.mkdir(parents=True, exist_ok=False)
-        try:
-            _download_generic_attempt(
-                client,
-                staging=staging,
-                destination=destination,
-                request=request,
-            )
-            return
-        except Exception as exc:
-            # Failed staging is retained for operator inspection and never
-            # becomes consumer authority. KeyboardInterrupt is a BaseException
-            # and deliberately bypasses this retry boundary.
-            last_error = exc
-            if not _transient_download_error(exc):
-                raise
-            retained_repeat_count = _repeated_small_partial_count(staging_base)
-            if (
-                batch_api is not None
-                and retained_repeat_count >= GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD
-            ):
-                if reporter:
-                    reporter(
-                        "USING_BATCH_FALLBACK "
-                        f"{request['dataset']}/{request['schema']}/"
-                        f"{request['symbol_scope'][0]} after {provider_attempt} "
-                        "truncated stream attempts"
-                    )
-                _download_generic_batch_fallback(
-                    client,
-                    staging_base=staging_base,
-                    destination=destination,
-                    request=request,
-                    reporter=reporter,
-                    _poll_sleeper=_retry_sleeper,
-                )
-                return
-            if provider_attempt >= maximum_attempts:
-                break
-            remaining_retry_window = (
-                float(GENERIC_DOWNLOAD_RETRY_WINDOW_SECONDS) - retry_wait_seconds
-            )
-            if remaining_retry_window <= 0:
-                break
-            delay = min(
-                float(2 ** (provider_attempt - 1)),
-                float(GENERIC_DOWNLOAD_MAX_BACKOFF_SECONDS),
-                remaining_retry_window,
-            )
-            if reporter:
-                reporter(
-                    "RETRYING_TRANSIENT "
-                    f"{request['dataset']}/{request['schema']}/"
-                    f"{request['symbol_scope'][0]} retry "
-                    f"{provider_attempt}/{GENERIC_DOWNLOAD_MAX_RETRIES} after "
-                    f"provider attempt {provider_attempt}/{maximum_attempts}; "
-                    f"backoff={delay:g}s: "
-                    f"{type(exc).__name__}: {exc}"
-                )
-            _retry_sleeper(delay)
-            retry_wait_seconds += delay
-    assert last_error is not None
-    if batch_api is not None:
-        if reporter:
-            reporter(
-                "USING_BATCH_FALLBACK "
-                f"{request['dataset']}/{request['schema']}/"
-                f"{request['symbol_scope'][0]} after exhausted stream retries"
-            )
+    try:
+        _download_generic_attempt(
+            client,
+            staging_base=staging_base,
+            destination=destination,
+            request=request,
+            reporter=reporter,
+            retry_sleeper=_retry_sleeper,
+            batch_available=batch_api is not None,
+        )
+    except _UseBatchFallback:
         _download_generic_batch_fallback(
             client,
             staging_base=staging_base,
@@ -1456,13 +1393,10 @@ def _download_generic_entry(
             reporter=reporter,
             _poll_sleeper=_retry_sleeper,
         )
-        return
-    raise ColdStartInfrastructureError(
-        "Databento generic download exhausted transient retries after "
-        f"{provider_attempt} provider attempts and {retry_wait_seconds:g}s "
-        "of backoff: "
-        f"{type(last_error).__name__}: {last_error}"
-    ) from last_error
+
+
+class _UseBatchFallback(Exception):
+    """Leave the stream retry boundary before any batch submission."""
 
 
 @contextmanager
@@ -1498,32 +1432,65 @@ def _capture_provider_warnings(
 def _download_generic_attempt(
     client: object,
     *,
-    staging: Path,
+    staging_base: Path,
     destination: Path,
     request: Mapping[str, object],
+    reporter: Callable[[str], None] | None,
+    retry_sleeper: Callable[[float], None],
+    batch_available: bool,
 ) -> None:
-    """Download, verify, and publish one provider attempt."""
+    """Retry the remote stream, then validate and publish outside that boundary."""
 
-    raw_path = staging / "provider.dbn.zst"
-    parquet_path = staging / "normalized.parquet"
-    kwargs = _request_kwargs(request)
-    kwargs["path"] = raw_path
+    staging: Path | None = None
     provider_warnings: list[dict[str, str]] = []
     store: object | None = None
 
-    try:
+    def fetch() -> object:
+        nonlocal staging
+        provider_warnings.clear()
+        staging = _next_attempt_directory(staging_base)
+        staging.mkdir(parents=True, exist_ok=False)
+        kwargs = _request_kwargs(request)
+        kwargs["path"] = staging / "provider.dbn.zst"
         with _capture_provider_warnings(provider_warnings):
-            store = getattr(client, "timeseries").get_range(**kwargs)
+            return getattr(client, "timeseries").get_range(**kwargs)
+
+    def before_retry(_exc: Exception, attempt: int) -> None:
+        # Failed partials are retained. Release SDK reader handles before the
+        # next request, including when repeated truncation selects batch mode.
+        gc.collect()
+        if (batch_available and _repeated_small_partial_count(staging_base)
+                >= GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD):
+            if reporter:
+                reporter(
+                    "USING_BATCH_FALLBACK "
+                    f"{request['dataset']}/{request['schema']}/"
+                    f"{request['symbol_scope'][0]} after {attempt} truncated stream attempts"
+                )
+            raise _UseBatchFallback
+
+    try:
+        store = call_with_persistent_databento_retry(
+            fetch,
+            operation_name="timeseries.get_range",
+            sleep=retry_sleeper,
+            reporter=reporter,
+            before_retry=before_retry,
+            symbol=str(request["symbol_scope"][0]),
+            schema=str(request["schema"]),
+            request_start=request["start"],
+            request_end=request["end"],
+        )
+        assert staging is not None
+        raw_path = staging / "provider.dbn.zst"
         if not raw_path.is_file() or raw_path.stat().st_size == 0:
             raise ColdStartError("Databento did not produce a provider-native DBN file")
         if store is None:
-            import databento as db
-
-            store = db.DBNStore.from_file(raw_path)
-        store.to_parquet(parquet_path, map_symbols=True)
+            store = _dbn_store_from_file(raw_path)
+        store.to_parquet(staging / "normalized.parquet", map_symbols=True)
     finally:
-        # DBNStore retains its source file handle on Windows. This runs before
-        # every publication, retry, error propagation, and KeyboardInterrupt.
+        # DBNStore retains its source handle on Windows. Conversion/publication
+        # failures and cancellation never re-enter the remote retry boundary.
         store = None
         gc.collect()
 
@@ -1651,7 +1618,7 @@ def _load_batch_fallback_state(
         or payload.get("request_id") != request.get("request_id")
         or payload.get("request_checksum_sha256") != _checksum(dict(request))
         or supplied_checksum != _checksum(body)
-        or not str(payload.get("job_id", "")).strip()
+        or not _safe_batch_component(str(payload.get("job_id", "")))
     ):
         raise ColdStartError(
             f"Databento batch fallback state does not match request: {path}"
@@ -1673,26 +1640,48 @@ def _load_or_submit_batch_fallback(
             reporter(f"BATCH_FALLBACK_RESUMED job_id={job_id}")
         return job_id
 
-    response = getattr(batch_api, "submit_job")(
-        dataset=request["dataset"],
-        schema=request["schema"],
-        symbols=list(request["symbol_scope"]),
-        stype_in=request["stype_in"],
-        start=request["start"],
-        end=request["end"],
-        encoding="dbn",
-        compression="zstd",
-        map_symbols=False,
-        split_symbols=False,
-        split_duration="none",
-        delivery="download",
-    )
+    # A failed/ interrupted POST can have succeeded remotely. Preserve intent
+    # before sending so a later resume cannot blindly create a duplicate job.
+    intent_path = staging_base / "batch-submission-intent.json"
+    if intent_path.exists():
+        raise ColdStartInfrastructureError(
+            "Databento batch submission outcome is unconfirmed; preserve the "
+            "submission intent and reconcile its job ID before resubmission"
+        )
+    intent = {
+        "schema_version": "databento-cold-start-batch-submission-intent-v1",
+        "request_id": request["request_id"],
+        "request_checksum_sha256": _checksum(dict(request)),
+        "started_at": _utc_now().isoformat(),
+    }
+    intent["semantic_checksum_sha256"] = _checksum(intent)
+    _write_json_exclusive(intent_path, intent)
+    try:
+        response = getattr(batch_api, "submit_job")(
+            dataset=request["dataset"],
+            schema=request["schema"],
+            symbols=list(request["symbol_scope"]),
+            stype_in=request["stype_in"],
+            start=request["start"],
+            end=request["end"],
+            encoding="dbn",
+            compression="zstd",
+            map_symbols=False,
+            split_symbols=False,
+            split_duration="none",
+            delivery="download",
+        )
+    except Exception as exc:
+        raise ColdStartInfrastructureError(
+            "Databento batch submission outcome is unconfirmed; preserve the "
+            "submission intent and reconcile its job ID before resubmission"
+        ) from exc
     if not isinstance(response, Mapping) or not str(response.get("id", "")).strip():
         raise ColdStartInfrastructureError(
             "Databento batch fallback submission returned no job ID"
         )
     job_id = str(response["id"]).strip()
-    if Path(job_id).name != job_id:
+    if not _safe_batch_component(job_id):
         raise ColdStartInfrastructureError("Databento returned an unsafe batch job ID")
     state = {
         "schema_version": BATCH_FALLBACK_VERSION,
@@ -1717,7 +1706,12 @@ def _wait_for_batch_fallback(
 ) -> Mapping[str, object]:
     last_report: tuple[str, object] | None = None
     while True:
-        details = getattr(batch_api, "get_job_details")(job_id)
+        details = call_with_persistent_databento_retry(
+            lambda: getattr(batch_api, "get_job_details")(job_id),
+            operation_name="batch.get_job_details",
+            sleep=sleeper,
+            reporter=reporter,
+        )
         if not isinstance(details, Mapping):
             raise ColdStartInfrastructureError(
                 f"Databento batch job {job_id} returned malformed details"
@@ -1751,8 +1745,15 @@ def _download_batch_fallback_file(
     *,
     staging_base: Path,
     job_id: str,
+    sleeper: Callable[[float], None] = time.sleep,
+    reporter: Callable[[str], None] | None = print,
 ) -> tuple[Path, Mapping[str, object]]:
-    files = getattr(batch_api, "list_files")(job_id)
+    files = call_with_persistent_databento_retry(
+        lambda: getattr(batch_api, "list_files")(job_id),
+        operation_name="batch.list_files",
+        sleep=sleeper,
+        reporter=reporter,
+    )
     if not isinstance(files, list):
         raise ColdStartInfrastructureError(
             f"Databento batch job {job_id} returned a malformed file list"
@@ -1770,46 +1771,36 @@ def _download_batch_fallback_file(
         )
     file_info = data_files[0]
     filename = str(file_info.get("filename", "")).strip()
-    if not filename or Path(filename).name != filename:
+    if not _safe_batch_component(filename):
         raise ColdStartInfrastructureError(
             f"Databento batch job {job_id} returned an unsafe filename"
         )
-    try:
-        expected_size = int(file_info["size"])
-    except (KeyError, TypeError, ValueError) as exc:
+    expected_size = file_info.get("size")
+    if isinstance(expected_size, bool) or not isinstance(expected_size, int) or expected_size < 1:
         raise ColdStartInfrastructureError(
             f"Databento batch job {job_id} returned no valid DBN size"
-        ) from exc
+        )
     provider_hash = str(file_info.get("hash", ""))
     algorithm, separator, expected_hash = provider_hash.partition(":")
-    if algorithm.casefold() != "sha256" or not separator or not expected_hash:
+    if (algorithm.casefold() != "sha256" or not separator
+            or re.fullmatch(r"[0-9a-fA-F]{64}", expected_hash) is None):
         raise ColdStartInfrastructureError(
             f"Databento batch job {job_id} returned no SHA-256 DBN checksum"
         )
 
-    download_root = staging_base / "batch-downloads"
-    download_root.mkdir(parents=True, exist_ok=True)
-    downloaded = getattr(batch_api, "download")(
-        job_id=job_id,
-        output_dir=download_root,
-        filename_to_download=filename,
+    def download() -> Path:
+        attempt = _next_attempt_directory(staging_base / "batch-downloads")
+        attempt.mkdir(parents=True, exist_ok=False)
+        target = attempt / filename
+        _download_batch_file_once(batch_api, job_id=job_id, filename=filename, target=target)
+        return target
+
+    source = call_with_persistent_databento_retry(
+        download,
+        operation_name="batch.download",
+        sleep=sleeper,
+        reporter=reporter,
     )
-    if not isinstance(downloaded, list):
-        raise ColdStartInfrastructureError(
-            f"Databento batch job {job_id} returned malformed download paths"
-        )
-    candidates = [Path(path) for path in downloaded if Path(path).name == filename]
-    if len(candidates) != 1:
-        raise ColdStartInfrastructureError(
-            f"Databento batch job {job_id} did not download the expected DBN file"
-        )
-    source = candidates[0].resolve()
-    try:
-        source.relative_to(download_root.resolve())
-    except ValueError as exc:
-        raise ColdStartInfrastructureError(
-            f"Databento batch download escaped its staging root: {source}"
-        ) from exc
     if (
         not source.is_file()
         or source.stat().st_size != expected_size
@@ -1819,6 +1810,42 @@ def _download_batch_fallback_file(
             f"Databento batch DBN checksum verification failed: {source}"
         )
     return source, file_info
+
+
+def _safe_batch_component(value: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value))
+
+
+def _download_batch_file_once(
+    batch_api: object, *, job_id: str, filename: str, target: Path,
+) -> None:
+    """One authenticated GET, with no SDK-internal retry or URL redirection."""
+    gateway = str(getattr(batch_api, "_gateway", "")).rstrip("/")
+    base_url = str(getattr(batch_api, "_base_url", ""))
+    parsed = urlsplit(base_url)
+    if (gateway != "https://hist.databento.com"
+            or parsed.scheme != "https" or parsed.netloc != "hist.databento.com"
+            or parsed.query or parsed.fragment
+            or re.fullmatch(r"/v[0-9]+/batch", parsed.path) is None
+            or not _safe_batch_component(job_id) or not _safe_batch_component(filename)):
+        raise ColdStartInfrastructureError("Unsafe Databento batch download endpoint or component")
+    url = f"{base_url}/download/{quote(job_id, safe='')}/{quote(filename, safe='')}"
+    key = getattr(batch_api, "_key", None)
+    if not isinstance(key, str) or not key:
+        raise ColdStartInfrastructureError("Existing Databento batch authentication is unavailable")
+    # Only this fixed origin receives the existing client's authentication.
+    # Opening/writing locally is outside requests' exception conversion.
+    with target.open("xb") as handle:
+        with requests.get(
+            url, auth=HTTPBasicAuth(key, ""), stream=True,
+            timeout=(100, 100), allow_redirects=False,
+        ) as response:
+            if 300 <= response.status_code < 400:
+                raise ColdStartInfrastructureError("Databento batch redirects are not permitted")
+            response.raise_for_status()
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    handle.write(chunk)
 
 
 def _dbn_store_from_file(path: Path) -> object:
@@ -1861,6 +1888,8 @@ def _download_generic_batch_fallback(
             batch_api,
             staging_base=staging_base,
             job_id=job_id,
+            sleeper=_poll_sleeper,
+            reporter=reporter,
         )
 
     staging = _next_attempt_directory(staging_base)
@@ -1962,75 +1991,6 @@ def _publish_recoverable_generic_staging(
         _verify_generic_partition(destination, request)
         return True
     return False
-
-
-def _transient_download_error(exc: Exception) -> bool:
-    """Return true only for bounded-retry transport and streaming failures."""
-
-    chain: list[BaseException] = []
-    current: BaseException | None = exc
-    seen: set[int] = set()
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        chain.append(current)
-        current = current.__cause__ or current.__context__
-
-    for error in chain:
-        status = _exception_http_status(error)
-        if status is not None:
-            # A concrete response status takes precedence over message text so
-            # authentication, entitlement, schema, and symbol 4xx failures are
-            # never accidentally retried. 408 and 429 are explicitly transient.
-            return status in {408, 429} or 500 <= status <= 599
-
-    transient_types = (
-        TimeoutError,
-        ConnectionResetError,
-        ConnectionAbortedError,
-        BrokenPipeError,
-        requests_exceptions.Timeout,
-        requests_exceptions.ConnectionError,
-        requests_exceptions.ChunkedEncodingError,
-        requests_exceptions.ContentDecodingError,
-        urllib3_exceptions.ProtocolError,
-        urllib3_exceptions.TimeoutError,
-        urllib3_exceptions.IncompleteRead,
-        urllib3_exceptions.NewConnectionError,
-        urllib3_exceptions.MaxRetryError,
-    )
-    if any(isinstance(error, transient_types) for error in chain):
-        return True
-
-    message = " | ".join(str(error) for error in chain).casefold()
-    return any(
-        marker in message
-        for marker in (
-            "response ended prematurely",
-            "connection reset",
-            "connection aborted",
-            "connection broken",
-            "remote end closed",
-            "incomplete read",
-            "unexpected end of file",
-            "read timed out",
-            "connect timeout",
-            "connection timed out",
-            "temporary failure in name resolution",
-            "service unavailable",
-            "bad gateway",
-            "gateway timeout",
-        )
-    )
-
-
-def _exception_http_status(exc: BaseException) -> int | None:
-    for attribute in ("http_status", "status_code", "status"):
-        value = getattr(exc, attribute, None)
-        if isinstance(value, int):
-            return value
-    response = getattr(exc, "response", None)
-    value = getattr(response, "status_code", None)
-    return value if isinstance(value, int) else None
 
 
 def _entry_is_verified(datastore_root: Path, request: Mapping[str, object]) -> bool:
@@ -2292,29 +2252,24 @@ def _metadata_call(
     _retry_sleeper: Callable[[float], None] = time.sleep,
     **kwargs: object,
 ) -> object:
-    for attempt in range(1, METADATA_MAX_ATTEMPTS + 1):
-        try:
-            return function(**kwargs)
-        except Exception as exc:
-            if attempt < METADATA_MAX_ATTEMPTS and _transient_metadata_error(exc):
-                _retry_sleeper(float(2 ** (attempt - 1)))
-                continue
-            raise ColdStartError(
-                f"Databento metadata request failed after {attempt} attempt(s): "
-                f"{type(exc).__name__}: {exc}"
-            ) from exc
-    raise AssertionError("metadata retry loop terminated without a result")
+    attempts = 0
 
+    def request() -> object:
+        nonlocal attempts
+        attempts += 1
+        return function(**kwargs)
 
-def _transient_metadata_error(exc: Exception) -> bool:
-    status = getattr(exc, "status_code", None)
-    if status is None:
-        response = getattr(exc, "response", None)
-        status = getattr(response, "status_code", None)
-    if isinstance(status, int):
-        return 500 <= status <= 599
-    message = str(exc)
-    return bool(re.search(r"(?:^|\D)5\d\d(?:\D|$)", message))
+    try:
+        return call_with_persistent_databento_retry(
+            request,
+            operation_name="metadata." + getattr(function, "__name__", "request"),
+            sleep=_retry_sleeper,
+        )
+    except Exception as exc:
+        raise ColdStartError(
+            f"Databento metadata request failed after {attempts} attempt(s): "
+            f"{type(exc).__name__}"
+        ) from exc
 
 
 def _window_start(end: date, policy: Mapping[str, object]) -> date:
@@ -2430,11 +2385,10 @@ def _read_request_cursor(
 
 
 def _next_attempt_directory(base: Path) -> Path:
-    for attempt in range(1, 10_000):
+    for attempt in count(1):
         candidate = base / f"attempt-{attempt:03d}"
         if not candidate.exists():
             return candidate
-    raise ColdStartError(f"Too many retained Databento staging attempts beneath {base}")
 
 
 def _checksum(value: object) -> str:
@@ -2457,11 +2411,10 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def _next_pending_file(path: Path) -> Path:
-    for attempt in range(1, 10_000):
+    for attempt in count(1):
         candidate = path.with_name(f"{path.name}.pending-{attempt:03d}")
         if not candidate.exists():
             return candidate
-    raise ColdStartError(f"Too many retained pending files beside {path}")
 
 
 def _utc_now() -> datetime:

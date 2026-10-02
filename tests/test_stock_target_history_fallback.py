@@ -12,6 +12,9 @@ from datafetching import xnas_replay_archive as replay
 from ml.stock_trader.contracts import STOCK_TRADER_SYMBOLS
 
 
+TEST_SYMBOL = STOCK_TRADER_SYMBOLS[0]
+
+
 @pytest.fixture
 def fallback(tmp_path, monkeypatch):
     native_builder = history.build_target_history_manifest
@@ -97,10 +100,35 @@ def test_failed_live_subscription_does_not_publish_completion_or_repeat_other_sy
 
 
 def test_all_exact_costs_must_pass_before_any_live_subscription(fallback):
-    fallback.client.metadata.get_cost = lambda **kw: 0.1 if kw["symbols"] == ["COST"] else 0.0
+    fallback.client.metadata.get_cost = lambda **kw: 0.1 if kw["symbols"] == [TEST_SYMBOL] else 0.0
     with pytest.raises(ValueError, match="zero-cost"):
         history.maintain_target_history(fallback.root, client=fallback.client, execute=True, api_key="fixture")
     assert not fallback.published
+
+
+@pytest.mark.parametrize("endpoint", ["get_cost", "list_unit_prices"])
+def test_live_preflight_metadata_persists_without_granting_subscription_authority(
+    fallback, monkeypatch, endpoint,
+):
+    from requests.exceptions import ReadTimeout
+    from datafetching import databento_cold_start as cold
+    original = getattr(fallback.client.metadata, endpoint)
+    calls, sleeps = [], []
+    def transient(**kwargs):
+        calls.append(kwargs)
+        if len(calls) <= 80:
+            raise ReadTimeout("fixture transient")
+        return original(**kwargs)
+    setattr(fallback.client.metadata, endpoint, transient)
+    monkeypatch.setattr(history, "_metadata_call", lambda fn, **kw:
+        cold._metadata_call(fn, _retry_sleeper=sleeps.append, **kw))
+    run = history.maintain_target_history(fallback.root, client=fallback.client, execute=False)
+    assert sleeps == [4.0] * 80
+    assert not fallback.published
+    assert json.loads((run / "receipt.json").read_text())["status"] == "PREFLIGHTED"
+    preflight = json.loads((run / "live-fallback-preflight.json").read_text())
+    assert preflight["live_cost_basis"]["requires_native_access_acceptance"] is True
+    assert preflight["live_cost_basis"]["exact_live_interval_quote"] is False
 
 
 def test_historical_access_errors_do_not_trigger_live(fallback, monkeypatch):
@@ -113,7 +141,7 @@ def test_historical_access_errors_do_not_trigger_live(fallback, monkeypatch):
 
 
 def test_live_cannot_bootstrap_missing_historical_baseline(fallback):
-    fallback.cursors["COST"] = None
+    fallback.cursors[TEST_SYMBOL] = None
     with pytest.raises(ValueError, match="Historical baseline"):
         history.maintain_target_history(fallback.root, client=fallback.client, execute=True, api_key="fixture")
     assert not fallback.calls
@@ -157,7 +185,7 @@ def test_old_missing_exchange_session_is_caught_up_by_historical_first(fallback,
 
 
 def test_corrupt_saved_replay_blocks_reuse_instead_of_silent_recapture(fallback, monkeypatch):
-    fallback.publish(fallback.root, symbol="AAPL", session="2026-09-08")
+    fallback.publish(fallback.root, symbol=TEST_SYMBOL, session="2026-09-08")
     def corrupted(*args, **kwargs):
         raise ValueError("replay receipt checksum mismatch")
     monkeypatch.setattr(replay, "verify_partition", corrupted)
@@ -267,7 +295,7 @@ def test_winter_historical_prefix_stays_within_provider_date_and_preserves_missi
     assert json.loads((run / "manifest.json").read_text())["as_of"] == "2026-11-06"
     assert json.loads((run / "historical-prefix-manifest.json").read_text())["as_of"] == "2026-11-05"
     assert [call[0] for call in fallback.calls[1:]] == ["cost"] * len(STOCK_TRADER_SYMBOLS) + ["publish"] * len(STOCK_TRADER_SYMBOLS)
-    for _, request in fallback.calls[1:8]:
+    for _, request in fallback.calls[1:1 + len(STOCK_TRADER_SYMBOLS)]:
         assert request["start"] == "2026-11-04T12:00:00+00:00"
         assert request["end"] == "2026-11-05T01:00:00+00:00"
     receipt = json.loads((run / "receipt.json").read_text())

@@ -144,8 +144,16 @@ def _materialize_rolling_samples(
     materialized_at: object | None = None,
     input_available_at: object | None = None,
     reporter: Callable[[str], None] | None = print,
+    _macro_decisions_only: bool = False,
 ) -> RollingMaterialization:
 
+    if _macro_decisions_only:
+        from ml.horizons import OPTION_PRICING_ACTIVE_FEATURE_PROFILE, horizon_specifications_for_profile
+        expected = horizon_specifications_for_profile(
+            OPTION_PRICING_ACTIVE_FEATURE_PROFILE, horizons=("1d", "1w")
+        )
+        if specifications != expected or provider != "databento":
+            raise MLContractError("Decision-only bootstrap requires the registered full macro scope")
     root = Path(datastore_root)
     if not root.is_dir():
         raise FileNotFoundError(f"Datastore does not exist: {root}")
@@ -286,22 +294,23 @@ def _materialize_rolling_samples(
                     ),
                 )
                 features["horizon"] = horizon
-                features, additional_sources = _attach_loop_a_features(
-                    root,
-                    features,
-                    symbols=(symbol,),
-                    horizon=horizon,
-                    source_timeframe=specification.source_timeframe,
-                    provider=clean_provider,
-                    feature_set_name=specification.feature_set,
-                    parquet_cache=parquet_cache,
-                    derived_cache=derived_cache,
-                    input_available_at=input_cutoff,
-                    committed_option_cache=committed_option_cache,
-                )
-                source_files = tuple(
-                    dict.fromkeys((*source_files, *additional_sources))
-                )
+                if not _macro_decisions_only:
+                    features, additional_sources = _attach_loop_a_features(
+                        root,
+                        features,
+                        symbols=(symbol,),
+                        horizon=horizon,
+                        source_timeframe=specification.source_timeframe,
+                        provider=clean_provider,
+                        feature_set_name=specification.feature_set,
+                        parquet_cache=parquet_cache,
+                        derived_cache=derived_cache,
+                        input_available_at=input_cutoff,
+                        committed_option_cache=committed_option_cache,
+                    )
+                    source_files = tuple(
+                        dict.fromkeys((*source_files, *additional_sources))
+                    )
                 source_price_key = (symbol, bars.timeframe)
                 if source_price_key not in price_frame_cache:
                     price_frame_cache[source_price_key] = _price_frame(bars)
@@ -392,6 +401,12 @@ def _materialize_rolling_samples(
             ],
             kind="mergesort",
         ).drop(columns="__horizon_order").reset_index(drop=True)
+    if not _macro_decisions_only and "fred-alfred-verified-context" in derived_cache:
+        from ml.macro_bootstrap import validate_bootstrap_consumption
+        validate_bootstrap_consumption(
+            root, evidence=derived_cache["fred-alfred-verified-context"],
+            samples=samples, specifications=specifications, provider=clean_provider,
+        )
     return RollingMaterialization(
         samples=samples,
         routes=tuple(routes),

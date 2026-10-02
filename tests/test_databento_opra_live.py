@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from types import SimpleNamespace
+from threading import Event, Lock, get_ident
+from types import ModuleType, SimpleNamespace
 from typing import Callable
 
 import pandas as pd
@@ -23,6 +26,60 @@ from options.snapshot import normalize_databento_opra_option_snapshot
 
 
 TARGET = pd.Timestamp("2026-08-05T17:15:00Z")
+TEST_SYMBOL = PRODUCTION_OPTION_SYMBOLS[0]
+pytestmark = pytest.mark.usefixtures("offline_databento_sdk")
+
+
+def test_offline_sdk_preserves_historical_and_dbn_readers(offline_databento_sdk) -> None:
+    from databento.common.dbnstore import DBNStore
+    from databento.historical.client import Historical
+
+    assert offline_databento_sdk.Historical is Historical
+    assert offline_databento_sdk.DBNStore is DBNStore
+    with pytest.raises(RuntimeError, match="Real Databento Live clients are disabled"):
+        offline_databento_sdk.Live(key="unit-test-placeholder")
+
+
+def test_offline_sdk_fixture_restores_preexisting_modules_and_live_identity(
+    offline_databento_sdk,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from conftest import offline_databento_sdk as sdk_fixture
+
+    class PreviousLive:
+        def __init__(self, *args, **kwargs):
+            pytest.fail("Fixture restoration must not construct a Live client")
+
+    previous_client = ModuleType("databento.live.client")
+    previous_client.Live = PreviousLive
+    previous_parent = ModuleType("databento.live")
+    previous_parent.client = previous_client
+    monkeypatch.setitem(sys.modules, "databento.live.client", previous_client)
+    monkeypatch.setitem(sys.modules, "databento.live", previous_parent)
+    monkeypatch.setattr(offline_databento_sdk, "Live", PreviousLive)
+    monkeypatch.setattr(offline_databento_sdk, "live", previous_parent, raising=False)
+    previous_modules = {
+        name: module for name, module in sys.modules.items()
+        if name == "databento" or name.startswith("databento.")
+    }
+
+    nested_fixture = sdk_fixture.__wrapped__()
+    try:
+        assert next(nested_fixture) is offline_databento_sdk
+        assert offline_databento_sdk.Live is not PreviousLive
+        assert previous_parent.client is not previous_client
+        sys.modules["databento.fixture_probe"] = ModuleType("databento.fixture_probe")
+    finally:
+        nested_fixture.close()
+
+    assert offline_databento_sdk.Live is PreviousLive
+    assert offline_databento_sdk.live is previous_parent
+    assert previous_parent.client is previous_client
+    assert previous_client.Live is PreviousLive
+    assert {
+        name: module for name, module in sys.modules.items()
+        if name == "databento" or name.startswith("databento.")
+    } == previous_modules
 
 
 class _FakeLiveClient:
@@ -82,7 +139,7 @@ def _definition(
     return SimpleNamespace(
         rtype=_rtype("INSTRUMENT_DEF"),
         raw_symbol=contract,
-        underlying="AAPL",
+        underlying=TEST_SYMBOL,
         instrument_id=instrument_id,
         ts_recv=effective_at.value,
         ts_event=(effective_at - pd.Timedelta(milliseconds=1)).value,
@@ -155,8 +212,8 @@ def _adapter(
 def _complete_evidence(
     adapter: DatabentoOpraLiveAdapter,
 ) -> object:
-    call_contract = "AAPL  260821C00100000"
-    put_contract = "AAPL  260821P00100000"
+    call_contract = f"{TEST_SYMBOL:<6}260821C00100000"
+    put_contract = f"{TEST_SYMBOL:<6}260821P00100000"
     adapter.ingest_record(
         _definition(contract=call_contract, call_put="C", instrument_id=101)
     )
@@ -166,7 +223,7 @@ def _complete_evidence(
     adapter.ingest_record(_quote(instrument_id=101))
     adapter.ingest_record(_quote(instrument_id=102, bid=1.2, ask=1.3))
     return adapter.fetch_snapshot(
-        symbol="AAPL",
+        symbol=TEST_SYMBOL,
         target_snapshot_for=TARGET,
         requested_at=TARGET + pd.Timedelta(seconds=1),
     )
@@ -216,7 +273,7 @@ def test_live_adapter_uses_one_scoped_transport_and_strict_pretarget_cbbo() -> N
     normalized = normalize_databento_opra_option_snapshot(
         evidence.quotes,
         evidence.definitions,
-        symbol="AAPL",
+        symbol=TEST_SYMBOL,
         target_snapshot_for=TARGET,
         received_at=evidence.received_at,
     )
@@ -234,7 +291,7 @@ def test_live_adapter_uses_one_scoped_transport_and_strict_pretarget_cbbo() -> N
 
 
 def test_live_adapter_rejects_scope_and_never_adds_spy() -> None:
-    with pytest.raises(MLContractError, match="exactly AAPL"):
+    with pytest.raises(MLContractError, match="exactly " + re.escape(", ".join(PRODUCTION_OPTION_SYMBOLS))):
         DatabentoOpraLiveAdapter(
             api_key="unit-test-placeholder",
             symbols=(*PRODUCTION_OPTION_SYMBOLS, "SPY"),
@@ -245,7 +302,7 @@ def test_live_adapter_rejects_scope_and_never_adds_spy() -> None:
 
 def test_live_adapter_fails_closed_on_divergent_duplicate_and_corrupt_clock() -> None:
     adapter, _client = _adapter()
-    contract = "AAPL  260821C00100000"
+    contract = f"{TEST_SYMBOL:<6}260821C00100000"
     adapter.ingest_record(
         _definition(contract=contract, call_put="C", instrument_id=101)
     )
@@ -256,7 +313,7 @@ def test_live_adapter_fails_closed_on_divergent_duplicate_and_corrupt_clock() ->
         match="OPRA_QUOTE_DUPLICATE_DIVERGED",
     ):
         adapter.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -270,7 +327,7 @@ def test_live_adapter_fails_closed_on_divergent_duplicate_and_corrupt_clock() ->
     corrupt.ingest_record(bad)
     with pytest.raises(DatabentoOpraIntegrityError, match="CLOCK_REVERSED"):
         corrupt.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -288,14 +345,14 @@ def test_live_adapter_fails_closed_on_divergent_duplicate_and_corrupt_clock() ->
         match="DEFINITION_EVENT_CLOCK_REVERSED",
     ):
         corrupt_definition.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
 
 
 def test_live_adapter_rejects_future_stale_crossed_and_ineligible_evidence() -> None:
-    contract = "AAPL  260821C00100000"
+    contract = f"{TEST_SYMBOL:<6}260821C00100000"
     stale, _client = _adapter(maximum_quote_staleness_seconds=30)
     stale.ingest_record(
         _definition(contract=contract, call_put="C", instrument_id=101)
@@ -311,7 +368,7 @@ def test_live_adapter_rejects_future_stale_crossed_and_ineligible_evidence() -> 
     stale.ingest_record(_quote(instrument_id=101, bid=2.0, ask=1.0))
     with pytest.raises(OptionProviderUnavailable, match="NO_VALID_PRETARGET_BBO"):
         stale.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -328,7 +385,7 @@ def test_live_adapter_rejects_future_stale_crossed_and_ineligible_evidence() -> 
     future_definition.ingest_record(_quote(instrument_id=101))
     with pytest.raises(OptionProviderUnavailable, match="NO_ELIGIBLE_DEFINITIONS"):
         future_definition.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -344,7 +401,7 @@ def test_live_adapter_rejects_future_stale_crossed_and_ineligible_evidence() -> 
     future_activation.ingest_record(_quote(instrument_id=101))
     with pytest.raises(OptionProviderUnavailable, match="NO_ELIGIBLE_DEFINITIONS"):
         future_activation.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -356,7 +413,7 @@ def test_live_adapter_rejects_future_stale_crossed_and_ineligible_evidence() -> 
     ineligible.ingest_record(_quote(instrument_id=101))
     with pytest.raises(OptionProviderUnavailable, match="NO_ELIGIBLE_DEFINITIONS"):
         ineligible.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -368,7 +425,7 @@ def test_live_adapter_rejects_future_stale_crossed_and_ineligible_evidence() -> 
     incomplete.ingest_record(_quote(instrument_id=101, bid=0.0, ask=1.0))
     with pytest.raises(OptionProviderUnavailable, match="NO_VALID_PRETARGET_BBO"):
         incomplete.fetch_snapshot(
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             requested_at=TARGET + pd.Timedelta(seconds=1),
         )
@@ -379,7 +436,7 @@ def test_live_adapter_bounds_quote_buckets_and_recovers_status_after_reconnect()
         now=TARGET + pd.Timedelta(minutes=31),
         retained_target_buckets=2,
     )
-    contract = "AAPL  260821C00100000"
+    contract = f"{TEST_SYMBOL:<6}260821C00100000"
     adapter.ingest_record(
         _definition(contract=contract, call_put="C", instrument_id=101)
     )
@@ -410,8 +467,8 @@ def test_live_adapter_bounds_quote_buckets_and_recovers_status_after_reconnect()
 
 def test_live_adapter_bounds_symbol_mapping_and_definition_keys() -> None:
     adapter, _client = _adapter(maximum_definitions=1)
-    first = "AAPL  260821C00100000"
-    second = "AAPL  260821P00100000"
+    first = f"{TEST_SYMBOL:<6}260821C00100000"
+    second = f"{TEST_SYMBOL:<6}260821P00100000"
     adapter.ingest_record(_mapping(instrument_id=101, contract=first))
     adapter.ingest_record(_mapping(instrument_id=102, contract=second))
     status = adapter.buffer_status()
@@ -443,7 +500,7 @@ def test_normalizer_validates_identity_duplicates_and_clock_ordering() -> None:
         normalize_databento_opra_option_snapshot(
             divergent,
             evidence.definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -453,7 +510,7 @@ def test_normalizer_validates_identity_duplicates_and_clock_ordering() -> None:
         normalize_databento_opra_option_snapshot(
             mismatched,
             evidence.definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -463,7 +520,7 @@ def test_normalizer_validates_identity_duplicates_and_clock_ordering() -> None:
         normalize_databento_opra_option_snapshot(
             future_local,
             evidence.definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -473,7 +530,7 @@ def test_normalizer_validates_identity_duplicates_and_clock_ordering() -> None:
         normalize_databento_opra_option_snapshot(
             incomplete,
             evidence.definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -484,7 +541,7 @@ def test_normalizer_validates_identity_duplicates_and_clock_ordering() -> None:
         normalize_databento_opra_option_snapshot(
             future_market,
             evidence.definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -495,7 +552,7 @@ def test_normalizer_validates_identity_duplicates_and_clock_ordering() -> None:
         normalize_databento_opra_option_snapshot(
             evidence.quotes,
             future_activation,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -524,7 +581,7 @@ def test_normalizer_rejects_each_quote_identity_mismatch(
         normalize_databento_opra_option_snapshot(
             mismatched,
             evidence.definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -550,7 +607,7 @@ def test_normalizer_rejects_missing_identity_values(
         normalize_databento_opra_option_snapshot(
             quotes,
             definitions,
-            symbol="AAPL",
+            symbol=TEST_SYMBOL,
             target_snapshot_for=TARGET,
             received_at=evidence.received_at,
         )
@@ -973,40 +1030,106 @@ def test_options_history_capacity_block_is_isolated_per_symbol(
         ).is_file()
 
 
+@pytest.mark.parametrize("preflight_only", (False, True))
+@pytest.mark.parametrize(
+    "limits",
+    (
+        {"max_estimated_download_bytes": 15, "max_estimated_cost_usd": 1.0},
+        {"max_estimated_download_bytes": 100, "max_estimated_cost_usd": 0.3},
+    ),
+)
 def test_options_history_guarded_preflight_selects_scopes_within_run_budget(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    preflight_only: bool,
+    limits: dict[str, int | float],
 ) -> None:
     entitlement = {
         "entitlements": {
-            schema: {"entitled_end": "2026-08-15"}
+            schema: {"entitled_start": "2013-08-15", "entitled_end": "2026-08-15"}
             for schema in options_runtime.STANDARD_SCHEMAS
         }
     }
+    clients: list[object] = []
+    endpoint_calls: list[tuple[str, str]] = []
+    active_clients: set[int] = set()
+    worker_threads: dict[int, int] = {}
+    completion_order: list[str] = []
+    published: list[str] = []
     synchronized: list[str] = []
-    monkeypatch.setattr("databento.Historical", lambda _key: object())
-    monkeypatch.setattr(
-        options_runtime,
-        "discover_standard_entitlement",
-        lambda *_args, **_kwargs: entitlement,
-    )
+    first_started, second_completed = Event(), Event()
+    state_lock = Lock()
+    max_active = 0
 
-    def preflight(*_args: object, **kwargs: object) -> dict[str, object]:
-        scope = kwargs["scope"]
-        return {
-            "estimated_download_size_bytes": 10,
-            "estimated_cost_usd": 0.25,
-            "scope": scope,
-        }
+    class Metadata:
+        TIMEOUT = 0
 
+        def get_billable_size(self, **kwargs: object) -> int:
+            endpoint_calls.append((kwargs["symbols"][0], "bytes"))
+            return 10
+
+        def get_record_count(self, **kwargs: object) -> int:
+            endpoint_calls.append((kwargs["symbols"][0], "records"))
+            return 2
+
+        def get_cost(self, **kwargs: object) -> float:
+            endpoint_calls.append((kwargs["symbols"][0], "cost"))
+            return 0.25
+
+    def make_client(_key: str) -> object:
+        client = SimpleNamespace(metadata=Metadata(), timeseries=SimpleNamespace(TIMEOUT=0))
+        clients.append(client)
+        assert len(clients) <= 2
+        return client
+
+    def discover(client: object, **_kwargs: object) -> dict[str, object]:
+        assert client is clients[0]
+        options_runtime.configure_client(client)
+        return entitlement
+
+    real_preflight = options_runtime.storage_preflight
+
+    def preflight(client: object, **kwargs: object) -> dict[str, object]:
+        nonlocal max_active
+        symbol = kwargs["scope"].symbols[0]
+        with state_lock:
+            assert id(client) not in active_clients
+            assert worker_threads.setdefault(id(client), get_ident()) == get_ident()
+            active_clients.add(id(client))
+            max_active = max(max_active, len(active_clients))
+        try:
+            assert client.metadata.TIMEOUT == 30
+            if symbol == "AAPL.OPT":
+                first_started.set()
+                assert second_completed.wait(5), "Second preflight did not run concurrently"
+            elif symbol == "GOOG.OPT":
+                assert first_started.wait(5)
+            result = real_preflight(client, **kwargs)
+        finally:
+            with state_lock:
+                active_clients.remove(id(client))
+                completion_order.append(symbol)
+            if symbol == "GOOG.OPT":
+                second_completed.set()
+        return result
+
+    real_publish = options_runtime.publish_storage_preflight
+
+    def publish(root: Path, value: dict[str, object]) -> dict[str, object]:
+        assert not active_clients
+        assert len(completion_order) == 3
+        published.append(value["scope"]["symbols"][0])
+        return real_publish(root, value)
+
+    monkeypatch.setattr("databento.Historical", make_client)
+    monkeypatch.setattr(options_runtime, "discover_standard_entitlement", discover)
     monkeypatch.setattr(options_runtime, "storage_preflight", preflight)
-    monkeypatch.setattr(
-        options_runtime,
-        "publish_storage_preflight",
-        lambda _root, value: value,
-    )
+    monkeypatch.setattr(options_runtime, "publish_storage_preflight", publish)
 
-    def synchronize(*_args: object, **kwargs: object) -> object:
+    def synchronize(client: object, **kwargs: object) -> object:
+        assert client is clients[0]
+        assert not active_clients
+        assert len(completion_order) == len(published) == 3
         scope = kwargs["scope"]
         synchronized.append(scope.symbols[0])
         assert kwargs["storage_preflight_receipt"][
@@ -1034,19 +1157,90 @@ def test_options_history_guarded_preflight_selects_scopes_within_run_budget(
         symbols=("AAPL", "GOOG", "NVDA"),
         schemas=("definition",),
         reporter=None,
-        max_estimated_download_bytes=15,
-        max_estimated_cost_usd=1.0,
+        preflight_only=preflight_only,
+        **limits,
     )
 
-    assert synchronized == ["AAPL.OPT"]
+    assert len(clients) == max_active == len(worker_threads) == 2
+    assert completion_order.index("GOOG.OPT") < completion_order.index("AAPL.OPT")
+    assert published == ["AAPL.OPT", "GOOG.OPT", "NVDA.OPT"]
+    for symbol in published:
+        assert [endpoint for scope, endpoint in endpoint_calls if scope == symbol] == [
+            "bytes", "records", "cost",
+        ]
+    assert synchronized == ([] if preflight_only else ["AAPL.OPT"])
     assert summary.requested_scopes == 3
     assert summary.preflighted_scopes == 3
-    assert summary.completed_scopes == 1
+    assert summary.completed_scopes == (0 if preflight_only else 1)
+    assert summary.failed_scopes == 0
     assert summary.deferred_scopes == 2
     assert summary.selected_estimated_download_bytes == 10
     assert summary.total_estimated_download_bytes == 30
     assert summary.selected_estimated_cost_usd == 0.25
     assert summary.total_estimated_cost_usd == 0.75
+
+
+def test_options_history_parallel_preflight_preserves_failed_and_unknown_cost_scopes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    synchronized: list[str] = []
+    published: list[str] = []
+    messages: list[str] = []
+    entitlement = {"entitlements": {"definition": {"entitled_end": "2026-08-15"}}}
+    monkeypatch.setattr(
+        "databento.Historical",
+        lambda _key: SimpleNamespace(
+            metadata=SimpleNamespace(TIMEOUT=0), timeseries=SimpleNamespace(TIMEOUT=0)
+        ),
+    )
+    monkeypatch.setattr(options_runtime, "discover_standard_entitlement", lambda *a, **k: entitlement)
+
+    def preflight(_client: object, **kwargs: object) -> dict[str, object]:
+        symbol = kwargs["scope"].symbols[0]
+        if symbol == "AAPL.OPT":
+            raise RuntimeError("cbbo estimated download size failed after 3 attempts")
+        if symbol == "GOOG.OPT":
+            raise TypeError("provider returned unreadable estimated bytes")
+        return {
+            "symbol": symbol,
+            "estimated_download_size_bytes": 10,
+            "estimated_cost_usd": None if symbol == "NVDA.OPT" else 0.0,
+        }
+
+    def publish(_root: Path, value: dict[str, object]) -> dict[str, object]:
+        published.append(value["symbol"])
+        return value
+
+    def synchronize(_client: object, **kwargs: object) -> object:
+        symbol = kwargs["scope"].symbols[0]
+        synchronized.append(symbol)
+        return SimpleNamespace(
+            status="COMPLETE", completed_partitions=1, skipped_partitions=0,
+            completed_rows=1, errors={}, health_path=tmp_path / "health.json",
+        )
+
+    monkeypatch.setattr(options_runtime, "storage_preflight", preflight)
+    monkeypatch.setattr(options_runtime, "publish_storage_preflight", publish)
+    monkeypatch.setattr(options_runtime, "synchronize", synchronize)
+    monkeypatch.setattr(options_runtime, "publish_health", lambda _root: tmp_path / "health.json")
+    summary = options_runtime.synchronize_option_history(
+        SimpleNamespace(root_dir=tmp_path), api_key="unit-test-placeholder",
+        symbols=("AAPL", "GOOG", "NVDA", "TSLA"), schemas=("definition",),
+        reporter=messages.append, max_estimated_download_bytes=100, max_estimated_cost_usd=0,
+    )
+
+    assert published == ["NVDA.OPT", "TSLA.OPT"]
+    assert synchronized == ["TSLA.OPT"]
+    assert summary.requested_scopes == 4
+    assert summary.failed_scopes == 2
+    assert summary.preflighted_scopes == 2
+    assert summary.deferred_scopes == 1
+    assert summary.completed_scopes == 1
+    assert summary.total_estimated_cost_usd is None
+    assert summary.selected_estimated_cost_usd == 0.0
+    assert any("symbol=AAPL" in message and "failed after 3 attempts" in message for message in messages)
+    assert any("symbol=GOOG" in message and "unreadable estimated bytes" in message for message in messages)
 
 
 def test_options_history_preflight_only_never_downloads(

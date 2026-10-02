@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import shutil
 import tempfile
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from types import MappingProxyType
 from typing import Mapping, Sequence
 
 import pandas as pd
@@ -37,6 +39,9 @@ from ml.datasets.families import MACRO_LINEAGE, MACRO_VALUES, load_macro_feature
 FRED_ALFRED_READINESS_VERSION = "fred-alfred-readiness-v1"
 FRED_ALFRED_READINESS_RECEIPT_VERSION = "fred-alfred-readiness-receipt-v1"
 FRED_ALFRED_READINESS_POINTER_VERSION = "fred-alfred-readiness-pointer-v1"
+# Older consumers must reject the new authority rather than ignore its scope.
+FRED_ALFRED_BOOTSTRAP_READINESS_VERSION = "fred-alfred-bootstrap-readiness-v1"
+FRED_ALFRED_BOOTSTRAP_RECEIPT_VERSION = "fred-alfred-bootstrap-readiness-receipt-v1"
 FRED_ALFRED_MINIMUM_COVERAGE = 0.95
 FRED_ALFRED_INCREMENTAL_OVERLAP_DAYS = 7
 FRED_ALFRED_INCREMENTAL_MAX_REALTIME_DAYS = 130
@@ -93,18 +98,20 @@ class VerifiedMacroEvidence:
     vintages: pd.DataFrame
     source_files: tuple[Path, ...]
     readiness: FredAlfredReadiness
+    bootstrap_authority: Mapping[str, str] | None = None
 
 
 def derive_fred_alfred_backfill_plan(
     datastore_root: Path,
     *,
     as_of: object | None = None,
+    bootstrap_decisions: Path | None = None,
 ) -> FredAlfredRequestPlan:
     """Derive provider bounds from the earliest eligible daily/weekly decision."""
 
     root = Path(datastore_root).resolve()
     observed = utc_timestamp(as_of)
-    decision_source, decisions = _eligible_decisions(root)
+    decision_source, decisions = _selected_decisions(root, bootstrap_decisions)
     earliest = pd.Timestamp(decisions["decision_timestamp"].min())
 
     # Each observation bound covers the configured transform lag plus the
@@ -188,9 +195,12 @@ def verify_and_publish_fred_alfred_readiness(
     import_result: FredVintageImportResult,
     verified_at: object | None = None,
     minimum_coverage: float = FRED_ALFRED_MINIMUM_COVERAGE,
+    bootstrap_decisions: Path | None = None,
 ) -> FredAlfredReadiness:
     """Verify coverage/lineage/lookahead and publish a distinct authorization."""
 
+    if bootstrap_decisions is not None and float(minimum_coverage) < FRED_ALFRED_MINIMUM_COVERAGE:
+        raise ValueError("Bootstrap readiness cannot lower the production coverage threshold")
     if not 0.0 < float(minimum_coverage) <= 1.0:
         raise ValueError("minimum_coverage must satisfy 0 < value <= 1")
     root = Path(datastore_root).resolve()
@@ -209,7 +219,7 @@ def verify_and_publish_fred_alfred_readiness(
     )
     _validate_vintage_integrity(vintages)
     release_context, release_paths = _read_release_context(root)
-    decision_source, decisions = _eligible_decisions(root)
+    decision_source, decisions = _selected_decisions(root, bootstrap_decisions)
     coverage = _coverage_report(
         decisions,
         release_context=release_context,
@@ -229,9 +239,18 @@ def verify_and_publish_fred_alfred_readiness(
         import_result.evidence_directory / "manifest.json",
         import_receipt,
     )
-    source_inventory = _relative_inventory(root, source_paths)
+    bootstrap_record = None
+    if bootstrap_decisions is not None:
+        from ml.macro_bootstrap import read_bootstrap_decisions
+        bootstrap = read_bootstrap_decisions(root, bootstrap_decisions)
+        source_paths = (*source_paths, bootstrap.receipt_path, *bootstrap.source_files)
+        bootstrap_record = {
+            "receipt_path": bootstrap.receipt_path.relative_to(root).as_posix(),
+            "receipt_checksum_sha256": file_checksum(bootstrap.receipt_path),
+        }
+    source_inventory = _relative_inventory(root, tuple(dict.fromkeys(source_paths)))
     report = {
-        "schema_version": FRED_ALFRED_READINESS_VERSION,
+        "schema_version": (FRED_ALFRED_BOOTSTRAP_READINESS_VERSION if bootstrap_record is not None else FRED_ALFRED_READINESS_VERSION),
         "verified_at": observed.isoformat(),
         "status": "PASS",
         "authorization": "LOOP_B_MACRO_CONSUMPTION",
@@ -250,6 +269,7 @@ def verify_and_publish_fred_alfred_readiness(
         "import_row_count": int(verified_import["receipt"]["row_count"]),
         "coverage": coverage,
         "source_files": source_inventory,
+        **({"bootstrap_decisions": bootstrap_record} if bootstrap_record is not None else {}),
     }
     parent = root / "ml" / "macro-readiness" / "fred-alfred"
     destination = _unused_timestamp_directory(parent, observed)
@@ -264,7 +284,7 @@ def verify_and_publish_fred_alfred_readiness(
         report_path = staging / "readiness.json"
         _write_json(report_path, report)
         receipt = {
-            "schema_version": FRED_ALFRED_READINESS_RECEIPT_VERSION,
+            "schema_version": (FRED_ALFRED_BOOTSTRAP_RECEIPT_VERSION if bootstrap_record is not None else FRED_ALFRED_READINESS_RECEIPT_VERSION),
             "verified_at": observed.isoformat(),
             "run_path": destination.relative_to(root).as_posix(),
             "readiness_checksum_sha256": file_checksum(report_path),
@@ -338,8 +358,21 @@ def read_verified_macro_evidence(
             "Verified ALFRED readiness was published after the causal input cutoff"
         )
 
-    report = json.loads(readiness.report_path.read_text(encoding="utf-8"))
+    report_bytes = readiness.report_path.read_bytes()
+    receipt_bytes = readiness.receipt_path.read_bytes()
+    report_digest = hashlib.sha256(report_bytes).hexdigest()
+    if (hashlib.sha256(receipt_bytes).hexdigest() != current.get("receipt_checksum_sha256")
+        or json.loads(receipt_bytes).get("readiness_checksum_sha256") != report_digest):
+        raise FredAlfredReadinessError("ALFRED readiness bytes changed after verification")
+    report = json.loads(report_bytes)
     source_files = _verify_inventory(root, report.get("source_files"))
+    bootstrap_authority = None
+    if "bootstrap_decisions" in report:
+        from ml.macro_bootstrap import read_bootstrap_from_readiness
+        read_bootstrap_from_readiness(root, report)
+        bootstrap_authority = MappingProxyType({
+            **report["bootstrap_decisions"], "readiness_report_sha256": report_digest,
+        })
     import_receipt = root / str(report["import_run_path"]) / FRED_ALFRED_RECEIPT_NAME
     if (
         not import_receipt.is_file()
@@ -394,11 +427,20 @@ def read_verified_macro_evidence(
             )
         ),
         readiness=readiness,
+        bootstrap_authority=bootstrap_authority,
     )
 
 
 def fred_alfred_readiness_pointer_path(datastore_root: Path) -> Path:
     return Path(datastore_root) / "ml" / "macro-readiness-latest" / "run.json"
+
+
+def _selected_decisions(root: Path, bootstrap_decisions: Path | None):
+    if bootstrap_decisions is None:
+        return _eligible_decisions(root)
+    from ml.macro_bootstrap import read_bootstrap_decisions
+    bootstrap = read_bootstrap_decisions(root, bootstrap_decisions)
+    return bootstrap.decisions_path, bootstrap.decisions
 
 
 def _eligible_decisions(root: Path) -> tuple[Path, pd.DataFrame]:
@@ -625,12 +667,23 @@ def _read_readiness_directory(root: Path, directory: Path) -> FredAlfredReadines
         ) from None
     if not isinstance(report, Mapping) or not isinstance(receipt, Mapping):
         raise FredAlfredReadinessError("ALFRED readiness evidence is malformed")
+    bootstrap = "bootstrap_decisions" in report
+    report_version = FRED_ALFRED_BOOTSTRAP_READINESS_VERSION if bootstrap else FRED_ALFRED_READINESS_VERSION
+    receipt_version = FRED_ALFRED_BOOTSTRAP_RECEIPT_VERSION if bootstrap else FRED_ALFRED_READINESS_RECEIPT_VERSION
+    if bootstrap:
+        try:
+            minimum = float(report["minimum_coverage"])
+            if (not FRED_ALFRED_MINIMUM_COVERAGE <= minimum <= 1.0
+                or float(receipt["minimum_coverage"]) != minimum):
+                raise ValueError("coverage threshold differs")
+        except (KeyError, TypeError, ValueError) as exc:
+            raise FredAlfredReadinessError("Bootstrap readiness coverage threshold is invalid") from exc
     expected_path = directory.relative_to(root).as_posix()
     verified_at = _required_utc(report.get("verified_at"), label="verified_at")
     if (
-        report.get("schema_version") != FRED_ALFRED_READINESS_VERSION
+        report.get("schema_version") != report_version
         or receipt.get("schema_version")
-        != FRED_ALFRED_READINESS_RECEIPT_VERSION
+        != receipt_version
         or receipt.get("run_path") != expected_path
         or receipt.get("readiness_checksum_sha256") != file_checksum(report_path)
         or _required_utc(
