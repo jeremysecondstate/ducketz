@@ -1,0 +1,534 @@
+{
+  "account_metrics": {
+    "alex": {
+      "actual_common_mark_equity": 6062.797578684565,
+      "actual_duckets_equity": 6062.62,
+      "common_mark_balance_edge": 1013.6240854011248,
+      "equity_rows": 362,
+      "external_flow_evidence": {
+        "event_count": 2,
+        "events": [
+          {
+            "amount": "50.0",
+            "event_type": "send",
+            "fee": "0.004489",
+            "time_ms": 1790925902302,
+            "token": "USDC",
+            "usdc_value": "50.0"
+          },
+          {
+            "amount": "1001.0",
+            "event_type": "send",
+            "fee": "0.004492",
+            "time_ms": 1790925937127,
+            "token": "USDC",
+            "usdc_value": "1001.0"
+          }
+        ],
+        "gross_usdc_amount": 1051.0,
+        "native_reason": "nonfunding_events_require_classification",
+        "range_complete": true,
+        "transaction_fees": 0.008981,
+        "zero_external_flows_verified": false
+      },
+      "fees": 8.4037091625,
+      "fills": 26,
+      "first_equity": 7114.924248346379,
+      "funding": 0.002064563625,
+      "funding_rows": 2,
+      "last_equity": 7076.4218828873945,
+      "max_drawdown_at_utc": "2026-10-02T06:51:21.741975+00:00",
+      "max_drawdown_usd": 38.69138273095905,
+      "paper_common_mark_equity": 7076.42166408569,
+      "paper_fees": 8.403709162499998,
+      "paper_funding": 0.002064563625,
+      "paper_ledger_equity": 7076.4218828873945,
+      "paper_opening_equity": 7114.924248346379,
+      "paper_pnl_since_opening": -38.50236545898406,
+      "realized_pnl": -522.5663135295922,
+      "turnover": 18674.90925
+    },
+    "clearpond": {
+      "actual_common_mark_equity": 33331.15774980954,
+      "actual_duckets_equity": 33331.17,
+      "common_mark_balance_edge": -1022.2651972500025,
+      "equity_rows": 362,
+      "external_flow_evidence": {
+        "event_count": 2,
+        "events": [
+          {
+            "amount": "49.6",
+            "event_type": "send",
+            "fee": "0.0",
+            "time_ms": 1790925921381,
+            "token": "USDC",
+            "usdc_value": "49.6"
+          },
+          {
+            "amount": "1000.6",
+            "event_type": "send",
+            "fee": "0.0",
+            "time_ms": 1790925957383,
+            "token": "USDC",
+            "usdc_value": "1000.6"
+          }
+        ],
+        "gross_usdc_amount": 1050.2,
+        "native_reason": "nonfunding_events_require_classification",
+        "range_complete": true,
+        "transaction_fees": 0.0,
+        "zero_external_flows_verified": false
+      },
+      "fees": 21.231362249999997,
+      "fills": 13,
+      "first_equity": 32322.55878231414,
+      "funding": 0,
+      "funding_rows": 0,
+      "last_equity": 32308.890053051804,
+      "max_drawdown_at_utc": "2026-10-02T07:40:27.150194+00:00",
+      "max_drawdown_usd": 13.740968810536287,
+      "paper_common_mark_equity": 32308.89255255954,
+      "paper_fees": 21.231362250000004,
+      "paper_funding": 0.0,
+      "paper_ledger_equity": 32308.890053051804,
+      "paper_opening_equity": 32322.55878231414,
+      "paper_pnl_since_opening": -13.668729262335546,
+      "realized_pnl": 7.534360387907083,
+      "turnover": 30330.517499999998
+    },
+    "jeremy": {
+      "actual_common_mark_equity": 5244.39205744736,
+      "actual_duckets_equity": 5244.53,
+      "common_mark_balance_edge": 16.779771817053188,
+      "equity_rows": 362,
+      "external_flow_evidence": {
+        "event_count": 0,
+        "events": [],
+        "gross_usdc_amount": 0.0,
+        "native_reason": "complete_empty_nonfunding_history",
+        "range_complete": true,
+        "transaction_fees": 0.0,
+        "zero_external_flows_verified": true
+      },
+      "fees": 7.0947070695,
+      "fills": 50,
+      "first_equity": 5244.674149738721,
+      "funding": -0.003423063447292001,
+      "funding_rows": 7,
+      "last_equity": 5261.108623989932,
+      "max_drawdown_at_utc": "2026-10-02T07:09:27.431062+00:00",
+      "max_drawdown_usd": 5.527799450569546,
+      "paper_common_mark_equity": 5261.171829264413,
+      "paper_fees": 7.094707069499999,
+      "paper_funding": -0.0034230634472920012,
+      "paper_ledger_equity": 5261.108623989932,
+      "paper_opening_equity": 5244.674149738721,
+      "paper_pnl_since_opening": 16.434474251211213,
+      "realized_pnl": 112.36978988884655,
+      "turnover": 15766.01571
+    },
+    "pooled": {
+      "equity_rows": 362,
+      "fees": 0,
+      "fills": 0,
+      "first_equity": 44682.15718039924,
+      "funding": 0,
+      "funding_rows": 0,
+      "last_equity": 44646.42055992913,
+      "max_drawdown_at_utc": "2026-10-02T07:09:27.431062+00:00",
+      "max_drawdown_usd": 36.603240623247984,
+      "realized_pnl": 0,
+      "turnover": 0
+    }
+  },
+  "archive": {
+    "bytes": 512575685,
+    "file_count": 474,
+    "manifest_sha256": "9455c0ed7949affa5dc9344feea8fd8f099b3b971e682b58823c785bc3ae7fdb",
+    "path": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-44"
+  },
+  "assessment": {
+    "consumed_once": true,
+    "finalizable": true,
+    "next_duration_hours": 1,
+    "outcome": "late_unscored",
+    "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-43.json",
+    "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+    "sha256": "cb35ac15e5ecec7f16a5cba7dd790359013410acf521f5eebefe73566bfb7d46"
+  },
+  "by_coin": {
+    "BTC": {
+      "coin": "BTC",
+      "fees": 15.607770176499997,
+      "fills": 24,
+      "pnl_after_fees_before_funding": -30.18506958450001,
+      "price_pnl_before_fees_funding": -14.577299408000012,
+      "realized_pnl": -14.674225389170969,
+      "turnover": 22662.514269999996
+    },
+    "ETH": {
+      "coin": "ETH",
+      "fees": 2.274819154,
+      "fills": 24,
+      "pnl_after_fees_before_funding": -2.1171644740002735,
+      "price_pnl_before_fees_funding": 0.15765467999972643,
+      "realized_pnl": 0.15419066291250585,
+      "turnover": 3527.85922
+    },
+    "HYPE": {
+      "coin": "HYPE",
+      "fees": 9.6945065955,
+      "fills": 12,
+      "pnl_after_fees_before_funding": 5.4456555378195635,
+      "price_pnl_before_fees_funding": 15.140162133319564,
+      "realized_pnl": -150.30597636242544,
+      "turnover": 19051.51639
+    },
+    "ZEC": {
+      "coin": "ZEC",
+      "fees": 9.152682556,
+      "fills": 29,
+      "pnl_after_fees_before_funding": -8.878683449599292,
+      "price_pnl_before_fees_funding": 0.27399910640070857,
+      "realized_pnl": -237.83615216415464,
+      "turnover": 19529.55258
+    }
+  },
+  "by_reason": [
+    {
+      "fees": 2.8235339999999995,
+      "fills": 1,
+      "realized_pnl": 139.461,
+      "reason": "risk_cap",
+      "turnover": 6274.5199999999995
+    },
+    {
+      "fees": 33.906244482,
+      "fills": 88,
+      "realized_pnl": -542.1231632528386,
+      "reason": "signal_rebalance",
+      "turnover": 58496.92246
+    }
+  ],
+  "comparison": {
+    "accounts": {
+      "alex": {
+        "actual_common_mark_equity": 6062.797578684565,
+        "actual_duckets_equity": 6062.62,
+        "external_flow_evidence": {
+          "event_count": 2,
+          "events": [
+            {
+              "amount": "50.0",
+              "event_type": "send",
+              "fee": "0.004489",
+              "time_ms": 1790925902302,
+              "token": "USDC",
+              "usdc_value": "50.0"
+            },
+            {
+              "amount": "1001.0",
+              "event_type": "send",
+              "fee": "0.004492",
+              "time_ms": 1790925937127,
+              "token": "USDC",
+              "usdc_value": "1001.0"
+            }
+          ],
+          "gross_usdc_amount": 1051.0,
+          "native_reason": "nonfunding_events_require_classification",
+          "range_complete": true,
+          "transaction_fees": 0.008981,
+          "zero_external_flows_verified": false
+        },
+        "paper_common_mark_equity": 7076.42166408569,
+        "paper_fees": 8.403709162499998,
+        "paper_funding": 0.002064563625,
+        "paper_ledger_equity": 7076.4218828873945,
+        "paper_net_transfers": 0.0,
+        "paper_opening_equity": 7114.924248346379,
+        "paper_pnl_since_opening": -38.50236545898406
+      },
+      "clearpond": {
+        "actual_common_mark_equity": 33331.15774980954,
+        "actual_duckets_equity": 33331.17,
+        "external_flow_evidence": {
+          "event_count": 2,
+          "events": [
+            {
+              "amount": "49.6",
+              "event_type": "send",
+              "fee": "0.0",
+              "time_ms": 1790925921381,
+              "token": "USDC",
+              "usdc_value": "49.6"
+            },
+            {
+              "amount": "1000.6",
+              "event_type": "send",
+              "fee": "0.0",
+              "time_ms": 1790925957383,
+              "token": "USDC",
+              "usdc_value": "1000.6"
+            }
+          ],
+          "gross_usdc_amount": 1050.2,
+          "native_reason": "nonfunding_events_require_classification",
+          "range_complete": true,
+          "transaction_fees": 0.0,
+          "zero_external_flows_verified": false
+        },
+        "paper_common_mark_equity": 32308.89255255954,
+        "paper_fees": 21.231362250000004,
+        "paper_funding": 0.0,
+        "paper_ledger_equity": 32308.890053051804,
+        "paper_net_transfers": 0.0,
+        "paper_opening_equity": 32322.55878231414,
+        "paper_pnl_since_opening": -13.668729262335546
+      },
+      "jeremy": {
+        "actual_common_mark_equity": 5244.39205744736,
+        "actual_duckets_equity": 5244.53,
+        "external_flow_evidence": {
+          "event_count": 0,
+          "events": [],
+          "gross_usdc_amount": 0.0,
+          "native_reason": "complete_empty_nonfunding_history",
+          "range_complete": true,
+          "transaction_fees": 0.0,
+          "zero_external_flows_verified": true
+        },
+        "paper_common_mark_equity": 5261.171829264413,
+        "paper_fees": 7.094707069499999,
+        "paper_funding": -0.0034230634472920012,
+        "paper_ledger_equity": 5261.108623989932,
+        "paper_net_transfers": 0.0,
+        "paper_opening_equity": 5244.674149738721,
+        "paper_pnl_since_opening": 16.434474251211213
+      }
+    },
+    "actual_return_fraction": null,
+    "common_mark_equity_edge": 8.138659968179127,
+    "excess_return_fraction": null,
+    "flow_events": {
+      "alex": {
+        "event_count": 2,
+        "events": [
+          {
+            "amount": "50.0",
+            "event_type": "send",
+            "fee": "0.004489",
+            "time_ms": 1790925902302,
+            "token": "USDC",
+            "usdc_value": "50.0"
+          },
+          {
+            "amount": "1001.0",
+            "event_type": "send",
+            "fee": "0.004492",
+            "time_ms": 1790925937127,
+            "token": "USDC",
+            "usdc_value": "1001.0"
+          }
+        ],
+        "gross_usdc_amount": 1051.0,
+        "native_reason": "nonfunding_events_require_classification",
+        "range_complete": true,
+        "transaction_fees": 0.008981,
+        "zero_external_flows_verified": false
+      },
+      "clearpond": {
+        "event_count": 2,
+        "events": [
+          {
+            "amount": "49.6",
+            "event_type": "send",
+            "fee": "0.0",
+            "time_ms": 1790925921381,
+            "token": "USDC",
+            "usdc_value": "49.6"
+          },
+          {
+            "amount": "1000.6",
+            "event_type": "send",
+            "fee": "0.0",
+            "time_ms": 1790925957383,
+            "token": "USDC",
+            "usdc_value": "1000.6"
+          }
+        ],
+        "gross_usdc_amount": 1050.2,
+        "native_reason": "nonfunding_events_require_classification",
+        "range_complete": true,
+        "transaction_fees": 0.0,
+        "zero_external_flows_verified": false
+      },
+      "jeremy": {
+        "event_count": 0,
+        "events": [],
+        "gross_usdc_amount": 0.0,
+        "native_reason": "complete_empty_nonfunding_history",
+        "range_complete": true,
+        "transaction_fees": 0.0,
+        "zero_external_flows_verified": true
+      }
+    },
+    "interpretation": "The positive common-mark equity edge is a point-in-time balance difference; lateness and unclassified send events invalidate after-cost return comparison.",
+    "late_seconds": 3770.638324,
+    "max_allowed_account_skew_seconds": 120,
+    "max_observation_skew_seconds": 120,
+    "mirror_baseline_verified": true,
+    "observation_skew_seconds": 26.699846,
+    "observed_account_skew_seconds": 26.699846,
+    "paper_beating_actual": null,
+    "paper_minus_unchanged_inventory_before_benchmark_funding": 3.7723730181751307,
+    "paper_return_fraction": null,
+    "performance_comparable": false,
+    "pooled": {
+      "actual_common_mark_equity": 44638.347385941466,
+      "actual_duckets_equity": 44638.32,
+      "counts": {
+        "cycles": 362,
+        "fills": 89,
+        "funding": 9,
+        "transfers": 0
+      },
+      "fees": 36.729778482,
+      "funding": -0.0013584998222920014,
+      "max_drawdown_at_utc": "2026-10-02T07:09:27.431062+00:00",
+      "max_drawdown_usd": 36.603240623247984,
+      "opening_equity": 44682.15718039924,
+      "paper_common_mark_equity": 44646.486045909645,
+      "paper_ledger_equity": 44646.42055992913,
+      "paper_pnl_since_opening": -35.73662047010839,
+      "transfers": 0,
+      "turnover": 64771.44246
+    },
+    "raw_display_equity_edge": 8.100559929131123,
+    "relative_return_status": "unavailable_unscored",
+    "result": "unscored",
+    "unchanged_opening_inventory_equity_before_funding": 44642.71367289147,
+    "unscored_reasons": [
+      "closing_observation_exceeds_five_minute_lateness_allowance",
+      "nonfunding_send_events_unclassified"
+    ],
+    "zero_external_flows_verified": false
+  },
+  "comparison_created_at_utc": "2026-10-02T07:48:20.067550+00:00",
+  "decision_hold_skip_reasons": [
+    {
+      "action": "fill",
+      "n": 1,
+      "reason": "risk_cap"
+    },
+    {
+      "action": "fill",
+      "n": 88,
+      "reason": "signal_rebalance"
+    },
+    {
+      "action": "hold",
+      "n": 87,
+      "reason": "below_rebalance_threshold"
+    },
+    {
+      "action": "hold",
+      "n": 84,
+      "reason": "forecast_unavailable"
+    },
+    {
+      "action": "hold",
+      "n": 4,
+      "reason": "gross_capacity_exhausted"
+    },
+    {
+      "action": "hold",
+      "n": 74,
+      "reason": "opposite_account_direction"
+    },
+    {
+      "action": "skip",
+      "n": 1,
+      "reason": "below_min_notional"
+    },
+    {
+      "action": "skip",
+      "n": 45,
+      "reason": "below_size_precision"
+    }
+  ],
+  "due_at_utc": "2026-10-02T06:45:02.728868+00:00",
+  "duration_hours": 1,
+  "experiment_id": "20261002-paper-round-43",
+  "fills_by_forecast_role": {
+    "active:True": 65,
+    "research_candidate:False": 24
+  },
+  "follow_up_hypothesis": {
+    "collection_repair": "At the next endpoint, capture the comparison at the committed deadline and preserve transaction source/destination evidence sufficient for native classification.",
+    "guardrail": "Keep comparative score unscored until native flow and timing gates pass; do not infer a win from the positive balance edge.",
+    "hypothesis": "The time-paired sends may be internal to the compared public-account set; verify receiver-side history and fee-adjusted amounts against retained public reads before classifying them.",
+    "issue": "Endpoint timing gate failed and two accounts contain complete but unclassified USDC send histories."
+  },
+  "forecast_evidence": {
+    "committed_decision_count": 384,
+    "consumed_forecast_decision_count": 300,
+    "decision_rows_sha256": "83f54a29c6b59be2398ebd9b899df8e5a0bdbc7ad3b4d83eca19c838588c0f4e",
+    "endpoint_at_utc": "2026-10-02T07:47:53.367192+00:00",
+    "experiment_id": "20261002-paper-round-43",
+    "first_valid_witness": {
+      "decision": {
+        "coin": "BTC",
+        "committed_at_utc": "2026-10-02T05:49:11.520972+00:00",
+        "cycle_id": "forecast:386553a85ad44d1f9ee28918b1cad7a7",
+        "decision_id": "0bb1f78aa933470d91b35861bc2c66fa",
+        "details_json": "{\"account\":\"alex\",\"action\":\"hold\",\"coin\":\"BTC\",\"current_notional\":0.0,\"data_run_id\":\"20261002T054506Z-4c30f87a\",\"decision_checks\":{\"account_capacity_notional\":0,\"account_role\":\"short_perp\",\"available_cash\":0.0,\"book_time_utc\":\"2026-10-02T05:49:09.921000+00:00\",\"capacity_limited\":false,\"cash_limited\":false,\"cooldown_blocks_target\":false,\"cooldown_remaining_seconds\":0.0,\"cooldown_until_utc\":null,\"delta_notional\":0.0,\"entry_probability_long\":0.5,\"entry_probability_short\":0.5,\"exit_probability_long\":0.5,\"exit_probability_short\":0.5,\"forecast_created_at_utc\":\"2026-10-02T05:45:06.640426+00:00\",\"historical_entry_price\":null,\"minimum_trade_notional\":10.0,\"opposing_reduction_unavailable\":false,\"policy_reason\":\"gross_capacity_exhausted\",\"proposed_target_notional\":0.0,\"quote_attempt_count\":1,\"rebalance_forced\":true,\"rebalance_min_delta_fraction\":0.0,\"rebalance_required\":false,\"rebalance_threshold_notional\":10.0,\"recovery_of_cycle_id\":null,\"risk_reference_price\":null,\"risk_reference_source\":null,\"stop_loss_fraction\":0.03,\"stop_return_fraction\":null,\"strategy_direction\":\"flat\",\"trigger_reason\":\"signal_rebalance\",\"venue_minimum_fill_notional\":10.0},\"forecast_created_at_utc\":\"2026-10-02T05:45:06.640426+00:00\",\"forecast_id\":\"386553a85ad44d1f9ee28918b1cad7a7\",\"forecast_observation\":{\"max_forecast_age_seconds\":300,\"max_model_age_seconds\":86400,\"observed_at_utc\":\"2026-10-02T05:49:11.520458+00:00\",\"prediction\":{\"_valid_until_epoch\":1790920200.0,\"coin\":\"BTC\",\"created_at_utc\":\"2026-10-02T05:45:06.640426+00:00\",\"data_run_id\":\"20261002T054506Z-4c30f87a\",\"decision_close_utc\":\"2026-10-02T05:45:00+00:00\",\"decision_price\":86116.0,\"decision_timestamp_utc\":\"2026-10-02T05:40:00+00:00\",\"horizon_bars\":1,\"interval\":\"5m\",\"model_id\":\"20261002T054255Z-e15371a7\",\"p_down\":0.5002635332522047,\"p_not_down\":0.4997364667477952,\"per_model\":{\"extra_trees\":{\"p_down\":0.5012283131472668,\"p_not_down\":0.49877168685273326},\"hist_gradient_boosting\":{\"p_down\":0.5022798362948099,\"p_not_down\":0.4977201637051901},\"logistic\":{\"p_down\":0.4990676110149107,\"p_not_down\":0.5009323889850893},\"mlp\":{\"p_down\":0.5015458326032599,\"p_not_down\":0.4984541673967401},\"random_forest\":{\"p_down\":0.5010378279934433,\"p_not_down\":0.49896217200655674}},\"prediction_id\":\"386553a85ad44d1f9ee28918b1cad7a7\",\"qualified\":true,\"role\":\"active\",\"target_close_utc\":\"2026-10-02T05:50:00+00:00\"},\"schema_version\":1,\"sigma\":0.0025733561394085647},\"kind\":\"perp\",\"model_id\":\"20261002T054255Z-e15371a7\",\"p_not_down\":0.4997364667477952,\"policy\":{\"absolute_probability_edge\":0.00026353325220479507,\"account_cash_constraints_applied\":false,\"binding_caps\":[\"pool_gross\"],\"confidence\":0.0010980552175199796,\"confidence_floor_band\":0.0,\"current_coin_gross\":21598.5238472448,\"current_coin_net\":21598.5238472448,\"direction\":\"flat\",\"dollar_volatility_budget\":0.022080444287396733,\"effective_horizon_sigma\":0.005,\"existing_matching_gross\":-0.0,\"existing_opposing_gross_to_reduce\":21598.5238472448,\"input_horizon_sigma\":0.0025733561394085647,\"other_gross\":39921.16604190286,\"pool_gross_cap\":26811.577335508595,\"pool_remaining_gross_capacity\":0.0,\"probability_not_down\":0.4997364667477952,\"reason\":\"gross_capacity_exhausted\",\"sizing_meaning\":\"Probability conviction scaled by trailing volatility; not expected return or maximum-loss protection.\",\"symbol_gross_cap\":6702.894333877149,\"target_gross\":0.0,\"uncapped_target_gross\":4.416088857479346},\"policy_id\":\"88cd1a6a008df9b9\",\"qualified\":true,\"reason\":\"gross_capacity_exhausted\",\"target_notional\":0.0}",
+        "forecast_id": "386553a85ad44d1f9ee28918b1cad7a7",
+        "model_id": "20261002T054255Z-e15371a7",
+        "timestamp_utc": "2026-10-02T05:49:11.520972+00:00"
+      },
+      "decision_sha256": "ac2a81312bb43112f620213ed91ac57db5e30735d91f015da21a8402db6a6f91",
+      "model_record_json": "{\r\n  \"model_id\": \"20261002T054255Z-e15371a7\",\r\n  \"source_run_id\": \"20261002T054006Z-78c88ceb\",\r\n  \"source_last_close_utc\": \"2026-10-02T05:40:00+00:00\",\r\n  \"trained_at_utc\": \"2026-10-02T05:42:55.765813+00:00\",\r\n  \"eligible\": true,\r\n  \"settings\": {\r\n    \"horizon_bars\": 1,\r\n    \"min_train_rows\": 1000,\r\n    \"calibration_rows\": 192,\r\n    \"assessment_rows\": 288,\r\n    \"random_state\": 42,\r\n    \"model_threads\": 2,\r\n    \"max_train_rows\": null,\r\n    \"split_mode\": \"fractions\",\r\n    \"train_fraction\": 0.7,\r\n    \"calibration_fraction\": 0.15,\r\n    \"assessment_fraction\": 0.15,\r\n    \"calibration_c\": 0.04,\r\n    \"logistic_weight\": 0.4,\r\n    \"extra_trees_weight\": 0.1,\r\n    \"hist_gradient_boosting_weight\": 0.1875,\r\n    \"mlp_weight\": 0.05,\r\n    \"random_forest_weight\": 0.2625,\r\n    \"ensemble_probability_shrinkage\": 0.5\r\n  },\r\n  \"horizon_bars\": 1,\r\n  \"coin\": \"BTC\",\r\n  \"interval\": \"5m\",\r\n  \"codeversion\": 1,\r\n  \"feature_revision\": \"btc_shared_causal_v1\",\r\n  \"feature_names\": [\r\n    \"log_return_1\",\r\n    \"log_return_3\",\r\n    \"log_return_6\",\r\n    \"ema_close_6\",\r\n    \"ema_close_10\",\r\n    \"ema_close_20\",\r\n    \"ema_close_50\",\r\n    \"volatility_log_return_6\",\r\n    \"volatility_log_return_10\",\r\n    \"volatility_log_return_20\",\r\n    \"rsi_14\",\r\n    \"atr_14\",\r\n    \"bb_mid_20\",\r\n    \"bb_width_20\",\r\n    \"bb_position_20\",\r\n    \"volume_ratio_20\",\r\n    \"stochastic_14\",\r\n    \"momentum_6\",\r\n    \"lwmf_v2\",\r\n    \"tdindi_v2\",\r\n    \"vaa_v2\",\r\n    \"adi_v2\",\r\n    \"dirpresh_v2\",\r\n    \"vwtmi_v2\",\r\n    \"pvam_v2\",\r\n    \"apdi_v2\",\r\n    \"ivts_v2\",\r\n    \"directins_v2\",\r\n    \"paindex_v2\",\r\n    \"dvwa_v2\",\r\n    \"pdpf_v2\",\r\n    \"dypim_v2\",\r\n    \"pmvf_v2\",\r\n    \"epdii_v2\",\r\n    \"cvei_v2\",\r\n    \"smdi_v2\",\r\n    \"etsa_v2\",\r\n    \"roc_v2\"\r\n  ],\r\n  \"bundle_path\": \"C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\BTC\\\\5m\\\\h1\\\\runs\\\\20261002T054255Z-e15371a7\\\\bundle.joblib\",\r\n  \"report_path\": \"C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\BTC\\\\5m\\\\h1\\\\runs\\\\20261002T054255Z-e15371a7\\\\report.json\",\r\n  \"assessment_path\": \"C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\BTC\\\\5m\\\\h1\\\\runs\\\\20261002T054255Z-e15371a7\\\\assessment.parquet\"\r\n}\r\n",
+      "model_record_sha256": "160b2c8171c0e03026e39e140033ac6baeb46c0d8a7b330cee735d793a632e71"
+    },
+    "invalid_forecast_decision_count": 0,
+    "invalid_qualified_decision_count": 0,
+    "qualified_decision_count": 225,
+    "rule": "valid-in-round-forecast-v2",
+    "schema_version": 1,
+    "seed_at_utc": "2026-10-02T05:45:02.728868723+00:00",
+    "valid_forecast_count": 100,
+    "valid_qualified_forecast_count": 75
+  },
+  "inventory_adjustment_retained_in_total_results": true,
+  "ledger_integrity_check": {
+    "completed_at_utc": "2026-10-02T08:40:07.782803+00:00",
+    "result": "ok",
+    "started_at_utc": "2026-10-02T08:40:07.768715+00:00"
+  },
+  "limitations": [
+    "The endpoint was captured more than one hour after due; the native timing gate prohibits scoring it as a WIN, LOSS or TIE.",
+    "Alex and Clear Pond histories were complete but contained USDC send events; their external-flow treatment was not reconciled, so excess returns remain null.",
+    "Account and quote reads are sequential, not an atomic snapshot; common marking removes quote differences only.",
+    "No source/model parameter change was made and no software tests ran; the retained recipe is a prospective hypothesis, not a proven performance improvement."
+  ],
+  "paper_observed_at_utc": "2026-10-02T07:47:53.367192+00:00",
+  "research_and_qualified_attribution": {
+    "qualification_labels_preserved": true,
+    "qualified_forecast_fills": 65,
+    "research_forecast_fills": 24,
+    "total_forecast_driven_fills": 89,
+    "witness_rule": "valid-in-round-forecast-v2"
+  },
+  "schema_version": 1,
+  "seed_at_utc": "2026-10-02T05:45:02.728868723+00:00",
+  "startup_inventory_adjustment": {
+    "fees": 35.1965721,
+    "fills": 8,
+    "funding_count": 0,
+    "funding_total": 0,
+    "realized_pnl": -403.867330000001,
+    "retained_in_total_results": true,
+    "turnover": 61443.0455
+  }
+}

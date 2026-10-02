@@ -1,0 +1,454 @@
+[
+  {
+    "completed_at_utc": "2026-10-02T07:59:29.884716+00:00",
+    "public_owner_sha256": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+    "response": {
+      "assetPositions": [
+        {
+          "position": {
+            "coin": "HYPE",
+            "cumFunding": {
+              "allTime": "-125.19924",
+              "sinceChange": "-2.804056",
+              "sinceOpen": "-125.19924"
+            },
+            "entryPx": "86.1365",
+            "leverage": {
+              "type": "cross",
+              "value": 10
+            },
+            "liquidationPx": "144.1841326984",
+            "marginUsed": "807.354",
+            "maxLeverage": 10,
+            "positionValue": "8073.54",
+            "returnOnEquity": "-0.4143917573",
+            "szi": "-90.0",
+            "unrealizedPnl": "-321.248567"
+          },
+          "type": "oneWay"
+        },
+        {
+          "position": {
+            "coin": "ZEC",
+            "cumFunding": {
+              "allTime": "-64.56819",
+              "sinceChange": "-4.618004",
+              "sinceOpen": "-64.56819"
+            },
+            "entryPx": "1356.7158",
+            "leverage": {
+              "type": "cross",
+              "value": 10
+            },
+            "liquidationPx": "2085.5331346939",
+            "marginUsed": "969.57",
+            "maxLeverage": 10,
+            "positionValue": "9695.7",
+            "returnOnEquity": "-0.2092123803",
+            "szi": "-7.0",
+            "unrealizedPnl": "-198.689223"
+          },
+          "type": "oneWay"
+        }
+      ],
+      "crossMaintenanceMarginUsed": "888.462",
+      "crossMarginSummary": {
+        "accountValue": "1741.9561",
+        "totalMarginUsed": "1776.924",
+        "totalNtlPos": "17769.24",
+        "totalRawUsd": "19511.1961"
+      },
+      "marginSummary": {
+        "accountValue": "1741.9561",
+        "totalMarginUsed": "1776.924",
+        "totalNtlPos": "17769.24",
+        "totalRawUsd": "19511.1961"
+      },
+      "time": 1790927969627,
+      "withdrawable": "0.0"
+    },
+    "started_at_utc": "2026-10-02T07:59:29.507919+00:00",
+    "type": "clearinghouseState"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:29.886217+00:00",
+    "public_owner_sha256": "1937d4251565d39dba8ed80222e2dd28ffbaf0bc0e4bfd21b2428c8549f004de",
+    "response": {
+      "data": {
+        "user": "0x2d8db16c2d73855111cc13f0f19a2d6048de9462"
+      },
+      "role": "agent"
+    },
+    "started_at_utc": "2026-10-02T07:59:29.508122+00:00",
+    "type": "userRole"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:29.889823+00:00",
+    "public_owner_sha256": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a",
+    "response": {
+      "assetPositions": [
+        {
+          "position": {
+            "coin": "HYPE",
+            "cumFunding": {
+              "allTime": "107.259559",
+              "sinceChange": "0.017808",
+              "sinceOpen": "107.259559"
+            },
+            "entryPx": "87.6437",
+            "leverage": {
+              "type": "cross",
+              "value": 10
+            },
+            "liquidationPx": "20.6983976241",
+            "marginUsed": "627.942",
+            "maxLeverage": 10,
+            "positionValue": "6279.42",
+            "returnOnEquity": "0.2353029151",
+            "szi": "70.0",
+            "unrealizedPnl": "144.359756"
+          },
+          "type": "oneWay"
+        },
+        {
+          "position": {
+            "coin": "ZEC",
+            "cumFunding": {
+              "allTime": "56.412586",
+              "sinceChange": "0.360699",
+              "sinceOpen": "56.412586"
+            },
+            "entryPx": "1391.5015",
+            "leverage": {
+              "type": "cross",
+              "value": 10
+            },
+            "liquidationPx": "464.9986349875",
+            "marginUsed": "727.1775",
+            "maxLeverage": 10,
+            "positionValue": "7271.775",
+            "returnOnEquity": "-0.046004325",
+            "szi": "5.25",
+            "unrealizedPnl": "-33.607921"
+          },
+          "type": "oneWay"
+        }
+      ],
+      "crossMaintenanceMarginUsed": "677.55975",
+      "crossMarginSummary": {
+        "accountValue": "1635.588693",
+        "totalMarginUsed": "1355.1195",
+        "totalNtlPos": "13551.195",
+        "totalRawUsd": "-11915.606307"
+      },
+      "marginSummary": {
+        "accountValue": "1635.588693",
+        "totalMarginUsed": "1355.1195",
+        "totalNtlPos": "13551.195",
+        "totalRawUsd": "-11915.606307"
+      },
+      "time": 1790927969627,
+      "withdrawable": "280.469193"
+    },
+    "started_at_utc": "2026-10-02T07:59:29.507599+00:00",
+    "type": "clearinghouseState"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.218363+00:00",
+    "public_owner_sha256": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+    "response": {
+      "balances": [
+        {
+          "coin": "USDC",
+          "entryNtl": "0.0",
+          "hold": "1776.924",
+          "token": 0,
+          "total": "6036.64554037"
+        },
+        {
+          "coin": "HYPE",
+          "entryNtl": "0.00262882",
+          "hold": "0.0",
+          "token": 150,
+          "total": "0.00003283"
+        },
+        {
+          "coin": "USDE",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 235,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDT0",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 268,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDH",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 360,
+          "total": "0.0"
+        },
+        {
+          "coin": "UZEC",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 419,
+          "total": "0.0"
+        }
+      ],
+      "tokenToAvailableAfterMaintenance": [
+        [
+          0,
+          "5148.18354037"
+        ]
+      ]
+    },
+    "started_at_utc": "2026-10-02T07:59:29.884788+00:00",
+    "type": "spotClearinghouseState"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.219231+00:00",
+    "public_owner_sha256": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+    "response": {
+      "assetPositions": [],
+      "crossMaintenanceMarginUsed": "0.0",
+      "crossMarginSummary": {
+        "accountValue": "0.0",
+        "totalMarginUsed": "0.0",
+        "totalNtlPos": "0.0",
+        "totalRawUsd": "0.0"
+      },
+      "marginSummary": {
+        "accountValue": "0.0",
+        "totalMarginUsed": "0.0",
+        "totalNtlPos": "0.0",
+        "totalRawUsd": "0.0"
+      },
+      "time": 1790927969946,
+      "withdrawable": "0.0"
+    },
+    "started_at_utc": "2026-10-02T07:59:29.886270+00:00",
+    "type": "clearinghouseState"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.224976+00:00",
+    "public_owner_sha256": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a",
+    "response": {
+      "balances": [
+        {
+          "coin": "USDC",
+          "entryNtl": "0.0",
+          "hold": "1355.11949859",
+          "ltv": "0.0",
+          "supplied": "3630.97661539",
+          "token": 0,
+          "total": "5266.56530838"
+        },
+        {
+          "coin": "HYPE",
+          "entryNtl": "0.00062022",
+          "hold": "0.0",
+          "ltv": "0.65",
+          "token": 150,
+          "total": "0.00000752"
+        },
+        {
+          "coin": "UBTC",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "ltv": "0.5",
+          "token": 197,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDE",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 235,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDT0",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "ltv": "0.0",
+          "token": 268,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDH",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "ltv": "0.0",
+          "token": 360,
+          "total": "0.0"
+        }
+      ],
+      "portfolioMarginEnabled": true,
+      "portfolioMarginRatio": "0.1286530614",
+      "tokenToAvailableAfterMaintenance": [
+        [
+          0,
+          "4589.00556003"
+        ],
+        [
+          150,
+          "0.00000752"
+        ],
+        [
+          197,
+          "0.0"
+        ],
+        [
+          268,
+          "0.0"
+        ],
+        [
+          360,
+          "0.0"
+        ]
+      ],
+      "tokenToPortfolioBorrowRatio": [
+        [
+          0,
+          "0.0"
+        ],
+        [
+          360,
+          "0.0"
+        ]
+      ],
+      "tokenToPortfolioSupplyRatio": [
+        [
+          150,
+          "0.0"
+        ],
+        [
+          197,
+          "0.0"
+        ]
+      ]
+    },
+    "started_at_utc": "2026-10-02T07:59:29.889868+00:00",
+    "type": "spotClearinghouseState"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.546775+00:00",
+    "public_owner_sha256": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+    "response": {
+      "balances": [
+        {
+          "coin": "USDC",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 0,
+          "total": "3181.09673727"
+        },
+        {
+          "coin": "HYPE",
+          "entryNtl": "4242.47272476",
+          "hold": "0.0",
+          "token": 150,
+          "total": "50.04112969"
+        },
+        {
+          "coin": "UBTC",
+          "entryNtl": "20283.82289568",
+          "hold": "0.0",
+          "token": 197,
+          "total": "0.2509938624"
+        },
+        {
+          "coin": "UETH",
+          "entryNtl": "2659.657",
+          "hold": "0.0",
+          "token": 221,
+          "total": "1.0002993"
+        },
+        {
+          "coin": "USDE",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 235,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDT0",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 268,
+          "total": "0.0"
+        },
+        {
+          "coin": "USDH",
+          "entryNtl": "0.0",
+          "hold": "0.0",
+          "token": 360,
+          "total": "0.0"
+        },
+        {
+          "coin": "UZEC",
+          "entryNtl": "1302.48206078",
+          "hold": "0.0",
+          "token": 419,
+          "total": "1.005004647"
+        }
+      ],
+      "tokenToAvailableAfterMaintenance": [
+        [
+          0,
+          "3181.09673727"
+        ]
+      ]
+    },
+    "started_at_utc": "2026-10-02T07:59:30.219280+00:00",
+    "type": "spotClearinghouseState"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.564785+00:00",
+    "public_owner_sha256": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+    "response": "unifiedAccount",
+    "started_at_utc": "2026-10-02T07:59:30.218428+00:00",
+    "type": "userAbstraction"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.569944+00:00",
+    "public_owner_sha256": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a",
+    "response": "portfolioMargin",
+    "started_at_utc": "2026-10-02T07:59:30.225022+00:00",
+    "type": "userAbstraction"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.892691+00:00",
+    "public_owner_sha256": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+    "response": "unifiedAccount",
+    "started_at_utc": "2026-10-02T07:59:30.546844+00:00",
+    "type": "userAbstraction"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.907883+00:00",
+    "public_owner_sha256": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+    "response": [],
+    "started_at_utc": "2026-10-02T07:59:30.564841+00:00",
+    "type": "frontendOpenOrders"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:30.912281+00:00",
+    "public_owner_sha256": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a",
+    "response": [],
+    "started_at_utc": "2026-10-02T07:59:30.569992+00:00",
+    "type": "frontendOpenOrders"
+  },
+  {
+    "completed_at_utc": "2026-10-02T07:59:31.185159+00:00",
+    "public_owner_sha256": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+    "response": [],
+    "started_at_utc": "2026-10-02T07:59:30.892759+00:00",
+    "type": "frontendOpenOrders"
+  }
+]

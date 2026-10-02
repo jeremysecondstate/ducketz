@@ -1,0 +1,323 @@
+{
+  "cadence": {
+    "active_experiment_id": "20261002-paper-round-44",
+    "due_at_utc": "2026-10-02T08:59:32.930325+00:00",
+    "ending_assessment_consumed_once": true,
+    "evaluation_hours": 1,
+    "pending_assessment": null
+  },
+  "coordination": {
+    "authority_unchanged": true,
+    "contract_version": "cross-pc-v2",
+    "current_verified_installed_release": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+    "initial_verified_release": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+    "installed_manifest_files": 21,
+    "owned_shared_source_changes": [],
+    "source_checkout_head_observed": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "source_queue_required": false
+  },
+  "cycle_id": "20261002-paper-round-44",
+  "due_at_utc": "2026-10-02T08:59:32.930325+00:00",
+  "evaluation_hours": 1,
+  "first_trading_interval": {
+    "counts": {
+      "cycles": 11,
+      "decisions": 12,
+      "equity": 44,
+      "fills": 8,
+      "funding": 4,
+      "initial_positions": 10,
+      "transfers": 0
+    },
+    "latest_committed_at_utc": "2026-10-02T08:02:39.589468+00:00",
+    "latest_portfolio_equity": 44702.87656119631,
+    "startup_inventory_adjustment": {
+      "as_of_commit_utc": "2026-10-02T08:02:39.589468+00:00",
+      "fees": 35.24166675,
+      "fills": 8,
+      "funding": 0.0527635,
+      "funding_rows": 4,
+      "realized_pnl": -373.133443,
+      "retained_in_total_results": true,
+      "transfers": 0,
+      "turnover": 61511.4975
+    },
+    "verification_result": "passed",
+    "verified_at_utc": "2026-10-02T08:03:09.533640+00:00"
+  },
+  "fresh_model_forecasts": {
+    "BTC/5m/h1": {
+      "created_at_utc": "2026-10-02T08:00:07.282915+00:00",
+      "label": "Qualified",
+      "model_id": "20261002T075826Z-dbf25b4f",
+      "prediction_id": "97f90745085143f99b9cd0895a29c2bc",
+      "qualified": true,
+      "result": "passed",
+      "target_close_utc": "2026-10-02T08:05:00+00:00"
+    },
+    "ETH/5m/h1": {
+      "created_at_utc": "2026-10-02T08:00:07.350466+00:00",
+      "label": "Research",
+      "model_id": "20261002T075836Z-ac360597",
+      "prediction_id": "f5e32ba323384c3ca0a7bfe5b6fab087",
+      "qualified": false,
+      "result": "passed",
+      "target_close_utc": "2026-10-02T08:05:00+00:00"
+    },
+    "HYPE/5m/h1": {
+      "created_at_utc": "2026-10-02T08:00:07.419417+00:00",
+      "label": "Research",
+      "model_id": "20261002T075846Z-fc5568a1",
+      "prediction_id": "e8bf5cdad4f2402395ff2dba84be545e",
+      "qualified": false,
+      "result": "passed",
+      "target_close_utc": "2026-10-02T08:05:00+00:00"
+    },
+    "ZEC/5m/h1": {
+      "created_at_utc": "2026-10-02T08:00:07.487615+00:00",
+      "label": "Qualified",
+      "model_id": "20261002T075856Z-85f644d2",
+      "prediction_id": "724d4a4a5da648eeb01058e3b1ab7345",
+      "qualified": true,
+      "result": "passed",
+      "target_close_utc": "2026-10-02T08:05:00+00:00"
+    }
+  },
+  "limitations": [
+    "Round43 endpoint arrived 62m50.638s after the one-hour deadline; it cannot be scored.",
+    "Alex and Clear Pond each have two complete-history USDC send events that native flow evidence does not classify; excess returns remain null.",
+    "Round44 stdout/stderr are live runtime files and were not snapshotted; archived Round43 runtime log files were not present.",
+    "No source/model retune or software test suite was selected because the ending comparison was unscored, not a verified loss or tie."
+  ],
+  "next_action_hypothesis": {
+    "collection_repair": "At the next endpoint, capture the comparison at the committed deadline and preserve transaction source/destination evidence sufficient for native classification.",
+    "guardrail": "Keep comparative score unscored until native flow and timing gates pass; do not infer a win from the positive balance edge.",
+    "hypothesis": "The time-paired sends may be internal to the compared public-account set; verify receiver-side history and fee-adjusted amounts against retained public reads before classifying them.",
+    "issue": "Endpoint timing gate failed and two accounts contain complete but unclassified USDC send histories."
+  },
+  "opening_equity": 44702.27354647016,
+  "opening_verification": {
+    "all_ten_positions_reconciled": true,
+    "counts": {
+      "cycles": 1,
+      "decisions": 0,
+      "equity": 4,
+      "fills": 0,
+      "funding": 0,
+      "initial_positions": 10,
+      "transfers": 0
+    },
+    "opening_fees": 0.0,
+    "opening_fills_fees_funding_transfers_zero": true,
+    "opening_pnl": 0.0,
+    "result": "passed",
+    "source_accounts": {
+      "alex": {
+        "base_collateral": 6556.58333037,
+        "open_orders_not_imported": 0,
+        "opening_equity": 6036.64187617307,
+        "source_account_mode": "unifiedAccount",
+        "source_equity": 6036.6484861730705,
+        "source_to_opening_valuation_difference": -0.00661000000036438
+      },
+      "clearpond": {
+        "base_collateral": 3181.09673727,
+        "open_orders_not_imported": 0,
+        "opening_equity": 33399.06439715501,
+        "source_account_mode": "unifiedAccount",
+        "source_equity": 33399.06439715501,
+        "source_to_opening_valuation_difference": 0.0
+      },
+      "jeremy": {
+        "base_collateral": 5155.81347338,
+        "open_orders_not_imported": 0,
+        "opening_equity": 5266.56727314208,
+        "source_account_mode": "portfolioMargin",
+        "source_equity": 5266.56598314208,
+        "source_to_opening_valuation_difference": 0.0012900000001536682
+      }
+    },
+    "source_open_orders_zero": true,
+    "verified_at_utc": "2026-10-02T08:00:10.630280+00:00"
+  },
+  "operational_checks": [
+    {
+      "checked_at_utc": "2026-10-02T08:40:07.782803+00:00",
+      "name": "archived_round43_ledger_integrity",
+      "result": "passed",
+      "started_at_utc": "2026-10-02T08:40:07.768715+00:00"
+    },
+    {
+      "checked_at_utc": "2026-10-02T07:51:41.370066Z",
+      "name": "round43_late_close_native_health",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T07:52:05.492626Z",
+      "name": "round43_late_close_trading_verifier",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T08:00:10.630280+00:00",
+      "name": "round44_opening_verifier",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T08:03:09.533640+00:00",
+      "name": "round44_first_cycle_verifier",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T08:03:59.410625+00:00",
+      "name": "round44_advancing_health",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T08:09:08.289165+00:00",
+      "name": "round44_post_completion_health",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T08:35:43.260309+00:00",
+      "name": "round44_handoff_health_with_advancing_commit",
+      "result": "passed"
+    },
+    {
+      "checked_at_utc": "2026-10-02T08:43:59.699120+00:00",
+      "name": "archive_all_474_preservation_hashes_reverified",
+      "result": "passed"
+    }
+  ],
+  "prior_comparison": {
+    "actual_return_fraction": null,
+    "common_mark_equity_edge": 8.138659968179127,
+    "excess_return_fraction": null,
+    "late_seconds": 3770.638324,
+    "max_allowed_observation_skew_seconds": 120,
+    "observation_skew_seconds": 26.699846,
+    "paper_return_fraction": null,
+    "performance_comparable": false,
+    "unscored_reasons": [
+      "closing_observation_exceeds_five_minute_lateness_allowance",
+      "nonfunding_send_events_unclassified"
+    ],
+    "zero_external_flows_verified": false
+  },
+  "prior_due_at_utc": "2026-10-02T06:45:02.728868+00:00",
+  "prior_experiment_id": "20261002-paper-round-43",
+  "prior_native_assessment": {
+    "consumed_once": true,
+    "finalizable": true,
+    "next_duration_hours": 1,
+    "outcome": "late_unscored",
+    "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-43.json",
+    "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+    "sha256": "cb35ac15e5ecec7f16a5cba7dd790359013410acf521f5eebefe73566bfb7d46"
+  },
+  "prior_observed_at_utc": "2026-10-02T07:47:53.367192+00:00",
+  "prior_outcome": "UNSCORED",
+  "retained_policy_and_recipe": {
+    "entry_band": 0,
+    "exit_band": 0,
+    "horizon_bars": 1,
+    "interval": "5m",
+    "min_trade_notional": 10,
+    "model_or_source_retune": false,
+    "positively_weighted_model_families": 5,
+    "probability_shrinkage": 0.5,
+    "rebalance_min_delta_fraction": 0,
+    "require_qualified_forecasts": false,
+    "split_fractions": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "strict_powder_policy_retained": true
+  },
+  "runtime_health": {
+    "advancing_health_at_utc": "2026-10-02T08:03:59.410625+00:00",
+    "advancing_health_result": "passed",
+    "coordinator": {
+      "config_error": null,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json",
+      "pid": 56964,
+      "process_alive": true,
+      "reason": null,
+      "reported_status": "running",
+      "slot_errors": {},
+      "status": "running",
+      "updated_at_utc": "2026-10-02T08:35:42.354990+00:00"
+    },
+    "latest_committed_observation_advances_previous": true,
+    "maintenance_completed_at_utc": "2026-10-02T08:04:16.267232+00:00",
+    "maintenance_phase": "completed",
+    "models": {
+      "config_error": null,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "pid": 48064,
+      "process_alive": true,
+      "reason": null,
+      "reported_status": "running",
+      "slot_errors": {},
+      "status": "running",
+      "training_market": "ZEC/5m/h1",
+      "updated_at_utc": "2026-10-02T08:35:39.847516+00:00"
+    },
+    "paper": {
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-paper.json",
+      "errors": {},
+      "funding_errors": {},
+      "last_error": null,
+      "lifecycle_phase": "trading",
+      "pid": 65216,
+      "process_alive": true,
+      "quote_errors": {},
+      "reported_status": "running",
+      "slot_errors": {},
+      "status": "running",
+      "updated_at_utc": "2026-10-02T08:35:37.899520+00:00"
+    },
+    "portfolio_at_utc": "2026-10-02T08:35:37.898773+00:00",
+    "powder": {
+      "connected": false,
+      "pending_intents": 0,
+      "slot_errors": {}
+    },
+    "read_at_utc": "2026-10-02T08:35:43.260309+00:00",
+    "result": "passed",
+    "warnings": []
+  },
+  "schedule_handoff": {
+    "activated_at_utc": "2026-10-02T08:00:42.391+00:00",
+    "active_update": "succeeded",
+    "automation_id": "hyperliquid-paper-improvement",
+    "cadence_due_match": true,
+    "cadence_hours_match": true,
+    "due_at_utc": "2026-10-02T08:59:32.930325+00:00",
+    "execution_environment": "local",
+    "model": "gpt-6-luna",
+    "name": "Hyperliquid Paper Improvement",
+    "notification_policy": "unchanged_absent",
+    "observed_current_configuration": {
+      "model": "gpt-6-luna",
+      "prompt_matches_activation": false,
+      "prompt_sha256": "4e91d1a631714334541fb4131e094a8191dc719a728d50d1758847ed37f14019",
+      "reasoning_effort": "max",
+      "rrule": "FREQ=HOURLY;INTERVAL=1",
+      "schedule_matches_cadence": true,
+      "status": "ACTIVE",
+      "updated_at_utc": "2026-10-02T08:18:35.447000+00:00"
+    },
+    "pause_update": "succeeded",
+    "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c",
+    "prompt_sha256": "c2d84fc5b4abe87b9f940c753d42b22bcc09f01e9be9c2a34ba6d95b2724794d",
+    "reanchor_latency_seconds": 69.460675,
+    "reasoning_effort": "max",
+    "requested_hours": 1,
+    "rrule": "FREQ=HOURLY;INTERVAL=1",
+    "seed_at_utc": "2026-10-02T07:59:32.930325747+00:00",
+    "status": "ACTIVE"
+  },
+  "schema_version": 1,
+  "seed_at_utc": "2026-10-02T07:59:32.930325747+00:00"
+}

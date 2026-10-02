@@ -1,0 +1,12 @@
+{
+  "archive_directory": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-44",
+  "bytes": 512575685,
+  "checked_at_utc": "2026-10-02T08:43:59.699120+00:00",
+  "file_count": 474,
+  "method": "Every archived relative path rehashed and compared to the committed pre-archive preservation manifest.",
+  "mismatches": [],
+  "reference_manifest": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-44\\preservation-before.json",
+  "reference_manifest_sha256": "9455c0ed7949affa5dc9344feea8fd8f099b3b971e682b58823c785bc3ae7fdb",
+  "result": "passed",
+  "schema_version": 1
+}

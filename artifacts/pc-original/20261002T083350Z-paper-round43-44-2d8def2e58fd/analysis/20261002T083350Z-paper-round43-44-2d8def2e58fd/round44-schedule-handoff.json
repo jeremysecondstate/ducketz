@@ -1,0 +1,31 @@
+{
+  "activated_at_utc": "2026-10-02T08:00:42.391+00:00",
+  "active_update": "succeeded",
+  "automation_id": "hyperliquid-paper-improvement",
+  "cadence_due_match": true,
+  "cadence_hours_match": true,
+  "due_at_utc": "2026-10-02T08:59:32.930325+00:00",
+  "execution_environment": "local",
+  "model": "gpt-6-luna",
+  "name": "Hyperliquid Paper Improvement",
+  "notification_policy": "unchanged_absent",
+  "observed_current_configuration": {
+    "model": "gpt-6-luna",
+    "prompt_matches_activation": false,
+    "prompt_sha256": "4e91d1a631714334541fb4131e094a8191dc719a728d50d1758847ed37f14019",
+    "reasoning_effort": "max",
+    "rrule": "FREQ=HOURLY;INTERVAL=1",
+    "schedule_matches_cadence": true,
+    "status": "ACTIVE",
+    "updated_at_utc": "2026-10-02T08:18:35.447000+00:00"
+  },
+  "pause_update": "succeeded",
+  "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c",
+  "prompt_sha256": "c2d84fc5b4abe87b9f940c753d42b22bcc09f01e9be9c2a34ba6d95b2724794d",
+  "reanchor_latency_seconds": 69.460675,
+  "reasoning_effort": "max",
+  "requested_hours": 1,
+  "rrule": "FREQ=HOURLY;INTERVAL=1",
+  "seed_at_utc": "2026-10-02T07:59:32.930325747+00:00",
+  "status": "ACTIVE"
+}
