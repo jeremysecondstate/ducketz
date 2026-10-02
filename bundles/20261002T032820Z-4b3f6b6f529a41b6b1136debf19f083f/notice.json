@@ -1,0 +1,54 @@
+{
+  "author": "Atlas source observation; Git author jeremysecondstate",
+  "branch": "codex/scout/20261002T030605Z-3138c653bd9c4749a4beeb7d81271bda",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "source:jeremysecondstate/ducketz:codex/scout/20261002T030605Z-3138c653bd9c4749a4beeb7d81271bda:fe3916b1a6512eca7046cf9bafbfd68923b721e3",
+  "commit_sha": "fe3916b1a6512eca7046cf9bafbfd68923b721e3",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/fe3916b1a6512eca7046cf9bafbfd68923b721e3",
+  "committed_at_utc": "2026-10-02T03:18:02Z",
+  "files": [
+    "app/ui/gameplan.py",
+    "app/ui/gameplan_data.py",
+    "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+    "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+    "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+    "docs/multiple-pcs.md",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/gameplan_trade_review.py",
+    "ml/gameplan_trade_snapshot.py",
+    "ml/nightly_gameplan.py",
+    "ml/stock_trader/cross_horizon_fallback.py",
+    "ml/stock_trader/fallback_review.py",
+    "ml/stock_trader/gameplan_direction_engine.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "ml/stock_trader/independent_runtime.py",
+    "tests/test_cross_horizon_fallback_ledger.py",
+    "tests/test_cross_horizon_fallback_policy.py",
+    "tests/test_cross_horizon_fallback_review.py",
+    "tests/test_cross_horizon_fallback_runtime.py",
+    "tests/test_gameplan_fallback_planning.py",
+    "tests/test_gameplan_quote_clock_recovery.py",
+    "tests/test_gameplan_trade_snapshot.py",
+    "tests/test_stock_only_gameplan.py"
+  ],
+  "limitations": [
+    "No complete same-reference Scout inventory or sanitized manifest has yet been validated for the parity case.",
+    "Atlas inspected commit metadata, all changed filenames and portable source documentation; it has not approved or tested this peer integration candidate.",
+    "The proposal is based on 51d69e142251e609a7e8f6c0c15eda24ce809f4f. Shared main remains a separate integration target."
+  ],
+  "parent_sha": "51d69e142251e609a7e8f6c0c15eda24ce809f4f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source availability only. Main integration, local working-byte adoption, helper installation and runtime deployment each require separate evidence and existing human authority. No provider, account, training, trading, scheduling or runtime action follows from this observation.",
+  "scope": "24 source, documentation and test files in the Scout fallback proposal. Availability of this exact published commit is verified; integration review remains pending.",
+  "summary": "Scout published a common-source proposal for cross-horizon fallback and portable two-PC source guidance; Atlas has verified commit availability and exact changed filenames. Same-reference inventory and local adoption remain unverified.",
+  "tests": [
+    {
+      "command": "unknown",
+      "completed_at_utc": "unknown",
+      "reported_evidence": "Commit message reports one passing offline check command; actual command, output binding and timing have not been independently validated by Atlas.",
+      "result": "unknown",
+      "started_at_utc": "unknown"
+    }
+  ]
+}

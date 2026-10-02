@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T03:28:20.996892Z",
+  "id": "20261002T032820Z-4b3f6b6f529a41b6b1136debf19f083f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Scout published a common-source proposal for cross-horizon fallback and portable two-PC source guidance; Atlas has verified commit availability and exact changed filenames. Same-reference inventory and local adoption remain unverified."
+}
