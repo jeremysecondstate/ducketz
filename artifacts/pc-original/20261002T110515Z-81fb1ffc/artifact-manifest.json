@@ -1,0 +1,42 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-02T11:05:15.425839Z",
+  "completion_id": "20261002T110515Z-81fb1ffc",
+  "details": [
+    "Supplements artifact commit daa87b5a7ee84ef773182773dd69a4466cfe974f with the exact 25 added operating paths, source SHA-256 values, sizes and public main destinations.",
+    "Checks passed: cadence/round archive and SQLite integrity at 2026-10-02T10:18:54.771362+00:00; opening 2026-10-02T10:22:27.574827+00:00; first cycle 2026-10-02T10:25:34.818400+00:00; live health 2026-10-02T10:51:48.673440+00:00; stable-byte and .env scan plus remote SHA readback 2026-10-02T11:02:52.126397Z.",
+    "Limitations: Round 44 remains late_unscored; no software tests or source changes. This local-only publication leaves Round 45 Paper/models/coordinator running, Powder off, and does not imply Scout adoption or deployment."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261002T110515Z-81fb1ffc/analysis/hyperliquid-paper-improvement/20261002-round44-45/round44-45-publication-review.md",
+      "expected_sha256": "d172c2d1cf067d47c38cd085d5eb92f67a33fc96640f45522ccd40e7074913a1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round44-45/round44-45-publication-review.md",
+      "published_sha256": "d172c2d1cf067d47c38cd085d5eb92f67a33fc96640f45522ccd40e7074913a1",
+      "published_size": 11510,
+      "sha256": "d172c2d1cf067d47c38cd085d5eb92f67a33fc96640f45522ccd40e7074913a1",
+      "size": 11510,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "d172c2d1cf067d47c38cd085d5eb92f67a33fc96640f45522ccd40e7074913a1",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round44-45/round44-45-publication-review.md",
+      "supersedes": null
+    }
+  ],
+  "producer": "hyperliquid-paper-improvement",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "machine-local",
+  "source_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Record exact artifact hashes, operational checks, limitations and public main readback.",
+  "symbols": []
+}
