@@ -1,0 +1,178 @@
+{
+  "author": "Atlas; authorized Hyperliquid Paper improvement producer",
+  "base_commit": "6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5",
+  "branch": "codex/atlas/20261002T011049Z-6bab7e35665f4d5ea3f6a288ccc59e24",
+  "change_id": "source:20261002T011049Z-6bab7e35665f4d5ea3f6a288ccc59e24",
+  "commit_sha": "1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "committed_at_utc": "2026-10-02T01:20:41.315023Z",
+  "completion_id": "20261002T011049Z-6bab7e35665f4d5ea3f6a288ccc59e24",
+  "completion_record_sha256": "8fbd65bfb5c6951dd96fe99e30e06cd5642d5a18d9cc7072ebb9413995dc7e68",
+  "dependency_fingerprints": {
+    "configs/hyperliquid-markets.json": "eaeb7b5cfb94fed2b1208ac32f6c8c8656e0c0ac3b799aa1db301dd70d2d340d",
+    "configs/hyperliquid-models-research-70-15-15.json": "f001094a8a6fe1bc04c798b4fe688496d0c5ea2ec4a22016c0c9927e9e5b16f1",
+    "datafetching/__init__.py": "795c2639eb8b6bfeaa595aa5e7abe4189ad27fd5b6c42182135631b7083aaecf",
+    "datafetching/hyperliquid_candles.py": "f298c02fbe253d45e5007d9eed6c51e87197e8d8f9474bd0d046598bd8f6003f",
+    "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ml/hyperliquid_coordinator_config.py": "38a5a4bf69c2405646edae2990fadf4b64e057b866fcc93daa47fabf37e4c71e",
+    "ml/hyperliquid_data_loop.py": "715bf44e7874a95c57b9780eeda9df34d9e65f0fd2675795442b29620baf5f7d",
+    "ml/hyperliquid_data_pipeline.py": "3a00be8a0236fa135c47501881df0f4d4c2679c220c3d58a1687c331037c7478",
+    "ml/hyperliquid_model_artifacts.py": "0f3cfba008917df22d18d58ae5f611c71ffaa3ae929c7014a5fa2d1b311de9d2",
+    "ml/hyperliquid_model_config.py": "19029da90839fae806465400142c32325686b5c71545118f7d2bb54f3385bf44",
+    "ml/hyperliquid_model_research.py": "861bc73302bff3794c11f38887d521f886de5e8c4a97dbc7ddc9e5ce86698fd0",
+    "ml/hyperliquid_model_runtime.py": "c33f4a87ded28710ba7514cbd395d86ca5aa80924799f0ba972b6af662adbe7f",
+    "ml/hyperliquid_models.py": "0292d8e17fe4b9420310e01e3cee4ceb4f7fb8bac3a48fb3a6c906c2fb133b64",
+    "ml/hyperliquid_research_classical.py": "79ff91ac4597c5a66435c72954cf1769962afa6623e9a0ad47c18807a976cd0e",
+    "technicals/__init__.py": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a",
+    "technicals/hyperliquid_features.py": "6e05a8b4810765dcbcf86192a645d539622c510a41ae7589874c7beebb57d6de",
+    "tests/test_hyperliquid_model_artifacts.py": "bca11c2afd6c95ee67fa9ba8153a90ac291e010eeee068e2485486706673a6a6",
+    "tests/test_hyperliquid_model_config.py": "7bf428f3674c75fb83559f204d205730ac74f9e0b84d33e992930235191ae8ad",
+    "tests/test_hyperliquid_model_recipe.py": "432c05b815d9aa1e7234ccb25924578e7f1fa9858c3c24e3e5387da7b698245e",
+    "tests/test_hyperliquid_model_research.py": "1582c345a79f74fad7f45826954ac746660914fcfde070157bce7d9820e7e09e",
+    "tests/test_hyperliquid_model_runtime.py": "0a5eaebb35f72160d5575430bc622d5976f7d82324a50f69a0708f7d8073b481",
+    "tests/test_hyperliquid_models.py": "c3a417082d05d55f5bdf8d2b6e03cc7e91dd40a2b7cf3fde19d2c7fa00d80b61",
+    "tests/test_hyperliquid_probability_shrinkage.py": "97530cdf49e684927c52312348a36f51b565bfc66fc0a850031408219d9dc675"
+  },
+  "file_sha256": {
+    "configs/hyperliquid-models.json": "b2ae3bd3487434ca455bd11e3272203ebd09cceb6980e7a1d841d8e45fbbef9d"
+  },
+  "files": [
+    "configs/hyperliquid-models.json"
+  ],
+  "integration": {
+    "base_commit": "0407388559d54612603380793fc26a98937697fc",
+    "files": [
+      "configs/hyperliquid-models.json",
+      "ml/hyperliquid_model_config.py",
+      "ml/hyperliquid_models.py",
+      "tests/test_hyperliquid_model_config.py",
+      "tests/test_hyperliquid_probability_shrinkage.py"
+    ],
+    "head_commit": "1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+    "source_to_integration_checkout_fingerprints_equal": true,
+    "state": "draft_open_unmerged"
+  },
+  "limitations": [
+    "Producer reports broad strict proper-score nonregression failed while bounded prospective gates passed. All aggregate proxy returns remain negative; no profitability claim.",
+    "Producer research reused pinned chronological development; later diagnostic is not globally untouched. Proxy omits historical executable books, precision, funding, cash/collateral, intrabar stops, rolling refits and inherited inventory.",
+    "Producer reports rejected C 0.05 trial retained locally and exact selected native fit equivalence passed; courier did not independently repeat that research.",
+    "Common source publication, main integration, peer installation and runtime deployment remain separate.",
+    "Draft PR7 includes earlier unmerged PR5 and PR6 source. Courier verified offline implementation checks and source bytes, not operating performance or loaded runtime versions."
+  ],
+  "operations": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "configs/hyperliquid-models.json"
+    }
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/7",
+  "pushed_at_utc": "2026-10-02T01:20:44.386370Z",
+  "remote_sha": "1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared configuration can affect future consumers after their separately authorized model and installation lifecycle. Publication and PR preparation perform no application installation, runtime restart/deployment, operating model training, account, order or schedule action.",
+  "scope": "One common configuration field changes: calibration_c from 0.0465 to 0.04. Probability shrinkage 0.65 and five positive family weights remain unchanged. Combined five-file main proposal includes the previously reviewed shrinkage implementation and tests.",
+  "stages": {
+    "application_installation": "not_performed_by_courier",
+    "integration": "draft_PR_open_not_merged",
+    "peer_source": "available_installation_unverified",
+    "runtime_deployment": "not_performed_by_courier_loaded_versions_unverified",
+    "source_publication": "pushed_remote_sha_verified"
+  },
+  "summary": "Published prospective calibration C 0.04 with shrinkage 0.65 retained; source and separate main integration candidates each passed 322 offline tests; draft PR 7 is open.",
+  "tests": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_hyperliquid_probability_shrinkage.py",
+        "tests/test_hyperliquid_model_config.py",
+        "tests/test_hyperliquid_models.py",
+        "tests/test_hyperliquid_model_recipe.py",
+        "tests/test_hyperliquid_model_artifacts.py",
+        "tests/test_hyperliquid_model_runtime.py",
+        "tests/test_hyperliquid_model_research.py"
+      ],
+      "completed_at_utc": "2026-10-02T01:11:03.669356Z",
+      "exit_code": 0,
+      "failed": 0,
+      "import_evidence_sha256": "9a7e5b88d94e8e769488966952061b252515bfc7b9df6ef6ff4cc97c0b5a355d",
+      "output_sha256": "8d33ce93fefc17692e73ef4fdc2b0dc6b48ecd2948cc69492c38be5506e49e9a",
+      "passed": 322,
+      "skipped": 0,
+      "stage": "immutable_snapshot",
+      "started_at_utc": "2026-10-02T01:10:49.422741Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2",
+      "violations": [],
+      "warning_category": "NumPy/joblib deprecation",
+      "warnings": 919
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_hyperliquid_probability_shrinkage.py",
+        "tests/test_hyperliquid_model_config.py",
+        "tests/test_hyperliquid_models.py",
+        "tests/test_hyperliquid_model_recipe.py",
+        "tests/test_hyperliquid_model_artifacts.py",
+        "tests/test_hyperliquid_model_runtime.py",
+        "tests/test_hyperliquid_model_research.py"
+      ],
+      "completed_at_utc": "2026-10-02T01:19:22.150915Z",
+      "exit_code": 0,
+      "failed": 0,
+      "import_evidence_sha256": "9a7e5b88d94e8e769488966952061b252515bfc7b9df6ef6ff4cc97c0b5a355d",
+      "output_sha256": "c7af4a7b893193d563ed9352bd32267d980635c40b7d9f0a66b302c578a2795f",
+      "passed": 322,
+      "skipped": 0,
+      "stage": "source_candidate",
+      "started_at_utc": "2026-10-02T01:19:07.971342Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2",
+      "violations": [],
+      "warning_category": "NumPy/joblib deprecation",
+      "warnings": 919
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_hyperliquid_probability_shrinkage.py",
+        "tests/test_hyperliquid_model_config.py",
+        "tests/test_hyperliquid_models.py",
+        "tests/test_hyperliquid_model_recipe.py",
+        "tests/test_hyperliquid_model_artifacts.py",
+        "tests/test_hyperliquid_model_runtime.py",
+        "tests/test_hyperliquid_model_research.py"
+      ],
+      "completed_at_utc": "2026-10-02T01:20:26.948033Z",
+      "exit_code": 0,
+      "failed": 0,
+      "import_evidence_sha256": "9a7e5b88d94e8e769488966952061b252515bfc7b9df6ef6ff4cc97c0b5a355d",
+      "output_sha256": "2afeb7b99bcb9e0a5ad64f8968f80668df033e29af6b34c27f8c66116f0f67e6",
+      "passed": 322,
+      "skipped": 0,
+      "stage": "main_integration_candidate",
+      "started_at_utc": "2026-10-02T01:20:12.407791Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2",
+      "violations": [],
+      "warning_category": "NumPy/joblib deprecation",
+      "warnings": 919
+    }
+  ]
+}
