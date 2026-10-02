@@ -122,6 +122,9 @@ def shared_source_path(name):
     relative(name)
     parts = name.lower().split("/")
     filename = parts[-1]
+    filename_parts = filename.split(".")
+    if "local" in filename_parts[1:] and "example" not in filename_parts[1:]:
+        return False
     if set(parts) & _PRIVATE_PARTS or any(
         part == "runs" or part.endswith(("-runs", "-latest")) for part in parts[:-1]
     ):
@@ -596,6 +599,7 @@ def source_commit_message(record, isolated_tests):
     details = record.get("change_details") or [summary]
     limitations = record["limitations"]
     lines = [actor + ": " + summary, "", "Producer: " + record["producer"],
+             "Machine: " + ("pc-original" if actor == "Atlas" else "pc-new"),
              "Scope: " + applicability, "", "Changes:"]
     lines.extend("- " + public_commit_text(item, "change detail") for item in details)
     lines.extend(["", "Owned files:"])

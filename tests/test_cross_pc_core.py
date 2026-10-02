@@ -79,6 +79,14 @@ def test_queue_rejects_exact_local_env_key_value_in_source(setup):
     assert not Path(profile["state_path"]).exists()
 
 
+@pytest.mark.parametrize("name", ["datafetching/watchlist.local.txt", "configs/strategy.local.json"])
+def test_machine_local_overlays_stay_out_of_shared_source(name):
+    with pytest.raises(ValueError, match="local/private"):
+        core.shareable(name)
+    assert not drift.shared_source_path(name)
+    assert core.shareable(name.replace(".local.", ".local.example."))
+
+
 def test_publication_rechecks_current_env_values_before_source_push(setup, tmp_path):
     root, profile, spec = setup
     (root / ".env").write_text("API_KEY=unrelated-fixture-value\n")
@@ -299,6 +307,7 @@ def test_symbol_specific_source_message_identifies_peer_boundary(setup):
     spec["change_details"] = ["Document Atlas-specific overlay without changing shared behavior"]
     record = core.queue(profile, root, spec)
     message = core.source_commit_message(record, record["tests"])
+    assert "Machine: pc-original" in message
     assert "Scope: Atlas symbol-specific material; peer keeps its own symbol settings" in message
     assert "Document Atlas-specific overlay" in message
     assert "Completion-Record: " + record["id"] in message
