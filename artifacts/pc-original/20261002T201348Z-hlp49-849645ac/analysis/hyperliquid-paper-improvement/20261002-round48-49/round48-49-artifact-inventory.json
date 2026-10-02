@@ -1,0 +1,273 @@
+{
+  "actor": "Atlas",
+  "created_at_utc": "2026-10-02T20:12:36.423873+00:00",
+  "files": [
+    {
+      "compression": "none",
+      "expected_sha256": "86e5ac6e136e4f739ccf12a1e5a061468143d7cdd5f7176be3079850d2c72384",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-49-handoff-audit.json",
+      "size_bytes": 22868
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "dde95bc3f165d8d3298ee4d0cf8d69aae0c81979b3b32464258257c627a40b06",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-49-handoff-audit.md",
+      "size_bytes": 5496
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "962132fd09fc914257ba328421437f4c9e0b7e82ac69e37a5aabf30bfffb4a16",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-model-runtime-status.json",
+      "size_bytes": 134249
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "7ae2a227357526025aadbacaf907cb0b621849270b246038544b4ea81d48a47b",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-model-training-events.jsonl",
+      "size_bytes": 194758
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "efb55cf3db1e2f4b9c46aa99b2bf10c72b51b7a834207abe670470dd02a7c6d7",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-decisions.parquet",
+      "size_bytes": 359003
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "1c30993f8b5a496412165de6e4188adda6e2e559340e3ab0b30ed6af3d1ceeb8",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-equity.parquet",
+      "size_bytes": 66758
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "55b6a2a0c2d172d1c436398e47ed8ac5e70afa21cc726da3f90eb75d69d4599b",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-events.parquet",
+      "size_bytes": 435975
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "59c9fe5bff0e3c318285d0f1aa76cfa1d1cdf4b92c93b1bc0dd52eff2f84411a",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-fills.parquet",
+      "size_bytes": 109243
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "307f46a32eea51ad14b498d16c48a0e8a0ee926035930fde94fdb7a761ccb2f1",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-funding-cursor.json",
+      "size_bytes": 106
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "142a880a7e2d61773a0bb1507d09b96f05df6e6b91c0adb9f2651dc5999304dd",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-funding.parquet",
+      "size_bytes": 8557
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "c025d6876a21daca83960a2cb391abe2d8e8956388a7c079586a34aa96d5d43a",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-initial-positions.parquet",
+      "size_bytes": 7647
+    },
+    {
+      "compression": "gzip",
+      "expected_sha256": "623fb909c87263c48cc55563635ba63de370d0c8a509b8fd40523c937aa186c2",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-ledger.sqlite3",
+      "size_bytes": 11464704
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e11b1c85cb4f57eebf6f21324173db279e59fdaeb5658758c9dde1d6fc10b303",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-opening-snapshot.json",
+      "size_bytes": 11091
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "8b7c0925deaca391195374761e21ad2c0cdedf9d3c3939107de1183c2124397c",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-performance.json",
+      "size_bytes": 15100
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e94e62a1380043ae6decceae9709304a57dd13cdaf923e19cc5a3124e3a14905",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-policy-id.json",
+      "size_bytes": 1152
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "df9c8330be3dba443ce7b086455fd1d12b5077242c5bb1ead63a96b191f60a3c",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-archive-paper-runtime-status.json",
+      "size_bytes": 14818
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "7308d5be3f30738dcecda973649409bb9bc8bdc41dbdd18f7b3748124ebd60e8",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-cadence-assessment.json",
+      "size_bytes": 2667
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "66e7655094933d4290c7e8c7daad3c3d3a4be584b7131d34dcfb4643f034e087",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round48-closing-comparison.json",
+      "size_bytes": 1892741
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "7f2408fba637574a31d0c051b158d215dd9e6c308a3bd5333ca4628d6cf10ca4",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-advancing-health.json",
+      "size_bytes": 28973
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "9d6d5498094fcaa3ddf15533011b673955ce66e702a9cbb96e0bbceb90e788f6",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-archive-verification.json",
+      "size_bytes": 307
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "abc4348f7fdb8e6f9ceb29728730c36703d82eab063258fdebca71f73707b74c",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-cadence-current.json",
+      "size_bytes": 2747
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "ebb1df63118fc9d919976e21f9ef4cdf2945a9f80efeb2e6fdb15631ecd2210f",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-deployment.json",
+      "size_bytes": 9402
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "b8a9a32896e6567b77e5136006d4d8bb0488030ecbc5e1786b738aaaf8597afb",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-final-health-20261002T2008Z.json",
+      "size_bytes": 32183
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "2fce16133340db6e5e79013a061d7ac03d49e71ec4f2355835dc493fd7bc2d08",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-final-health.json",
+      "size_bytes": 32107
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "dd0926476f9c25ba649e1d4512e0a1688829780a16b402ad07507a4a7d44326d",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-first-cycle-verification.json",
+      "size_bytes": 25748
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "8e1454b7383514a233e94afb61e6e429747e4945277899e3f2264519d1368a53",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-model-launch-first-attempt.json",
+      "size_bytes": 76
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "592e46e5fc8f63b35cb00c17afd2523de8c425ac2d1cdc5d6053966bf0e8314e",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-model-launch-retry.json",
+      "size_bytes": 75
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "0fd0b8ee7d14c3112c542f73ecc3244669b576e4f702ca6731d6fc992285a4fc",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-opening-public-account-reads.json",
+      "size_bytes": 12719
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "4bda2e6279cd830019b763aa45a6c91fbb21c1f8c4b7276d0cc4d2e71dcb1f9b",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-opening-verification.json",
+      "size_bytes": 1415
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "615cb5c6f41729ebceb83ad7382778f54111d4aa50f6e0326f33cba95aeb4ae8",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-opening-verifier.json",
+      "size_bytes": 23840
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "1773590866a6b1be6148ba34f9631bcb9dc1a3e1d0964181f59d825900d78fe7",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-operation.json",
+      "size_bytes": 16763
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e8ecdfa1ebcd3a379638f971e16fd56899dfab986021d091da8b28a56a44d442",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-paper-launch.json",
+      "size_bytes": 76
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "b08deb73f7e1e1e5f198aee901cbb2185d586c36c2c2814508e58aab4c51c541",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-prepare.json",
+      "size_bytes": 12554
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e6862d23b9235ad349b715fe0791d21fa11f848673d2a8cbbcb017194965cf2d",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-prepared-health.json",
+      "size_bytes": 19936
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "9741a9c4111d42ff85466f637238eabcaab0df58a52f03b1eab17017b1a2ab59",
+      "operation": "add",
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round48-49/round49-trading-health.json",
+      "size_bytes": 28974
+    }
+  ],
+  "machine": "pc-original",
+  "omitted_identical_bytes_already_published": [
+    {
+      "prior_path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-deployment.json",
+      "prior_receipt_id": "20261002T180809Z-hl19b1eb9c9d",
+      "sha256": "16055f5af1bf4492e9d5f0e168934d4b250937ab6f7acbf46a03437083ea713c"
+    },
+    {
+      "prior_path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-policy.json",
+      "prior_receipt_id": "20261002T154413Z-e8cc0939",
+      "sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1"
+    },
+    {
+      "prior_path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-transfers.parquet",
+      "prior_receipt_id": "20261002T154413Z-e8cc0939",
+      "sha256": "e3a72ad968add80387da2e21356c5506013dbf55e8fd36970ff8b97c8bc52f24"
+    }
+  ],
+  "producer": "hyperliquid-paper-improvement",
+  "schema_version": 1,
+  "scope": "machine-local",
+  "summary": "Round 48 late-unscored comparison and verified Round 49 Paper handoff"
+}
