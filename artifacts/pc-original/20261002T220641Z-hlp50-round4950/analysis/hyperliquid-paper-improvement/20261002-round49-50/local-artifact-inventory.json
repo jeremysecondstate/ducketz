@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "producer": "hyperliquid-paper-improvement",
+  "actor": "Atlas",
+  "machine": "pc-original",
+  "base_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "branch": "main",
+  "files": [
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-50-handoff-audit.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "24eea1816b8bad460b8f3a73ba33e94addf981de30639dc4880ad4d961b4531c",
+      "bytes": 31003
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-50-handoff-audit.md",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "c67f261d5575c9f7d7e5461eaa6f0b34a087fb7da004cff15f062f62cfab1f0c",
+      "bytes": 6706
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-runtime-status.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "622df6af321c524cd82190b1f6a28930d43b5acf0fad0f175f1bd8f61edbaa29",
+      "bytes": 134153
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-runtime-stderr.log",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-runtime-stdout.log",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "622df6af321c524cd82190b1f6a28930d43b5acf0fad0f175f1bd8f61edbaa29",
+      "bytes": 134153
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-training-events.jsonl",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "b3b1cf0a4ef774b44a7f87191e40b5a7d6e6a15336a603dbc82a139cd9e783b8",
+      "bytes": 194784
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-decisions.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "630dc63ec0e048e1148cfe33e050c4984fe0ee463a4bcd847459124f8b06ef9d",
+      "bytes": 227813
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-equity.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "1aaf396503aadb6040f036b9d6ad6dcffdc891382b41838c98c610d28a8387c4",
+      "bytes": 64535
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-events.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "754a913dacf2223b4c2d284246eb18ae7abbb3bde30607510ddf1e3e58c7a44d",
+      "bytes": 282180
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-experiment.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "ebb1df63118fc9d919976e21f9ef4cdf2945a9f80efeb2e6fdb15631ecd2210f",
+      "bytes": 9402
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-fills.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "c997c4178deb6cefdcd7729f6d24c17937b30a24bb40e64dd0c3ba64cc73d73c",
+      "bytes": 94203
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-funding.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "560e3ad5e2b84a102d7d8e26973137d832fa2e97f4197c5788a14f8ea7eee363",
+      "bytes": 8802
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-initial-positions.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "dfcd5b34273998f248cb771e7c6003d9849c97e6ab738874f1997f443f44ee94",
+      "bytes": 7732
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-ledger.sqlite3",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "9aa9f2c7804186592ad2590f62ef216a0714a7f71407c31978dc42a118409848",
+      "bytes": 7593984
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-opening-snapshot.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "af3215a41022758e1c9ab5d176dafcbf2f4dfaca86d218d2a1f5024402d7b96d",
+      "bytes": 11078
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-performance.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "5fb1e11cb52f4852af5177840bf384aee22d893f532e277e1abf18d1737a268b",
+      "bytes": 14885
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-policy.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1",
+      "bytes": 1188
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-runtime-status.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "c3f446371e670125a3cc0a46b9f43818ea233efb978726e27f03d6a4157408a9",
+      "bytes": 14619
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-runtime-stderr.log",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-runtime-stdout.log",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "c3f446371e670125a3cc0a46b9f43818ea233efb978726e27f03d6a4157408a9",
+      "bytes": 14619
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-transfers.parquet",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "e3a72ad968add80387da2e21356c5506013dbf55e8fd36970ff8b97c8bc52f24",
+      "bytes": 4040
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-preservation-before.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "3d71c2e9010872fa6db1b14f5b7e08157f46ea53f8962f95572d13b5d51c61bb",
+      "bytes": 93355
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-preservation-verified.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "14200a8ef901dbedd874183fa4dc1bb37c57cdda5f481d9268d4c6baaf927486",
+      "bytes": 307
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-native-assessment.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "0a7d17063a28c3bf7def8b17e947798bc89da97c36f78b16a6b54495d2af4598",
+      "bytes": 2643
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-native-comparison.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "be1d5b8d36cba2dd75b91ce31c3640111d07982203519cba9ebb8f35e14c0902",
+      "bytes": 1892615
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-accepted-source-manifest.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "fb04b4e1d6def111892c936a1cd0fd1e0dcb0980d13adde0c10132fc56dc8d99",
+      "bytes": 5905
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-advancing-followup-health.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "d6cd196ff48bebddc5579f4a22baad00ab3e6dfcbb75a8d075048138b821a41a",
+      "bytes": 28936
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-cadence-after-advance.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "b953527ca8296a68d6e5786fee5e014dc72af8e4223b562563a7c345b86f9a00",
+      "bytes": 2805
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-cross-pc-run-result.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "3e87f1748d2bd36b1d4d98b677cef590669208f7f851352bb0db557fb0266c94",
+      "bytes": 466
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-deployment.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "9e20480489bc7c30347960adf6f5e14ff02ba8e35d36f03b61a0f2d6b1d49ff5",
+      "bytes": 9389
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-final-closeout-health.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "8855b46d6523623ea66912c44ae9d100b19c8eaaa4bc8df99fa2081ea34343f2",
+      "bytes": 31687
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-first-cycle-verification.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "174811f39acb87319744e1921e5f720110c2d0871365f340140e689a863d5122",
+      "bytes": 25784
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-opening-independent-verification.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "782d18a3763c5e842306f55e85542f4065c602ce001a2d03378b4359cd34f313",
+      "bytes": 23823
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-opening-public-account-reads.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "f49d882642a60d7b4899b8e6ceb664a47fe066c1c1a61013f133e46ad7836c77",
+      "bytes": 12757
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-opening-verification.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "d0db17920f4e316c62de1852023f155b445acd469951f18ff45341f95b216551",
+      "bytes": 1417
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-operation.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "09e26e85ddb89f239c719385ccb13ee25181b43154424131a0c61e26cb3f135a",
+      "bytes": 16775
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-postarchive-empty-status-probe.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "f96aa3c92f3c9681cad32b18dd6137b6fe1598fccb54e01b4347bd392c40a184",
+      "bytes": 707
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-prepare-output.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "d68bc02b368c42774c082a31f26cbba8e7543aa567f72d7e50c29a976684cc26",
+      "bytes": 12506
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-prepared-health.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "db2055aba8ccbafa3ba73778c7711efe384c8f6e34cca272d24b8a30693adc85",
+      "bytes": 19890
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-preservation-before.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "3d71c2e9010872fa6db1b14f5b7e08157f46ea53f8962f95572d13b5d51c61bb",
+      "bytes": 93355
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-preservation-verified.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "14200a8ef901dbedd874183fa4dc1bb37c57cdda5f481d9268d4c6baaf927486",
+      "bytes": 307
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-trading-health.json",
+      "operation": "add",
+      "classification": "machine-local operating artifact staging",
+      "sha256": "6e181abe8994edc2151dd0be52ab4b18d6ad52b7f760969990ce63a304b23185",
+      "bytes": 28939
+    }
+  ],
+  "note": "This index lists exact hashes for other staged artifacts and omits its own SHA-256; the private DataStore project-file-inventory.json records that hash."
+}
