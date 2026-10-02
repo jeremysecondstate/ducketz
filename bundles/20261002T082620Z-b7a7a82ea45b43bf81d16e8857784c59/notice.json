@@ -1,0 +1,235 @@
+{
+  "author": "Atlas",
+  "base_sha": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "central-hub-main:99532621db0d42dfe8c655300cc93abda81240d5",
+  "commit_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "commits": [
+    {
+      "scope": "five reviewed shared helper, test and bootstrap files; source branch 96e6f5a verified",
+      "sha": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+      "url": "https://github.com/jeremysecondstate/ducketz/commit/8516a9b40c300c02a28278d3e0016aac852cdb3e"
+    },
+    {
+      "scope": "four historical Atlas probability UI artifact files plus manifest",
+      "sha": "52f958f274e494f4e0c3e0bab8c2cb0e5f80c9fc",
+      "url": "https://github.com/jeremysecondstate/ducketz/commit/52f958f274e494f4e0c3e0bab8c2cb0e5f80c9fc"
+    },
+    {
+      "scope": "nineteen historical Atlas model-history artifact files plus manifest",
+      "sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+      "url": "https://github.com/jeremysecondstate/ducketz/commit/99532621db0d42dfe8c655300cc93abda81240d5"
+    }
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/decisions-local.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/fills-local-wide.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/fills-local.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/verification.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/artifact-manifest.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnose.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis-raw.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis.md",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/finalize_ui_audit.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-narrow.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-populated-1706.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-populated-880.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-retained-1706.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-retained-880.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-ui-review.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-wide.png",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer_render_history.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer_render_retained_history.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/project_retained_history.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/retained-model-history.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/round12-endpoint-20260930T090600Z.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/summarize_diagnosis.py",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/ui-verification.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/artifact-manifest.json",
+      "scope": "atlas-machine-output"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_artifact_publish.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/artifact_publish.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py",
+      "scope": "shared-source"
+    }
+  ],
+  "human_request_relay": {
+    "evidence_requested": [
+      "Scout local branch/HEAD and classification of each dirty or unpushed path, including the nine paths visible in the earlier screenshot",
+      "verified origin/main and exact adopted HEAD or collision blocker",
+      "shared-byte comparison at the same exact reference plus explicit field-level symbol exceptions",
+      "before/after hashes of local symbol/profile bindings without their raw values",
+      "pinned helper manifest and native task readback preserving cadence, state, model, effort, notification and continuity",
+      "actual offline checks with UTC times and results; source installation and loaded runtime version recorded separately",
+      "Compare Scout's published branch and local dirty bytes against final main, including the four mixed Hyperliquid config files by field."
+    ],
+    "provenance": "direct human request to Atlas on 2026-10-02; this notice conveys it as reference evidence, not new authority from a peer notice",
+    "request": "Implement the same central-hub workflow on Scout: keep common code on main, preserve Scout's eleven-stock and documented symbol-specific settings, label symbol-specific commits with actor and practical details, make each scheduled task publish its exact completed owned changes immediately after review and .env private-key scanning, and keep the existing five-minute monitors checking author/branch/SHA and conditionally fetching/fast-forwarding main. Final verified main is 99532621db0d42dfe8c655300cc93abda81240d5. Scout should reconcile its local dirty bytes, adopt the reviewed common source safely, install its own pinned helper and update its own scheduled tasks. The original Atlas/Scout symbol and Gameplan sets stay distinct."
+  },
+  "limitations": [
+    "Scout's published source branch still diverges historically; 47 of its 48 changed paths match final main Git blobs. The only changed-path mismatch is docs/multiple-pcs.md, which records the reviewed common-main/artifact workflow.",
+    "The full published Scout-branch versus final-main tree differs on 87 shared-source paths and 437 artifact paths. Scout must reconcile its local dirty/unpushed bytes and four mixed Hyperliquid configs by field before safe main adoption.",
+    "Scout last reported fetching only 153c5768; final main adoption, installed helper, native scheduled-task readback and loaded runtime version remain unverified.",
+    "The September 30 artifact tests are historical records, not fresh execution; 110 other older Atlas untracked files still await exact owner and completion review."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Git source and reviewed output copies are available; neither PC's running version follows from a Git push or checkout fast-forward. No broker/provider, trade, training or runtime action occurred in this handoff.",
+  "scope": "Shared coordination helper/source bytes are on common main. The 23 historical Atlas output originals were preserved and copied under artifacts/pc-original with exact reviewed hashes and an .env private-value scan. These output copies do not replace Scout's local symbols, Gameplan or runtime.",
+  "summary": "Atlas final main is 99532621: reviewed all-path output helper and two historical machine-owned artifact packages are published; Scout adoption still needs local evidence.",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_cross_pc_core.py",
+        "tests/test_cross_pc_artifact_publish.py",
+        "-q"
+      ],
+      "completed_at_utc": "2026-10-02T08:15:38.38765Z",
+      "result": "77 passed",
+      "scope": "final exact shared helper integration candidate",
+      "started_at_utc": "2026-10-02T08:14:34.258613Z"
+    },
+    {
+      "completed_at_utc": "unknown",
+      "result": "175 passed, 2 skipped",
+      "scope": "broader cross-PC offline regression before sealing",
+      "started_at_utc": "unknown"
+    },
+    {
+      "completed_at_utc": "2026-09-30T09:15:15Z",
+      "result": "169 recorded UI/service passes and 57 recorded peer-review passes",
+      "scope": "September 30 model-history saved verification, not rerun",
+      "started_at_utc": "unknown"
+    },
+    {
+      "completed_at_utc": "2026-09-30T08:36:03Z",
+      "result": "138 recorded targeted passes",
+      "scope": "September 30 probability UI saved verification, not rerun",
+      "started_at_utc": "unknown"
+    }
+  ]
+}

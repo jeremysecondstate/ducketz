@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T08:26:20.577081Z",
+  "id": "20261002T082620Z-b7a7a82ea45b43bf81d16e8857784c59",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas final main is 99532621: reviewed all-path output helper and two historical machine-owned artifact packages are published; Scout adoption still needs local evidence."
+}
