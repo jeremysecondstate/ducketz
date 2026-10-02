@@ -1,0 +1,483 @@
+{
+  "actor": "Atlas",
+  "artifact_manifest_sha256": "c38f93fa6ca326c7b39f2e6915c7f1bdf95027be415e1ca6ff4598ee2e7a1f4a",
+  "author": "Jeremy Klein",
+  "author_time": "2026-10-02T15:16:01-07:00",
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "commit:jeremysecondstate/ducketz:main:d2b3495c2ddbdb7e745388cb11cf9c647e9edc81",
+  "commit_sha": "d2b3495c2ddbdb7e745388cb11cf9c647e9edc81",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/d2b3495c2ddbdb7e745388cb11cf9c647e9edc81",
+  "completed_at_utc": "2026-10-02T22:15:20.959977Z",
+  "completion_id": "20261002T220641Z-hlp50-round4950",
+  "files": [
+    {
+      "bytes": 31003,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "24eea1816b8bad460b8f3a73ba33e94addf981de30639dc4880ad4d961b4531c",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-50-handoff-audit.json",
+      "sha256": "24eea1816b8bad460b8f3a73ba33e94addf981de30639dc4880ad4d961b4531c"
+    },
+    {
+      "bytes": 6706,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "c67f261d5575c9f7d7e5461eaa6f0b34a087fb7da004cff15f062f62cfab1f0c",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-50-handoff-audit.md",
+      "sha256": "c67f261d5575c9f7d7e5461eaa6f0b34a087fb7da004cff15f062f62cfab1f0c"
+    },
+    {
+      "bytes": 134153,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "622df6af321c524cd82190b1f6a28930d43b5acf0fad0f175f1bd8f61edbaa29",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-runtime-status.json",
+      "sha256": "622df6af321c524cd82190b1f6a28930d43b5acf0fad0f175f1bd8f61edbaa29"
+    },
+    {
+      "bytes": 0,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-runtime-stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 134153,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "622df6af321c524cd82190b1f6a28930d43b5acf0fad0f175f1bd8f61edbaa29",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-runtime-stdout.log",
+      "sha256": "622df6af321c524cd82190b1f6a28930d43b5acf0fad0f175f1bd8f61edbaa29"
+    },
+    {
+      "bytes": 194784,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "b3b1cf0a4ef774b44a7f87191e40b5a7d6e6a15336a603dbc82a139cd9e783b8",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-model-training-events.jsonl",
+      "sha256": "b3b1cf0a4ef774b44a7f87191e40b5a7d6e6a15336a603dbc82a139cd9e783b8"
+    },
+    {
+      "bytes": 227813,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "630dc63ec0e048e1148cfe33e050c4984fe0ee463a4bcd847459124f8b06ef9d",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-decisions.parquet",
+      "sha256": "630dc63ec0e048e1148cfe33e050c4984fe0ee463a4bcd847459124f8b06ef9d"
+    },
+    {
+      "bytes": 64535,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "1aaf396503aadb6040f036b9d6ad6dcffdc891382b41838c98c610d28a8387c4",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-equity.parquet",
+      "sha256": "1aaf396503aadb6040f036b9d6ad6dcffdc891382b41838c98c610d28a8387c4"
+    },
+    {
+      "bytes": 282180,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "754a913dacf2223b4c2d284246eb18ae7abbb3bde30607510ddf1e3e58c7a44d",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-events.parquet",
+      "sha256": "754a913dacf2223b4c2d284246eb18ae7abbb3bde30607510ddf1e3e58c7a44d"
+    },
+    {
+      "bytes": 9402,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "ebb1df63118fc9d919976e21f9ef4cdf2945a9f80efeb2e6fdb15631ecd2210f",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-experiment.json",
+      "sha256": "ebb1df63118fc9d919976e21f9ef4cdf2945a9f80efeb2e6fdb15631ecd2210f"
+    },
+    {
+      "bytes": 94203,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "c997c4178deb6cefdcd7729f6d24c17937b30a24bb40e64dd0c3ba64cc73d73c",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-fills.parquet",
+      "sha256": "c997c4178deb6cefdcd7729f6d24c17937b30a24bb40e64dd0c3ba64cc73d73c"
+    },
+    {
+      "bytes": 8802,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "560e3ad5e2b84a102d7d8e26973137d832fa2e97f4197c5788a14f8ea7eee363",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-funding.parquet",
+      "sha256": "560e3ad5e2b84a102d7d8e26973137d832fa2e97f4197c5788a14f8ea7eee363"
+    },
+    {
+      "bytes": 7732,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "dfcd5b34273998f248cb771e7c6003d9849c97e6ab738874f1997f443f44ee94",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-initial-positions.parquet",
+      "sha256": "dfcd5b34273998f248cb771e7c6003d9849c97e6ab738874f1997f443f44ee94"
+    },
+    {
+      "bytes": 631490,
+      "compression": "gzip",
+      "operation": "add",
+      "original_sha256": "9aa9f2c7804186592ad2590f62ef216a0714a7f71407c31978dc42a118409848",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-ledger.sqlite3.gz",
+      "sha256": "a639317492732a0640b5befc176b8313528f53b03acdd91d00fb3c44c7dad601"
+    },
+    {
+      "bytes": 11078,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "af3215a41022758e1c9ab5d176dafcbf2f4dfaca86d218d2a1f5024402d7b96d",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-opening-snapshot.json",
+      "sha256": "af3215a41022758e1c9ab5d176dafcbf2f4dfaca86d218d2a1f5024402d7b96d"
+    },
+    {
+      "bytes": 14885,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "5fb1e11cb52f4852af5177840bf384aee22d893f532e277e1abf18d1737a268b",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-performance.json",
+      "sha256": "5fb1e11cb52f4852af5177840bf384aee22d893f532e277e1abf18d1737a268b"
+    },
+    {
+      "bytes": 1188,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-policy.json",
+      "sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1"
+    },
+    {
+      "bytes": 14619,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "c3f446371e670125a3cc0a46b9f43818ea233efb978726e27f03d6a4157408a9",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-runtime-status.json",
+      "sha256": "c3f446371e670125a3cc0a46b9f43818ea233efb978726e27f03d6a4157408a9"
+    },
+    {
+      "bytes": 0,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-runtime-stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 14619,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "c3f446371e670125a3cc0a46b9f43818ea233efb978726e27f03d6a4157408a9",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-runtime-stdout.log",
+      "sha256": "c3f446371e670125a3cc0a46b9f43818ea233efb978726e27f03d6a4157408a9"
+    },
+    {
+      "bytes": 4040,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "e3a72ad968add80387da2e21356c5506013dbf55e8fd36970ff8b97c8bc52f24",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-paper-transfers.parquet",
+      "sha256": "e3a72ad968add80387da2e21356c5506013dbf55e8fd36970ff8b97c8bc52f24"
+    },
+    {
+      "bytes": 93355,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "3d71c2e9010872fa6db1b14f5b7e08157f46ea53f8962f95572d13b5d51c61bb",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-preservation-before.json",
+      "sha256": "3d71c2e9010872fa6db1b14f5b7e08157f46ea53f8962f95572d13b5d51c61bb"
+    },
+    {
+      "bytes": 307,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "14200a8ef901dbedd874183fa4dc1bb37c57cdda5f481d9268d4c6baaf927486",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-archive-preservation-verified.json",
+      "sha256": "14200a8ef901dbedd874183fa4dc1bb37c57cdda5f481d9268d4c6baaf927486"
+    },
+    {
+      "bytes": 2643,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "0a7d17063a28c3bf7def8b17e947798bc89da97c36f78b16a6b54495d2af4598",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-native-assessment.json",
+      "sha256": "0a7d17063a28c3bf7def8b17e947798bc89da97c36f78b16a6b54495d2af4598"
+    },
+    {
+      "bytes": 1892615,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "be1d5b8d36cba2dd75b91ce31c3640111d07982203519cba9ebb8f35e14c0902",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round49-native-comparison.json",
+      "sha256": "be1d5b8d36cba2dd75b91ce31c3640111d07982203519cba9ebb8f35e14c0902"
+    },
+    {
+      "bytes": 5905,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "fb04b4e1d6def111892c936a1cd0fd1e0dcb0980d13adde0c10132fc56dc8d99",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-accepted-source-manifest.json",
+      "sha256": "fb04b4e1d6def111892c936a1cd0fd1e0dcb0980d13adde0c10132fc56dc8d99"
+    },
+    {
+      "bytes": 28936,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "d6cd196ff48bebddc5579f4a22baad00ab3e6dfcbb75a8d075048138b821a41a",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-advancing-followup-health.json",
+      "sha256": "d6cd196ff48bebddc5579f4a22baad00ab3e6dfcbb75a8d075048138b821a41a"
+    },
+    {
+      "bytes": 2805,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "b953527ca8296a68d6e5786fee5e014dc72af8e4223b562563a7c345b86f9a00",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-cadence-after-advance.json",
+      "sha256": "b953527ca8296a68d6e5786fee5e014dc72af8e4223b562563a7c345b86f9a00"
+    },
+    {
+      "bytes": 466,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "3e87f1748d2bd36b1d4d98b677cef590669208f7f851352bb0db557fb0266c94",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-cross-pc-run-result.json",
+      "sha256": "3e87f1748d2bd36b1d4d98b677cef590669208f7f851352bb0db557fb0266c94"
+    },
+    {
+      "bytes": 9389,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "9e20480489bc7c30347960adf6f5e14ff02ba8e35d36f03b61a0f2d6b1d49ff5",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-deployment.json",
+      "sha256": "9e20480489bc7c30347960adf6f5e14ff02ba8e35d36f03b61a0f2d6b1d49ff5"
+    },
+    {
+      "bytes": 31687,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "8855b46d6523623ea66912c44ae9d100b19c8eaaa4bc8df99fa2081ea34343f2",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-final-closeout-health.json",
+      "sha256": "8855b46d6523623ea66912c44ae9d100b19c8eaaa4bc8df99fa2081ea34343f2"
+    },
+    {
+      "bytes": 25784,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "174811f39acb87319744e1921e5f720110c2d0871365f340140e689a863d5122",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-first-cycle-verification.json",
+      "sha256": "174811f39acb87319744e1921e5f720110c2d0871365f340140e689a863d5122"
+    },
+    {
+      "bytes": 23823,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "782d18a3763c5e842306f55e85542f4065c602ce001a2d03378b4359cd34f313",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-opening-independent-verification.json",
+      "sha256": "782d18a3763c5e842306f55e85542f4065c602ce001a2d03378b4359cd34f313"
+    },
+    {
+      "bytes": 12757,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "f49d882642a60d7b4899b8e6ceb664a47fe066c1c1a61013f133e46ad7836c77",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-opening-public-account-reads.json",
+      "sha256": "f49d882642a60d7b4899b8e6ceb664a47fe066c1c1a61013f133e46ad7836c77"
+    },
+    {
+      "bytes": 1417,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "d0db17920f4e316c62de1852023f155b445acd469951f18ff45341f95b216551",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-opening-verification.json",
+      "sha256": "d0db17920f4e316c62de1852023f155b445acd469951f18ff45341f95b216551"
+    },
+    {
+      "bytes": 16775,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "09e26e85ddb89f239c719385ccb13ee25181b43154424131a0c61e26cb3f135a",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-operation.json",
+      "sha256": "09e26e85ddb89f239c719385ccb13ee25181b43154424131a0c61e26cb3f135a"
+    },
+    {
+      "bytes": 707,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "f96aa3c92f3c9681cad32b18dd6137b6fe1598fccb54e01b4347bd392c40a184",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-postarchive-empty-status-probe.json",
+      "sha256": "f96aa3c92f3c9681cad32b18dd6137b6fe1598fccb54e01b4347bd392c40a184"
+    },
+    {
+      "bytes": 12506,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "d68bc02b368c42774c082a31f26cbba8e7543aa567f72d7e50c29a976684cc26",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-prepare-output.json",
+      "sha256": "d68bc02b368c42774c082a31f26cbba8e7543aa567f72d7e50c29a976684cc26"
+    },
+    {
+      "bytes": 19890,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "db2055aba8ccbafa3ba73778c7711efe384c8f6e34cca272d24b8a30693adc85",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-prepared-health.json",
+      "sha256": "db2055aba8ccbafa3ba73778c7711efe384c8f6e34cca272d24b8a30693adc85"
+    },
+    {
+      "bytes": 93355,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "3d71c2e9010872fa6db1b14f5b7e08157f46ea53f8962f95572d13b5d51c61bb",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-preservation-before.json",
+      "sha256": "3d71c2e9010872fa6db1b14f5b7e08157f46ea53f8962f95572d13b5d51c61bb"
+    },
+    {
+      "bytes": 307,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "14200a8ef901dbedd874183fa4dc1bb37c57cdda5f481d9268d4c6baaf927486",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-preservation-verified.json",
+      "sha256": "14200a8ef901dbedd874183fa4dc1bb37c57cdda5f481d9268d4c6baaf927486"
+    },
+    {
+      "bytes": 28939,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "6e181abe8994edc2151dd0be52ab4b18d6ad52b7f760969990ce63a304b23185",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/round50-trading-health.json",
+      "sha256": "6e181abe8994edc2151dd0be52ab4b18d6ad52b7f760969990ce63a304b23185"
+    },
+    {
+      "bytes": 14734,
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "b94aa2f2f3e0648efc18e1d68d06fe7e70fb354988b0f1c890dce10d5623d0dc",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/analysis/hyperliquid-paper-improvement/20261002-round49-50/local-artifact-inventory.json",
+      "sha256": "b94aa2f2f3e0648efc18e1d68d06fe7e70fb354988b0f1c890dce10d5623d0dc"
+    },
+    {
+      "bytes": 46494,
+      "compression": "none",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T220641Z-hlp50-round4950/artifact-manifest.json",
+      "sha256": "c38f93fa6ca326c7b39f2e6915c7f1bdf95027be415e1ca6ff4598ee2e7a1f4a"
+    }
+  ],
+  "limitations": [
+    "Round49 public account reads are sequential rather than atomic; native skew was only 23.015363 seconds.",
+    "A short overlapping-forecast round does not establish future profitability.",
+    "The hourly scheduler is reanchored after closeout by the direct-human policy; this may put the next wake outside the five-minute evaluation window.",
+    "No software tests ran because no application source/configuration changed.",
+    "One transient Paper health sample reported runtime source errors at 22:10:01Z; the next saved runtime status was clear and a read-only health pass succeeded at 22:10:56Z without restart. Cause remains unknown.",
+    "Producer operating checks are dated historical evidence; this courier did not repeat provider/broker calls.",
+    "No shared working-byte parity, Scout installation/adoption or current loaded runtime version established."
+  ],
+  "parent_sha": "8408fd51d9250e36768dfebf5088e81de482ed65",
+  "practical_changes": [
+    "Archived Round49 late_unscored native assessment/comparison, Paper reference outputs and compressed holdings ledger.",
+    "Archived Round50 producer opening, first-cycle, cadence, health and completed handoff evidence.",
+    "Preserved the historical transient source-error sample and subsequent clear-status/read-only health evidence; its cause remains unknown."
+  ],
+  "producer": "hyperliquid-paper-improvement",
+  "published_at_utc": "2026-10-02T22:16:06.661580Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": [
+    "This courier performed no runtime action; an archived producer runtime report does not establish current runtime adoption.",
+    "Local main remains at 99532621db0d42dfe8c655300cc93abda81240d5; origin/main d2b3495c2ddbdb7e745388cb11cf9c647e9edc81 is available with fast-forward pending active writer/runtime clearance.",
+    "Reference artifacts do not authorize runtime, broker/provider, trade, training, symbol or schedule changes."
+  ],
+  "scope": "Atlas-only archived pc-original operating references; never apply to Scout live symbols or Gameplan",
+  "summary": "Atlas-only archived Round49/50 Paper operating evidence published on main; 44 namespaced additions, no shared application source/configuration change.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T22:34:21.584480Z",
+      "name": "commit text private value scan",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T22:34:21.584480Z",
+      "name": "exact git path hash size and compression",
+      "started_at_utc": "2026-10-02T22:34:18.701495Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T22:34:18.772727Z",
+      "name": "snapshot private value scan",
+      "started_at_utc": "2026-10-02T22:34:18.701495Z",
+      "status": "passed"
+    },
+    {
+      "audit_created_at_utc": "2026-10-02T22:14:10.246942Z",
+      "checks": [
+        {
+          "at_utc": "unknown",
+          "independently_rerun": false,
+          "name": "pinned cross-pc-v2 installation",
+          "status": "passed"
+        },
+        {
+          "at_utc": "2026-10-02T21:26:14.060567+00:00",
+          "independently_rerun": false,
+          "name": "native comparison and cadence assessment",
+          "status": "late_unscored; next one hour"
+        },
+        {
+          "at_utc": "2026-10-02T22:06:41.708202Z",
+          "independently_rerun": false,
+          "name": "stopped archived SQLite integrity",
+          "status": "ok"
+        },
+        {
+          "at_utc": "2026-10-02T21:32:18.860078+00:00",
+          "independently_rerun": false,
+          "name": "archive checksum preservation",
+          "status": "passed"
+        },
+        {
+          "at_utc": "2026-10-02T21:38:15Z",
+          "independently_rerun": false,
+          "name": "fresh 1:1 opening and source orders",
+          "status": "passed"
+        },
+        {
+          "at_utc": "2026-10-02T21:39:19Z",
+          "independently_rerun": false,
+          "name": "first committed cycle",
+          "status": "passed"
+        },
+        {
+          "at_utc": "2026-10-02T21:40:26.831098Z",
+          "independently_rerun": false,
+          "name": "native maintenance completion and cadence advance",
+          "status": "passed"
+        },
+        {
+          "at_utc": "unknown",
+          "independently_rerun": false,
+          "name": "software tests",
+          "status": "not run"
+        },
+        {
+          "at_utc": "2026-10-02T22:10:01.715252+00:00",
+          "independently_rerun": false,
+          "name": "transient Paper runtime source-error sample",
+          "status": "partial; automatically cleared by next observed runtime status"
+        },
+        {
+          "at_utc": "2026-10-02T22:10:56.634274+00:00",
+          "independently_rerun": false,
+          "name": "final read-only trading health after transient status",
+          "status": "passed"
+        }
+      ],
+      "name": "Producer archived operating checks",
+      "status": "recorded in immutable audit; not independently rerun"
+    },
+    {
+      "at_utc": "unknown",
+      "name": "Application software tests",
+      "reason": "No application source/configuration change in this commit or courier run.",
+      "status": "not_run"
+    }
+  ]
+}
