@@ -1,0 +1,178 @@
+{
+  "author": "Jeremy Klein; preceding source integration authored by Atlas",
+  "base_commit": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+  "branch": "main",
+  "change_id": "source-observation:main:99532621db0d42dfe8c655300cc93abda81240d5",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/99532621db0d42dfe8c655300cc93abda81240d5",
+  "committed_at_utc": "2026-10-02T08:19:55Z",
+  "files": [
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/decisions-local.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/fills-local-wide.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/fills-local.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/analysis/hyper-probability-ui-20260930/verification.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T083604Z-hyper-probability-ui/artifact-manifest.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnose.py"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis-raw.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/diagnosis.md"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/finalize_ui_audit.py"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-narrow.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-populated-1706.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-populated-880.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-retained-1706.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-retained-880.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-ui-review.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer-wide.png"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer_render_history.py"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/peer_render_retained_history.py"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/project_retained_history.py"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/retained-model-history.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/round12-endpoint-20260930T090600Z.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/summarize_diagnosis.py"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/analysis/hyper-model-history-20260930/ui-verification.json"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20260930T091516Z-hyper-model-history/artifact-manifest.json"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_artifact_publish.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/artifact_publish.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py"
+    }
+  ],
+  "limitations": [
+    "Read-only source review; no local execution of the new helpers or tests, no credential access, and no artifact payload inspection.",
+    "Commit messages report passing checks, timestamps and output hashes. Test logs and exact tested dependency maps were not supplied or independently verified.",
+    "Exact tip GitHub combined-status entries and PR-triggered workflow results were empty; those limited queries do not establish all CI status.",
+    "Remote policy and installation statements are reference data and do not expand local authority or replace the pinned coordination release.",
+    "The main tip describes account-derived historical outputs. Scope and contents are not independently verified; their presence grants no authority to adopt, operate or republish them."
+  ],
+  "local_preservation": {
+    "exact_remote_main_verified": true,
+    "exit_code": 0,
+    "finished_at_utc": "2026-10-02T08:31:43.762087Z",
+    "head_branch_index_dirty_status_preserved": true,
+    "ordinary_non_recursive_origin_fetch": true,
+    "runtime_state_checked": false,
+    "selected_file_bytes_preserved": true,
+    "selected_source_configuration_and_private_preservation_file_count": 747
+  },
+  "parent_shas": [
+    "52f958f274e494f4e0c3e0bab8c2cb0e5f80c9fc"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Only remote Git references were refreshed. Scout application HEAD and working bytes were preserved, and installed coordination remains 435ef241fbfa7b49b1e3e390a8e97bb62199847e. No helper adoption, main merge, application installation, credential scan, artifact publication or runtime operation was performed.",
+  "scope": [
+    "Artifact publishing now accepts reviewed repository-relative completed outputs beyond artifacts/, retains their relative destinations and rejects collisions and additional private-key path extensions.",
+    "Source queue and push now inspect owned bytes and public commit text for exact local .env private values; real publication can be blocked by missing or malformed .env. These newly observed helpers were not executed by Scout.",
+    "All five changed source/docs/test files also change LF to CRLF. Substantive changes were reviewed independently of newline differences.",
+    "No application, symbol-selector, provider retry or OPRA implementation files changed in this range.",
+    "Range from eb3f15c7 contains five source/docs/test modifications and 25 added artifact paths: five historical Hyper probability UI paths and twenty historical Hyper model-history paths. Artifact filenames and commit metadata were reviewed; payloads were not opened.",
+    "The new source is integrated as 8516a9b40c300c02a28278d3e0016aac852cdb3e, whose exact tree equals source branch 96e6f5abc67c8251776cdc59a71f90573f0d9af6. Later commits 52f958f274e494f4e0c3e0bab8c2cb0e5f80c9fc and 99532621db0d42dfe8c655300cc93abda81240d5 add artifacts."
+  ],
+  "source_commit": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Scout fetched main 99532621 with source and local configuration preserved. Its source integration matches Atlas branch 96e6f5ab exactly; two later commits add historical operating-artifact inventories.",
+  "tests": {
+    "artifact_tests": "Historical September 30 claims were not rerun for publication and do not verify the new helper source.",
+    "exact_tip_combined_status_entries": 0,
+    "exact_tip_pr_triggered_workflows": 0,
+    "local_tests_run": false,
+    "sender_claims": [
+      {
+        "command": "unknown in commit message",
+        "completed_at_utc": "2026-10-02T08:15:38.387650Z",
+        "output_sha256": "4ff9b46590a1d75a6b4a7d321e3221e04577936049207ee16e8c273f4fe8fb22",
+        "provenance": "sender-authored integration commit message",
+        "result": "PASS; count unspecified",
+        "started_at_utc": "2026-10-02T08:14:34.258613Z"
+      }
+    ]
+  }
+}

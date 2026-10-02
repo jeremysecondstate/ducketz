@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T08:35:26.272987Z",
+  "id": "20261002T083526Z-610cd89754884dba84b2f62ca712c745",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout fetched main 99532621 with source and local configuration preserved. Its source integration matches Atlas branch 96e6f5ab exactly; two later commits add historical operating-artifact inventories."
+}
