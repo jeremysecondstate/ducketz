@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T11:33:49.341431Z",
+  "id": "20261002T113349Z-83cdcd9be0c4410f9b5b3616fe1b238e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Scout published and integrated a 31-file shared-source revision covering persistent retry, bounded OPRA concurrency, macro bootstrap, verified legacy archive compatibility and explicit baseline-watchlist tests. Atlas verified the same final bytes on the owner branch and main."
+}

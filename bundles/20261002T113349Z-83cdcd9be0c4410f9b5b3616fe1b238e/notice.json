@@ -1,0 +1,266 @@
+{
+  "author": {
+    "actor": "Scout",
+    "git_author": "Scout",
+    "machine": "pc-new",
+    "producer": "human-authorized-development",
+    "source_git_author": "jeremysecondstate"
+  },
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "observed-shared-source:a0fcaba3330dab29a853ec0785cb103532f3eb47:main:9795e96da25962e1dbb931634158d81f12973a96",
+  "commit_sha": "9795e96da25962e1dbb931634158d81f12973a96",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/9795e96da25962e1dbb931634158d81f12973a96",
+  "cross_pc_parity_verified": false,
+  "files": [
+    {
+      "bytes": 1993,
+      "operation": "modify",
+      "path": ".env.example",
+      "sha256": "33c52b934aa663aeff02d95bc4667841864c55261fa6e0fe7761a52d4f132759"
+    },
+    {
+      "bytes": 9626,
+      "operation": "modify",
+      "path": "app/services/databento_retry.py",
+      "sha256": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c"
+    },
+    {
+      "bytes": 33454,
+      "operation": "modify",
+      "path": "datafetching/cme_runtime.py",
+      "sha256": "7acbc622020b9ea5dc6ea4b0cb9ac0ecbae6e969aff9902e5124312d85459557"
+    },
+    {
+      "bytes": 98795,
+      "operation": "modify",
+      "path": "datafetching/databento_cold_start.py",
+      "sha256": "fcee81a4e4467f298fbdeb4f2aa3d99b0f9a35cc6a30f1f688458d6f5c98428f"
+    },
+    {
+      "bytes": 143516,
+      "operation": "modify",
+      "path": "datafetching/databento_opra_history.py",
+      "sha256": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d"
+    },
+    {
+      "bytes": 33945,
+      "operation": "modify",
+      "path": "datafetching/fred_alfred_readiness.py",
+      "sha256": "66a9ed7c36efee16586e0b6fdb0cffb61f52223a0eeb41e3238542fbc95f3888"
+    },
+    {
+      "bytes": 12145,
+      "operation": "add",
+      "path": "datafetching/opra_concurrent_stream.py",
+      "sha256": "320d3e6932f3fa507867caa318489049a3a70cc37c1ed66013cbd9e0b4bbe5dd"
+    },
+    {
+      "bytes": 71440,
+      "operation": "modify",
+      "path": "datafetching/options_runtime.py",
+      "sha256": "a012181ef5badea60020f243dc5e7d9404fbbae9368ef80ea44f8deba4196c35"
+    },
+    {
+      "bytes": 19327,
+      "operation": "modify",
+      "path": "docs/datafetch-ml/databento-cold-start.md",
+      "sha256": "9dbb0b7e2d8b4b1d8e59424ef1f8f896d7e30dbf61b3fac39d31ecece91c6697"
+    },
+    {
+      "bytes": 5129,
+      "operation": "modify",
+      "path": "docs/datafetch-ml/fred-alfred-causal-ingestion.md",
+      "sha256": "f3c913fbd233c2afb53c0d48bda5a32b02f0a2056acce748a3902846a660a062"
+    },
+    {
+      "bytes": 13630,
+      "operation": "add",
+      "path": "ml/macro_bootstrap.py",
+      "sha256": "68cbf83b22db2c7ed596bb562b09b241c0233efbca2c63f246be1e115a644096"
+    },
+    {
+      "bytes": 7305,
+      "operation": "modify",
+      "path": "ml/option_pricing_fred.py",
+      "sha256": "ecb1f4dc1212cbbc7b3f00f8944d928cfb6078daafa9fb8eb3bc949e206c342a"
+    },
+    {
+      "bytes": 58283,
+      "operation": "modify",
+      "path": "ml/rolling_materialization.py",
+      "sha256": "ebce6333dad159f62368dcfafcccac69869bc0f1fe37cb23061cf0ff29d9b44a"
+    },
+    {
+      "bytes": 39028,
+      "operation": "modify",
+      "path": "ml/stock_target_history.py",
+      "sha256": "1bc14484b587cb740062a3d87ad1968e9e61ae4ebed260c9d7e7dc6def2734f3"
+    },
+    {
+      "bytes": 2582,
+      "operation": "add",
+      "path": "tests/conftest.py",
+      "sha256": "ad70e0f40fe55479492938525d1f28a4002e4525f96227676ee34afe5e139345"
+    },
+    {
+      "bytes": 3722,
+      "operation": "add",
+      "path": "tests/test_cme_persistent_retry_defaults.py",
+      "sha256": "7faa916a7ea0adbe1183dac5bec9fad449b89e859e88605168d831e24a178c04"
+    },
+    {
+      "bytes": 24025,
+      "operation": "modify",
+      "path": "tests/test_cme_runtime.py",
+      "sha256": "eefece637e564130610d4ae752b354bd1725616064275551ffdd39ecc1d68bc7"
+    },
+    {
+      "bytes": 2647,
+      "operation": "add",
+      "path": "tests/test_cross_pc_shared_watchlist.py",
+      "sha256": "6dd1bf3158ae4111df89f990cf7db048b8dfef238dc93f222c361a718e84a25c"
+    },
+    {
+      "bytes": 47052,
+      "operation": "modify",
+      "path": "tests/test_databento_cold_start.py",
+      "sha256": "5db048a6bca7aff58457bfe9a313485cefb06fd75b94afbe515abd4a0978f274"
+    },
+    {
+      "bytes": 9327,
+      "operation": "add",
+      "path": "tests/test_databento_cold_start_retry.py",
+      "sha256": "7dab25e9582c31e473a948fc3a05a08b50721da749875a98ced0011851480b2f"
+    },
+    {
+      "bytes": 50589,
+      "operation": "modify",
+      "path": "tests/test_databento_opra_live.py",
+      "sha256": "6a320eb1e6694d740cf3eecc321cbdb30d1dbef7c36e9021b449585204abb911"
+    },
+    {
+      "bytes": 14493,
+      "operation": "modify",
+      "path": "tests/test_databento_retry.py",
+      "sha256": "2a7c8900bdcd35507efda98f4e8918fe7c661d9d3ab1e112784abc1575c1a61d"
+    },
+    {
+      "bytes": 12505,
+      "operation": "add",
+      "path": "tests/test_ml_macro_bootstrap.py",
+      "sha256": "b00c97eed8f10141a0df986a4c7e25a0f76bec8adb69d752a4ca20decf5addb5"
+    },
+    {
+      "bytes": 11213,
+      "operation": "add",
+      "path": "tests/test_opra_concurrent_native_publication.py",
+      "sha256": "fef75859e1608d58c38bcdc42b632b1341296ac1562162d94082e66fab90ce45"
+    },
+    {
+      "bytes": 17343,
+      "operation": "add",
+      "path": "tests/test_opra_concurrent_stream.py",
+      "sha256": "4682e65c178844cc5a0df9702dd5dee1119c1f00535a94bce7cccfcc1f08c2db"
+    },
+    {
+      "bytes": 4655,
+      "operation": "add",
+      "path": "tests/test_opra_definition_retry.py",
+      "sha256": "95f56acc33c607a39e2692371671d1b40d7374eac5a2807bd616384deedcd62f"
+    },
+    {
+      "bytes": 9499,
+      "operation": "add",
+      "path": "tests/test_opra_gateway_retry.py",
+      "sha256": "a70525774a3aa8fa626c9781c08582bd6e6db85367d7bf534b614a748dacd98c"
+    },
+    {
+      "bytes": 17986,
+      "operation": "modify",
+      "path": "tests/test_opra_replay_fallback.py",
+      "sha256": "7002fe191905cc9c20b957f3bd6812196575e0c9d5b2647bc4740e7abe4f1779"
+    },
+    {
+      "bytes": 75140,
+      "operation": "modify",
+      "path": "tests/test_option_pricing_opra.py",
+      "sha256": "a1d00f16be9a2fd682ba716e2a61baca9edec2b7f5d883284ab8076cbcba164a"
+    },
+    {
+      "bytes": 27986,
+      "operation": "modify",
+      "path": "tests/test_stock_target_history.py",
+      "sha256": "0cc7fc6aeac2cebf7ebe85f303656d9dacf5243c2cc1f0904eb9a160d582cb1c"
+    },
+    {
+      "bytes": 17491,
+      "operation": "modify",
+      "path": "tests/test_stock_target_history_fallback.py",
+      "sha256": "f292c46313580495ee80f41f31d75a271e6320d6f2ec3dbc959e87dbea6b1c84"
+    }
+  ],
+  "limitations": [
+    "Factual Git observation of Scout publication and main integration only. Peer reported offline passes and output hashes are commit metadata; Atlas did not run the suites or verify their output bytes.",
+    "No fresh same-reference inventory of Scout working bytes, local helper/task installation or loaded runtime was supplied to this courier observation. Cross-PC parity remains unverified.",
+    "Atlas local main remains at 99532621db0d42dfe8c655300cc93abda81240d5. Active-writer/runtime absence is not established, so checkout adoption remains withheld."
+  ],
+  "main_integration_final_bytes_verified": true,
+  "observation_type": "peer_common_source_main_integration",
+  "observations": [
+    {
+      "branch": "codex/scout/20261002T111310Z-32b15ec373fb403aa4f0bf8e9d877caf",
+      "commit_sha": "a0fcaba3330dab29a853ec0785cb103532f3eb47",
+      "git_author": "jeremysecondstate",
+      "parent_sha": "8cf894cd1672dfe679a44169dec8f9a9691a8717",
+      "ref": "refs/heads/codex/scout/20261002T111310Z-32b15ec373fb403aa4f0bf8e9d877caf",
+      "stage": "owner_branch_source_available"
+    },
+    {
+      "branch": "main",
+      "commit_sha": "9795e96da25962e1dbb931634158d81f12973a96",
+      "git_author": "Scout",
+      "parent_sha": "d3e5f3ce8811506f32aaad7621a8fb1a0d12183d",
+      "ref": "refs/heads/main",
+      "stage": "common_source_integrated_final_bytes_verified"
+    }
+  ],
+  "parent_sha": "d3e5f3ce8811506f32aaad7621a8fb1a0d12183d",
+  "peer_installation_verified": false,
+  "peer_runtime_adoption_verified": false,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source availability and main integration evidence only. Atlas performed no application checkout replacement, installation, worker start/restart, deployment, provider/broker/trade/training call, funds or schedule change. Running versions remain unverified.",
+  "scope": "Shared application source, defaults, documentation and offline tests for Atlas and Scout. No machine-specific operating artifact, live symbol profile or Gameplan output was added by this diff. Documented local symbols and operating bindings remain subject to their own preservation checks.",
+  "source_branch": "codex/scout/20261002T111310Z-32b15ec373fb403aa4f0bf8e9d877caf",
+  "source_commit_sha": "a0fcaba3330dab29a853ec0785cb103532f3eb47",
+  "source_commit_url": "https://github.com/jeremysecondstate/ducketz/commit/a0fcaba3330dab29a853ec0785cb103532f3eb47",
+  "source_parent_sha": "8cf894cd1672dfe679a44169dec8f9a9691a8717",
+  "summary": "Scout published and integrated a 31-file shared-source revision covering persistent retry, bounded OPRA concurrency, macro bootstrap, verified legacy archive compatibility and explicit baseline-watchlist tests. Atlas verified the same final bytes on the owner branch and main.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-02T11:33:18.805313Z",
+      "files": 31,
+      "name": "Exact fetched refs, complete 31-path operation inventory and branch/main final-byte equality",
+      "started_at_utc": "2026-10-02T11:33:16.474054Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-02T11:19:02.177385Z",
+      "evidence": "Committed source-branch metadata; output and execution not independently verified by Atlas.",
+      "name": "Scout source candidate offline suite",
+      "peer_reported_output_sha256": "912ea3216b920d610b34c06fd1d6e5dd738ddb40fecd1583a62c700200487f93",
+      "peer_reported_status": "passed",
+      "started_at_utc": "2026-10-02T11:16:46.132705Z",
+      "status": "unknown"
+    },
+    {
+      "completed_at_utc": "2026-10-02T11:25:00.340975Z",
+      "evidence": "Committed main metadata; output and execution not independently verified by Atlas.",
+      "name": "Scout actual main integration candidate offline suite",
+      "peer_reported_output_sha256": "a986584a5c3162685d8b513ee6e00de9ea531acb93add0229e1c77befcac3533",
+      "peer_reported_status": "passed",
+      "started_at_utc": "2026-10-02T11:22:33.403375Z",
+      "status": "unknown"
+    }
+  ]
+}
