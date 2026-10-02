@@ -1,0 +1,325 @@
+{
+  "read_at_utc": "2026-10-02T14:45:24.800136+00:00",
+  "expectation": "observational",
+  "config_sha256": {
+    "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+    "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+    "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b",
+    "hyperliquid-powder.json": "b8e55c22b6eb17db44eabe51817584601ce849e4ae0e9374324e303a84966eff"
+  },
+  "portfolio_at_utc": null,
+  "paper_seed_at_utc": null,
+  "paper_baseline_equity": null,
+  "paper_pooled": {},
+  "experiment": null,
+  "paper_policy": null,
+  "maintenance": {
+    "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-47",
+    "cycle_id": "20261002-paper-round-47",
+    "evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-47",
+    "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+    "expected_upstream_state": "data continues; models operator-controlled",
+    "owner": "paper-self-improvement",
+    "phase": "archived",
+    "powder": "inactive; no real account mutation",
+    "reason": "User-authorized Paper self-improvement and fresh account mirror",
+    "requested_at_utc": "2026-10-02T14:38:44.861272+00:00",
+    "status": "in_progress"
+  },
+  "runtime": {
+    "paper": {
+      "status": "missing",
+      "reported_status": null,
+      "process_alive": null,
+      "slot_errors": {}
+    },
+    "models": {
+      "status": "missing",
+      "reported_status": null,
+      "process_alive": null,
+      "slot_errors": {}
+    },
+    "coordinator": {
+      "status": "running",
+      "reported_status": "running",
+      "pid": 56964,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json",
+      "process_alive": true,
+      "updated_at_utc": "2026-10-02T14:45:24.471602+00:00",
+      "reason": null,
+      "config_error": null,
+      "slot_errors": {}
+    },
+    "powder": {
+      "pending_intents": 0,
+      "connected": false,
+      "slot_errors": {}
+    }
+  },
+  "process_identity": {
+    "paper": {
+      "pid": null,
+      "identity_verified": false
+    },
+    "models": {
+      "pid": null,
+      "identity_verified": false
+    },
+    "coordinator": {
+      "pid": 56964,
+      "identity_verified": true,
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.hyperliquid_coordinator",
+        "--config",
+        "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+      ],
+      "cwd": "C:\\dev\\ducketz",
+      "created_at_utc": "2026-09-30T02:07:27.888148+00:00",
+      "parents": [
+        {
+          "pid": 57536,
+          "name": "python.exe",
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.hyperliquid_coordinator",
+            "--config",
+            "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+          ],
+          "created_at_utc": "2026-09-30T02:07:27.881571+00:00"
+        },
+        {
+          "pid": 55988,
+          "name": "cmd.exe",
+          "command": [
+            "C:\\Windows\\System32\\cmd.exe",
+            "/d",
+            "/s",
+            "/c",
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m ml.hyperliquid_coordinator --config C:\\dev\\ducketz\\configs\\hyperliquid-markets.json 1>C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stdout.log 2>C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stderr.log"
+          ],
+          "created_at_utc": "2026-09-30T02:07:27.844841+00:00"
+        }
+      ]
+    },
+    "powder": {
+      "pid": null,
+      "identity_verified": false
+    }
+  },
+  "stop_requests": {
+    "coordinator": false,
+    "models": false,
+    "paper": false,
+    "powder": false
+  },
+  "sources": {
+    "ledger": {
+      "name": "ledger",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": ""
+    },
+    "paper": {
+      "name": "paper",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": ""
+    },
+    "models": {
+      "name": "models",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 5,
+      "detail": ""
+    },
+    "coordinator": {
+      "name": "coordinator",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:24.471602+00:00",
+      "age_seconds": 0.3285341262817383,
+      "cadence_seconds": 5,
+      "detail": ""
+    },
+    "performance": {
+      "name": "performance",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 900,
+      "detail": "Point-in-time export: every 15 minutes or after trading changes. Current balances and chart read the ledger."
+    },
+    "data:BTC": {
+      "name": "data:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 24.80013608932495,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:BTC": {
+      "name": "forecast:BTC",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:BTC": {
+      "name": "training:BTC",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 3600,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:ETH": {
+      "name": "data:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 24.80013608932495,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:ETH": {
+      "name": "forecast:ETH",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:ETH": {
+      "name": "training:ETH",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 3600,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:HYPE": {
+      "name": "data:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 24.80013608932495,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:HYPE": {
+      "name": "forecast:HYPE",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:HYPE": {
+      "name": "training:HYPE",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 3600,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:ZEC": {
+      "name": "data:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 24.80013608932495,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:ZEC": {
+      "name": "forecast:ZEC",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:ZEC": {
+      "name": "training:ZEC",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 3600,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    }
+  },
+  "powder_sources": {
+    "powder_ledger": {
+      "name": "Powder observations",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": "Actual exchange observations; P/L and drawdown await cashflow accounting."
+    }
+  },
+  "warnings": [
+    "Paper ledger is missing; no balances have been inferred",
+    "Missing status.json: C:\\DATASTORE\\hyperliquid\\_paper\\_runtime",
+    "Missing status.json: C:\\DATASTORE\\hyperliquid\\_models\\_runtime",
+    "Missing latest_prediction.json: C:\\DATASTORE\\hyperliquid\\_models\\BTC\\5m\\h1",
+    "Missing latest_prediction.json: C:\\DATASTORE\\hyperliquid\\_models\\ETH\\5m\\h1",
+    "Missing latest_prediction.json: C:\\DATASTORE\\hyperliquid\\_models\\HYPE\\5m\\h1",
+    "Missing latest_prediction.json: C:\\DATASTORE\\hyperliquid\\_models\\ZEC\\5m\\h1"
+  ],
+  "configured_slots": {
+    "result": "failed",
+    "errors": [
+      "Model runtime horizons differ from configured recipe",
+      "Model runtime market/horizon slots differ from configured recipe",
+      "Paper runtime horizon differs from configured recipe",
+      "Workspace forecast coverage differs from configured Paper slots",
+      "BTC/5m/h1: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\BTC\\\\5m\\\\h1\\\\latest_prediction.json'",
+      "ETH/5m/h1: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\ETH\\\\5m\\\\h1\\\\latest_prediction.json'",
+      "HYPE/5m/h1: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\HYPE\\\\5m\\\\h1\\\\latest_prediction.json'",
+      "ZEC/5m/h1: FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\ZEC\\\\5m\\\\h1\\\\latest_prediction.json'"
+    ],
+    "slots": {
+      "BTC/5m/h1": {
+        "result": "failed",
+        "error": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\BTC\\\\5m\\\\h1\\\\latest_prediction.json'"
+      },
+      "ETH/5m/h1": {
+        "result": "failed",
+        "error": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\ETH\\\\5m\\\\h1\\\\latest_prediction.json'"
+      },
+      "HYPE/5m/h1": {
+        "result": "failed",
+        "error": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\HYPE\\\\5m\\\\h1\\\\latest_prediction.json'"
+      },
+      "ZEC/5m/h1": {
+        "result": "failed",
+        "error": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\DATASTORE\\\\hyperliquid\\\\_models\\\\ZEC\\\\5m\\\\h1\\\\latest_prediction.json'"
+      }
+    },
+    "configured_recipe": {
+      "interval": "5m",
+      "horizons_bars": [
+        1
+      ],
+      "paper_horizon_bars": 1,
+      "paper_horizon_minutes": 5.0,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ],
+      "model_config": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "markets_config": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+    }
+  },
+  "result": "observed"
+}
