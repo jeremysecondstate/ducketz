@@ -1,0 +1,744 @@
+{
+  "schema_version": 1,
+  "status": "GAMEPLAN_CME_TRACE_VERIFIED",
+  "started_at_utc": "2026-10-01T06:55:12.252994+00:00",
+  "completed_at_utc": "2026-10-01T06:55:12.635789+00:00",
+  "native_run_id": "20261001T040644.667536Z",
+  "run_path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z",
+  "manifest_sha256": "6d4d8902026e2013d95b3ef850132952bd26a7ba5953a49b6437f33bf7d6bd93",
+  "receipt_sha256": "0c663d699ce6a255d4ad72bf8201acc04933f2d1ca3b9da6cee25ac2a6913b51",
+  "model_reports_sha256": "d2a39d3f0ac59a6182fba3c3e0b7e9a61ffc13bf82bfffb2ffbd7052722446a4",
+  "checks": {
+    "receipt_manifest_binding": true,
+    "receipt_and_configuration_action_date_oct1": true,
+    "source_loop_b_binding": true,
+    "all_saved_outputs_match": true,
+    "all_loop_b_inputs_match": true,
+    "prior_loop_b_trace_pass": true,
+    "all_four_groups_present": true,
+    "all_current_operational_sources_present": true,
+    "all_current_source_cme_values_missing": true,
+    "all_current_optional_inputs_causal": true,
+    "pointer_selects_receipt": true,
+    "forecast_count_264": true
+  },
+  "errors": [],
+  "reused_provider_metadata": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\quality-metadata-20261001T041634Z.json",
+    "sha256": "15292d2c3c6fa981c800b62c95193719d7b36a20b265657e72d9efee451ea69a"
+  },
+  "upstream_loop_b_trace": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\loop-b-model-trace-20261001T063444Z.json",
+    "sha256": "110a787d25474b31f07faaf2d808947820f4126c46e67340f2b336ebec3554ef",
+    "status": "LOOP_B_CME_TRACE_VERIFIED",
+    "historical_non_null_sample_note": "Verified Loop B contains282 hourly and119 four-hour samples with historical August14 CME values; all nine fitted versions bind the August14 view, with no September30 capture source."
+  },
+  "source_loop_b_input_bindings": [
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\runs\\20261001T060531.919504Z\\samples.parquet",
+      "expected": {
+        "checksum_sha256": "3e719081b8674cead5a566f56b72c6c29b27be7aa33ce0e25e3097ba61fc9fb0",
+        "modified_time_ns": 1790836327248168500,
+        "path": "ml\\runs\\20261001T060531.919504Z\\samples.parquet",
+        "size": 45363501,
+        "status": "present"
+      },
+      "actual_sha256": "3e719081b8674cead5a566f56b72c6c29b27be7aa33ce0e25e3097ba61fc9fb0",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\runs\\20261001T060531.919504Z\\predictions.parquet",
+      "expected": {
+        "checksum_sha256": "d0a4c328cce4dea3dbc36867c5f24ee0af86658a290864467cd5bb9206f8c4a5",
+        "modified_time_ns": 1790836327378640400,
+        "path": "ml\\runs\\20261001T060531.919504Z\\predictions.parquet",
+        "size": 206020,
+        "status": "present"
+      },
+      "actual_sha256": "d0a4c328cce4dea3dbc36867c5f24ee0af86658a290864467cd5bb9206f8c4a5",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\runs\\20261001T060531.919504Z\\manifest.json",
+      "expected": {
+        "checksum_sha256": "4a529ac1686000e2c94b8e7b99e1a5254e0d37063b7ecc543836a5105c230c86",
+        "modified_time_ns": 1790836334823018200,
+        "path": "ml\\runs\\20261001T060531.919504Z\\manifest.json",
+        "size": 1657580,
+        "status": "present"
+      },
+      "actual_sha256": "4a529ac1686000e2c94b8e7b99e1a5254e0d37063b7ecc543836a5105c230c86",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\runs\\20261001T060531.919504Z\\publication.json",
+      "expected": {
+        "checksum_sha256": "2d54cbe79821ea6a1be009a6a77a3a28303edcd484a380eddf6dc5571fff7469",
+        "modified_time_ns": 1790836334984488300,
+        "path": "ml\\runs\\20261001T060531.919504Z\\publication.json",
+        "size": 715,
+        "status": "present"
+      },
+      "actual_sha256": "2d54cbe79821ea6a1be009a6a77a3a28303edcd484a380eddf6dc5571fff7469",
+      "matches": true
+    }
+  ],
+  "verified_output_files": [
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\archive-history.json",
+      "checksum_sha256": "83bd11b2e57749db5c7809f325082da20f0042bb63d7bf81407e25dfa610eed3",
+      "size": 187771,
+      "actual_sha256": "83bd11b2e57749db5c7809f325082da20f0042bb63d7bf81407e25dfa610eed3",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\forecasts.parquet",
+      "checksum_sha256": "58e84d895a7cf8f9ffa62c263b92e840f06199d71da8fee1efb76ba8178051fb",
+      "size": 60479,
+      "actual_sha256": "58e84d895a7cf8f9ffa62c263b92e840f06199d71da8fee1efb76ba8178051fb",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\gameplan.json",
+      "checksum_sha256": "d1894b21d5bdb6a041a27581263bb05cac1da3edcbaf0bb8a555f2d86d16b745",
+      "size": 553866,
+      "actual_sha256": "d1894b21d5bdb6a041a27581263bb05cac1da3edcbaf0bb8a555f2d86d16b745",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\model-reports.json",
+      "checksum_sha256": "d2a39d3f0ac59a6182fba3c3e0b7e9a61ffc13bf82bfffb2ffbd7052722446a4",
+      "size": 127497,
+      "actual_sha256": "d2a39d3f0ac59a6182fba3c3e0b7e9a61ffc13bf82bfffb2ffbd7052722446a4",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1d\\model.joblib",
+      "checksum_sha256": "e0fcc812d973daffc59f6138c598f90c3901c903d52422f0378ea66fc2224871",
+      "size": 13402,
+      "actual_sha256": "e0fcc812d973daffc59f6138c598f90c3901c903d52422f0378ea66fc2224871",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1h\\model.joblib",
+      "checksum_sha256": "d30c73159043640dc01d852c4d624e834a6280b2c0e2666577c7884420d5822d",
+      "size": 287285,
+      "actual_sha256": "d30c73159043640dc01d852c4d624e834a6280b2c0e2666577c7884420d5822d",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1w\\model.joblib",
+      "checksum_sha256": "51e7afe68b773d59cc5d2a92209be80b4aa174042c8e7bf46c5d97fe7ff348d5",
+      "size": 17686,
+      "actual_sha256": "51e7afe68b773d59cc5d2a92209be80b4aa174042c8e7bf46c5d97fe7ff348d5",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\4h\\model.joblib",
+      "checksum_sha256": "3602599b0e876c78a7007b6cdd5602f8be1edfdb7b7ae21acb255a6b5a8fff61",
+      "size": 207868,
+      "actual_sha256": "3602599b0e876c78a7007b6cdd5602f8be1edfdb7b7ae21acb255a6b5a8fff61",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\option-strategy-intents.parquet",
+      "checksum_sha256": "20159ba56e31884d7f2b0a067046e3219503ce5429121af86b863a30f7518fd7",
+      "size": 23652,
+      "actual_sha256": "20159ba56e31884d7f2b0a067046e3219503ce5429121af86b863a30f7518fd7",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\prior-gameplan-evaluations.parquet",
+      "checksum_sha256": "11aa1598546c22c5f1457b5a154b6e998e1adc8c2222cde087b7f6a759973844",
+      "size": 273527,
+      "actual_sha256": "11aa1598546c22c5f1457b5a154b6e998e1adc8c2222cde087b7f6a759973844",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1d.parquet",
+      "checksum_sha256": "4f454d4734e33c78a6d1a663ab4e08e46b673f521182a478a10edf495fc9aaa2",
+      "size": 3455601,
+      "actual_sha256": "4f454d4734e33c78a6d1a663ab4e08e46b673f521182a478a10edf495fc9aaa2",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1h.parquet",
+      "checksum_sha256": "e902d01f8ab15dfd85aa65204e1ee78d5e583e286019282faab7a11cd1970bb0",
+      "size": 11532965,
+      "actual_sha256": "e902d01f8ab15dfd85aa65204e1ee78d5e583e286019282faab7a11cd1970bb0",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1w.parquet",
+      "checksum_sha256": "6af1c757d8e60b898cb00a63fcd503e658eb33d836a3e75f1c83395bd8663bcc",
+      "size": 1958748,
+      "actual_sha256": "6af1c757d8e60b898cb00a63fcd503e658eb33d836a3e75f1c83395bd8663bcc",
+      "matches": true
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-4h.parquet",
+      "checksum_sha256": "28e00307e42724810b10b11fd18562136b3200c1414b2779a378db10cf119ec5",
+      "size": 6795978,
+      "actual_sha256": "28e00307e42724810b10b11fd18562136b3200c1414b2779a378db10cf119ec5",
+      "matches": true
+    }
+  ],
+  "groups": [
+    {
+      "group": "1d",
+      "checks": {
+        "cohort_bound_to_manifest": true,
+        "model_bound_to_report": true,
+        "model_report_binding_agrees_with_manifest": true,
+        "no_cme_feature_admitted": true,
+        "all_cohort_cme_values_missing": true,
+        "all_forecasts_use_reported_model": true
+      },
+      "status": "PROMOTED",
+      "selected_family": "regularized-logistic-c0.001",
+      "admitted_feature_count": 41,
+      "admitted_cme_features": [],
+      "model_file": {
+        "checksum_sha256": "e0fcc812d973daffc59f6138c598f90c3901c903d52422f0378ea66fc2224871",
+        "path": "models/1d/model.joblib",
+        "size": 13402,
+        "absolute_path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1d\\model.joblib"
+      },
+      "cohort": {
+        "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1d.parquet",
+        "sha256": "4f454d4734e33c78a6d1a663ab4e08e46b673f521182a478a10edf495fc9aaa2",
+        "rows": 29787,
+        "candidate_cme_features": [
+          "cme__nq_return_1h",
+          "cme__es_return_1h",
+          "cme__small_cap_breadth",
+          "cme__tech_breadth",
+          "cme__gold_return",
+          "cme__crude_return",
+          "cme__relative_spread",
+          "cme__book_imbalance"
+        ],
+        "non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0,
+          "cme__relative_spread": 0,
+          "cme__book_imbalance": 0
+        },
+        "first_decision": "2019-09-18 00:05:00+00:00",
+        "last_decision": "2026-09-30 00:05:00+00:00"
+      },
+      "forecast_rows": 55,
+      "forecast_status_counts": {
+        "PROMOTED": 55
+      },
+      "forecast_model_artifacts": [
+        "models/1d/model.joblib"
+      ],
+      "sep30_cme_use": "NO_CME_FEATURE_ADMITTED; no historical/current CME values in saved cohort"
+    },
+    {
+      "group": "1h",
+      "checks": {
+        "cohort_bound_to_manifest": true,
+        "model_bound_to_report": true,
+        "model_report_binding_agrees_with_manifest": true,
+        "no_cme_feature_admitted": true,
+        "all_cohort_cme_values_missing": true,
+        "all_forecasts_use_reported_model": true
+      },
+      "status": "PROMOTED",
+      "selected_family": "hist-gradient",
+      "admitted_feature_count": 46,
+      "admitted_cme_features": [],
+      "model_file": {
+        "checksum_sha256": "d30c73159043640dc01d852c4d624e834a6280b2c0e2666577c7884420d5822d",
+        "path": "models/1h/model.joblib",
+        "size": 287285,
+        "absolute_path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1h\\model.joblib"
+      },
+      "cohort": {
+        "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1h.parquet",
+        "sha256": "e902d01f8ab15dfd85aa65204e1ee78d5e583e286019282faab7a11cd1970bb0",
+        "rows": 172151,
+        "candidate_cme_features": [
+          "cme__nq_return_1h",
+          "cme__es_return_1h",
+          "cme__small_cap_breadth",
+          "cme__tech_breadth",
+          "cme__gold_return",
+          "cme__crude_return",
+          "cme__relative_spread",
+          "cme__book_imbalance"
+        ],
+        "non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0,
+          "cme__relative_spread": 0,
+          "cme__book_imbalance": 0
+        },
+        "first_decision": "2018-05-31 00:05:00+00:00",
+        "last_decision": "2026-09-30 00:05:00+00:00"
+      },
+      "forecast_rows": 154,
+      "forecast_status_counts": {
+        "PROMOTED": 154
+      },
+      "forecast_model_artifacts": [
+        "models/1h/model.joblib"
+      ],
+      "sep30_cme_use": "NO_CME_FEATURE_ADMITTED; no historical/current CME values in saved cohort"
+    },
+    {
+      "group": "1w",
+      "checks": {
+        "cohort_bound_to_manifest": true,
+        "model_bound_to_report": true,
+        "model_report_binding_agrees_with_manifest": true,
+        "no_cme_feature_admitted": true,
+        "all_cohort_cme_values_missing": true,
+        "all_forecasts_use_reported_model": true
+      },
+      "status": "PROMOTED",
+      "selected_family": "regularized-logistic-c0.001-prior-shrinkage-w0.25",
+      "admitted_feature_count": 43,
+      "admitted_cme_features": [],
+      "model_file": {
+        "checksum_sha256": "51e7afe68b773d59cc5d2a92209be80b4aa174042c8e7bf46c5d97fe7ff348d5",
+        "path": "models/1w/model.joblib",
+        "size": 17686,
+        "absolute_path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\1w\\model.joblib"
+      },
+      "cohort": {
+        "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-1w.parquet",
+        "sha256": "6af1c757d8e60b898cb00a63fcd503e658eb33d836a3e75f1c83395bd8663bcc",
+        "rows": 5867,
+        "candidate_cme_features": [
+          "cme__nq_return_1h",
+          "cme__es_return_1h",
+          "cme__small_cap_breadth",
+          "cme__tech_breadth",
+          "cme__gold_return",
+          "cme__crude_return",
+          "cme__relative_spread",
+          "cme__book_imbalance"
+        ],
+        "non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0,
+          "cme__relative_spread": 0,
+          "cme__book_imbalance": 0
+        },
+        "first_decision": "2019-09-18 00:05:00+00:00",
+        "last_decision": "2026-09-24 00:05:00+00:00"
+      },
+      "forecast_rows": 11,
+      "forecast_status_counts": {
+        "PROMOTED": 11
+      },
+      "forecast_model_artifacts": [
+        "models/1w/model.joblib"
+      ],
+      "sep30_cme_use": "NO_CME_FEATURE_ADMITTED; no historical/current CME values in saved cohort"
+    },
+    {
+      "group": "4h",
+      "checks": {
+        "cohort_bound_to_manifest": true,
+        "model_bound_to_report": true,
+        "model_report_binding_agrees_with_manifest": true,
+        "no_cme_feature_admitted": true,
+        "all_cohort_cme_values_missing": true,
+        "all_forecasts_use_reported_model": true
+      },
+      "status": "PROMOTED",
+      "selected_family": "hist-gradient",
+      "admitted_feature_count": 45,
+      "admitted_cme_features": [],
+      "model_file": {
+        "checksum_sha256": "3602599b0e876c78a7007b6cdd5602f8be1edfdb7b7ae21acb255a6b5a8fff61",
+        "path": "models/4h/model.joblib",
+        "size": 207868,
+        "absolute_path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\models\\4h\\model.joblib"
+      },
+      "cohort": {
+        "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\training-cohort-4h.parquet",
+        "sha256": "28e00307e42724810b10b11fd18562136b3200c1414b2779a378db10cf119ec5",
+        "rows": 43036,
+        "candidate_cme_features": [
+          "cme__nq_return_1h",
+          "cme__es_return_1h",
+          "cme__small_cap_breadth",
+          "cme__tech_breadth",
+          "cme__gold_return",
+          "cme__crude_return",
+          "cme__relative_spread",
+          "cme__book_imbalance"
+        ],
+        "non_null_by_column": {
+          "cme__nq_return_1h": 0,
+          "cme__es_return_1h": 0,
+          "cme__small_cap_breadth": 0,
+          "cme__tech_breadth": 0,
+          "cme__gold_return": 0,
+          "cme__crude_return": 0,
+          "cme__relative_spread": 0,
+          "cme__book_imbalance": 0
+        },
+        "first_decision": "2018-05-31 00:05:00+00:00",
+        "last_decision": "2026-09-30 00:05:00+00:00"
+      },
+      "forecast_rows": 44,
+      "forecast_status_counts": {
+        "PROMOTED": 44
+      },
+      "forecast_model_artifacts": [
+        "models/4h/model.joblib"
+      ],
+      "sep30_cme_use": "NO_CME_FEATURE_ADMITTED; no historical/current CME values in saved cohort"
+    }
+  ],
+  "current_operational_source_evidence": {
+    "source_file": "<LOCAL_DATASTORE>\\ml\\runs\\20261001T060531.919504Z\\samples.parquet",
+    "source_sha256": "3e719081b8674cead5a566f56b72c6c29b27be7aa33ce0e25e3097ba61fc9fb0",
+    "method": "Pure select_prior_session_sources on immutable samples restricted to the saved September30 source session, pinned publication run_timestamp and original causal selection requirements. Read only projection of required identity/clocks plus cme__ candidate fields. No archive load, retraining, publication write or provider request.",
+    "selector_path": "<LOCAL_CHECKOUT>\\ml\\gameplan_source_selection.py",
+    "selector_sha256": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3",
+    "optional_attachment_path": "<LOCAL_CHECKOUT>\\ml\\gameplan_archive_integration.py",
+    "optional_attachment_sha256": "fc9dc08dc06d16eb57adb45841a561a6776545ca46a687fb28a276767faa2601",
+    "rows": [
+      {
+        "symbol": "AAPL",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "AMZN",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "COST",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "CROX",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "GOOG",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "IONQ",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "MU",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "NVDA",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "PATH",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "SNDK",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      },
+      {
+        "symbol": "TWST",
+        "action_date": "2026-10-01",
+        "source_session": "2026-09-30",
+        "operational_decision_timestamp": "2026-10-01 00:05:00+00:00",
+        "operational_information_available_at": "2026-10-01 00:05:00+00:00",
+        "source_bar_timestamp": "2026-09-30 23:00:00+00:00",
+        "source_bar_end_timestamp": "2026-10-01 00:00:00+00:00",
+        "cme_values": {
+          "cme__nq_return_1h": null,
+          "cme__es_return_1h": null,
+          "cme__small_cap_breadth": null,
+          "cme__tech_breadth": null,
+          "cme__gold_return": null,
+          "cme__crude_return": null,
+          "cme__relative_spread": null,
+          "cme__book_imbalance": null
+        },
+        "forecast_count": 24,
+        "forecast_source_sessions": [
+          "2026-09-30"
+        ],
+        "forecast_decision_timestamps": [
+          "2026-10-01 00:05:00+00:00"
+        ],
+        "optional_input_available_by_all_forecast_decisions": true
+      }
+    ]
+  },
+  "archive_feature_contract": {
+    "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\archive-history.json",
+    "sha256": "83bd11b2e57749db5c7809f325082da20f0042bb63d7bf81407e25dfa610eed3",
+    "source_selection_contract": "xnas-archive-prior-session-features-v1",
+    "optional_operational_cme_features": [
+      "cme__nq_return_1h",
+      "cme__es_return_1h",
+      "cme__small_cap_breadth",
+      "cme__tech_breadth",
+      "cme__gold_return",
+      "cme__crude_return",
+      "cme__relative_spread",
+      "cme__book_imbalance"
+    ],
+    "optional_feature_policy": "missing historical columns remain missing; native training admission unchanged"
+  },
+  "forecast_storage_limitation": "forecasts.parquet stores a separate fixed enrichment feature subset; absence of cme__ keys from that subset is not used as proof of missing model inputs. Current missing CME evidence comes from pinned source-row reconstruction; direct model exclusion comes from saved admitted lists and cohort hashes.",
+  "conclusion": "All four October1 Gameplan groups exclude CME features; all eight CME candidate fields are entirely missing across each saved training cohort and across all11 current operational source rows. No September30 degraded CME capture observation entered these four model groups. Existing quality guards and vendor degraded status remain unchanged; the vendor cause is undisclosed.",
+  "separate_optional_pricing_note": "The upstream opx__ pricing coverage/freshness quarantine is separate from CME; this trace does not turn optional feature absence into a source-quality pass.",
+  "provider_calls": 0,
+  "production_writes": 0,
+  "model_fits": 0,
+  "model_deserialization": 0,
+  "orders": 0
+}

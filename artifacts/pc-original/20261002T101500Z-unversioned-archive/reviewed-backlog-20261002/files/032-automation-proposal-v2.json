@@ -1,0 +1,28 @@
+{
+  "id": "REDACTED_NATIVE_ID_0118",
+  "prompt": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "changes": [
+    "Synchronize documented September14/16 policy precedence without changing execution.",
+    "Replace obsolete current-planning15min rule with savedv3 sparse240 rules.",
+    "Replace obsolete54/46 direction thresholds with saved50 split.",
+    "Distinguish archive boundary rules from real-time quote freshness.",
+    "Require bounded structured provider warning diagnostics within existing overnight supervision."
+  ],
+  "preserved": {
+    "name": "Loops Overnight Gameplan",
+    "status": "ACTIVE",
+    "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+    "model": "gpt-6-astra",
+    "reasoning_effort": "ultra",
+    "notification_policy": "failed_runs_only",
+    "target": {
+      "type": "project",
+      "project_id": "REDACTED_NATIVE_ID_0119"
+    },
+    "execution_environment": "local",
+    "cwds": [
+      "<LOCAL_CHECKOUT>",
+      "<LOCAL_DATASTORE>"
+    ]
+  }
+}

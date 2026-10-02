@@ -1,0 +1,26 @@
+{
+  "captured_at": "2026-09-30T07:27:03.566104+00:00",
+  "scope": "Before focused inline CME durable-history repair; no production changes",
+  "files": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\databento_fetch.py",
+      "sha256": "de99a9e282ccd2222259a8aee2b61429aa950161dfdfc589fc85c79836ce321c",
+      "bytes": 55313
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_history.py",
+      "sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+      "bytes": 31029
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_cross_asset_context.py",
+      "sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c",
+      "bytes": 38391
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\tests\\test_cme_cross_asset_context.py",
+      "sha256": "58f63eafec22a46b5f6b2c0321a6a0be1bf24d93c6acc785f803e987f2a89386",
+      "bytes": 14598
+    }
+  ]
+}

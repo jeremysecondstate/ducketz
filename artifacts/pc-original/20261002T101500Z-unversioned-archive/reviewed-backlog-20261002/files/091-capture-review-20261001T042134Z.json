@@ -1,0 +1,675 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-01T04:21:34.881598+00:00",
+  "scope": "OFFLINE_READ_ONLY_PROVIDER_WARNING_REVIEW",
+  "native_run_id": "20261001T040644.667536Z",
+  "native_status": "RUNNING",
+  "native_stage": "loop_a_close_fetch",
+  "dataset": "GLBX.MDP3",
+  "flagged_utc_date": "2026-09-30",
+  "status": "CAPTURES_REVIEWED_MODEL_TRACE_PENDING",
+  "metadata_evidence": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\quality-metadata-20261001T041634Z.json",
+    "sha256": "15292d2c3c6fa981c800b62c95193719d7b36a20b265657e72d9efee451ea69a",
+    "checked_at_utc": "2026-10-01T04:16:34.115514+00:00"
+  },
+  "provider_conditions": [
+    {
+      "date": "2026-09-28",
+      "condition": "available",
+      "last_modified_date": "2026-09-29"
+    },
+    {
+      "date": "2026-09-29",
+      "condition": "available",
+      "last_modified_date": "2026-09-30"
+    },
+    {
+      "date": "2026-09-30",
+      "condition": "degraded",
+      "last_modified_date": "2026-09-30"
+    },
+    {
+      "date": "2026-10-01",
+      "condition": "available",
+      "last_modified_date": "2026-10-01"
+    }
+  ],
+  "schema_ranges": {
+    "ohlcv-1m": {
+      "start": "2010-06-06T00:00:00.000000000Z",
+      "end": "2026-10-01T04:10:00.000000000Z"
+    },
+    "bbo-1m": {
+      "start": "2010-06-06T00:00:00.000000000Z",
+      "end": "2026-10-01T04:10:00.000000000Z"
+    },
+    "mbp-10": {
+      "start": "2010-06-06T00:00:00.000000000Z",
+      "end": "2026-09-30T20:16:18.531488000Z"
+    },
+    "mbo": {
+      "start": "2017-05-21T00:00:00.000000000Z",
+      "end": "2026-09-30T20:16:18.531488000Z"
+    }
+  },
+  "log_snapshot": {
+    "path": "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z\\loop_a_close_fetch.log",
+    "bytes": 27035,
+    "sha256": "aa5321356b305cc5a677426b043d327af9a42308d7297012fde55ea0e96ebbbc"
+  },
+  "warning_occurrences": [
+    {
+      "line": 136,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 135,
+        "text": "[2026-10-01T04:14:46.223981Z] START provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 138,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 135,
+        "text": "[2026-10-01T04:14:46.223981Z] START provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 140,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 135,
+        "text": "[2026-10-01T04:14:46.223981Z] START provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 142,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 135,
+        "text": "[2026-10-01T04:14:46.223981Z] START provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 146,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 145,
+        "text": "[2026-10-01T04:16:45.020094Z] START provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 148,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 145,
+        "text": "[2026-10-01T04:16:45.020094Z] START provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 150,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 145,
+        "text": "[2026-10-01T04:16:45.020094Z] START provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+      }
+    },
+    {
+      "line": 158,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 157,
+        "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 160,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 157,
+        "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 162,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 157,
+        "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 164,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 157,
+        "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 166,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 157,
+        "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 168,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 157,
+        "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 172,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 171,
+        "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 174,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 171,
+        "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 176,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 171,
+        "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 178,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 171,
+        "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 180,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 171,
+        "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    },
+    {
+      "line": 182,
+      "text": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request contained one or more days which have reduced quality: 2026-09-30 (degraded). See: [provider documentation URL omitted]",
+      "enclosing_logged_request": {
+        "line": 171,
+        "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+      }
+    }
+  ],
+  "cme_requests": [
+    {
+      "line": 135,
+      "text": "[2026-10-01T04:14:46.223981Z] START provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+    },
+    {
+      "line": 144,
+      "text": "[2026-10-01T04:16:24.014423Z] END   provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1 elapsed=97784.0ms rows=2384 op=fetched status=ok"
+    },
+    {
+      "line": 145,
+      "text": "[2026-10-01T04:16:45.020094Z] START provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1"
+    },
+    {
+      "line": 152,
+      "text": "[2026-10-01T04:17:04.659717Z] END   provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-28T04:10:00Z..2026-10-01T04:10:00Z try=1 elapsed=19638.3ms rows=4069 op=fetched status=ok"
+    },
+    {
+      "line": 153,
+      "text": "[2026-10-01T04:17:34.448726Z] START provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-10-01T03:10:00Z..2026-10-01T04:10:00Z try=1"
+    },
+    {
+      "line": 154,
+      "text": "[2026-10-01T04:17:38.431532Z] END   provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-10-01T03:10:00Z..2026-10-01T04:10:00Z try=1 elapsed=3982.5ms rows=300 op=fetched status=ok"
+    },
+    {
+      "line": 155,
+      "text": "[2026-10-01T04:17:41.426643Z] START provider.request name=\"CME cme_contracts_bbo-1m\" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-10-01T03:10:00Z..2026-10-01T04:10:00Z try=1"
+    },
+    {
+      "line": 156,
+      "text": "[2026-10-01T04:17:45.138710Z] END   provider.request name=\"CME cme_contracts_bbo-1m\" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-10-01T03:10:00Z..2026-10-01T04:10:00Z try=1 elapsed=3711.8ms rows=240 op=fetched status=ok"
+    },
+    {
+      "line": 157,
+      "text": "[2026-10-01T04:17:47.383453Z] START provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+    },
+    {
+      "line": 170,
+      "text": "[2026-10-01T04:18:21.518635Z] END   provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1 elapsed=34132.9ms rows=5000 op=fetched status=ok"
+    },
+    {
+      "line": 171,
+      "text": "[2026-10-01T04:19:16.471103Z] START provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1"
+    },
+    {
+      "line": 184,
+      "text": "[2026-10-01T04:20:50.681750Z] END   provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-30T19:49:45.669703Z..2026-09-30T20:14:45.669703Z try=1 elapsed=94204.5ms rows=5000 op=fetched status=ok"
+    }
+  ],
+  "captures": [
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "ohlcv-1m",
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+      "sha256": "c2b79383a77cddc8f4fbdc69ad41eb4ce9c284471c8c10c47741f7e5657352aa",
+      "file_rows": 59794,
+      "current_native_rows": 2384,
+      "latest_fetched_at": "2026-10-01 04:16:23.977222+00:00",
+      "status": "CURRENT_NATIVE_CAPTURE",
+      "schema_available_end": "2026-10-01T04:10:00.000000000Z",
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "ohlcv-1m",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-28 04:10:00+00:00",
+          "initial_range_end": "2026-10-01 04:10:00+00:00",
+          "effective_range_start": "2026-09-30 19:10:00+00:00",
+          "effective_range_end": "2026-10-01 04:10:00+00:00",
+          "limit": 5000,
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 3,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT",
+          "initial_end_within_metadata_availability": true,
+          "effective_end_within_metadata_availability": true,
+          "overlaps_flagged_day": true,
+          "effective_flagged_day_overlap_start": "2026-09-30 19:10:00+00:00",
+          "effective_flagged_day_overlap_end": "2026-10-01 00:00:00+00:00"
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 472,
+          "first_market_timestamp": "2026-09-30 19:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 222
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 480,
+          "first_market_timestamp": "2026-09-30 19:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 230
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 477,
+          "first_market_timestamp": "2026-09-30 19:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 227
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 480,
+          "first_market_timestamp": "2026-09-30 19:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 230
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 475,
+          "first_market_timestamp": "2026-09-30 19:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 227
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "bbo-1m",
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "sha256": "a64c477f0e3cb191add983514ede7ef41ff55f4b8380f668122a21c9ffc68ead",
+      "file_rows": 5940,
+      "current_native_rows": 300,
+      "latest_fetched_at": "2026-10-01 04:17:38.418844+00:00",
+      "status": "CURRENT_NATIVE_CAPTURE",
+      "schema_available_end": "2026-10-01T04:10:00.000000000Z",
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-10-01 03:10:00+00:00",
+          "initial_range_end": "2026-10-01 04:10:00+00:00",
+          "effective_range_start": "2026-10-01 03:10:00+00:00",
+          "effective_range_end": "2026-10-01 04:10:00+00:00",
+          "limit": 5000,
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT",
+          "initial_end_within_metadata_availability": true,
+          "effective_end_within_metadata_availability": true,
+          "overlaps_flagged_day": false,
+          "effective_flagged_day_overlap_start": null,
+          "effective_flagged_day_overlap_end": null
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:56.349978189+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:53.959511205+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:39.774032009+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:56.093818697+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:56.194655973+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:57.020247845+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:59.298563791+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:59.950744991+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:38.780238957+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:53.400440073+00:00",
+          "rows_on_flagged_utc_day": 0
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "mbp-10",
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "sha256": "c6eb2082a848717d7644de6d72bbce777841ca137976473eefbdda68ec44d8e6",
+      "file_rows": 102198,
+      "current_native_rows": 5000,
+      "latest_fetched_at": "2026-10-01 04:18:20.980844+00:00",
+      "status": "CURRENT_NATIVE_CAPTURE",
+      "schema_available_end": "2026-09-30T20:16:18.531488000Z",
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_stype_in": "continuous",
+          "initial_range_start": "2026-09-30 19:49:45.669703+00:00",
+          "initial_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "effective_range_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "limit": 5000,
+          "request_limit_saturated": true,
+          "latest_window_shrink_count": 5,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT",
+          "initial_end_within_metadata_availability": true,
+          "effective_end_within_metadata_availability": true,
+          "overlaps_flagged_day": true,
+          "effective_flagged_day_overlap_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_flagged_day_overlap_end": "2026-09-30 20:14:45.669703+00:00"
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 38,
+          "first_market_timestamp": "2026-09-30 20:14:00.689771437+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:05.002682119+00:00",
+          "rows_on_flagged_utc_day": 38
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 2001,
+          "first_market_timestamp": "2026-09-30 20:13:58.794628023+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:05.654737503+00:00",
+          "rows_on_flagged_utc_day": 2001
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 116,
+          "first_market_timestamp": "2026-09-30 20:13:58.798999873+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:05.524912207+00:00",
+          "rows_on_flagged_utc_day": 116
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 2164,
+          "first_market_timestamp": "2026-09-30 20:13:58.796174161+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:05.652542701+00:00",
+          "rows_on_flagged_utc_day": 2164
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 681,
+          "first_market_timestamp": "2026-09-30 20:13:59.010642625+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:05.667212055+00:00",
+          "rows_on_flagged_utc_day": 681
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "ohlcv-1m",
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+      "sha256": "1529f1a75f679875e6c3e47bc16d8a6386fd2d37679c87f684ff92f93b4c477a",
+      "file_rows": 69001,
+      "current_native_rows": 4069,
+      "latest_fetched_at": "2026-10-01 04:17:04.605085+00:00",
+      "status": "CURRENT_NATIVE_CAPTURE",
+      "schema_available_end": "2026-10-01T04:10:00.000000000Z",
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "ohlcv-1m",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-28 04:10:00+00:00",
+          "initial_range_end": "2026-10-01 04:10:00+00:00",
+          "effective_range_start": "2026-09-30 10:10:00+00:00",
+          "effective_range_end": "2026-10-01 04:10:00+00:00",
+          "limit": 5000,
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 2,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT",
+          "initial_end_within_metadata_availability": true,
+          "effective_end_within_metadata_availability": true,
+          "overlaps_flagged_day": true,
+          "effective_flagged_day_overlap_start": "2026-09-30 10:10:00+00:00",
+          "effective_flagged_day_overlap_end": "2026-10-01 00:00:00+00:00"
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "CLX6",
+          "rows": 1012,
+          "first_market_timestamp": "2026-09-30 10:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 762
+        },
+        {
+          "symbol": "ESZ6",
+          "rows": 1020,
+          "first_market_timestamp": "2026-09-30 10:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 770
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 1017,
+          "first_market_timestamp": "2026-09-30 10:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 767
+        },
+        {
+          "symbol": "NQZ6",
+          "rows": 1020,
+          "first_market_timestamp": "2026-09-30 10:10:00+00:00",
+          "last_market_timestamp": "2026-10-01 04:09:00+00:00",
+          "rows_on_flagged_utc_day": 770
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "bbo-1m",
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "sha256": "893aef0aa2af0be30d9a343d833f026ef2f70e97bb474973fc3bed2c5bc1e461",
+      "file_rows": 4300,
+      "current_native_rows": 240,
+      "latest_fetched_at": "2026-10-01 04:17:45.124734+00:00",
+      "status": "CURRENT_NATIVE_CAPTURE",
+      "schema_available_end": "2026-10-01T04:10:00.000000000Z",
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "bbo-1m",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-10-01 03:10:00+00:00",
+          "initial_range_end": "2026-10-01 04:10:00+00:00",
+          "effective_range_start": "2026-10-01 03:10:00+00:00",
+          "effective_range_end": "2026-10-01 04:10:00+00:00",
+          "limit": 5000,
+          "request_limit_saturated": false,
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT",
+          "initial_end_within_metadata_availability": true,
+          "effective_end_within_metadata_availability": true,
+          "overlaps_flagged_day": false,
+          "effective_flagged_day_overlap_start": null,
+          "effective_flagged_day_overlap_end": null
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "CLX6",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:56.349978189+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:53.959511205+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "ESZ6",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:39.774032009+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:56.093818697+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:56.194655973+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:57.020247845+00:00",
+          "rows_on_flagged_utc_day": 0
+        },
+        {
+          "symbol": "NQZ6",
+          "rows": 60,
+          "first_market_timestamp": "2026-10-01 03:09:59.298563791+00:00",
+          "last_market_timestamp": "2026-10-01 04:08:59.950744991+00:00",
+          "rows_on_flagged_utc_day": 0
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "mbp-10",
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "sha256": "5029eac10d7dd25289c2c3caf445ed3711053ffb020fc22a531333bed97b9ee9",
+      "file_rows": 94148,
+      "current_native_rows": 5000,
+      "latest_fetched_at": "2026-10-01 04:20:50.139075+00:00",
+      "status": "CURRENT_NATIVE_CAPTURE",
+      "schema_available_end": "2026-09-30T20:16:18.531488000Z",
+      "request_metadata": [
+        {
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_stype_in": "raw_symbol",
+          "initial_range_start": "2026-09-30 19:49:45.669703+00:00",
+          "initial_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "effective_range_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "limit": 5000,
+          "request_limit_saturated": true,
+          "latest_window_shrink_count": 5,
+          "empty_window_expansion_count": 0,
+          "cme_schema_status": "CURRENT",
+          "initial_end_within_metadata_availability": true,
+          "effective_end_within_metadata_availability": true,
+          "overlaps_flagged_day": true,
+          "effective_flagged_day_overlap_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_flagged_day_overlap_end": "2026-09-30 20:14:45.669703+00:00"
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "CLX6",
+          "rows": 38,
+          "first_market_timestamp": "2026-09-30 20:14:00.689771437+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:05.002682119+00:00",
+          "rows_on_flagged_utc_day": 38
+        },
+        {
+          "symbol": "ESZ6",
+          "rows": 2247,
+          "first_market_timestamp": "2026-09-30 20:13:58.794628023+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:07.448471565+00:00",
+          "rows_on_flagged_utc_day": 2247
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 118,
+          "first_market_timestamp": "2026-09-30 20:13:58.798999873+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:07.302604293+00:00",
+          "rows_on_flagged_utc_day": 118
+        },
+        {
+          "symbol": "NQZ6",
+          "rows": 2597,
+          "first_market_timestamp": "2026-09-30 20:13:58.796174161+00:00",
+          "last_market_timestamp": "2026-09-30 20:14:07.448244307+00:00",
+          "rows_on_flagged_utc_day": 2597
+        }
+      ]
+    }
+  ],
+  "provider_cause": "UNDISCLOSED: metadata identifies date, condition and modification date, with no cause or affected channel/symbol/schema/intraday interval.",
+  "limitations": [
+    "September 30 is a completed UTC day at this capture; the degraded flag is not explained by an in-progress UTC day.",
+    "Schema publication lag and reduced provider quality are separate observations; neither establishes the cause of the other.",
+    "A successful nonempty request proves observed delivery, not complete requested-range coverage or model eligibility.",
+    "Record-limit saturation is explicitly retained and prevents claiming full-range completeness.",
+    "Dataset-condition metadata does not identify which individual delivered records are defective.",
+    "Fresh model artifacts are not yet available; verify actual admitted features and manifest-bound source rows after publication."
+  ],
+  "provider_calls_this_review": 0,
+  "metadata_calls_reused": 2,
+  "market_data_acquisitions": 0,
+  "broker_calls": 0,
+  "orders": 0,
+  "production_writes": 0
+}

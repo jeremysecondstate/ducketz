@@ -1,0 +1,148 @@
+October 1 preparation: quality fields and bounded diagnosis order
+
+This is a source review and diagnosis plan, not a finding that any October 1
+model has passed or failed. No fitting, source changes, source-archive scans or
+final audit were performed to prepare it.
+
+1. Keep the three evidence layers distinct.
+
+Loop B (ml.prediction_runtime / ml.runtime_pipeline):
+  The materialization log's [rolling horizon] symbol READY concerns route input
+  availability. Its final result is COMPLETED or COMPLETED_WITH_LIMITATIONS
+  from route_errors. This scheduled invocation requires all routes; unresolved
+  required route/model errors block atomic publication. Its manifest binds
+  configuration.models, model_feature_sets, partition_configuration_by_horizon,
+  route_errors, pricing_evidence and publication_counts. Reused models and
+  retained frozen weekly rows must retain their original evidence.
+  Loop B model manifests under ml/models/<horizon>/<model>/<generation> record
+  offline_evaluation.status=OFFLINE_EVALUATED_CANDIDATE, raw_model,
+  calibrated_model, training_base_rate, calibration_base_rate,
+  calibration_support, assessment_used_for_training/calibration=false and
+  lockbox.status=CLOSED_UNTOUCHED_UNSCORED. These are not the independent
+  Gameplan's four promotion gates and are not sizing qualification.
+
+Independent directional Gameplan (model-reports.json, keyed 1h/4h/1d/1w):
+  promotion_gate.status is PROMOTED or RESEARCH_NOT_PROMOTED.
+  promotion_gate.policy_version must match the saved version; new independent
+  runs use independent-stock-directional-promotion-v2.
+  promotion_gate.checks lists each failed/satisfied condition:
+    calibration_retains_directional_information
+    assessment_has_at_least_10_decision_clusters
+    expected_calibration_error_at_most_0_15
+    brier_within_baseline_tolerance
+    log_loss_within_baseline_tolerance
+  Numeric fields: assessment, assessment_raw_scores,
+  training_base_rate_assessment, calibration_raw_scores,
+  calibration_assessment_change, calibration_diagnostics,
+  promotion_gate.baseline_tolerances, assessment_minus_baseline and
+  assessment_beats_baseline. New Brier <= baseline+0.005 and logloss <=
+  baseline+0.01 do not establish baseline outperformance.
+  Calibration must retain >1e-12 variation in calibration and assessment,
+  information_available=true, nondecreasing_constraint_active=false and a
+  calibration positive rate strictly between zero and one.
+  Partition/support fields: partitions, partition_decision_clusters,
+  target_support_by_symbol, assessment_by_route/symbol, target_boundary_quality,
+  features.admitted/count. Per forecast row, model_status additionally becomes
+  RESEARCH_NO_TARGET_HISTORY if exact symbol or symbol-route fitted rows are zero.
+  Save actual symbol_fitted_target_rows and symbol_route_fitted_target_rows;
+  a pooled group pass is not proof of every route's fitted support.
+  Development fields: selected_family, selection_metrics,
+  logistic_regularization_candidates/selected_logistic_regularization_c,
+  calibration_selection, development_selection_policy; weekly additionally
+  records selected_base_family, selected_probability_shrinkage_weight,
+  probability_shrinkage_weights, selection_shrinkage_prior/fitted_shrinkage_prior.
+  These use the fixed candidate grids and development partitions only.
+
+  Important: a quality fail produces FIT_WARNING in gameplan/<horizon>/assessment
+  or /calibration but can still produce a successful native publication with
+  an honest research status. A COMPLETE process or clean manifest is not proof
+  all models passed. The prepared final verifier records research as coverage
+  notes; it does not replace the user's requested defect investigation.
+
+  Champion caveat: model-reports[group].deployment can state
+  RETAINED_VERIFIED_CHAMPION, source_run, retained_cohort_output,
+  challenger_cohort_output, challenger_report_output and challenger_status.
+  Always review the saved fresh challenger report as well as the published model.
+  A retained model pass must not hide a fresh failure. Native retention is only
+  the latest compatible promoted source for the SAME action date, universe,
+  probability target, target price source and feature contract; it does not
+  select among models by observed assessment score.
+
+Independent learned sizing (stock-trader-model-runs/<run>/training-report.json):
+  Top-level MODELS_FIT and horizons[group].status=FITTED mean fitting happened.
+  They do not imply qualified execution scope. Distinguish model.json
+  horizons[group].fitted and training-report.horizons[group].fitted_scope_count
+  from qualified_scope_count, scope_readiness[scope].status/reason,
+  supported_horizons and qualified_target_contracts.
+  Current pooled-horizon-with-observed-target-coverage-v1 requires a passing
+  untouched horizon assessment (>=10 decision clusters), at least one fitted
+  exact symbol/route/duration cluster and >=20 fitted pooled symbol/route
+  clusters across observed durations. Diagnostic-only scopes remain RESEARCH.
+  Quality is stricter than directional-v2: Brier and logloss strictly beat their
+  training baselines, ECE<=0.15, return_mse strictly below baseline,
+  adverse_mse<=baseline and probability range >1e-8.
+  scope_readiness reason distinguishes UNSEEN_EXACT_TARGET_SCOPE,
+  INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE,
+  HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED and
+  HELD_OUT_POOLED_HORIZON_QUALIFIED_WITH_OBSERVED_SCOPE.
+  Report partition_evidence, head_training_objectives,
+  head_development_selection, calibration_selection and market_feature_admission.
+  The archive admission policy excludes only execution rows whose eight optional
+  market features are all absent; partial/nonfinite observations still fail.
+  Read-only loaders reproduce this admission and scope quality from the bound
+  immutable Gameplan cohorts. Research sizing is not relabeled, and it does not
+  become a separate veto for the user-selected manual direction policy.
+
+2. If a new failure appears, capture before attempting a repair.
+
+  While training is active, preserve exact FIT_WARNING/FIT_ERROR JSON and its
+  group/phase, child/native run identity, source/deadline, new log offsets and
+  stage heartbeat. Target-quality excluded_rows is not alone a model failure;
+  distinguish it from final calibration/assessment failed_checks.
+  Once a native group report is durably saved, read its small JSON diagnostics.
+  Do not start a duplicate fit or reconstruct archives concurrently merely to
+  learn progress. The root runs full immutable verification after COMPLETE.
+  Retain original reports and model/cohort hashes before any justified fix.
+
+3. Diagnose a defect rather than optimize the final assessment.
+
+  First reproduce numeric gate arithmetic and saved source/target identity.
+  Check data clocks, raw-return label arithmetic, exact observed endpoints within
+  five minutes, duplicate natural targets, causal source cutoffs, class support,
+  purged chronological partitions and all expected symbols/routes.
+  Inspect archive-history.json exclusions, warmup/split/provider-quality resets,
+  source dates and cohort ranges. Observed sparse endpoints or excluded invalid
+  bars are evidence limits, not permission to fabricate rows or widen tolerance.
+  Check finite admitted features and fitting/convergence diagnostics. Candidate
+  comparison remains on fixed development data/grid. Check selected_family is
+  the development minimum under the documented tie rule; verify calibration
+  selection/refit eligibility and assessment_used_for_selection=false. For weekly
+  models verify shrinkage priors, fixed weights and preserved variation.
+  Use saved fitted artifacts to reproduce assessment scores once, after COMPLETE;
+  do not rank/reselect alternatives on that assessment. The prepared final audit
+  does this and independently reproduces archive cohorts/current inference.
+  A data/implementation/convergence defect supports a concrete tested repair.
+  A faithfully reproduced quality shortfall alone does not justify threshold
+  relaxation, invented labels, a new grid chosen from assessment results, a
+  repeated unchanged fit, or a promised pass.
+
+4. Completion and repair authority remain separate.
+
+  Investigate promptly even if native stage status succeeds. If a concrete
+  repair is supported, root must use the documented owned controlled-stop/
+  recovery and eligible failed-stage resume mechanism, preserving successful
+  upstream work and the original October 1 11:00Z deadline. Do not manufacture
+  a failed receipt, edit an immutable publication or blindly rerun a completed
+  source session. A newly discovered repair never permits repeating a source
+  session that is already fully COMPLETE. No changes are proposed by this guide.
+  This review grants no trader start, order, controls, strategy or rollout change.
+
+Source references (reviewed current local implementation):
+  ml/runtime_pipeline.py:234, 719, 887
+  ml/model_runtime.py:772
+  ml/nightly_gameplan.py:364, 1265, 1330, 1427, 1538
+  ml/gameplan_promotion.py:39
+  ml/gameplan_champions.py:111
+  ml/stock_trader/independent_training.py:329, 516, 553, 573
+  ml/stock_trader/scope_qualification.py:45
+  ml/stock_trader/model.py:408

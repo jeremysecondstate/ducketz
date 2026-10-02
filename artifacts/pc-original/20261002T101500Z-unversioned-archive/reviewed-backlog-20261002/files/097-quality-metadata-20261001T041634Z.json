@@ -1,0 +1,142 @@
+{
+  "started_at_utc": "2026-10-01T04:16:11.872436+00:00",
+  "scope": "READ_ONLY_METADATA_ONLY",
+  "native_run_id": "20261001T040644.667536Z",
+  "dataset": "GLBX.MDP3",
+  "warning_utc_date": "2026-09-30",
+  "first_warning_request": {
+    "schema": "ohlcv-1m",
+    "scope": "CME_CONTEXT",
+    "start": "2026-09-28T04:10:00Z",
+    "end": "2026-10-01T04:10:00Z"
+  },
+  "metadata_timeout_seconds": 20,
+  "retries": 0,
+  "calls": [
+    {
+      "method": "GET",
+      "endpoint": "metadata.get_dataset_condition",
+      "parameters": {
+        "dataset": "GLBX.MDP3",
+        "start_date": "2026-09-28",
+        "end_date": "2026-10-01"
+      },
+      "started_at_utc": "2026-10-01T04:16:11.872445+00:00",
+      "response": [
+        {
+          "date": "2026-09-28",
+          "condition": "available",
+          "last_modified_date": "2026-09-29"
+        },
+        {
+          "date": "2026-09-29",
+          "condition": "available",
+          "last_modified_date": "2026-09-30"
+        },
+        {
+          "date": "2026-09-30",
+          "condition": "degraded",
+          "last_modified_date": "2026-09-30"
+        },
+        {
+          "date": "2026-10-01",
+          "condition": "available",
+          "last_modified_date": "2026-10-01"
+        }
+      ],
+      "warning_types": [],
+      "status": "SUCCESS",
+      "finished_at_utc": "2026-10-01T04:16:14.263833+00:00"
+    },
+    {
+      "method": "GET",
+      "endpoint": "metadata.get_dataset_range",
+      "parameters": {
+        "dataset": "GLBX.MDP3"
+      },
+      "started_at_utc": "2026-10-01T04:16:14.263842+00:00",
+      "response": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-10-01T04:10:00.000000000Z",
+        "schema": {
+          "mbo": {
+            "start": "2017-05-21T00:00:00.000000000Z",
+            "end": "2026-09-30T20:16:18.531488000Z"
+          },
+          "mbp-1": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "mbp-10": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-09-30T20:16:18.531488000Z"
+          },
+          "tbbo": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "trades": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "bbo-1s": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "bbo-1m": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "ohlcv-1s": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "ohlcv-1m": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "ohlcv-1h": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:00:00.000000000Z"
+          },
+          "ohlcv-1d": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T00:00:00.000000000Z"
+          },
+          "definition": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "statistics": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "status": {
+            "start": "2010-06-06T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "cmbp-1": {
+            "start": "2017-05-21T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "cbbo-1s": {
+            "start": "2017-05-21T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          },
+          "cbbo-1m": {
+            "start": "2017-05-21T00:00:00.000000000Z",
+            "end": "2026-10-01T04:10:00.000000000Z"
+          }
+        }
+      },
+      "warning_types": [],
+      "status": "SUCCESS",
+      "finished_at_utc": "2026-10-01T04:16:34.115503+00:00"
+    }
+  ],
+  "timeseries_calls": 0,
+  "batch_calls": 0,
+  "broker_calls": 0,
+  "production_writes": 0,
+  "finished_at_utc": "2026-10-01T04:16:34.115514+00:00"
+}

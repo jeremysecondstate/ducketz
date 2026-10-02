@@ -1,0 +1,563 @@
+{
+  "reviewed_at": "2026-10-01T06:54:50.825627+00:00",
+  "status": "BOUNDED_SAVED_REPORT_CHECKS_PASS_WITH_RESEARCH_SIZING",
+  "gameplan_run": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z",
+  "enrichment_run": "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20261001T065134.405601Z",
+  "source_gameplan_match": true,
+  "manual_direction": {
+    "policy": "stock-direction-50-v2",
+    "rows": 264,
+    "full_saved_probability_classification": "STRICTLY_ABOVE_BELOW_50_EXACT_TIE_NEUTRAL",
+    "counts": {
+      "BEARISH": 140,
+      "BULLISH": 124
+    },
+    "all_forecasts_promoted": true,
+    "all_exact_fitted_symbol_and_route_support_positive": true,
+    "minimum_fitted_route_rows_by_group": {
+      "1d": 2,
+      "1h": 1,
+      "1w": 8,
+      "4h": 24
+    },
+    "saved_report_and_forecast_support_agree": true
+  },
+  "learned_sizing": {
+    "status": "MODELS_FIT",
+    "supported_horizons": [],
+    "qualified_target_contracts": [],
+    "horizons": {
+      "1d": {
+        "status": "FITTED",
+        "fitted_scope_count": 11,
+        "qualified_scope_count": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 0.0004377818495613114,
+          "base_adverse_mse": 0.00047691369487501796,
+          "base_brier": 0.24900073755222238,
+          "base_log_loss": 0.6911481750058065,
+          "base_return_mse": 0.0015993577955936097,
+          "brier": 0.25787885767366686,
+          "ece": 0.08370296677161869,
+          "log_loss": 0.7120370961853392,
+          "probability_range": [
+            0.32003640601785405,
+            0.9704580451458807
+          ],
+          "return_mse": 0.0016820768228019544
+        },
+        "quality_checks": {
+          "brier_below_baseline": false,
+          "logloss_below_baseline": false,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": true,
+          "varying_probability": true,
+          "assessment_at_least_10_clusters": true
+        },
+        "failed_quality_checks": [
+          "brier_below_baseline",
+          "logloss_below_baseline",
+          "return_mse_below_baseline"
+        ],
+        "development_selection_reproduced_from_saved_metrics": true,
+        "calibration_selection": "identity",
+        "reported_convergence": {
+          "adverse_return": {
+            "converged": true,
+            "iterations": 42,
+            "objective": "penalized_direct_arithmetic_downside_squared_error",
+            "outcome_scale_training_only": 0.02165967029612001,
+            "training_downside_mse": 0.00033631903636173227,
+            "training_objective": 0.3592420705138837
+          },
+          "trade_probability": {
+            "converged": true,
+            "iterations": 23,
+            "objective": "penalized_binomial_negative_log_likelihood",
+            "training_objective": 0.6862604430734157
+          }
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-07-02T00:05:00+00:00",
+            "last_decision": "2026-09-30T00:05:00+00:00",
+            "last_target_end": "2026-10-01T00:00:00+00:00",
+            "positive_rate": 0.4576271186440678,
+            "rows": 472,
+            "rows_sha256": "ef1417fbfdfc40ffbb944cc48cab6bc03c85c96c5f4af55a88d88a247a59d9fc"
+          },
+          "calibration": {
+            "decision_clusters": 63,
+            "first_decision": "2026-04-01T00:05:00+00:00",
+            "last_decision": "2026-07-01T00:05:00+00:00",
+            "last_target_end": "2026-07-02T00:00:00+00:00",
+            "positive_rate": 0.51875,
+            "rows": 480,
+            "rows_sha256": "c2291102a4a78e77f9482b1613d5ad0eaf43e8c236974305416cdeff201971d5"
+          },
+          "selection": {
+            "decision_clusters": 63,
+            "first_decision": "2025-08-28T00:05:00+00:00",
+            "last_decision": "2026-03-31T00:05:00+00:00",
+            "last_target_end": "2026-04-01T00:00:00+00:00",
+            "positive_rate": 0.5032537960954447,
+            "rows": 461,
+            "rows_sha256": "e2c8f19ac67563ff50c2c2a18e2a66923b510dd56905f94b3c5102892ae0a594"
+          },
+          "train": {
+            "decision_clusters": 430,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-08-27T00:05:00+00:00",
+            "last_target_end": "2025-08-28T00:00:00+00:00",
+            "positive_rate": 0.4825,
+            "rows": 2400,
+            "rows_sha256": "8b675333b321f10d9243383dac09e5896533c3b3e8c05799cfa94378267709d6"
+          }
+        },
+        "market_feature_admission": {
+          "admitted_rows": 3813,
+          "excluded_by_feature": {
+            "bp__compression_score": 2141,
+            "bp__direction_score": 2141,
+            "mr__atr_percent": 2141,
+            "mr__momentum_risk_adjusted": 2141,
+            "mr__range_position": 2141,
+            "mr__trend_atr": 2141,
+            "mr__volatility_ratio": 2141,
+            "mr__volume_score": 2141
+          },
+          "excluded_by_symbol": {
+            "AAPL": 463,
+            "AMZN": 439,
+            "COST": 117,
+            "CROX": 35,
+            "GOOG": 262,
+            "IONQ": 15,
+            "MU": 310,
+            "NVDA": 444,
+            "PATH": 55,
+            "TWST": 1
+          },
+          "excluded_missing_market_rows": 2141,
+          "excluded_rows_sha256": "7bcf89f69d35fab3292794fa4084870824da79d7d3b52f17e0f312ec961bf9cb",
+          "input_execution_rows": 5954,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "repair_diagnosis": "Saved selectors, convergence, partition summaries and strict qualification arithmetic agree. No concrete implementation defect is established by these quality shortfalls. Re-selecting on final assessment or weakening a criterion is not a justified repair."
+      },
+      "1h": {
+        "status": "FITTED",
+        "fitted_scope_count": 143,
+        "qualified_scope_count": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 4.3005757495848056e-05,
+          "base_adverse_mse": 4.654967205068606e-05,
+          "base_brier": 0.23575525160910288,
+          "base_log_loss": 0.6643830557001377,
+          "base_return_mse": 0.0001125091989992001,
+          "brier": 0.23089428038740384,
+          "ece": 0.013211324520841847,
+          "log_loss": 0.6536649646975118,
+          "probability_range": [
+            0.15604396896289235,
+            0.6037581755597917
+          ],
+          "return_mse": 0.00011265932336689567
+        },
+        "quality_checks": {
+          "brier_below_baseline": true,
+          "logloss_below_baseline": true,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": true,
+          "varying_probability": true,
+          "assessment_at_least_10_clusters": true
+        },
+        "failed_quality_checks": [
+          "return_mse_below_baseline"
+        ],
+        "development_selection_reproduced_from_saved_metrics": true,
+        "calibration_selection": "identity",
+        "reported_convergence": {
+          "adverse_return": {
+            "converged": true,
+            "iterations": 36,
+            "objective": "penalized_direct_arithmetic_downside_squared_error",
+            "outcome_scale_training_only": 0.006885945646381586,
+            "training_downside_mse": 3.6624884506561154e-05,
+            "training_objective": 0.3862086001346967
+          },
+          "trade_probability": {
+            "converged": true,
+            "iterations": 22,
+            "objective": "penalized_binomial_negative_log_likelihood",
+            "training_objective": 0.6526308934647401
+          }
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-07-02T00:05:00+00:00",
+            "last_decision": "2026-09-30T00:05:00+00:00",
+            "last_target_end": "2026-10-01T00:00:00+00:00",
+            "positive_rate": 0.3805193093449321,
+            "rows": 7587,
+            "rows_sha256": "7ce0d73767b073cc87661ae96fa6e56108859bc6a5e83e95707b1d792de62ff7"
+          },
+          "calibration": {
+            "decision_clusters": 63,
+            "first_decision": "2026-04-01T00:05:00+00:00",
+            "last_decision": "2026-07-01T00:05:00+00:00",
+            "last_target_end": "2026-07-02T00:00:00+00:00",
+            "positive_rate": 0.4102664576802508,
+            "rows": 7656,
+            "rows_sha256": "9d312322899388ce337ab86a31f63f90f67be3216bf6fba60aa3d4aa885118e9"
+          },
+          "selection": {
+            "decision_clusters": 63,
+            "first_decision": "2025-12-30T00:05:00+00:00",
+            "last_decision": "2026-03-31T00:05:00+00:00",
+            "last_target_end": "2026-04-01T00:00:00+00:00",
+            "positive_rate": 0.3889422417341199,
+            "rows": 7289,
+            "rows_sha256": "ca295d1d7cdea2d35e2226515f1dca0923b6b055744d438bf9c4ea073bd5bf73"
+          },
+          "train": {
+            "decision_clusters": 687,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-12-27T00:05:00+00:00",
+            "last_target_end": "2025-12-30T00:00:00+00:00",
+            "positive_rate": 0.38578221789498934,
+            "rows": 70869,
+            "rows_sha256": "d82de4edf90ce0fda93216a5c1e8522473bbe67257b14636882d1cc6745789b6"
+          }
+        },
+        "market_feature_admission": {
+          "admitted_rows": 93401,
+          "excluded_by_feature": {
+            "bp__compression_score": 72749,
+            "bp__direction_score": 72749,
+            "mr__atr_percent": 72749,
+            "mr__momentum_risk_adjusted": 72749,
+            "mr__range_position": 72749,
+            "mr__trend_atr": 72749,
+            "mr__volatility_ratio": 72749,
+            "mr__volume_score": 72749
+          },
+          "excluded_by_symbol": {
+            "AAPL": 9818,
+            "AMZN": 9449,
+            "COST": 6744,
+            "CROX": 8222,
+            "GOOG": 8003,
+            "IONQ": 3178,
+            "MU": 8175,
+            "NVDA": 9528,
+            "PATH": 3346,
+            "TWST": 6286
+          },
+          "excluded_missing_market_rows": 72749,
+          "excluded_rows_sha256": "6d61443903d04989c556d28d9a0ec757f796a7e1d4cbf9145c12dfb66eeaf45b",
+          "input_execution_rows": 166150,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "repair_diagnosis": "Saved selectors, convergence, partition summaries and strict qualification arithmetic agree. No concrete implementation defect is established by these quality shortfalls. Re-selecting on final assessment or weakening a criterion is not a justified repair."
+      },
+      "1w": {
+        "status": "FITTED",
+        "fitted_scope_count": 39,
+        "qualified_scope_count": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 0.002816357637489762,
+          "base_adverse_mse": 0.002785224745751115,
+          "base_brier": 0.2529827360605876,
+          "base_log_loss": 0.6991569855689581,
+          "base_return_mse": 0.00807319708773927,
+          "brier": 0.2724137597035208,
+          "ece": 0.11074390844989651,
+          "log_loss": 0.7461718114313648,
+          "probability_range": [
+            0.2175023188875117,
+            0.9087257901364747
+          ],
+          "return_mse": 0.009869396701369566
+        },
+        "quality_checks": {
+          "brier_below_baseline": false,
+          "logloss_below_baseline": false,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": false,
+          "varying_probability": true,
+          "assessment_at_least_10_clusters": true
+        },
+        "failed_quality_checks": [
+          "brier_below_baseline",
+          "logloss_below_baseline",
+          "return_mse_below_baseline",
+          "adverse_mse_at_most_baseline"
+        ],
+        "development_selection_reproduced_from_saved_metrics": true,
+        "calibration_selection": "identity",
+        "reported_convergence": {
+          "adverse_return": {
+            "converged": true,
+            "iterations": 37,
+            "objective": "penalized_direct_arithmetic_downside_squared_error",
+            "outcome_scale_training_only": 0.04109049240932469,
+            "training_downside_mse": 0.0012374459222201353,
+            "training_objective": 0.36720385583746074
+          },
+          "trade_probability": {
+            "converged": true,
+            "iterations": 23,
+            "objective": "penalized_binomial_negative_log_likelihood",
+            "training_objective": 0.67873772321207
+          }
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-06-26T00:05:00+00:00",
+            "last_decision": "2026-09-24T00:05:00+00:00",
+            "last_target_end": "2026-10-01T00:00:00+00:00",
+            "positive_rate": 0.5042553191489362,
+            "rows": 470,
+            "rows_sha256": "7fb21d1febce5a19ad51e8a746c990f48ad6d8fb112bd7ad969580a76c37f8cb"
+          },
+          "calibration": {
+            "decision_clusters": 59,
+            "first_decision": "2026-03-26T00:05:00+00:00",
+            "last_decision": "2026-06-18T00:05:00+00:00",
+            "last_target_end": "2026-06-26T00:00:00+00:00",
+            "positive_rate": 0.6555555555555556,
+            "rows": 450,
+            "rows_sha256": "36c3873fbe4582f12e49cdae3784e5f18cad6b6f9b82687343914e130da367de"
+          },
+          "selection": {
+            "decision_clusters": 59,
+            "first_decision": "2025-08-22T00:05:00+00:00",
+            "last_decision": "2026-03-19T00:05:00+00:00",
+            "last_target_end": "2026-03-26T00:00:00+00:00",
+            "positive_rate": 0.593103448275862,
+            "rows": 435,
+            "rows_sha256": "8719f57dbcbfc50e41cc16b111f0c174f8a3d0aa7739cb3e5d1543ef5cda360a"
+          },
+          "train": {
+            "decision_clusters": 422,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-08-15T00:05:00+00:00",
+            "last_target_end": "2025-08-22T00:00:00+00:00",
+            "positive_rate": 0.5527102005975245,
+            "rows": 2343,
+            "rows_sha256": "1d99d989595bebd5c439e4b4ba633ea0db859b5470af342e641b18b05afd1d4d"
+          }
+        },
+        "market_feature_admission": {
+          "admitted_rows": 3786,
+          "excluded_by_feature": {
+            "bp__compression_score": 2081,
+            "bp__direction_score": 2081,
+            "mr__atr_percent": 2081,
+            "mr__momentum_risk_adjusted": 2081,
+            "mr__range_position": 2081,
+            "mr__trend_atr": 2081,
+            "mr__volatility_ratio": 2081,
+            "mr__volume_score": 2081
+          },
+          "excluded_by_symbol": {
+            "AAPL": 454,
+            "AMZN": 428,
+            "COST": 115,
+            "CROX": 31,
+            "GOOG": 258,
+            "IONQ": 13,
+            "MU": 297,
+            "NVDA": 439,
+            "PATH": 44,
+            "TWST": 2
+          },
+          "excluded_missing_market_rows": 2081,
+          "excluded_rows_sha256": "819e35da28ed9a7e7bae7c883b7bc6cc56b6144940e71c6e09271e6001f9b7da",
+          "input_execution_rows": 5867,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "repair_diagnosis": "Saved selectors, convergence, partition summaries and strict qualification arithmetic agree. No concrete implementation defect is established by these quality shortfalls. Re-selecting on final assessment or weakening a criterion is not a justified repair."
+      },
+      "4h": {
+        "status": "FITTED",
+        "fitted_scope_count": 78,
+        "qualified_scope_count": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        },
+        "horizon_assessment_scores": {
+          "adverse_mse": 0.00018079671657106488,
+          "base_adverse_mse": 0.00020269243072954627,
+          "base_brier": 0.2483077364825205,
+          "base_log_loss": 0.689758964307176,
+          "base_return_mse": 0.0005380063881769136,
+          "brier": 0.2476316620196317,
+          "ece": 0.009674791484174381,
+          "log_loss": 0.6884175836420688,
+          "probability_range": [
+            0.3527712641791866,
+            0.6863062914586716
+          ],
+          "return_mse": 0.0005409905468438812
+        },
+        "quality_checks": {
+          "brier_below_baseline": true,
+          "logloss_below_baseline": true,
+          "ece_at_most_0_15": true,
+          "return_mse_below_baseline": false,
+          "adverse_mse_at_most_baseline": true,
+          "varying_probability": true,
+          "assessment_at_least_10_clusters": true
+        },
+        "failed_quality_checks": [
+          "return_mse_below_baseline"
+        ],
+        "development_selection_reproduced_from_saved_metrics": true,
+        "calibration_selection": "identity",
+        "reported_convergence": {
+          "adverse_return": {
+            "converged": true,
+            "iterations": 38,
+            "objective": "penalized_direct_arithmetic_downside_squared_error",
+            "outcome_scale_training_only": 0.013736520983419329,
+            "training_downside_mse": 0.0001401818454181342,
+            "training_objective": 0.37146485736195184
+          },
+          "trade_probability": {
+            "converged": true,
+            "iterations": 25,
+            "objective": "penalized_binomial_negative_log_likelihood",
+            "training_objective": 0.687311694591567
+          }
+        },
+        "partition_evidence": {
+          "assessment": {
+            "decision_clusters": 63,
+            "first_decision": "2026-07-02T00:05:00+00:00",
+            "last_decision": "2026-09-30T00:05:00+00:00",
+            "last_target_end": "2026-09-30T23:00:00+00:00",
+            "positive_rate": 0.45863309352517984,
+            "rows": 2224,
+            "rows_sha256": "12b26ec4c92eb8b04df0b5c87a047bebce4581d3dc0d06c78e033befa342ae37"
+          },
+          "calibration": {
+            "decision_clusters": 63,
+            "first_decision": "2026-04-01T00:05:00+00:00",
+            "last_decision": "2026-07-01T00:05:00+00:00",
+            "last_target_end": "2026-07-01T23:00:00+00:00",
+            "positive_rate": 0.4810521622826572,
+            "rows": 2243,
+            "rows_sha256": "9c716b2bfcba2c96307408482607d2d17df7683a897ea8431b42e3fb7ec30051"
+          },
+          "selection": {
+            "decision_clusters": 63,
+            "first_decision": "2025-12-30T00:05:00+00:00",
+            "last_decision": "2026-03-31T00:05:00+00:00",
+            "last_target_end": "2026-03-31T23:00:00+00:00",
+            "positive_rate": 0.4393372528059861,
+            "rows": 1871,
+            "rows_sha256": "09bd70ad9c0c0e954031f67c397f4bb93898bc923a0ed93ef4adb0470288098e"
+          },
+          "train": {
+            "decision_clusters": 687,
+            "first_decision": "2023-04-04T00:05:00+00:00",
+            "last_decision": "2025-12-27T00:05:00+00:00",
+            "last_target_end": "2025-12-30T00:00:00+00:00",
+            "positive_rate": 0.46533602293237075,
+            "rows": 18838,
+            "rows_sha256": "ddb3583cdd9be21c230ec6c1459f6588e6cd149884e09ef3a2baec0f94d87d04"
+          }
+        },
+        "market_feature_admission": {
+          "admitted_rows": 25190,
+          "excluded_by_feature": {
+            "bp__compression_score": 17846,
+            "bp__direction_score": 17846,
+            "mr__atr_percent": 17846,
+            "mr__momentum_risk_adjusted": 17846,
+            "mr__range_position": 17846,
+            "mr__trend_atr": 17846,
+            "mr__volatility_ratio": 17846,
+            "mr__volume_score": 17846
+          },
+          "excluded_by_symbol": {
+            "AAPL": 2722,
+            "AMZN": 2556,
+            "COST": 1641,
+            "CROX": 1619,
+            "GOOG": 2008,
+            "IONQ": 675,
+            "MU": 2125,
+            "NVDA": 2591,
+            "PATH": 798,
+            "TWST": 1111
+          },
+          "excluded_missing_market_rows": 17846,
+          "excluded_rows_sha256": "58b584a4e3bd16d28ead11647dbff93daf3942a70b8246a5850789b4bafd7f3f",
+          "input_execution_rows": 43036,
+          "policy": "archive-optional-market-observations-v1",
+          "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+        },
+        "repair_diagnosis": "Saved selectors, convergence, partition summaries and strict qualification arithmetic agree. No concrete implementation defect is established by these quality shortfalls. Re-selecting on final assessment or weakening a criterion is not a justified repair."
+      }
+    }
+  },
+  "repair_finding": "No concrete data/fitting implementation repair identified in bounded report evidence. All directional groups pass current v2; all learned sizing groups remain honestly research under stricter gates.",
+  "limits": [
+    "No duplicate model inference, cohort reproduction or training; root final audit remains required.",
+    "Saved report arithmetic is not independent empirical assessment or proof of a profitable strategy.",
+    "Some exact directional support is very sparse; the current contract admits positive support and reports its count."
+  ],
+  "evidence": {
+    "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20261001T065134.405601Z\\receipt.json": {
+      "sha256": "a2e2116738935f578d988ee251895386d3df8afa769b6486854018884f1b8262",
+      "bytes": 716
+    },
+    "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20261001T065134.405601Z\\manifest.json": {
+      "sha256": "0a142bc9baf6604b4b49bc7a70870db8db59acf2fee3fef934fd979f79b5c3b6",
+      "bytes": 3460
+    },
+    "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20261001T065134.405601Z\\training-report.json": {
+      "sha256": "cd6dc87c08a1ac9d7a4b20aabf462e22aa022c46ece9e2b33e1755361ec5a938",
+      "bytes": 493247
+    },
+    "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\model-reports.json": {
+      "sha256": "d2a39d3f0ac59a6182fba3c3e0b7e9a61ffc13bf82bfffb2ffbd7052722446a4",
+      "bytes": 127497
+    },
+    "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20261001T064119.779051Z\\forecasts.parquet": {
+      "sha256": "58e84d895a7cf8f9ffa62c263b92e840f06199d71da8fee1efb76ba8178051fb",
+      "bytes": 60479
+    }
+  },
+  "source_modifications": 0,
+  "provider_calls": 0,
+  "heavy_final_audit_started": false,
+  "orders_placed": 0
+}

@@ -1,0 +1,46 @@
+{
+  "reviewed_at": "2026-10-01T07:00:50.554252+00:00",
+  "status": "PASS",
+  "scope": "READ_ONLY_EXACT_MODULE_OR_LAUNCHER_TOKEN_MATCHING; full command text is neither persisted nor substring matched.",
+  "checks": {
+    "no_native_pipeline_or_trader_worker": true,
+    "all_relevant_process_commands_readable": true,
+    "september30_trader_terminal": true,
+    "no_native_trader_session_or_cycle_lock": true,
+    "native_report_and_receipt_complete": true,
+    "native_eight_stages_complete": true,
+    "native_report_receipt_checksum": true,
+    "native_zero_order_authority": true,
+    "final_preservation_passed": true,
+    "repository_sources_unchanged_from_baseline": true
+  },
+  "native_and_trader_workers": [],
+  "unreadable_relevant_processes": [],
+  "observed_supervision_status_command_count": 0,
+  "trader_status": "FINISHED",
+  "trader_action_date": "2026-09-30",
+  "native_completed_at": "2026-10-01T06:57:46.465661+00:00",
+  "bindings": {
+    "<LOCAL_DATASTORE>\\state\\independent-stock-trader\\session-status.json": {
+      "sha256": "bd509dd8fe21be13494a6f085888d0bcd0bd305383f1b13cd6c093202892dba1",
+      "bytes": 1607
+    },
+    "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z\\stage-report.json": {
+      "sha256": "41dcbd688005a567220e1c73aadd76317d4b97c328124050c9528d250e0429ad",
+      "bytes": 8852
+    },
+    "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z\\receipt.json": {
+      "sha256": "3444df49c6aed8273971b36889c9b86df86a11d701a7c2c3de076fcb2df4bb21",
+      "bytes": 1718
+    },
+    "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\preservation-final.json": {
+      "sha256": "5d9684744610997da78ebd3bf57d26d11dc69f16766157673637697af667a4e2",
+      "bytes": 183829
+    }
+  },
+  "no_claim_or_lock_operations": true,
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "production_writes": 0,
+  "order_actions": 0
+}

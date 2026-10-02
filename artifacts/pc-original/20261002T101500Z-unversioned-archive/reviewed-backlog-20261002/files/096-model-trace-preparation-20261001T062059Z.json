@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-01T06:20:59.993521+00:00",
+  "status": "TRACE_PREPARED_WAITING_FOR_FRESH_PUBLICATIONS",
+  "native_run_id": "20261001T040644.667536Z",
+  "dataset": "GLBX.MDP3",
+  "flagged_interval_utc": {
+    "start": "2026-09-30 00:00:00+00:00",
+    "end_exclusive": "2026-10-01 00:00:00+00:00"
+  },
+  "reused_metadata_evidence": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\quality-metadata-20261001T041634Z.json",
+    "sha256": "15292d2c3c6fa981c800b62c95193719d7b36a20b265657e72d9efee451ea69a"
+  },
+  "current_derived_cme_view": {
+    "path": "<LOCAL_DATASTORE>\\pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+    "sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3",
+    "rows": 13,
+    "columns": [
+      "id",
+      "context_name",
+      "window_start",
+      "window_end",
+      "observed_at",
+      "fetched_at",
+      "available_at",
+      "calculation",
+      "calculation_version",
+      "schema_version",
+      "roll_policy_version",
+      "nq_return",
+      "es_return",
+      "rty_minus_es_return",
+      "nq_minus_es_return",
+      "gold_return",
+      "crude_return",
+      "relative_spread",
+      "book_imbalance",
+      "constituent_complete",
+      "source_stale"
+    ],
+    "first_window_start": "2026-08-14 07:00:00+00:00",
+    "last_window_end": "2026-08-14 21:00:00+00:00",
+    "last_available_at": "2026-08-14 21:01:00+00:00",
+    "windows_overlapping_flagged_day": 0,
+    "observation": "This current view contains only August14 windows. This observation alone is not yet a final source binding for an unpublished run."
+  },
+  "pointer_snapshots": [
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\latest\\run.json",
+      "sha256": "0a3e7b9637bdd57493aa461f0336d2a2a0689aa15a82de87553070a0cbf827db",
+      "payload": {
+        "current": {
+          "manifest_checksum_sha256": "cbdede367b9f8739a9d00b281fab2eba6f48376cedec9ac7f9a54d748bc83cef",
+          "promoted_at": "2026-09-30T06:04:27.405500+00:00",
+          "receipt_checksum_sha256": "2987005684b6da2b5fec83471cf0b8a8cc3cb014a9b9ccef5c6dc99c00d5d3a0",
+          "run_path": "ml/runs/20260930T053953.049047Z",
+          "run_timestamp": "2026-09-30T05:39:53.049047+00:00"
+        },
+        "path": "ml/runs/20260930T053953.049047Z",
+        "run_timestamp": "2026-09-30T05:39:53.049047+00:00",
+        "schema_version": "current-output-pointer-v1"
+      }
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-latest\\run.json",
+      "sha256": "8c63853eeddee9762ab8fb5d3024f438ce81ac695e8b0624ff05c87284c28052",
+      "payload": {
+        "current": {
+          "action_date": "2026-09-30",
+          "manifest_checksum_sha256": "a94099522b2e4f95b8b1f0f8d94c5d34fd837f2c002bc7dfcfb8c9b0bdc49ed0",
+          "published_at": "2026-09-30T06:24:21.107006+00:00",
+          "receipt_checksum_sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0",
+          "run_path": "ml/nightly-gameplan-runs/20260930T061501.586401Z"
+        },
+        "schema_version": "immutable-overnight-gameplan-pointer-v1"
+      }
+    }
+  ],
+  "observed_existing_gameplan_cohort_names": [
+    "training-cohort-1d.parquet",
+    "training-cohort-1h.parquet",
+    "training-cohort-1w.parquet",
+    "training-cohort-4h.parquet"
+  ],
+  "final_trace_steps": [
+    {
+      "stage": "Loop B publication identity",
+      "instructions": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+    },
+    {
+      "stage": "Loop B source use",
+      "instructions": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+    },
+    {
+      "stage": "Loop B each fitted model",
+      "instructions": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+    },
+    {
+      "stage": "Gameplan source binding",
+      "instructions": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+    },
+    {
+      "stage": "Gameplan each group",
+      "instructions": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+    },
+    {
+      "stage": "Limit interpretation",
+      "instructions": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\ml\\rolling_materialization.py",
+      "sha256": "f67ce52a35fe35ec103d7c2ae5bc28d34a3dbe42cbbe000cc8d374c91e3990ea",
+      "lines": [
+        812,
+        818,
+        836,
+        866,
+        1022,
+        1221
+      ],
+      "purpose": "Uses derived CME parquets when present; causal backward as-of join with horizon freshness. Direct hot-source fallback only when derived view absent."
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\ml\\runtime_pipeline.py",
+      "sha256": "d0fb9f5229f1cd2ef6e15f9fee96254bc110ad9cf0ab665e0fccaa839496c0d4",
+      "lines": [
+        431,
+        489,
+        865,
+        890,
+        2648
+      ],
+      "purpose": "Per-horizon model feature set and source bindings; prediction model_name/model_version identifies exact model directory."
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\ml\\model_runtime.py",
+      "sha256": "ecfe2e6258f86cbc6424987f03427537aa0c75f49e8828156cadc58fed6bdd54",
+      "lines": [
+        379,
+        429,
+        537
+      ],
+      "purpose": "Exact selected model manifest records feature_columns, input_files, training metadata and hashed model artifact; no joblib load needed for inspection."
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\ml\\nightly_gameplan.py",
+      "sha256": "9bdd5ed77e6647c1ff953824f89faa4f85729dcd70a2bf7feebe77128e7d8c9c",
+      "lines": [
+        200,
+        222,
+        347,
+        524,
+        1275,
+        1576
+      ],
+      "purpose": "Four immutable training cohorts; reports contain exact admitted feature list and model artifact checksums; Gameplan manifest records pinned source Loop B."
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\ml\\gameplan_archive_integration.py",
+      "sha256": "fc9dc08dc06d16eb57adb45841a561a6776545ca46a687fb28a276767faa2601",
+      "lines": [
+        35
+      ],
+      "purpose": "Optional operational feature attachment preserves causality and missing-value admission rules."
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\ml\\datasets\\families.py",
+      "sha256": "35fd0e6af2b7c203f6908ef7b45223035521a48161c739d88f06ffa34678ab99",
+      "lines": [
+        517
+      ],
+      "purpose": "CME source availability and freshness; 15m hourly/4h, 1d daily, 3d weekly."
+    }
+  ],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "model_fits": 0,
+  "orders": 0,
+  "next_action": "Wait for root-supplied fresh Loop B and October1 Gameplan paths; no independent polling or new provider metadata requests."
+}

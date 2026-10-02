@@ -1,0 +1,504 @@
+{
+  "reviewed_at": "2026-09-30T07:25:15.868601+00:00",
+  "status": "CONFIRMED_VENDOR_FLAG_UNDISCLOSED_VENDOR_CAUSE_WITH_SEPARATE_LOCAL_ROUTING_DEFECT",
+  "checks": {
+    "metadata_gets_only": true,
+    "gameplan_receipt_binds_manifest": true,
+    "model_reports_manifest_bound": true,
+    "all_four_models_exclude_cme": true,
+    "loop_b_derived_source_binding": true,
+    "loop_b_current_cme_values_missing": true,
+    "quality_flag_still_sep30_only": true
+  },
+  "confirmed_warning_origin": "Databento SDK parses vendor HTTP X-Warning header in check_backend_warnings; native timeseries request surfaced the reduced-quality warning. It is not the locally generated stale-context advisory.",
+  "provider_cause": "UNRESOLVED: dataset condition supplies date, condition and last_modified_date, with no reason, affected channel/symbol/schema or intraday interval. A still-open UTC day and delayed MBP publication are observations, not proof of cause.",
+  "fresh_metadata": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\provider-warning\\quality-metadata-20260930T072037Z.json",
+    "observed_at": "2026-09-30T07:20:46.326414+00:00",
+    "conditions": [
+      {
+        "date": "2026-09-27",
+        "condition": "available",
+        "last_modified_date": "2026-09-28"
+      },
+      {
+        "date": "2026-09-28",
+        "condition": "available",
+        "last_modified_date": "2026-09-29"
+      },
+      {
+        "date": "2026-09-29",
+        "condition": "available",
+        "last_modified_date": "2026-09-29"
+      },
+      {
+        "date": "2026-09-30",
+        "condition": "degraded",
+        "last_modified_date": "2026-09-30"
+      }
+    ],
+    "selected_schema_ranges": {
+      "ohlcv-1m": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-30T07:10:00.000000000Z"
+      },
+      "bbo-1m": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-30T07:10:00.000000000Z"
+      },
+      "mbp-10": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-29T23:20:41.683810000Z"
+      },
+      "mbo": {
+        "start": "2017-05-21T00:00:00.000000000Z",
+        "end": "2026-09-29T23:20:41.683810000Z"
+      }
+    }
+  },
+  "flag_scope": "GLBX.MDP3 date2026-09-30UTC. Last night warnings occurred on OHLCV and BBO requests that overlap Sep30T00:00Z..04:10Z, after the completed Sep29 stock session close. The vendor flag does not identify which returned records are defective. MBP requests endedSep29 and did not emit this warning.",
+  "warning_occurrences": 9,
+  "current_captures": [
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+      "sha256_at_native_capture": "5f1813c07eca70e7eab650acc06aadc883a6a5f2a9b30e07aa59287f08129e17",
+      "schema": "ohlcv-1m",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "rows": 2389,
+      "effective_start": "2026-09-29 19:10:00+00:00",
+      "effective_end": "2026-09-30 04:10:00+00:00",
+      "limit_saturated": false,
+      "rows_on_flagged_sep30_utc_day": 1240
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "sha256_at_native_capture": "ab43796db2adae807f26f70e27525ff56e01752146c05b78606c150aa5fd9963",
+      "schema": "bbo-1m",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "rows": 300,
+      "effective_start": "2026-09-30 03:10:00+00:00",
+      "effective_end": "2026-09-30 04:10:00+00:00",
+      "limit_saturated": false,
+      "rows_on_flagged_sep30_utc_day": 300
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "sha256_at_native_capture": "1f2fdf8f58c60569dbbc917b7d30d7ec6bfc0ddcde2728f0228ece83a1e7608c",
+      "schema": "mbp-10",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "rows": 5000,
+      "effective_start": "2026-09-29 20:14:56.271412+00:00",
+      "effective_end": "2026-09-29 20:15:43.146412+00:00",
+      "limit_saturated": true,
+      "rows_on_flagged_sep30_utc_day": 0
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+      "sha256_at_native_capture": "7083ee286fb7da54cc79f1a0484b84640daa08b5835973b4a8a52ef0604a20a9",
+      "schema": "ohlcv-1m",
+      "symbols": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "rows": 4079,
+      "effective_start": "2026-09-29 10:10:00+00:00",
+      "effective_end": "2026-09-30 04:10:00+00:00",
+      "limit_saturated": false,
+      "rows_on_flagged_sep30_utc_day": 1000
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "sha256_at_native_capture": "021f7db3207df813a8a718278227f17d5355e8b9ea292c9231c736ec2b30543e",
+      "schema": "bbo-1m",
+      "symbols": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "rows": 240,
+      "effective_start": "2026-09-30 03:10:00+00:00",
+      "effective_end": "2026-09-30 04:10:00+00:00",
+      "limit_saturated": false,
+      "rows_on_flagged_sep30_utc_day": 240
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "sha256_at_native_capture": "4bf776660dedd52d0a82d26a7b2ff1ddb4b44b2c5d3c502935c96c0e13d78a6c",
+      "schema": "mbp-10",
+      "symbols": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "rows": 5000,
+      "effective_start": "2026-09-29 20:14:56.271412+00:00",
+      "effective_end": "2026-09-29 20:15:43.146412+00:00",
+      "limit_saturated": true,
+      "rows_on_flagged_sep30_utc_day": 0
+    }
+  ],
+  "gameplan_model_features": {
+    "1d": {
+      "admitted_count": 41,
+      "admitted_cme": [],
+      "admitted_features": [
+        "mr__trend_atr",
+        "mr__momentum_risk_adjusted",
+        "mr__range_position",
+        "mr__volume_score",
+        "mr__volatility_ratio",
+        "bp__compression_score",
+        "bp__range_contraction_score",
+        "bp__direction_score",
+        "bp__upside_pressure_score",
+        "bp__downside_pressure_score",
+        "bp__breakout_magnitude_atr",
+        "bp__volume_participation_score",
+        "mr__technical_score",
+        "mr__regime_strength",
+        "bp__breakout_readiness_score",
+        "bp__breakout_strength_score",
+        "bp__setup_quality",
+        "mr__confidence_score",
+        "bp__confidence_score",
+        "mr__atr_percent",
+        "mr__technical_score_change_5",
+        "bp__bars_since_state_change",
+        "mr__trend_score",
+        "mr__momentum_score",
+        "mr__range_score",
+        "bp__boundary_proximity_score",
+        "bar__intrabar_range_atr",
+        "bar__close_location",
+        "arch__daily_return_1",
+        "arch__daily_return_5",
+        "arch__daily_return_20",
+        "arch__daily_volatility_20",
+        "arch__daily_open_close_return",
+        "arch__daily_range_fraction",
+        "arch__daily_volume_ratio_20",
+        "arch__daily_close_position_20",
+        "arch__hourly_open_close_return",
+        "arch__hourly_range_fraction",
+        "arch__hourly_volume_ratio_20_observed",
+        "target__weekday_sin",
+        "target__weekday_cos"
+      ]
+    },
+    "1h": {
+      "admitted_count": 46,
+      "admitted_cme": [],
+      "admitted_features": [
+        "mr__trend_atr",
+        "mr__momentum_risk_adjusted",
+        "mr__range_position",
+        "mr__volume_score",
+        "mr__volatility_ratio",
+        "bp__compression_score",
+        "bp__range_contraction_score",
+        "bp__direction_score",
+        "bp__upside_pressure_score",
+        "bp__downside_pressure_score",
+        "bp__breakout_magnitude_atr",
+        "bp__volume_participation_score",
+        "mr__technical_score",
+        "mr__regime_strength",
+        "bp__breakout_readiness_score",
+        "bp__breakout_strength_score",
+        "bp__setup_quality",
+        "mr__confidence_score",
+        "bp__confidence_score",
+        "mr__atr_percent",
+        "mr__technical_score_change_5",
+        "bp__bars_since_state_change",
+        "mr__trend_score",
+        "mr__momentum_score",
+        "mr__range_score",
+        "bp__boundary_proximity_score",
+        "bar__intrabar_range_atr",
+        "bar__close_location",
+        "arch__daily_return_1",
+        "arch__daily_return_5",
+        "arch__daily_return_20",
+        "arch__daily_volatility_20",
+        "arch__daily_open_close_return",
+        "arch__daily_range_fraction",
+        "arch__daily_volume_ratio_20",
+        "arch__daily_close_position_20",
+        "arch__hourly_open_close_return",
+        "arch__hourly_range_fraction",
+        "arch__hourly_volume_ratio_20_observed",
+        "target__entry_clock_sin",
+        "target__entry_clock_cos",
+        "target__log_elapsed_minutes",
+        "target__weekday_sin",
+        "target__weekday_cos",
+        "target__trading_hours",
+        "target__closed_market_hours"
+      ]
+    },
+    "1w": {
+      "admitted_count": 43,
+      "admitted_cme": [],
+      "admitted_features": [
+        "mr__trend_atr",
+        "mr__momentum_risk_adjusted",
+        "mr__range_position",
+        "mr__volume_score",
+        "mr__volatility_ratio",
+        "bp__compression_score",
+        "bp__range_contraction_score",
+        "bp__direction_score",
+        "bp__upside_pressure_score",
+        "bp__downside_pressure_score",
+        "bp__breakout_magnitude_atr",
+        "bp__volume_participation_score",
+        "mr__technical_score",
+        "mr__regime_strength",
+        "bp__breakout_readiness_score",
+        "bp__breakout_strength_score",
+        "bp__setup_quality",
+        "mr__confidence_score",
+        "bp__confidence_score",
+        "mr__atr_percent",
+        "mr__technical_score_change_5",
+        "bp__bars_since_state_change",
+        "mr__trend_score",
+        "mr__momentum_score",
+        "mr__range_score",
+        "bp__boundary_proximity_score",
+        "bar__intrabar_range_atr",
+        "bar__close_location",
+        "arch__daily_return_1",
+        "arch__daily_return_5",
+        "arch__daily_return_20",
+        "arch__daily_volatility_20",
+        "arch__daily_open_close_return",
+        "arch__daily_range_fraction",
+        "arch__daily_volume_ratio_20",
+        "arch__daily_close_position_20",
+        "arch__hourly_open_close_return",
+        "arch__hourly_range_fraction",
+        "arch__hourly_volume_ratio_20_observed",
+        "target__log_elapsed_minutes",
+        "target__weekday_sin",
+        "target__weekday_cos",
+        "target__closed_market_hours"
+      ]
+    },
+    "4h": {
+      "admitted_count": 45,
+      "admitted_cme": [],
+      "admitted_features": [
+        "mr__trend_atr",
+        "mr__momentum_risk_adjusted",
+        "mr__range_position",
+        "mr__volume_score",
+        "mr__volatility_ratio",
+        "bp__compression_score",
+        "bp__range_contraction_score",
+        "bp__direction_score",
+        "bp__upside_pressure_score",
+        "bp__downside_pressure_score",
+        "bp__breakout_magnitude_atr",
+        "bp__volume_participation_score",
+        "mr__technical_score",
+        "mr__regime_strength",
+        "bp__breakout_readiness_score",
+        "bp__breakout_strength_score",
+        "bp__setup_quality",
+        "mr__confidence_score",
+        "bp__confidence_score",
+        "mr__atr_percent",
+        "mr__technical_score_change_5",
+        "bp__bars_since_state_change",
+        "mr__trend_score",
+        "mr__momentum_score",
+        "mr__range_score",
+        "bp__boundary_proximity_score",
+        "bar__intrabar_range_atr",
+        "bar__close_location",
+        "arch__daily_return_1",
+        "arch__daily_return_5",
+        "arch__daily_return_20",
+        "arch__daily_volatility_20",
+        "arch__daily_open_close_return",
+        "arch__daily_range_fraction",
+        "arch__daily_volume_ratio_20",
+        "arch__daily_close_position_20",
+        "arch__hourly_open_close_return",
+        "arch__hourly_range_fraction",
+        "arch__hourly_volume_ratio_20_observed",
+        "target__entry_clock_sin",
+        "target__entry_clock_cos",
+        "target__log_elapsed_minutes",
+        "target__weekday_sin",
+        "target__weekday_cos",
+        "target__closed_market_hours"
+      ]
+    }
+  },
+  "loop_b_current_cme": {
+    "samples_after_sep29_utc_start": 231,
+    "non_null_by_column": {
+      "cme__nq_return_1h": 0,
+      "cme__es_return_1h": 0,
+      "cme__small_cap_breadth": 0,
+      "cme__tech_breadth": 0,
+      "cme__gold_return": 0,
+      "cme__crude_return": 0,
+      "cme__relative_spread": 0,
+      "cme__book_imbalance": 0
+    },
+    "all_sample_non_null_by_column": {
+      "cme__nq_return_1h": 401,
+      "cme__es_return_1h": 401,
+      "cme__small_cap_breadth": 401,
+      "cme__tech_breadth": 401,
+      "cme__gold_return": 401,
+      "cme__crude_return": 401,
+      "cme__relative_spread": 401,
+      "cme__book_imbalance": 401
+    },
+    "source_view_rows": 13,
+    "source_first_window": "2026-08-14 07:00:00+00:00",
+    "source_last_window": "2026-08-14 21:00:00+00:00"
+  },
+  "local_routing_defect": {
+    "confirmed": true,
+    "provider_warning_cause": false,
+    "description": "Inline fetch stores new CME rows in the hot macro files. The context reader chooses old partitioned events exclusively whenever any partition exists, so fresh hot captures are ignored. The old partition inventory ends September3/4 and repeatedly selects the September3 candidate.",
+    "writer": "<LOCAL_CHECKOUT>/datafetching/databento_fetch.py:1241 (_fetch_cme_unlocked; save_macro_rows then materialize at1386; no persist_cme_event_history)",
+    "reader": "<LOCAL_CHECKOUT>/datafetching/cme_cross_asset_context.py:444 (if partitioned ... else legacy hot rows)",
+    "partition_inventory": [
+      {
+        "schema": "ohlcv-1m",
+        "count": 18,
+        "last_partition_path": "<LOCAL_DATASTORE>\\pools\\cme\\events\\databento\\context\\ohlcv-1m\\normalized\\date=2026-09-04\\events.parquet"
+      },
+      {
+        "schema": "bbo-1m",
+        "count": 290,
+        "last_partition_path": "<LOCAL_DATASTORE>\\pools\\cme\\events\\databento\\context\\bbo-1m\\normalized\\date=2026-09-04\\hour=05\\events.parquet"
+      },
+      {
+        "schema": "mbp-10",
+        "count": 295,
+        "last_partition_path": "<LOCAL_DATASTORE>\\pools\\cme\\events\\databento\\context\\mbp-10\\normalized\\date=2026-09-03\\hour=20\\events.parquet"
+      }
+    ],
+    "proposed_small_repair": "Merge and deterministically deduplicate both native normalized layouts in the shared reader, preserving receipt identity, source fields, freshness and saturation flags; alternatively use the common partition store from the inline writer. Prefer read-side repair only after confirming established natural keys and duplicate precedence.",
+    "regression_test": "Temporary fixture with old partition plus newer hot file for each schema must include the newer rows without duplicate observations; saturated MBP and stale/future inputs must still fail. Test no-partition and no-hot-file compatibility.",
+    "current_effect_limit": "Does not clear Sep30 vendor quality; even with fresh hot rows, nightly MBP is roughly8hours stale and limit-saturated. A corrected reader must still refuse that context. No model retraining or completed-run replay justified by this diagnosis alone."
+  },
+  "safe_observability_cleanup": "On future existing nightly runs, save exact dataset-condition/schema-range metadata and selected feature-use evidence alongside each quality warning; label nonempty delivery separately from provider quality and model eligibility. This improves explanation without suppressing warnings or changing gates.",
+  "official_sources": [
+    {
+      "url": "https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition?historical=python&live=python",
+      "finding": "Degraded means data may be missing or incorrect. Response identifies UTCdate/condition/lastmodification only."
+    },
+    {
+      "url": "https://status.databento.com/",
+      "finding": "Read at current follow-up: all systems operational, no September30 incident reported; this does not supersede the dataset-quality endpoint."
+    },
+    {
+      "url": "https://issues.databento.com/",
+      "finding": "Official issue search found no September30-specific explanation; older GLBX issues do not establish this warning cause."
+    }
+  ],
+  "evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\provider-warning\\quality-metadata-20260930T072037Z.json",
+      "size": 4202,
+      "sha256": "6528fe15112b05376a1fa067ae16dbc30f94972b6712f8a53c274bc9a18dd2de"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\provider-warning\\warning-review-20260930T054033Z.json",
+      "size": 23756,
+      "sha256": "123ac307f9ed94c6f683a3b2e0168626b91ad23abed983d168a38e2ad9d4c367"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\provider-warning\\cme-derived-advisory.json",
+      "size": 2494,
+      "sha256": "c6418a65b42f5c213a78bf908899dc423e8bcea52888e8dee59a03f82e5d7486"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\receipt.json",
+      "size": 703,
+      "sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\manifest.json",
+      "size": 918772,
+      "sha256": "a94099522b2e4f95b8b1f0f8d94c5d34fd837f2c002bc7dfcfb8c9b0bdc49ed0"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\model-reports.json",
+      "size": 128000,
+      "sha256": "dd19af1fefd022aaa1b3627783e62315368beb5b6cc908cd1e8b5fc59fe8ad12"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\runs\\20260930T053953.049047Z\\publication.json",
+      "size": 715,
+      "sha256": "2987005684b6da2b5fec83471cf0b8a8cc3cb014a9b9ccef5c6dc99c00d5d3a0"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\runs\\20260930T053953.049047Z\\manifest.json",
+      "size": 1647644,
+      "sha256": "cbdede367b9f8739a9d00b281fab2eba6f48376cedec9ac7f9a54d748bc83cef"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\features\\cross-asset-context\\databento\\1h.parquet",
+      "size": 15288,
+      "sha256": "30a66941902a56bb9d828494b1c6ea37b5e18deb01ee7a82e55f76755146dce3"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\app\\services\\databento_cme_context.py",
+      "size": 32315,
+      "sha256": "59d0d44e8ce3cba999821c38ad61acc86a2c9555a5e19382f116e6a463283ffd"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\databento_fetch.py",
+      "size": 55313,
+      "sha256": "de99a9e282ccd2222259a8aee2b61429aa950161dfdfc589fc85c79836ce321c"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_cross_asset_context.py",
+      "size": 38391,
+      "sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_history.py",
+      "size": 31029,
+      "sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d"
+    }
+  ],
+  "production_writes": 0,
+  "code_or_configuration_edits": 0,
+  "provider_metadata_gets": 2,
+  "market_data_acquisitions": 0,
+  "broker_calls": 0,
+  "orders": 0
+}

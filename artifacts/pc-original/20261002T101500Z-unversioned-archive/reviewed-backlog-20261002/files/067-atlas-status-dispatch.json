@@ -1,0 +1,20 @@
+{
+  "status": "SENT_TO_CURRENT_ATLAS_CHAT",
+  "sent_at_utc": null,
+  "thread_id": "REDACTED_NATIVE_ID_0135",
+  "thread_title": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "source_commit": "be760388063a0fa3099c1cc445ba758be69ceb23",
+  "purpose": "New verified deployment and October1 preparation status against existing publication",
+  "sanitized_status_sha256": "95ee3c528c1eeaa6ac965b0b2353b1bfad890cd523740c7242f208c66df9deed",
+  "new_source_publication_requested": false,
+  "duplicate_ready_record_queued": false,
+  "raw_account_evidence_forbidden_from_notice": true,
+  "peer_delivery_confirmed": false,
+  "peer_deployment_confirmed": false,
+  "tool_result": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "send_time_bounds_utc": [
+    "2026-10-01T07:15:47Z",
+    "2026-10-01T07:17:17Z"
+  ],
+  "recorded_at_utc": "2026-10-01T07:17:38.608067+00:00"
+}

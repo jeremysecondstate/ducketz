@@ -1,0 +1,1181 @@
+{
+  "read_started_at": "2026-09-30T20:04:55.684370+00:00",
+  "read_finished_at": "2026-09-30T20:04:55.708677+00:00",
+  "read_seconds": 0.024307,
+  "scope": "SQLITE_MODE_RO_QUERY_ONLY_SHORT_COHERENT_READ_TRANSACTION; no application lock or mutation",
+  "database_path": "<LOCAL_DATASTORE>\\state\\independent-stock-trader\\holdings.sqlite3",
+  "latest_saved_snapshot": {
+    "id": "REDACTED_NATIVE_ID_0007",
+    "observed_at": "2026-09-30T19:59:54.941044+00:00",
+    "ready": true,
+    "reasons": [],
+    "account_matches_ledger": true,
+    "ionq_held_shares": 312.0,
+    "ionq_owned_shares_at_snapshot": 312,
+    "ionq_unallocated_at_snapshot": 0.0
+  },
+  "current_local_ledger_ionq_owned_shares": 312,
+  "active_or_nonempty_allocations": [
+    {
+      "id": "REDACTED_NATIVE_ID_0008",
+      "symbol": "IONQ",
+      "horizon": "1w",
+      "forecast": "2026-09-18:IONQ:1w@D+5",
+      "start": "2026-09-18T11:00:00+00:00",
+      "end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE",
+      "owned_shares": 312,
+      "pending_buy": 0,
+      "pending_sell": 0
+    }
+  ],
+  "reservation_status_counts": [
+    {
+      "id": "REDACTED_NATIVE_ID_0009",
+      "allocation": "3ac8d7fa889d7cec3311fa7f64046c31cb12529411f39213604a7672d1415772",
+      "side": "BUY",
+      "quantity": 159,
+      "price": "40.47",
+      "filled": 159,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-18T11:01:24.719605+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0010",
+      "allocation": "839e76ecd24912fdcf7f2a432be05604a4250e43e9ee49b1bfa8942083fc1c5c",
+      "side": "BUY",
+      "quantity": 48,
+      "price": "40.05",
+      "filled": 48,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-21T13:01:14.383532+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0011",
+      "allocation": "839e76ecd24912fdcf7f2a432be05604a4250e43e9ee49b1bfa8942083fc1c5c",
+      "side": "BUY",
+      "quantity": 48,
+      "price": "40.3",
+      "filled": 48,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-21T14:04:20.718799+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0012",
+      "allocation": "839e76ecd24912fdcf7f2a432be05604a4250e43e9ee49b1bfa8942083fc1c5c",
+      "side": "BUY",
+      "quantity": 48,
+      "price": "40.02",
+      "filled": 0,
+      "status": "CANCELLED",
+      "last_evidence_at": "2026-09-21T16:00:12.858329+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0013",
+      "allocation": "839e76ecd24912fdcf7f2a432be05604a4250e43e9ee49b1bfa8942083fc1c5c",
+      "side": "BUY",
+      "quantity": 3,
+      "price": "40.37",
+      "filled": 3,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-21T16:01:18.419386+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0014",
+      "allocation": "839e76ecd24912fdcf7f2a432be05604a4250e43e9ee49b1bfa8942083fc1c5c",
+      "side": "BUY",
+      "quantity": 2,
+      "price": "40.45",
+      "filled": 2,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-21T17:01:17.353102+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0015",
+      "allocation": "839e76ecd24912fdcf7f2a432be05604a4250e43e9ee49b1bfa8942083fc1c5c",
+      "side": "SELL",
+      "quantity": 101,
+      "price": "40.6",
+      "filled": 101,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-21T20:06:20.077928+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0016",
+      "allocation": "d82458961a4939f9ae9b29f5120f5cd9c4a793f2a184a47f7cea320ee9369291",
+      "side": "BUY",
+      "quantity": 48,
+      "price": "40.6",
+      "filled": 0,
+      "status": "CANCELLED",
+      "last_evidence_at": "2026-09-22T04:15:59.754838+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0017",
+      "allocation": "ca9005e4499ce6ab3b838ec36d3abb068bc5ecc747c667b37bf437110897bbc6",
+      "side": "BUY",
+      "quantity": 49,
+      "price": "40.0",
+      "filled": 49,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-22T15:09:00.572184+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0018",
+      "allocation": "ca9005e4499ce6ab3b838ec36d3abb068bc5ecc747c667b37bf437110897bbc6",
+      "side": "SELL",
+      "quantity": 49,
+      "price": "40.4",
+      "filled": 49,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-22T18:06:26.998941+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0019",
+      "allocation": "ca9005e4499ce6ab3b838ec36d3abb068bc5ecc747c667b37bf437110897bbc6",
+      "side": "BUY",
+      "quantity": 2,
+      "price": "40.24",
+      "filled": 2,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-22T17:01:18.072502+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0020",
+      "allocation": "ca9005e4499ce6ab3b838ec36d3abb068bc5ecc747c667b37bf437110897bbc6",
+      "side": "SELL",
+      "quantity": 2,
+      "price": "40.25",
+      "filled": 2,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-22T18:01:14.217573+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0021",
+      "allocation": "3ac8d7fa889d7cec3311fa7f64046c31cb12529411f39213604a7672d1415772",
+      "side": "SELL",
+      "quantity": 144,
+      "price": "45.77",
+      "filled": 144,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-23T11:59:19.152993+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0022",
+      "allocation": "96604e4d7fb0627a0a7f6a8f1fdf5eaa261054a8cc67cbbf49b502dd98dad560",
+      "side": "BUY",
+      "quantity": 46,
+      "price": "42.73",
+      "filled": 46,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-23T14:01:23.749251+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0023",
+      "allocation": "96604e4d7fb0627a0a7f6a8f1fdf5eaa261054a8cc67cbbf49b502dd98dad560",
+      "side": "BUY",
+      "quantity": 45,
+      "price": "43.39",
+      "filled": 45,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-23T15:01:21.709419+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0024",
+      "allocation": "96604e4d7fb0627a0a7f6a8f1fdf5eaa261054a8cc67cbbf49b502dd98dad560",
+      "side": "SELL",
+      "quantity": 91,
+      "price": "42.71",
+      "filled": 91,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-23T16:01:54.799193+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0025",
+      "allocation": "8fdd8ad5d9032702b0dd77a22e8ef3d943a73f6878e814af8aaecfccf010a936",
+      "side": "BUY",
+      "quantity": 44,
+      "price": "45.03",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-24T18:01:23.526334+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0026",
+      "allocation": "8fdd8ad5d9032702b0dd77a22e8ef3d943a73f6878e814af8aaecfccf010a936",
+      "side": "SELL",
+      "quantity": 44,
+      "price": "44.83",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-24T19:01:19.297394+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0027",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "BUY",
+      "quantity": 44,
+      "price": "44.79",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-24T22:01:17.754763+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0028",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "BUY",
+      "quantity": 44,
+      "price": "44.65",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-24T23:01:20.380222+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0029",
+      "allocation": "3ac8d7fa889d7cec3311fa7f64046c31cb12529411f39213604a7672d1415772",
+      "side": "BUY",
+      "quantity": 150,
+      "price": "44.5",
+      "filled": 150,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T11:24:12.849433+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0030",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "BUY",
+      "quantity": 4,
+      "price": "44.66",
+      "filled": 4,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T11:19:42.393925+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0031",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "BUY",
+      "quantity": 1,
+      "price": "44.27",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T12:01:25.210386+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0032",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "BUY",
+      "quantity": 3,
+      "price": "44.62",
+      "filled": 3,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T13:01:30.949776+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0033",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "BUY",
+      "quantity": 44,
+      "price": "44.91",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T14:01:21.501603+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0034",
+      "allocation": "f6ce987c98d3db61f4d64fe158a78ebd3e3d95515344243bf2bef377cedc2738",
+      "side": "SELL",
+      "quantity": 140,
+      "price": "45.73",
+      "filled": 140,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T19:01:16.260305+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0035",
+      "allocation": "cdef627e7bdac58276e87b58c2c7c774faac4e45ed89c829dd2297ffadde28a4",
+      "side": "BUY",
+      "quantity": 4,
+      "price": "45.38",
+      "filled": 4,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T23:01:19.500763+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0036",
+      "allocation": "b12737b49ae5d4a0a3bc99214de925d3535be9f89edb5e97682d93d93613ab9d",
+      "side": "BUY",
+      "quantity": 44,
+      "price": "45.38",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-25T23:01:29.902027+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0037",
+      "allocation": "b12737b49ae5d4a0a3bc99214de925d3535be9f89edb5e97682d93d93613ab9d",
+      "side": "SELL",
+      "quantity": 44,
+      "price": "46.15",
+      "filled": 44,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-28T13:31:05.173242+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0038",
+      "allocation": "cdef627e7bdac58276e87b58c2c7c774faac4e45ed89c829dd2297ffadde28a4",
+      "side": "SELL",
+      "quantity": 4,
+      "price": "44.68",
+      "filled": 4,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-28T23:01:17.582474+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0039",
+      "allocation": "3ac8d7fa889d7cec3311fa7f64046c31cb12529411f39213604a7672d1415772",
+      "side": "BUY",
+      "quantity": 146,
+      "price": "45.42",
+      "filled": 146,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-29T11:01:32.294726+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0040",
+      "allocation": "a5b4f3c82c39317b8efbf0d712bab0495d43ec6d9c5be7cca0439c472bf01167",
+      "side": "BUY",
+      "quantity": 1,
+      "price": "45.38",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-29T11:01:51.699494+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0041",
+      "allocation": "4020ebaedf39b0ee0f9f623d22d6330736dfc3fbfc3e73336a60e1ea6af6e3f5",
+      "side": "BUY",
+      "quantity": 1,
+      "price": "44.33",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-29T18:01:11.386285+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0042",
+      "allocation": "4020ebaedf39b0ee0f9f623d22d6330736dfc3fbfc3e73336a60e1ea6af6e3f5",
+      "side": "SELL",
+      "quantity": 1,
+      "price": "44.06",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-29T19:01:20.263710+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0043",
+      "allocation": "a5b4f3c82c39317b8efbf0d712bab0495d43ec6d9c5be7cca0439c472bf01167",
+      "side": "SELL",
+      "quantity": 1,
+      "price": "43.7",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-30T11:01:14.152811+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0044",
+      "allocation": "3ac8d7fa889d7cec3311fa7f64046c31cb12529411f39213604a7672d1415772",
+      "side": "BUY",
+      "quantity": 1,
+      "price": "43.75",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-30T11:01:14.152811+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0045",
+      "allocation": "065ae07c10697d8c677ad1e2f1c10c39dc2b9f54e97c446284ecf7822f30e252",
+      "side": "BUY",
+      "quantity": 1,
+      "price": "45.5",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-30T15:01:12.796640+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0046",
+      "allocation": "065ae07c10697d8c677ad1e2f1c10c39dc2b9f54e97c446284ecf7822f30e252",
+      "side": "SELL",
+      "quantity": 1,
+      "price": "44.45",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-30T16:01:16.234460+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0047",
+      "allocation": "dfaaa18e95d374f70f2be9f68c9535f69120a9d815661ded6cc0b055d6f1fda6",
+      "side": "BUY",
+      "quantity": 1,
+      "price": "44.58",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-30T18:01:12.298002+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0048",
+      "allocation": "dfaaa18e95d374f70f2be9f68c9535f69120a9d815661ded6cc0b055d6f1fda6",
+      "side": "SELL",
+      "quantity": 1,
+      "price": "44.54",
+      "filled": 1,
+      "status": "FILLED",
+      "last_evidence_at": "2026-09-30T19:01:19.321132+00:00"
+    }
+  ],
+  "inventory_assignments": [],
+  "assignment_releases": [],
+  "fills": [
+    {
+      "id": "REDACTED_NATIVE_ID_0049",
+      "reservation": "92e5026d2b51862ef14da9b32cddf108afc099941d6f6ea657f8ca15255a2fc8",
+      "quantity": 159,
+      "price": "40.44",
+      "executed_at": "2026-09-18T11:01:13+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0050",
+      "reservation": "b29ba1d7c18f7b8be38cc7cca60c288449fde16f68f7a0ea1bb2f0369b5c186f",
+      "quantity": 48,
+      "price": "40.03",
+      "executed_at": "2026-09-21T13:01:08+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0051",
+      "reservation": "991202e3c8c6026c95f3593c015d1874871f83079d753d613cae4504a1f753f3",
+      "quantity": 48,
+      "price": "40.3",
+      "executed_at": "2026-09-21T14:04:20+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0052",
+      "reservation": "3b7064661a4f434f70eae0d27e1b3ebcf570808cc48c94d9da6a68d9318b6b83",
+      "quantity": 3,
+      "price": "40.3374",
+      "executed_at": "2026-09-21T16:01:12+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0053",
+      "reservation": "d23f0d2b751f884895ac0da7efa569816108bb544ce4b38929e6213c6a5be0ef",
+      "quantity": 2,
+      "price": "40.4335",
+      "executed_at": "2026-09-21T17:01:11+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0054",
+      "reservation": "f0196df71e23955c2766722decbc246b3b31e7c4ca2f30cbf8f661036e6595da",
+      "quantity": 101,
+      "price": "40.6106",
+      "executed_at": "2026-09-21T20:06:12+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0055",
+      "reservation": "e69804dc49439c044807a8369a7e155cc1f9595a9955527dc8920df851ed7c3c",
+      "quantity": 49,
+      "price": "40",
+      "executed_at": "2026-09-22T15:08:49+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0056",
+      "reservation": "7bdaa03ed9ce29a90aec1d18ea8d6401aaddf50e50c8d73954c961414f53d205",
+      "quantity": 2,
+      "price": "40.24",
+      "executed_at": "2026-09-22T17:01:12+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0057",
+      "reservation": "11f31928068f8d2fe41ff054ee0af0ffd1ddc01290598bd2b8c131f53e39742c",
+      "quantity": 2,
+      "price": "40.25",
+      "executed_at": "2026-09-22T18:01:12+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0058",
+      "reservation": "8879744f91659442ecd857b0aa2bca9dba80c9860416bfb284af79e76e23e67b",
+      "quantity": 49,
+      "price": "40.4",
+      "executed_at": "2026-09-22T18:06:25+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0059",
+      "reservation": "36357df8afc15a8894808d1ad0f2130a25bd6c135e53d0e16723cffd653ea0f1",
+      "quantity": 144,
+      "price": "45.77",
+      "executed_at": "2026-09-23T11:58:54+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0060",
+      "reservation": "b30bcaf29e44a224ed9a918a51c2d6b6f5fbfa0b68410ca2c17534cbe27004c3",
+      "quantity": 46,
+      "price": "42.71",
+      "executed_at": "2026-09-23T14:01:17+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0061",
+      "reservation": "41c3b5cf6e32e9154d1d23202d16306ef43d1894bfd4fad72643a9dcb2ae43c4",
+      "quantity": 45,
+      "price": "43.355",
+      "executed_at": "2026-09-23T15:01:15+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0062",
+      "reservation": "6e562e161b827d21e3001f4ff2acf4a062ca6057498f2e8dfa02a78f79406cde",
+      "quantity": 28,
+      "price": "42.71",
+      "executed_at": "2026-09-23T16:01:45+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0063",
+      "reservation": "6e562e161b827d21e3001f4ff2acf4a062ca6057498f2e8dfa02a78f79406cde",
+      "quantity": 63,
+      "price": "42.71",
+      "executed_at": "2026-09-23T16:01:46+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0064",
+      "reservation": "bd1a6d028d8b4a3ee4570820e86804361a88b4a74076d0c64f0e56a561abe3b6",
+      "quantity": 44,
+      "price": "44.925",
+      "executed_at": "2026-09-24T18:01:15+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0065",
+      "reservation": "5d4f8f2f1fcd9a1d0970ed55047d893f362f3a69286f47ef58ac825234187659",
+      "quantity": 44,
+      "price": "44.83",
+      "executed_at": "2026-09-24T19:01:07+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0066",
+      "reservation": "e4f9d4585c9d7fd8ac54ad76f74aad1566dd64f552081dc73065fa9e9daa02ce",
+      "quantity": 44,
+      "price": "44.7785",
+      "executed_at": "2026-09-24T22:01:11+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0067",
+      "reservation": "97d8fb117a72a9e6082838034600826c712be08f7630aba5a2bc2a9e11ba3b08",
+      "quantity": 44,
+      "price": "44.6469",
+      "executed_at": "2026-09-24T23:01:12+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0068",
+      "reservation": "c2e965b29a4521c53a20071d4a1599975fbc3e3e960ebcfd774ea1717ab0e890",
+      "quantity": 4,
+      "price": "44.59",
+      "executed_at": "2026-09-25T11:19:11+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0069",
+      "reservation": "82ba2204ecc4edc0edd73b8925152de1d2df6328880130e566e466a2cc4ba0ea",
+      "quantity": 20,
+      "price": "44.5",
+      "executed_at": "2026-09-25T11:23:39+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0070",
+      "reservation": "82ba2204ecc4edc0edd73b8925152de1d2df6328880130e566e466a2cc4ba0ea",
+      "quantity": 50,
+      "price": "44.5",
+      "executed_at": "2026-09-25T11:23:39+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0071",
+      "reservation": "82ba2204ecc4edc0edd73b8925152de1d2df6328880130e566e466a2cc4ba0ea",
+      "quantity": 10,
+      "price": "44.5",
+      "executed_at": "2026-09-25T11:23:39+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0072",
+      "reservation": "82ba2204ecc4edc0edd73b8925152de1d2df6328880130e566e466a2cc4ba0ea",
+      "quantity": 20,
+      "price": "44.5",
+      "executed_at": "2026-09-25T11:23:39+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0073",
+      "reservation": "82ba2204ecc4edc0edd73b8925152de1d2df6328880130e566e466a2cc4ba0ea",
+      "quantity": 50,
+      "price": "44.5",
+      "executed_at": "2026-09-25T11:23:39+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0074",
+      "reservation": "020ba46661a6e3aa8822181373cb2ac54c0ec56154e068e141b9ba55ec659b8c",
+      "quantity": 1,
+      "price": "44.2669",
+      "executed_at": "2026-09-25T12:01:18+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0075",
+      "reservation": "938576600596647b460b58832cadf11f0633e30af1f635efa338355634920c86",
+      "quantity": 3,
+      "price": "44.59",
+      "executed_at": "2026-09-25T13:01:24+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0076",
+      "reservation": "8bd7fa0d3fa84c3058983fd70aa66cd235cce96406176d927eb2c4b64a990beb",
+      "quantity": 22,
+      "price": "44.9",
+      "executed_at": "2026-09-25T14:01:14+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0077",
+      "reservation": "8bd7fa0d3fa84c3058983fd70aa66cd235cce96406176d927eb2c4b64a990beb",
+      "quantity": 22,
+      "price": "44.9",
+      "executed_at": "2026-09-25T14:01:14+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0078",
+      "reservation": "4eb4081e7fe1b2e7f8051fa307c1672d46a5baae27fb0df47b2820939d0b8eb0",
+      "quantity": 140,
+      "price": "45.7378",
+      "executed_at": "2026-09-25T19:01:08+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0079",
+      "reservation": "a3e7cee8a613cdcaadebff2eee6831ad5bfaa78f0684f122c73a58f2d9cf3861",
+      "quantity": 4,
+      "price": "45.3707",
+      "executed_at": "2026-09-25T23:01:13+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0080",
+      "reservation": "4e80f8e1f938fd89e65bbc9ecae2dbf237ec1b1c129baa66054e9b4da70d95d8",
+      "quantity": 44,
+      "price": "45.3707",
+      "executed_at": "2026-09-25T23:01:23+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0081",
+      "reservation": "fa8844a6a0a79d7810d21fd688f444c14836709167c9e8195c560718102209a1",
+      "quantity": 11,
+      "price": "46.15",
+      "executed_at": "2026-09-28T13:30:45+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0082",
+      "reservation": "fa8844a6a0a79d7810d21fd688f444c14836709167c9e8195c560718102209a1",
+      "quantity": 33,
+      "price": "46.15",
+      "executed_at": "2026-09-28T13:30:45+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0083",
+      "reservation": "5a407f01a74dc9de06d7192bab3c2ff995de6aa22bb75a29bcfce4caaa251e49",
+      "quantity": 4,
+      "price": "44.69",
+      "executed_at": "2026-09-28T23:01:09+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0084",
+      "reservation": "0be4ff0de8b67a93a787477eb85bffd2bfdb81b8f4540da2fb55eb9e8f42b083",
+      "quantity": 146,
+      "price": "45.3986",
+      "executed_at": "2026-09-29T11:01:24+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0085",
+      "reservation": "51276f7a01fc692976c722eab638fa322bfb3ab59dbd7e7d378e87f24c69e1e2",
+      "quantity": 1,
+      "price": "45.33",
+      "executed_at": "2026-09-29T11:01:45+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0086",
+      "reservation": "e38349cf68b2ff30293f0089e7a790a5a38829462f512d2d9e5fa3107407dbfc",
+      "quantity": 1,
+      "price": "44.33",
+      "executed_at": "2026-09-29T18:01:05+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0087",
+      "reservation": "aa3a2f4f9cf9731f34a3b1b4ff0fc7844a0b1dd79777c832b132df6581744178",
+      "quantity": 1,
+      "price": "44.07",
+      "executed_at": "2026-09-29T19:01:12+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0088",
+      "reservation": "16d61328b4d7c02a6b292a891fa217e98a1e67943a9cb04997f9dba0dfd0c45e",
+      "quantity": 1,
+      "price": "43.7344",
+      "executed_at": "2026-09-30T11:01:07+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0089",
+      "reservation": "3e2c3c8ee20311d4ec2b62e80d217e13bff1be0d81cc3b3de87cc653152f0e11",
+      "quantity": 1,
+      "price": "43.702",
+      "executed_at": "2026-09-30T11:01:07+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0090",
+      "reservation": "95cfa6a269fe61b2c4df7cff997fd2793f0f758fb109543e3e7fd9da1f7173f1",
+      "quantity": 1,
+      "price": "45.465",
+      "executed_at": "2026-09-30T15:01:06+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0091",
+      "reservation": "0905925c7a22ac8ab619916a4b9a7fecb64499175ff0cdcf30f7b8f1cf93c82a",
+      "quantity": 1,
+      "price": "44.46",
+      "executed_at": "2026-09-30T16:01:09+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0092",
+      "reservation": "73cfb412796bc4b45cee084c92e127fb98b1654a9b24cdf27ac2c1adbc4c328a",
+      "quantity": 1,
+      "price": "44.57",
+      "executed_at": "2026-09-30T18:01:06+00:00"
+    },
+    {
+      "id": "REDACTED_NATIVE_ID_0093",
+      "reservation": "b6d3e352330edd4f6c7f84a4a1d5a8a5c439b2f2caba857897207eb7c06800c9",
+      "quantity": 1,
+      "price": "44.56",
+      "executed_at": "2026-09-30T19:01:12+00:00"
+    }
+  ],
+  "persistent_block_count": 0,
+  "snapshot_owned_matches_current_ledger": true,
+  "planning": {
+    "path": "<LOCAL_DATASTORE>\\ml\\gameplan-trade-plan-runs\\20260930T062633.629638Z",
+    "snapshot_at": "2026-09-30T06:26:39.672622+00:00",
+    "snapshot_held_shares": 312.0,
+    "snapshot_allocations": [
+      {
+        "horizon": "1d",
+        "owned_shares": 1,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "status": "ACTIVE",
+        "symbol": "IONQ",
+        "target_end": "2026-09-30T00:00:00+00:00",
+        "target_start": "2026-09-29T11:00:00+00:00"
+      },
+      {
+        "horizon": "1w",
+        "owned_shares": 311,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "status": "ACTIVE",
+        "symbol": "IONQ",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "target_start": "2026-09-18T11:00:00+00:00"
+      }
+    ],
+    "rows": [
+      {
+        "id": "REDACTED_NATIVE_ID_0094",
+        "route": "1h@04:00",
+        "model_group": "1h",
+        "action_anchor_local": "04:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4411821043,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0095",
+        "route": "1h@05:00",
+        "model_group": "1h",
+        "action_anchor_local": "05:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4761651122,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0096",
+        "route": "1h@06:00",
+        "model_group": "1h",
+        "action_anchor_local": "06:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4761651122,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0097",
+        "route": "1h@07:00",
+        "model_group": "1h",
+        "action_anchor_local": "07:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4857208666,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0098",
+        "route": "1h@08:00",
+        "model_group": "1h",
+        "action_anchor_local": "08:00",
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5115150413,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0099",
+        "route": "1h@09:00",
+        "model_group": "1h",
+        "action_anchor_local": "09:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4935831247,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0100",
+        "route": "1h@10:00",
+        "model_group": "1h",
+        "action_anchor_local": "10:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4935831247,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0101",
+        "route": "1h@11:00",
+        "model_group": "1h",
+        "action_anchor_local": "11:00",
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5025073056,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0102",
+        "route": "1h@12:00",
+        "model_group": "1h",
+        "action_anchor_local": "12:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4905156959,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0103",
+        "route": "1h@13:00",
+        "model_group": "1h",
+        "action_anchor_local": "13:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4515680796,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0104",
+        "route": "1h@14:00",
+        "model_group": "1h",
+        "action_anchor_local": "14:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4870819316,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0105",
+        "route": "1h@15:00",
+        "model_group": "1h",
+        "action_anchor_local": "15:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4957454829,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0106",
+        "route": "1h@16:00",
+        "model_group": "1h",
+        "action_anchor_local": "16:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4957454829,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0107",
+        "route": "1h@gap",
+        "model_group": "1h",
+        "action_anchor_local": null,
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5544421606,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": null,
+        "direction_based_trade_quantity": null,
+        "direction_based_action": "CONTEXT",
+        "direction_based_reason": "NON_ENTRY_CONTEXT",
+        "projected_shares_after": null
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0108",
+        "route": "4h@04:00",
+        "model_group": "4h",
+        "action_anchor_local": "04:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4774383588,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0109",
+        "route": "4h@08:00",
+        "model_group": "4h",
+        "action_anchor_local": "08:00",
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5002617424,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0110",
+        "route": "4h@12:00",
+        "model_group": "4h",
+        "action_anchor_local": "12:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4972082207,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0111",
+        "route": "4h@16:00",
+        "model_group": "4h",
+        "action_anchor_local": "16:00",
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5064862382,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 0.0,
+        "direction_based_action": "HOLD",
+        "direction_based_reason": "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0112",
+        "route": "1d@D+1",
+        "model_group": "1d",
+        "action_anchor_local": "04:00",
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4973391247,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": -1.0,
+        "direction_based_action": "SELL",
+        "direction_based_reason": "BEARISH_SELL",
+        "projected_shares_after": 447.0
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0113",
+        "route": "1d@D+2",
+        "model_group": "1d",
+        "action_anchor_local": null,
+        "direction": "BEARISH",
+        "calibrated_probability": 0.4919880905,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": null,
+        "direction_based_trade_quantity": null,
+        "direction_based_action": "CONTEXT",
+        "direction_based_reason": "NON_ENTRY_CONTEXT",
+        "projected_shares_after": null
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0114",
+        "route": "1d@D+3",
+        "model_group": "1d",
+        "action_anchor_local": null,
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5097837196,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": null,
+        "direction_based_trade_quantity": null,
+        "direction_based_action": "CONTEXT",
+        "direction_based_reason": "NON_ENTRY_CONTEXT",
+        "projected_shares_after": null
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0115",
+        "route": "1d@D+4",
+        "model_group": "1d",
+        "action_anchor_local": null,
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5486748452,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": null,
+        "direction_based_trade_quantity": null,
+        "direction_based_action": "CONTEXT",
+        "direction_based_reason": "NON_ENTRY_CONTEXT",
+        "projected_shares_after": null
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0116",
+        "route": "1d@D+5",
+        "model_group": "1d",
+        "action_anchor_local": null,
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5223607884,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": null,
+        "direction_based_trade_quantity": null,
+        "direction_based_action": "CONTEXT",
+        "direction_based_reason": "NON_ENTRY_CONTEXT",
+        "projected_shares_after": null
+      },
+      {
+        "id": "REDACTED_NATIVE_ID_0117",
+        "route": "1w@D+5",
+        "model_group": "1w",
+        "action_anchor_local": "04:00",
+        "direction": "BULLISH",
+        "calibrated_probability": 0.5688063866,
+        "current_held_shares": 312.0,
+        "projected_trade_quantity": 1.0,
+        "direction_based_trade_quantity": 136.0,
+        "direction_based_action": "BUY",
+        "direction_based_reason": "BULLISH_BUY",
+        "projected_shares_after": 447.0
+      }
+    ],
+    "events": [
+      {
+        "action": "SELL",
+        "cash_base": 15155.53,
+        "cash_before_base": 15111.29,
+        "cash_before_high": 15141.62,
+        "cash_before_low": 15080.96,
+        "cash_change_base": 44.24,
+        "cash_change_high": 44.33,
+        "cash_change_low": 44.14,
+        "cash_high": 15185.95,
+        "cash_low": 15125.1,
+        "forecast_id": "2026-09-30:IONQ:1d@D+1",
+        "horizon": "1d",
+        "price_base": 44.24,
+        "price_high": 44.33,
+        "price_low": 44.14,
+        "quantity": 1,
+        "reason": "BEARISH_SELL",
+        "sequence": 5,
+        "shares_after": 311.0,
+        "shares_before": 312.0,
+        "symbol": "IONQ",
+        "timestamp": "2026-09-30T11:00:00+00:00"
+      },
+      {
+        "action": "BUY",
+        "cash_base": 3933.53,
+        "cash_before_base": 9950.17,
+        "cash_before_high": 9991.03,
+        "cash_before_low": 9909.33,
+        "cash_change_base": -6016.64,
+        "cash_change_high": -6003.04,
+        "cash_change_low": -6028.88,
+        "cash_high": 3987.99,
+        "cash_low": 3880.45,
+        "forecast_id": "2026-09-30:IONQ:1w@D+5",
+        "horizon": "1w",
+        "price_base": 44.24,
+        "price_high": 44.33,
+        "price_low": 44.14,
+        "quantity": 136,
+        "reason": "BULLISH_BUY",
+        "sequence": 7,
+        "shares_after": 447.0,
+        "shares_before": 311.0,
+        "symbol": "IONQ",
+        "timestamp": "2026-09-30T11:00:00+00:00"
+      }
+    ],
+    "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
+  },
+  "limitations": [
+    "Latest saved holdings are timestamped broker evidence already recorded by the worker, not a fresh broker query or screenshot balance.",
+    "Ledger fills and reservations are a coherent local read; only broker evidence can establish current actual inventory and fills.",
+    "Saved planning rows and447shares are conditional projections; they are not execution receipts.",
+    "Manual Gameplan policy can assign eligible unallocated actual stock to a bearish sell; other horizons remain protected. No hierarchical fallback currently applies."
+  ],
+  "production_writes": 0,
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "trader_actions": 0
+}

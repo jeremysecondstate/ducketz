@@ -1,0 +1,2472 @@
+{
+  "reviewed_at": "2026-09-30T07:27:57.984943+00:00",
+  "status": "READ_ONLY_LIMITATIONS_REVIEW_COMPLETE",
+  "scope": "Immutable completed September 29 source / September 30 action outputs and current selected manual policy code. No broker/production/provider actions; no fits or inference reruns.",
+  "conclusion": "Operational verification passed. Prediction quality and thin venue-specific observations remain material limitations; no demonstrated code/data defect supports immediate native repair.",
+  "checks": [
+    {
+      "name": "20260930T061501.586401Z: manifest receipt",
+      "passed": true
+    },
+    {
+      "name": "20260930T061501.586401Z: model-reports.json",
+      "passed": true
+    },
+    {
+      "name": "20260930T061501.586401Z: forecasts.parquet",
+      "passed": true
+    },
+    {
+      "name": "20260930T062446.604631Z: manifest receipt",
+      "passed": true
+    },
+    {
+      "name": "20260930T062446.604631Z: training-report.json",
+      "passed": true
+    },
+    {
+      "name": "20260930T063012.679198Z: manifest receipt",
+      "passed": true
+    },
+    {
+      "name": "20260930T063012.679198Z: forecast-results.parquet",
+      "passed": true
+    },
+    {
+      "name": "20260930T063012.679198Z: price-results.parquet",
+      "passed": true
+    },
+    {
+      "name": "20260930T063012.679198Z: report.json",
+      "passed": true
+    },
+    {
+      "name": "original complete audit all 12 sections verified",
+      "passed": true
+    },
+    {
+      "name": "sizing same Gameplan source",
+      "passed": true
+    },
+    {
+      "name": "1h: saved independent scores match native scope horizon",
+      "passed": true
+    },
+    {
+      "name": "1h: native development selection unchanged",
+      "passed": true
+    },
+    {
+      "name": "1h: fitted but no qualified scopes",
+      "passed": true
+    },
+    {
+      "name": "1h: return and probability development optima at upper grid edge",
+      "passed": true
+    },
+    {
+      "name": "4h: saved independent scores match native scope horizon",
+      "passed": true
+    },
+    {
+      "name": "4h: native development selection unchanged",
+      "passed": true
+    },
+    {
+      "name": "4h: fitted but no qualified scopes",
+      "passed": true
+    },
+    {
+      "name": "4h: return and probability development optima at upper grid edge",
+      "passed": true
+    },
+    {
+      "name": "1d: saved independent scores match native scope horizon",
+      "passed": true
+    },
+    {
+      "name": "1d: native development selection unchanged",
+      "passed": true
+    },
+    {
+      "name": "1d: fitted but no qualified scopes",
+      "passed": true
+    },
+    {
+      "name": "1d: return and probability development optima at upper grid edge",
+      "passed": true
+    },
+    {
+      "name": "1w: saved independent scores match native scope horizon",
+      "passed": true
+    },
+    {
+      "name": "1w: native development selection unchanged",
+      "passed": true
+    },
+    {
+      "name": "1w: fitted but no qualified scopes",
+      "passed": true
+    },
+    {
+      "name": "1w: return and probability development optima at upper grid edge",
+      "passed": true
+    },
+    {
+      "name": "1h: directional assessment matches completed audit",
+      "passed": true
+    },
+    {
+      "name": "1h: directional saved promotion has no failed checks",
+      "passed": true
+    },
+    {
+      "name": "4h: directional assessment matches completed audit",
+      "passed": true
+    },
+    {
+      "name": "4h: directional saved promotion has no failed checks",
+      "passed": true
+    },
+    {
+      "name": "1d: directional assessment matches completed audit",
+      "passed": true
+    },
+    {
+      "name": "1d: directional saved promotion has no failed checks",
+      "passed": true
+    },
+    {
+      "name": "1w: directional assessment matches completed audit",
+      "passed": true
+    },
+    {
+      "name": "1w: directional saved promotion has no failed checks",
+      "passed": true
+    },
+    {
+      "name": "actuals saved counts exactly reproduced",
+      "passed": true
+    },
+    {
+      "name": "all missing matured targets end by cutoff",
+      "passed": true
+    },
+    {
+      "name": "all missing mature boundary acquisition windows complete",
+      "passed": true
+    },
+    {
+      "name": "all pending end after saved cutoff",
+      "passed": true
+    },
+    {
+      "name": "all missing clock acquisition windows complete",
+      "passed": true
+    },
+    {
+      "name": "direction score is raw outcome, no synthetic substitutions",
+      "passed": true
+    },
+    {
+      "name": "manual launcher explicitly selects Gameplan policy",
+      "passed": true
+    },
+    {
+      "name": "runtime loads learned model only for learned policy",
+      "passed": true
+    },
+    {
+      "name": "Gameplan policy accepts saved signals without learned model readiness",
+      "passed": true
+    }
+  ],
+  "bindings": {
+    "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\model-reports.json": {
+      "sha256": "dd19af1fefd022aaa1b3627783e62315368beb5b6cc908cd1e8b5fc59fe8ad12",
+      "bytes": 128000
+    },
+    "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\forecasts.parquet": {
+      "sha256": "1e5e5b6ecf11a51e85a20dcdb1c58f95d4e4cdd645445665881a4c7c39547c4e",
+      "bytes": 60322
+    },
+    "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\manifest.json": {
+      "sha256": "a94099522b2e4f95b8b1f0f8d94c5d34fd837f2c002bc7dfcfb8c9b0bdc49ed0",
+      "bytes": 918772
+    },
+    "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\receipt.json": {
+      "sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0",
+      "bytes": 703
+    },
+    "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20260930T062446.604631Z\\training-report.json": {
+      "sha256": "e96cfe71cfd7e1a23aaabdb6aaa871a537a24b2f41d478945e26f4e1d63447df",
+      "bytes": 493249
+    },
+    "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20260930T062446.604631Z\\manifest.json": {
+      "sha256": "827311528946bb770e36fa56f2cdff41eec7a0bcd75c7fbfad40acf01459d1fc",
+      "bytes": 3459
+    },
+    "<LOCAL_DATASTORE>\\ml\\stock-trader-model-runs\\20260930T062446.604631Z\\receipt.json": {
+      "sha256": "cf3ffe813ecb1f77ad5ca6e0404fc17ea4c5b44a45f68ae1dce212795cf606f4",
+      "bytes": 716
+    },
+    "<LOCAL_DATASTORE>\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z\\forecast-results.parquet": {
+      "sha256": "eec45d3a006da1d67f075b169599b6d5e80c4db4c440c63408cb75346db700c1",
+      "bytes": 150224
+    },
+    "<LOCAL_DATASTORE>\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z\\price-results.parquet": {
+      "sha256": "5c24dd3427526543900c81ca6f3b29526383bcca9616ee218a395ea96f1fa224",
+      "bytes": 21447
+    },
+    "<LOCAL_DATASTORE>\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z\\report.json": {
+      "sha256": "be2032cc2847ab7809f8e1017fb1af51279c5bcbe956a52fbb6082fb1a1bfbe0",
+      "bytes": 343172
+    },
+    "<LOCAL_DATASTORE>\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z\\manifest.json": {
+      "sha256": "49102d8b68391be2adb4d8433a77fa3cd00a5fc30a122f2a56941b1717615fc8",
+      "bytes": 305166
+    },
+    "<LOCAL_DATASTORE>\\ml\\gameplan-actuals-review-runs\\20260930T063012.679198Z\\receipt.json": {
+      "sha256": "79d4583a1d7b5f84e0297c76187d274dc66e9de69a046faa40c244dae44aa85e",
+      "bytes": 335
+    },
+    "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\completion-audit.json": {
+      "sha256": "0ecdb588c8d0fdf5dd3643099895791d07baa0eb6fe7c89e039465724f153a06",
+      "bytes": 308984
+    },
+    "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\model-review.json": {
+      "sha256": "4828d8e2699b08c6c080d578c05bdac44dadfa71d612e2801448052775ea1cd1",
+      "bytes": 129346
+    },
+    "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\yg-completion.json": {
+      "sha256": "8cc364e984850e7414bce01bbebfbdb62f3a50188fc98af4d1604f0ee50d41a7",
+      "bytes": 14481
+    },
+    "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\preliminary-sizing-review.json": {
+      "sha256": "c738690c64a52cf1267e8c382ab105f8856305166bef61470300b2ad4ee7cc4e",
+      "bytes": 51007
+    },
+    "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\preliminary-directional-review.json": {
+      "sha256": "e9089435c4ff5a8f7b3fc79ef6622456e0f45315b251fffe5551526e4389ece8",
+      "bytes": 264799
+    },
+    "<LOCAL_CHECKOUT>\\Start-Gameplan-Trader.cmd": {
+      "sha256": "07cec07c05d28a0d738915ba7d1eb418fd104d62a67d316384c50421f4cca505",
+      "bytes": 401
+    },
+    "<LOCAL_CHECKOUT>\\ml\\stock_trader\\independent_runtime.py": {
+      "sha256": "e844d4c1e4aaa7a9d95a541266f36b91c5504b3e0f4c41e1ca1c302b7bc26e61",
+      "bytes": 43647
+    },
+    "<LOCAL_CHECKOUT>\\ml\\stock_trader\\gameplan_execution.py": {
+      "sha256": "86245d610f112eac0beaf9b39842ab0e77cbac44cc606714241c680379f7c04f",
+      "bytes": 5297
+    },
+    "<LOCAL_CHECKOUT>\\ml\\stock_trader\\gameplan_direction_engine.py": {
+      "sha256": "c3a231bbfefd931991e75737a244410c35dfb11cdc16b608968fa5a0d966c898",
+      "bytes": 21215
+    },
+    "<LOCAL_CHECKOUT>\\ml\\stock_trader\\independent_training.py": {
+      "sha256": "1bfa5df652bfec0734b14e2a22432f9ff77b6900fb598acd35615bb1258289e8",
+      "bytes": 55120
+    },
+    "<LOCAL_CHECKOUT>\\docs\\loops-system-analysis\\INDEPENDENT_STOCK_HORIZONS.md": {
+      "sha256": "f6deaba163bf71bc7ab48b6d63c08fdba09947d6c0b88145fd5e9423c25e1ff9",
+      "bytes": 33810
+    }
+  },
+  "sizing": {
+    "1h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 143,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 4.355192466538851e-05,
+        "base_adverse_mse": 4.719338050013591e-05,
+        "base_brier": 0.23572412741373353,
+        "base_log_loss": 0.66431939599003,
+        "base_return_mse": 0.00011310108402860955,
+        "brier": 0.23060416720595375,
+        "ece": 0.014287155826064735,
+        "log_loss": 0.6529629987026071,
+        "probability_range": [
+          0.15547921787905403,
+          0.6011252770710817
+        ],
+        "return_mse": 0.00011323731539886107
+      },
+      "quality_checks": {
+        "brier_below_baseline": true,
+        "log_loss_below_baseline": true,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": true,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "return_mse_below_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+      },
+      "market_feature_admission": {
+        "admitted_rows": 93283,
+        "excluded_by_feature": {
+          "bp__compression_score": 72749,
+          "bp__direction_score": 72749,
+          "mr__atr_percent": 72749,
+          "mr__momentum_risk_adjusted": 72749,
+          "mr__range_position": 72749,
+          "mr__trend_atr": 72749,
+          "mr__volatility_ratio": 72749,
+          "mr__volume_score": 72749
+        },
+        "excluded_by_symbol": {
+          "AAPL": 9818,
+          "AMZN": 9449,
+          "COST": 6744,
+          "CROX": 8222,
+          "GOOG": 8003,
+          "IONQ": 3178,
+          "MU": 8175,
+          "NVDA": 9528,
+          "PATH": 3346,
+          "TWST": 6286
+        },
+        "excluded_missing_market_rows": 72749,
+        "excluded_rows_sha256": "6d61443903d04989c556d28d9a0ec757f796a7e1d4cbf9145c12dfb66eeaf45b",
+        "input_execution_rows": 166032,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 3.8945352158565195e-05,
+            "allocation_transformed_target_mse": 6.18485581231056,
+            "log_loss": 0.6530721224814154,
+            "return_mse": 0.00011050390276621052
+          },
+          "20.0": {
+            "adverse_mse": 3.894614382803406e-05,
+            "allocation_transformed_target_mse": 6.18485006395866,
+            "log_loss": 0.6530638185218571,
+            "return_mse": 0.00011050368646256521
+          },
+          "5.0": {
+            "adverse_mse": 3.8945515395855796e-05,
+            "allocation_transformed_target_mse": 6.184854586091101,
+            "log_loss": 0.6530703501479973,
+            "return_mse": 0.0001105038571175099
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 1.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "CROX|1h@16:00|60m": {
+          "assessment_decision_clusters": 0,
+          "assessment_scores": null,
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 7,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.355192466538851e-05,
+            "base_adverse_mse": 4.719338050013591e-05,
+            "base_brier": 0.23572412741373353,
+            "base_log_loss": 0.66431939599003,
+            "base_return_mse": 0.00011310108402860955,
+            "brier": 0.23060416720595375,
+            "ece": 0.014287155826064735,
+            "log_loss": 0.6529629987026071,
+            "probability_range": [
+              0.15547921787905403,
+              0.6011252770710817
+            ],
+            "return_mse": 0.00011323731539886107
+          },
+          "pooled_symbol_route_fit_decision_clusters": 7,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@04:00|60m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 4.852977502375525e-07,
+            "base_adverse_mse": 4.223303026294041e-06,
+            "base_brier": 0.148771838546115,
+            "base_log_loss": 0.4872873782225751,
+            "base_return_mse": 2.272657305174964e-05,
+            "brier": 0.14804961537259423,
+            "ece": 0.3846181340778939,
+            "log_loss": 0.4856687749171473,
+            "probability_range": [
+              0.3737320736778471,
+              0.39550419447794066
+            ],
+            "return_mse": 2.1497167698140104e-05
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 12,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.355192466538851e-05,
+            "base_adverse_mse": 4.719338050013591e-05,
+            "base_brier": 0.23572412741373353,
+            "base_log_loss": 0.66431939599003,
+            "base_return_mse": 0.00011310108402860955,
+            "brier": 0.23060416720595375,
+            "ece": 0.014287155826064735,
+            "log_loss": 0.6529629987026071,
+            "probability_range": [
+              0.15547921787905403,
+              0.6011252770710817
+            ],
+            "return_mse": 0.00011323731539886107
+          },
+          "pooled_symbol_route_fit_decision_clusters": 12,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@05:00|60m": {
+          "assessment_decision_clusters": 4,
+          "assessment_scores": {
+            "adverse_mse": 4.855222084091605e-05,
+            "base_adverse_mse": 6.024417513060476e-05,
+            "base_brier": 0.2630623124178186,
+            "base_log_loss": 0.7199790470055595,
+            "base_return_mse": 0.00018665348117990961,
+            "brier": 0.25739730702553604,
+            "ece": 0.07769157171031082,
+            "log_loss": 0.7081383601542022,
+            "probability_range": [
+              0.41518850475461977,
+              0.43207544160671496
+            ],
+            "return_mse": 0.0001832520545579367
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 14,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.355192466538851e-05,
+            "base_adverse_mse": 4.719338050013591e-05,
+            "base_brier": 0.23572412741373353,
+            "base_log_loss": 0.66431939599003,
+            "base_return_mse": 0.00011310108402860955,
+            "brier": 0.23060416720595375,
+            "ece": 0.014287155826064735,
+            "log_loss": 0.6529629987026071,
+            "probability_range": [
+              0.15547921787905403,
+              0.6011252770710817
+            ],
+            "return_mse": 0.00011323731539886107
+          },
+          "pooled_symbol_route_fit_decision_clusters": 14,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@14:00|60m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 3.6304345714105384e-06,
+            "base_adverse_mse": 3.780902092806471e-06,
+            "base_brier": 0.2630623124178186,
+            "base_log_loss": 0.7199790470055595,
+            "base_return_mse": 2.1380623287267378e-05,
+            "brier": 0.2828400335159698,
+            "ece": 0.4894011665780199,
+            "log_loss": 0.7630434868278457,
+            "probability_range": [
+              0.2812509043441158,
+              0.30244857118807605
+            ],
+            "return_mse": 2.2689205877786403e-05
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 3,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.355192466538851e-05,
+            "base_adverse_mse": 4.719338050013591e-05,
+            "base_brier": 0.23572412741373353,
+            "base_log_loss": 0.66431939599003,
+            "base_return_mse": 0.00011310108402860955,
+            "brier": 0.23060416720595375,
+            "ece": 0.014287155826064735,
+            "log_loss": 0.6529629987026071,
+            "probability_range": [
+              0.15547921787905403,
+              0.6011252770710817
+            ],
+            "return_mse": 0.00011323731539886107
+          },
+          "pooled_symbol_route_fit_decision_clusters": 3,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@15:00|60m": {
+          "assessment_decision_clusters": 1,
+          "assessment_scores": {
+            "adverse_mse": 1.209945088192621e-07,
+            "base_adverse_mse": 3.5197273478286766e-06,
+            "base_brier": 0.148771838546115,
+            "base_log_loss": 0.4872873782225751,
+            "base_return_mse": 7.609555507868261e-07,
+            "brier": 0.05811341655881106,
+            "ece": 0.24106724488990838,
+            "log_loss": 0.27584210220432237,
+            "probability_range": [
+              0.24106724488990838,
+              0.24106724488990838
+            ],
+            "return_mse": 2.490840036230137e-07
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 1,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.355192466538851e-05,
+            "base_adverse_mse": 4.719338050013591e-05,
+            "base_brier": 0.23572412741373353,
+            "base_log_loss": 0.66431939599003,
+            "base_return_mse": 0.00011310108402860955,
+            "brier": 0.23060416720595375,
+            "ece": 0.014287155826064735,
+            "log_loss": 0.6529629987026071,
+            "probability_range": [
+              0.15547921787905403,
+              0.6011252770710817
+            ],
+            "return_mse": 0.00011323731539886107
+          },
+          "pooled_symbol_route_fit_decision_clusters": 1,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@16:00|60m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 8.350181019538164e-07,
+            "base_adverse_mse": 7.239581244811517e-06,
+            "base_brier": 0.2630623124178186,
+            "base_log_loss": 0.7199790470055595,
+            "base_return_mse": 1.2815333040247823e-06,
+            "brier": 0.33185567962295054,
+            "ece": 0.2799352211392012,
+            "log_loss": 0.8913942971156974,
+            "probability_range": [
+              0.21658493657443964,
+              0.2235446211471579
+            ],
+            "return_mse": 1.5804148786349784e-06
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 1,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.355192466538851e-05,
+            "base_adverse_mse": 4.719338050013591e-05,
+            "base_brier": 0.23572412741373353,
+            "base_log_loss": 0.66431939599003,
+            "base_return_mse": 0.00011310108402860955,
+            "brier": 0.23060416720595375,
+            "ece": 0.014287155826064735,
+            "log_loss": 0.6529629987026071,
+            "probability_range": [
+              0.15547921787905403,
+              0.6011252770710817
+            ],
+            "return_mse": 0.00011323731539886107
+          },
+          "pooled_symbol_route_fit_decision_clusters": 1,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      },
+      "return_mse_excess_percent": 0.12045098543622679
+    },
+    "4h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 78,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 0.00018279334041437493,
+        "base_adverse_mse": 0.0002060466146058687,
+        "base_brier": 0.24817908771794572,
+        "base_log_loss": 0.6895011358380781,
+        "base_return_mse": 0.0005402017631584604,
+        "brier": 0.24750028167279434,
+        "ece": 0.00871821349024709,
+        "log_loss": 0.6881551786278693,
+        "probability_range": [
+          0.35491287908118324,
+          0.6803196952699921
+        ],
+        "return_mse": 0.0005425573197870826
+      },
+      "quality_checks": {
+        "brier_below_baseline": true,
+        "log_loss_below_baseline": true,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": true,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "return_mse_below_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      },
+      "market_feature_admission": {
+        "admitted_rows": 25154,
+        "excluded_by_feature": {
+          "bp__compression_score": 17846,
+          "bp__direction_score": 17846,
+          "mr__atr_percent": 17846,
+          "mr__momentum_risk_adjusted": 17846,
+          "mr__range_position": 17846,
+          "mr__trend_atr": 17846,
+          "mr__volatility_ratio": 17846,
+          "mr__volume_score": 17846
+        },
+        "excluded_by_symbol": {
+          "AAPL": 2722,
+          "AMZN": 2556,
+          "COST": 1641,
+          "CROX": 1619,
+          "GOOG": 2008,
+          "IONQ": 675,
+          "MU": 2125,
+          "NVDA": 2591,
+          "PATH": 798,
+          "TWST": 1111
+        },
+        "excluded_missing_market_rows": 17846,
+        "excluded_rows_sha256": "58b584a4e3bd16d28ead11647dbff93daf3942a70b8246a5850789b4bafd7f3f",
+        "input_execution_rows": 43000,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 0.00014321157807672404,
+            "allocation_transformed_target_mse": 7.001728108491465,
+            "log_loss": 0.6870674557763611,
+            "return_mse": 0.0004474104351613968
+          },
+          "20.0": {
+            "adverse_mse": 0.0001432186704191936,
+            "allocation_transformed_target_mse": 7.001423371800582,
+            "log_loss": 0.6868994613478873,
+            "return_mse": 0.00044739534092082446
+          },
+          "5.0": {
+            "adverse_mse": 0.00014321292977560374,
+            "allocation_transformed_target_mse": 7.001663153672057,
+            "log_loss": 0.6870308025674438,
+            "return_mse": 0.00044740722508155917
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 1.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "SNDK|4h@16:00|5220m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 0.00012507885187626057,
+            "base_adverse_mse": 3.3155780024089045e-05,
+            "base_brier": 0.2891318666929254,
+            "base_log_loss": 0.7715625223535358,
+            "base_return_mse": 0.00041814919170093565,
+            "brier": 0.12197144010744801,
+            "ece": 0.34903025261803644,
+            "log_loss": 0.4294683272409439,
+            "probability_range": [
+              0.6387499738636994,
+              0.6631895209002278
+            ],
+            "return_mse": 0.00025045817375252355
+          },
+          "exact_scope_observed_in_fit": false,
+          "fit_decision_clusters": 0,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.00018279334041437493,
+            "base_adverse_mse": 0.0002060466146058687,
+            "base_brier": 0.24817908771794572,
+            "base_log_loss": 0.6895011358380781,
+            "base_return_mse": 0.0005402017631584604,
+            "brier": 0.24750028167279434,
+            "ece": 0.00871821349024709,
+            "log_loss": 0.6881551786278693,
+            "probability_range": [
+              0.35491287908118324,
+              0.6803196952699921
+            ],
+            "return_mse": 0.0005425573197870826
+          },
+          "pooled_symbol_route_fit_decision_clusters": 37,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "UNSEEN_EXACT_TARGET_SCOPE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|4h@16:00|3780m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 0.0001026732032980589,
+            "base_adverse_mse": 2.9334767516261498e-05,
+            "base_brier": 0.25142203165833593,
+            "base_log_loss": 0.6959993633772374,
+            "base_return_mse": 5.9159897845979687e-05,
+            "brier": 0.24927649106861477,
+            "ece": 0.050733591791175536,
+            "log_loss": 0.6916586000124154,
+            "probability_range": [
+              0.5474252403343951,
+              0.554041943247956
+            ],
+            "return_mse": 4.052291708361311e-05
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 2,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.00018279334041437493,
+            "base_adverse_mse": 0.0002060466146058687,
+            "base_brier": 0.24817908771794572,
+            "base_log_loss": 0.6895011358380781,
+            "base_return_mse": 0.0005402017631584604,
+            "brier": 0.24750028167279434,
+            "ece": 0.00871821349024709,
+            "log_loss": 0.6881551786278693,
+            "probability_range": [
+              0.35491287908118324,
+              0.6803196952699921
+            ],
+            "return_mse": 0.0005425573197870826
+          },
+          "pooled_symbol_route_fit_decision_clusters": 14,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|4h@16:00|900m": {
+          "assessment_decision_clusters": 5,
+          "assessment_scores": {
+            "adverse_mse": 5.647411133127165e-05,
+            "base_adverse_mse": 2.524980970630441e-05,
+            "base_brier": 0.24388006465141804,
+            "base_log_loss": 0.6808867315819778,
+            "base_return_mse": 0.0008809854371282939,
+            "brier": 0.24502137834672294,
+            "ece": 0.030933367142304435,
+            "log_loss": 0.6832686513042139,
+            "probability_range": [
+              0.4194830143044088,
+              0.4423538675267073
+            ],
+            "return_mse": 0.0009235588209491519
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 12,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.00018279334041437493,
+            "base_adverse_mse": 0.0002060466146058687,
+            "base_brier": 0.24817908771794572,
+            "base_log_loss": 0.6895011358380781,
+            "base_return_mse": 0.0005402017631584604,
+            "brier": 0.24750028167279434,
+            "ece": 0.00871821349024709,
+            "log_loss": 0.6881551786278693,
+            "probability_range": [
+              0.35491287908118324,
+              0.6803196952699921
+            ],
+            "return_mse": 0.0005425573197870826
+          },
+          "pooled_symbol_route_fit_decision_clusters": 14,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      },
+      "return_mse_excess_percent": 0.4360512662620275
+    },
+    "1d": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 11,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 0.000452924865456108,
+        "base_adverse_mse": 0.000497219740445409,
+        "base_brier": 0.2487527971342498,
+        "base_log_loss": 0.6906520733291506,
+        "base_return_mse": 0.0016242116580313176,
+        "brier": 0.25771337909031244,
+        "ece": 0.07355275389223677,
+        "log_loss": 0.7116269310002502,
+        "probability_range": [
+          0.3251942833593166,
+          0.970867574443015
+        ],
+        "return_mse": 0.0016983992196317108
+      },
+      "quality_checks": {
+        "brier_below_baseline": false,
+        "log_loss_below_baseline": false,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": true,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "brier_below_baseline",
+        "log_loss_below_baseline",
+        "return_mse_below_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+      },
+      "market_feature_admission": {
+        "admitted_rows": 3807,
+        "excluded_by_feature": {
+          "bp__compression_score": 2141,
+          "bp__direction_score": 2141,
+          "mr__atr_percent": 2141,
+          "mr__momentum_risk_adjusted": 2141,
+          "mr__range_position": 2141,
+          "mr__trend_atr": 2141,
+          "mr__volatility_ratio": 2141,
+          "mr__volume_score": 2141
+        },
+        "excluded_by_symbol": {
+          "AAPL": 463,
+          "AMZN": 439,
+          "COST": 117,
+          "CROX": 35,
+          "GOOG": 262,
+          "IONQ": 15,
+          "MU": 310,
+          "NVDA": 444,
+          "PATH": 55,
+          "TWST": 1
+        },
+        "excluded_missing_market_rows": 2141,
+        "excluded_rows_sha256": "7bcf89f69d35fab3292794fa4084870824da79d7d3b52f17e0f312ec961bf9cb",
+        "input_execution_rows": 5948,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 0.00039623328002084924,
+            "allocation_transformed_target_mse": 7.81762318402938,
+            "log_loss": 0.6873429729802891,
+            "return_mse": 0.001434566441319371
+          },
+          "20.0": {
+            "adverse_mse": 0.0003902796710725661,
+            "allocation_transformed_target_mse": 7.813016968934915,
+            "log_loss": 0.6871243481224053,
+            "return_mse": 0.0014323719552968256
+          },
+          "5.0": {
+            "adverse_mse": 0.0003943389860881805,
+            "allocation_transformed_target_mse": 7.816600509308279,
+            "log_loss": 0.6872827576889853,
+            "return_mse": 0.0014341018873305085
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 20.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "TWST|1d@D+1|780m": {
+          "assessment_decision_clusters": 3,
+          "assessment_scores": {
+            "adverse_mse": 1.0837033706315237e-05,
+            "base_adverse_mse": 6.32646994940546e-05,
+            "base_brier": 0.25531484374740854,
+            "base_log_loss": 0.7037802368460672,
+            "base_return_mse": 0.013320339351767912,
+            "brier": 0.3148475289297921,
+            "ece": 0.30275988604207116,
+            "log_loss": 1.199830552565088,
+            "probability_range": [
+              0.9684651579756839,
+              0.970867574443015
+            ],
+            "return_mse": 0.012735432334932932
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 1,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.000452924865456108,
+            "base_adverse_mse": 0.000497219740445409,
+            "base_brier": 0.2487527971342498,
+            "base_log_loss": 0.6906520733291506,
+            "base_return_mse": 0.0016242116580313176,
+            "brier": 0.25771337909031244,
+            "ece": 0.07355275389223677,
+            "log_loss": 0.7116269310002502,
+            "probability_range": [
+              0.3251942833593166,
+              0.970867574443015
+            ],
+            "return_mse": 0.0016983992196317108
+          },
+          "pooled_symbol_route_fit_decision_clusters": 1,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      },
+      "return_mse_excess_percent": 4.56760430412837
+    },
+    "1w": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 39,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 0.0028852271027515375,
+        "base_adverse_mse": 0.0028395381837282145,
+        "base_brier": 0.2536486304947937,
+        "base_log_loss": 0.7004982154113457,
+        "base_return_mse": 0.008151102385797485,
+        "brier": 0.2752655961362846,
+        "ece": 0.11843137621060368,
+        "log_loss": 0.7547743119284093,
+        "probability_range": [
+          0.22377184976008466,
+          0.9170993608725475
+        ],
+        "return_mse": 0.010138382728801543
+      },
+      "quality_checks": {
+        "brier_below_baseline": false,
+        "log_loss_below_baseline": false,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": false,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "brier_below_baseline",
+        "log_loss_below_baseline",
+        "return_mse_below_baseline",
+        "adverse_mse_at_most_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      },
+      "market_feature_admission": {
+        "admitted_rows": 3780,
+        "excluded_by_feature": {
+          "bp__compression_score": 2081,
+          "bp__direction_score": 2081,
+          "mr__atr_percent": 2081,
+          "mr__momentum_risk_adjusted": 2081,
+          "mr__range_position": 2081,
+          "mr__trend_atr": 2081,
+          "mr__volatility_ratio": 2081,
+          "mr__volume_score": 2081
+        },
+        "excluded_by_symbol": {
+          "AAPL": 454,
+          "AMZN": 428,
+          "COST": 115,
+          "CROX": 31,
+          "GOOG": 258,
+          "IONQ": 13,
+          "MU": 297,
+          "NVDA": 439,
+          "PATH": 44,
+          "TWST": 2
+        },
+        "excluded_missing_market_rows": 2081,
+        "excluded_rows_sha256": "819e35da28ed9a7e7bae7c883b7bc6cc56b6144940e71c6e09271e6001f9b7da",
+        "input_execution_rows": 5861,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 0.0010517636700329638,
+            "allocation_transformed_target_mse": 12.922827122334256,
+            "log_loss": 1.0623875788797263,
+            "return_mse": 0.009333979345125679
+          },
+          "20.0": {
+            "adverse_mse": 0.0010472227291505325,
+            "allocation_transformed_target_mse": 12.904418271684582,
+            "log_loss": 0.8809812673383894,
+            "return_mse": 0.0093336769784258
+          },
+          "5.0": {
+            "adverse_mse": 0.001050641062002057,
+            "allocation_transformed_target_mse": 12.918847002884295,
+            "log_loss": 0.9622253818262853,
+            "return_mse": 0.009333923715485817
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 20.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "SNDK|1w@D+5|10860m": {
+          "assessment_decision_clusters": 8,
+          "assessment_scores": {
+            "adverse_mse": 0.01657198412279943,
+            "base_adverse_mse": 0.015315676297947499,
+            "base_brier": 0.25364863049479364,
+            "base_log_loss": 0.7004982154113459,
+            "base_return_mse": 0.026035710209541065,
+            "brier": 0.35760847585378613,
+            "ece": 0.31319857980585686,
+            "log_loss": 0.9762829699688576,
+            "probability_range": [
+              0.7954703407674867,
+              0.8515917203442284
+            ],
+            "return_mse": 0.04483667488522031
+          },
+          "exact_scope_observed_in_fit": false,
+          "fit_decision_clusters": 0,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0028852271027515375,
+            "base_adverse_mse": 0.0028395381837282145,
+            "base_brier": 0.2536486304947937,
+            "base_log_loss": 0.7004982154113457,
+            "base_return_mse": 0.008151102385797485,
+            "brier": 0.2752655961362846,
+            "ece": 0.11843137621060368,
+            "log_loss": 0.7547743119284093,
+            "probability_range": [
+              0.22377184976008466,
+              0.9170993608725475
+            ],
+            "return_mse": 0.010138382728801543
+          },
+          "pooled_symbol_route_fit_decision_clusters": 38,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "UNSEEN_EXACT_TARGET_SCOPE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1w@D+5|6540m": {
+          "assessment_decision_clusters": 0,
+          "assessment_scores": null,
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 2,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0028852271027515375,
+            "base_adverse_mse": 0.0028395381837282145,
+            "base_brier": 0.2536486304947937,
+            "base_log_loss": 0.7004982154113457,
+            "base_return_mse": 0.008151102385797485,
+            "brier": 0.2752655961362846,
+            "ece": 0.11843137621060368,
+            "log_loss": 0.7547743119284093,
+            "probability_range": [
+              0.22377184976008466,
+              0.9170993608725475
+            ],
+            "return_mse": 0.010138382728801543
+          },
+          "pooled_symbol_route_fit_decision_clusters": 6,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1w@D+5|9420m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 0.0015798978970417456,
+            "base_adverse_mse": 0.00033613025392645736,
+            "base_brier": 0.19324473579591156,
+            "base_log_loss": 0.5790975146881853,
+            "base_return_mse": 0.0385885955619472,
+            "brier": 0.5775029002825338,
+            "ece": 0.7597576070629295,
+            "log_loss": 1.4284625362554477,
+            "probability_range": [
+              0.22377184976008466,
+              0.2567129361140562
+            ],
+            "return_mse": 0.04595732473171425
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 4,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0028852271027515375,
+            "base_adverse_mse": 0.0028395381837282145,
+            "base_brier": 0.2536486304947937,
+            "base_log_loss": 0.7004982154113457,
+            "base_return_mse": 0.008151102385797485,
+            "brier": 0.2752655961362846,
+            "ece": 0.11843137621060368,
+            "log_loss": 0.7547743119284093,
+            "probability_range": [
+              0.22377184976008466,
+              0.9170993608725475
+            ],
+            "return_mse": 0.010138382728801543
+          },
+          "pooled_symbol_route_fit_decision_clusters": 6,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      },
+      "return_mse_excess_percent": 24.38051013157072
+    }
+  },
+  "directional": {
+    "1h": {
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "score": 0.2502759741529368,
+          "baseline": 0.2499997378026551,
+          "allowed_excess": 0.005,
+          "saved_maximum": 0.2549997378026551,
+          "actual_excess": 0.0002762363502817,
+          "margin_to_maximum": 0.0047237636497183,
+          "strictly_beats_baseline": false
+        },
+        "log_loss": {
+          "score": 0.6937115899599755,
+          "baseline": 0.6931466561651934,
+          "allowed_excess": 0.01,
+          "saved_maximum": 0.7031466561651935,
+          "actual_excess": 0.0005649337947821,
+          "margin_to_maximum": 0.0094350662052179,
+          "strictly_beats_baseline": false
+        }
+      },
+      "assessment": {
+        "brier_score": 0.2502759741529368,
+        "direction_accuracy_at_0_5": 0.505513567092058,
+        "expected_calibration_error_10_bin": 0.012277588439882947,
+        "log_loss": 0.6937115899599755,
+        "mean_probability": 0.4970091909072615,
+        "positive_rate": 0.4994424482715896,
+        "rows": 8071
+      },
+      "baseline": {
+        "brier_score": 0.2499997378026551,
+        "direction_accuracy_at_0_5": 0.5005575517284103,
+        "expected_calibration_error_10_bin": 0.0002206050430029749,
+        "log_loss": 0.6931466561651934,
+        "mean_probability": 0.4996630533145926,
+        "positive_rate": 0.4994424482715896,
+        "rows": 8071
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "fitted_rows": 1
+      }
+    },
+    "4h": {
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "score": 0.2499283101796543,
+          "baseline": 0.2500673286028836,
+          "allowed_excess": 0.005,
+          "saved_maximum": 0.2550673286028836,
+          "actual_excess": -0.0001390184232293,
+          "margin_to_maximum": 0.0051390184232293,
+          "strictly_beats_baseline": true
+        },
+        "log_loss": {
+          "score": 0.6930047546224142,
+          "baseline": 0.6932818474532447,
+          "allowed_excess": 0.01,
+          "saved_maximum": 0.7032818474532447,
+          "actual_excess": -0.0002770928308305,
+          "margin_to_maximum": 0.0102770928308305,
+          "strictly_beats_baseline": true
+        }
+      },
+      "assessment": {
+        "brier_score": 0.2499283101796543,
+        "direction_accuracy_at_0_5": 0.5114813147230977,
+        "expected_calibration_error_10_bin": 0.0030149398139729926,
+        "log_loss": 0.6930047546224142,
+        "mean_probability": 0.5009888254510734,
+        "positive_rate": 0.49797388563710043,
+        "rows": 2221
+      },
+      "baseline": {
+        "brier_score": 0.2500673286028836,
+        "direction_accuracy_at_0_5": 0.49797388563710043,
+        "expected_calibration_error_10_bin": 0.008451848454339772,
+        "log_loss": 0.6932818474532447,
+        "mean_probability": 0.5064257340914402,
+        "positive_rate": 0.49797388563710043,
+        "rows": 2221
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 24
+      }
+    },
+    "1d": {
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "score": 0.25100640241532934,
+          "baseline": 0.2507983269168995,
+          "allowed_excess": 0.005,
+          "saved_maximum": 0.2557983269168995,
+          "actual_excess": 0.00020807549842984,
+          "margin_to_maximum": 0.00479192450157016,
+          "strictly_beats_baseline": false
+        },
+        "log_loss": {
+          "score": 0.6951671949211351,
+          "baseline": 0.6947441390940771,
+          "allowed_excess": 0.01,
+          "saved_maximum": 0.7047441390940771,
+          "actual_excess": 0.000423055827058,
+          "margin_to_maximum": 0.009576944172942,
+          "strictly_beats_baseline": false
+        }
+      },
+      "assessment": {
+        "brier_score": 0.25100640241532934,
+        "direction_accuracy_at_0_5": 0.5010893246187363,
+        "expected_calibration_error_10_bin": 0.0353862575930371,
+        "log_loss": 0.6951671949211351,
+        "mean_probability": 0.5061562976182422,
+        "positive_rate": 0.4710239651416122,
+        "rows": 2295
+      },
+      "baseline": {
+        "brier_score": 0.2507983269168995,
+        "direction_accuracy_at_0_5": 0.4710239651416122,
+        "expected_calibration_error_10_bin": 0.04047144070840597,
+        "log_loss": 0.6947441390940771,
+        "mean_probability": 0.5114954058500182,
+        "positive_rate": 0.4710239651416122,
+        "rows": 2295
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 2
+      }
+    },
+    "1w": {
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "metric_limits": {
+        "brier_score": {
+          "score": 0.25211857520168185,
+          "baseline": 0.2519341719109926,
+          "allowed_excess": 0.005,
+          "saved_maximum": 0.2569341719109926,
+          "actual_excess": 0.00018440329068925,
+          "margin_to_maximum": 0.00481559670931075,
+          "strictly_beats_baseline": false
+        },
+        "log_loss": {
+          "score": 0.6974154014497242,
+          "baseline": 0.6970448075583919,
+          "allowed_excess": 0.01,
+          "saved_maximum": 0.7070448075583919,
+          "actual_excess": 0.0003705938913323,
+          "margin_to_maximum": 0.0096294061086677,
+          "strictly_beats_baseline": false
+        }
+      },
+      "assessment": {
+        "brier_score": 0.25211857520168185,
+        "direction_accuracy_at_0_5": 0.5084745762711864,
+        "expected_calibration_error_10_bin": 0.051109979030583765,
+        "log_loss": 0.6974154014497242,
+        "mean_probability": 0.5595563632793091,
+        "positive_rate": 0.510593220338983,
+        "rows": 472
+      },
+      "baseline": {
+        "brier_score": 0.2519341719109926,
+        "direction_accuracy_at_0_5": 0.510593220338983,
+        "expected_calibration_error_10_bin": 0.045237022759492596,
+        "log_loss": 0.6970448075583919,
+        "mean_probability": 0.5558302430984756,
+        "positive_rate": 0.510593220338983,
+        "rows": 472
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 8
+      }
+    }
+  },
+  "TWST_directional_exact_route_support": {
+    "1h": {
+      "admitted_decision_clusters": 1961,
+      "admitted_rows": 11718,
+      "admitted_rows_by_route": {
+        "1h@04:00": 27,
+        "1h@05:00": 43,
+        "1h@06:00": 229,
+        "1h@07:00": 1885,
+        "1h@08:00": 1876,
+        "1h@09:00": 1864,
+        "1h@10:00": 1855,
+        "1h@11:00": 1877,
+        "1h@12:00": 1916,
+        "1h@13:00": 121,
+        "1h@14:00": 9,
+        "1h@15:00": 5,
+        "1h@16:00": 4,
+        "1h@gap": 7
+      },
+      "assessment_decision_clusters": 63,
+      "assessment_rows": 410,
+      "assessment_rows_by_route": {
+        "1h@04:00": 2,
+        "1h@05:00": 4,
+        "1h@06:00": 11,
+        "1h@07:00": 63,
+        "1h@08:00": 63,
+        "1h@09:00": 62,
+        "1h@10:00": 63,
+        "1h@11:00": 63,
+        "1h@12:00": 63,
+        "1h@13:00": 8,
+        "1h@14:00": 2,
+        "1h@15:00": 1,
+        "1h@16:00": 2,
+        "1h@gap": 3
+      },
+      "fitted_decision_clusters": 1835,
+      "fitted_rows": 10913,
+      "fitted_rows_by_route": {
+        "1h@04:00": 23,
+        "1h@05:00": 39,
+        "1h@06:00": 212,
+        "1h@07:00": 1760,
+        "1h@08:00": 1750,
+        "1h@09:00": 1739,
+        "1h@10:00": 1729,
+        "1h@11:00": 1751,
+        "1h@12:00": 1790,
+        "1h@13:00": 105,
+        "1h@14:00": 7,
+        "1h@15:00": 3,
+        "1h@16:00": 1,
+        "1h@gap": 4
+      }
+    },
+    "4h": {
+      "admitted_decision_clusters": 1877,
+      "admitted_rows": 2157,
+      "admitted_rows_by_route": {
+        "4h@04:00": 185,
+        "4h@08:00": 1877,
+        "4h@12:00": 60,
+        "4h@16:00": 35
+      },
+      "assessment_decision_clusters": 63,
+      "assessment_rows": 90,
+      "assessment_rows_by_route": {
+        "4h@04:00": 14,
+        "4h@08:00": 63,
+        "4h@12:00": 6,
+        "4h@16:00": 7
+      },
+      "fitted_decision_clusters": 1751,
+      "fitted_rows": 1985,
+      "fitted_rows_by_route": {
+        "4h@04:00": 159,
+        "4h@08:00": 1751,
+        "4h@12:00": 51,
+        "4h@16:00": 24
+      }
+    },
+    "1d": {
+      "admitted_decision_clusters": 25,
+      "admitted_rows": 25,
+      "admitted_rows_by_route": {
+        "1d@D+1": 5,
+        "1d@D+2": 5,
+        "1d@D+3": 5,
+        "1d@D+4": 5,
+        "1d@D+5": 5
+      },
+      "assessment_decision_clusters": 15,
+      "assessment_rows": 15,
+      "assessment_rows_by_route": {
+        "1d@D+1": 3,
+        "1d@D+2": 3,
+        "1d@D+3": 3,
+        "1d@D+4": 3,
+        "1d@D+5": 3
+      },
+      "fitted_decision_clusters": 10,
+      "fitted_rows": 10,
+      "fitted_rows_by_route": {
+        "1d@D+1": 2,
+        "1d@D+2": 2,
+        "1d@D+3": 2,
+        "1d@D+4": 2,
+        "1d@D+5": 2
+      }
+    },
+    "1w": {
+      "admitted_decision_clusters": 10,
+      "admitted_rows": 10,
+      "admitted_rows_by_route": {
+        "1w@D+5": 10
+      },
+      "assessment_decision_clusters": 2,
+      "assessment_rows": 2,
+      "assessment_rows_by_route": {
+        "1w@D+5": 2
+      },
+      "fitted_decision_clusters": 8,
+      "fitted_rows": 8,
+      "fitted_rows_by_route": {
+        "1w@D+5": 8
+      }
+    }
+  },
+  "actuals": {
+    "source_action_date": "2026-09-29",
+    "outcomes_through": "2026-09-30T00:00:00+00:00",
+    "reviewed_at": "2026-09-30T06:30:12.679198+00:00",
+    "counts": {
+      "evaluated": 163,
+      "mature_awaiting_data": 35,
+      "pending_maturity": 66,
+      "total": 264
+    },
+    "missing_forecast_rows_by_symbol": {
+      "COST": 5,
+      "CROX": 11,
+      "GOOG": 2,
+      "IONQ": 1,
+      "PATH": 8,
+      "TWST": 8
+    },
+    "missing_forecast_rows_by_group": {
+      "1h": 27,
+      "4h": 6,
+      "1d": 2
+    },
+    "missing_boundary_slots": 48,
+    "distinct_missing_symbol_timestamps": 26,
+    "distinct_missing_symbol_timestamp_sides": 39,
+    "distinct_missing_symbol_request_windows": 38,
+    "missing_boundary_details": [
+      {
+        "forecast_id": "2026-09-29:COST:1h@06:00",
+        "symbol": "COST",
+        "route": "1h@06:00",
+        "side": "start",
+        "timestamp": "2026-09-29 13:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:06:00+00:00",
+        "gap_seconds": 360.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T13:00:00+00:00",
+        "required_source_end": "2026-09-29T13:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:COST:1h@14:00",
+        "symbol": "COST",
+        "route": "1h@14:00",
+        "side": "start",
+        "timestamp": "2026-09-29 21:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T21:17:00+00:00",
+        "gap_seconds": 1020.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:00:00+00:00",
+        "required_source_end": "2026-09-29T21:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@04:00",
+        "symbol": "CROX",
+        "route": "1h@04:00",
+        "side": "start",
+        "timestamp": "2026-09-29 11:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "gap_seconds": 8940.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:00:00+00:00",
+        "required_source_end": "2026-09-29T11:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@05:00",
+        "symbol": "CROX",
+        "route": "1h@05:00",
+        "side": "start",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "gap_seconds": 5340.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T12:00:00+00:00",
+        "required_source_end": "2026-09-29T12:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@06:00",
+        "symbol": "CROX",
+        "route": "1h@06:00",
+        "side": "start",
+        "timestamp": "2026-09-29 13:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "gap_seconds": 1740.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T13:00:00+00:00",
+        "required_source_end": "2026-09-29T13:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@14:00",
+        "symbol": "CROX",
+        "route": "1h@14:00",
+        "side": "start",
+        "timestamp": "2026-09-29 21:00:00+00:00",
+        "status": "NO_OBSERVATION",
+        "candidate_observed_at": null,
+        "gap_seconds": null,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:00:00+00:00",
+        "required_source_end": "2026-09-29T21:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@15:00",
+        "symbol": "CROX",
+        "route": "1h@15:00",
+        "side": "start",
+        "timestamp": "2026-09-29 22:00:00+00:00",
+        "status": "NO_OBSERVATION",
+        "candidate_observed_at": null,
+        "gap_seconds": null,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:00:00+00:00",
+        "required_source_end": "2026-09-29T22:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@16:00",
+        "symbol": "CROX",
+        "route": "1h@16:00",
+        "side": "start",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "NO_OBSERVATION",
+        "candidate_observed_at": null,
+        "gap_seconds": null,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:00:00+00:00",
+        "required_source_end": "2026-09-29T23:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@gap",
+        "symbol": "CROX",
+        "route": "1h@gap",
+        "side": "start",
+        "timestamp": "2026-09-29 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-28T21:14:00+00:00",
+        "gap_seconds": 9960.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-28T23:54:00+00:00",
+        "required_source_end": "2026-09-29T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:4h@04:00",
+        "symbol": "CROX",
+        "route": "4h@04:00",
+        "side": "start",
+        "timestamp": "2026-09-29 11:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "gap_seconds": 8940.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:00:00+00:00",
+        "required_source_end": "2026-09-29T11:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1d@D+1",
+        "symbol": "CROX",
+        "route": "1d@D+1",
+        "side": "start",
+        "timestamp": "2026-09-29 11:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "gap_seconds": 8940.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:00:00+00:00",
+        "required_source_end": "2026-09-29T11:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:IONQ:1h@gap",
+        "symbol": "IONQ",
+        "route": "1h@gap",
+        "side": "start",
+        "timestamp": "2026-09-29 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-28T23:50:00+00:00",
+        "gap_seconds": 600.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-28T23:54:00+00:00",
+        "required_source_end": "2026-09-29T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@05:00",
+        "symbol": "PATH",
+        "route": "1h@05:00",
+        "side": "start",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T12:24:00+00:00",
+        "gap_seconds": 1440.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T12:00:00+00:00",
+        "required_source_end": "2026-09-29T12:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@14:00",
+        "symbol": "PATH",
+        "route": "1h@14:00",
+        "side": "start",
+        "timestamp": "2026-09-29 21:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T21:19:00+00:00",
+        "gap_seconds": 1140.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:00:00+00:00",
+        "required_source_end": "2026-09-29T21:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@15:00",
+        "symbol": "PATH",
+        "route": "1h@15:00",
+        "side": "start",
+        "timestamp": "2026-09-29 22:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:13:00+00:00",
+        "gap_seconds": 780.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:00:00+00:00",
+        "required_source_end": "2026-09-29T22:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@16:00",
+        "symbol": "PATH",
+        "route": "1h@16:00",
+        "side": "start",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "NO_OBSERVATION",
+        "candidate_observed_at": null,
+        "gap_seconds": null,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:00:00+00:00",
+        "required_source_end": "2026-09-29T23:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@gap",
+        "symbol": "PATH",
+        "route": "1h@gap",
+        "side": "start",
+        "timestamp": "2026-09-29 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-28T21:30:00+00:00",
+        "gap_seconds": 9000.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-28T23:54:00+00:00",
+        "required_source_end": "2026-09-29T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@05:00",
+        "symbol": "TWST",
+        "route": "1h@05:00",
+        "side": "start",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:28:00+00:00",
+        "gap_seconds": 5280.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T12:00:00+00:00",
+        "required_source_end": "2026-09-29T12:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@06:00",
+        "symbol": "TWST",
+        "route": "1h@06:00",
+        "side": "start",
+        "timestamp": "2026-09-29 13:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:28:00+00:00",
+        "gap_seconds": 1680.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T13:00:00+00:00",
+        "required_source_end": "2026-09-29T13:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@14:00",
+        "symbol": "TWST",
+        "route": "1h@14:00",
+        "side": "start",
+        "timestamp": "2026-09-29 21:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T21:19:00+00:00",
+        "gap_seconds": 1140.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:00:00+00:00",
+        "required_source_end": "2026-09-29T21:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@15:00",
+        "symbol": "TWST",
+        "route": "1h@15:00",
+        "side": "start",
+        "timestamp": "2026-09-29 22:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:22:00+00:00",
+        "gap_seconds": 1320.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:00:00+00:00",
+        "required_source_end": "2026-09-29T22:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@16:00",
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "side": "start",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T23:53:00+00:00",
+        "gap_seconds": 3180.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:00:00+00:00",
+        "required_source_end": "2026-09-29T23:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@gap",
+        "symbol": "TWST",
+        "route": "1h@gap",
+        "side": "start",
+        "timestamp": "2026-09-29 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-28T22:51:00+00:00",
+        "gap_seconds": 4140.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-28T23:54:00+00:00",
+        "required_source_end": "2026-09-29T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:COST:1h@04:00",
+        "symbol": "COST",
+        "route": "1h@04:00",
+        "side": "end",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T11:46:00+00:00",
+        "gap_seconds": 840.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:54:00+00:00",
+        "required_source_end": "2026-09-29T12:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:COST:1h@15:00",
+        "symbol": "COST",
+        "route": "1h@15:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:49:00+00:00",
+        "gap_seconds": 660.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:COST:4h@12:00",
+        "symbol": "COST",
+        "route": "4h@12:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:49:00+00:00",
+        "gap_seconds": 660.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@04:00",
+        "symbol": "CROX",
+        "route": "1h@04:00",
+        "side": "end",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-28T21:14:00+00:00",
+        "gap_seconds": 53160.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:54:00+00:00",
+        "required_source_end": "2026-09-29T12:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@05:00",
+        "symbol": "CROX",
+        "route": "1h@05:00",
+        "side": "end",
+        "timestamp": "2026-09-29 13:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-28T21:14:00+00:00",
+        "gap_seconds": 56760.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T12:54:00+00:00",
+        "required_source_end": "2026-09-29T13:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@13:00",
+        "symbol": "CROX",
+        "route": "1h@13:00",
+        "side": "end",
+        "timestamp": "2026-09-29 21:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "gap_seconds": 1200.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T20:54:00+00:00",
+        "required_source_end": "2026-09-29T21:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@14:00",
+        "symbol": "CROX",
+        "route": "1h@14:00",
+        "side": "end",
+        "timestamp": "2026-09-29 22:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "gap_seconds": 4800.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:54:00+00:00",
+        "required_source_end": "2026-09-29T22:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@15:00",
+        "symbol": "CROX",
+        "route": "1h@15:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "gap_seconds": 8400.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@16:00",
+        "symbol": "CROX",
+        "route": "1h@16:00",
+        "side": "end",
+        "timestamp": "2026-09-30 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "gap_seconds": 12000.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:54:00+00:00",
+        "required_source_end": "2026-09-30T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1h@gap",
+        "symbol": "CROX",
+        "route": "1h@gap",
+        "side": "end",
+        "timestamp": "2026-09-29 11:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "gap_seconds": 8940.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:00:00+00:00",
+        "required_source_end": "2026-09-29T11:06:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:4h@12:00",
+        "symbol": "CROX",
+        "route": "4h@12:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "gap_seconds": 8400.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:CROX:1d@D+1",
+        "symbol": "CROX",
+        "route": "1d@D+1",
+        "side": "end",
+        "timestamp": "2026-09-30 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "gap_seconds": 12000.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:54:00+00:00",
+        "required_source_end": "2026-09-30T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:GOOG:1h@15:00",
+        "symbol": "GOOG",
+        "route": "1h@15:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:50:00+00:00",
+        "gap_seconds": 600.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:GOOG:4h@12:00",
+        "symbol": "GOOG",
+        "route": "4h@12:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:50:00+00:00",
+        "gap_seconds": 600.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@04:00",
+        "symbol": "PATH",
+        "route": "1h@04:00",
+        "side": "end",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T11:50:00+00:00",
+        "gap_seconds": 600.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:54:00+00:00",
+        "required_source_end": "2026-09-29T12:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@14:00",
+        "symbol": "PATH",
+        "route": "1h@14:00",
+        "side": "end",
+        "timestamp": "2026-09-29 22:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T21:20:00+00:00",
+        "gap_seconds": 2400.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:54:00+00:00",
+        "required_source_end": "2026-09-29T22:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@15:00",
+        "symbol": "PATH",
+        "route": "1h@15:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:14:00+00:00",
+        "gap_seconds": 2760.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1h@16:00",
+        "symbol": "PATH",
+        "route": "1h@16:00",
+        "side": "end",
+        "timestamp": "2026-09-30 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:14:00+00:00",
+        "gap_seconds": 6360.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:54:00+00:00",
+        "required_source_end": "2026-09-30T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:4h@12:00",
+        "symbol": "PATH",
+        "route": "4h@12:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:14:00+00:00",
+        "gap_seconds": 2760.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:PATH:1d@D+1",
+        "symbol": "PATH",
+        "route": "1d@D+1",
+        "side": "end",
+        "timestamp": "2026-09-30 00:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:14:00+00:00",
+        "gap_seconds": 6360.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T23:54:00+00:00",
+        "required_source_end": "2026-09-30T00:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@04:00",
+        "symbol": "TWST",
+        "route": "1h@04:00",
+        "side": "end",
+        "timestamp": "2026-09-29 12:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T11:02:00+00:00",
+        "gap_seconds": 3480.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T11:54:00+00:00",
+        "required_source_end": "2026-09-29T12:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@05:00",
+        "symbol": "TWST",
+        "route": "1h@05:00",
+        "side": "end",
+        "timestamp": "2026-09-29 13:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T11:02:00+00:00",
+        "gap_seconds": 7080.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T12:54:00+00:00",
+        "required_source_end": "2026-09-29T13:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@14:00",
+        "symbol": "TWST",
+        "route": "1h@14:00",
+        "side": "end",
+        "timestamp": "2026-09-29 22:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T21:27:00+00:00",
+        "gap_seconds": 1980.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T21:54:00+00:00",
+        "required_source_end": "2026-09-29T22:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:1h@15:00",
+        "symbol": "TWST",
+        "route": "1h@15:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:34:00+00:00",
+        "gap_seconds": 1560.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      },
+      {
+        "forecast_id": "2026-09-29:TWST:4h@12:00",
+        "symbol": "TWST",
+        "route": "4h@12:00",
+        "side": "end",
+        "timestamp": "2026-09-29 23:00:00+00:00",
+        "status": "OUTSIDE_TOLERANCE",
+        "candidate_observed_at": "2026-09-29T22:34:00+00:00",
+        "gap_seconds": 1560.0,
+        "source_coverage": "VERIFIED_COMPLETE",
+        "required_source_start": "2026-09-29T22:54:00+00:00",
+        "required_source_end": "2026-09-29T23:00:00+00:00"
+      }
+    ],
+    "missing_boundary_status_counts": [
+      {
+        "side": "end",
+        "status": "OUTSIDE_TOLERANCE",
+        "count": 25
+      },
+      {
+        "side": "start",
+        "status": "NO_OBSERVATION",
+        "count": 4
+      },
+      {
+        "side": "start",
+        "status": "OUTSIDE_TOLERANCE",
+        "count": 19
+      }
+    ],
+    "pending_routes": [
+      {
+        "route": "1d@D+2",
+        "end": "2026-10-01 00:00:00+00:00",
+        "end_pacific": "2026-09-30 17:00:00-07:00",
+        "rows": 11
+      },
+      {
+        "route": "1d@D+3",
+        "end": "2026-10-02 00:00:00+00:00",
+        "end_pacific": "2026-10-01 17:00:00-07:00",
+        "rows": 11
+      },
+      {
+        "route": "1d@D+4",
+        "end": "2026-10-03 00:00:00+00:00",
+        "end_pacific": "2026-10-02 17:00:00-07:00",
+        "rows": 11
+      },
+      {
+        "route": "1d@D+5",
+        "end": "2026-10-06 00:00:00+00:00",
+        "end_pacific": "2026-10-05 17:00:00-07:00",
+        "rows": 11
+      },
+      {
+        "route": "1w@D+5",
+        "end": "2026-10-06 00:00:00+00:00",
+        "end_pacific": "2026-10-05 17:00:00-07:00",
+        "rows": 11
+      },
+      {
+        "route": "4h@16:00",
+        "end": "2026-09-30 14:00:00+00:00",
+        "end_pacific": "2026-09-30 07:00:00-07:00",
+        "rows": 11
+      }
+    ],
+    "pending_with_already_ineligible_start": [
+      {
+        "symbol": "CROX",
+        "route": "4h@16:00",
+        "actual_start_status": "NO_OBSERVATION",
+        "actual_start_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "route": "1w@D+5",
+        "actual_start_status": "OUTSIDE_TOLERANCE",
+        "actual_start_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "PATH",
+        "route": "4h@16:00",
+        "actual_start_status": "NO_OBSERVATION",
+        "actual_start_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "actual_start_status": "OUTSIDE_TOLERANCE",
+        "actual_start_source_coverage": "VERIFIED_COMPLETE"
+      }
+    ],
+    "pending_caveat": "Maturity is necessary, not sufficient: later valid end data cannot repair an already ineligible observed start.",
+    "price_clocks": {
+      "COMPARED": 135,
+      "MATURE_AWAITING_DATA": 19
+    },
+    "missing_price_details": [
+      {
+        "symbol": "COST",
+        "clock_local": "06:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T13:06:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "COST",
+        "clock_local": "14:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T21:17:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "04:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "05:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "06:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T13:29:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "14:00",
+        "actual_status": "NO_OBSERVATION",
+        "actual_candidate_observed_at": null,
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "15:00",
+        "actual_status": "NO_OBSERVATION",
+        "actual_candidate_observed_at": null,
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "16:00",
+        "actual_status": "NO_OBSERVATION",
+        "actual_candidate_observed_at": null,
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "17:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T20:40:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "05:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T12:24:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "14:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T21:19:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "15:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T22:13:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "16:00",
+        "actual_status": "NO_OBSERVATION",
+        "actual_candidate_observed_at": null,
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "17:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T22:14:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "05:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T13:28:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "06:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T13:28:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "14:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T21:19:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "15:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T22:22:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "16:00",
+        "actual_status": "OUTSIDE_TOLERANCE",
+        "actual_candidate_observed_at": "2026-09-29T23:53:00+00:00",
+        "actual_source_coverage": "VERIFIED_COMPLETE"
+      }
+    ],
+    "raw_direction_correct": 84,
+    "raw_direction_scored": 163,
+    "raw_direction_accuracy": 0.5153374233128835,
+    "compared_clock_prices_in_range": 17,
+    "limitation": "Prior full archive audit recomputed observations once. This follow-up rechecks immutable output hashes and counts only; no duplicate raw reconstruction or provider request."
+  },
+  "today_execution": {
+    "policy": "gameplan-direction-current-market-v1",
+    "learned_sizing_dependency": false,
+    "direct_published_instruction_reader": true,
+    "learned_model_failure_automatic_veto": false,
+    "missing_historical_comparison_automatic_veto": false,
+    "retained_checks": "Publication deployment/window/instruction identity, actual cash, ownership, pending orders, current quotes and execution controls still apply.",
+    "caveat": "Code branch verification only; no trader started, and no claim that current live readiness is established by this review."
+  },
+  "possible_future_development": {
+    "basis": "Development error improves monotonically at penalties 1,5,20 for return and probability heads in all four horizons, with 20 selected at the fixed-grid boundary.",
+    "study": "A separately versioned, preregistered stronger-regularization study with a training-mean return baseline candidate and purged chronological development evaluation.",
+    "guard": "Do not tune to this exposed assessment set. Freeze candidate/protocol choices on development, then assess on untouched future data. Keep present strict qualification rules and saved publications.",
+    "expectation": "Development boundary evidence justifies research, not a guaranteed pass. Hourly/four-hour return differences in development are tiny.",
+    "route_evidence": "Accumulate newly observed exact-route samples. Do not fabricate bars, combine datasets, pool an unseen duration as observed, or lower sample gates.",
+    "source_change": "If complete-market coverage is desired, study a separately identified consolidated source with explicit provider/license/cost authorization and fresh versioned training/evaluation; never splice its prices into existing XNAS publications."
+  },
+  "primary_sources": [
+    {
+      "url": "https://databento.com/docs/examples/equities/equities-introduction",
+      "supports": "XNAS.ITCH is Nasdaq TotalView-ITCH."
+    },
+    {
+      "url": "https://nasdaqtrader.com/content/technicalsupport/specifications/dataproducts/NQTVITCHSpecification.pdf",
+      "supports": "Messages describe orders added, removed and executed on Nasdaq; this is a venue feed, not consolidated US execution coverage."
+    },
+    {
+      "url": "https://databento.com/docs/knowledge-base",
+      "supports": "OHLCV convention emits no bar when no trade occurs in an interval."
+    }
+  ],
+  "venue_interpretation": "Complete native acquisition of XNAS.ITCH does not guarantee a bar at each requested clock or prove absence of all-market trading. No eligible XNAS observation remains missing, not zero return or a fabricated actual."
+}

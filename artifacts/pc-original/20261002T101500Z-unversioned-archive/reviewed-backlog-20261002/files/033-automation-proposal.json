@@ -1,0 +1,22 @@
+{
+  "id": "REDACTED_NATIVE_ID_0118",
+  "prompt": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "changes": [
+    "Synchronize September14 sparse-session planning policy and retain historical contracts.",
+    "Synchronize September14 >50/<50/exact50 direction policy.",
+    "Clarify saved policy and separate model qualification from manual execution."
+  ],
+  "preserved": {
+    "name": "Loops Overnight Gameplan",
+    "status": "ACTIVE",
+    "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+    "model": "gpt-6-astra",
+    "reasoning_effort": "ultra",
+    "notification_policy": "failed_runs_only",
+    "target": {
+      "type": "project",
+      "project_id": "REDACTED_NATIVE_ID_0119"
+    },
+    "execution_environment": "local"
+  }
+}

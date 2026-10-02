@@ -1,0 +1,71 @@
+{
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "started_at": "2026-10-01T06:58:44.531206+00:00",
+  "native_run": "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z",
+  "implementation_before": {
+    "status": "UNCHANGED",
+    "source_files": 341,
+    "baseline_recorded_at": "2026-10-01T04:13:24.077393+00:00",
+    "candidate_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "current_apply_progress_and_receipt": "EXACT_APPLIED"
+  },
+  "checks": [
+    {
+      "check": "verify_completed_run",
+      "started_at": "2026-10-01T06:58:44.572437+00:00",
+      "command": [
+        "<LOCAL_CHECKOUT>\\.venv\\Scripts\\python.exe",
+        "-B",
+        "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\verify_completed_run.py",
+        "--overnight-run",
+        "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z"
+      ],
+      "exit_code": 0,
+      "finished_at": "2026-10-01T07:12:36.957480+00:00",
+      "seconds": 832.331
+    },
+    {
+      "check": "verify_yg_completion",
+      "started_at": "2026-10-01T07:12:36.957941+00:00",
+      "command": [
+        "<LOCAL_CHECKOUT>\\.venv\\Scripts\\python.exe",
+        "-B",
+        "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\verify_yg_completion.py",
+        "--overnight-run",
+        "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z",
+        "--output",
+        "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\yg-completion.json"
+      ],
+      "exit_code": 0,
+      "finished_at": "2026-10-01T07:12:50.668105+00:00",
+      "seconds": 13.709
+    }
+  ],
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "production_mutations": 0,
+  "implementation_after": {
+    "status": "UNCHANGED",
+    "source_files": 341,
+    "baseline_recorded_at": "2026-10-01T04:13:24.077393+00:00",
+    "candidate_manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "current_apply_progress_and_receipt": "EXACT_APPLIED"
+  },
+  "evidence": {
+    "completion-audit.json": {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\completion-audit.json",
+      "sha256": "0c3a565baf4507c279481fd1d5f8378554a8a1798682847139f91380d0817eaa"
+    },
+    "yg-completion.json": {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\yg-completion.json",
+      "sha256": "5cc95f5435e478e1f2a81cb00222314459bd7c5fb41fcbd774d734fcde6d78d9"
+    }
+  },
+  "limitations": [
+    "Conditional planning does not establish live fallback baseline, fills or realized profit.",
+    "Provider warning metadata follow-up and controls/schedule/ledger preservation are separate operator evidence.",
+    "Archive native hashes/header/normalized consistency are verified; every raw DBN record is not replayed.",
+    "All research statuses and missing actual outcomes remain explicitly reported."
+  ],
+  "finished_at": "2026-10-01T07:12:50.708807+00:00"
+}

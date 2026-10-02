@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-09-30T07:26:58.451163+00:00",
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "prompt_matches_proposal": true,
+  "preserved_settings": true,
+  "tool_compatibility_preservation": "automation_update applied prompt but expanded cwds from saved project roots; tool rejects cwds argument. Restored only exact pre-update cwds line, preserving original two workspace roots.",
+  "status": "PASS"
+}

@@ -1,0 +1,94 @@
+{
+  "status": "SOURCE_REVIEW_ONLY_WAITING_FOR_FRESH_MODEL_REPORTS",
+  "native_run": "<LOCAL_DATASTORE>/ml/overnight-runs/20261001T040644.667536Z",
+  "action_date": "2026-10-01",
+  "original_deadline": "2026-10-01T11:00:00Z",
+  "layers": {
+    "loop_b": {
+      "location": "Selected Loop B manifest.configuration; per-model manifest.offline_evaluation",
+      "fields": [
+        "route_errors",
+        "models",
+        "model_feature_sets",
+        "partition_configuration_by_horizon",
+        "publication_counts",
+        "offline_evaluation.status",
+        "offline_evaluation.raw_model",
+        "offline_evaluation.calibrated_model",
+        "offline_evaluation.training_base_rate",
+        "offline_evaluation.calibration_support"
+      ],
+      "meaning": "READY/COMPLETED describes route/pipeline completion; not independent Gameplan promotion or sizing qualification. Scheduled require_all_routes rejects unresolved required route/model errors."
+    },
+    "independent_directional": {
+      "location": "Pinned Gameplan model-reports.json[group]; forecasts.parquet",
+      "fields": [
+        "promotion_gate.status",
+        "promotion_gate.policy_version",
+        "promotion_gate.checks",
+        "promotion_gate.assessment_minus_baseline",
+        "assessment",
+        "assessment_raw_scores",
+        "training_base_rate_assessment",
+        "calibration_diagnostics",
+        "calibration_selection",
+        "selection_metrics",
+        "selected_family",
+        "partitions",
+        "partition_decision_clusters",
+        "target_support_by_symbol",
+        "target_boundary_quality",
+        "features",
+        "deployment"
+      ],
+      "row_fields": [
+        "model_status",
+        "symbol_fitted_target_rows",
+        "symbol_route_fitted_target_rows",
+        "model_artifact"
+      ],
+      "gate": "Saved new v2: Brier <= baseline+0.005; logloss <= baseline+0.01; ECE <=0.15; >=10 assessment clusters; retained calibration and assessment variation. Exact missing fitted symbol/route becomes RESEARCH_NO_TARGET_HISTORY.",
+      "important": "Native publication can COMPLETE with RESEARCH_NOT_PROMOTED. Final audit coverage notes do not replace explicit defect diagnosis of fresh failures.",
+      "retention": "If deployment=RETAINED_VERIFIED_CHAMPION, inspect deployment.challenger_status and challenger_report_output as well as the published report. Retention is same-action-date compatible latest champion, never assessment ranking."
+    },
+    "learned_sizing": {
+      "location": "Pinned enrichment training-report.json; model.json",
+      "fields": [
+        "status",
+        "supported_horizons",
+        "qualified_target_contracts",
+        "horizons[group].status",
+        "horizons[group].fitted_scope_count",
+        "horizons[group].qualified_scope_count",
+        "horizons[group].scope_readiness",
+        "horizons[group].partition_evidence",
+        "horizons[group].head_development_selection",
+        "horizons[group].calibration_selection",
+        "horizons[group].market_feature_admission"
+      ],
+      "meaning": "MODELS_FIT/FITTED is distinct from READY qualification. Current pooled scope needs >=1 exact fitted cluster, >=20 pooled symbol/route clusters and passing horizon assessment >=10 clusters.",
+      "gate": "Brier/logloss/return MSE strictly beat respective baselines; adverse MSE <= baseline; ECE <=0.15; probability range >1e-8. This differs from directional-v2 tolerances.",
+      "reasons": [
+        "UNSEEN_EXACT_TARGET_SCOPE",
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED",
+        "HELD_OUT_POOLED_HORIZON_QUALIFIED_WITH_OBSERVED_SCOPE"
+      ]
+    }
+  },
+  "diagnosis_order": [
+    "Capture exact fresh FIT_WARNING/FIT_ERROR group/phase, run identity, deadline and saved report/cohort/model hashes; do not equate target-quality exclusions with an assessment failure.",
+    "Reproduce gate arithmetic and verify probability-target, source and feature contract, class/support counts and purged chronological partition boundaries.",
+    "Check finite features, duplicate targets, causal clocks, native five-minute endpoints, raw-return labels, archive exclusions and real fitting/convergence diagnostics.",
+    "Verify fixed development candidate/grid/tie selection, calibration refit eligibility and assessment_used_for_selection=false; weekly fixed shrinkage/prior consistency.",
+    "After native COMPLETE, run root's immutable audit once to reproduce source cohorts and fitted assessment scores; do not retrain or rank alternatives on assessment.",
+    "For each failed group, distinguish evidence/implementation defect with feasible tested repair from faithfully reproduced quality/evidence shortfall. No unchanged retry, threshold relaxation or fabricated rows.",
+    "Any concrete repair is dispatched separately under root ownership, native eligible failed-stage recovery and original deadline. Never edit immutable publications or rerun a fully completed source session."
+  ],
+  "long_form_guide": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/fallback-enabled-verification/quality-diagnosis-guide.txt",
+  "source_modifications": 0,
+  "heavy_checks_started": false,
+  "duplicate_training_started": false,
+  "provider_calls": 0,
+  "orders_placed": 0
+}

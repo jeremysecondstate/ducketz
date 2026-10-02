@@ -1,0 +1,105 @@
+{
+  "status": "PASS",
+  "reviewed_at": "2026-09-30T07:38:23.065163+00:00",
+  "scope": "Independent read-only review of final narrowed future-run CME inline event-history repair, final test output and exact source hashes. No production materialization or test rerun by this peer.",
+  "checks": {
+    "final_report_is_32_case_revision": true,
+    "test_stdout_matches_final_suite": true,
+    "all_final_source_hashes_match": true,
+    "canonical_writer_and_materializer_unchanged": true,
+    "exact_changed_source_files": true,
+    "diff_hash_matches_report": true,
+    "diagnosis_hash_matches_report": true,
+    "production_not_replayed": true,
+    "manual_review_shared_writer_lock": true,
+    "manual_review_original_provider_and_event_receipt_identity": true,
+    "manual_review_no_clock_or_quality_gate_relaxation": true,
+    "manual_review_context_failure_and_saturation_fail_closed": true,
+    "manual_review_contracts_only_failure_does_not_gate_context": true,
+    "manual_review_saturated_recapture_preserves_complete_canonical_history": true,
+    "manual_review_repeated_clean_events_keep_native_deduplication": true
+  },
+  "resolved_findings": [
+    {
+      "finding": "New history errors alone initially suppressed materialization, leaving current context fetch/hot/raw failures able to use partial current inputs.",
+      "resolution": "Each failure path for context ohlcv-1m/bbo-1m/mbp-10 now sets context_capture_failed; explicit fetch/normalized/raw/history regressions require no materialization."
+    },
+    {
+      "finding": "Common upsert treats request saturation metadata as volatile, so a capped recapture could reuse prior clean event rows and lose current-request saturation.",
+      "resolution": "Every capped capture remains hot/raw evidence and a request advisory; it is excluded from canonical history. Context caps independently suppress this call. Same-event prior-clean regression verifies unchanged canonical bytes and no materializer call."
+    },
+    {
+      "finding": "Initial all-scopes suppression introduced a contracts-only context gate. Root identified this after the initial peer suggestion.",
+      "resolution": "Suppression is narrowed to the three context inputs actually loaded by the reader. Five contracts-only fetch/normalized/raw/history/cap cases retain failure evidence and still publish valid context."
+    }
+  ],
+  "reviewed_code": [
+    "datafetching/databento_fetch.py:_fetch_cme retains the existing exclusive cme_writer_lock_path around all writes and materialization.",
+    "Original provider rows are passed before hot metadata can replace instrument provider_symbol with group names.",
+    "Actual provider event/receive/fetched clocks are unchanged. The production materializer receives no synthetic calculated_at override.",
+    "Native atomic partition write and deduplication logic are reused unchanged; current caps are excluded as in native complete-history ingestion.",
+    "The reader selects group=context and only ohlcv-1m,bbo-1m,mbp-10; new failure suppression matches that dependency scope.",
+    "Test-only calculated_at is a deterministic fixture clock; existing stale/future/receive/saturation gates remain covered in the reused suite."
+  ],
+  "test_evidence": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest tests/test_cme_cross_asset_context.py tests/test_cme_runtime.py tests/test_databento_cme_context.py -q",
+      "exit_code": 0,
+      "passed": 32,
+      "seconds": 12.74,
+      "tool_chunk": "938fa8",
+      "stdout": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stdout.log",
+      "stderr": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stderr.log"
+    }
+  ],
+  "limitations": [
+    "Final32-case suite is reused, not redundantly rerun by this peer. The preserved interpreter ResourceWarning appears after successful pytest exit0.",
+    "Repair fixes future inline ingestion routing; it does not clear the independent Databento degraded flag, make capped/stale MBP eligible, establish model edge or rewrite the completed publication.",
+    "Previous broader provisional review is superseded by this narrowed exact-hash review."
+  ],
+  "evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\repair-verification.json",
+      "sha256": "8d755cb7465a78af785d4ef419169ce5d1fb1874ec7d4b844f1b42040b53f0b8"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\repair.diff",
+      "sha256": "f2575d4908d0f217921f62e7b1448fffa293fd0be58832fd6938b8b0bc5a7c14"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\source-baseline.json",
+      "sha256": "d382361e6291fd28fb6af6100404c6cfeb34c69302b8419f075fd8870898d1df"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stdout.log",
+      "sha256": "812951395d5d9dccb6984d75d7a4cef05eb566a78d256964ac2651704fe37790"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stderr.log",
+      "sha256": "13c4ee9c3aff3e733bfb57bbb70726aa85f3d6e9072c05995d941fb40d8a280c"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\operator-notes.md",
+      "sha256": "3b25b079eac8915e3b606de081a38f78bc914b33d072b6a0792998bb03e9464a"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\databento_fetch.py",
+      "sha256": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_history.py",
+      "sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_cross_asset_context.py",
+      "sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\tests\\test_cme_cross_asset_context.py",
+      "sha256": "4bda6f3ed10ea08630e71fcecc08ec01b66e6c87154c5316e285f7a88771db79"
+    }
+  ],
+  "production_writes_by_peer": 0
+}

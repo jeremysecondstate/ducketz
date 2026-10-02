@@ -1,0 +1,227 @@
+{
+  "schema_version": "loops-overnight-completion-status-v1",
+  "created_at_utc": "2026-10-01T07:15:39.126563+00:00",
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "source_session": "2026-09-30",
+  "action_date": "2026-10-01",
+  "native_run": "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z",
+  "native_completed_at": "2026-10-01T06:57:46.465661+00:00",
+  "original_deadline": "2026-10-01T11:00:00Z",
+  "native_stages_completed": 8,
+  "overnight_orders": 0,
+  "gameplan": "<LOCAL_DATASTORE>/ml/nightly-gameplan-runs/20261001T064119.779051Z",
+  "readable_gameplan": "<LOCAL_DATASTORE>\\ml\\gameplan-trade-plan-runs\\20261001T065321.569608Z\\Gameplan.md",
+  "readable_prior_actuals": "<LOCAL_DATASTORE>\\ml\\gameplan-actuals-review-runs\\20261001T065705.067715Z\\Gameplan-results.md",
+  "counts": {
+    "symbols": 11,
+    "forecasts": 264,
+    "stock_only_intents": 264,
+    "planning_rows": 264,
+    "opra_scopes": 33,
+    "price_points": 154,
+    "hourly_portfolio_rows": 14
+  },
+  "directional_models": {
+    "fresh_groups_promoted": [
+      "1h",
+      "4h",
+      "1d",
+      "1w"
+    ],
+    "rows_promoted": 264,
+    "bullish": 124,
+    "bearish": 140,
+    "neutral": 0,
+    "policy": "stock-direction-50-v2",
+    "quality_policy": "independent-stock-directional-promotion-v2",
+    "baseline_outperformance_claimed": false,
+    "sparse_exact_route_support_disclosed": true
+  },
+  "learned_sizing": {
+    "fitted_groups": 4,
+    "qualified_scopes": 0,
+    "status": "RESEARCH_ONLY",
+    "review": "Saved development selection, convergence, calibration and qualification logic agree; no concrete repair identified."
+  },
+  "fallback_rollout": {
+    "status": "DEPLOYED_VERIFIED_AND_OCTOBER1_PUBLICATION_BOUND",
+    "policy": "hierarchical-bearish-fallback-v1",
+    "manifest_sha256": "fec2fc4cecc2a7e5f181b3f0cf57ab0d9b3e0423d880cc5cbd330006532d5252",
+    "current_apply_progress_and_receipt": "EXACT_APPLIED",
+    "sealed_installed_files": 23,
+    "dependency_files_verified": 176,
+    "successful_deployment_tests": 678,
+    "final_audit_source_bindings_unchanged": 341,
+    "full_preservation_source_bindings_unchanged": 737,
+    "daily_symbol_and_donor_fraction": "1/2",
+    "weighted_slots_per_symbol": 18,
+    "slot_weight_total": 24,
+    "integer_quotas_donor_hashes_and_conservation": "VERIFIED",
+    "scheduled_expiry_sales": 0,
+    "live_baseline_or_fills_established_by_planning": false
+  },
+  "archive_history": {
+    "bound_source_files_verified": 1076,
+    "cohort_rows": {
+      "1d": 29787,
+      "1h": 172151,
+      "1w": 5867,
+      "4h": 43036
+    },
+    "all_cohorts_exactly_reproduced": true,
+    "seconds_minutes_consistency_verified": true,
+    "raw_dbn_every_record_replayed": false
+  },
+  "planning_references": {
+    "contract": "sparse-session-planning-reference-completion-v2",
+    "maximum_carry_minutes": 240,
+    "current_carried": {
+      "COST": {
+        "minutes": 14.0,
+        "observed_at": "2026-09-30T23:46:00+00:00",
+        "effective_at": "2026-10-01T00:00:00+00:00"
+      },
+      "CROX": {
+        "minutes": 239.0,
+        "observed_at": "2026-09-30T20:01:00+00:00",
+        "effective_at": "2026-10-01T00:00:00+00:00"
+      },
+      "IONQ": {
+        "minutes": 7.0,
+        "observed_at": "2026-09-30T23:53:00+00:00",
+        "effective_at": "2026-10-01T00:00:00+00:00"
+      },
+      "PATH": {
+        "minutes": 9.0,
+        "observed_at": "2026-09-30T23:51:00+00:00",
+        "effective_at": "2026-10-01T00:00:00+00:00"
+      },
+      "TWST": {
+        "minutes": 7.0,
+        "observed_at": "2026-09-30T23:53:00+00:00",
+        "effective_at": "2026-10-01T00:00:00+00:00"
+      }
+    },
+    "historical_reference_status_counts": {
+      "AVAILABLE_OBSERVED": 942,
+      "AVAILABLE_SYNTHETIC": 389
+    },
+    "historical_carried_references": 389,
+    "current_synthetic_bar_rows": 276,
+    "disclosure": "Planning carry-forward uses synthetic zero-volume ASSUMED_NO_TRADES bars; these are not observed trades, training labels, actuals or live quotes."
+  },
+  "cumulative_evaluation": {
+    "run": "<LOCAL_DATASTORE>\\ml\\gameplan-evaluation-runs\\20261001T064929.794562Z",
+    "direction_accuracy": 0.561216105176664,
+    "evaluated": 4868,
+    "forecasts": 6096,
+    "mature_awaiting_data": 1063,
+    "mean_brier_score": 0.24259876213512652,
+    "pending_maturity": 165,
+    "raw_direction_accuracy": 0.49782503624939584
+  },
+  "prior_actuals_coverage": {
+    "forecast_outcomes": {
+      "EVALUATED": 161,
+      "MATURE_AWAITING_DATA": 37,
+      "PENDING_MATURITY": 66
+    },
+    "same_clock_prices": {
+      "COMPARED": 131,
+      "MATURE_AWAITING_DATA": 23
+    }
+  },
+  "september30_fallback_review": {
+    "status": "NOT_ENABLED",
+    "baseline": null,
+    "sales_inferred": false,
+    "profit_inferred": false,
+    "reason": "Expected absence of fallback baseline for prior publication; not proof of zero sales."
+  },
+  "provider_advisories": {
+    "GLBX_MDP3_20260930": "Degraded cause undisclosed; schema lag separate; saturated MBP captures are not full coverage.",
+    "fresh_model_usage": "Flagged September30 captures excluded from bound LoopB CME inputs; all four independent Gameplan models admit zero CME features.",
+    "FMP": "Existing September2 energy timestamp-skew advisory retained; no new acquisition defect."
+  },
+  "preservation": "Controls, holdings ledger, prior publications, schedules, Git HEAD/branch/index and source hashes unchanged; no native or trader workers remain.",
+  "source_publication": {
+    "commit": "be760388063a0fa3099c1cc445ba758be69ceb23",
+    "branch": "codex/cross-horizon-bearish-fallback-20260930",
+    "already_pushed_verified": true,
+    "new_source_changes": false,
+    "new_ready_record": false,
+    "duplicate_publication": false
+  },
+  "authority": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "atlas_handoff": "Send this sanitized status against the existing commit; raw account, holdings, ledger, model and datastore evidence remain local.",
+  "evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\audit-runner.json",
+      "sha256": "a1663e822920252f2e267409def16fef1c4f73cc169aded7049eedab93b0dd2e"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\completion-audit.json",
+      "sha256": "0c3a565baf4507c279481fd1d5f8378554a8a1798682847139f91380d0817eaa"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\yg-completion.json",
+      "sha256": "5cc95f5435e478e1f2a81cb00222314459bd7c5fb41fcbd774d734fcde6d78d9"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\fresh-directional-quality-review.json",
+      "sha256": "b77fe1aec6a04b06cc989f59a4ce1096a77a4b3d539f8703ed15fcf397471bcc"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\fresh-sizing-and-direction-review.json",
+      "sha256": "b33882d74f8ebef0da22d4e4d963f1d3bb6d3cfa02a6600620350d099d52968a"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\preservation-final.json",
+      "sha256": "5d9684744610997da78ebd3bf57d26d11dc69f16766157673637697af667a4e2"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\terminal-worker-verification.json",
+      "sha256": "ab309aeae987405e51b929bb6f307fd0c41536f2a519e62ec79600176e70038a"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\cumulative-coverage-diagnosis.json",
+      "sha256": "fbccbe9748127c170d603f34d961943279dc6fb92ef71b80aeedc399e30d44cf"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\quality-metadata-20261001T041634Z.json",
+      "sha256": "15292d2c3c6fa981c800b62c95193719d7b36a20b265657e72d9efee451ea69a"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\loop-b-model-trace-20261001T063444Z.json",
+      "sha256": "110a787d25474b31f07faaf2d808947820f4126c46e67340f2b336ebec3554ef"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\run-20261001T040644\\provider-warning\\gameplan-model-trace-20261001T065512Z.json",
+      "sha256": "ceb34497363a0ee07aff8a4ccafe725f442b5a3ae2b65cc1722ee889ba25a72b"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\fallback-session-reviews\\2026-09-30-observed-20261001T065840Z\\report.json",
+      "sha256": "df9fe31be6b2d98fe8f8d846882e424790c346a799847c7e318b550f3e0b8813"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\fallback-session-reviews\\2026-09-30-observed-20261001T065840Z\\manifest.json",
+      "sha256": "2620942f5bce18853f134badb631169b3d126a6caf31d2d6f599ad77ea69e49c"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-preparation-preflight.json",
+      "sha256": "05b3a6ff8fd6c01e5a7a14a9f78e8145e2a4bdf109955582ec6fd82bcaae2a92"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\cross-horizon-fallback-20260930\\deployment-status.json",
+      "sha256": "024f75a917844a3fa2c664a3bf5af0a24764ddd7422bc1d7ef505cdcb501bc5d"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\cross-horizon-fallback-20260930\\post-deployment-verification-attempt2.json",
+      "sha256": "575cbc319f12e417cc781d9327e8d5cef1d05c1e03bad9c2b39f4894d4e40491"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\cross-horizon-fallback-20260930\\git-push-receipt.json",
+      "sha256": "7facf12d192e68c1a9aa5823dd08e6210f24beffb4f4a465898588262a7ea6fd"
+    }
+  ]
+}

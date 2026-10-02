@@ -1,0 +1,105 @@
+{
+  "reviewed_at": "2026-10-01T04:10:34.782904+00:00",
+  "scope": "LOCAL_READ_ONLY_PRECHECK_NO_PROVIDER_OR_BROKER_CALLS_NO_PRODUCTION_WRITES",
+  "native_overnight_run": "20261001T040644.667536Z",
+  "status": "NO_LOCAL_RECONCILIATION_BLOCKER",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "trader": {
+    "status": "FINISHED",
+    "action_date": "2026-09-30",
+    "updated_at": null,
+    "finished_at": null
+  },
+  "matching_trader_process_count": 0,
+  "native_session_lock_exists": false,
+  "native_cycle_lock_exists": false,
+  "latest_saved_ownership_reconciliation": {
+    "observed_at": "2026-09-30T23:59:53.919090+00:00",
+    "ready": 1,
+    "reasons": [],
+    "owned": {
+      "AAPL": 60,
+      "AMZN": 42,
+      "COST": 9,
+      "CROX": 52,
+      "GOOG": 21,
+      "IONQ": 313,
+      "MU": 7,
+      "NVDA": 53,
+      "PATH": 558,
+      "SNDK": 9,
+      "TWST": 66
+    }
+  },
+  "saved_held_shares": {
+    "AAPL": "60.0",
+    "AMZN": "42.0",
+    "COST": "9.0",
+    "CROX": "52.0",
+    "GOOG": "21.0",
+    "IONQ": "313.0",
+    "MU": "7.0",
+    "NVDA": "53.0",
+    "PATH": "558.0",
+    "SNDK": "9.0",
+    "TWST": "66.0"
+  },
+  "reservation_status_counts": [
+    {
+      "status": "CANCELLED",
+      "count": 28
+    },
+    {
+      "status": "FILLED",
+      "count": 568
+    },
+    {
+      "status": "REJECTED",
+      "count": 2
+    }
+  ],
+  "pending_reservations": [],
+  "persistent_blocks": [],
+  "planning_check_using_saved_portfolio": {
+    "status": "OBSERVED_CONSISTENT",
+    "safe_for_planning": true,
+    "reason_codes": [],
+    "blocked_symbols": [],
+    "account_matches": true,
+    "current_broker_reconciliation_performed": false
+  },
+  "fallback_baseline_dates": [],
+  "ledger_table_row_counts": {
+    "allocations": 180,
+    "blocks": 0,
+    "cancellations": 10,
+    "evidence": 28581,
+    "fills": 630,
+    "inventory_assignments": 7,
+    "metadata": 2,
+    "reservations": 598,
+    "snapshots": 19266
+  },
+  "ledger_logical_sha256": "c596d80595f10bec8ff58a41b9d869777a2020eb603e39a79bc4d7a1beddd261",
+  "source_sha256": {
+    "<LOCAL_DATASTORE>\\state\\independent-stock-trader\\holdings.sqlite3": "c1ab74d9102653d889649126ea1481fb86dfb989d23a846d06550a3c4db5accf",
+    "<LOCAL_DATASTORE>\\state\\independent-stock-trader\\session-status.json": "bd509dd8fe21be13494a6f085888d0bcd0bd305383f1b13cd6c093202892dba1"
+  },
+  "same_source_hashes_after": true,
+  "same_sidecar_set_and_hashes_after": true,
+  "broker_status_now": "UNKNOWN_NO_BROKER_CALLS",
+  "limitation": "The saved portfolio is local historical evidence. Its ownership check does not establish current broker order status or fresh planning readiness.",
+  "next_step": "Native planning must capture its normal fresh account and ownership snapshot."
+}

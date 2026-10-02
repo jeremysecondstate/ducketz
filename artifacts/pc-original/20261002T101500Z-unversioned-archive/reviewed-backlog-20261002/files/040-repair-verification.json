@@ -1,0 +1,78 @@
+{
+  "verified_at": "2026-09-30T07:36:23.618601+00:00",
+  "status": "TESTS_PASS_PEER_REVIEW_PENDING",
+  "scope": "FUTURE_INLINE_CME_INGESTION_ONLY; completed native run and production data not materialized or replayed",
+  "problem": "Inline Loop A persisted fresh CME captures only to hot files; materializer selected old partitioned events whenever those existed. Hot metadata also uses aggregate provider_symbol, so directly merging layouts would need extra identity/conflict rules.",
+  "repair": "Reuse the existing partition writer with original provider rows and raw frames, under the existing CME writer lock. Preserve hot/raw evidence. Exclude every limit-saturated capture from shared history and retain a request-specific advisory. Context OHLCV/BBO/MBP failure or saturation blocks this invocation from materializing context; contracts-only errors and caps retain evidence without blocking valid context. Existing canonical deduplication, event/receipt provenance and materializer quality gates are unchanged.",
+  "files": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\databento_fetch.py",
+      "sha256": "de99a9e282ccd2222259a8aee2b61429aa950161dfdfc589fc85c79836ce321c",
+      "bytes": 55313,
+      "before_sha256": "de99a9e282ccd2222259a8aee2b61429aa950161dfdfc589fc85c79836ce321c",
+      "after_sha256": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6",
+      "changed": true
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_history.py",
+      "sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+      "bytes": 31029,
+      "before_sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+      "after_sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+      "changed": false
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\cme_cross_asset_context.py",
+      "sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c",
+      "bytes": 38391,
+      "before_sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c",
+      "after_sha256": "a6d28b322092e14e0e4ff1704068c9d3acd1bb3563793292e28b2f42085d681c",
+      "changed": false
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\tests\\test_cme_cross_asset_context.py",
+      "sha256": "58f63eafec22a46b5f6b2c0321a6a0be1bf24d93c6acc785f803e987f2a89386",
+      "bytes": 14598,
+      "before_sha256": "58f63eafec22a46b5f6b2c0321a6a0be1bf24d93c6acc785f803e987f2a89386",
+      "after_sha256": "4bda6f3ed10ea08630e71fcecc08ec01b66e6c87154c5316e285f7a88771db79",
+      "changed": true
+    }
+  ],
+  "diff": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\repair.diff",
+    "sha256": "f2575d4908d0f217921f62e7b1448fffa293fd0be58832fd6938b8b0bc5a7c14"
+  },
+  "tests": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest tests/test_cme_cross_asset_context.py tests/test_cme_runtime.py tests/test_databento_cme_context.py -q",
+      "exit_code": 0,
+      "passed": 32,
+      "seconds": 12.74,
+      "tool_chunk": "938fa8",
+      "stdout": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stdout.log",
+      "stderr": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stderr.log"
+    }
+  ],
+  "new_regressions": [
+    "stale partitions plus fresh inline capture for all three schemas",
+    "provider instrument identities and event/receive/fetched timestamps retained",
+    "identical recapture keeps canonical bytes and original receipt evidence",
+    "limit-saturated source excluded from canonical history and context",
+    "complete identical history cannot hide a newly saturated recapture",
+    "history write failure retains hot/raw evidence and skips materialization",
+    "context provider, normalized and raw failures all suppress partial-context publication",
+    "five contracts-only fetch/normalized/raw/history/cap cases retain evidence and permit valid context"
+  ],
+  "unchanged_dependencies": true,
+  "remaining_vendor_limitation": "Databento Sep30 GLBX.MDP3 condition remains degraded with no disclosed cause. Current capped and stale MBP still cannot pass; this fix does not clear the vendor flag, refresh old publications or claim new model eligibility.",
+  "diagnosis": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\provider-warning\\rootcause-review.json",
+    "sha256": "21909c6973638cecebb95101c9fada1de46150321643c456d8cda4ca4f283c92"
+  },
+  "test_iteration_note": "Early failures were fixture file-count expectations and an error-directory glob. Peer review added current-cap safety and narrowed blocking to the context inputs; five contracts-only isolation cases prove unrelated failures do not gate valid context. Final suite above passes all32.",
+  "production_data_writes": 0,
+  "production_materialization_calls": 0,
+  "provider_or_broker_calls_during_repair": 0,
+  "completed_run_replays": 0,
+  "trader_or_controls_changes": 0
+}

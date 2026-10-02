@@ -1,0 +1,392 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-01T04:30:35.789918+00:00",
+  "scope": "READ_ONLY_CURRENT_BASE_CYCLE_ADVISORY_REVIEW",
+  "native_run_id": "20261001T040644.667536Z",
+  "status": "BASE_CYCLE_COMPLETE_ADVISORIES_CLASSIFIED",
+  "cycle": {
+    "failure_count": 0,
+    "finished_at": "2026-10-01T04:29:51.666263Z",
+    "generation": "20261001T040645.482769Z-pid64892",
+    "providers": [
+      "databento",
+      "fmp",
+      "fred",
+      "schwab",
+      "sec"
+    ],
+    "schema_version": "loop-a-cycle-v1",
+    "started_at": "2026-10-01T04:06:45.482769Z",
+    "status": "COMPLETE",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "GOOG",
+      "MU",
+      "NVDA",
+      "SNDK",
+      "COST",
+      "CROX",
+      "PATH",
+      "TWST",
+      "IONQ"
+    ]
+  },
+  "cycle_evidence": {
+    "path": "<LOCAL_DATASTORE>\\.ducketz-loop-a-cycle.json",
+    "sha256": "d03477591fa3c548b11365059531d558b44dc8d053aa1ac99126ae5a73b50875"
+  },
+  "log_snapshot": {
+    "path": "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z\\loop_a_close_fetch.log",
+    "bytes": 108962,
+    "sha256": "9324691b2fa8394cf601d6de7f97f6d8fabb3cdbaa951f06e4f11dff3b3234c8"
+  },
+  "checks": {
+    "cycle_bound_to_current_native_log": true,
+    "cycle_complete": true,
+    "cycle_zero_failures": true,
+    "all_symbol_summaries_present": true,
+    "symbol_summaries_zero_blocking_failures": true,
+    "symbol_summaries_zero_optional_failures": true,
+    "exactly_three_local_advisories": true,
+    "all_technical_summaries_present": true,
+    "technical_summaries_zero_failures": true,
+    "fmp_guard_reproduced": true
+  },
+  "symbol_summaries": [
+    {
+      "symbol": "AAPL",
+      "changed_files": 76,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 3,
+      "advisory_detail": "databento=2, fmp=1",
+      "line": 201
+    },
+    {
+      "symbol": "AMZN",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 297
+    },
+    {
+      "symbol": "GOOG",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 393
+    },
+    {
+      "symbol": "MU",
+      "changed_files": 55,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 489
+    },
+    {
+      "symbol": "NVDA",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 585
+    },
+    {
+      "symbol": "SNDK",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 681
+    },
+    {
+      "symbol": "COST",
+      "changed_files": 34,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 777
+    },
+    {
+      "symbol": "CROX",
+      "changed_files": 32,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 864
+    },
+    {
+      "symbol": "PATH",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 960
+    },
+    {
+      "symbol": "TWST",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 1056
+    },
+    {
+      "symbol": "IONQ",
+      "changed_files": 33,
+      "blocking_failures": 0,
+      "optional_failures": 0,
+      "advisories": 0,
+      "advisory_detail": null,
+      "line": 1152
+    }
+  ],
+  "technical_summaries": [
+    {
+      "line": 280,
+      "failed_calculations": 0
+    },
+    {
+      "line": 376,
+      "failed_calculations": 0
+    },
+    {
+      "line": 472,
+      "failed_calculations": 0
+    },
+    {
+      "line": 568,
+      "failed_calculations": 0
+    },
+    {
+      "line": 664,
+      "failed_calculations": 0
+    },
+    {
+      "line": 760,
+      "failed_calculations": 0
+    },
+    {
+      "line": 847,
+      "failed_calculations": 0
+    },
+    {
+      "line": 943,
+      "failed_calculations": 0
+    },
+    {
+      "line": 1039,
+      "failed_calculations": 0
+    },
+    {
+      "line": 1135,
+      "failed_calculations": 0
+    },
+    {
+      "line": 1231,
+      "failed_calculations": 0
+    }
+  ],
+  "advisory_evidence": [
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\diagnostics\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "sha256": "1893621cab3133ca74e73f4fcbb0a155c3c248286d56f4a355e8ebc962edfc53",
+      "bytes": 17740,
+      "records": [
+        {
+          "id": "REDACTED_NATIVE_ID_0146",
+          "symbol": "CME_CONTEXT",
+          "source": "databento",
+          "category": "macro",
+          "request_key": "cme_context_mbp-10",
+          "fetched_at": "2026-10-01 04:19:16.435561+00:00",
+          "severity": "advisory",
+          "advisory_type": "CmeCrossAssetQualityError",
+          "advisory_message": "CME request was limit-saturated; event history not advanced",
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_symbol": "CME_CONTEXT",
+          "provider_stype_in": "continuous",
+          "cme_context_group": "context",
+          "cme_request_key": "cme_context_mbp-10",
+          "range_start": "2026-09-30 20:13:58.794703+00:00",
+          "range_end": "2026-09-30 20:14:45.669703+00:00",
+          "initial_range_start": "2026-09-30 19:49:45.669703+00:00",
+          "initial_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "effective_range_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "empty_window_expansion_count": 0,
+          "latest_event_timestamp": "2026-09-30 20:14:05.667212055+00:00",
+          "cme_schema_status": "CURRENT",
+          "macro_context_kind": "cme_futures_cross_asset",
+          "limit": 5000,
+          "provider_rows_preserved": true
+        }
+      ],
+      "count": 1
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\diagnostics\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "sha256": "68458c45eb45ac82b28abe3662d8fa7277c271beda54c03ab9b2f815eda24c39",
+      "bytes": 17790,
+      "records": [
+        {
+          "id": "REDACTED_NATIVE_ID_0147",
+          "symbol": "CME_CONTRACTS",
+          "source": "databento",
+          "category": "macro",
+          "request_key": "cme_contracts_mbp-10",
+          "fetched_at": "2026-10-01 04:21:42.441155+00:00",
+          "severity": "advisory",
+          "advisory_type": "CmeCrossAssetQualityError",
+          "advisory_message": "CME request was limit-saturated; event history not advanced",
+          "provider_dataset": "GLBX.MDP3",
+          "provider_schema": "mbp-10",
+          "provider_symbol": "CME_CONTRACTS",
+          "provider_stype_in": "raw_symbol",
+          "cme_context_group": "contracts",
+          "cme_request_key": "cme_contracts_mbp-10",
+          "range_start": "2026-09-30 20:13:58.794703+00:00",
+          "range_end": "2026-09-30 20:14:45.669703+00:00",
+          "initial_range_start": "2026-09-30 19:49:45.669703+00:00",
+          "initial_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "effective_range_start": "2026-09-30 20:13:58.794703+00:00",
+          "effective_range_end": "2026-09-30 20:14:45.669703+00:00",
+          "empty_window_expansion_count": 0,
+          "latest_event_timestamp": "2026-09-30 20:14:07.448471565+00:00",
+          "cme_schema_status": "CURRENT",
+          "macro_context_kind": "cme_futures_cross_asset",
+          "limit": 5000,
+          "provider_rows_preserved": true
+        }
+      ],
+      "count": 1
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\pools\\macro\\ENERGY_CONTEXT\\energy-context\\fmp\\diagnostics\\ENERGY_CONTEXT_energy-context.parquet",
+      "sha256": "4d709269b4a540747e0a0b90dd4049d4bb0df1547603dadaab17fa073bee2c3f",
+      "bytes": 7974,
+      "records": [
+        {
+          "id": "REDACTED_NATIVE_ID_0148",
+          "symbol": "ENERGY_CONTEXT",
+          "source": "fmp",
+          "category": "macro",
+          "request_key": "energy-context",
+          "fetched_at": "2026-09-02 13:33:58.706546+00:00",
+          "severity": "advisory",
+          "advisory_type": "FmpEnergyContextQualityError",
+          "advisory_message": "FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)",
+          "calculation": "energy-context",
+          "input_policy": "persisted_rows_only",
+          "provider_rows_preserved": true
+        }
+      ],
+      "count": 1
+    }
+  ],
+  "fmp_source_evidence": {
+    "path": "<LOCAL_DATASTORE>\\pools\\macro\\CLUSD\\quote\\fmp\\normalized\\CLUSD_quote.parquet",
+    "sha256": "6bf606fbed9c80986fe675a84b9ab32fd10e616af512952883181d33b84211ba",
+    "bytes": 93380,
+    "rows": 1499,
+    "latest_receipt": "2026-10-01 04:21:53.241979+00:00"
+  },
+  "fmp_read_only_reproduction": {
+    "status": "REPRODUCED_REJECTION",
+    "type": "FmpEnergyContextQualityError",
+    "message": "FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)"
+  },
+  "fmp_clock_skew_violations": [
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 13:34:06+00:00",
+      "receipt_timestamp": "2026-09-02 13:33:56.529297+00:00",
+      "clock_skew_seconds": 9.470703
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 13:57:26+00:00",
+      "receipt_timestamp": "2026-09-02 13:57:16.832938+00:00",
+      "clock_skew_seconds": 9.167062
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 14:26:55+00:00",
+      "receipt_timestamp": "2026-09-02 14:26:48.014251+00:00",
+      "clock_skew_seconds": 6.985749
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 14:33:10+00:00",
+      "receipt_timestamp": "2026-09-02 14:33:02.278161+00:00",
+      "clock_skew_seconds": 7.721839
+    },
+    {
+      "provider_symbol": "USO",
+      "provider_timestamp": "2026-09-02 14:55:56+00:00",
+      "receipt_timestamp": "2026-09-02 14:55:47.561564+00:00",
+      "clock_skew_seconds": 8.438436
+    }
+  ],
+  "classifications": [
+    {
+      "count": 2,
+      "provider": "databento",
+      "classification": "CURRENT_CME_MBP_LIMIT_SATURATION",
+      "effect": "Hot/raw rows preserved; capped MBP event history was not advanced and CME derived-context materialization was skipped by the existing guard."
+    },
+    {
+      "count": 1,
+      "provider": "fmp",
+      "classification": "REPEATED_HISTORICAL_ENERGY_QUOTE_CLOCK_SKEW",
+      "effect": "Current pure calculation reproduces the retained September 2 diagnostic exactly; five September 2 USO quote rows exceed five seconds. Repeated identical advisories keep their older stored receipt because volatile receipt fields are excluded from content equality. This does not establish a new current-run FMP quote defect."
+    }
+  ],
+  "limits": [
+    "Optional local feature refusals do not establish provider acquisition failure.",
+    "Provider degraded condition is separate from these local refusals.",
+    "No guard was relaxed or invalid history rewritten.",
+    "Base-cycle completion does not imply whole Loop A/OPRA-maintenance or overnight completion.",
+    "Final model feature/source use requires fresh immutable publication evidence."
+  ],
+  "source_evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\databento_fetch.py",
+      "sha256": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\fmp_fetch.py",
+      "sha256": "34ccde56ff3ba0bf6b75f51b3643ca1544852ec75ff2a5a8d20607937a10ae24"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\fmp_energy_context.py",
+      "sha256": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\parquet_store.py",
+      "sha256": "cc444e189e71b23bf8f62f53609bc3ca194f7b5e0e2f2dfb85bbaf3671008216"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\datafetching\\orchestrate.py",
+      "sha256": "b94fd3fc8fc3b759efd9ee1a61247ee326f1653c481635c6c43660ce85611812"
+    }
+  ],
+  "provider_calls": 0,
+  "production_writes": 0,
+  "source_edits": 0,
+  "orders": 0
+}

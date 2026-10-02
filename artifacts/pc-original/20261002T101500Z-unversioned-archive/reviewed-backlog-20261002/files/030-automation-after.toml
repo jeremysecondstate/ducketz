@@ -1,0 +1,15 @@
+"version" = 1
+"id" = "REDACTED_NATIVE_ID_0118"
+"kind" = "cron"
+"name" = "Loops Overnight Gameplan"
+"prompt" = "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]"
+"status" = "ACTIVE"
+"rrule" = "FREQ=DAILY;BYHOUR=21;BYMINUTE=5"
+"model" = "gpt-6-astra"
+"reasoning_effort" = "ultra"
+"notification_policy" = "failed_runs_only"
+"execution_environment" = "local"
+"target" = { "type" = "project", "project_id" = "REDACTED_NATIVE_ID_0119" }
+"cwds" = ["<LOCAL_CHECKOUT>", "<LOCAL_DATASTORE>"]
+"created_at" = 1787119863911
+"updated_at" = 1790753173954

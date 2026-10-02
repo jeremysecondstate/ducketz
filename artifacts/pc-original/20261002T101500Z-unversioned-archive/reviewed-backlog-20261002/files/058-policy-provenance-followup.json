@@ -1,0 +1,177 @@
+{
+  "checks": {
+    "all_264_saved_directions_match_probability": true,
+    "all_forecast_policy_versions": true,
+    "all_forecast_thresholds": true,
+    "current_synthetic_volume_zero": true,
+    "exact_carried_current_anchors": true,
+    "no_saved_expiry_sale": true,
+    "proposal_preserves_every_declared_field": true,
+    "proposal_preserves_id": true,
+    "saved_direction_thresholds": true,
+    "saved_direction_version": true,
+    "saved_native_and_training_prices_unmodified": true,
+    "saved_sparse240_contract": true,
+    "signal_driven_saved_holding_policy": true,
+    "source_and_action_identity": true,
+    "zero_planning_orders": true
+  },
+  "direct_authority": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/limitations-followup/automation-proposal-v2.json",
+      "sha256": "b553fad656361e3f737083f40b8b5dbaaba7854a396e93444bafd9d47619ce6b"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/limitations-followup/automation-before.toml",
+      "sha256": "2a4a97c592c9d6076dbd64d1140b04659f48b26aa38bf3f5b3d7e950fec24833"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/preflight/sparse-policy-direct-thread-evidence.json",
+      "sha256": "f586b0dc4b4920f32a84218d206245e014af8f7b2ef3d168e9e05eacf0b6206e"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260915/policy-provenance.md",
+      "sha256": "ffd42ad900e52af3d69e48a1c12cf0c79c3b2559ac06f38b6a4b9de55f79178c"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/gameplans/2026-09-14/direction-policy-review.md",
+      "sha256": "d8c6b6d19bde33fbbb06a644162cb1e304d07e91f500f21bf6d3ee10e0fe377e"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "sha256": "f6deaba163bf71bc7ab48b6d63c08fdba09947d6c0b88145fd5e9423c25e1ff9"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "sha256": "4252757d9d7e9971cca9bb86f18b2ebbf3321d073e77af934e194301816fb314"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/ml/stock_direction_policy.py",
+      "sha256": "7797ddaabe0aec686df618e3cbf356f18bde4aaf3b072fcbcd3e3c142e332bab"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/ml/gameplan_cash_ledger.py",
+      "sha256": "a47fa64070d802c1d11aa730a4f2ce61788d28d75ae0510cda49a4202a389805"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/ml/gameplan_trade_planning.py",
+      "sha256": "912010cca1ecc06c5d6ab7eedf3464599e36604646eeeaffa70c91f5aa907953"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/ml/gameplan_price_completion.py",
+      "sha256": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/ml/stock_trader/gameplan_direction_engine.py",
+      "sha256": "c3a231bbfefd931991e75737a244410c35dfb11cdc16b608968fa5a0d966c898"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>/ml/gameplan-trade-plan-runs/20260930T062633.629638Z/report.json",
+      "sha256": "1181d768806c2103014620ca0b521b68a4142ee31e5882cb115943052e30814d"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>/ml/gameplan-trade-plan-runs/20260930T062633.629638Z/direction-ledger.json",
+      "sha256": "c7c28d984857ef49288b57aaeb76f8b82b83b07f116ca382b08149d7fc4f9d9a"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>/ml/gameplan-trade-plan-runs/20260930T062633.629638Z/planning-reference-completion.json",
+      "sha256": "e24f44b0a6472d112de4f683d389e33956a5386cd2711548d022af68ecc5f2a7"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>/ml/nightly-gameplan-runs/20260930T061501.586401Z/forecasts.parquet",
+      "sha256": "1e5e5b6ecf11a51e85a20dcdb1c58f95d4e4cdd645445665881a4c7c39547c4e"
+    }
+  ],
+  "git_policy_origins": {
+    "neutral_band_removal": "c6886f1154f7a008d96a7e91054b99924b73e42f",
+    "signal_driven_holdings": "1d3f724",
+    "sparse_session": "f80176ccf49590b53f6ff56230293b5798680548"
+  },
+  "implementation_citations": {
+    "cash_direction_calls_and_no_expiry_branch": "<LOCAL_CHECKOUT>/ml/gameplan_cash_ledger.py:13,214,232,237,307-315",
+    "manual_current_operator_contract": "<LOCAL_CHECKOUT>/docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md:37-79,144-150",
+    "manual_direction_calls": "<LOCAL_CHECKOUT>/ml/stock_trader/gameplan_direction_engine.py:15,249-263",
+    "planner_shared_import_and_signal_driven_call": "<LOCAL_CHECKOUT>/ml/gameplan_trade_planning.py:21,440,463-464",
+    "strict_above_below_50_shared_function": "<LOCAL_CHECKOUT>/ml/stock_direction_policy.py:6-19",
+    "synthetic_bound_coverage_original_timestamp": "<LOCAL_CHECKOUT>/ml/gameplan_price_completion.py:157-186,223-261,282-290"
+  },
+  "limitations": [
+    "The 50% direction rule does not prove improved forecast accuracy or profitability.",
+    "A carried close is an explicit planning assumption; missing XNAS bars do not prove no trades or a flat consolidated market.",
+    "Published artifacts remain immutable; existing full final audit is reused, not repeated."
+  ],
+  "observed_at": "2026-09-30T07:27:18.899850+00:00",
+  "recommendation": "Apply only the reviewed prompt synchronization through the native automation tool, preserving all fields and auditing read-back. V2 resolves identified no-expiry and live-quote wording conflicts. No stock execution, forecast, model gate or synthetic training change is justified by this provenance review.",
+  "saved_policy": {
+    "direction_counts": {
+      "BEARISH": 122,
+      "BULLISH": 142
+    },
+    "direction_version": "stock-direction-50-v2",
+    "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+    "synthetic_current_anchors": [
+      {
+        "action_date": "2026-09-30",
+        "boundary_at": "2026-09-30T00:00:00+00:00",
+        "completion_contract": "sparse-session-planning-reference-completion-v2",
+        "dataset": "XNAS.ITCH",
+        "effective_at": "2026-09-30T00:00:00+00:00",
+        "fill_count": 200,
+        "gap_minutes": 200.0,
+        "is_synthetic": true,
+        "max_gap_minutes": 240,
+        "observed_at": "2026-09-29T20:40:00+00:00",
+        "origin_bar_start": "2026-09-29T20:39:00+00:00",
+        "price": 123.0,
+        "reason": "ASSUMED_NO_TRADES",
+        "regular_session_close_at": "2026-09-29T20:00:00+00:00",
+        "session": "2026-09-29",
+        "source_contract": "xnas-itch-archive-v1",
+        "source_coverage": {
+          "end": "2026-09-30T00:00:00+00:00",
+          "manifest_path": "<LOCAL_DATASTORE>\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-27_to_2026-09-30\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-30T06:07:07.678940+00:00",
+          "request_id": "REDACTED_NATIVE_ID_0124",
+          "start": "2026-09-27T00:00:00+00:00",
+          "symbol": "CROX"
+        },
+        "status": "AVAILABLE_SYNTHETIC",
+        "symbol": "CROX"
+      },
+      {
+        "action_date": "2026-09-30",
+        "boundary_at": "2026-09-30T00:00:00+00:00",
+        "completion_contract": "sparse-session-planning-reference-completion-v2",
+        "dataset": "XNAS.ITCH",
+        "effective_at": "2026-09-30T00:00:00+00:00",
+        "fill_count": 106,
+        "gap_minutes": 106.0,
+        "is_synthetic": true,
+        "max_gap_minutes": 240,
+        "observed_at": "2026-09-29T22:14:00+00:00",
+        "origin_bar_start": "2026-09-29T22:13:00+00:00",
+        "price": 12.31,
+        "reason": "ASSUMED_NO_TRADES",
+        "regular_session_close_at": "2026-09-29T20:00:00+00:00",
+        "session": "2026-09-29",
+        "source_contract": "xnas-itch-archive-v1",
+        "source_coverage": {
+          "end": "2026-09-30T00:00:00+00:00",
+          "manifest_path": "<LOCAL_DATASTORE>\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-27_to_2026-09-30\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-30T06:07:49.264123+00:00",
+          "request_id": "REDACTED_NATIVE_ID_0125",
+          "start": "2026-09-27T00:00:00+00:00",
+          "symbol": "PATH"
+        },
+        "status": "AVAILABLE_SYNTHETIC",
+        "symbol": "PATH"
+      }
+    ],
+    "synthetic_current_bars": 306
+  },
+  "scope": "Read-only provenance, current saved policy, shared implementation, and root-owned prompt proposal peer review; no code, automation, production, provider or broker action.",
+  "status": "PASS"
+}

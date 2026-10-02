@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-09-30T07:27:54.368240+00:00",
+  "status": "PASS",
+  "checks": {
+    "only_prompt_and_updated_at_changed": true,
+    "saved_prompt_equals_reviewed_proposal": true,
+    "current_automation_equals_saved_after": true
+  },
+  "changed_fields": [
+    "prompt",
+    "updated_at"
+  ],
+  "scope": "Independent read-only automation post-apply comparison. Tool cwds behavior and restoration recorded by root; this audit verifies final state.",
+  "evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\automation-before.toml",
+      "sha256": "2a4a97c592c9d6076dbd64d1140b04659f48b26aa38bf3f5b3d7e950fec24833"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\automation-after.toml",
+      "sha256": "48f889795058c761b0441d64014075af82a7e97e8b97a1dbbdad71478daec75e"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\automation-proposal-v2.json",
+      "sha256": "b553fad656361e3f737083f40b8b5dbaaba7854a396e93444bafd9d47619ce6b"
+    },
+    {
+      "path": "<LOCAL_USER>\\.codex\\automations\\REDACTED_NATIVE_ID_0121\\automation.toml",
+      "sha256": "48f889795058c761b0441d64014075af82a7e97e8b97a1dbbdad71478daec75e"
+    }
+  ]
+}

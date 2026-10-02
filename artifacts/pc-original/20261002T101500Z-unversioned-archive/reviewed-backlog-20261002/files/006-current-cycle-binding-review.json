@@ -1,0 +1,96 @@
+{
+  "checked_at": "2026-10-01T06:07:36.552939+00:00",
+  "status": "CURRENT_LOG_SELECTION_AND_CYCLE_VERIFIED",
+  "native_run": "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z",
+  "native_status": "RUNNING",
+  "completed_loop_a_stage": {
+    "command": [
+      "<LOCAL_CHECKOUT>\\.venv\\Scripts\\python.exe",
+      "-u",
+      "-m",
+      "datafetching.orchestrate",
+      "--datastore-target",
+      "pc",
+      "--watchlist",
+      "<LOCAL_CHECKOUT>\\datafetching\\watchlist.txt",
+      "--providers",
+      "databento",
+      "fmp",
+      "fred",
+      "schwab",
+      "sec",
+      "--cme-mode",
+      "inline",
+      "--options-mode",
+      "inline",
+      "--opra-history-mode",
+      "daily",
+      "--opra-history-utc-hour",
+      "0",
+      "--opra-history-max-estimated-download-bytes",
+      "20000000000",
+      "--opra-history-max-estimated-cost-usd",
+      "1",
+      "--opra-history-max-catchup-days",
+      "30",
+      "--bar-readiness-recovery-timeout-seconds",
+      "420",
+      "--bar-readiness-recovery-poll-seconds",
+      "10",
+      "--once"
+    ],
+    "elapsed_seconds": 7125.318492099992,
+    "error": null,
+    "exit_code": 0,
+    "finished_at": "2026-10-01T06:05:30.546619+00:00",
+    "log_path": "loop_a_close_fetch.log",
+    "stage": "loop_a_close_fetch",
+    "started_at": "2026-10-01T04:06:44.760328+00:00",
+    "status": "COMPLETE"
+  },
+  "core_helper": {
+    "path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\fallback-enabled-verification\\verify_completed_run.py",
+    "sha256": "6f91b9cd72de1dd2b47dcbdddebc409c4904d6b0e40f065010ac6e6fc0fcfd79",
+    "selection": "completed_stages[loop_a_close_fetch].overnight_run / loop_a_close_fetch.log",
+    "stale_cycle_or_pid_constant_in_function": false
+  },
+  "verified_cycle": "20261001T040645.482769Z-pid64892",
+  "exact_completed_log_identity": [
+    "20261001T040645.482769Z-pid64892"
+  ],
+  "current_and_complete_metadata_equal": true,
+  "opra_summary": {
+    "requested_scopes": "33",
+    "completed_scopes": "33",
+    "capacity_blocked_scopes": "0",
+    "failed_scopes": "0",
+    "bootstrap_required_scopes": "0",
+    "preflighted_scopes": "33",
+    "deferred_scopes": "0",
+    "live_replay_completed_scopes": "0",
+    "live_replay_bytes": "0",
+    "selected_estimated_download_bytes": "3625030048",
+    "selected_estimated_cost_usd": "0.0"
+  },
+  "evidence": {
+    "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20261001T040644.667536Z\\loop_a_close_fetch.log": {
+      "sha256": "c8cc93e3f845420ccdc7171e27cab5aafadff3be71f85e081fb3f584d2c8871e",
+      "bytes": 123292
+    },
+    "<LOCAL_DATASTORE>\\.ducketz-loop-a-cycle.json": {
+      "sha256": "d03477591fa3c548b11365059531d558b44dc8d053aa1ac99126ae5a73b50875",
+      "bytes": 470
+    },
+    "<LOCAL_DATASTORE>\\.ducketz-loop-a-complete.json": {
+      "sha256": "d03477591fa3c548b11365059531d558b44dc8d053aa1ac99126ae5a73b50875",
+      "bytes": 470
+    }
+  },
+  "scope": "Exact completed native log and compact base-cycle receipt linkage only; no provider/source-archive audit.",
+  "core_helper_changes": 0,
+  "baseline_reset": false,
+  "heavy_checks_started": false,
+  "production_mutations": 0,
+  "provider_calls": 0,
+  "orders_placed": 0
+}

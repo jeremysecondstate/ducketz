@@ -1,0 +1,34 @@
+{
+  "prepared_at": "2026-10-01T04:13:24.077393+00:00",
+  "files": [
+    {
+      "name": "verify_completed_run.py",
+      "source_path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\verify_completed_run.py",
+      "source_sha256": "989751ef67191b86aee9fd898dfcc5b3adf0760efc6e43f886b7d7493dc4077d",
+      "adapted_sha256": "6f91b9cd72de1dd2b47dcbdddebc409c4904d6b0e40f065010ac6e6fc0fcfd79"
+    },
+    {
+      "name": "verify_archive_history.py",
+      "source_path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\verify_archive_history.py",
+      "source_sha256": "e47d4d85d9a870c787e177090993162239169daf7df032dd1383de8142885c42",
+      "adapted_sha256": "e47d4d85d9a870c787e177090993162239169daf7df032dd1383de8142885c42"
+    },
+    {
+      "name": "verify_yg_completion.py",
+      "source_path": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\verification\\verify_yg_completion.py",
+      "source_sha256": "a5a6725f87f46f11beb2031804b6547a742ee49a0088f84bc9b554349b36c9be",
+      "adapted_sha256": "9211049bce54104adb74e267a97b4745a22f55e1ae0661a20074e9a753967be7"
+    }
+  ],
+  "original_run": "20261001T040644.667536Z",
+  "source_date": "2026-09-30",
+  "action_date": "2026-10-01",
+  "deadline": "2026-10-01T11:00:00Z",
+  "source_files_in_baseline": 341,
+  "policy": "hierarchical-bearish-fallback-v1",
+  "production_mutations": 0,
+  "limitations": [
+    "Heavy publication/archive/model checks require native COMPLETE and have not run.",
+    "Provider-warning read-only metadata follow-up and controls/schedule/ledger preservation are separate operator evidence."
+  ]
+}

@@ -1,0 +1,1 @@
+ResourceWarning: unclosed event loop <ProactorEventLoop running=False closed=False debug=False> emitted by Python asyncio at interpreter shutdown; pytest exit code 0.

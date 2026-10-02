@@ -1,0 +1,26 @@
+{
+  "started_at": "2026-09-30T07:47:55.231925+00:00",
+  "scope": "Native authentication refresh as needed, then read-only account-identification GET; no portfolio/order endpoints",
+  "before": {
+    "saved_at": "2026-09-30T07:03:31.929003+00:00",
+    "access_token_expires_at": "2026-09-30T07:32:31.929003+00:00",
+    "refresh_token_expires_at": null,
+    "reauthorization_required": false,
+    "uncertain_refresh": false,
+    "reauthorization_error_code": null
+  },
+  "order_actions": 0,
+  "trader_start_or_stop": 0,
+  "status": "AUTHENTICATED_ACCOUNT_READ_SUCCEEDED",
+  "account_identity_returned": true,
+  "after": {
+    "saved_at": "2026-09-30T07:47:56.018862+00:00",
+    "access_token_expires_at": "2026-09-30T08:16:56.018862+00:00",
+    "refresh_token_expires_at": null,
+    "reauthorization_required": false,
+    "uncertain_refresh": false,
+    "reauthorization_error_code": null
+  },
+  "completed_at": "2026-09-30T07:47:56.422454+00:00",
+  "access_cache_advanced": true
+}

@@ -1,0 +1,123 @@
+{
+  "reviewed_at": "2026-09-30T07:39:44.299799+00:00",
+  "status": "VERIFIED_WITH_EXPLICIT_PROVIDER_AND_MODEL_LIMITATIONS",
+  "scope": "User-requested investigation and focused non-trading repairs after completed overnight publication",
+  "checks": {
+    "control_hashes": {
+      "pass": true,
+      "files": 7
+    },
+    "source_hashes": {
+      "pass": true,
+      "files": 8
+    },
+    "claim_hashes": {
+      "pass": true,
+      "files": 51
+    },
+    "automation": {
+      "pass": true,
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ]
+    },
+    "cme_repair": {
+      "pass": true,
+      "tests": [
+        {
+          "command": ".\\.venv\\Scripts\\python.exe -m pytest tests/test_cme_cross_asset_context.py tests/test_cme_runtime.py tests/test_databento_cme_context.py -q",
+          "exit_code": 0,
+          "passed": 32,
+          "seconds": 12.74,
+          "tool_chunk": "938fa8",
+          "stdout": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stdout.log",
+          "stderr": "<LOCAL_CHECKOUT>\\artifacts\\analysis\\overnight-20260930\\limitations-followup\\cme-inline-history\\tests-stderr.log"
+        }
+      ],
+      "peer_status": "PASS"
+    }
+  },
+  "completed_publication_evidence_unchanged": 22,
+  "claim_token": "REDACTED_NATIVE_ID_0122",
+  "supervision": {
+    "status": "RELEASED",
+    "owner_token": "REDACTED_NATIVE_ID_0122",
+    "updated_at": "2026-09-30T07:39:43.812135+00:00",
+    "expires_at": "2026-09-30T07:39:43.812135+00:00"
+  },
+  "changes": [
+    "Existing overnight automation now reflects documented September14/16 direction, sparse planning and manual-policy precedence; schedule/settings preserved.",
+    "Existing overnight warning triage now requires bounded provider condition/range/source-use evidence.",
+    "Fresh eligible inline CME captures enter the shared canonical event history used by feature construction; failed or limit-saturated context captures cannot authorize materialization. Separate contract-capture issues retain their diagnostics without blocking otherwise valid context."
+  ],
+  "retained_limits": [
+    "Databento September30 GLBX.MDP3 degraded cause remains undisclosed; schema availability lag is a distinct observation.",
+    "No current Gameplan model admits CME features. Future corrected routing still depends on source quality, capture completeness and freshness.",
+    "All four learned sizing models remain unqualified and unused by the selected manual Gameplan policy.",
+    "Directional tolerance qualification is not demonstrated predictive edge; only4h beats both baselines.",
+    "35 mature missing forecast rows lack qualifying observed boundaries despite complete acquisition windows;66 later-ending rows remain pending in the saved review.",
+    "Synthetic carry-forward remains planning-only and explicitly labeled; actuals, training and live quotes use their own observed inputs."
+  ],
+  "native_restarts": 0,
+  "production_materialization": false,
+  "trader_starts": 0,
+  "order_actions": 0,
+  "evidence": [
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/limitations-followup/automation-update-verification.json",
+      "bytes": 438,
+      "sha256": "e771692dc88e5d59135747cae623a8e8fc2f7d679fe5611bbaf9c729d8e25712"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/preflight/automation-sync-peer-review.json",
+      "bytes": 1358,
+      "sha256": "afa5a0094ee973e940ee1bd45b21ea1f822b1ecfd8d1aef9854d70b5c4383e82"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/preflight/policy-provenance-followup.json",
+      "bytes": 9601,
+      "sha256": "d7dfc0d2c8d36f5e657b4f87d4ebd9f0f0a6fb87b4aa851f28af028ff6083903"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/provider-warning/rootcause-review.json",
+      "bytes": 20311,
+      "sha256": "21909c6973638cecebb95101c9fada1de46150321643c456d8cda4ca4f283c92"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/provider-warning/quality-metadata-20260930T072037Z.json",
+      "bytes": 4202,
+      "sha256": "6528fe15112b05376a1fa067ae16dbc30f94972b6712f8a53c274bc9a18dd2de"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/verification/limits-review/limits-review.json",
+      "bytes": 93435,
+      "sha256": "374c212987292c822c2f764b7ccddc6c6fbaa15afe5638d71de33f2fae795b8a"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/limitations-followup/cme-inline-history/repair-verification.json",
+      "bytes": 5174,
+      "sha256": "8d755cb7465a78af785d4ef419169ce5d1fb1874ec7d4b844f1b42040b53f0b8"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/datafetching/databento_fetch.py",
+      "bytes": 57808,
+      "sha256": "6c89695d68524c9aa916bae23ba3f508b91f1b310dd35f84ab1c5a75f93382b6"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/tests/test_cme_cross_asset_context.py",
+      "bytes": 28031,
+      "sha256": "4bda6f3ed10ea08630e71fcecc08ec01b66e6c87154c5316e285f7a88771db79"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/limitations-followup/cme-inline-history/peer-review.json",
+      "bytes": 6507,
+      "sha256": "dc431453d1da72a95f0c8b9df048d045ba1ceb75a2f40e891a85e3f11c11c5a0"
+    },
+    {
+      "path": "<LOCAL_CHECKOUT>/artifacts/analysis/overnight-20260930/limitations-followup/supervision-release.json",
+      "bytes": 179,
+      "sha256": "2ba23bd2fab48912ca0d516b0a46060770ffb43b9e4ac95577064071167059b0"
+    }
+  ]
+}

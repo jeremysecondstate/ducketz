@@ -1,0 +1,147 @@
+{
+  "status": "READY_SLEEPING",
+  "observed_at": "2026-09-30T07:48:52.204707+00:00",
+  "checks": {
+    "single_matching_manual_launcher_child": true,
+    "matching_wait_execute_policy": true,
+    "sleeping_with_fresh_heartbeat": true,
+    "same_session_lock_owner": true,
+    "sep30_wake_0400": true,
+    "both_local_controls_active": true,
+    "no_cycles_or_orders_while_waiting": true,
+    "native_overnight_complete": true,
+    "gameplan_action_source": true,
+    "current_trade_matches_gameplan": true,
+    "native_read_only_execution_preflight_ready": true
+  },
+  "session": {
+    "action_date": "2026-09-30",
+    "calls": 0,
+    "closes_at": "2026-09-30T17:00:00-07:00",
+    "consecutive_failures": 0,
+    "execute": true,
+    "failed_cycles": 0,
+    "heartbeat_at": "2026-09-30T07:48:25.439186+00:00",
+    "last_cycle": null,
+    "late_opening_date": null,
+    "orders_submitted": 0,
+    "pid": "REDACTED_NATIVE_ID_0132",
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-30T07:44:25.291035+00:00",
+    "status": "SLEEPING_UNTIL_OPEN",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-30T04:00:00-07:00"
+  },
+  "heartbeat_age_seconds": 26.765521,
+  "processes": [
+    {
+      "ProcessId": "REDACTED_NATIVE_ID_0130",
+      "ParentProcessId": "REDACTED_NATIVE_ID_0131",
+      "CreationDate": "2026-09-30T00:44:23.969088-07:00",
+      "CommandLine": "\"<LOCAL_CHECKOUT>\\.venv\\Scripts\\python.exe\" -u -m ml.gameplan_stock_trader --datastore-target pc --execute --target-horizon all --sizing-policy gameplan-direction-current-market-v1 --run-session --wait-for-open "
+    },
+    {
+      "ProcessId": "REDACTED_NATIVE_ID_0132",
+      "ParentProcessId": "REDACTED_NATIVE_ID_0130",
+      "CreationDate": "2026-09-30T00:44:24.000578-07:00",
+      "CommandLine": "\"<LOCAL_CHECKOUT>\\.venv\\Scripts\\python.exe\" -u -m ml.gameplan_stock_trader --datastore-target pc --execute --target-horizon all --sizing-policy gameplan-direction-current-market-v1 --run-session --wait-for-open "
+    }
+  ],
+  "lock_identity": {
+    "process": "independent-stock-session",
+    "pid": "REDACTED_NATIVE_ID_0133",
+    "started_at": "2026-09-30T07:44:25.383938+00:00"
+  },
+  "activation": {
+    "active": true,
+    "reason": "BOTH_STOCK_TRADING_SWITCHES_TRUE",
+    "checksum": "f58c1a043d7f5211e1710106dc12a4a44f8c92efd9fe73e2c028af71b4f6f396"
+  },
+  "native_overnight": {
+    "run_path": "ml/overnight-runs/20260930T040723.733025Z",
+    "status": "COMPLETE",
+    "completed_at": "2026-09-30T06:30:57.383549+00:00",
+    "orders_placed": 0
+  },
+  "publication": {
+    "run_path": "ml/nightly-gameplan-runs/20260930T061501.586401Z",
+    "variant": "YG",
+    "source_sessions": [
+      "2026-09-29"
+    ],
+    "action_date": "2026-09-30",
+    "forecasts": 264,
+    "symbols": 11,
+    "trade_plan": "ml/gameplan-trade-plan-runs/20260930T062633.629638Z"
+  },
+  "deployment": null,
+  "execution_preflight": {
+    "status": "READY",
+    "reason": "SAVED_GAMEPLAN_TRADING_INSTRUCTIONS",
+    "execution_window_count": 209,
+    "run_path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z"
+  },
+  "scheduled_legacy_launcher": {
+    "task_name": "REDACTED_NATIVE_ID_0134",
+    "state": "Disabled",
+    "actions": [
+      {
+        "Execute": "<LOCAL_WINDOWS>\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File \"<LOCAL_CHECKOUT>\\docs\\datafetch-ml\\start_stock_session.ps1\"",
+        "WorkingDirectory": "<LOCAL_CHECKOUT>"
+      }
+    ],
+    "next_run": "2026-09-30T03:55:00-07:00",
+    "enabled": false,
+    "last_result": 1,
+    "triggers": [
+      {
+        "Enabled": true,
+        "StartBoundary": "2026-09-08T03:55:00",
+        "DaysOfWeek": 62,
+        "WeeksInterval": 1
+      }
+    ],
+    "observed_at": "2026-09-30T07:48:50.8622085+00:00"
+  },
+  "first_normal_entry": "2026-09-30T04:01:00-07:00",
+  "user_start_required": false,
+  "instruction": "[PRIVATE TASK TEXT WITHHELD; ORIGINAL RETAINED LOCALLY]",
+  "limitations": [
+    "Read-only local readiness, not a live Schwab authentication/cash/quote check. The sleeping worker performs those checks after wake; root is separately checking authentication.",
+    "No separate September30 variant handoff is registered. Native saved-instruction guard permits the current YG publication and reports READY."
+  ],
+  "evidence": [
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-latest\\run.json",
+      "sha256": "8c63853eeddee9762ab8fb5d3024f438ce81ac695e8b0624ff05c87284c28052"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\gameplan-trade-plan-latest\\run.json",
+      "sha256": "c6520626413a9fede5bd34b3ad495b6e3a228e45cccb23a25ee6f475796631c9"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\overnight-runs\\20260930T040723.733025Z\\receipt.json",
+      "sha256": "3edd3cdbceae80a7fdd362fd78da504425ba95911a91fb402a1b22eb70ca886c"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\ml\\nightly-gameplan-runs\\20260930T061501.586401Z\\receipt.json",
+      "sha256": "7c4e93655a1cc7bbce487c0d31cd243d2d6d2151ae915080a30fe0cb829525d0"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\controls\\stock-trader\\operator-intent.txt",
+      "sha256": "c0f3a622f8f97a062af6b641454f4c63e20542e193fc47dfb7027b60b7af7c84"
+    },
+    {
+      "path": "<LOCAL_DATASTORE>\\controls\\gameplan-stock-trader\\operator-intent.txt",
+      "sha256": "f2a16447372b31a6ef3e2ee462a6e63167d45d1571cf85a6d5eb047383ad9f4b"
+    }
+  ],
+  "broker_calls": 0,
+  "provider_calls": 0,
+  "order_actions": 0,
+  "production_writes": 0
+}
