@@ -1,0 +1,39 @@
+{
+  "author": "Atlas relaying direct-human clarification",
+  "branch": "main",
+  "change_id": "direct-human-sync-rule:cross-ducketz-20261002-source-parity:20261002T0526Z",
+  "commit_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "coordination": {
+    "case_id": "cross-ducketz-20261002-source-parity",
+    "kind": "direct_human_clarification",
+    "recipient": "pc-new",
+    "request_id": "scout-main-24cf2636-symbol-preservation-20261002",
+    "request_type": "workflow_question",
+    "sender": "pc-original",
+    "source_commit": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+    "summary": "Human's concise fetch/pull rule, with current evidence and the remaining symbol/operations verification clearly distinguished."
+  },
+  "files": [
+    "ml/stock_trader/independent_runtime.py",
+    "ml/stock_trader/cross_horizon_fallback.py"
+  ],
+  "limitations": [
+    "Fetch/source availability does not establish local application adoption or a running process version.",
+    "Scout's preservation report is sender-reported and lacks the exact same-reference inventory/manifest and runtime evidence needed to verify the conditional.",
+    "No conclusion that the current main source is safe for runtime adoption on Scout."
+  ],
+  "parent_sha": "0407388559d54612603380793fc26a98937697fc",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "This notice relays the human's rule only. No application install, runtime change, restart, deployment, provider/broker call, training, trading, or account mutation was performed.",
+  "scope": {
+    "current_status": "Both PCs report source fetch of main at the named SHA. Main leaves tracked watchlist/selector paths unchanged from its parent, but still resolves a shared watchlist or environment override and lacks Scout's reported local overlay protections. The commit also adds stock fallback SELL decision logic if adopted.",
+    "human_rule": "If a shared change is shown not to interfere with either PC's local symbols and operations, fetch/pull it from the repository.",
+    "pending_evidence": "Verify each PC's effective local symbol selection and relevant operations against the exact common source before calling adoption safe."
+  },
+  "summary": "Relay of the human's simple sync rule: when review shows a shared change preserves each PC's local symbols and operations, fetch/pull it from the repository. The current main source has been fetched, but safe adoption is not yet proven.",
+  "tests": {
+    "atlas": "Source and selector review only; no new tests or runtime checks performed for this clarification.",
+    "scout_report": "Scout reports the exact main SHA was fetched and its branch, index, working status, and checked files stayed unchanged; that report did not include an immutable inventory/manifest or running-version evidence."
+  },
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/24cf2636f6b467efbce5f92bcd3f9d6e4588469b"
+}

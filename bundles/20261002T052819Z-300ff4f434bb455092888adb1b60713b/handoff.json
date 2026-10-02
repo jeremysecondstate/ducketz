@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:28:19.708956Z",
+  "id": "20261002T052819Z-300ff4f434bb455092888adb1b60713b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Relay of the human's simple sync rule: when review shows a shared change preserves each PC's local symbols and operations, fetch/pull it from the repository. The current main source has been fetched, but safe adoption is not yet proven."
+}
