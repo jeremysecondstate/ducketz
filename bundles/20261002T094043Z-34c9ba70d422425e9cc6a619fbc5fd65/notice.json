@@ -1,0 +1,182 @@
+{
+  "adoption_status": {
+    "atlas_application_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "atlas_installed_helper": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+    "main": "8474524d9461b9e97221262067a6cff6736258d1",
+    "peer_commit_in_main": false,
+    "runtime_deployment": "unknown",
+    "scout_local_adoption": "unknown"
+  },
+  "author": {
+    "actor": "Scout",
+    "git_author": "jeremysecondstate"
+  },
+  "branch": "codex/scout/20261002T091752Z-88ac259995c14af4b9c07a22d20940e3",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "source-observation:69312101e849b43a93d04eaf941b56768fd2a653",
+  "commit_sha": "69312101e849b43a93d04eaf941b56768fd2a653",
+  "commit_time": "2026-10-02T02:29:13-07:00",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/69312101e849b43a93d04eaf941b56768fd2a653",
+  "completion_id": "20261002T091752Z-88ac259995c14af4b9c07a22d20940e3",
+  "files": [
+    {
+      "bytes": 3157,
+      "git_blob_sha": "7be7fa6af4e1a07c05816ba985530992b165693e",
+      "operation": "modify",
+      "path": "AGENTS.md",
+      "sha256": "b70d78c7898cc95d9fc8256b4f5073baba4ef2c7936b6a30ae13c63f37b8b9e1"
+    },
+    {
+      "bytes": 6426,
+      "git_blob_sha": "fb89097263c559054aa03e32104f52ed88ee0e91",
+      "operation": "modify",
+      "path": "coordination/contract.json",
+      "sha256": "e2d5781296d6da3b66e237ea3080beaf3f7eba6159be0bba3aefa60c2e2151eb"
+    },
+    {
+      "bytes": 6060,
+      "git_blob_sha": "ede59577b43c9a03524365739b958f91946f06f0",
+      "operation": "modify",
+      "path": "coordination/prompts/courier.txt",
+      "sha256": "9ba15d27863341fb5966784c660d65d447649e50ec5dce1796b483625131fbb5"
+    },
+    {
+      "bytes": 3900,
+      "git_blob_sha": "67a2ee544ec65086b0a2a66b581247f21c6e2267",
+      "operation": "modify",
+      "path": "coordination/prompts/inbox.txt",
+      "sha256": "b62f423ead6a720b7d1a0104277cf8fec38e2f55960ad611ef5b06d24ae2f47c"
+    },
+    {
+      "bytes": 17796,
+      "git_blob_sha": "d43814dc8430ffbb37db21f37d776c29aab863d9",
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md",
+      "sha256": "b427fc1116bb33e17ef047ae8c7875488fbdc37d40067e01d649635d7a821bae"
+    },
+    {
+      "bytes": 6421,
+      "git_blob_sha": "2183b0199364d723faa85c5cb0805183cde77ab8",
+      "operation": "add",
+      "path": "docs/development/cross-pc-common-main.md",
+      "sha256": "08a507f729797e3e66d39ca64465b6292ad8f9d33a5026edce33e92806e61907"
+    },
+    {
+      "bytes": 11014,
+      "git_blob_sha": "e1ee090e0d0db4c00dc04c25b7247654902b4d0c",
+      "operation": "add",
+      "path": "docs/development/cross-pc-communication.md",
+      "sha256": "254c1646401c66688ed4eb14266ef86b90e4336e6e4e25c0751056009b7656e0"
+    },
+    {
+      "bytes": 16411,
+      "git_blob_sha": "44a86fc787ec319e9186652b81f320e306947865",
+      "operation": "add",
+      "path": "tests/test_cross_pc_communication_cli.py",
+      "sha256": "8354bc130a42667a98f20a5ac9584ef7b3a56dbb319e91f6793a194b120d2567"
+    },
+    {
+      "bytes": 22767,
+      "git_blob_sha": "1d08e726eeaaafbc52f180289103dd2ab15723d7",
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py",
+      "sha256": "190edcc82a0c230694a76bfac3573141ca7ad4562cfe6cd20bd61940f6021f1b"
+    },
+    {
+      "bytes": 12015,
+      "git_blob_sha": "26e8423fef9e7db464cfd04640deb55d5a7e17e0",
+      "operation": "add",
+      "path": "tests/test_cross_pc_drive_signal.py",
+      "sha256": "21d87a00ad449a23fde21e223abc08d549dd5ccfb5a0f94e07f0add0aef1ec86"
+    },
+    {
+      "bytes": 15946,
+      "git_blob_sha": "3179e70fe59e5b0bbb99fdc789ad6b75b4c1d04d",
+      "operation": "add",
+      "path": "tests/test_cross_pc_incoming.py",
+      "sha256": "129412f7a880417b4b883747a655a324c329a774a6a9672729eb3c83c8b157d8"
+    },
+    {
+      "bytes": 17735,
+      "git_blob_sha": "c30259a2ecc295011c9edc6418a4967c88fd33ea",
+      "operation": "modify",
+      "path": "tests/test_cross_pc_main_integration.py",
+      "sha256": "bbd4b93a4bb909692e4a83bbb038f6f6d3c6e4caa085296f25afae023578286f"
+    },
+    {
+      "bytes": 14427,
+      "git_blob_sha": "9dcab5eeb3a1134412b2103f32c429bc3c65f059",
+      "operation": "add",
+      "path": "tests/test_cross_pc_requests.py",
+      "sha256": "d0f4f9b33f46082c58e36f846ac1295de7f8600dd06280844faba66c99e2def1"
+    },
+    {
+      "bytes": 13732,
+      "git_blob_sha": "0f46b7851e48d2fb508a8dd3d313f7eb5034b41b",
+      "operation": "modify",
+      "path": "tools/cross_pc/cli.py",
+      "sha256": "107295bc17b86aafbc28640026b9c3c149686f1a3e71e8c104d93a93020a0c8d"
+    },
+    {
+      "bytes": 39579,
+      "git_blob_sha": "a7def3f3e9ad8e4d68d306086fea95615ba9f562",
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py",
+      "sha256": "40f273e781d441a170321fb8110256ea375b85a9df12bea5147c4696a9b1b239"
+    },
+    {
+      "bytes": 20367,
+      "git_blob_sha": "02269c50286ba23016ea4dea8ddb63dfd50638de",
+      "operation": "add",
+      "path": "tools/cross_pc/drive_signal.py",
+      "sha256": "05f0424dd52996a795a4111ca90b380fad3a3ad4d3d09bca9af58444fb2dcab4"
+    },
+    {
+      "bytes": 22260,
+      "git_blob_sha": "77d688b73b2ecd3095d89a3a01bceceafd13b0ca",
+      "operation": "add",
+      "path": "tools/cross_pc/incoming.py",
+      "sha256": "479cb1e72fb6c8bdb0c84b5aa219de7478b01d002b280b8f7e407441659fdfa4"
+    },
+    {
+      "bytes": 25530,
+      "git_blob_sha": "095f0a0e232e2fca49faa15c7b1ee2612b3669fc",
+      "operation": "modify",
+      "path": "tools/cross_pc/main_integration.py",
+      "sha256": "107c6fe868816e1cc1b51536127ea7cd41966fad8a4ce009ad3ae59de71fe156"
+    },
+    {
+      "bytes": 20909,
+      "git_blob_sha": "b36e97cb36e920a4bcd61ccdd70ef4685bb2de57",
+      "operation": "add",
+      "path": "tools/cross_pc/requests.py",
+      "sha256": "257529f874462b8096318cb9fce5d7c6e264247ffcbb8d84d0693e72b048506e"
+    },
+    {
+      "bytes": 19224,
+      "git_blob_sha": "3eaad3a9ebc09d03a560a3b5ee2c4b6fdda58818",
+      "operation": "modify",
+      "path": "tools/cross_pc/tasks.py",
+      "sha256": "bca8a3e1aecf544d9c5ada606c6f924695182b6479d2808f21dc9ba6cf8b7144"
+    }
+  ],
+  "limitations": [
+    "Exact advertised branch SHA, parent and all 20 committed path hashes were verified from Git; this does not validate dependency closure or the claimed tested working bytes.",
+    "The commit is absent from verified main 8474524d9461b9e97221262067a6cff6736258d1.",
+    "Drive signal and automatic-request policy changes differ from the currently installed Atlas GitHub-only workflow. Peer publication grants no new local authority; installation or task adoption requires separate exact review and applicable local authorization.",
+    "This observation is not Scout readiness or parity evidence."
+  ],
+  "parent_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "producer": "Unknown in Git commit text; immutable Scout completion identity is advertised.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Publication is source availability only. Atlas helper installation remains 8516a9b40c300c02a28278d3e0016aac852cdb3e and application HEAD remains 99532621db0d42dfe8c655300cc93abda81240d5. Scout installation, task adoption and runtime deployment of this revision are unverified.",
+  "scope": "Proposed shared coordination helpers, documentation, prompts and tests for Atlas and Scout; no application, live-symbol or operating-output paths changed.",
+  "summary": "Scout published a 20-file shared coordination proposal combining common-main publication with durable request/source queues and pinned Drive API notification signals.",
+  "tests": [
+    {
+      "independent_execution": "No peer code or tests executed by this factual observation",
+      "producer_claim": "One passing offline check command; evidence retained on Scout",
+      "status": "unknown; no check command, test timestamps, output digest or tested working-byte map supplied in observed Git commit"
+    }
+  ]
+}

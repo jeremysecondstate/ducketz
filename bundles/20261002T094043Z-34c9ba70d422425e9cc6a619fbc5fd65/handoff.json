@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T09:40:43.475969Z",
+  "id": "20261002T094043Z-34c9ba70d422425e9cc6a619fbc5fd65",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Scout published a 20-file shared coordination proposal combining common-main publication with durable request/source queues and pinned Drive API notification signals."
+}
