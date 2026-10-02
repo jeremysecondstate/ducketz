@@ -1,0 +1,110 @@
+{
+  "author": "Jeremy Klein",
+  "authored_at_utc": "2026-10-02T08:45:38-07:00",
+  "branch": "refs/heads/main",
+  "change_id": "observer:jeremysecondstate/ducketz:refs/heads/main:04a92a41dd30594e6a954b408582e678f9980998",
+  "commit_sha": "04a92a41dd30594e6a954b408582e678f9980998",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/04a92a41dd30594e6a954b408582e678f9980998",
+  "completion_id": "20261002T154413Z-e8cc0939",
+  "files": [
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/cadence-current.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/cross-pc-run-result.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-47-local-artifact-inventory.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-advancing-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-after-late-comparison-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archive-preservation-before.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archive-preservation-verified.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-model-runtime-status.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-model-training-events.jsonl",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-decisions.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-equity.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-events.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-experiment.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-fills.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-funding-cursor.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-funding.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-initial-positions.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-ledger.sqlite3.gz",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-opening-snapshot.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-performance.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-policy.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-runtime-status.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-archived-paper-transfers.parquet",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-audit.md",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-cadence-assessment.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-deployment.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-earlier-closeout-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-first-cycle.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-first-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-intermediate-final-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-ledger-summary.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-model-runtime.stderr.log",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-model-runtime.stdout.log",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-native-comparison.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-opening-independent-verification.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-opening-public-account-reads.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-opening-verification.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-operation.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-paper-runtime.stderr.log",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-paper-runtime.stdout.log",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-pre-schedule-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round46-prior-final-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-advancing-health-followup.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-after-graceful-stops.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-deployment.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-first-cycle-verification.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-first-trading-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-handoff.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-model-freshness.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-models-ready.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-opening-public-account-reads.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-opening-verification.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-opening.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-operation.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/analysis/hyperliquid-paper-improvement/20261002-round46-47/round47-prepared-health.json",
+    "artifacts/pc-original/20261002T154413Z-e8cc0939/artifact-manifest.json"
+  ],
+  "limitations": [
+    "Review classified the complete Git delta and immutable blob identities. Artifact semantic correctness, privacy approval, native validation and current peer runtime were not independently verified.",
+    "The commit adds artifact files only. No shared application source or configuration changed relative to its parent.",
+    "Existing later source-adoption ownership and fresh-validation requirements remain unresolved independently."
+  ],
+  "observed_at_utc": "2026-10-02T15:56:12.739820Z",
+  "observed_by": {
+    "actor": "Scout",
+    "logical_task": "cross_pc_inbox",
+    "machine": "pc-new"
+  },
+  "operations": {
+    "add": 56,
+    "delete": 0,
+    "modify": 0
+  },
+  "parent_shas": [
+    "0df335c42c136c3ec493764b76e2e25af30486da"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": [
+    "Source availability only. Scout application HEAD remains 9795e96da25962e1dbb931634158d81f12973a96.",
+    "No checkout fast-forward, output overwrite, installation, worker restart, provider call, training or trading was performed.",
+    "Peer Paper/round status in the commit title is sender-reported historical context."
+  ],
+  "scope": "machine-local outputs in pc-original namespace",
+  "summary": "Scout verified common main adds 56 Atlas Round 46-47 artifacts; local checkout and private bindings preserved.",
+  "tests": {
+    "application_tests": "unknown; none executed for this observer check",
+    "sender_validation": "Not independently reproduced; commit metadata describes a completed artifact publication.",
+    "verified_checks": [
+      {
+        "at_utc": "2026-10-02T15:56:12.739820Z",
+        "name": "Exact Git commit, parent and complete changed-path/blob inventory",
+        "result": "passed"
+      },
+      {
+        "at_utc": "2026-10-02T15:56:12.559755Z",
+        "name": "Ordinary non-recursive origin fetch and before/after local HEAD, branch, index, tracked/untracked and private-binding preservation",
+        "result": "passed"
+      }
+    ]
+  }
+}

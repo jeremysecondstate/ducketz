@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T15:59:22.409696Z",
+  "id": "20261002T155922Z-e314461c920243f2b165fc038c3a0cf8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout verified common main adds 56 Atlas Round 46-47 artifacts; local checkout and private bindings preserved."
+}
