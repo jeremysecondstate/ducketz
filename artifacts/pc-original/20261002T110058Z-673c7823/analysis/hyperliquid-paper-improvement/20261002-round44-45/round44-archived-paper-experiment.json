@@ -1,0 +1,208 @@
+{
+  "accepted_at_utc": "2026-10-02T08:01:11.006203+00:00",
+  "analysis_eligible": true,
+  "baseline_equity": {
+    "alex": 6036.64187617307,
+    "clearpond": 33399.06439715501,
+    "jeremy": 5266.56727314208
+  },
+  "completed_at_utc": "2026-10-02T08:04:16.267232+00:00",
+  "config_sha256": {
+    "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+    "hyperliquid-models-research-70-15-15.json": "f4e428a6fea0f864d7e9a7edff1b9f8b9160a3f8942c2c9fcc28e35df7eb51f0",
+    "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+    "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b",
+    "hyperliquid-powder-policy.json": "02df66a92c67684d5e743765982ec57f7c2c28d0793bbe44eacfd3dc8ee4c7c2",
+    "hyperliquid-powder.json": "b8e55c22b6eb17db44eabe51817584601ce849e4ae0e9374324e303a84966eff"
+  },
+  "evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-44",
+  "experiment_id": "20261002-paper-round-44",
+  "health_evidence_sha256": "2658351ea583230109365e9e88210e9cf9c0daabfd1b4e48e44f2cb22e32e897",
+  "health_verification_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-44\\round44-advancing-health.json",
+  "immutable_opening_hashes": {
+    "initial_positions_sha256": "92a9bd18aa8c5004ef39c92cd767431078ac89c4f7e90fbb998b9f4c0401c32d",
+    "opening_cycle_sha256": "8b3055f4185f4aa950d1e5d66aacd0f20a6f75225fb64e447d7a301343a10149",
+    "opening_snapshot_sha256": "654cd06961ab667dfdb6adde428091c3630b3f1d314a9ec7af5b89da4179a370",
+    "seed_sha256": "14d39c0266e62cf9b9015c803e4431ce215a98e50345f6caed3e9825281e688a"
+  },
+  "opening_equity": 44702.27354647016,
+  "opening_policy_id": "88cd1a6a008df9b9",
+  "opening_verification_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-44\\opening-verification.json",
+  "policy_id": "88cd1a6a008df9b9",
+  "preserved_previous_archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-44",
+  "provenance": {
+    "files": [
+      {
+        "relative_path": "configs/hyperliquid-markets.json",
+        "sha256": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da"
+      },
+      {
+        "relative_path": "configs/hyperliquid-models-research-70-15-15.json",
+        "sha256": "f4e428a6fea0f864d7e9a7edff1b9f8b9160a3f8942c2c9fcc28e35df7eb51f0"
+      },
+      {
+        "relative_path": "configs/hyperliquid-models.json",
+        "sha256": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee"
+      },
+      {
+        "relative_path": "configs/hyperliquid-paper.json",
+        "sha256": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b"
+      },
+      {
+        "relative_path": "configs/hyperliquid-powder-policy.json",
+        "sha256": "02df66a92c67684d5e743765982ec57f7c2c28d0793bbe44eacfd3dc8ee4c7c2"
+      },
+      {
+        "relative_path": "configs/hyperliquid-powder.json",
+        "sha256": "b8e55c22b6eb17db44eabe51817584601ce849e4ae0e9374324e303a84966eff"
+      },
+      {
+        "relative_path": "ml/hyperliquid_coordinator.py",
+        "sha256": "6bf72c74eaaab7ab5369ba89bc87a39d4f8e27e7fd4452413442c8fbf5d09cba"
+      },
+      {
+        "relative_path": "ml/hyperliquid_coordinator_config.py",
+        "sha256": "cae383d54497cb8e79c065078da110add075ebd85e652d111b6a298aef0f3b4c"
+      },
+      {
+        "relative_path": "ml/hyperliquid_data_loop.py",
+        "sha256": "1d3dc2001b02e1f0d642164f9032098bf14bf8027a0029e4dcb5cdee815d51fb"
+      },
+      {
+        "relative_path": "ml/hyperliquid_data_pipeline.py",
+        "sha256": "d7c3de821fdb0cf67a4a06e1da87882595a1f2a92e897908c5ae55d4f685b01c"
+      },
+      {
+        "relative_path": "ml/hyperliquid_forecast_reader.py",
+        "sha256": "1a6a423ec6669fe06a16fe26088c64c905ca399f138308242bb8b12f47d68738"
+      },
+      {
+        "relative_path": "ml/hyperliquid_model_artifacts.py",
+        "sha256": "ec358c5053638ea9e3915dcac3bc9a86124318a629958b066109ade3a5f2db76"
+      },
+      {
+        "relative_path": "ml/hyperliquid_model_config.py",
+        "sha256": "19029da90839fae806465400142c32325686b5c71545118f7d2bb54f3385bf44"
+      },
+      {
+        "relative_path": "ml/hyperliquid_model_research.py",
+        "sha256": "70f5836a6b335c88d20c20f40642e63d16cb0c3aa27347bede6f59edc68df8a2"
+      },
+      {
+        "relative_path": "ml/hyperliquid_model_runtime.py",
+        "sha256": "d6f35237a5e8cdedb27cc236147b8d54ef70d75536deeb0542cfd02839f4ca3c"
+      },
+      {
+        "relative_path": "ml/hyperliquid_models.py",
+        "sha256": "0292d8e17fe4b9420310e01e3cee4ceb4f7fb8bac3a48fb3a6c906c2fb133b64"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_cadence.py",
+        "sha256": "fb84a1133e4f51a5b20563460c7aaedd86f1a1ca53eb18ebe7abd6ce30b3645d"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_comparison.py",
+        "sha256": "06413f6b2c6d7a173b96763c4f8bc6abd251b187416950b45dc60fa38dece61f"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_forecast_evidence.py",
+        "sha256": "7760314dfa36a945419d5dae32c93a678667416b8a5f4de099b379129ebe790b"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_health.py",
+        "sha256": "a3f2c96fa54ebceb54768c14fb56e96574425c3787ce474f4036d0bc813868e0"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_ledger.py",
+        "sha256": "be0a775cceac0d9d35f058c85742931d6a5584fe3308bc25744d74ad1d0efc5e"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_market.py",
+        "sha256": "db61a69042739127038d322352d18a7e084678cbcfeb3565ae2bd0d79a5e881d"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_policy.py",
+        "sha256": "8493e54dfe1e9e89a2cedcdcecbbede4abb536a815c2295bd191f171ebdf6038"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_review.py",
+        "sha256": "0b61cb5459898301d67cc5d5625527b06d81258f9bf237043aba739dbbde9050"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_runtime.py",
+        "sha256": "c1ab09de599d7988063552da4ecd31eff5e208732c51fff51df6fd3bfa2d1fab"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_seed.py",
+        "sha256": "e3abd2c195dc2bf3a64a874fc563ba8f5fa5de76ce00ade60c39455bd90d2bf2"
+      },
+      {
+        "relative_path": "ml/hyperliquid_paper_verify.py",
+        "sha256": "d1a786c46f57b997c50306866e44356755ae4a5880e28d4a3278e05c7329f25a"
+      },
+      {
+        "relative_path": "ml/hyperliquid_powder_exchange.py",
+        "sha256": "3ebcded4984b4480437c1bc5489776b20fcf43e3000554bd158e1c73c3d460c1"
+      },
+      {
+        "relative_path": "ml/hyperliquid_powder_ledger.py",
+        "sha256": "5f4b399062be1b3122707af23e46c01672290a00dede98c6bfef3b3379c01ae2"
+      },
+      {
+        "relative_path": "ml/hyperliquid_powder_lock.py",
+        "sha256": "cb2a3be78f33a67c790a1ed4cf1263cff4adf4f0e663a23c92f8429eb61e640f"
+      },
+      {
+        "relative_path": "ml/hyperliquid_powder_runtime.py",
+        "sha256": "710e76f820cb19fbf0ec5bc40284e02db2eddd2ef83e9714ab46f8f2b316e5ef"
+      },
+      {
+        "relative_path": "ml/hyperliquid_research_classical.py",
+        "sha256": "9b9ae6c04287a2a57e17696e5ac89381001d873dac36549147bf5d381b01b042"
+      },
+      {
+        "relative_path": "ml/hyperliquid_research_sequences.py",
+        "sha256": "4a65963f86ca904c1823d998efcca52ddf9ee8261e9f6ea2be35918812240772"
+      },
+      {
+        "relative_path": "ml/hyperliquid_timings.py",
+        "sha256": "b91b63393dd9a15f4cca5a105a9e2859c2b0f04eb422cf5ca5964dbbb1adb74b"
+      },
+      {
+        "relative_path": "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md",
+        "sha256": "3ccb75177306956e9ef757c88de1a307aa0311260b5d7ccd0b6256e765894f85"
+      },
+      {
+        "relative_path": "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md",
+        "sha256": "0d5e417ffa6c25b3715cf7f212bc7f289f8550f1efc6929df5907baf44601b43"
+      }
+    ],
+    "git_head": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+    "snapshotted_at_utc": "2026-10-02T08:01:11.005545+00:00"
+  },
+  "runtime_verification": {
+    "models": {
+      "config": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "created_at_utc": "2026-10-02T07:58:15.149621+00:00",
+      "module": "ml.hyperliquid_model_runtime",
+      "observed_at_utc": "2026-10-02T08:04:13.721334+00:00",
+      "pid": 48064
+    },
+    "paper": {
+      "config": "C:\\dev\\ducketz\\configs\\hyperliquid-paper.json",
+      "created_at_utc": "2026-10-02T08:02:05.016877+00:00",
+      "module": "ml.hyperliquid_paper_runtime",
+      "observed_at_utc": "2026-10-02T08:04:14.789927+00:00",
+      "pid": 65216
+    }
+  },
+  "seed_at_utc": "2026-10-02T07:59:32.930325747+00:00",
+  "source_equity": {
+    "alex": 6036.6484861730705,
+    "clearpond": 33399.06439715501,
+    "jeremy": 5266.56598314208
+  },
+  "source_verification_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-44\\opening-public-account-reads.json",
+  "status": "running",
+  "superseded_experiment_id": "20261002-paper-round-43"
+}
