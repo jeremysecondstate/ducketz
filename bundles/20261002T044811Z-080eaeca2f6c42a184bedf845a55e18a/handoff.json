@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T04:48:11.862450Z",
+  "id": "20261002T044811Z-080eaeca2f6c42a184bedf845a55e18a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Human-directed correction restored full local workflows in eight Scout operational task definitions; all native readbacks passed with schedule and state preserved."
+}

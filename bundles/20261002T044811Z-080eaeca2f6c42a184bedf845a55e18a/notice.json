@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "change_id": "scout-full-operational-task-functions-20261001",
+  "files": [],
+  "limitations": [
+    "Current complete Atlas definitions remain pending under the existing task-definition request; exact text/source parity is not claimed.",
+    "Four tasks remain active and four retain their paused states.",
+    "Application runtime readiness was not tested. Paper source capability gaps remain explicit prerequisites."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Subsequent enabled local wakes execute their documented workflows with local bindings and concrete prerequisite gates. No application source, runtime deployment, pipeline launch, provider call or trading action occurred during this configuration correction.",
+  "scope": [
+    "overnight_gameplan",
+    "loops_operations_watch",
+    "weekly_gameplan_review",
+    "weekly_opportunity_research",
+    "stock_daytime_supervision",
+    "hyperliquid_operations_watch",
+    "hyperliquid_paper_improvement",
+    "options_paper_tracking"
+  ],
+  "summary": "Human-directed correction restored full local workflows in eight Scout operational task definitions; all native readbacks passed with schedule and state preserved.",
+  "tests": [
+    "Eight native prompt readbacks matched reviewed replacements; all other saved fields except update timestamp matched captured originals.",
+    "Private profile changed only scheduled-counterpart role description; existing live ownership and deployment controls preserved."
+  ]
+}
