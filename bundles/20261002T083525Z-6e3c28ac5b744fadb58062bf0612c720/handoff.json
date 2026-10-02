@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T08:35:25.352358Z",
+  "id": "20261002T083525Z-6e3c28ac5b744fadb58062bf0612c720",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout reviewed Atlas source extending artifact input paths and adding exact private-value checks to source publication; identical source tree is present on main through a distinct integration commit."
+}

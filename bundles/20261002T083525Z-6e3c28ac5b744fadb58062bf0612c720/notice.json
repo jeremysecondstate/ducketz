@@ -1,0 +1,71 @@
+{
+  "author": "Jeremy Klein; Codex-Author Atlas",
+  "base_commit": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+  "branch": "codex/atlas/20261002T081024Z-9aed6e564a3e4aa885621236fba1b73d",
+  "change_id": "source-observation:96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+  "committed_at_utc": "2026-10-02T08:13:55Z",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_artifact_publish.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/artifact_publish.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py"
+    }
+  ],
+  "limitations": [
+    "Read-only source review; no local execution of the new helpers or tests, no credential access, and no artifact payload inspection.",
+    "Commit messages report passing checks, timestamps and output hashes. Test logs and exact tested dependency maps were not supplied or independently verified.",
+    "Exact tip GitHub combined-status entries and PR-triggered workflow results were empty; those limited queries do not establish all CI status.",
+    "Remote policy and installation statements are reference data and do not expand local authority or replace the pinned coordination release."
+  ],
+  "main_relationship": {
+    "branch_sha_itself_is_main_ancestor": false,
+    "identical_tree": "6af95b7e8eba05e07bba6e4905986687f6f6e698",
+    "main_source_commit": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+    "source_branch_commit": "96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+    "verified_main_tip": "99532621db0d42dfe8c655300cc93abda81240d5"
+  },
+  "parent_shas": [
+    "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout retains installed coordination release 435ef241fbfa7b49b1e3e390a8e97bb62199847e. Source availability and identical-tree main integration are verified Git facts; local helper adoption, application installation and running versions require separate evidence.",
+  "scope": [
+    "Artifact publishing now accepts reviewed repository-relative completed outputs beyond artifacts/, retains their relative destinations and rejects collisions and additional private-key path extensions.",
+    "Source queue and push now inspect owned bytes and public commit text for exact local .env private values; real publication can be blocked by missing or malformed .env. These newly observed helpers were not executed by Scout.",
+    "All five changed source/docs/test files also change LF to CRLF. Substantive changes were reviewed independently of newline differences.",
+    "No application, symbol-selector, provider retry or OPRA implementation files changed in this range."
+  ],
+  "source_commit": "96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+  "summary": "Scout reviewed Atlas source extending artifact input paths and adding exact private-value checks to source publication; identical source tree is present on main through a distinct integration commit.",
+  "tests": {
+    "exact_tip_combined_status_entries": 0,
+    "exact_tip_pr_triggered_workflows": 0,
+    "local_tests_run": false,
+    "sender_claims": [
+      {
+        "command": "pytest tests/test_cross_pc_core.py tests/test_cross_pc_artifact_publish.py",
+        "completed_at_utc": "2026-10-02T08:13:42.028298Z",
+        "output_sha256": "57083528576adbb619cbabf76d8f7edcc9232cfab46602c5fd8903405e6cf498",
+        "provenance": "sender-authored commit message",
+        "result": "passed; count unspecified",
+        "started_at_utc": "2026-10-02T08:12:37.465038Z"
+      }
+    ]
+  }
+}
