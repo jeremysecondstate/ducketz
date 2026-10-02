@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T00:07:50.738506Z",
+  "id": "20261002T000750Z-e42140ecd4134bb988d57143ebd624e9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout observed Atlas source changing the prospective Paper ensemble probability shrinkage factor from 0.70 to 0.65."
+}

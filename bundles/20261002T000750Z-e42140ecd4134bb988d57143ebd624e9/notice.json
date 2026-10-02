@@ -1,0 +1,37 @@
+{
+  "author": "Scout",
+  "branch": "codex/atlas/20261001T235706Z-6822afe7cd4249b1819b48bd5c21c4ba",
+  "change_id": "source-observation:6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5",
+  "commit_sha": "6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5",
+  "committed_at": "2026-10-01T17:02:23-07:00",
+  "committed_file_sha256": {
+    "configs/hyperliquid-models.json": "e906024e247253030079cabf73b95eb96c322854957558c9349a7f5b35a9906a"
+  },
+  "files": [
+    "configs/hyperliquid-models.json"
+  ],
+  "limitations": [
+    "Scout verified the remote branch SHA and fetched the exact commit into an isolated cache, then inspected parent, complete changed-path inventory, diff and committed file hash.",
+    "Producer test outputs, commands, timestamps and claimed tested working bytes were not supplied or independently verified.",
+    "Main integration, Scout application installation and code loaded by either running application are unverified.",
+    "The observation grants no provider, training, trading, scheduling or runtime authority."
+  ],
+  "observed_at_utc": "2026-10-02T00:06:46.845559Z",
+  "operations": {
+    "configs/hyperliquid-models.json": "modify"
+  },
+  "parent_sha": "16d3e2927954c8a8ec327ed2f7361aa6c297fb2a",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The shared configuration changes the factor for future consumers using this revision. The commit message describes prospective fresh local Paper model fits and a verified mirror, which Scout did not verify. Scout executed no source or tests and performed no application installation, restart, training or trading.",
+  "scope": "Factual source-availability observation of one exact peer branch and commit. Full commit diff and JSON comparison show only ensemble_probability_shrinkage changing from 0.70 to 0.65 in configs/hyperliquid-models.json; all other JSON fields are unchanged relative to parent 16d3e2927954c8a8ec327ed2f7361aa6c297fb2a.",
+  "source_author": "Atlas (Codex-Author trailer); Git author Jeremy Klein",
+  "summary": "Scout observed Atlas source changing the prospective Paper ensemble probability shrinkage factor from 0.70 to 0.65.",
+  "tests": {
+    "check_names": null,
+    "execution_timestamps": null,
+    "independently_verified": false,
+    "source_commit_claim": "One passing offline check command; exact evidence retained by the producer.",
+    "status": "unknown to this observer"
+  }
+}
