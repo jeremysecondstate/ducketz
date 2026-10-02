@@ -48,6 +48,12 @@ LABEL_MEANING = (
 )
 
 
+def _validate_probability_shrinkage(value: float) -> None:
+    if (type(value) not in (int, float) or not np.isfinite(value)
+            or not 0 < value <= 1):
+        raise ValueError("ensemble_probability_shrinkage must be finite and in (0, 1].")
+
+
 @dataclass(frozen=True)
 class ModelSettings:
     horizon_bars: int = 4
@@ -67,8 +73,10 @@ class ModelSettings:
     hist_gradient_boosting_weight: float = 1.0
     mlp_weight: float = 1.0
     random_forest_weight: float = 0.0
+    ensemble_probability_shrinkage: float = 1.0
 
     def __post_init__(self) -> None:
+        _validate_probability_shrinkage(self.ensemble_probability_shrinkage)
         if (type(self.random_forest_weight) not in (int, float)
                 or not np.isfinite(self.random_forest_weight) or self.random_forest_weight < 0):
             raise ValueError("random_forest_weight must be a finite nonnegative number.")
@@ -128,6 +136,10 @@ class ModelBundle:
     calibrated_through_close_utc: str = ""
     fit_label_end_utc: str = ""
     ensemble_weights: dict[str, float] = field(default_factory=dict)
+    ensemble_probability_shrinkage: float = 1.0
+
+    def __post_init__(self) -> None:
+        _validate_probability_shrinkage(self.ensemble_probability_shrinkage)
 
 
 def _market(coin: str, interval: str) -> tuple[str, str]:
@@ -389,15 +401,21 @@ def _normalized_weights(weights: dict[str, float]) -> dict[str, float]:
     return {name: weight / scale / total for name, weight in weights.items()}
 
 
-def _ensemble_probability(predictions: dict[str, np.ndarray], weights: dict[str, float]) -> np.ndarray:
-    """Use the persisted positive weights; old bundles retain their equal mean."""
+def _ensemble_probability(
+    predictions: dict[str, np.ndarray], weights: dict[str, float], *, shrinkage: float = 1.0,
+) -> np.ndarray:
+    """Shrink the calibrated weighted mean toward neutral without removing members."""
+    _validate_probability_shrinkage(shrinkage)
     if not weights:
-        return np.mean(np.column_stack(list(predictions.values())), axis=1)
-    if set(weights) != set(predictions):
-        raise ValueError("Ensemble weights must match the estimator names.")
-    normalized = _normalized_weights(weights)
-    return np.average(np.column_stack(list(predictions.values())), axis=1,
-                      weights=[normalized[name] for name in predictions])
+        probability = np.mean(np.column_stack(list(predictions.values())), axis=1)
+    else:
+        if set(weights) != set(predictions):
+            raise ValueError("Ensemble weights must match the estimator names.")
+        normalized = _normalized_weights(weights)
+        probability = np.average(np.column_stack(list(predictions.values())), axis=1,
+                                 weights=[normalized[name] for name in predictions])
+    # Keep old/default recipes bit-for-bit identical, avoiding subtract/add rounding.
+    return probability if shrinkage == 1.0 else 0.5 + shrinkage * (probability - 0.5)
 
 
 def _metrics(labels: np.ndarray, probabilities: np.ndarray) -> dict:
@@ -453,6 +471,7 @@ def train_candidate(
         calibrated_through_close_utc=calibration["close_time"].iloc[-1].isoformat(),
         fit_label_end_utc=fit["label_end_time"].max().isoformat(),
         ensemble_weights={name: float(getattr(settings, f"{name}_weight", 1.0)) for name in estimators},
+        ensemble_probability_shrinkage=settings.ensemble_probability_shrinkage,
     )
     model_timings: dict[str, dict] = {}
     calibration_methods: dict[str, str] = {}
@@ -484,7 +503,9 @@ def train_candidate(
             "assessment_seconds": perf_counter() - assessment_started,
             "total_seconds": perf_counter() - model_started,
         }
-    ensemble = _ensemble_probability(predictions, bundle.ensemble_weights)
+    ensemble = _ensemble_probability(
+        predictions, bundle.ensemble_weights, shrinkage=bundle.ensemble_probability_shrinkage,
+    )
     # This baseline learns a constant only from observations before assessment.
     prior = float(np.concatenate([y_fit, y_calibration]).mean())
     prior_predictions = np.full(len(y_assessment), prior)
@@ -503,6 +524,7 @@ def train_candidate(
     ]
     assessment = assessment_rows[["timestamp", "close_time", "label_end_time", "y_not_down", "actual_return"]].copy()
     assessment["p_not_down"] = ensemble
+    assessment["ensemble_probability_shrinkage"] = bundle.ensemble_probability_shrinkage
     assessment["p_down"] = 1.0 - ensemble
     for name, probability in predictions.items():
         assessment[f"{name}_p_not_down"] = probability
@@ -516,8 +538,9 @@ def train_candidate(
         "data_run_id": snapshot.run_id, "feature_revision": snapshot.feature_revision,
         "feature_names": names, "feature_count": len(names),
         "label_meaning": LABEL_MEANING,
-        "ensemble_method": "weighted mean of separately calibrated P(not_down); P(down)=1-P(not_down)",
+        "ensemble_method": "0.5 + shrinkage * (weighted mean of separately calibrated P(not_down) - 0.5); P(down)=1-P(not_down)",
         "ensemble_weights": _normalized_weights(bundle.ensemble_weights),
+        "ensemble_probability_shrinkage": bundle.ensemble_probability_shrinkage,
         "calibration_c": settings.calibration_c,
         "model_names": list(estimators), "metrics": metrics,
         "eligible": not failed_comparisons,
@@ -573,6 +596,7 @@ def predict_bundle(bundle: ModelBundle, snapshot: MarketSnapshot) -> dict:
     probability = float(_ensemble_probability(
         {name: np.asarray([values["p_not_down"]]) for name, values in per_model.items()},
         getattr(bundle, "ensemble_weights", {}),
+        shrinkage=getattr(bundle, "ensemble_probability_shrinkage", 1.0),
     )[0])
     target_close = latest["close_time"] + pd.Timedelta(milliseconds=INTERVAL_MS[bundle.interval] * bundle.horizon_bars)
     return {
@@ -590,6 +614,7 @@ def predict_bundle(bundle: ModelBundle, snapshot: MarketSnapshot) -> dict:
         "label_meaning": LABEL_MEANING,
         "p_not_down": probability, "p_down": 1.0 - probability,
         "consensus": probability, "per_model": per_model,
+        "ensemble_probability_shrinkage": getattr(bundle, "ensemble_probability_shrinkage", 1.0),
         "ensemble_weights": _normalized_weights(bundle.ensemble_weights) if getattr(bundle, "ensemble_weights", {}) else {},
         "missing_features_imputed": values.columns[values.iloc[0].isna()].tolist(),
         "model_fit_through_close_utc": bundle.fitted_through_close_utc,
