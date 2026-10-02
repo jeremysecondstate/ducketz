@@ -1,0 +1,38 @@
+{
+  "author": "Atlas relaying direct-human clarification",
+  "branch": "main",
+  "change_id": "direct-human-gameplan-identity:cross-ducketz-20261002-source-parity:20261002T0532Z",
+  "commit_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "coordination": {
+    "case_id": "cross-ducketz-20261002-source-parity",
+    "kind": "direct_human_clarification",
+    "recipient": "pc-new",
+    "request_id": "gameplan-identity-and-locality-20261002",
+    "request_type": "workflow_question",
+    "sender": "pc-original",
+    "source_commit": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+    "summary": "Confirm whether Scout's local Gameplan writer has existing owner metadata/path conventions; preserve its local outputs and history while considering unique IDs for future plans."
+  },
+  "files": [
+    "ml/nightly_gameplan.py",
+    "ml/gameplan_trade_snapshot.py"
+  ],
+  "limitations": [
+    "This is a relayed design request, not an implemented or tested change.",
+    "Cross-PC case remains pending validated same-reference source and local selector evidence; no isolated candidate has been prepared."
+  ],
+  "parent_sha": "0407388559d54612603380793fc26a98937697fc",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application source, local Gameplan, installation, or runtime was changed. Any future implementation requires reviewed code and offline tests in the authorized isolated candidate; no deployment is implied.",
+  "scope": {
+    "data_boundary": "Keep each PC's generated Gameplans and symbol-specific outputs local; do not consume or treat the other PC's generated Gameplan as local input.",
+    "historical_artifacts": "Preserve existing historical Gameplans and their original IDs; apply any approved scheme only to newly generated plans.",
+    "human_request": "For future Gameplans, use unique IDs that make the owning PC clear, because nightly Gameplans are symbol-specific.",
+    "proposed_format_for_review": "GP-<machine_id>-<session_date>-<UUID>, with owner_machine_id, generated_at_utc, and source SHA in metadata; do not include symbol names in the ID."
+  },
+  "summary": "Relay of the human's request that future Gameplans have owner-distinguishable unique IDs so Atlas and Scout can identify whose symbol-specific plan they are.",
+  "tests": {
+    "status": "No implementation or tests run for this requested change."
+  },
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/24cf2636f6b467efbce5f92bcd3f9d6e4588469b"
+}

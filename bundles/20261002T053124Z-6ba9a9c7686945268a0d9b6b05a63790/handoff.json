@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:31:24.125087Z",
+  "id": "20261002T053124Z-6ba9a9c7686945268a0d9b6b05a63790",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Relay of the human's request that future Gameplans have owner-distinguishable unique IDs so Atlas and Scout can identify whose symbol-specific plan they are."
+}
