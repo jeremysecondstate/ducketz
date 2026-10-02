@@ -146,12 +146,14 @@ def test_reviewed_inventory_hash_blocks_stable_but_different_bytes(site):
         publisher.snapshot(profile, root, sealed_spec)
 
 
-def test_credential_named_artifact_is_never_staged(site):
+def test_token_named_artifact_uses_exact_value_scan(site):
     root, _, _, profile = site
     name = "artifacts/analysis/overnight-20261001/supervision-token.txt"
     output(root, name, b"synthetic marker\n")
-    with pytest.raises(publisher.ArtifactPublishError, match="credential or private path"):
-        publisher.snapshot(profile, root, spec(root, name))
+    assert publisher.snapshot(profile, root, spec(root, name))["files"][0]["path"] == name
+    output(root, name, b"VERY_PRIVATE_FIXTURE_TOKEN_12345\n")
+    with pytest.raises(publisher.ArtifactPublishError, match="exact local .env value"):
+        publisher.snapshot(profile, root, spec(root, name, id="20261002T080100Z-run00002"))
 
 
 def test_deterministic_gzip_round_trip_and_original_hash(site):

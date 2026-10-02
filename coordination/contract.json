@@ -14,14 +14,15 @@
   "limits_per_wake": {"source_records": 1, "commit_branch_observations": 10, "inbox_bundles": 10, "delivery_attempts": 1},
   "stages": ["queued", "validated", "committed", "pushed", "notice_delivered", "main_integrated", "peer_source_verified", "locally_installed", "runtime_deployed"],
   "shared": ["application logic and UI including Gameplan", "engines", "tests", "documentation", "common strategy defaults", "portable task purposes and authority ceilings"],
-  "local": ["symbol selections and documented symbol-specific overlays", "credentials", "machine paths", "account state", "raw data", "fitted models", "ledgers", "native scheduler IDs", "chat targets", "task memory", "receipts", "operating ownership"],
+  "local": ["symbol selections and documented symbol-specific overlays", "live machine bindings and originals", "credentials and .env values", "machine paths", "native scheduler IDs", "chat targets", "task memory", "coordination receipts", "operating ownership"],
+  "artifact_publication": "The direct human permits exact reviewed completed operating outputs, including logs, account snapshots and holdings databases, in this public repository under a producer-PC namespace. The artifact publisher must preserve originals, verify immutable input hashes and stable bytes, and reject .env private-key values. Classify shared and symbol-specific contents explicitly. This permission does not extend source or runtime authority.",
   "mixed_configuration_rule": "Review fields. Only documented symbol-specific or operating-state pointers are local exceptions. Common strategy thresholds and defaults remain shared. Never omit an entire shareable configuration because a task writes it.",
   "publication": {
     "completion": "Immediately queue exact owned operations, immutable bytes, actual test results/timestamps, complete dependencies, producer, base, limitations and runtime implications.",
     "dependency_closure": "Every dependency must match the isolated base or be an explicitly owned reviewed operation. Re-run checks in the candidate itself.",
     "conflicts": "Overlapping producers require explicit ownership resolution. Changed or superseded records remain visible. Never replay old configuration over a newer accepted revision.",
     "push": "Normal owned-branch push with remote SHA readback. Preserve committed/pushed stages after delivery failure.",
-    "integration": "Prepare tested candidates and pull requests. Human decision required to merge main or replace a running application checkout."
+    "integration": "Prepare tested candidates and pull requests. The direct human authorized tested shared-source integration to main for this two-PC central-hub workflow; require exact review, conflict resolution, passing offline checks and remote SHA verification. Replacing a running application checkout and runtime deployment remain separate decisions."
   },
   "tasks": {
     "catalog": "coordination/task-catalog.json",

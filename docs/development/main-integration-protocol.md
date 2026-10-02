@@ -19,7 +19,10 @@ requires `main` to descend from the reviewed base, and rejects any path changed
 on main that is owned by or a reviewed dependency of the record. For an
 unrelated main advance, it applies the original sealed bytes to current main.
 Review that complete candidate diff, run fresh checks in the candidate, then
-publish only with the explicit main approval gate. Publication uses a normal
+publish with the explicit main approval gate. The direct human's central-hub
+request supplies standing approval for reviewed shared changes that pass these
+gates; it does not approve a source conflict or a symbol-specific overwrite.
+Publication uses a normal
 fast-forward push, reads back the remote SHA, and retains an idempotent local
 receipt. If main advances during review or push, prepare and test a new candidate.
 Never force-push, silently resolve overlapping ownership, or stage the running
@@ -39,12 +42,15 @@ python -B ABSOLUTE_PINNED_RELEASE/tools/cross_pc/main_integration.py publish --p
 Completed portable outputs that are appropriate to publish use explicit,
 reviewed copies under `artifacts/<machine>/...`, where `<machine>` is the local
 profile's `pc-original` or `pc-new`. Preserve the original local output and its
-provenance. The separate artifact publisher must exclude credentials, account
-state, raw data, fitted models, ledgers, task memory, native IDs, receipts, and
-other private operating state. Symbol-specific outputs identify their producer
-PC and local symbol universe in sanitized metadata; shared Gameplan/UI/engine
-source and common strategy defaults remain common on main. Review mixed
-configuration by field.
+provenance. The direct human authorized completed logs, account snapshots,
+holdings databases, models and other operating outputs in the public repository
+when the exact reviewed bytes contain no `.env` private-key value. Use the
+installed artifact publisher's sealed input hashes and credential scan. Keep
+`.env`, live local bindings, native task IDs, task memory and coordination
+receipts out of these published copies. Symbol-specific outputs identify their
+producer PC and scope in commit metadata; shared Gameplan/UI/engine source and
+common strategy defaults remain common on main. Review mixed configuration by
+field.
 
 Each PC adopts the new pinned release and updates its own native scheduled
 tasks after a local audit. Preserve each task's cadence, status, model, effort,

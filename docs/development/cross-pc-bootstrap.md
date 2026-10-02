@@ -20,8 +20,12 @@ of coordination helpers and task instructions only.
 
 Gameplan logic/UI, common engines, tests, documentation, and common strategy
 defaults are shared. Each PC keeps symbols and documented symbol-specific
-overlays, credentials, machine paths, account/operating state, raw data, fitted
-models, ledgers, memory, scheduler identities, chat targets and receipts local.
+overlays, `.env` values, machine paths, live operating originals, memory,
+scheduler identities, chat targets and coordination receipts local. The direct
+human also authorized reviewed completed logs, data, models and ledgers as
+machine-owned copies on public `main` after exact-byte and `.env` private-key
+scans through the separate artifact publisher. Do not put these in the
+shared-source completion queue.
 Review mixed JSON **by field**. A task writing a config does not make that whole
 file private. `cross-pc-backlog.md` records current field classifications and
 dependency gaps. Common model weights/thresholds are common behavior unless an

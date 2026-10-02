@@ -27,7 +27,7 @@ class ArtifactPublishError(ValueError):
 _ID = re.compile(r"[0-9]{8}T[0-9]{6}Z-[a-z0-9][a-z0-9-]{7,63}\Z")
 _SHA = re.compile(r"[0-9a-f]{40}\Z")
 _SENSITIVE_NAME = re.compile(r"KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH|PRIVATE", re.I)
-_CREDENTIAL_PATH = re.compile(r"(?:^|[._-])(?:tokens?|secrets?|credentials?|passwords?|api[_-]?keys?|private[_-]?keys?)(?:$|[._-])", re.I)
+_CREDENTIAL_PATH = re.compile(r"(?:^|[._-])(?:secrets?|credentials?|passwords?|api[_-]?keys?|private[_-]?keys?)(?:$|[._-])", re.I)
 _CHUNK = 1024 * 1024
 _COMPRESSION_THRESHOLD = 50 * 1024 * 1024
 _MAX_FILES = 200

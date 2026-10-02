@@ -1,7 +1,7 @@
 # Running Ducketz on two PCs
 
 Both PCs share application behavior and common defaults. Each PC keeps its
-authorized stock membership and private operating state locally. Source parity,
+authorized stock membership and live operating bindings locally. Source parity,
 task parity and runtime deployment are separate facts.
 
 ## Stock selection
@@ -58,13 +58,41 @@ resolved.
 | Application logic, UI, engines, tests and operating documentation | Shared source |
 | Common strategy defaults and the tracked watchlist fallback | Shared, reviewed defaults |
 | Ignored local watchlist membership | Private binding owned by that PC |
-| Credentials, account state, raw data, fitted models and ledgers | Local |
+| `.env` and its private-key values | Never publish |
+| Live operating originals | Local; exact reviewed completed copies may be published under the producer PC's artifact namespace |
 | Machine paths, native scheduler IDs, chat targets, task memory and receipts | Local |
 | Mixed configuration | Review by field; retain unresolved shared differences |
 
 A file is not wholly private because a local task writes it. Classify each
 field under the current authorized contract. Do not silently omit nonstock
 settings or replay an older configuration over a newer accepted revision.
+
+## Scheduled publication and adoption
+
+At the end of each scheduled run, inventory every path the run added, modified
+or deleted. Verify completion, ownership, final hashes and actual offline
+checks. Queue common source through the installed cross-PC source helper, then
+publish on that PC's branch. Under the direct human's standing authorization
+for this central hub, integrate exact shared source to `main` after the fresh
+main-candidate tests and conflict gates pass. Mark symbol-specific source with
+its producer PC and affected scope in the commit message; retain it on its
+producer branch until a reviewed local-overlay design makes adoption safe.
+Mixed files need field-level classification. A push cannot resolve that review.
+
+Publish completed operating output separately under `artifacts/<machine>/...`
+on `main` with the installed artifact helper. Its manifest records the source
+paths, exact original hashes, compression and scope. A symbol-specific Atlas
+Gameplan remains Atlas's result even though Scout can inspect its Git bytes.
+Do not copy it into Scout's active Gameplan or symbol settings. The helper
+rejects `.env` private-key values; never stage `.env` itself.
+
+Each PC's existing five-minute monitors observe author, branch, SHA, changed
+paths and scope. They fetch `origin/main` and fast-forward their local main only
+after checking for an active writer, tracked modifications and untracked path
+collisions. If any check fails, retain the local state and report the exact
+blocker. No stash, reset, force-push or replacement of a running process is
+part of this adoption step. Source, local installation and loaded runtime
+versions remain separate evidence.
 
 ## Completing and publishing shared work
 
@@ -91,8 +119,10 @@ mutated installation is a specific blocker, not permission to change transport.
    main. Reconcile dependency differences and overlapping ownership explicitly.
 
 Publishing a branch does not merge main, install it on the peer or change a
-running application. Those stages require their own evidence and existing
-human authorization. A source snapshot based on older code does not authorize
+running application. The direct human authorized tested common-source main
+integration for the two-PC central hub, subject to conflict and exact-byte
+checks. Installation and runtime adoption require separate evidence. A source
+snapshot based on older code does not authorize
 deleting newer main files or restoring older defaults.
 
 ## Technical requests and task continuity
