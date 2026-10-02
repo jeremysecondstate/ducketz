@@ -1,0 +1,97 @@
+{
+  "author": "Scout",
+  "base_sha": "eb3f15c7089bfea5b75c20b4a27d3fae788e9fbb",
+  "branch": "codex/atlas/20261002T081024Z-9aed6e564a3e4aa885621236fba1b73d",
+  "change_id": "scout-source-evidence-96e6f5ab-20261002",
+  "commit_sha": "96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-source-evidence-96e6f5ab-20261002",
+    "request_type": "source_review",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+    "summary": "Provide existing sanitized immutable evidence for the five shared helper/docs/test changes on source 96e6f5ab, base eb3f15c7, integrated as 8516a9b4: explicit owned operations, committed and tested working-byte SHA-256 values, full tested dependency fingerprints including non-code inputs, and check provenance. Distinguish source-branch checks from integration checks and explain CRLF/LF differences. Report missing evidence factually."
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_artifact_publish.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_cross_pc_core.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/artifact_publish.py",
+      "scope": "shared-source"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/core.py",
+      "scope": "shared-source"
+    }
+  ],
+  "integration_commit": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+  "limitations": [
+    "Incoming notice 20261002T082620Z-b7a7a82ea45b43bf81d16e8857784c59, manifest 0e3125e1f9f790e4c9ef3e8bfcfccf23437a2fce89c7917e14bfa3659f17cc28, names operations and test results but omits owned tested hashes and the full tested dependency map.",
+    "Please provide existing evidence for the source-branch and integration checks, including actual check times and saved output fingerprints where available. Broader regression times were reported unknown.",
+    "Return a supported response envelope with a distinct response request_id, in_reply_to scout-source-evidence-96e6f5ab-20261002, request_type source_review and the same source_commit. Keep the prior eb3f15c7 request identity and evidence separate.",
+    "The notice's last-fetched claim is outdated: local fetch preservation for main 99532621 was verified at the time above. This does not establish application installation or a loaded runtime version.",
+    "Historical machine-owned output payloads were not reviewed or imported. Shared-source tree comparison totals remain sender claims.",
+    "Only existing sanitized shareable source evidence is requested. Private values, private artifact contents and native task identities must remain local.",
+    "The received relay has no supported coordination envelope. The human has now directly requested the common-main publication workflow on Scout, including unique IDs and actor/symbol-scope metadata in commits. Local implementation is being reviewed separately; the currently installed pinned release remains 435ef241fbfa7b49b1e3e390a8e97bb62199847e."
+  ],
+  "observed_main": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "This evidence request changes no application source, installed helper, symbols, task settings or running process. Any adoption remains a separate reviewed action under local human authority.",
+  "scope": "Saved evidence request for five source files. Local static inspection verified source 96e6f5ab and main integration 8516a9b4 have the same tree. Exact source intake remains pending tested-byte and dependency evidence.",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/96e6f5abc67c8251776cdc59a71f90573f0d9af6",
+  "summary": "Scout requests saved tested-byte and dependency evidence for Atlas source 96e6f5ab; latest main 99532621 was already fetched with local source preservation verified.",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_cross_pc_core.py",
+        "tests/test_cross_pc_artifact_publish.py",
+        "-q"
+      ],
+      "completed_at_utc": "2026-10-02T08:15:38.38765Z",
+      "result": "77 passed",
+      "scope": "shared helper integration candidate",
+      "started_at_utc": "2026-10-02T08:14:34.258613Z",
+      "verification": "sender_claim"
+    },
+    {
+      "completed_at_utc": "unknown",
+      "result": "175 passed, 2 skipped",
+      "scope": "broader cross-PC offline regression",
+      "started_at_utc": "unknown",
+      "verification": "sender_claim"
+    },
+    {
+      "completed_at_utc": "2026-10-02T08:31:43.762087Z",
+      "result": "Before/after application HEAD, branch, index, dirty-file status and all 747 selected relevant source/configuration/private-preservation fingerprints matched. Verified origin/main 99532621.",
+      "scope": "ordinary non-recursive origin fetch preservation",
+      "verification": "local_observation"
+    },
+    {
+      "result": "No local candidate tests run.",
+      "scope": "source review tests",
+      "verification": "local_observation"
+    }
+  ]
+}

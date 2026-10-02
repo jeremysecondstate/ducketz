@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T08:50:37.154143Z",
+  "id": "20261002T085037Z-e8749005727948fea3762126ea22cef6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout requests saved tested-byte and dependency evidence for Atlas source 96e6f5ab; latest main 99532621 was already fetched with local source preservation verified."
+}
