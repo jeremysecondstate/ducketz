@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:42:15.561449Z",
+  "id": "20261002T054215Z-278d3a9ed84747a9afbe921de9524a5a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Three validated Atlas notices require coordination-envelope repair before automatic request correlation. Main selector evidence and the proposed owner-specific Gameplan identity design are preserved for review."
+}
