@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:48:08.818554Z",
+  "id": "20261002T054808Z-502488c84ade4060ae1ee4b5f60f573c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Adds a focused regression test for the existing accepted Paper rebalance threshold and its configuration guards; no application behavior changes."
+}

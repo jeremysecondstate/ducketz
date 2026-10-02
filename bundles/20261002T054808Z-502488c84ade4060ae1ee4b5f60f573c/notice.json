@@ -1,0 +1,31 @@
+{
+  "author": "Jeremy Klein (Git author); Atlas (authorized producer)",
+  "base_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "branch": "codex/atlas/20261002T051236Z-2684b53d4193489286e2b4a7c732049e",
+  "change_id": "paper-rebalance-threshold-regression:20261002T051236Z-2684b53d4193489286e2b4a7c732049e",
+  "commit_sha": "047f6ad665f1fc9b44866c75384cbb86878aa994",
+  "files": [
+    "tests/test_hyperliquid_paper_rebalance_threshold.py"
+  ],
+  "limitations": [
+    "One focused test was run; the full test suite was not run.",
+    "No application installation, runtime deployment, or peer source adoption is established."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Test-only source revision. No application runtime, Paper process, provider/broker access, trade, or account state was changed.",
+  "scope": {
+    "details": "Covers zero-delta threshold boundaries, minimum-notional, full exits, forced reductions, and existing Paper policy guards. Adds no policy, model, selector, or runtime code.",
+    "integration_pr": "https://github.com/jeremysecondstate/ducketz/pull/8",
+    "integration_pr_status": "Open draft PR against main at the verified base SHA.",
+    "kind": "test-only"
+  },
+  "summary": "Adds a focused regression test for the existing accepted Paper rebalance threshold and its configuration guards; no application behavior changes.",
+  "tests": {
+    "command": "pytest tests/test_hyperliquid_paper_rebalance_threshold.py -q -p no:cacheprovider",
+    "completed_at_utc": "2026-10-02T05:44:54.123576Z",
+    "isolated_reviewed_candidate": true,
+    "result": "1 passed",
+    "started_at_utc": "2026-10-02T05:44:53.088949Z"
+  },
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/047f6ad665f1fc9b44866c75384cbb86878aa994"
+}
