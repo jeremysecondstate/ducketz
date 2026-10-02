@@ -26,6 +26,18 @@ human also authorized reviewed completed logs, data, models and ledgers as
 machine-owned copies on public `main` after exact-byte and `.env` private-key
 scans through the separate artifact publisher. Do not put these in the
 shared-source completion queue.
+The shared-source queue scans each owned file and public commit text against
+this PC's `.env` private-key values, then checks them again before its own-branch
+push. A missing or malformed local `.env` blocks real publication.
+Completed output may originate under `artifacts/`, `data/`, `ml/`, or another
+reviewed repository-relative output path. The publisher retains the full
+relative path under `artifacts/<machine>/<completion-id>/` for inputs outside
+`artifacts/`; for existing `artifacts/...` inputs it preserves the established
+destination by removing that first component. It rejects `.env`, `.git`,
+`scratch`, credential/key paths, already-published machine namespaces, and
+different source paths that would collide at one destination. Each path still
+needs explicit ownership, completed stable bytes, a reviewed SHA-256, and the
+local private-value scan. The original live output stays in place.
 Review mixed JSON **by field**. A task writing a config does not make that whole
 file private. `cross-pc-backlog.md` records current field classifications and
 dependency gaps. Common model weights/thresholds are common behavior unless an

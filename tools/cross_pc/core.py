@@ -163,6 +163,22 @@ def public_commit_text(value, field):
     return value.strip()
 
 
+def source_private_values(profile):
+    """Use this PC's .env values to guard bytes destined for public Git refs."""
+    from . import artifact_publish
+
+    env = Path(profile["checkout"]) / ".env"
+    if profile.get("test_remote") is True and not env.exists():
+        return []
+    return artifact_publish._secret_values(env)
+
+
+def reject_source_private_values(raw, values):
+    from . import artifact_publish
+
+    artifact_publish._scan_bytes(raw, values)
+
+
 def safe_path(root, name):
     root = Path(root).resolve()
     target = root / relative(name)
@@ -345,6 +361,9 @@ def queue(profile, source, spec):
     if not isinstance(details, list) or len(details) > 12:
         raise ValueError("change_details must be a short reviewed list")
     details = [public_commit_text(item, "change detail") for item in details]
+    private_values = source_private_values(profile)
+    reject_source_private_values(encoded({"summary": summary, "runtime_implications": runtime_implications,
+                                          "limitations": limitations, "change_details": details}), private_values)
     base = spec["base_commit"]
     if not re.fullmatch("[0-9a-f]{40}", base) or git_text(source, "rev-parse", "HEAD") != base:
         raise ValueError("queue source must be at the reviewed base")
@@ -368,9 +387,14 @@ def queue(profile, source, spec):
     if any(sha is None and name not in deleted for name, sha in expected.items()):
         raise ValueError("missing dependency; incomplete publication record")
     record_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex
+    owned = {item["path"] for item in files}
     for name, sha in expected.items():
-        if sha is not None and store_blob(profile, safe_path(source, name).read_bytes()) != sha:
-            raise ValueError("source mutated while snapshotting")
+        if sha is not None:
+            raw = safe_path(source, name).read_bytes()
+            if name in owned:
+                reject_source_private_values(raw, private_values)
+            if store_blob(profile, raw) != sha:
+                raise ValueError("source mutated while snapshotting")
     tests = run_checks(source, spec["checks"], expected, Path(profile["evidence_root"]) / record_id)
     record = {"schema_version": 2, "contract_version": VERSION, "id": record_id, "actor": profile["actor"],
               "producer": spec["producer"], "base_commit": base, "source_root": str(Path(source).resolve()),
@@ -609,6 +633,11 @@ def publish_source(profile, record_id):
         if entry["source_stage"] not in {"validated", "committing", "committed", "pushed"}:
             raise ValueError("isolated validation required")
         verify_test_evidence(entry.get("isolated_tests"), record["fingerprints"])
+        private_values = source_private_values(profile)
+        for item in record["files"]:
+            if item["operation"] != "delete":
+                reject_source_private_values(blob_path(profile, record["fingerprints"][item["path"]]).read_bytes(), private_values)
+        reject_source_private_values(source_commit_message(record, entry["isolated_tests"]).encode("utf-8"), private_values)
         origin = git_text(root, "remote", "get-url", "origin")
         if origin not in {"https://github.com/jeremysecondstate/ducketz.git", "git@github.com:jeremysecondstate/ducketz.git"} and not profile.get("test_remote"):
             raise ValueError("unexpected origin")
