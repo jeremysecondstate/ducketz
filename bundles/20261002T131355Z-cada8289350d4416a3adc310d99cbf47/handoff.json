@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T13:13:55.397241Z",
+  "id": "20261002T131355Z-cada8289350d4416a3adc310d99cbf47",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Common main adds 36 pc-original artifact paths; Scout source and private configuration preserved during acquisition."
+}

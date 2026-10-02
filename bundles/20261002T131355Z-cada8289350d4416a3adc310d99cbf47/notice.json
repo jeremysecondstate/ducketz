@@ -1,0 +1,325 @@
+{
+  "author": "Jeremy Klein (Git author); observed by Scout/pc-new",
+  "branch": "main",
+  "change_id": "main-observation:jeremysecondstate/ducketz:7f7aa381eed966ddfd73a4efac361a195864a452",
+  "files": [
+    {
+      "bytes": 39613,
+      "git_blob": "d0609b0dceac40602063efdcb0d1ba10e84bef05",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/cadence-current.json",
+      "sha256": "1d2afbf89b78aafb3dade7b1220b6a11b94f018104c2d92b24835ca733fee251"
+    },
+    {
+      "bytes": 430,
+      "git_blob": "09b6a7a307b4378038f097c2275aae70573646ef",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/cross-pc-run-result.json",
+      "sha256": "41dfa8b8f265d2530d80699b201af21417f2b5b58b2ff719723656ed3bfe1728"
+    },
+    {
+      "bytes": 96938,
+      "git_blob": "de05efad0ff68aa88f9d1852989c90d122789bed",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archive-verification-inventory.json",
+      "sha256": "bdec38dd36c948963a812168bca4dd8438ab2acf86618bd96d53e42ba03e5c91"
+    },
+    {
+      "bytes": 307,
+      "git_blob": "cc2dfba3244baaab30d053d182ee3c8684bb564d",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archive-verification.json",
+      "sha256": "ada436f1358750782e5af68ea275c75c823a3e257e74feb0b277209f78b122f0"
+    },
+    {
+      "bytes": 237232,
+      "git_blob": "42d9cc39eb19f59e9a504e096635374116c586dd",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-decisions.parquet",
+      "sha256": "25bfe10eccf6318d02086601f4b84b0c1479e32f707d8329d92adfba43f3e108"
+    },
+    {
+      "bytes": 70918,
+      "git_blob": "0718065f4db838953e7841c887d1b93ba4a0ef0c",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-equity.parquet",
+      "sha256": "170cd0944bb6ec12a85433b133941bae2b0d393b73b81f23199e1b81d6bd17fb"
+    },
+    {
+      "bytes": 311116,
+      "git_blob": "0717ebd4e9f80f13ea2fe6adcce7faa0df91d49e",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-events.parquet",
+      "sha256": "32d80ae1311ab724b4758e73ca12c91a2a3fb9d60747bf0dee092a712cbdcafb"
+    },
+    {
+      "bytes": 9384,
+      "git_blob": "89479d08d4ca93e754f5b13d315d1e331f263121",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-experiment.json",
+      "sha256": "41b04f957c4ca519b31a30357b5d2bfe63bfeb4275444cc8536711e26aafccdb"
+    },
+    {
+      "bytes": 114354,
+      "git_blob": "f81acb7e55cd31da8637be18d83dc728cc43d587",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-fills.parquet",
+      "sha256": "608c97aca426e954a0f385903228bea0cfc941cd0e75ea28ca1b50c1ebcf033b"
+    },
+    {
+      "bytes": 8709,
+      "git_blob": "cb3e7a7d1d7c558008aac343c18db6aea25cd47c",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-funding.parquet",
+      "sha256": "f08176f368287cdcce6133288b2478cbd62e8ca3819ca0f6a9307b9940642ea7"
+    },
+    {
+      "bytes": 7635,
+      "git_blob": "e43363360543f577c1cae9a3e6b67fac17ab5cfc",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-initial-positions.parquet",
+      "sha256": "b5fb1292d0dd3e5dccd86da32747e0aac4e49c4bf57932211baaf0521dfa1232"
+    },
+    {
+      "bytes": 8265728,
+      "git_blob": "d1d1cf8d986d27a718b7d246bf9db749ede29986",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-ledger.sqlite3",
+      "sha256": "553ceec7245e02f4f3125f8bbb134ab2549537726c687b30481243c289c6c4e8"
+    },
+    {
+      "bytes": 32768,
+      "git_blob": "fe9ac2845eca6fe6da8a63cd096d9cf9e24ece10",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-ledger.sqlite3-shm",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+    },
+    {
+      "bytes": 0,
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-ledger.sqlite3-wal",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 134038,
+      "git_blob": "3c8dbf882defdf96a53f55782e3cfe9bfcb5ab88",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-model-runtime.log",
+      "sha256": "d0a28715c5bf18bdf109d2718ae7fc33a7b2a5d57c342686e5ace544f27b9f71"
+    },
+    {
+      "bytes": 202429,
+      "git_blob": "86578a0d3a68afc23c0479f81e9bda34b3c9f2c5",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-model-training-events.jsonl",
+      "sha256": "75d9a3c31bcc0ad527d5e9368550484ae114c94e46f68a9f241b22b8c79262f9"
+    },
+    {
+      "bytes": 11074,
+      "git_blob": "b6e55b4cb2b4366b0e9aecea1b2c3ae1c7ef8af2",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-opening-snapshot.json",
+      "sha256": "95a183c77e4ef28efacf46079efb1b8cec7544a4c3ab0fa31ab7d00895c08beb"
+    },
+    {
+      "bytes": 12741,
+      "git_blob": "71c23e50100b04c4be22d23c82599cb7a57ceb0f",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-paper-runtime.log",
+      "sha256": "5d673dd5ba8ac0415056aa16a1750b4396140c777c0a7694f01bec32238bce45"
+    },
+    {
+      "bytes": 12992,
+      "git_blob": "b486c1c84f5dfc903e59883ee85772b1fcaa4bfe",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-performance.json",
+      "sha256": "6478752da63e155d888a1ac53c555bac676d2efa7cbf747c5fc3f37be9bad06e"
+    },
+    {
+      "bytes": 1188,
+      "git_blob": "6cdccea7a766b578fcc8d4d4bb8d9269186e83b3",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-policy.json",
+      "sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1"
+    },
+    {
+      "bytes": 4040,
+      "git_blob": "f7bdc854cf03f968f28e0d38d81dffac0910fb28",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-archived-transfers.parquet",
+      "sha256": "e3a72ad968add80387da2e21356c5506013dbf55e8fd36970ff8b97c8bc52f24"
+    },
+    {
+      "bytes": 14286,
+      "git_blob": "eaa8420bc09e683d3a6f8fa568a9d7d2d35c3540",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-audit.json",
+      "sha256": "b608078e39437d7f09b4f32f387700a0ce6b7559905e0a8fc0e851812610f833"
+    },
+    {
+      "bytes": 5558,
+      "git_blob": "99f03618ee830a7d4b990fdb18fd946c1a501ace",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-audit.md",
+      "sha256": "05a98a94a7046271fad96b7887d5f917c96d0af7071cc6b816e628469a643e48"
+    },
+    {
+      "bytes": 2676,
+      "git_blob": "6fddca66194fc40821bf1fc68ebfdce1e9914645",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-cadence-assessment.json",
+      "sha256": "cf68d6c14905970498739d4841fe5afce158e7abbb921d18244f11f48eb2fb15"
+    },
+    {
+      "bytes": 1893073,
+      "git_blob": "8e396bbd1a11e980aae9570f062969ed9a2db50d",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round45-closing-comparison.json",
+      "sha256": "1e2a95884fa07e93193124c31ce6b8ed52ae2ebe00019eb06cd7d83d20114aa5"
+    },
+    {
+      "bytes": 30491,
+      "git_blob": "ec9c8ee95e773b42f9b4205431e1d16f2bc378cd",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-advancing-health.json",
+      "sha256": "01013d8a8f8db36510ba837baf620063b0d1d250851efcd97e13b20dbab52c4b"
+    },
+    {
+      "bytes": 31865,
+      "git_blob": "a66f95f2fbdbc6858d8997a1c6893bc5c417d5b8",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-closeout-health.json",
+      "sha256": "28ed2165097d711ade4a5913582a512b8bcdfb6e97efbba65d60c8714c95cb7f"
+    },
+    {
+      "bytes": 9398,
+      "git_blob": "8cb3932e8cd3681c55813eeebbf4891bbe027595",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-deployment.json",
+      "sha256": "020f7d2d4dc33d27a8f39cb8cf698a5d8f94b1060d58ff85f4a023ec8002b4c9"
+    },
+    {
+      "bytes": 32365,
+      "git_blob": "37c03e72008a1dc2b65386a15fa06eb6b718e009",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-final-health.json",
+      "sha256": "49bc9102ce68f6c5ba4cf7da17e8cdd67a577f1298f1c2e5c5cdbe086eca6bbd"
+    },
+    {
+      "bytes": 25679,
+      "git_blob": "830c8db795ca436bbf0a36b78c138b728edeaa7c",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-first-cycle-verification.json",
+      "sha256": "fafbc09b5c417647abecf98ad9640c2fc7cb04dcacfd44c3c98c914c2f293b38"
+    },
+    {
+      "bytes": 29089,
+      "git_blob": "039291c991f8a5cb80fadb57072f22a9749bb400",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-first-health.json",
+      "sha256": "0a0435e1c1da3f4a852b53270828c0491da2c8c73c49a6d722cd3e1f3d94bd5e"
+    },
+    {
+      "bytes": 23785,
+      "git_blob": "bbd82869a508d22eb27c0ee3b8cc8bb5bc4454cc",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-independent-opening-verification.json",
+      "sha256": "e83124bb2ed7244db7fcb1a5d13ede17b4d7aef97917dd8331fc76f775fc503d"
+    },
+    {
+      "bytes": 12755,
+      "git_blob": "0b1d03026c99aba9de7e7a72fd067f0315395312",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-opening-public-account-reads.json",
+      "sha256": "c396177f2fa927de68cbbb5772506dbad3746d0b5b2dc5558f41547a36f1967f"
+    },
+    {
+      "bytes": 1411,
+      "git_blob": "e56bebd281e7ca23be407c4b0525027cf5edb505",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-opening-verification.json",
+      "sha256": "813b25423a845bfff0d657dcd0d9735d87ace0fb61dc89cf14f56191b2ae7004"
+    },
+    {
+      "bytes": 16757,
+      "git_blob": "7056e0941562869295dbd3f7725b9a582e7b3316",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/analysis/hyperliquid-paper-improvement/20261002-round45-46/round46-operation.json",
+      "sha256": "7c5a0038dae42a7e350fe1dfcdb2b93a79bd519d5164ec1badb590b0426bf9b4"
+    },
+    {
+      "bytes": 37440,
+      "git_blob": "d22eeba60c800b0b0a00107a3b8ce5f1d6d69965",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T130128Z-27fde6ce/artifact-manifest.json",
+      "sha256": "f9c7987f55fd811cf4a233711f37f13b20cb066c20876c153d61fe65d1932f2c"
+    }
+  ],
+  "limitations": [
+    "The path inventory includes a ledger database, parquet data, account-read results and runtime/training logs. This is a metadata and byte-integrity observation; it does not establish sanitized-export eligibility or local authority to use those payloads.",
+    "No artifact bodies were interpreted, no application checks were run and no peer runtime state was verified.",
+    "Scout application remains on clean main 9795e96da25962e1dbb931634158d81f12973a96. The earlier Gameplan source repair remains subject to its separate owner-managed installation boundary."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/7f7aa381eed966ddfd73a4efac361a195864a452"
+  ],
+  "observed_at_utc": "2026-10-02T13:13:07.750830Z",
+  "parent_commit": "cb133c309a074a9c3cf2004a756cadfc914da1e3",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source objects acquired only. No checkout fast-forward, local-output overwrite, application installation or runtime deployment performed.",
+  "scope": "Peer outputs confined to artifacts/pc-original/20261002T130128Z-27fde6ce; no shared source or configuration delta from parent cb133c309a074a9c3cf2004a756cadfc914da1e3.",
+  "source_commit": "7f7aa381eed966ddfd73a4efac361a195864a452",
+  "summary": "Common main adds 36 pc-original artifact paths; Scout source and private configuration preserved during acquisition.",
+  "tests": [
+    {
+      "at_utc": "2026-10-02T13:11:56.504836Z",
+      "kind": "observer verification",
+      "result": "Exact commit and complete 36-path addition inventory verified; all blob SHA-256 values recorded. All 35 original-byte hashes and sizes stated in the commit metadata match acquired blobs."
+    },
+    {
+      "kind": "preservation check",
+      "result": "One ordinary origin fetch left Scout application HEAD, branch, clean tracked/untracked status, index, local symbol selector and all 1099 captured file fingerprints unchanged."
+    },
+    {
+      "kind": "producer validation",
+      "result": "Unknown to this observer. Commit metadata claims a Round 45 audit and Round 46 Paper handoff, with completion time 2026-10-02T13:01:28.186463Z. Native validations were not independently reviewed or rerun."
+    }
+  ]
+}
