@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T08:59:06.565260Z",
+  "id": "20261002T085906Z-47fa966628be41e1bd0d437e2d9dbe41",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas Paper producer published Round 43 closeout and Round 44 handoff as 20 machine-owned artifact paths on main; common application source is unchanged."
+}

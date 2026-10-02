@@ -1,0 +1,155 @@
+{
+  "actor": "Atlas",
+  "author": "Jeremy Klein",
+  "branch": "main",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "source-observation:8474524d9461b9e97221262067a6cff6736258d1",
+  "commit_sha": "8474524d9461b9e97221262067a6cff6736258d1",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/8474524d9461b9e97221262067a6cff6736258d1",
+  "committed_at_utc": "2026-10-02T01:51:24-07:00",
+  "files": [
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-archive-reverification.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "24e8b922ec5a0978f13df6fc052c17983f916ea2ccf94787a74f3a7ae2cc4aa5"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-archived-paper-experiment.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "1a9bf20565dee6c5029d4b6f7af581ed7797599f52ac6cac1c60854cfbfc1ab2"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-archived-paper-ledger.sqlite3.gz",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "5adfaa04f47741eaabe8fb6e4b8032d0fc7e41d7719002d810d4f7fe2d36f180"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-archived-paper-performance.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "aff979cc46449f9cb23b24556daa4cf9b1f131da13767c825d9b90907485615c"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-archived-paper-policy.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-archived-paper-runtime-status.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "6cdedcd78c6fc6a25ea10a50069891f2b6cc3e9bf373776a5f3913744c9b7354"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-audit.md",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "d20f87874a7a741cb9c55574e258f5c198a24d50ce3624efa3f7da996777abae"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-cadence-assessment.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "cb35ac15e5ecec7f16a5cba7dd790359013410acf521f5eebefe73566bfb7d46"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-closeout.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "470f2fb65d3186fa73e6fe553df8e1cf5d16ce45f0f7b144e887d15395634956"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round43-native-comparison.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "0ba2afca666dbe06b015ecddf9860a260ebb9553d4d7b9672cbb619f5075f8b5"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-advancing-health.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "2658351ea583230109365e9e88210e9cf9c0daabfd1b4e48e44f2cb22e32e897"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-first-cycle-verification.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "815317ec0e8a83d0661ab93e675fa321ce046255cf11e458569940d539ca9b36"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-handoff-health.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "e14de902bafabda89f77525c739131a532391ab5644a8c56f37b972d8a435140"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-handoff.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "bbe19c9a8827a0c218134e1bb1a0a1f7a26b432796abd950851a62bfcf0132a1"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-opening-verification.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "ebf9706ebdd2d202d68c0630119529a2e401ea847516204cb1caaa6e4a1fdc27"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-post-completion-health.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "51150651a00c89b7f5789c9fb26040d575f35f1f6d97e1bdd52a2b7a3ed2f5d2"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-prepared-forecast-verification.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "5a4633f1d1430e5fa00685b9928403c2e6ba6831d5d5c38c4d6abd71f05ef9e0"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-public-opening-reads.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "450c1665455d6d320daf657f424ab31a63c5590a01828e3d0e801192620ed795"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/analysis/20261002T083350Z-paper-round43-44-2d8def2e58fd/round44-schedule-handoff.json",
+      "scope": "Atlas-only operating output copy",
+      "sha256": "a0408ecaa52db262075ad43f0491d972dd7df8ca12a111a77745dde9182cdfca"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T083350Z-paper-round43-44-2d8def2e58fd/artifact-manifest.json",
+      "scope": "Atlas-only output manifest",
+      "sha256": "5231ae7cbe4ca26d0dc06d7cbb3eec7fc78c217879255125a8dd810428e12071"
+    }
+  ],
+  "limitations": [
+    "Operating health and round outcomes in the producer commit are dated producer observations, not newly run checks by this courier.",
+    "This courier verified the completed publication receipt and exact published blob hashes; it did not read private originals or repeat the publisher credential-value scan.",
+    "Scout installation, local source parity and loaded runtime remain unverified."
+  ],
+  "parent_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "producer": "hyperliquid-paper-improvement",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Artifact copies are available on main. Atlas application checkout remains at 99532621db0d42dfe8c655300cc93abda81240d5 because six relevant local processes are active and exclusive writer/runtime absence is unverified. No checkout replacement, restart, deployment, broker/provider or trading action was performed by this courier.",
+  "scope": "Atlas-only completed operating artifacts under pc-original; no common source or peer live symbol/configuration changes.",
+  "summary": "Atlas Paper producer published Round 43 closeout and Round 44 handoff as 20 machine-owned artifact paths on main; common application source is unchanged.",
+  "tests": [
+    {
+      "application_tests": "not rerun; no application source changed",
+      "artifact_manifest_sha256": "5231ae7cbe4ca26d0dc06d7cbb3eec7fc78c217879255125a8dd810428e12071",
+      "completed_at_utc": "2026-10-02T08:59:06.494295Z",
+      "method": "Git show of exact committed blobs followed by SHA-256 and size comparison to the saved publisher receipt.",
+      "producer_completion_at_utc": "2026-10-02T08:50:52.217556Z",
+      "producer_push_verified_at_utc": "2026-10-02T08:51:29.052578Z",
+      "result": "19 payload Git blobs and the artifact manifest match the saved completed artifact-publisher receipt; all 20 add operations verified.",
+      "started_at_utc": "2026-10-02T08:59:05.850337Z"
+    }
+  ]
+}
