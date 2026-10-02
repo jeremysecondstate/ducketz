@@ -471,6 +471,17 @@ not be described as automatically blocking that policy's trades. Legacy readers
 retain their promotion requirements. This section describes the implemented publication contract;
 completion of any generation still requires its own verified native receipt.
 
+The publisher can explicitly save `NO_EDGE` with
+`model_status=RESEARCH_NO_TARGET_HISTORY` while retaining the calculated
+probability. Execution honors that abstention when the saved fitted-history
+counts are valid and show zero symbol or route support. It omits that row from
+trade signals and leaves the frozen forecast unchanged. Other direction and
+probability contradictions remain errors. Manual-policy startup preflight checks
+all saved execution slots with the same validator used by the signal reader,
+including duplicate allocations and abstention evidence. A no-signal cycle does
+not prove broker recovery: an existing degraded incident still requires a later
+successful worker broker capture and no subsequent failure.
+
 The user can manually launch [`Start-Gameplan-Trader.cmd`](../../Start-Gameplan-Trader.cmd)
 once to enable both stock controls and start this policy. Before its supported
 04:00 Pacific opening, `--wait-for-open` keeps the worker asleep with its process
