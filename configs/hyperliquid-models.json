@@ -15,7 +15,7 @@
   "assessment_fraction": 0.15,
   "max_train_rows": null,
   "max_model_age_seconds": 86400,
-  "calibration_c": 0.0465,
+  "calibration_c": 0.04,
   "logistic_weight": 0.4,
   "extra_trees_weight": 0.1,
   "hist_gradient_boosting_weight": 0.1875,
