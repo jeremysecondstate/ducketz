@@ -6,54 +6,7 @@ from pathlib import Path
 import re
 
 from . import VERSION
-from .core import digest, encoded, git, git_text, parse, relative, safe_path, validate_profile
-
-
-_SOURCE_ROOTS = {
-    "app", "ml", "tests", "configs", "config", "tools", "coordination", "signals",
-    "technicals", "fundamentals", "options", "datafetching", "docs", "scripts",
-    "benchmarks", ".github",
-}
-_PRIVATE_PARTS = {
-    ".git", ".codex", ".venv", "scratch", "artifacts", "tmp", "temp", "data",
-    "datastore", "state", "runtime-state", "logs", "receipts", "ledgers", "journals",
-    "raw", "cache", "__pycache__", "credentials", "secrets", "_operations", "_paper", "_powder",
-}
-_PRIVATE_SUFFIXES = {
-    ".db", ".sqlite", ".sqlite3", ".parquet", ".pkl", ".pickle", ".joblib", ".pem",
-    ".key", ".pyc", ".pyo", ".feather", ".arrow", ".h5", ".hdf5", ".onnx", ".pt", ".pth",
-}
-
-
-def shared_source_path(name):
-    """Known shared roots/manifests, with private runtime/data paths excluded."""
-    relative(name)
-    parts = name.lower().split("/")
-    filename = parts[-1]
-    if set(parts) & _PRIVATE_PARTS or any(
-        part == "runs" or part.endswith(("-runs", "-latest")) for part in parts[:-1]
-    ):
-        return False
-    if Path(filename).suffix in _PRIVATE_SUFFIXES or filename == ".env" or filename.startswith(".env.") and filename != ".env.example":
-        return False
-    if filename.endswith(".lock") and not (len(parts) == 1 and (
-        filename in {"uv.lock", "poetry.lock", "pdm.lock", "yarn.lock", "bun.lock", "pipfile.lock", "cargo.lock"}
-        or filename.startswith("requirements")
-    )):
-        return False
-    if Path(filename).suffix in {".json", ".jsonl", ".yaml", ".yml", ".toml"} and re.match(
-        r"(?:credentials?|secrets?|wallet|account[-_]state|balances?|holdings|ledger|receipts?|auth)(?:[._-]|$)", filename
-    ):
-        return False
-    if len(parts) > 1:
-        return parts[0] in _SOURCE_ROOTS
-    return (Path(filename).suffix in {".md", ".rst", ".py", ".ps1", ".cmd", ".bat"}
-            or filename in {".gitignore", ".gitattributes", ".env.example", "pyproject.toml",
-                            "setup.cfg", "tox.ini", "pytest.ini", "package.json", "package-lock.json",
-                            "pnpm-lock.yaml", "uv.lock", "poetry.lock", "pdm.lock", "yarn.lock", "bun.lock",
-                            "environment.yml", "environment.yaml", "pipfile", "pipfile.lock", "dockerfile",
-                            "makefile", "cargo.toml", "cargo.lock"}
-            or filename.startswith("requirements") and filename.endswith((".txt", ".in", ".lock")))
+from .core import digest, encoded, git, git_text, parse, safe_path, shared_source_path, validate_profile
 
 
 def _git_names(root, *args):

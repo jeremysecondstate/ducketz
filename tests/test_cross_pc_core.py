@@ -230,10 +230,37 @@ def test_failed_check_does_not_queue_ready_record(setup):
     assert not core.state(profile)["records"]
 
 
-@pytest.mark.parametrize("name", ["../x", "a/../../x", "C:/secret", "a\\b", ".git/config", ".env", "data/run.json", "a/CON.txt"])
+@pytest.mark.parametrize("name", [
+    "../x", "a/../../x", "C:/secret", "a\\b", ".git/config", ".env",
+    "data/run.json", "a/CON.txt", "artifacts/analysis/overnight-20261001/verification/audit_environment.py",
+    "artifacts/analysis/overnight-20261001/provider-warning/latest.json",
+    "tmp/analysis.py", "ml/runs/20261001/report.json", "app/runtime-state/session.py",
+    "configs/account-state.json", "ml/_paper/weights.py",
+])
 def test_private_and_escaping_paths_rejected(name):
     with pytest.raises(ValueError):
         core.shareable(name)
+
+
+@pytest.mark.parametrize("name", ["app/ui/gameplan.py", "ml/nightly_gameplan.py",
+                                      "configs/hyperliquid-paper.json", "tests/test_stock_only_gameplan.py",
+                                      "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md", ".gitignore"])
+def test_shared_source_paths_remain_queueable(name):
+    assert core.shareable(name) == name
+    assert drift.shared_source_path(name)
+
+
+def test_queue_rejects_overnight_artifact_before_sealing(setup):
+    root, profile, spec = setup
+    name = "artifacts/analysis/overnight-20261001/verification/audit_environment.py"
+    path = root / name
+    path.parent.mkdir(parents=True)
+    path.write_text("print('local evidence')\n")
+    spec["files"].append({"path": name, "operation": "add", "owned": True})
+    with pytest.raises(ValueError, match="local/private path"):
+        core.queue(profile, root, spec)
+    assert not core.state(profile)["records"]
+    assert not Path(profile["snapshot_root"]).exists()
 
 
 def test_explicit_deletion_intent(setup):
