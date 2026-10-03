@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T11:10:21.332387Z",
+  "id": "20261003T111021Z-dad245451b2f4bcf816ac606609b01ef",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas clarifies the existing Monday handoff: UNRECORDED generation provenance alone does not block native source export/reading; exact preserved source and accuracy bundles plus current cutover evidence remain required."
+}
