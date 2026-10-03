@@ -68,6 +68,15 @@ def scored_active(cadence, duration=2):
     return state['active']
 
 
+def set_rule(cadence, version):
+    state = cadence.state()
+    state['cadence_rule_version'] = version
+    state['active']['cadence_rule_version'] = version
+    state['policy'] = module.policy(version)
+    write(cadence.state_path, state)
+    return state
+
+
 def comparison(active, edge=10., offset=30):
     due = module.stamp(active['due_at_utc'])
     observed = due+timedelta(seconds=offset)
@@ -135,20 +144,37 @@ def test_bootstrap_is_unscored_preserves_live_opening_and_is_idempotent(cadence)
     before=(cadence.root/'_paper/opening_snapshot.json').read_bytes()
     first=cadence.status();second=cadence.init()
     assert first==second and first['active']['carry_in_unscored'] is True
-    assert first['cadence_rule_version'] == first['active']['cadence_rule_version'] == module.CURRENT_RULE
+    assert first['cadence_rule_version'] == first['active']['cadence_rule_version'] == module.LATEST_RULE
     assert first['next_due_at_utc']=='2026-09-29T04:00:00+00:00'
     assert before==(cadence.root/'_paper/opening_snapshot.json').read_bytes()
     decision=module.classify(first['active'],comparison(first['active'],offset=3600))
     assert decision['outcome']=='carry_in_unscored' and decision['next_evaluation_hours']==2
 
 
-@pytest.mark.parametrize('duration,edge,outcome,next_hours', [(1,10,'win',2),(2,10,'win',3),(3,10,'win',4),
-    (4,-10,'loss',2),(3,-10,'loss',1),(2,-10,'loss',1),(1,-10,'loss',1),
-    (4,0,'tie',4),(1,0,'tie',1),(8,-1,'loss',6)])
-def test_one_step_forward_two_back_ladder(cadence,duration,edge,outcome,next_hours):
+@pytest.mark.parametrize('duration,edge,outcome,next_hours', [(2,10,'win',3),(3,10,'win',4),
+    (4,-10,'loss',3),(3,-10,'loss',2),(2,-10,'loss',2),
+    (4,0,'tie',4),(2,0,'tie',2),(8,-1,'loss',7)])
+def test_one_step_forward_one_back_two_hour_floor_ladder(cadence,duration,edge,outcome,next_hours):
     active=scored_active(cadence,duration)
     result=module.classify(active,comparison(active,edge=edge))
     assert result['outcome']==outcome and result['next_evaluation_hours']==next_hours
+
+
+@pytest.mark.parametrize('duration,edge,next_duration', [(4,-10,2),(3,-10,1),(2,-10,1),(1,-10,1),(1,10,2)])
+def test_historical_v2_ladder_remains_immutable(cadence,duration,edge,next_duration):
+    active = scored_active(cadence, 2).copy()
+    active['cadence_rule_version'] = module.CURRENT_RULE
+    active['evaluation_hours'] = duration
+    active['due_at_utc'] = (module.stamp(active['seed_at_utc']) + timedelta(hours=duration)).isoformat()
+    assert module.classify(active, comparison(active, edge=edge))['next_evaluation_hours'] == next_duration
+
+
+def test_two_hour_floor_rule_rejects_one_hour_active(cadence):
+    active = scored_active(cadence, 2).copy()
+    active['evaluation_hours'] = 1
+    active['due_at_utc'] = (module.stamp(active['seed_at_utc']) + timedelta(hours=1)).isoformat()
+    with pytest.raises(ValueError, match='Two-hour-floor cadence'):
+        module.classify(active, comparison(active, edge=-1))
 
 
 @pytest.mark.parametrize('problem', ['missing', 'zero', 'unqualified', 'nan', 'bool_probability',
@@ -201,7 +227,7 @@ def test_valid_qualified_abstention_allows_win_but_loss_and_tie_do_not_require_i
     active['win_forecast_rule'] = proof.WIN_FORECAST_RULE
     value = comparison(active)
     assert module.classify(active, value)['outcome'] == 'win'
-    for edge, outcome, duration in [(-10, 'loss', 2), (0, 'tie', 4)]:
+    for edge, outcome, duration in [(-10, 'loss', 3), (0, 'tie', 4)]:
         value = comparison(active, edge=edge)
         del value['paper']['forecast_evidence']
         result = module.classify(active, value)
@@ -403,6 +429,7 @@ def legacy_state(cadence):
 
 @pytest.fixture
 def consumed_legacy_loss(cadence, monkeypatch):
+    set_rule(cadence, module.CURRENT_RULE)
     scored_active(cadence, 4)
     active = legacy_state(cadence)['active']
     path = save_comparison(cadence, comparison(active, edge=-10))
@@ -480,6 +507,116 @@ def test_adopted_policy_scores_and_advances_four_to_two_to_one(consumed_legacy_l
     active = result['active']
     assert module.classify(active, comparison(active, edge=-10))['next_evaluation_hours'] == 1
     assert module.classify(active, comparison(active, edge=10))['next_evaluation_hours'] == 2
+
+
+def pending_v2_successor(cadence, edge=-10.):
+    set_rule(cadence, module.CURRENT_RULE)
+    active = scored_active(cadence, 1)
+    assessment = cadence.assess(save_comparison(cadence, comparison(active, edge=edge)))
+    assessment_path = cadence.path(assessment['pending_assessment']['path'])
+    native_baseline(cadence.root, 'run-2', '2026-09-29T04:10:00+00:00', supersedes='run-1')
+    return assessment, assessment_path
+
+
+def test_advance_adopts_two_hour_floor_prospectively_and_idempotently(cadence, monkeypatch):
+    assessment, assessment_path = pending_v2_successor(cadence)
+    before_assessment = assessment_path.read_bytes()
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T04:11:00+00:00')
+    result = cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1',
+                             expected_active_id='run-2')
+    assert result['policy_amendment']
+    assert result['cadence_rule_version'] == module.TWO_HOUR_FLOOR_RULE
+    assert result['current_evaluation_hours'] == 2
+    assert result['active']['seed_at_utc'] == '2026-09-29T04:10:00+00:00'
+    assert result['next_due_at_utc'] == '2026-09-29T06:10:00+00:00'
+    assert cadence.state()['history'][-1]['decision'] == assessment['decision']
+    assert assessment_path.read_bytes() == before_assessment
+    assert module.classify(result['active'], comparison(result['active'], edge=-10))['next_evaluation_hours'] == 2
+    assert module.classify(result['active'], comparison(result['active'], edge=10))['next_evaluation_hours'] == 3
+    assert result == cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1',
+                                     expected_active_id='run-2')
+
+
+@pytest.mark.parametrize('ending,active', [('other', 'run-2'), ('run-1', 'other')])
+def test_two_hour_floor_transition_rejects_wrong_identity_without_writes(cadence, monkeypatch, ending, active):
+    pending_v2_successor(cadence)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T04:11:00+00:00')
+    before = cadence.state_path.read_bytes()
+    with pytest.raises(ValueError, match='Expected identities'):
+        cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id=ending, expected_active_id=active)
+    assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
+
+
+def test_two_hour_floor_transition_rejects_a_late_successor(cadence, monkeypatch):
+    pending_v2_successor(cadence)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T05:10:00+00:00')
+    before = cadence.state_path.read_bytes()
+    with pytest.raises(ValueError, match='Existing successor deadline is already due'):
+        cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1', expected_active_id='run-2')
+    assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
+
+
+def test_two_hour_floor_transition_honors_paper_review_owner(cadence, monkeypatch):
+    pending_v2_successor(cadence)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T04:11:00+00:00')
+    before = cadence.state_path.read_bytes()
+    with FileLock(str(cadence.operations / '.paper-review.lock'), timeout=0):
+        with pytest.raises(Timeout):
+            cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1', expected_active_id='run-2')
+    assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
+
+
+def test_two_hour_floor_transition_recovers_receipt_first_interruption(cadence, monkeypatch):
+    pending_v2_successor(cadence)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T04:11:00+00:00')
+    before = cadence.state_path.read_bytes()
+    original = module.write_json
+
+    def interrupted(path, value, **kwargs):
+        if path == cadence.state_path:
+            raise OSError('interrupted')
+        return original(path, value, **kwargs)
+
+    monkeypatch.setattr(module, 'write_json', interrupted)
+    with pytest.raises(OSError, match='interrupted'):
+        cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1', expected_active_id='run-2')
+    receipt = next(cadence.amendments.glob('*.json'))
+    immutable = receipt.read_bytes()
+    assert cadence.state_path.read_bytes() == before
+    monkeypatch.setattr(module, 'write_json', original)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T05:11:00+00:00')
+    result = cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1', expected_active_id='run-2')
+    assert result['current_evaluation_hours'] == 2 and receipt.read_bytes() == immutable
+
+
+def test_two_hour_floor_transition_receipt_tampering_is_detected(cadence, monkeypatch):
+    pending_v2_successor(cadence)
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T04:11:00+00:00')
+    result = cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-1', expected_active_id='run-2')
+    path = cadence.path(result['policy_amendment']['path'])
+    receipt = review.read_json(path)
+    receipt['after_active']['evaluation_hours'] = 1
+    write(path, receipt)
+    with pytest.raises(ValueError, match='amendment changed'):
+        cadence.status()
+
+
+def test_two_hour_floor_transition_preserves_historical_v2_amendment(consumed_legacy_loss, monkeypatch):
+    cadence = consumed_legacy_loss
+    v2 = adopt(cadence)
+    original_reference = v2['policy_amendment']
+    original_receipt = cadence.path(original_reference['path']).read_bytes()
+    active = cadence.state()['active']
+    assessment = cadence.assess(save_comparison(cadence, comparison(active, edge=-10), 'v2-closing.json'))
+    native_baseline(cadence.root, 'run-3', '2026-09-29T08:20:00+00:00', supersedes='run-2')
+    monkeypatch.setattr(module, 'utc', lambda: '2026-09-29T08:21:00+00:00')
+    result = cadence.advance(change_id='two-hour-floor-20261003', expected_ending_id='run-2', expected_active_id='run-3')
+    state = cadence.state()
+    assert result['cadence_rule_version'] == module.TWO_HOUR_FLOOR_RULE
+    assert state['policy_amendments'][0] == original_reference
+    assert cadence.path(original_reference['path']).read_bytes() == original_receipt
+    assert len(state['policy_amendments']) == 2
+    assert state['history'][-1]['decision'] == assessment['decision']
 
 
 def test_policy_amendment_receipt_first_interruption_recovers_once(consumed_legacy_loss, monkeypatch):
@@ -612,8 +749,8 @@ def test_rehashed_false_assessment_decision_cannot_authorize_amendment(consumed_
     assert cadence.state_path.read_bytes() == before and not cadence.amendments.exists()
 
 
-@pytest.mark.parametrize('duration', [1, 2, 4])
-def test_ties_and_unscored_results_hold_under_new_rule(cadence, duration):
+@pytest.mark.parametrize('duration', [2, 4])
+def test_ties_and_unscored_results_hold_under_two_hour_floor_rule(cadence, duration):
     active = scored_active(cadence, duration)
     assert module.classify(active, comparison(active, edge=0))['next_evaluation_hours'] == duration
     assert module.classify(active, comparison(active, offset=301))['next_evaluation_hours'] == duration

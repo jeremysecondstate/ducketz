@@ -3,6 +3,18 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-10-02 — Two-hour Paper cadence floor
+
+The user changed future Paper Improvement rounds to one step forward and one
+step back: a verified WIN adds one hour, a verified LOSS subtracts one hour, and
+the minimum is two hours. Ties and unscored outcomes retain the committed
+duration. Rule `win-plus-one-loss-minus-one-floor-two-v3` preserves all v1/v2
+assessments and the consumed September 29 amendment; it does not reinterpret an
+active v2 round. A receipt-backed transition during native `advance` verifies
+the ending v2 assessment and fresh successor, then clamps the successor to two
+hours before the app is reanchored. The Paper task uses GPT-6 Luna / Max; the
+separate Operations Watch remains 30-minute, Luna/xhigh, and observational.
+
 ## 2026-09-29 — One step forward, two steps back
 
 The user changed Paper Improvement to add one hour after a verified WIN and

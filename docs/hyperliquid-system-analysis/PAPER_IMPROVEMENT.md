@@ -1,6 +1,6 @@
 # HYPER Paper improvement cycle
 
-Operating contract: **2026-09-30 / v5**.
+Operating contract: **2026-10-02 / v6**.
 
 ## September 30 user-directed exploratory Paper policy
 
@@ -37,7 +37,8 @@ policy change is the improvement for its transition; no extra model retune is
 required simply because the closing strict-policy round loses or ties.
 
 The user authorized an independent **Hyperliquid Paper Improvement** Scheduled
-task using **GPT-6 Astra / Ultra**, initially every three days and subsequently
+task using **GPT-6 Luna / Max**. The earlier Astra / Ultra setup is historical;
+the task was initially every three days and subsequently
 changed on September 28 to **two-hour competitive rounds with an adaptive
 interval**. It evaluates Paper against the same actual accounts shown
 in Hyperliquid Duckets, improves underperforming models, preserves the completed
@@ -76,35 +77,28 @@ unrelated changes, historical archives, and the healthy data coordinator.
 
 The former three-day schedule and 60-hour minimum are superseded. Read
 `_operations/paper-improvement-cadence.json` for the active round's committed
-experiment identity, seed, duration and due time. The September 29 user rule is
-**one step forward, two steps back**: a verified **WIN adds exactly one hour**
-to the next round; a verified **LOSS subtracts exactly two hours, with a
-one-hour minimum**. Thus losses take 4 → 2 → 1 hours; a loss at one hour stays
-at one hour, and a win at one hour advances to two hours. The original ladder
-started at two hours. A **TIE keeps the duration**. An unavailable, late or
-carry-in result is explicitly **UNSCORED and keeps the duration**; it cannot
-promote or incur a loss penalty. Losses and ties still require evidence-backed
-improvement. Use `ml.hyperliquid_paper_cadence` to assess and advance the durable
-scorecard; never hand-edit history or infer an outcome from a green total.
+experiment identity, seed, duration and due time. The October 2 user rule is
+**one step forward, one step back with a two-hour floor**: a verified **WIN adds
+exactly one hour** to the next round; a verified **LOSS subtracts exactly one
+hour, never below two hours**. Thus losses take 4 → 3 → 2 hours; a loss at two
+hours stays at two hours, and a win at two hours advances to three hours. A
+**TIE keeps the duration**. An unavailable, late or carry-in result is explicitly
+**UNSCORED and keeps the duration**; it cannot promote or incur a loss penalty.
+Losses and ties still require evidence-backed improvement. Use
+`ml.hyperliquid_paper_cadence` to assess and advance the durable scorecard; never
+hand-edit history or infer an outcome from a green total.
 
-This rule applies prospectively, with the user's explicit first application to
-the already completed four-hour LOSS of `20260929-paper-round-10`. Its existing
-successor `20260929-paper-round-11` becomes two hours with the same opening seed
-`2026-09-30T05:50:48.990853548+00:00`, due
-`2026-09-30T07:50:48.990853+00:00` (September 30, 12:50:48 a.m. Pacific).
-Use the native `adopt-loss-penalty` amendment once for this authorized transition;
-retain the old assessment and consumed history as originally recorded under
-the old rule. The amendment records the new policy and revised active deadline.
-It is not another assessment, promotion, archive or mirror. Ordinary rounds
-continue through `status`, `assess` and `advance` under the recorded policy.
-
-For this one-time mid-round amendment, align the existing app task to the
-revised seed-based deadline using its supported hourly wall-clock fields:
-every two hours on even-numbered Pacific hours at 50 minutes, 49 seconds.
-The first nominal wake is September 30 at 12:50:49 a.m.; scheduler jitter still
-applies and the exact scoring deadline remains the seed plus two hours.
-Do not anchor two hours from the amendment's edit time. After the next verified
-fresh opening, restore the ordinary seed-time hourly reanchor described below.
+Rule `win-plus-one-loss-minus-one-floor-two-v3` applies prospectively. Retain
+historical v1/v2 assessments, the September 29 `adopt-loss-penalty` amendment,
+and every already committed active seed/due under their recorded rule. For the
+first v2 successor after this change, complete the normal verified lifecycle,
+then run native `advance --adopt-two-hour-floor` with a unique change ID and the
+expected ending/successor IDs. It revalidates the immutable v2 assessment and
+accepted opening, writes a receipt-first v3 amendment, and clamps that successor
+to at least two hours without rescoring, reseeding, restarting, or altering the
+ending round. It refuses a late successor, incompatible identities, unresolved
+review ownership, a pending/conflicting state, or a reused/tampered amendment.
+Thereafter ordinary `status`, `assess`, and `advance` use the recorded v3 policy.
 
 Each invocation completes at most one cycle. Before the active round's due
 time, do not tune, archive or reset it. A duplicate assessment or completed
@@ -275,7 +269,8 @@ existing verification receipts are never overwritten.
    its following wake before a review begins and an unchanged-rule update
    preserves that time; neither behavior gives the new seed a full round.
    Use full `automation_update` PAUSED then ACTIVE updates for this same task,
-   with the selected hourly interval and all other fields preserved. Do this
+   with `FREQ=HOURLY;INTERVAL=N`, where `N` is the committed successor duration,
+   and all other fields preserved. Do this
    preferably within 120 seconds of the seed (at most 180), before extended live
    follow-up. This leaves room for the ending public-account reads. The scheduler
    anchors to the current minute and can add up to 119 seconds of jitter; do
@@ -301,7 +296,7 @@ existing verification receipts are never overwritten.
    plus the newly assigned duration**, so tuning downtime does not consume the
    next round. Verify that the existing `hyperliquid-paper-improvement`
    automation was re-anchored promptly after opening verification, preserving
-   GPT-6 Astra / Ultra, local project, enabled state and notification settings.
+   GPT-6 Luna / Max, local project, enabled state and notification settings.
    Record the schedule handoff with the committed cadence state. If synchronization
    fails, preserve the accepted Paper run and pending cadence state and repair
    only the schedule; never reseed again to hide that failure. Operations Watch

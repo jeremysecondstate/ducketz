@@ -24,7 +24,7 @@ adoption must not invent one.
 | `weekly_opportunity_research` | Active, Sunday 09:00; one requested weekly report, duplicate suppression | Chat default | No native counterpart found. Research/reporting does not authorize production membership or model changes. |
 | `stock_daytime_supervision` | Active, weekdays 03:55; bounded pre-opening check | gpt-5.6-luna / low | No counterpart. Atlas retains live execution ownership. Any peer counterpart is observational and cannot start a trader or place orders. |
 | `hyperliquid_operations_watch` | **Paused**, saved 30-minute cadence | gpt-6-luna / xhigh | No counterpart; operating permissions unresolved. Preserve Atlas pause and require local ownership reconciliation. |
-| `hyperliquid_paper_improvement` | Active, currently hourly, with adaptive round rules | gpt-6-astra / ultra | No counterpart; accepted experiment ownership is local to Atlas. Scout ceiling is observation pending explicit reconciliation. |
+| `hyperliquid_paper_improvement` | Active, v3 adaptive cadence with a two-hour floor | gpt-6-luna / max | No counterpart; accepted experiment ownership is local to Atlas. Scout ceiling is observation pending explicit reconciliation. |
 | `options_paper_tracking` | **Paused**, saved Tuesday–Saturday 00:17 | gpt-6-astra / max | No counterpart. Preserve the paused policy; no active counterpart. |
 | `historical_fallback_installation` | Saved Active with one occurrence at 17:10; authorization expired October 1 at 04:00 | Chat default | No counterpart required. Do not recreate, replay, or extend the expired deployment window. |
 | `historical_gameplan_review` | **Paused**, saved 30-minute interval for September 9 | Chat default | No counterpart required. Preserve historical terminal state. |
@@ -51,9 +51,9 @@ runtime authority. Existing evaluation/research output writes are still
 governed by that task's own contract. A source-capable task queues only
 completed work it was already allowed to make.
 
-Hyperliquid Paper Improvement preserves its initial two-hour ladder,
-verified-win increment of one hour, verified-loss reduction of two hours
-with a one-hour minimum, and retained duration for ties and unscored/late/
+Hyperliquid Paper Improvement preserves a two-hour minimum ladder,
+verified-win increment of one hour, verified-loss reduction of one hour
+with a two-hour minimum, and retained duration for ties and unscored/late/
 unavailable comparisons. It retains its existing native PAUSED-then-ACTIVE
 reanchor after an independently verified fresh opening, immutable assessment
 and timing gates. Adoption itself only changes the coordination prompt;

@@ -55,10 +55,10 @@ five-minute candles provide a base for future frequency experiments.
 
 The entry points do not install an operating-system startup task. The separately
 configured [Paper Improvement](PAPER_IMPROVEMENT.md) task reviews results against
-the actual accounts in adaptive rounds using GPT-6 Astra / Ultra, starting at
-two hours. Each verified win adds one hour to the next round; each verified loss
-subtracts two hours with a one-hour minimum. Ties and unscored outcomes keep the
-duration. It runs justified
+the actual accounts in adaptive rounds using GPT-6 Luna / Max, with a two-hour
+floor. Each verified win adds one hour to the next round; each verified loss
+subtracts one hour without going below two hours. Ties and unscored outcomes keep
+the duration. It runs justified
 model experiments, archives the completed run, and verifies a fresh one-for-one
 Paper opening. Its accepted-baseline receipt coordinates with the separately
 configured [Operations Watch](OPERATIONS_WATCH.md) checks local health every
