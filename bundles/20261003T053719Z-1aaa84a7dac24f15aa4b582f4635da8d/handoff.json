@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T05:37:19.962248Z",
+  "id": "20261003T053719Z-1aaa84a7dac24f15aa4b582f4635da8d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout's saved evidence does not yet establish a completed 2026-10-02 producer forecast package or combined-plan cutover readiness. The cited Atlas PR revision is available for Scout review; Scout installation and runtime adoption are unverified."
+}
