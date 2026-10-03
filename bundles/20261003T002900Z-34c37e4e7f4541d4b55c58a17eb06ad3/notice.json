@@ -1,0 +1,33 @@
+{
+  "author": "Jeremy Klein",
+  "branch": "refs/heads/main",
+  "change_id": "common-main-observation-3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "completion_id": "20261003T001906Z-hlpaper-audit-correction",
+  "files": [
+    "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+    "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+    "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/artifact-manifest.json"
+  ],
+  "limitations": [
+    "New immutable destinations retain the prior publication; no Scout active outputs are replaced.",
+    "Committed blob checks do not establish producer tested working-byte parity, current runtime state or peer installation.",
+    "Scout source adoption remains subject to the current owner handoff, complete delta/dependency review and fresh relevant offline checks."
+  ],
+  "local_application_head": "9795e96da25962e1dbb931634158d81f12973a96",
+  "local_preservation_verified": true,
+  "parent_commit": "089b7d6ce476519ff6cf222e42628d087f247ecd",
+  "producer": "hyperliquid-paper-improvement",
+  "producer_completed_at_utc": "2026-10-03T00:19:06Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No Scout application adoption or runtime actions.",
+  "scope": "Peer machine-local output revisions under artifacts/pc-original; no shared source changes.",
+  "source_commit": "3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "summary": "Common main 3afee12 adds an Atlas audit correction and refreshed index plus their manifest in a new pc-original completion namespace. Shared source is unchanged; Scout fetched and verified exact bytes and local preservation.",
+  "tests": {
+    "application_tests": "Not run for output-only observation.",
+    "locally_verified": "All three Git blob identities and SHA-256 hashes verified. Both revised manifest entries match exact payload bytes and point to the previously verified prior destinations/hashes. Application HEAD, branch, index, status, symbols, private profile, active pointer and 956 tracked source/configuration fingerprints preserved across fetch.",
+    "producer_claims": "Commit describes correction to a historical 00:09 UTC health snapshot; metric semantics and runtime state are not independently verified by Scout.",
+    "verified_at_utc": "2026-10-03T00:29:00.199330+00:00"
+  }
+}

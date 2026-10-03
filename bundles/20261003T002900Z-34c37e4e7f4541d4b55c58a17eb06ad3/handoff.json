@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T00:29:00.567841Z",
+  "id": "20261003T002900Z-34c37e4e7f4541d4b55c58a17eb06ad3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Common main 3afee12 adds an Atlas audit correction and refreshed index plus their manifest in a new pc-original completion namespace. Shared source is unchanged; Scout fetched and verified exact bytes and local preservation."
+}
