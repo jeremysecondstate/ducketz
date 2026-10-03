@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T03:49:19.440907Z",
+  "id": "20261003T034919Z-e3a15612f59a4ccfad09519fe446e9e6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout's frozen producer handoff and joint projection interfaces are ready for alignment with Atlas's sole-executor adapter."
+}
