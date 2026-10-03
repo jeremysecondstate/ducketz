@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T04:00:19.330747Z",
+  "id": "20261003T040019Z-cf97d9d3cb5e44729e53bc850b7ea48e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas producer has paused publication while reconciling its isolated sole-executor candidate onto current main and preserving Scout package/projection interfaces."
+}

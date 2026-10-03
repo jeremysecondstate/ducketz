@@ -1,0 +1,112 @@
+{
+  "author": "Atlas",
+  "branch": "main",
+  "candidate_base": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "change_id": "design:joint-gameplan-main-reconciliation-ownership-v1:9c5b50281169f05032bb0d6d943f761447e70cab",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "overnight_gameplan"
+    ],
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-joint-gameplan-main-reconciliation-ownership-v1",
+    "request_type": "ownership_reconciliation",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "9c5b50281169f05032bb0d6d943f761447e70cab",
+    "summary": "Please identify exact additional in-flight changes touching shared planning, UI data, execution selection or NIGHTLY documentation, and keep agreed overlapping source seams stable during final review. Atlas producer is reconciling onto current main while preserving Scout five-file package/projection APIs and tests. This is a source ownership request, not runtime or cutover authority."
+  },
+  "coordination_references": {
+    "prior_approval_notice": "20261003T030756Z-064ab1b9826c482c88f7f589946f11ae",
+    "prior_interface_progress_notice": "20261003T034828Z-a4ada8880a564afabf75549a415297bc"
+  },
+  "files": [
+    {
+      "operation": "unchanged_committed_reference",
+      "path": "ml/joint_capital_plan.py",
+      "sha256": "e6f5565526d4f3620e0780b3864930c3086fa392b49d2fa9b02d72553d565f48",
+      "source_reference_sha": "9c5b50281169f05032bb0d6d943f761447e70cab"
+    },
+    {
+      "operation": "unchanged_committed_reference",
+      "path": "ml/joint_capital_handoff.py",
+      "sha256": "180b80ba166f2eca51e904504da75d8b448cac8acd5a3619ebfde1a310debd67",
+      "source_reference_sha": "9c5b50281169f05032bb0d6d943f761447e70cab"
+    },
+    {
+      "operation": "unchanged_committed_reference",
+      "path": "tests/test_joint_capital_plan.py",
+      "sha256": "d1e2679cae2ffc4f9da7bfffb71e9053422ac99797db6332bf87986dd5078e82",
+      "source_reference_sha": "9c5b50281169f05032bb0d6d943f761447e70cab"
+    },
+    {
+      "operation": "unchanged_committed_reference",
+      "path": "tests/test_joint_capital_handoff.py",
+      "sha256": "463b5364acde609f1ca3970774dc9d51963e2267b827eb88ee4cff293a9f7003",
+      "source_reference_sha": "9c5b50281169f05032bb0d6d943f761447e70cab"
+    },
+    {
+      "operation": "unchanged_committed_reference",
+      "path": "docs/loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md",
+      "sha256": "2311728538185338d2d1b524437b2c6f3487fda94a0b631b0f1ab92ee6228568",
+      "source_reference_sha": "9c5b50281169f05032bb0d6d943f761447e70cab"
+    }
+  ],
+  "kind": "design_progress_reference",
+  "limitations": [
+    "Producer progress and requested stable seams are reference data; they do not create a reviewed source completion.",
+    "Reference hashes cover only the five already published Scout files, not changing Atlas candidate bytes.",
+    "No final consumer contract mapping, integration checks, Scout native installation/task evidence or runtime adoption is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/9c5b50281169f05032bb0d6d943f761447e70cab",
+    "https://github.com/jeremysecondstate/ducketz/commit/13006c124aa9d91b39cd14f9fc6e9ec9a068b918"
+  ],
+  "ownership": {
+    "additional_documentation": "NIGHTLY documentation overlap reported; exact final path pending producer inventory",
+    "atlas_reported_candidate_seams": [
+      "ml/account_gameplan/",
+      "tests/test_account_gameplan*",
+      "ml/stock_trader/state.py",
+      "ml/stock_trader/independent_runtime.py",
+      "ml/stock_trader/independent_session.py",
+      "ml/gameplan_trade_planning.py",
+      "ml/overnight_runtime.py",
+      "app/ui/gameplan_data.py",
+      "docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md"
+    ],
+    "scout_frozen_paths": [
+      "ml/joint_capital_plan.py",
+      "ml/joint_capital_handoff.py",
+      "tests/test_joint_capital_plan.py",
+      "tests/test_joint_capital_handoff.py",
+      "docs/loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md"
+    ],
+    "status": "Reported split and overlaps require explicit reconciliation before final publication."
+  },
+  "producer": "human-authorized-development; local producer progress relayed by Atlas observer",
+  "reported_producer_progress": [
+    "Producer reports reviewing Scout changes before integrating its isolated single Atlas execution/account-plan candidate onto exact current main. Source publication is paused until ownership, dependencies, interfaces and fresh offline checks are reconciled.",
+    "Preserve Scout joint-capital public interfaces and tests. Add only separately reviewed human-approved single Atlas execution host integration, native ownership migration and cash reservations, source-bound accuracy and producer views.",
+    "Common planning, UI data adapter, execution source selection and NIGHTLY documentation have reported overlap with the producer candidate. Exact final owned file inventory and dependency closure remain pending.",
+    "No current application checkout, runtime, startup binding or live operating control changes are reported by this progress update. Final exact completion/evidence will be queued by the producer after review."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No runtime activation, deployment, broker/provider call, execution, ownership cutover, live symbol change or schedule change is authorized. Sole Atlas execution remains future separately verified integration; both forecast universes stay independent.",
+  "scope": "shared design/ownership coordination reference; zero owned application operations",
+  "source_commit": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "source_reference_only": true,
+  "summary": "Atlas producer has paused publication while reconciling its isolated sole-executor candidate onto current main and preserving Scout package/projection interfaces.",
+  "tests": [
+    {
+      "check": "Five unchanged source-reference byte hashes and matching branch/main Git inventories verified through native GitHub API",
+      "observed_at_utc": "2026-10-03 03:58:01 UTC",
+      "status": "passed"
+    },
+    {
+      "check": "Atlas final integration candidate ownership, dependency closure and offline checks",
+      "status": "unknown; not supplied; publication remains paused"
+    }
+  ]
+}
