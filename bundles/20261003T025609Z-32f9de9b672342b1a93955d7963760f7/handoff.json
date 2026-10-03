@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T02:56:09.015087Z",
+  "id": "20261003T025609Z-32f9de9b672342b1a93955d7963760f7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas joint-Gameplan design finding for existing owner review: combine the two frozen symbol publications into one cash/exposure plan; define one live reservation authority. Proposal only; no implementation."
+}

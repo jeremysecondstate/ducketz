@@ -1,0 +1,107 @@
+{
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "design:joint-gameplan-cash-v1:99532621db0d42dfe8c655300cc93abda81240d5",
+  "files": [
+    {
+      "bytes": 26339,
+      "operation": "unchanged_reference",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869"
+    },
+    {
+      "bytes": 16889,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/state.py",
+      "sha256": "b46aede4763428cc7035580b1a5d75073da0a08621e9959889d680940cfdd13b"
+    },
+    {
+      "bytes": 32626,
+      "operation": "unchanged_reference",
+      "path": "ml/gameplan_cash_ledger.py",
+      "sha256": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333"
+    },
+    {
+      "bytes": 21061,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/independent_session.py",
+      "sha256": "56280de6333016a8b4849b2436803e7d49eb0cd5bcd2a74b6be5d577e699bea3"
+    },
+    {
+      "bytes": 53151,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14"
+    },
+    {
+      "bytes": 62736,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/horizon_ledger.py",
+      "sha256": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9"
+    }
+  ],
+  "findings": [
+    {
+      "detail": "gameplan_trade_snapshot and stock_trader/state already use broker-reported account-wide pending cash reservations when calculating available literal cash.",
+      "status": "verified_source_fact"
+    },
+    {
+      "detail": "gameplan_cash_ledger derives projected symbols and events from its supplied trade_rows. Its snapshot accounts for reported gross exposure and pending reserves, but the event projection does not join a second frozen publication.",
+      "status": "verified_source_fact"
+    },
+    {
+      "detail": "The independent session and cycle locks, entry-slot claims and HorizonLedger SQLite path are rooted in the local datastore.",
+      "status": "verified_source_fact"
+    },
+    {
+      "detail": "Local serialization does not serialize another PC. Independent workers can both observe capacity before a new commitment becomes broker-visible; different symbol selections do not partition the shared budget or total exposure.",
+      "status": "engineering_inference"
+    }
+  ],
+  "kind": "design_reference",
+  "limitations": [
+    "The verified source facts apply to Atlas committed source 99532621db0d42dfe8c655300cc93abda81240d5. Scout current working bytes and implementation choices have not been inspected.",
+    "No patch, immutable tested implementation candidate, source-completion record or deployment receipt exists for this design finding.",
+    "This factual relay does not authorize peer source changes, provider/broker calls, orders, training, funds movements, runtime actions, schedules or ownership changes."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/99532621db0d42dfe8c655300cc93abda81240d5"
+  ],
+  "observed_origin_main_sha": "496f533197bda4e706a6f7b90fb7808e64b35bc3",
+  "open_owner_decisions": [
+    "Agree on the combined source-receipt and planning interface, source-freezing rules and deterministic ordering before competing implementations are completed.",
+    "Identify the proposed single reservation/execution owner and its unavailable-owner behavior for human review; no owner change is granted by this notice.",
+    "Return the proposed interface/ownership decision and exact reviewed source revision, tests and limitations through the existing channel when available."
+  ],
+  "producer": "Loops Overnight Gameplan read-only design review; independently checked by Atlas courier",
+  "proposed_interface": [
+    "Retain both independently frozen forecast/evaluation publications. Bind both exact source receipts to the same next-session action_date and verify complete universe coverage before combining their planning inputs.",
+    "Build one joint chronological planning ledger from one starting budget, with global purchase ordering, all-account pending commitments and ownership evidence from both producers. Derive each producer eleven-symbol view from that same plan.",
+    "Preserve per-symbol/horizon lots, immutable original forecast identities and the approved fallback cap. Keep each accuracy review tied to its original forecast; a combined review can aggregate the scored outcomes without rebuilding past forecasts.",
+    "Live spending requires one durable reservation/execution authority and actual broker evidence for spendable cash. Forecast sale proceeds remain conditional planning entries.",
+    "Use immutable Git artifacts for frozen source exchange. Git notices and mutable database copies do not implement a real-time cash lock. Keep live budget, account identifiers, balances, holdings and bindings out of coordination notices."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Design reference only. No application source, local symbol/profile/account state, runtime, trade, training, schedule or ownership was changed. No projected proceeds are asserted to be live spendable cash.",
+  "scope": "Common planning and reservation design reference for the two existing producers. Keep each existing eleven-symbol universe and forecast/evaluation identities; proposed combined planning coverage is their twenty-two-symbol union.",
+  "source_reference_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Atlas joint-Gameplan design finding for existing owner review: combine the two frozen symbol publications into one cash/exposure plan; define one live reservation authority. Proposal only; no implementation.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T02:55:27.455247Z",
+      "name": "Six reviewed source files bound to exact committed Git bytes; local bytes matched after line-ending normalization; main ancestry and clean tracked checkout verified",
+      "started_at_utc": "2026-10-03T02:55:27.094882Z",
+      "status": "passed"
+    },
+    {
+      "at_utc": "2026-10-03T02:55:27.455247Z",
+      "name": "Static code review of reported pending-reserve, projection-universe and local-lock behavior",
+      "status": "completed"
+    },
+    {
+      "name": "Implementation/offline behavior tests",
+      "reason": "No application code was changed and no candidate implementation exists.",
+      "status": "not_run"
+    }
+  ]
+}
