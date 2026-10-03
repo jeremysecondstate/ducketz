@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-03T05:38:59.478483Z",
+  "actor": "Atlas",
+  "producer": "hyperliquid-paper-improvement",
+  "machine": "pc-original",
+  "local_source_base": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "origin_main_observed": "40c3aeac83df757e06fe0a234d8998c121c7ee43",
+  "branch": "main",
+  "classification": "machine-local operating artifacts",
+  "shared_source_changes": false,
+  "symbol_specific_source_changes": false,
+  "files": [
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-closing-comparison.json", "operation": "add", "sha256": "0a0e32caf676106ca520cd993edaf12849f3014b3eb495f0df810bfc846abf44", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-final-health.json", "operation": "add", "sha256": "77ed256fe68e12ac2cc3a67410a6b1926a85815c4eadfaf137a0955866e4b73c", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-cadence-assessment.json", "operation": "add", "sha256": "2e2de49078f8161163f848238a04fce26d1d225f88b5b64f0ec5c554b8ab1acc", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-archive-preservation-before.json", "operation": "add", "sha256": "a68808928075034967668f5624d5b7a02cc23d50458e09ef46b9cccb43d9352e", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-archive-preservation-verified.json", "operation": "add", "sha256": "a95257c09517a4a98982caa8f4995fcf38cf615c2b8a79a375645244c6b9d587", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-archive-ledger.sqlite3", "operation": "add", "sha256": "da5a6660141498c267edc75d41c451e14bff9f8fcc4326884d5e8d276c142d6f", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-opening-public-account-reads.json", "operation": "add", "sha256": "6edc5dc96bdbabc217f0a87ede8ead3771493fcca014288268b2bb1cc4d03abf", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-opening-verification.json", "operation": "add", "sha256": "708e4bb6ad67dafadafcc38ba7a118a0e98af5728a47a2c00053260195b39050", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-opening.json", "operation": "add", "sha256": "4e63400ba4e5c647628cf8b72d47eb8ff100cd5ec6398e41263d0d068557a939", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-prepared-health.json", "operation": "add", "sha256": "6561b99d3ba2b9b76b1a0e35c3655467b5df89d4304cfcd0fc968b4bab192a9d", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-first-cycle.json", "operation": "add", "sha256": "9c1c8ff2edcb2bf8b6fd83edc0f6833c040ece40162ce2f89f45d1d63ac63bcf", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-trading-health.json", "operation": "add", "sha256": "5bc942049de07e55f059f57d3ec09a54d31fbd51daf6872c3e35d2e65fb19fc7", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-trading-followup.json", "operation": "add", "sha256": "33a930e6688dc4870f5797746f2dfb5bc83a09558fa35f0add132600b9f483e3", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-deployment.json", "operation": "add", "sha256": "bc1ef133f8d145ddf44b3efc9440a7a7f2ce73901f1f6b215b93dcf10c3534ff", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-operation.json", "operation": "add", "sha256": "9337386df9f265b8e969f1760dd736fff9b8e0b006e01f840edf61de13e17167", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/cadence-after-round54-advance.json", "operation": "add", "sha256": "599ad5a65646c0e28a580d4cff73796d3a74c0605395877cb33262406eba3505", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-current-accepted.json", "operation": "add", "sha256": "bc1ef133f8d145ddf44b3efc9440a7a7f2ce73901f1f6b215b93dcf10c3534ff", "classification": "operating-artifact"},
+    {"path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round54-maintenance-completed.json", "operation": "add", "sha256": "b93050b41c1c56775e40922d4ea2a8a2e17c366fd8b00740df88ae7a570b2943", "classification": "operating-artifact"}
+  ],
+  "audit_paths": [
+    "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-54-handoff-audit.md",
+    "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/round53-54-handoff-audit.json",
+    "artifacts/analysis/hyperliquid-paper-improvement/20261003-round53-54/project-file-inventory.json"
+  ],
+  "checks": [
+    "Native cadence assess and advance",
+    "Native archive checksum and SQLite integrity",
+    "Native opening, first-cycle, prepared, trading, and advancing health verification",
+    "Per-file source-to-copy SHA-256 equality"
+  ],
+  "limitations": [
+    "Round 53 comparison missed the five-minute timing allowance and is descriptive only.",
+    "Public account reads are sequential rather than an atomic exchange snapshot.",
+    "Publication carries no peer-adoption, runtime-deployment, or real-execution authority."
+  ]
+}
