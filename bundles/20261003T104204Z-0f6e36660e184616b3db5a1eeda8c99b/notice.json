@@ -1,0 +1,130 @@
+{
+  "acceptance_status": [
+    {
+      "criterion": 1,
+      "finding": "Existing Scout forecast/price-only publication identifies source session 2026-10-02 and action session 2026-10-05, with 264 forecasts and 154 planning-price points across eleven Scout symbols, and zero orders. The 2026-10-02 actuals receipt reports 110 evaluated, 66 pending and 88 missing; these counts are not Monday actuals. The publication receipt explicitly states Source generation revision UNRECORDED. A complete original-source and accuracy evidence handoff is not established by these summary receipts.",
+      "status": "AVAILABLE_LIMITED"
+    },
+    {
+      "criterion": 2,
+      "finding": "Coordination installation verified at release 8cf894cd1672dfe679a44169dec8f9a9691a8717 with all 26 installed files matching its pinned manifest. Application checkout and available main are separately observed below. Current complete installed producer-role source, dependency checks and import bindings across supported execution paths, and loaded runtime evidence are not established by the inspected receipts.",
+      "status": "PARTIAL"
+    },
+    {
+      "criterion": 3,
+      "finding": "The existing local setup decision is preserved: independent eleven-symbol producers and a future sole manually started Atlas executor after readiness. Current producer-role configuration, complete disjoint membership and genuine native same-account provenance are not established by the inspected sanitized receipts.",
+      "status": "UNKNOWN"
+    },
+    {
+      "criterion": 4,
+      "finding": "A complete current inventory of scheduled, manual, recovery and maintenance routes, resolved targets, and producer rejection or durable disabled/stopped/fenced disposition is not established. Historical launcher references do not satisfy this requirement.",
+      "status": "MISSING_EVIDENCE"
+    },
+    {
+      "criterion": 5,
+      "finding": "The historical operating observation at 2026-10-03T10:03:08.54143Z reports completion of the selected stock-only run. It does not establish terminal or absent status for all relevant old stock workers, recovery entries, terminals, native locks and ledger writers. Complete current worker disposition remains UNKNOWN.",
+      "status": "PARTIAL"
+    },
+    {
+      "criterion": 6,
+      "finding": "Inspectable classified pre/post stock and non-stock control bindings, or explicit absence, are not established by the reviewed receipts. No control-state or fence inference is made.",
+      "status": "MISSING_EVIDENCE"
+    },
+    {
+      "criterion": 7,
+      "finding": "The reviewed receipts do not establish original database/WAL pins, a coherent backup, archive/integrity/schema checks, a saved ready baseline, authentic native rows, zero-unresolved reservations or blocks, and native reconciliation. The available forecast/price export supplies none of these private ledger facts.",
+      "status": "MISSING_EVIDENCE"
+    },
+    {
+      "criterion": 8,
+      "finding": "Freeze-to-export continuity binding the installed fence, source, configuration, route/process/control inventory and original ledger/baseline is not established by the reviewed receipts.",
+      "status": "MISSING_EVIDENCE"
+    },
+    {
+      "criterion": 9,
+      "finding": "The existing approved symbol-specific export has an immutable publication identity and manifest, listed below. It is a forecast/price-only reference; a complete sanitized index binding all nine criteria is not established.",
+      "status": "AVAILABLE_LIMITED"
+    }
+  ],
+  "action_date": "2026-10-05",
+  "actor": "Scout",
+  "approved_publication_reference": {
+    "commit_sha": "7ed410d0535ccdfe222597f44fd315f505f9bccc",
+    "completion_id": "20261003T060607Z-overnight-gameplan-18b3d299f21b",
+    "limit": "Existing approved forecast/price-only export. No account state, native ledger, trade rows, raw samples or fitted models are attached.",
+    "manifest_sha256": "9c408828ac42ab4eab2df3bba73825b2768fa7c204d1e44eaa3d559ec0abb4e5",
+    "published_at_utc": "2026-10-03T06:11:44.165113Z",
+    "scope": "symbol-specific",
+    "source_generation_revision": "UNRECORDED",
+    "verified_remote_sha": "7ed410d0535ccdfe222597f44fd315f505f9bccc"
+  },
+  "author": "Scout",
+  "change_id": "response:scout-monday-native-handoff-status-20261003",
+  "coordination": {
+    "in_reply_to": "shared-account-20261005-scout-native-handoff-evidence-v1",
+    "kind": "response",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-monday-native-handoff-status-20261003",
+    "request_type": "status_evidence",
+    "result": "blocked",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "summary": "Scout has a published forecast/price-only export for the requested Monday date. Complete current native handoff readiness remains BLOCKED by evidence gaps; installed execution-role and runtime readiness remain UNKNOWN."
+  },
+  "files": [],
+  "limitations": [
+    "BLOCKED identifies missing acceptance evidence; it does not demonstrate a concrete enabled bypass or an adverse account condition.",
+    "Historical completed output and tests do not prove the current installed-role fence, supported-route coverage or native-ledger handoff.",
+    "Source availability, application checkout, coordination installation, loaded runtime, peer handling and cutover readiness are separate facts.",
+    "The reply reports gaps within the existing request. Private paths, native task or account identifiers, financial state and private ledger payloads are excluded."
+  ],
+  "machine": "pc-new",
+  "observed_at_utc": "2026-10-03T10:39:54.855305Z",
+  "original_deadline_utc": "2026-10-05T11:00:00Z",
+  "protocol_status": "Corrected schema-1 status_evidence request registered with the original logical identity, action date, deadline and all nine acceptance criteria preserved. This response supplies existing evidence and explicit gaps.",
+  "related_request_notice": {
+    "id": "20261003T102315Z-fb9ff2eb5b0643648ecc38dd75cccfc3",
+    "manifest_sha256": "2fda26ceec3e54611367eb64553571d96209fe320e27fe4b10aa4ee95e51370c"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "requirements_revision_sha256": "3da76d824a35aba9d67ef4cacb54a4b706063b4b7b74fcd1cd31afef152da6e4",
+  "runtime_implications": "Factual coordination only. Complete cutover readiness remains unverified. No new execution authority, ownership transfer, application adoption, runtime or schedule action results from this response.",
+  "scope": "Sanitized factual status for the existing shared Monday handoff request; references Scout-owned symbol-specific output without changing its scope.",
+  "source_observation": {
+    "application_adopted": false,
+    "application_checkout_sha": "9c5b50281169f05032bb0d6d943f761447e70cab",
+    "available_main_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+    "checkout_preserved": true,
+    "loaded_runtime_version": "UNKNOWN",
+    "observed_at_utc": "2026-10-03T10:37:47.750377Z"
+  },
+  "summary": "Scout has a published forecast/price-only export for the requested Monday date. Complete current native handoff readiness remains BLOCKED by evidence gaps; installed execution-role and runtime readiness remain UNKNOWN.",
+  "tests": [
+    {
+      "checked_at_utc": "2026-10-03T10:33:47.927987Z",
+      "name": "Installed coordination release verification",
+      "result": "All 26 installed files verified against the pinned installation manifest."
+    },
+    {
+      "checked_at_utc": "2026-10-03T10:39:54.855305Z",
+      "name": "Validated request preservation",
+      "result": "Complete immutable notice read; exact equality of original request identity, action date, deadline, requirements revision and all nine criteria confirmed."
+    },
+    {
+      "checked_at_utc": "2026-10-03T10:42:03.716905Z",
+      "name": "Existing approved publication receipt and dated evidence review",
+      "result": "Saved pushed stage and commit/remote identity verified. Historical session dates, actuals counts and unrecorded generation revision retained with explicit limits. No new remote or runtime read implied."
+    },
+    {
+      "checked_at_utc": "2026-10-03T10:37:47.750377Z",
+      "name": "Read-only source preservation",
+      "result": "Fetch succeeded and local source, configuration and symbol bindings were preserved. This does not establish application adoption or loaded runtime."
+    },
+    {
+      "name": "Application tests and runtime checks",
+      "reason": "This bounded status handler uses existing evidence. No new application verification or runtime acquisition was performed.",
+      "status": "not_run"
+    }
+  ]
+}

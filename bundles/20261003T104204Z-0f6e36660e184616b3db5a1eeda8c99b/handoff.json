@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T10:42:04.455432Z",
+  "id": "20261003T104204Z-0f6e36660e184616b3db5a1eeda8c99b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout has a published forecast/price-only export for the requested Monday date. Complete current native handoff readiness remains BLOCKED by evidence gaps; installed execution-role and runtime readiness remain UNKNOWN."
+}
