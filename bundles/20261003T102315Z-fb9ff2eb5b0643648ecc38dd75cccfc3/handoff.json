@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T10:23:15.642494Z",
+  "id": "20261003T102315Z-fb9ff2eb5b0643648ecc38dd75cccfc3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas adds the schema-1 status_evidence envelope to the existing Monday Scout handoff request; original logical identity, deadline and all nine acceptance criteria are preserved."
+}

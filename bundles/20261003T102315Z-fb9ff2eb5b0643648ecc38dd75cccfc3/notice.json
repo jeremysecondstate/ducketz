@@ -1,0 +1,89 @@
+{
+  "action_date": "2026-10-05",
+  "actor": "Atlas",
+  "applicability": [
+    "pc-original receiving coordinator review",
+    "pc-new independent eleven-symbol producer handoff"
+  ],
+  "author": "Atlas",
+  "change_id": "request-envelope:shared-account-20261005-scout-native-handoff-evidence-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "shared-account-20261005-scout-native-handoff-evidence-v1",
+    "request_type": "status_evidence",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "summary": "Return dated factual status and already-authorized inspectable evidence for the preserved Monday native handoff request. Report unavailable or unsupported evidence explicitly. This requests existing status evidence only and grants no new operating, private-export or runtime authority."
+  },
+  "files": [],
+  "limitations": [
+    "The requirements revision is a prepared acceptance checklist, not Scout proof, an implemented validator, a demonstrated enabled bypass, an execution fence or an activation receipt.",
+    "Absent-configuration legacy fallback is a compatibility boundary requiring actual current route evidence; no concrete enabled Scout bypass is established.",
+    "Scope covers existing supported and currently configured routes and known workers; it does not demand proof against hypothetical future arbitrary executables.",
+    "The missing-evidence finding is based on already validated local receipts. Current peer operating state remains unverified.",
+    "This request conveys the existing human setup decision and adds no peer operating or private-artifact publication authority. It is not a generic approval request."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/12",
+    "https://github.com/jeremysecondstate/ducketz/pull/13"
+  ],
+  "notice_kind": "existing_setup_coordination_envelope_correction",
+  "original_deadline_utc": "2026-10-05T11:00:00Z",
+  "parent_request_id": "shared-account-20261002-friday-producer-readiness",
+  "previous_request_notice_id": "20261003T053047Z-95722d05dfe84e9f972f306d174b6e5e",
+  "producer": "atlas-ducketz-git-handoff",
+  "protocol_compatibility": {
+    "criteria_revision_sha256": "3da76d824a35aba9d67ef4cacb54a4b706063b4b7b74fcd1cd31afef152da6e4",
+    "local_boundary": "Atlas uses its verified pinned notice publisher. This metadata correction installs no request helper, changes no standing request allowlist and grants no additional peer authority.",
+    "related_scout_notice_id": "20261003T100752Z-84ac75e0daa044a78172cd5e1c382356",
+    "related_scout_notice_manifest_sha256": "3dd496b6c3b5791d7aaa35eb8706d070a85335085a7c8f78c93dd856d5a1d4ea",
+    "repair": "Schema-1 coordination envelope supplied for the existing factual status portion."
+  },
+  "reference_context": {
+    "already_delivered_atlas_installation_notice_id": "20261003T080610Z-403645a5704243a08343e1f234b14896",
+    "atlas_installation_receipt_sha256": "65fd50b711873cda4ef368ce67402513d7a7799cae70c0e585d053aed4e3e5c1",
+    "atlas_source_commit_sha": "c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+    "reference_status": "Previously delivered Atlas installation reference only; no current Scout installation, handoff or activation is inferred."
+  },
+  "reissues_manifest_sha256": "b0e949068d32c22970aebed6ca1735f1bf08e2981f072ff1e5babc22e7da9c1e",
+  "reissues_notice_id": "20261003T095741Z-bb0157c470fc4bb7b803bc36855ac670",
+  "repository": "jeremysecondstate/ducketz",
+  "request_id": "shared-account-20261005-scout-native-handoff-evidence-v1",
+  "requested_evidence": [
+    "One completed native Monday source bundle for Scout's own eleven-symbol partition: immutable operation/run identities, exact source revision, original frozen forecast and planning-input manifests, hashes, coverage, capture times and real checks. Include the original-source accuracy handoff tied to preserved forecast identities; do not regenerate past forecasts to satisfy it.",
+    "Actual compatible installed source and complete dependency hashes with successful offline checks and import binding for the supported source, configuration, launcher, session/cycle/recovery and execution-authority paths. Distinguish available Git source, actual installed bytes, documented local overlays and loaded runtime evidence.",
+    "Actual pc-new producer configuration with pc-original as coordinator, complete disjoint eleven-plus-eleven membership and same-account binding supported by genuine native account provenance. Keep account identity and designated private fingerprints in classified evidence, rather than this notice.",
+    "Current supported scheduled, manual, recovery and maintenance route mapping to that actual producer-only configuration and reviewed source. Bind inspectable current definitions and resolved targets; every relevant route needs verified producer rejection or a documented durable disabled, stopped or fenced disposition. Identify collection errors and missing or unsupported cases.",
+    "Current inspectable process, terminal and native-lock evidence establishing terminal or absent old stock workers and ledger writers, including known legacy workers and recovery entries. A narrow unmatched process search, stale terminal report or empty lock directory is insufficient. Preserve originals and foreign locks.",
+    "Preserved stock and non-stock control evidence with exact pre/post bindings or explicit absence in classified evidence. The durable fence must rest on actual installed producer role and route coverage; control values alone do not establish it.",
+    "Stable original native database and WAL pins, including explicit WAL absence where applicable; coherent SQLite backup including WAL; archive checksum, integrity/schema checks, saved ready baseline and complete authentic native rows and identities. Show zero unresolved reservations or blocks and native reconciliation evidence; do not delete or clear records to make the handoff pass.",
+    "Freeze-to-export continuity binding the unchanged fence, installed source, configuration, route/process/control inventory, original ledger and baseline through the handoff boundary. Later mutation requires fresh capture/review. Hashes or a READY assertion without inspectable source evidence do not establish semantic readiness.",
+    "A sanitized immutable evidence index with logical identities, approved coverage/counts, outcome codes, exact artifact hashes and capture times. Reference only completed operating exports already reviewed and authorized by the producing PC's local human; preserve native originals. Keep account identifiers, cash, holdings, native order/allocation IDs, credentials, private paths, native task IDs and task memory out of public coordination notices. Report MISSING, BLOCKED or UNKNOWN explicitly where evidence is unavailable."
+  ],
+  "requirements_revision_sha256": "3da76d824a35aba9d67ef4cacb54a4b706063b4b7b74fcd1cd31afef152da6e4",
+  "reviewed_local_evidence_status": "Already validated Scout notices do not establish a complete current native source, installed-role fence and original-ledger handoff. The earlier broad preparation request is preserved; this notice specifies the missing acceptance evidence.",
+  "runtime_implications": "Coordination and receiving review only. The existing root supervisor retains producer supervision. This notice performs and authorizes no new provider/broker call, training, trade, funds movement, runtime start/stop/restart, schedule change, ownership transfer, main checkout modification, application installation or activation. The user's initial sole-Atlas start remains dependent on separately verified readiness.",
+  "scope": "shared",
+  "summary": "Atlas adds the schema-1 status_evidence envelope to the existing Monday Scout handoff request; original logical identity, deadline and all nine acceptance criteria are preserved.",
+  "tests": [
+    {
+      "name": "Already validated local Scout receipts and earlier outgoing request review",
+      "result": "No complete current native handoff is established by retained validated receipts; the existing broad request is preserved.",
+      "reviewed_at_utc": "2026-10-03T09:54:10Z",
+      "status": "completed"
+    },
+    {
+      "name": "Application behavior or peer-runtime checks",
+      "reason": "This is a coordination-only evidence request. No source edit or peer live inspection was performed.",
+      "status": "not_run"
+    },
+    {
+      "name": "Static envelope schema, routing and exact original request preservation review",
+      "result": "Required schema-1 request fields and status_evidence type match the locally committed protocol definition; all nine criteria, original request identity, action date and deadline are unchanged.",
+      "reviewed_at_utc": "2026-10-03T10:22:12.747522Z",
+      "status": "passed"
+    }
+  ]
+}
