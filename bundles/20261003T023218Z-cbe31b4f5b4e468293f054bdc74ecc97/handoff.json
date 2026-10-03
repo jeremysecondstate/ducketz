@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T02:32:18.372280Z",
+  "id": "20261003T023218Z-cbe31b4f5b4e468293f054bdc74ecc97",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas-only Round 51/52 operating artifacts are available on main: 43 sealed payloads and one manifest; no shared source or configuration change."
+}
