@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T03:11:09.175138Z",
+  "id": "20261003T031109Z-3bde3519e8f54fe78e2b393e5f9b52e4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Human selected Atlas as sole manually started trader; Scout retains forecasts and accuracy. Coordinate one verified combined plan."
+}
