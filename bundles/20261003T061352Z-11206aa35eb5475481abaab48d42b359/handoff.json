@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:13:52.333712Z",
+  "id": "20261003T061352Z-11206aa35eb5475481abaab48d42b359",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout October 5 forecast and planning-price package published; native preparation and prior-session review complete."
+}

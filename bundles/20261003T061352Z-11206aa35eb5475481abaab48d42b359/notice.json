@@ -1,0 +1,67 @@
+{
+  "action_session": "2026-10-05",
+  "application_source_revision": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "author": "Scout / pc-new",
+  "change_id": "20261003T060607Z-overnight-gameplan-18b3d299f21b-producer-handoff",
+  "completion_id": "20261003T060607Z-overnight-gameplan-18b3d299f21b",
+  "created_at_utc": "2026-10-03T06:13:11.757125Z",
+  "evidence_manifest_sha256": "4d569aed066d0db83431440766135aad5d4886b3374b435e5746132d8b8fbfa4",
+  "files": [
+    {
+      "bytes": 441373,
+      "operation": "add",
+      "path": "artifacts/pc-new/20261003T060607Z-overnight-gameplan-18b3d299f21b/joint-capital/2026-10-05/scout-owner-package.json",
+      "sha256": "0d9b0eb0de2b5910e5eca97f75a100daff1cde38af50dd3e748d6812adde78d4"
+    }
+  ],
+  "limitations": [
+    "Generation revision was absent from original native evidence and remains UNRECORDED.",
+    "GLOB weekly lacks symbol target history. Four-hour and daily forecast assessments remain within saved promotion tolerance but do not beat their baselines.",
+    "Eight symbols retain disclosed closing carries. The minimum of two observed entry pairs and 504 completed-session lookback remain intact. Missing prior outcomes lack usable observations within the original tolerance despite completed source coverage.",
+    "This independently selected Scout package is one input for the same-session combined account plan. Atlas package, compatible consumer, adoption and joined publication remain separate evidence."
+  ],
+  "logical_task": "overnight_gameplan",
+  "main_commit_sha": "7ed410d0535ccdfe222597f44fd315f505f9bccc",
+  "owner_id": "pc-new",
+  "package_sha256": "803ce316896a85fe87fcaf762c4e638afda0a0e5ce3b4eb625167840a678a16c",
+  "related_request_id": "scout-joint-sole-atlas-interface-review-20261002-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "requested_peer_followthrough": "Use the existing interface request for compatible Atlas consumer source or concrete schema differences. Independently verify this owner, digest, universe and action session before composition.",
+  "run_identity": "scout-overnight-20261003T053533552850Z",
+  "runtime_implications": "Preparation and handoff only. No account snapshots, cash, positions, ownership state, account-aware trade rows, raw samples, fitted models or credentials exported. No trader start, live orders, execution-role activation, ownership transfer or running-application replacement. The human-selected sole Atlas executor still requires coordinated installation, verified combined preparation and ownership reconciliation.",
+  "scope": {
+    "kind": "symbol-specific",
+    "machine": "pc-new",
+    "symbols": [
+      "DOCU",
+      "DBX",
+      "SDGR",
+      "QBTS",
+      "PYPL",
+      "GLOB",
+      "OUST",
+      "ABCL",
+      "MRNA",
+      "RR",
+      "PDYN"
+    ]
+  },
+  "source_hashes": {
+    "forecasts_sha256": "fb35680f4c9f205665b59c7a0554f0269374a7a9ff94991be49e565fad51974d",
+    "manifest_sha256": "acdc01f6a438705e58b4a52f234200e21b6e5b73bbf0327923875f92aa1dc157",
+    "price_path_sha256": "b91f2453be40963cc8f1eef22d088cb0c47b2174881475a78ba71fd8147010a7",
+    "receipt_sha256": "77d2a5b4ff85145d970da2e091e8a24f5e8b60ae706e1fe68ae9d37c51105b9a"
+  },
+  "source_revision_status": "UNRECORDED",
+  "source_session": "2026-10-02",
+  "summary": "Scout October 5 forecast and planning-price package published; native preparation and prior-session review complete.",
+  "tests": [
+    "Native eight-stage lineage COMPLETE with zero orders; receipts, logs and outputs verified.",
+    "Native Gameplan reader verified the frozen 11 symbols, 264 forecasts, 264 stock-only intents, four horizon reports and 305 input hashes.",
+    "Default latest Gameplan consumer selects October 5 with 24 forecasts per symbol, projection_available=true and 154 available planning-price points.",
+    "Default latest Stats selects prior exchange session October 2: 264 outcomes = 110 evaluated + 66 pending + 88 missing; 154 prices = 102 compared + 52 missing. All 141 input hashes verified.",
+    "Native enrichment reader validates the exact Gameplan binding; all four horizons fitted, zero scopes qualified for learned sizing.",
+    "Exact forecast and price allowlists, canonical and file hashes, private-value scan and published remote blob readback passed."
+  ],
+  "verified_remote_main_sha": "7ed410d0535ccdfe222597f44fd315f505f9bccc"
+}
