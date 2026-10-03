@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T08:03:50.665068Z",
+  "id": "20261003T080350Z-1d98c68250d14b5896ea278eadd070d2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout observed Atlas branch commit c769876 changing three shared OPRA history and regression-test files. The committed patch restores a 100-second metadata timeout and adds exact public request-scope retry labels; Scout has not run the claimed checks or adopted the commit."
+}

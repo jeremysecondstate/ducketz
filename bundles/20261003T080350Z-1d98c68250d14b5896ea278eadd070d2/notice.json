@@ -1,0 +1,41 @@
+{
+  "author": "Scout observation; Git commit author Jeremy Klein; commit trailer claims Codex-Author Atlas",
+  "branch": "codex/atlas/20261003T074039Z-e585644f1866488cb924387536e8d637",
+  "change_id": "observation:branch:c7698769c0ebaf46dd461066291ebbf3c14b5a1a:scout",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+  "completion_record_claim": "20261003T074039Z-e585644f1866488cb924387536e8d637",
+  "files": [
+    {
+      "git_blob_oid": "18aab28408e64aa173160866a8c17cc73bc732e8",
+      "operation": "modify",
+      "path": "datafetching/databento_opra_history.py"
+    },
+    {
+      "git_blob_oid": "63b28996bf32e351331d85e6a75d282fd03e2069",
+      "operation": "modify",
+      "path": "tests/test_databento_opra_live.py"
+    },
+    {
+      "git_blob_oid": "8897fb7d5a88a656187a74d837f1e70dc552f87d",
+      "operation": "modify",
+      "path": "tests/test_opra_gateway_retry.py"
+    }
+  ],
+  "limitations": [
+    "The longer per-request metadata allowance retains the existing enclosing runtime deadline; provider response latency and recovery remain unverified.",
+    "Source branch availability does not establish main integration, Scout installation or loaded runtime version."
+  ],
+  "observed_at_utc": "2026-10-03T08:03:42.602721Z",
+  "parent_commit_sha": "7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+  "producer": "scout-codexstore-outbox",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires separate reviewed application installation and native failed-stage resume. This observation made no checkout update, worker restart, provider/broker call, training or trade.",
+  "scope": "Shared OPRA history preflight and offline regression tests.",
+  "source_commit_sha": "c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+  "summary": "Scout observed Atlas branch commit c769876 changing three shared OPRA history and regression-test files. The committed patch restores a 100-second metadata timeout and adds exact public request-scope retry labels; Scout has not run the claimed checks or adopted the commit.",
+  "tests": {
+    "independent_test_status": "Claimed test result and tested dependency closure unverified by Scout.",
+    "scout_verification": "Exact local Git commit, parent, three changed paths and complete patch reviewed; no Scout application tests executed.",
+    "sender_claim": "Commit text claims ten offline pytest files passed 2026-10-03T07:42:24.757705Z to 2026-10-03T07:42:44.777269Z; output SHA-256 3d74d93bddf14330622d88f8ac81fbc53298341449a354e8b28d4e54766e9d3f."
+  }
+}
