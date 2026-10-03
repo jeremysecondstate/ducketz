@@ -1,0 +1,29 @@
+{
+  "author": "Scout observation; GitHub commit author account bekahsherry; commit trailer claims Codex-Author Atlas",
+  "branch": "codex/atlas/20261003T063636Z-52d2694cc9bd4ae49ca783ef9ccc4d5d",
+  "change_id": "observation:branch:2df5b5e8564ecea43a35edac175cc533396b5750:scout",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/2df5b5e8564ecea43a35edac175cc533396b5750",
+  "completion_record_claim": "20261003T063636Z-52d2694cc9bd4ae49ca783ef9ccc4d5d",
+  "files": [
+    {
+      "git_blob_oid": "678d2436153b6d3b627c0e791588b37e6dee2a3d",
+      "operation": "modify",
+      "path": "tests/test_databento_opra_replay.py"
+    }
+  ],
+  "limitations": [
+    "Scout has verified committed source metadata and patch, not the sender's tested working-byte dependency closure.",
+    "Branch publication is source availability; main integration, Scout installation, and loaded runtime version remain separate."
+  ],
+  "observed_at_utc": "2026-10-03T06:50:39Z",
+  "parent_commit_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No Scout application checkout update, provider or broker call, worker restart, training, trade, or runtime deployment occurred.",
+  "scope": "Shared offline OPRA replay regression test import isolation; no application behavior change shown in this one-file commit.",
+  "source_commit_sha": "2df5b5e8564ecea43a35edac175cc533396b5750",
+  "summary": "Scout observed Atlas source branch commit 2df5b5e changing one shared offline OPRA replay test file. The branch is one commit ahead of current main; Scout has not run the claimed tests or adopted the commit.",
+  "tests": {
+    "scout_verification": "Exact GitHub commit, main ancestry, one changed path and complete patch reviewed; no application tests executed by Scout.",
+    "sender_claim": "Commit text claims pytest tests/test_databento_opra_replay.py tests/test_databento_opra_live.py passed 2026-10-03T06:37:15.176663Z to 2026-10-03T06:37:18.883170Z; output SHA-256 679a9701c0f7e2240fd4c6ea480bde738981644022ed4a8cfd554b437ab1f2cb."
+  }
+}

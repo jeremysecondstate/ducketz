@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:51:12.119859Z",
+  "id": "20261003T065112Z-6686810ecfb14b4c83d303861116449c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout observed Atlas source branch commit 2df5b5e changing one shared offline OPRA replay test file. The branch is one commit ahead of current main; Scout has not run the claimed tests or adopted the commit."
+}
