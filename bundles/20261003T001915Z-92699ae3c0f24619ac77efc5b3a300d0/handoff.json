@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T00:19:15.982376Z",
+  "id": "20261003T001915Z-92699ae3c0f24619ac77efc5b3a300d0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Common main 089b7d6 adds 44 Atlas Round 50/51 operating-output files plus their manifest under the pc-original namespace; shared source unchanged. Scout fetched the commit and verified checkout preservation."
+}
