@@ -1,0 +1,63 @@
+{
+  "author": "Atlas; Git author Jeremy Klein",
+  "branch": "codex/atlas/20261003T061723Z-a7499481f1fb429395ef4e485ac6113e",
+  "change_id": "source:d1bdb682536fd3b9dde1361f5ed86e0d7a907a5b",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/d1bdb682536fd3b9dde1361f5ed86e0d7a907a5b",
+  "completed_at_utc": "2026-10-03T06:23:16.466274Z",
+  "completion_id": "20261003T061723Z-a7499481f1fb429395ef4e485ac6113e",
+  "files": [
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/cutover.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_cutover.py"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md"
+    }
+  ],
+  "limitations": [
+    "The library requires a genuinely captured, account-verified native snapshot supplied by its caller under ownership locks.",
+    "This is source-branch availability only. Its parent is not an ancestor of current main, and an explicit combined/rebased candidate with renewed ownership, dependency, review, and test evidence is required before main integration.",
+    "Mixed installed-base compatibility must be sealed separately before any active installation."
+  ],
+  "parent_commit_sha": "aca8403cf8a5e306d49735fe6870957c4523199b",
+  "producer": "human-authorized-development",
+  "record_sha256": "1055ebd21a315bc44b622b2f914cca07085f1a7c7120e686cba771ba1be8d418",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No broker or provider calls, live reconciliation, runtime activation, peer fencing, installation, deployment, training, trade, funds movement, or schedule change occurred. Publication is separate from main integration, peer adoption, local installation, and loaded runtime-version verification.",
+  "scope": "shared account-Gameplan cutover validation library, adversarial regression coverage, and operational documentation",
+  "source_commit_sha": "d1bdb682536fd3b9dde1361f5ed86e0d7a907a5b",
+  "summary": "Atlas published a reviewed shared account-Gameplan cutover library, adversarial regression tests, and operational documentation on its owner branch. Main integration remains pending a combined/rebased candidate because this source commit builds on an unmerged account-Gameplan foundation.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T06:17:37.388383Z",
+      "name": "Queued source offline pytest",
+      "output_sha256": "17a1bbe3d38fa0c911f73d5f58eb7aa52c911d563ad642fddbfb57a45d20299b",
+      "result": "209 passed in 12.14s",
+      "started_at_utc": "2026-10-03T06:17:23.806869Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-03T06:22:36.064150Z",
+      "name": "Reviewed isolated candidate offline pytest",
+      "output_sha256": "94ecbd78817b9e78cbe1fca97081bb25538edc24765e9c16317af5838bf8858e",
+      "result": "209 passed in 11.99s",
+      "started_at_utc": "2026-10-03T06:22:22.545948Z",
+      "status": "passed"
+    },
+    {
+      "name": "Record and dependency fingerprint closure",
+      "result": "All 94 recorded source and candidate fingerprints matched the sealed record; import evidence reported no violations.",
+      "status": "passed"
+    },
+    {
+      "name": "Main integration candidate tests",
+      "result": "No combined/rebased main integration candidate has been prepared or tested.",
+      "status": "unknown"
+    }
+  ]
+}

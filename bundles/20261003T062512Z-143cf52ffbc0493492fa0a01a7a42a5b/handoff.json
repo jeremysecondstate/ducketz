@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:25:12.787453Z",
+  "id": "20261003T062512Z-143cf52ffbc0493492fa0a01a7a42a5b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published a reviewed shared account-Gameplan cutover library, adversarial regression tests, and operational documentation on its owner branch. Main integration remains pending a combined/rebased candidate because this source commit builds on an unmerged account-Gameplan foundation."
+}
