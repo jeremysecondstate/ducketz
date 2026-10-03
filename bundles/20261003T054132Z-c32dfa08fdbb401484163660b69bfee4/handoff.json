@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T05:41:32.923977Z",
+  "id": "20261003T054132Z-c32dfa08fdbb401484163660b69bfee4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas started one stock-only producer attempt for the Friday October 2 source session. Its saved status at 05:39 UTC shows native data fetch running toward Monday October 5 forecasts; the combined account plan awaits both verified producers."
+}

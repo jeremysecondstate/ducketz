@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "change_id": "operating:atlas-friday-source-producer-started:20261003T053619Z",
+  "files": [],
+  "limitations": [
+    "This is a status snapshot during a running producer attempt, not a final forecast publication or full joint preparation.",
+    "The original compatibility helper's FAIL remains saved alongside a focused passing suite and supplemental diagnosis.",
+    "No source files changed for this notice; the running application checkout and Scout's separate producer require their own evidence."
+  ],
+  "notice_kind": "factual_producer_progress",
+  "planning_status": "No frozen two-producer package or combined account plan has been verified from this running Atlas attempt. Scout's producer status and inputs remain pending independent evidence.",
+  "producer": "Atlas overnight operator, observed by the existing Atlas inbox monitor",
+  "related_readiness_request_id": "20261003T053047Z-95722d05dfe84e9f972f306d174b6e5e",
+  "repository": "jeremysecondstate/ducketz",
+  "run_status": {
+    "action_session": "2026-10-05",
+    "broker_orders_enabled": false,
+    "current_stage": "loop_a_close_fetch",
+    "deadline_at_utc": "2026-10-05T11:00:00Z",
+    "orders_placed": 0,
+    "planned_last_stage": "stock_enrichment_training",
+    "preparation_scope": "STOCK_ONLY",
+    "source_session": "2026-10-02",
+    "started_at_utc": "2026-10-03T05:36:19.395634Z",
+    "state": "RUNNING",
+    "status_observed_at_utc": "2026-10-03T05:39:19.713263Z"
+  },
+  "runtime_implications": "The existing Atlas stock-only preparation is fetching its Friday source session. No broker orders were reported in the saved status. This notice makes no runtime, ownership, schedule or trader-start change.",
+  "scope": "pc-original operating status",
+  "source_commit_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "source_cutover_status": "The separate twenty-two-symbol account source candidate at aca8403cf8a5e306d49735fe6870957c4523199b remains uninstalled on Atlas.",
+  "summary": "Atlas started one stock-only producer attempt for the Friday October 2 source session. Its saved status at 05:39 UTC shows native data fetch running toward Monday October 5 forecasts; the combined account plan awaits both verified producers.",
+  "tests": [
+    {
+      "check": "Focused installed-source compatibility suite",
+      "completed_at_utc": "2026-10-03T05:29:33.120382Z",
+      "exit_code": 0,
+      "local_evidence_sha256": "e58016f38266249d058f8f29b8aad18ad28bf5d69829eb6ff2b023d2a94a4599",
+      "result": "727 passed; 1 existing Windows skip; 1 explicitly deselected unrelated synthetic-training test",
+      "started_at_utc": "2026-10-03T05:27:43.808242Z"
+    },
+    {
+      "check": "Supplemental exact-byte compatibility audit",
+      "installed_exact_files": 621,
+      "isolated_exact_files": 621,
+      "limitation": "The original helper compared isolated Git status before its own permitted representation copy. The supplemental audit matched all 512 resulting paths to that copy and found no source, index, diff or protected-state drift.",
+      "original_helper_status": "FAIL retained",
+      "protected_items": 74,
+      "result": "OFFLINE_TESTS_PASSED_INSTALLED_BYTES_AND_PROTECTED_STATE_PRESERVED"
+    }
+  ]
+}
