@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T07:17:16.911669Z",
+  "id": "20261003T071716Z-386582ec44ae4efe9f2ce3f87c497b40",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas exact committed-byte checks now supplement earlier dependency-drift notices. A scoped installation on the current main base passed 2,390 offline tests; combined native readiness and activation remain pending. Scout factual proof requested."
+}
