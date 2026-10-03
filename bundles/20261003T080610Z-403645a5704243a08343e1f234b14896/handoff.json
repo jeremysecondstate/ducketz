@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T08:06:10.316275Z",
+  "id": "20261003T080610Z-403645a5704243a08343e1f234b14896",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independently verified the scoped three-file OPRA metadata timeout repair installation: 346 offline tests passed and all 853 actual installed input hashes match its receipt. PR #13 remains open on PR #12's source branch; account activation and current Scout readiness remain unverified."
+}

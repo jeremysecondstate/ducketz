@@ -1,0 +1,107 @@
+{
+  "actor": "Atlas",
+  "author": "Jeremy Klein",
+  "branch": "codex/atlas/20261003T074039Z-e585644f1866488cb924387536e8d637",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "atlas-scoped-opra-installation-proof:65fd50b711873cda4ef368ce67402513d7a7799cae70c0e585d053aed4e3e5c1",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+  "completion_id": "20261003T074039Z-e585644f1866488cb924387536e8d637",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "datafetching/databento_opra_history.py",
+      "sha256": "48e7bdc1ddbd14f9aeae56a697cc70700953e4a18d5219aa3c5fe9651eb8c42a"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_databento_opra_live.py",
+      "sha256": "5ce41d23aefd95ca06a0f485c98b18aa5505febd9511d63c6ebcd50c4b64cbb2"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_opra_gateway_retry.py",
+      "sha256": "aeddbce2f2420c2fc8a9b1b61456cffe0bc358283f366543cf447c3fb92be478"
+    }
+  ],
+  "installation": {
+    "actual_installed_input_count": 853,
+    "completed_at_utc": "2026-10-03T07:52:43.223915+00:00",
+    "current_raw_input_hashes_verified_at_utc": "2026-10-03T08:06:09.918796Z",
+    "installed_baseline_receipt_sha256": "545b2be97bc9326e220d36672f8b4ce238b407e5512f8bc450d75c448659a6b0",
+    "native_locks_released": true,
+    "selected_operations": 3,
+    "started_at_utc": "2026-10-03T07:51:57.559147+00:00",
+    "status": "INSTALLED_AND_VERIFIED",
+    "whole_checkout_at_published_commit": false,
+    "writer_claim_released": false
+  },
+  "installation_activity": {
+    "activation_performed": false,
+    "broker_calls": 0,
+    "controls_changed": false,
+    "ledger_migration_performed": false,
+    "orders_placed": 0,
+    "processes_restarted": false,
+    "provider_calls": 0
+  },
+  "installation_plan_sha256": "547828ad8cbb3715e17474dbb7aab9f19c914169b4d1f9a1fce93c871da3fd4a",
+  "installation_receipt_sha256": "65fd50b711873cda4ef368ce67402513d7a7799cae70c0e585d053aed4e3e5c1",
+  "limitations": [
+    "The canonical Git source and actual installed raw-byte manifest are separate evidence. This receipt proves the selected local installation and offline checks, not an entire checkout at this commit or the code loaded by a running process.",
+    "PR #13 is stacked on the open PR #12 candidate; neither notice nor installation establishes main integration.",
+    "Scout's current native source package, adapter/task installation, execution fence and preserved ownership/ledger handoff remain pending. Historical peer notices are not current readiness proof."
+  ],
+  "operation_counts": {
+    "add": 0,
+    "delete": 0,
+    "modify": 3
+  },
+  "parent_commit_sha": "7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+  "phase": "atlas_shared_main_published_awaiting_scout_adoption",
+  "practical_changes": [
+    "Restore the SDK-default 100-second allowance on each configured metadata endpoint instance.",
+    "Include dataset, schema, symbols and exact interval in metadata retry diagnostics without changing cost, capacity, source or model gates.",
+    "Add offline regression checks for client isolation, exact request identity and unchanged preflight safeguards."
+  ],
+  "producer": "loops-hourly-operations",
+  "pull_request": {
+    "base_is_pr12_source_branch": true,
+    "base_sha": "7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+    "head_sha": "c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+    "state": "OPEN",
+    "url": "https://github.com/jeremysecondstate/ducketz/pull/13"
+  },
+  "record_sha256": "1ca18c3daa0eadafc1bb75cd534a8b6c452e20c7c95e16af7fe4d7ee0eb13efc",
+  "recorded_at_utc": "2026-10-03T08:06:09.918796Z",
+  "reporter": "Atlas observer",
+  "repository": "jeremysecondstate/ducketz",
+  "request_id": "shared-account-20261002-friday-producer-readiness",
+  "runtime_implications": "The source owner performed the recorded scoped installation. This observer performed no application edit, provider/broker call, runtime start/restart, training, trade, funds movement, ownership or schedule action. Running-process adoption and combined-account activation require separate evidence.",
+  "scope": "Shared OPRA source and tests; local installation observation is Atlas-only and changes no peer machine or symbol ownership.",
+  "source_commit_sha": "c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+  "summary": "Atlas independently verified the scoped three-file OPRA metadata timeout repair installation: 346 offline tests passed and all 853 actual installed input hashes match its receipt. PR #13 remains open on PR #12's source branch; account activation and current Scout readiness remain unverified.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T07:52:37.970478Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "f8d02254801fc741b75b0c11c7d20c5df537f6ae2f42069c0a863bd7e10923c8",
+      "network_access": "disabled by installed offline verifier",
+      "output_sha256": "7ffd5a199b6afc877799183378763506692b381f8dab9b457ebc8118813bec40",
+      "result": "346 passed in 19.36s",
+      "started_at_utc": "2026-10-03T07:52:17.037805Z",
+      "suite_files": [
+        "tests/test_opra_gateway_retry.py",
+        "tests/test_databento_retry.py",
+        "tests/test_opra_definition_retry.py",
+        "tests/test_opra_concurrent_stream.py",
+        "tests/test_opra_concurrent_native_publication.py",
+        "tests/test_databento_opra_live.py",
+        "tests/test_databento_opra_replay.py",
+        "tests/test_option_pricing_opra.py",
+        "tests/test_opra_replay_fallback.py",
+        "tests/test_opra_replay_publication.py"
+      ],
+      "tested_installed_input_count": 853
+    }
+  ]
+}
