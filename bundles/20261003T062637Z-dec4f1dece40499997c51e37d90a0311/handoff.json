@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:26:37.254707Z",
+  "id": "20261003T062637Z-dec4f1dece40499997c51e37d90a0311",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Correction to the prior source-availability notice: post-publication reconciliation found the three owned target files match the sealed record, but 82 of 94 recorded dependency fingerprints differ in the published commit. The branch must not be treated as a reviewed dependency snapshot or main-integration candidate."
+}
