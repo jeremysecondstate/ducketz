@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T04:14:29.031295Z",
+  "id": "20261003T041429Z-b9a8e2aa8041457ca2fd08d389d5760a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published reviewed completed Round 52 late-unscored assessment and accepted Round 53 mirror operating artifacts under its machine namespace on main."
+}
