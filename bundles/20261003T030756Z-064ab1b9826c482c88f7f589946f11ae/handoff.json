@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T03:07:56.527344Z",
+  "id": "20261003T030756Z-064ab1b9826c482c88f7f589946f11ae",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Human approved isolated joint Gameplan implementation and selected Atlas as the sole future trader for the twenty-two-symbol union; both PCs retain independent forecast and accuracy production. Interface and ownership alignment requested before overlapping source work."
+}

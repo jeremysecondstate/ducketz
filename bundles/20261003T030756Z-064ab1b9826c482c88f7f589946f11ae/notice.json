@@ -1,0 +1,110 @@
+{
+  "alignment_requests": [
+    "Correlate this selected single-Atlas-trader architecture with Scout's existing design request; the interim two-order-sender discussion is superseded.",
+    "Return Scout's current exact source revision, source ownership and proposed portable producer artifact/export interface through the existing authorized workflow before overlapping changes.",
+    "Agree immutable source/ownership handoff, freshness/unavailable-producer behavior and accuracy inputs; preserve existing holdings, pending/unknown orders and original ledgers for a reviewed migration."
+  ],
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "design:joint-gameplan-implementation-approved-atlas-single-host-v2:99532621db0d42dfe8c655300cc93abda81240d5",
+  "current_status": {
+    "atlas": "Producer reports isolated offline implementation from the named exact base. Candidate bytes, complete ownership/dependency inventory and passing behavior tests have not been supplied to this courier.",
+    "scout": "A human-relayed Scout proposal names transport commit 7656b85daf61cb181f74cce97470c279275ea25b. Its original notice and peer source/ownership/test evidence have not yet been validated by this courier."
+  },
+  "files": [
+    {
+      "bytes": 26339,
+      "operation": "unchanged_reference",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869"
+    },
+    {
+      "bytes": 16889,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/state.py",
+      "sha256": "b46aede4763428cc7035580b1a5d75073da0a08621e9959889d680940cfdd13b"
+    },
+    {
+      "bytes": 32626,
+      "operation": "unchanged_reference",
+      "path": "ml/gameplan_cash_ledger.py",
+      "sha256": "5010efaf06c5528327b7107e08bde53c3521142babebcd5d15c63c8006487333"
+    },
+    {
+      "bytes": 21061,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/independent_session.py",
+      "sha256": "56280de6333016a8b4849b2436803e7d49eb0cd5bcd2a74b6be5d577e699bea3"
+    },
+    {
+      "bytes": 53151,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "cbb7511823f73db1d10935926534f24ab6c5262ba12e4ec6c2bce2e262a4bf14"
+    },
+    {
+      "bytes": 62736,
+      "operation": "unchanged_reference",
+      "path": "ml/stock_trader/horizon_ledger.py",
+      "sha256": "c04d1d9dd0078a688e285d25ef05c7cded041030c8090105eeb61652640573e9"
+    }
+  ],
+  "human_decisions": {
+    "coordination_design": "Two independently frozen producer publications; one combined account plan; one durable cash/exposure reservation and fill authority; separate and combined accuracy reports.",
+    "implementation": "Direct human explicitly requested implementation and communication to Scout.",
+    "manual_start_behavior": "After installation and verification, one manual start using Atlas's existing start command should run one trader for all twenty-two symbols; Scout continues its own forecast and accuracy work.",
+    "selected_future_execution_host": "Atlas / pc-original",
+    "selected_future_order_senders": 1
+  },
+  "kind": "design_implementation_approval_reference",
+  "limitations": [
+    "This notice records verified human design decisions and producer-declared work/interface proposals. It is not a completed reviewed tested source record or peer installation evidence.",
+    "No current Scout installation, original design-notice contents, working bytes or runtime adoption are verified here.",
+    "Incoming factual notices do not grant executable requests or new peer operating authority. Source publication, main integration, installation and runtime transition remain separate stages.",
+    "The selected future host does not authorize starting or stopping either current trader, provider/broker calls, orders, ledger migration, schedule changes or partial runtime deployment now."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/99532621db0d42dfe8c655300cc93abda81240d5",
+    "https://github.com/jeremysecondstate/ducketz/commit/89752db90398c93161473f876634bf38171ccb1d",
+    "https://github.com/jeremysecondstate/ducketz/commit/7656b85daf61cb181f74cce97470c279275ea25b"
+  ],
+  "producer": "Loops Overnight Gameplan; direct human approval independently verified by Atlas courier",
+  "proposed_source_interface": {
+    "accuracy": "Keep each original forecast immutable and independently scored; aggregate only eligible scored outcomes.",
+    "authority": "Producer reports a proposed single-host transactional SQLite authority with pinned private bindings, fenced owner, exact reservations, retained unknown submissions and monotonic actual-fill evidence. No behavior test or completed implementation is asserted.",
+    "bundle": "SourceBundle(metadata, forecasts, price_path, ownership, manifest_sha256, path)",
+    "planning": "Use both frozen sources in one chronological cash/exposure plan with deterministic global purchase priority and producer-filtered views. Projected sales remain conditional.",
+    "validation": "Pin explicit producer, expected symbols, action date and immutable manifest hash. Retain native receipt and original forecast IDs with producer-qualified identities."
+  },
+  "reported_atlas_source_ownership": {
+    "dependency_adaptation": "ml/stock_trader/state.py",
+    "focused_tests": "tests/test_account_gameplan*",
+    "new_package": "ml/account_gameplan/",
+    "overlap_rule": "Preserve other writers; explicitly resolve overlapping source/dependencies before completion publication. Courier is not editing these paths.",
+    "shared_documentation": "Account coordination contract/documentation; exact owned paths pending",
+    "status": "Producer-declared proposed scope; final operations and byte hashes pending"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application source, checkout/index/branch, live symbols, controls, ledger, pending orders, operating owners, runtime or schedules changed by this courier. No mutable Git ledger or Git-based real-time order lock is proposed; no forecast sale is treated as spendable live cash.",
+  "scope": "Shared future planning, accuracy and single-host execution design for two existing eleven-symbol producers. Existing live symbols, strategies, allocations, gates, fallback caps, controls and operating owners remain intact until a reviewed transition.",
+  "source_reference_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Human approved isolated joint Gameplan implementation and selected Atlas as the sole future trader for the twenty-two-symbol union; both PCs retain independent forecast and accuracy production. Interface and ownership alignment requested before overlapping source work.",
+  "tests": [
+    {
+      "name": "Direct human implementation approval and final single-Atlas-trader selection reviewed through native chat evidence",
+      "reviewed_at_utc": "2026-10-03T03:07:27.922610Z",
+      "status": "completed"
+    },
+    {
+      "completed_at_utc": "2026-10-03T03:07:27.922610Z",
+      "name": "Six committed source reference bytes checked against prior reviewed exact hashes and sizes",
+      "started_at_utc": "2026-10-03T03:07:27.741652Z",
+      "status": "passed"
+    },
+    {
+      "name": "Joint implementation behavior/concurrency/failure checks",
+      "reason": "Isolated candidate evidence has not yet been supplied; no source completion is claimed.",
+      "status": "unknown"
+    }
+  ]
+}
