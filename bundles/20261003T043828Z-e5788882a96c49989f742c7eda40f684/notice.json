@@ -1,0 +1,354 @@
+{
+  "author": "Jeremy Klein (Git author); Atlas / pc-original (commit metadata); observed by Scout / pc-new",
+  "branch": "codex/atlas/20261003T042129Z-2be3ca33e5e84db5bea90cb767b711d7",
+  "change_id": "peer-source-availability-aca8403cf8a5e306d49735fe6870957c4523199b",
+  "commit_sha": "aca8403cf8a5e306d49735fe6870957c4523199b",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/aca8403cf8a5e306d49735fe6870957c4523199b",
+  "completion_record": "20261003T042129Z-2be3ca33e5e84db5bea90cb767b711d7",
+  "files": [
+    {
+      "bytes": 47046,
+      "git_blob": "19de8bfc14008de9316736b25010849989bb731d",
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py",
+      "sha256": "4e8fe2a8cf2fe2ac93243d8e3c13d98078b3dd5a050c8556a3c37c42d4b03a33"
+    },
+    {
+      "bytes": 34819,
+      "git_blob": "47ce32080d3a165c6f3c2a19ca1a5dfc51cce7e0",
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "sha256": "1d53f4218afe6dd2c343b1c1e16f7cdf691f6fc22ccdf5e46549032647e49d9c"
+    },
+    {
+      "bytes": 77997,
+      "git_blob": "4836cec87673c45eee8c78e58900834fe31d635a",
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "sha256": "36f65646653c68753e7746518ac1de66d53111fb6f8948b9b3d5eaa7a3d9e850"
+    },
+    {
+      "bytes": 12292,
+      "git_blob": "58ab3c1f2d93d740af492e043ce4b2dc037230a6",
+      "operation": "add",
+      "path": "docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md",
+      "sha256": "b10f70cb652d8e2d6ff47ddb6f3b22c97ac2351336dea3ebdb3d3e98f2dd2985"
+    },
+    {
+      "bytes": 78,
+      "git_blob": "879fa86629cbbcab516f9523e0a399e2b353e5f4",
+      "operation": "add",
+      "path": "ml/account_gameplan/__init__.py",
+      "sha256": "9e91f038d8d3c6b24fbefd894f58568634d607f4d1b7f696f6561580ab811be8"
+    },
+    {
+      "bytes": 10261,
+      "git_blob": "887d2b70e937681a43e42a331a830c47b59e1424",
+      "operation": "add",
+      "path": "ml/account_gameplan/accuracy.py",
+      "sha256": "5263598b25c1819b5dc245515042053cd6aae95542833d8bd52fb41fec2edb54"
+    },
+    {
+      "bytes": 35324,
+      "git_blob": "a234e38125521e462a1e0521bf9633bddab3f803",
+      "operation": "add",
+      "path": "ml/account_gameplan/authority.py",
+      "sha256": "4e60f3a58a6a9f89a28775e893c6d215a5d58f68bcce11bb1d077768fd0c46a5"
+    },
+    {
+      "bytes": 10473,
+      "git_blob": "53a9d228ac73ac71d9a12487a9af2764c64ba12b",
+      "operation": "add",
+      "path": "ml/account_gameplan/cli.py",
+      "sha256": "93ff3966e20e3c9f6617cb30152feb8631c2f176adee93131a56b671b0317672"
+    },
+    {
+      "bytes": 5050,
+      "git_blob": "2bca2fa2b230e6b5077cc38bc403ead5fe71860f",
+      "operation": "add",
+      "path": "ml/account_gameplan/config.py",
+      "sha256": "7cda4c80c3ba074b59ee790ea5307f85132441d3cbbb3b9b0cebf9656b2b8fd9"
+    },
+    {
+      "bytes": 12529,
+      "git_blob": "1d2b0e0681747a8f066527a39bc96348e5d18fa2",
+      "operation": "add",
+      "path": "ml/account_gameplan/execution.py",
+      "sha256": "69806b10ba5e45404a2051e49b54a0c86cb4a7d6586545d6e59e881fa48f0ef7"
+    },
+    {
+      "bytes": 5360,
+      "git_blob": "4d8fb9c1ada8283839bbb7d59224d67bfb402850",
+      "operation": "add",
+      "path": "ml/account_gameplan/joint_bridge.py",
+      "sha256": "ba5684373433c9e16c8792c0a0a7b61a8cd180cb7d24b84c530aee5e827a4588"
+    },
+    {
+      "bytes": 24303,
+      "git_blob": "1514df458dc325fba723c4ebac624f695b2fde8f",
+      "operation": "add",
+      "path": "ml/account_gameplan/migration.py",
+      "sha256": "e44959f9ad90befa72180107318fa4548821871858ac9142a0982c11e8ccb620"
+    },
+    {
+      "bytes": 29025,
+      "git_blob": "405896a30cb6e2dff06d8828d1432f89fa295b7d",
+      "operation": "add",
+      "path": "ml/account_gameplan/planner.py",
+      "sha256": "76429f03524371f0131e81475183b3de29db6d47e08722eced4302bd04f0b6f8"
+    },
+    {
+      "bytes": 17865,
+      "git_blob": "b96248b4e9aab6939c8b0dc6adf06ad939f5e45a",
+      "operation": "add",
+      "path": "ml/account_gameplan/preparation.py",
+      "sha256": "586876c0d135ae8a3196c74f1ed1f8554dd94d3435bd5e0fd2243e22b08ba121"
+    },
+    {
+      "bytes": 20636,
+      "git_blob": "8e11d7323fe7820dfcb4c95e90137d5b041572c0",
+      "operation": "add",
+      "path": "ml/account_gameplan/review.py",
+      "sha256": "5ce3c010871923adc973b3b702ac5bcfcd3e3707395f1e2c60e1152290f3d684"
+    },
+    {
+      "bytes": 11615,
+      "git_blob": "b5332fe3f7b91ea0aa84f36f38f6a12e925b8316",
+      "operation": "add",
+      "path": "ml/account_gameplan/snapshot.py",
+      "sha256": "0d2e9ed4c9794187a2366a2c7524cae224481f2e3a8e588cad9333f9a177f869"
+    },
+    {
+      "bytes": 31226,
+      "git_blob": "f5eaf5589c870c11055ba6e5ccff094456b7eb05",
+      "operation": "add",
+      "path": "ml/account_gameplan/sources.py",
+      "sha256": "b8475cc04a8fa3233938e77c1413afe79770f01bc149603ac3c8c823997fa7b4"
+    },
+    {
+      "bytes": 7542,
+      "git_blob": "da3fd0dc23fa325c4a623c0dee02cfe1ecd7c5e0",
+      "operation": "add",
+      "path": "ml/account_gameplan/views.py",
+      "sha256": "bf9cd2ad1bcc38c99768ce75fc09edcd1f017dfbb9f627bada81aee036449385"
+    },
+    {
+      "bytes": 55812,
+      "git_blob": "d01ac1d4572254364f6e04b1d12959c3a2759f54",
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "481bb1d97333e7849e8c126068c313afe886a9b0d717d28d6553eb36b1002a14"
+    },
+    {
+      "bytes": 26929,
+      "git_blob": "08389b14c90e0763206435963de34fc270b2c8bc",
+      "operation": "modify",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "13ffc778f7f8f40a48d53d4cfd962fc80dd578fc02c7ee12d4725555fa6ff65f"
+    },
+    {
+      "bytes": 50189,
+      "git_blob": "11cbfe479da808ececb9cf03a88e46fbbaea82d6",
+      "operation": "modify",
+      "path": "ml/overnight_runtime.py",
+      "sha256": "8bc8c76b5bdd46a9b5a817293261abd592053f406a0ca968e15534e63f68e31c"
+    },
+    {
+      "bytes": 10217,
+      "git_blob": "b5178dd3c5bee927812503b03a99c545cab44cf6",
+      "operation": "modify",
+      "path": "ml/stock_trader/contracts.py",
+      "sha256": "7561035b05058d1f44ed0c98fec65cf91439c63786ef81216c1d39c56a38e234"
+    },
+    {
+      "bytes": 10199,
+      "git_blob": "fde0f8385640061489832d002c18d9c37a46afaa",
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py",
+      "sha256": "2e06262ae5934a99b05044cf11ae11e75bbce0143f85b6faf4df2c9a1f73870d"
+    },
+    {
+      "bytes": 60421,
+      "git_blob": "101d76f880eb99d6e53bf81b8102a0e6a36f4af3",
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "f6a8c1c0336c283eefc10bcb96921306ce3a83c40d81fdf094a2b488169c0cc7"
+    },
+    {
+      "bytes": 21341,
+      "git_blob": "46c8b6bf000360db7655cc0efd450f56a9163738",
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_session.py",
+      "sha256": "0213f23e59d457bf916ec375bc7c79a0540d0dc091cb1124b5d3224a37e9eeba"
+    },
+    {
+      "bytes": 54793,
+      "git_blob": "68e4b29c0966c86d6791f85ab54eff70b830a1ad",
+      "operation": "modify",
+      "path": "ml/stock_trader/runtime.py",
+      "sha256": "5c1050d19f7c1cd6070b127d08107cf7bbd4de63761b9f4511b5ea9ebb97bb9d"
+    },
+    {
+      "bytes": 19131,
+      "git_blob": "4bd6812e8542ef558d12bb34682fa41f6ff3a8c4",
+      "operation": "modify",
+      "path": "ml/stock_trader/state.py",
+      "sha256": "cb2563e83b44fd0aff39e23e033448de534fbe2dfe682f52225497bc73ce8ff0"
+    },
+    {
+      "bytes": 8842,
+      "git_blob": "74a992886f790655a73a8bb95c7fdb5ab88c8113",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_accuracy.py",
+      "sha256": "d9eb408110d97abd436bf87bcdfffbe34d3480c394471b9a25bbe6324b90c071"
+    },
+    {
+      "bytes": 19784,
+      "git_blob": "fde453f6d3bb3835c995ba5cb756e2edf1c15c7b",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_authority.py",
+      "sha256": "104624a5889a7db8c1656fd71b4f8246c627a6d87ed8d3553c5debba59f25524"
+    },
+    {
+      "bytes": 7305,
+      "git_blob": "1ee409c9c767930d9bb72057f2d260aec1167571",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_cli.py",
+      "sha256": "eaeb0ef5ccfabe240d6f5b4f0753c7320ec15845b9bc2874aaeea42524eba00e"
+    },
+    {
+      "bytes": 3508,
+      "git_blob": "d5f24f927a43d1894f14c49b02daff9705f837d6",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_config.py",
+      "sha256": "ccb334845cbd48e847a7b8f9b915cfda0e268bcb4cd36916187bfdecd15ef0e7"
+    },
+    {
+      "bytes": 16309,
+      "git_blob": "0f3fd59b7cf6d4c58ecb3fd1ca93ad06cdbab9c1",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_execution.py",
+      "sha256": "d7e900d7bf04db641be94c0bd3eb15a3867135d36356970e6707ef1f151ee826"
+    },
+    {
+      "bytes": 9041,
+      "git_blob": "0ee40f6917548cf091d3a00bb7ce0850c833f1b8",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_joint_interop.py",
+      "sha256": "7e0970ae235ae66febd4ed205880f98fe42457be2a73cd126d55df1e9d115a49"
+    },
+    {
+      "bytes": 13970,
+      "git_blob": "c5a9d87c4eac6b7098c17de377ff3b5f3a1d0ab6",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_migration.py",
+      "sha256": "050dcc68767f54ac49fd42d69860e6c60c81a1a994dc7cc82115e075f5296b45"
+    },
+    {
+      "bytes": 4785,
+      "git_blob": "82f71a0ec12b551c689fcc51883dd80aa296726b",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_overnight.py",
+      "sha256": "9d5f8ba2f5057d1f03e3d2d479d7b10ac53eecf560453f24cf7a3fd1a8c6d63d"
+    },
+    {
+      "bytes": 12560,
+      "git_blob": "9d68c6261dcc9cfe3dcbd1c52b9cf368d1adbd09",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_planner.py",
+      "sha256": "6002492bbb592a1b6b72c38dc38049c73534b3b990c3ad1ea4685302817cf84c"
+    },
+    {
+      "bytes": 12467,
+      "git_blob": "c508d1fcc7148f35d2e34329aed3931092312c84",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_preparation.py",
+      "sha256": "09d98fbdb4774c68077d412919d842beec53c3ec4a413ec0fd1eb2fbe949d91f"
+    },
+    {
+      "bytes": 9792,
+      "git_blob": "b029f222d025174be634627d40d31126cfb2b2fe",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_producer_prices.py",
+      "sha256": "4c6cef7c428e36b2747a7106f375a6732d90380c32516c0e5aeb3e9936bb68e0"
+    },
+    {
+      "bytes": 17925,
+      "git_blob": "c68758384a6bc5a38d11e58a7ad989f498c0f55e",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_review.py",
+      "sha256": "1432c9f360b22f148131657188a49173ed503eb11c15a845ca165f6ecf8b91a9"
+    },
+    {
+      "bytes": 4246,
+      "git_blob": "974f915865ebd589c107a4b0cbb3175b9e416bf2",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_selection.py",
+      "sha256": "f3ebc578730deb3612f2ffc12d13e91b6c84b9fcdc830d8b8ca00e193bd3286a"
+    },
+    {
+      "bytes": 14269,
+      "git_blob": "1a4f8196b92ff095938438a87869f9dce7a36a06",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_snapshot.py",
+      "sha256": "c753536029889e6e63eae09d7a179ccb2bfe67c3e3271e81ee77f02d6c79c84c"
+    },
+    {
+      "bytes": 17472,
+      "git_blob": "6a6d9abb1612385495257c7567745398de491439",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_sources.py",
+      "sha256": "7a23d4920da309ea775f9376c4c7e6c10f67d1b667758b2df1e1a49a7f7b1191"
+    },
+    {
+      "bytes": 7615,
+      "git_blob": "108af37f4af78a424503ff302ffee874eba7da76",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_ui.py",
+      "sha256": "572a1ce6228add75feee4414eba64c6a728a76183cd93c500462d647f889bade"
+    },
+    {
+      "bytes": 9936,
+      "git_blob": "e65c51ba4f431908d8bfa019684ebb3f102dd225",
+      "operation": "add",
+      "path": "tests/test_account_gameplan_views.py",
+      "sha256": "338e0b8de483b0e573a0b6be3b25336f7176ba2ac1ad30e56f2de3bbab41de2e"
+    }
+  ],
+  "limitations": [
+    "Commit-claimed offline test output and tested working-byte fingerprints were not supplied for independent verification; committed Git blob SHA-256 values are separate evidence.",
+    "Exact dependency closure, local installation, producer execution fencing, account ownership cutover and running-process version are not established by branch availability.",
+    "The candidate uses opt-in account bindings; source review found no committed local symbol selector, private configuration, credential, account database, control or schedule change."
+  ],
+  "local_preservation": {
+    "application_head": "9c5b50281169f05032bb0d6d943f761447e70cab",
+    "clean": true,
+    "selected_source_config_files_unchanged": 970,
+    "verified": true
+  },
+  "parent_sha": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "producer": "human-authorized-development (commit metadata)",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No checkout adoption, worker start/restart, provider/broker call, trade or runtime deployment occurred on Scout during this observation.",
+  "scope": "Shared source candidate for Atlas and Scout; available on Atlas review branch. Remote main was 40c3aeac83df757e06fe0a234d8998c121c7ee43 at 2026-10-03T04:35:57Z.",
+  "summary": "Verified Atlas shared-source review branch for combined account planning and sole Atlas execution authority: 32 adds, 12 modifications; main integration and runtime adoption remain separate.",
+  "tests": [
+    {
+      "application_tests_executed": false,
+      "check": "Exact 44 changed-file operations and committed Git blob SHA-256/byte sizes verified; 32 adds and 12 modifications.",
+      "verified_by": "Scout / pc-new"
+    },
+    {
+      "check": "Origin branch fetch preserved clean Scout application HEAD, branch, index, local symbol/profile/installed-release bindings and 970 selected shared source/config working-byte fingerprints.",
+      "completed_at_utc": "2026-10-03T04:33:27.769391Z",
+      "verified_by": "Scout / pc-new"
+    },
+    {
+      "check": "Commit reports offline pytest command passed with output SHA-256 78d97d31d0a0cb62f826623f8bb347ac0e2a17bdeec3e201805e194b3accea03.",
+      "claimed_by": "Atlas commit metadata",
+      "completed_at_utc": "2026-10-03T04:30:59.334420Z",
+      "started_at_utc": "2026-10-03T04:27:02.139482Z",
+      "verified_by_scout": false
+    }
+  ]
+}

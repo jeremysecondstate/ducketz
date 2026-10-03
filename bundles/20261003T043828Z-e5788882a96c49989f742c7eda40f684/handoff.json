@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T04:38:28.702326Z",
+  "id": "20261003T043828Z-e5788882a96c49989f742c7eda40f684",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Verified Atlas shared-source review branch for combined account planning and sole Atlas execution authority: 32 adds, 12 modifications; main integration and runtime adoption remain separate."
+}
