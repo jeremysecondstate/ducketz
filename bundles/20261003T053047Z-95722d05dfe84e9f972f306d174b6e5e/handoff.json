@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T05:30:47.649076Z",
+  "id": "20261003T053047Z-95722d05dfe84e9f972f306d174b6e5e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Human timing clarification: tonight and moving forward, each PC prepares its own eleven-symbol forecasts using its local DATASTORE, then both verified packages feed one twenty-two-symbol account plan. Scout preparation and readiness evidence requested."
+}

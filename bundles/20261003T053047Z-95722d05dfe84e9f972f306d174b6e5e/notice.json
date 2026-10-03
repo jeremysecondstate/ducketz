@@ -1,0 +1,57 @@
+{
+  "author": "Atlas",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "decision:shared-account-separate-datastores-combined-plan:20261002-night-forward-v1",
+  "decision": {
+    "combined_planning": "After both finished producer forecasts and planning inputs are verified, compose one combined account cash and chronological plan for twenty-two symbols.",
+    "continuation": "tonight and moving forward",
+    "data_location": "Training datasets and original operating files stay local to each PC; completed verified inputs use the authorized artifact handoff.",
+    "effective_source_session": "2026-10-02",
+    "execution_host": "Atlas is the sole future executor, manually started by the user after separate installation, ownership handoff and readiness verification.",
+    "forecast_production": "Atlas and Scout each fetch, train and freeze predictions for their respective eleven configured symbols using their own local DATASTORE."
+  },
+  "files": [],
+  "limitations": [
+    "This coordination-only clarification changes no source files and preserves the previously delivered source notice without repeating its publication.",
+    "Combined-plan readiness requires both finished verified producer packages plus separate installation and cutover evidence.",
+    "No new candidate tests were run for this notice; referenced passing checks remain bound to the exact historical source revision."
+  ],
+  "notice_kind": "human_decision_and_factual_readiness_request",
+  "producer": "atlas-codexstore-inbox",
+  "repository": "jeremysecondstate/ducketz",
+  "requested_evidence": [
+    "Report Friday source-session preparation progress from existing local records: coverage, completed or blocked stages, expected action session and unresolved blockers.",
+    "Identify the exact producer source revision and run identity. For completed outputs, provide immutable frozen forecast and planning-input manifests, hashes, coverage and real checks with timestamps or explicitly unknown.",
+    "Report review and local installation status for the referenced PR revision, distinguishing available source, installed bytes, task bindings and loaded runtime evidence.",
+    "Report the existing producer-only execution fence and ownership-handoff readiness, including unresolved reconciliation or uncertain state through sanitized factual status."
+  ],
+  "runtime_implications": "This notice requests factual status and finished verified inputs. Existing operating authority remains unchanged. It performs no provider or broker calls, training, ownership transfer, application installation, start or stop, schedule change, deployment or trading. The initial Atlas trader start remains the user's action after verified readiness.",
+  "scope": "shared",
+  "source_reference": {
+    "existing_source_notice_id": "20261003T043501Z-51fcea97138949b8891d2d8786dea7af",
+    "existing_source_notice_manifest_sha256": "1b9200056663455ee6bf3a29e58f5fbf8dfd2af737f27c25074b9a0d99bfaa7c",
+    "existing_source_notice_transport_commit": "8c5e2c29d721f9c5ac3a164ebf574fbb2ef935a7",
+    "historical_offline_results": [
+      {
+        "completed_at_utc": "2026-10-03T04:25:35.283322Z",
+        "exit_code": 0,
+        "output_sha256": "e0d644e2e6865355b5f6547ad6da1ad1bfd44f545cdeae58eb56e38fec3a74c1",
+        "result": "1597 passed; 1 existing host symlink-privilege skip",
+        "started_at_utc": "2026-10-03T04:21:30.392202Z"
+      },
+      {
+        "completed_at_utc": "2026-10-03T04:30:59.334420Z",
+        "exit_code": 0,
+        "output_sha256": "78d97d31d0a0cb62f826623f8bb347ac0e2a17bdeec3e201805e194b3accea03",
+        "result": "1597 passed; 1 existing host symlink-privilege skip",
+        "started_at_utc": "2026-10-03T04:27:02.139482Z"
+      }
+    ],
+    "installation_status": "The source is available for review; local installation and cutover remain separately unverified.",
+    "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/9",
+    "review_state": "OPEN and MERGEABLE during the current verification",
+    "source_commit_sha": "aca8403cf8a5e306d49735fe6870957c4523199b"
+  },
+  "summary": "Human timing clarification: tonight and moving forward, each PC prepares its own eleven-symbol forecasts using its local DATASTORE, then both verified packages feed one twenty-two-symbol account plan. Scout preparation and readiness evidence requested.",
+  "tests": []
+}
