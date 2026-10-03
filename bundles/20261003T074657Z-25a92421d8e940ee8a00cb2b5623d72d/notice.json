@@ -1,0 +1,498 @@
+{
+  "actor": "Atlas",
+  "author": "Jeremy Klein",
+  "branch": "codex/atlas/20261003T071623Z-b6ad826779984ef2845250675d0ba1aa",
+  "case_id": "cross-ducketz-20261002-source-parity",
+  "change_id": "source:7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+  "completed_at_utc": "2026-10-03T07:32:09.296662Z",
+  "completion_id": "20261003T071623Z-b6ad826779984ef2845250675d0ba1aa",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py",
+      "sha256": "4e8fe2a8cf2fe2ac93243d8e3c13d98078b3dd5a050c8556a3c37c42d4b03a33"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/__init__.py",
+      "sha256": "9e91f038d8d3c6b24fbefd894f58568634d607f4d1b7f696f6561580ab811be8"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/accuracy.py",
+      "sha256": "5263598b25c1819b5dc245515042053cd6aae95542833d8bd52fb41fec2edb54"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/authority.py",
+      "sha256": "4e60f3a58a6a9f89a28775e893c6d215a5d58f68bcce11bb1d077768fd0c46a5"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/cli.py",
+      "sha256": "93ff3966e20e3c9f6617cb30152feb8631c2f176adee93131a56b671b0317672"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/config.py",
+      "sha256": "7cda4c80c3ba074b59ee790ea5307f85132441d3cbbb3b9b0cebf9656b2b8fd9"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/execution.py",
+      "sha256": "69806b10ba5e45404a2051e49b54a0c86cb4a7d6586545d6e59e881fa48f0ef7"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/joint_bridge.py",
+      "sha256": "ba5684373433c9e16c8792c0a0a7b61a8cd180cb7d24b84c530aee5e827a4588"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/migration.py",
+      "sha256": "e44959f9ad90befa72180107318fa4548821871858ac9142a0982c11e8ccb620"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/planner.py",
+      "sha256": "76429f03524371f0131e81475183b3de29db6d47e08722eced4302bd04f0b6f8"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/preparation.py",
+      "sha256": "586876c0d135ae8a3196c74f1ed1f8554dd94d3435bd5e0fd2243e22b08ba121"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/review.py",
+      "sha256": "5ce3c010871923adc973b3b702ac5bcfcd3e3707395f1e2c60e1152290f3d684"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/snapshot.py",
+      "sha256": "0d2e9ed4c9794187a2366a2c7524cae224481f2e3a8e588cad9333f9a177f869"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/sources.py",
+      "sha256": "b8475cc04a8fa3233938e77c1413afe79770f01bc149603ac3c8c823997fa7b4"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/views.py",
+      "sha256": "bf9cd2ad1bcc38c99768ce75fc09edcd1f017dfbb9f627bada81aee036449385"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "481bb1d97333e7849e8c126068c313afe886a9b0d717d28d6553eb36b1002a14"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "13ffc778f7f8f40a48d53d4cfd962fc80dd578fc02c7ee12d4725555fa6ff65f"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/overnight_runtime.py",
+      "sha256": "8bc8c76b5bdd46a9b5a817293261abd592053f406a0ca968e15534e63f68e31c"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/contracts.py",
+      "sha256": "7561035b05058d1f44ed0c98fec65cf91439c63786ef81216c1d39c56a38e234"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py",
+      "sha256": "2e06262ae5934a99b05044cf11ae11e75bbce0143f85b6faf4df2c9a1f73870d"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "f6a8c1c0336c283eefc10bcb96921306ce3a83c40d81fdf094a2b488169c0cc7"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_session.py",
+      "sha256": "0213f23e59d457bf916ec375bc7c79a0540d0dc091cb1124b5d3224a37e9eeba"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/runtime.py",
+      "sha256": "5c1050d19f7c1cd6070b127d08107cf7bbd4de63761b9f4511b5ea9ebb97bb9d"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/state.py",
+      "sha256": "cb2563e83b44fd0aff39e23e033448de534fbe2dfe682f52225497bc73ce8ff0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_accuracy.py",
+      "sha256": "d9eb408110d97abd436bf87bcdfffbe34d3480c394471b9a25bbe6324b90c071"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_authority.py",
+      "sha256": "104624a5889a7db8c1656fd71b4f8246c627a6d87ed8d3553c5debba59f25524"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_cli.py",
+      "sha256": "eaeb0ef5ccfabe240d6f5b4f0753c7320ec15845b9bc2874aaeea42524eba00e"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_config.py",
+      "sha256": "ccb334845cbd48e847a7b8f9b915cfda0e268bcb4cd36916187bfdecd15ef0e7"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_execution.py",
+      "sha256": "d7e900d7bf04db641be94c0bd3eb15a3867135d36356970e6707ef1f151ee826"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_joint_interop.py",
+      "sha256": "7e0970ae235ae66febd4ed205880f98fe42457be2a73cd126d55df1e9d115a49"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_migration.py",
+      "sha256": "050dcc68767f54ac49fd42d69860e6c60c81a1a994dc7cc82115e075f5296b45"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_overnight.py",
+      "sha256": "9d5f8ba2f5057d1f03e3d2d479d7b10ac53eecf560453f24cf7a3fd1a8c6d63d"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_planner.py",
+      "sha256": "6002492bbb592a1b6b72c38dc38049c73534b3b990c3ad1ea4685302817cf84c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_preparation.py",
+      "sha256": "09d98fbdb4774c68077d412919d842beec53c3ec4a413ec0fd1eb2fbe949d91f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_producer_prices.py",
+      "sha256": "4c6cef7c428e36b2747a7106f375a6732d90380c32516c0e5aeb3e9936bb68e0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_review.py",
+      "sha256": "1432c9f360b22f148131657188a49173ed503eb11c15a845ca165f6ecf8b91a9"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_selection.py",
+      "sha256": "f3ebc578730deb3612f2ffc12d13e91b6c84b9fcdc830d8b8ca00e193bd3286a"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_snapshot.py",
+      "sha256": "c753536029889e6e63eae09d7a179ccb2bfe67c3e3271e81ee77f02d6c79c84c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_sources.py",
+      "sha256": "7a23d4920da309ea775f9376c4c7e6c10f67d1b667758b2df1e1a49a7f7b1191"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_ui.py",
+      "sha256": "572a1ce6228add75feee4414eba64c6a728a76183cd93c500462d647f889bade"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_views.py",
+      "sha256": "338e0b8de483b0e573a0b6be3b25336f7176ba2ac1ad30e56f2de3bbab41de2e"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md",
+      "sha256": "1d53f4218afe6dd2c343b1c1e16f7cdf691f6fc22ccdf5e46549032647e49d9c"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md",
+      "sha256": "0152b23bde20c8f4ae44417eb709466c8f2c35fa4b5e0086c3b367dcc3fdf4b0"
+    },
+    {
+      "operation": "add",
+      "path": "ml/account_gameplan/cutover.py",
+      "sha256": "8636b4afbe428c65cd5165de4abd9c6fb8260a169997c533fdb3f59dcb9735c8"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_cutover.py",
+      "sha256": "5190448905c5f6028a3b379e73ab3296181efe11b162093223e50dcc383a7eb6"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_databento_opra_replay.py",
+      "sha256": "563467088eb973cb29db644b2438907dc76a386a95b489415f2fab3d666a84d9"
+    }
+  ],
+  "limitations": [
+    "This publication reconciles earlier reviewed payloads with exact current-base dependencies; the original completion records remain intact.",
+    "Fresh isolated verification passed 2,390 tests, with one actual skip, one declared synthetic model-fit deselection and 49 warnings; the result replaces no historical receipt.",
+    "An open tested PR is pending main integration. Installed raw bytes and canonical committed bytes have separate manifests; neither establishes current combined-account readiness.",
+    "The four requested Scout proofs remain pending: exact native source package and revision, installed adapter and task readback, execution fence and handoff, and sanitized preserved ownership/ledger handoff."
+  ],
+  "operation_counts": {
+    "add": 34,
+    "delete": 0,
+    "modify": 12
+  },
+  "parent_commit_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "pr_state": "OPEN",
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/12",
+  "practical_changes": [
+    "Reconcile the already-published account planner, sole-host authority, source handoff, accuracy review and guarded offline ownership cutover against the current accepted provider and interface baseline.",
+    "Retain existing provider, interface, macro and paper-trading changes while preserving canonical composition and explicit availability states.",
+    "Include the published offline Databento replay fixture repair; bind every unchanged dependency to its exact canonical base blob."
+  ],
+  "prior_scoped_installation": {
+    "account_activated": false,
+    "completed_at_utc": "2026-10-03T07:06:18.889788+00:00",
+    "raw_byte_manifest_separate_from_canonical_git_release": true,
+    "receipt_sha256": "545b2be97bc9326e220d36672f8b4ce238b407e5512f8bc450d75c448659a6b0",
+    "status": "INSTALLED_AND_VERIFIED",
+    "whole_checkout_at_candidate": false
+  },
+  "producer": "loops-hourly-operations",
+  "record_sha256": "646b92377b2272847cc83c71be8175c0b29707de27772da6537b06296026ba23",
+  "repository": "jeremysecondstate/ducketz",
+  "request_id": "shared-account-20261002-friday-producer-readiness",
+  "reviewed_at_utc": "2026-10-03T07:46:57.501348Z",
+  "runtime_implications": "No application checkout mutation, main merge, runtime activation, control change, ownership-ledger migration, broker/provider call, trade, training, funds movement or cadence change was performed by this courier. Source publication and offline checks do not prove current runtime adoption.",
+  "scope": "Shared source and defaults applicable to both PCs; account activation, each PC's existing symbol partition, datastore, execution fence and ownership evidence remain local.",
+  "source_availability": {
+    "local_working_checkout_head": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+    "main_integration": "pending open PR #12",
+    "owner_branch_remote_sha_verified": "7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+    "peer_installation": "unverified",
+    "peer_runtime_adoption": "unverified",
+    "whole_checkout_at_candidate": false
+  },
+  "source_commit_sha": "7b1dd6c5805f9f5278f6c947242973d3228ebae4",
+  "summary": "Atlas published a freshly tested shared-account Gameplan candidate on the accepted current source base; PR #12 is open against main and all 853 committed input hashes match the sealed test evidence.",
+  "tests": {
+    "canonical_committed_input_count": 853,
+    "committed_byte_review_sha256": "53766bd5817495c1180b32acd07f7935aa38bd338ab1060a56c679ec87d1e9d3",
+    "completion_queue": [
+      {
+        "completed_at_utc": "2026-10-03T07:23:07.895025Z",
+        "declared_deselection": "tests/test_symbol_onboarding.py::test_candidate_stock_model_can_be_trained_without_replacing_production",
+        "exit_code": 0,
+        "import_evidence_sha256": "d78b83536f27bd04187e2654d95793e084826c5351588969b635e513e0a6a6f1",
+        "network_access": "disabled by the installed offline test verifier",
+        "output_sha256": "cd973117ad01c0bf6d402ae9fe350dcee850d550b94d11e0e897d47752b12fe2",
+        "result": "2390 passed, 1 skipped, 1 deselected, 49 warnings in 400.64s (0:06:40)",
+        "started_at_utc": "2026-10-03T07:16:25.228504Z",
+        "suite_files": [
+          "tests/test_account_gameplan_accuracy.py",
+          "tests/test_account_gameplan_authority.py",
+          "tests/test_account_gameplan_cli.py",
+          "tests/test_account_gameplan_config.py",
+          "tests/test_account_gameplan_execution.py",
+          "tests/test_account_gameplan_joint_interop.py",
+          "tests/test_account_gameplan_migration.py",
+          "tests/test_account_gameplan_overnight.py",
+          "tests/test_account_gameplan_planner.py",
+          "tests/test_account_gameplan_preparation.py",
+          "tests/test_account_gameplan_producer_prices.py",
+          "tests/test_account_gameplan_review.py",
+          "tests/test_account_gameplan_selection.py",
+          "tests/test_account_gameplan_snapshot.py",
+          "tests/test_account_gameplan_sources.py",
+          "tests/test_account_gameplan_ui.py",
+          "tests/test_account_gameplan_views.py",
+          "tests/test_overnight_supervision.py",
+          "tests/test_gameplan_trade_planning.py",
+          "tests/test_gameplan_cash_ledger.py",
+          "tests/test_gameplan_trade_snapshot.py",
+          "tests/test_gameplan_actuals_review.py",
+          "tests/test_gameplan_execution.py",
+          "tests/test_gameplan_stock_trader.py",
+          "tests/test_gameplan_deployment_execution.py",
+          "tests/test_gameplan_deployment_handoff.py",
+          "tests/test_independent_stock_runtime.py",
+          "tests/test_independent_stock_session.py",
+          "tests/test_independent_stock_signals.py",
+          "tests/test_independent_stock_engine.py",
+          "tests/test_stock_horizon_ledger.py",
+          "tests/test_fixed_horizon_engine.py",
+          "tests/test_fixed_horizon_budget.py",
+          "tests/test_cross_horizon_fallback_policy.py",
+          "tests/test_cross_horizon_fallback_ledger.py",
+          "tests/test_cross_horizon_fallback_runtime.py",
+          "tests/test_cross_horizon_fallback_review.py",
+          "tests/test_gameplan_fallback_planning.py",
+          "tests/test_gameplan_quote_recovery.py",
+          "tests/test_gameplan_quote_clock_recovery.py",
+          "tests/test_stock_trader_cash_state.py",
+          "tests/test_schwab_quote_freshness.py",
+          "tests/test_stock_trader.py",
+          "tests/test_stock_trader_atomic_publication.py",
+          "tests/test_independent_stock_forecast_ui.py",
+          "tests/test_gameplan_data.py",
+          "tests/test_gameplan_ui.py",
+          "tests/test_gameplan_execution_abstention.py",
+          "tests/test_joint_capital_plan.py",
+          "tests/test_joint_capital_handoff.py",
+          "tests/test_gameplan_direction_engine.py",
+          "tests/test_gameplan_direction_runtime.py",
+          "tests/test_gameplan_direction_snapshot.py",
+          "tests/test_gameplan_price_bands.py",
+          "tests/test_gameplan_price_completion.py",
+          "tests/test_gameplan_probability_target.py",
+          "tests/test_stock_direction_policy.py",
+          "tests/test_stock_horizon_broker.py",
+          "tests/test_stock_horizon_schwab_context.py",
+          "tests/test_gameplan_trade_review.py",
+          "tests/test_nightly_gameplan.py",
+          "tests/test_stock_only_gameplan.py",
+          "tests/test_cme_cross_asset_context.py",
+          "tests/test_cme_persistent_retry_defaults.py",
+          "tests/test_cme_runtime.py",
+          "tests/test_databento_cold_start.py",
+          "tests/test_databento_cold_start_retry.py",
+          "tests/test_databento_opra_live.py",
+          "tests/test_databento_opra_replay.py",
+          "tests/test_databento_retry.py",
+          "tests/test_fred_alfred_causal_pipeline.py",
+          "tests/test_fred_fetch.py",
+          "tests/test_gameplan_stats_ui.py",
+          "tests/test_local_watchlist.py",
+          "tests/test_ml_macro_bootstrap.py",
+          "tests/test_opra_concurrent_native_publication.py",
+          "tests/test_opra_concurrent_stream.py",
+          "tests/test_opra_definition_retry.py",
+          "tests/test_opra_gateway_retry.py",
+          "tests/test_opra_replay_fallback.py",
+          "tests/test_opra_replay_publication.py",
+          "tests/test_option_pricing_opra.py",
+          "tests/test_research_onboarding.py",
+          "tests/test_research_publication.py",
+          "tests/test_stock_target_history.py",
+          "tests/test_stock_target_history_fallback.py",
+          "tests/test_symbol_onboarding.py",
+          "tests/test_account_gameplan_cutover.py"
+        ],
+        "tested_input_count": 853
+      }
+    ],
+    "isolated_candidate": [
+      {
+        "completed_at_utc": "2026-10-03T07:31:26.602354Z",
+        "declared_deselection": "tests/test_symbol_onboarding.py::test_candidate_stock_model_can_be_trained_without_replacing_production",
+        "exit_code": 0,
+        "import_evidence_sha256": "d78b83536f27bd04187e2654d95793e084826c5351588969b635e513e0a6a6f1",
+        "network_access": "disabled by the installed offline test verifier",
+        "output_sha256": "2ba0139cf2984f948435b0086b7cc419ecb1eeb1bb0d10e55f90e5f535e6ae5e",
+        "result": "2390 passed, 1 skipped, 1 deselected, 49 warnings in 351.01s (0:05:51)",
+        "started_at_utc": "2026-10-03T07:25:33.635534Z",
+        "suite_files": [
+          "tests/test_account_gameplan_accuracy.py",
+          "tests/test_account_gameplan_authority.py",
+          "tests/test_account_gameplan_cli.py",
+          "tests/test_account_gameplan_config.py",
+          "tests/test_account_gameplan_execution.py",
+          "tests/test_account_gameplan_joint_interop.py",
+          "tests/test_account_gameplan_migration.py",
+          "tests/test_account_gameplan_overnight.py",
+          "tests/test_account_gameplan_planner.py",
+          "tests/test_account_gameplan_preparation.py",
+          "tests/test_account_gameplan_producer_prices.py",
+          "tests/test_account_gameplan_review.py",
+          "tests/test_account_gameplan_selection.py",
+          "tests/test_account_gameplan_snapshot.py",
+          "tests/test_account_gameplan_sources.py",
+          "tests/test_account_gameplan_ui.py",
+          "tests/test_account_gameplan_views.py",
+          "tests/test_overnight_supervision.py",
+          "tests/test_gameplan_trade_planning.py",
+          "tests/test_gameplan_cash_ledger.py",
+          "tests/test_gameplan_trade_snapshot.py",
+          "tests/test_gameplan_actuals_review.py",
+          "tests/test_gameplan_execution.py",
+          "tests/test_gameplan_stock_trader.py",
+          "tests/test_gameplan_deployment_execution.py",
+          "tests/test_gameplan_deployment_handoff.py",
+          "tests/test_independent_stock_runtime.py",
+          "tests/test_independent_stock_session.py",
+          "tests/test_independent_stock_signals.py",
+          "tests/test_independent_stock_engine.py",
+          "tests/test_stock_horizon_ledger.py",
+          "tests/test_fixed_horizon_engine.py",
+          "tests/test_fixed_horizon_budget.py",
+          "tests/test_cross_horizon_fallback_policy.py",
+          "tests/test_cross_horizon_fallback_ledger.py",
+          "tests/test_cross_horizon_fallback_runtime.py",
+          "tests/test_cross_horizon_fallback_review.py",
+          "tests/test_gameplan_fallback_planning.py",
+          "tests/test_gameplan_quote_recovery.py",
+          "tests/test_gameplan_quote_clock_recovery.py",
+          "tests/test_stock_trader_cash_state.py",
+          "tests/test_schwab_quote_freshness.py",
+          "tests/test_stock_trader.py",
+          "tests/test_stock_trader_atomic_publication.py",
+          "tests/test_independent_stock_forecast_ui.py",
+          "tests/test_gameplan_data.py",
+          "tests/test_gameplan_ui.py",
+          "tests/test_gameplan_execution_abstention.py",
+          "tests/test_joint_capital_plan.py",
+          "tests/test_joint_capital_handoff.py",
+          "tests/test_gameplan_direction_engine.py",
+          "tests/test_gameplan_direction_runtime.py",
+          "tests/test_gameplan_direction_snapshot.py",
+          "tests/test_gameplan_price_bands.py",
+          "tests/test_gameplan_price_completion.py",
+          "tests/test_gameplan_probability_target.py",
+          "tests/test_stock_direction_policy.py",
+          "tests/test_stock_horizon_broker.py",
+          "tests/test_stock_horizon_schwab_context.py",
+          "tests/test_gameplan_trade_review.py",
+          "tests/test_nightly_gameplan.py",
+          "tests/test_stock_only_gameplan.py",
+          "tests/test_cme_cross_asset_context.py",
+          "tests/test_cme_persistent_retry_defaults.py",
+          "tests/test_cme_runtime.py",
+          "tests/test_databento_cold_start.py",
+          "tests/test_databento_cold_start_retry.py",
+          "tests/test_databento_opra_live.py",
+          "tests/test_databento_opra_replay.py",
+          "tests/test_databento_retry.py",
+          "tests/test_fred_alfred_causal_pipeline.py",
+          "tests/test_fred_fetch.py",
+          "tests/test_gameplan_stats_ui.py",
+          "tests/test_local_watchlist.py",
+          "tests/test_ml_macro_bootstrap.py",
+          "tests/test_opra_concurrent_native_publication.py",
+          "tests/test_opra_concurrent_stream.py",
+          "tests/test_opra_definition_retry.py",
+          "tests/test_opra_gateway_retry.py",
+          "tests/test_opra_replay_fallback.py",
+          "tests/test_opra_replay_publication.py",
+          "tests/test_option_pricing_opra.py",
+          "tests/test_research_onboarding.py",
+          "tests/test_research_publication.py",
+          "tests/test_stock_target_history.py",
+          "tests/test_stock_target_history_fallback.py",
+          "tests/test_symbol_onboarding.py",
+          "tests/test_account_gameplan_cutover.py"
+        ],
+        "tested_input_count": 853
+      }
+    ],
+    "unchanged_exact_base_dependencies": 807
+  },
+  "verified_main_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102"
+}

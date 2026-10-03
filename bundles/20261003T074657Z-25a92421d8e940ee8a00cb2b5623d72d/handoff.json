@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T07:46:57.950411Z",
+  "id": "20261003T074657Z-25a92421d8e940ee8a00cb2b5623d72d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published a freshly tested shared-account Gameplan candidate on the accepted current source base; PR #12 is open against main and all 853 committed input hashes match the sealed test evidence."
+}
