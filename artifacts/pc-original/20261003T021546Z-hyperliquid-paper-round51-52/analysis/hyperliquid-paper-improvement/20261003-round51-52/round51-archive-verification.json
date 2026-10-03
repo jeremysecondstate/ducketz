@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-03T02:13:11Z",
+  "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-52",
+  "manifest_verification": {
+    "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-52",
+    "bytes": 464301587,
+    "file_count": 429,
+    "manifest_sha256": "2b0eece6dc32d75e24de7afe0ea4c68287b472aa991da76f0c05f41f9aaa74d9",
+    "result": "passed",
+    "verified_at_utc": "2026-10-03T01:38:11.141864+00:00"
+  },
+  "ledger": {
+    "path": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-52\\_paper\\ledger.sqlite3",
+    "size_bytes": 7671808,
+    "sha256": "06278653735c17750dfed597cee7eb0973469fd85ac0b91cfc5e024676467b4a",
+    "sqlite_integrity_check": "ok",
+    "row_counts": {
+      "fills": 75,
+      "decisions": 384,
+      "equity": 1388,
+      "funding": 7,
+      "transfers": 0
+    }
+  },
+  "performance": {
+    "as_of_utc": "2026-10-03T01:35:24.644400+00:00",
+    "fill_count": 75,
+    "transfer_count": 0,
+    "turnover": 61796.390459999995,
+    "max_drawdown_fraction": -0.0006783502564448041,
+    "fees": 35.2215475445,
+    "funding": -0.0027677397592120083,
+    "funding_is_estimated": true,
+    "qualification_fill_counts": {
+      "qualified": 34,
+      "research": 41,
+      "unavailable": 0
+    },
+    "limitations": [
+      "Visible-book simulated fills, no queue or latency model",
+      "Funding uses a completed-perp-close oracle proxy",
+      "Risk exits are polled and can gap; no liquidation-engine simulation",
+      "Opening positions are inherited; strategy P/L starts at snapshot equity"
+    ]
+  }
+}

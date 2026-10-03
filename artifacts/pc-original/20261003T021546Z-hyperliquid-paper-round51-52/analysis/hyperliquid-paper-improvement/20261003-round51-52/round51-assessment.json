@@ -1,0 +1,57 @@
+{
+  "assessed_at_utc": "2026-10-03T01:33:13.988932+00:00",
+  "comparison_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-51\\comparison-endpoint-20261003T0131Z.json",
+  "comparison_sha256": "1c11824cff630b14794a33535be8874f852ddf288fcbb7e33b292ba6d1d91d0c",
+  "decision": {
+    "ending_evaluation_hours": 1,
+    "finalizable": true,
+    "next_evaluation_hours": 1,
+    "outcome": "late_unscored",
+    "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+    "winning": false
+  },
+  "ending_state": {
+    "baseline_evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-51",
+    "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+    "carry_in_unscored": false,
+    "due_at_utc": "2026-10-03T00:44:46.087340+00:00",
+    "evaluation_hours": 1,
+    "experiment_id": "20261002-paper-round-51",
+    "experiment_sha256": "37e887e1accb76b5a82eed85cee20c4464bb532f91ec0c97f67290148a2a3279",
+    "immutable_opening_hashes": {
+      "initial_positions_sha256": "e6316fffa88d24cdb27158843ebeb80d7acf3cd62be5f7e10e3dc42cf42dc168",
+      "opening_cycle_sha256": "1825045f3a9ca97372229a327cb5b100b2d5c171072c4421ef5925cc39cb8800",
+      "opening_snapshot_sha256": "3974026f3f14ef5fb2945945624fc0bc4b525d4e430b2c3e64781f6d86b5f305",
+      "seed_sha256": "4a1a77731457b364eb0baff783c5ecf6675dfc228c1e4b91c33728031494541e"
+    },
+    "opening_equity": 44291.30220340142,
+    "public_owner_sha256": {
+      "alex": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+      "clearpond": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+      "jeremy": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a"
+    },
+    "recipe": {
+      "config_sha256": {
+        "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+        "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+        "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b"
+      },
+      "horizons_bars": [
+        1
+      ],
+      "interval": "5m",
+      "paper_policy_id": "88cd1a6a008df9b9",
+      "require_qualified_forecasts": false,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ]
+    },
+    "seed_at_utc": "2026-10-02T23:44:46.087340593+00:00",
+    "win_forecast_rule": "valid-in-round-forecast-v2"
+  },
+  "ending_state_sha256": "d16ed653f62fdcdd84ec04c7babb5d65f39d3ffd2dd8145a286dc2ff962d28b9",
+  "schema_version": 1
+}

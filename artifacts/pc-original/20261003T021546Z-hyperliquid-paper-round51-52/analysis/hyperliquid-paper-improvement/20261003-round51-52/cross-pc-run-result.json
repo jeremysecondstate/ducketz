@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "actor": "Atlas",
+  "producer": "pinned-cross-pc-v2",
+  "purpose": "hyperliquid_paper_improvement",
+  "outcome": "completed",
+  "summary": "Round 51 natively late_unscored; one-hour cadence retained. Archive and ledger verified; Round 52 fresh 1:1 accepted and running with no source or configuration retune.",
+  "source_version": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+  "blocker": null,
+  "at_utc": "2026-10-03T02:14:31.540931Z",
+  "fingerprint": "3a608c9139f4190a68676eba962b40e644038a119d8b95eaeecaec2c6440fc5d",
+  "meaningful_change": true,
+  "source_queue_item": "none; no shared source/config/docs changes"
+}

@@ -1,0 +1,18 @@
+{
+  "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-51",
+  "completed_at_utc": "2026-10-02T23:48:47.056102+00:00",
+  "cycle_id": "20261002-paper-round-51",
+  "evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-51",
+  "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+  "expected_upstream_state": "data continues; models operator-controlled",
+  "experiment_id": "20261002-paper-round-51",
+  "opening_equity": 44291.30220340142,
+  "owner": "paper-self-improvement",
+  "phase": "completed",
+  "powder": "inactive; no real account mutation",
+  "reason": "User-authorized Paper self-improvement and fresh account mirror",
+  "requested_at_utc": "2026-10-02T23:37:58.111067+00:00",
+  "seed_at_utc": "2026-10-02T23:44:46.087340593+00:00",
+  "status": "completed",
+  "verification_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-51\\round51-advancing-followup.json"
+}
