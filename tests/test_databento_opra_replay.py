@@ -3,12 +3,14 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-import databento as db
 import databento_dbn as dbn
 import pandas as pd
 import pytest
 
 from datafetching import databento_opra_replay as replay
+
+
+pytestmark = pytest.mark.usefixtures("offline_databento_sdk")
 
 
 START = pd.Timestamp("2026-09-04T00:00:00Z")
@@ -128,13 +130,13 @@ def _capture(tmp_path: Path, *, scenario="success", schema="ohlcv-1h", **overrid
 
 
 @pytest.mark.parametrize("schema", ["ohlcv-1h", "cbbo-1m", "definition"])
-def test_complete_native_capture_and_independent_validation(tmp_path, schema):
+def test_complete_native_capture_and_independent_validation(tmp_path, schema, offline_databento_sdk):
     delivery, clients = _capture(tmp_path, schema=schema)
     assert delivery["data_record_count"] == 1
     assert delivery["record_count"] == 4
     assert delivery["raw_format"] == "dbn"
     assert (tmp_path / "native.dbn.zst").read_bytes().startswith(b"DBN")
-    assert clients[0].kwargs["compression"] is db.Compression.ZSTD
+    assert clients[0].kwargs["compression"] is offline_databento_sdk.Compression.ZSTD
     assert clients[0].kwargs["slow_reader_behavior"] == "warn"
     assert clients[0].kwargs["reconnect_policy"] == "none"
     assert clients[0].request["start"] == START.isoformat()
