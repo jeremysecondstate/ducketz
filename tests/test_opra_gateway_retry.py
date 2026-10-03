@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,6 +15,93 @@ from datafetching import databento_opra_history as native
 from ml.artifacts import file_checksum
 
 pytestmark = pytest.mark.usefixtures("offline_databento_sdk")
+
+
+def test_sdk_timeout_configuration_is_local_to_each_client(offline_databento_sdk):
+    from databento.common.http import BentoHttpAPI
+
+    first = offline_databento_sdk.Historical("SYNTHETIC_TEST_KEY")
+    second = offline_databento_sdk.Historical("SYNTHETIC_TEST_KEY")
+    assert BentoHttpAPI.TIMEOUT == first.metadata.TIMEOUT == second.metadata.TIMEOUT == 100
+    first.metadata.TIMEOUT = 7
+    native.configure_client(first)
+    assert first.metadata.__dict__["TIMEOUT"] == 100
+    assert first.timeseries.__dict__["TIMEOUT"] == 300
+    assert "TIMEOUT" not in second.metadata.__dict__
+    assert "TIMEOUT" not in second.timeseries.__dict__
+    assert second.metadata.TIMEOUT == second.timeseries.TIMEOUT == BentoHttpAPI.TIMEOUT == 100
+    native.configure_client(second)
+    first.metadata.TIMEOUT = 8
+    first.timeseries.TIMEOUT = 9
+    assert second.metadata.TIMEOUT == 100 and second.timeseries.TIMEOUT == 300
+    assert BentoHttpAPI.TIMEOUT == 100
+
+
+@pytest.mark.parametrize("symbols", [("AMZN.OPT",), ("GOOG.OPT", "NVDA.OPT"), ()])
+def test_preflight_retry_labels_bind_exact_requests_without_changing_gates(
+    tmp_path, monkeypatch, capsys, symbols
+):
+    calls, pauses = {}, []
+    monkeypatch.setattr(native.time, "sleep", pauses.append)
+    # Deliberately insufficient capacity: logging must not turn this into a pass.
+    monkeypatch.setattr(native.shutil, "disk_usage", lambda _: SimpleNamespace(free=1))
+    expected = {"dataset": "OPRA.PILLAR", "schema": "ohlcv-1h",
+                "start": "2026-09-27", "end": "2026-10-03",
+                "symbols": list(symbols) if symbols else "ALL_SYMBOLS",
+                "stype_in": "parent" if symbols else "raw_symbol"}
+
+    def response(name, value):
+        def request(**kwargs):
+            calls.setdefault(name, []).append(copy.deepcopy(kwargs))
+            if len(calls[name]) == 1:
+                raise ReadTimeout("SYNTHETIC_SECRET_BODY")
+            return value
+        return request
+
+    client = SimpleNamespace(metadata=SimpleNamespace(
+        get_billable_size=response("estimated download size", 125),
+        get_record_count=response("record count", 12),
+        get_cost=response("estimated cost", 0.25)))
+    result = native.storage_preflight(client, datastore_root=tmp_path,
+        entitlement={"entitlements": {"ohlcv-1h": {
+            "entitled_start": "2026-09-27", "entitled_end": "2026-10-03"}}},
+        scope=native.SyncScope(schemas=("ohlcv-1h",), start=expected["start"],
+                               end=expected["end"], symbols=symbols))
+    messages = capsys.readouterr().out.splitlines()
+    assert len(messages) == 6 and pauses == [4.0] * 3
+    for operation in calls:
+        scoped = [message for message in messages if f"{operation} request=" in message]
+        assert len(scoped) == 2
+        assert "attempt 1 failed" in scoped[0] and "succeeded on attempt 2" in scoped[1]
+        for message in scoped:
+            identity, _ = json.JSONDecoder().raw_decode(message.split(" request=", 1)[1])
+            assert identity == expected
+        assert calls[operation] == [expected, expected]
+    assert "SYNTHETIC_SECRET_BODY" not in "\n".join(messages)
+    assert result["record_count"] == 12 and result["estimated_download_size_bytes"] == 125
+    assert result["estimated_cost_usd"] == 0.25 and result["cost_estimates_complete"] is True
+    assert result["required_free_bytes"] == 250 + native.STORAGE_RESERVE_BYTES
+    assert result["capacity_pass"] is False
+
+
+def test_partition_count_retry_label_uses_exact_interval(tmp_path, monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(native.time, "sleep", lambda _: None)
+
+    def count(**kwargs):
+        calls.append(copy.deepcopy(kwargs))
+        if len(calls) == 1:
+            raise ReadTimeout("synthetic timeout")
+        return 1
+
+    result = native._partition_time_segments(
+        SimpleNamespace(metadata=SimpleNamespace(get_record_count=count)),
+        schema="cbbo-1s", day="2026-10-02", symbols=("COST.OPT",))
+    assert result == [("2026-10-02T00:00:00+00:00", "2026-10-03T00:00:00+00:00", None)]
+    assert len(calls) == 2 and calls[0] == calls[1]
+    message = capsys.readouterr().out.strip()
+    assert "time-partition record count request=" in message
+    assert json.loads(message.split(" request=", 1)[1].split(" attempt ", 1)[0]) == calls[0]
 
 
 def BentoServerError(*args, **kwargs):
