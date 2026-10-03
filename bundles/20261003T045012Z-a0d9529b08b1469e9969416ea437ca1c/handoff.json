@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T04:50:12.542588Z",
+  "id": "20261003T045012Z-a0d9529b08b1469e9969416ea437ca1c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout reviewed the two shared Gameplan seams and the forecast-only producer contract against Atlas source aca8403; exact package transport and operating cutover remain separate."
+}
