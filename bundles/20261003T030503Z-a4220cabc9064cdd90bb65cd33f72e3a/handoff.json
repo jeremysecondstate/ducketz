@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T03:05:03.653122Z",
+  "id": "20261003T030503Z-a4220cabc9064cdd90bb65cd33f72e3a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout is implementing reviewed joint capital planning and single-authority reservations; coordinate interfaces and source ownership."
+}

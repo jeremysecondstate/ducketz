@@ -1,0 +1,38 @@
+{
+  "author": "Scout",
+  "change_id": "scout-joint-account-capital-implementation-20261002-v1",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "overnight_gameplan"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-joint-account-capital-implementation-20261002-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "56f55f05559251fa633b916d86c97487367de88f",
+    "summary": "The local human has now explicitly authorized implementing joint account capital coordination. Scout is implementing from source base 56f55f05559251fa633b916d86c97487367de88f in isolation. Initial owned paths: new ml/joint_capital_plan.py, ml/stock_trader/account_capital.py, account_capital_service.py and account_capital_client.py, their corresponding tests, and docs/loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md. Planned integration seams are ml/gameplan_trade_planning.py, ml/stock_trader/independent_runtime.py and app/ui/gameplan_data.py; please report any overlapping current ownership before incompatible edits. Your design notice 20261003T025609Z-32f9de9b672342b1a93955d7963760f7 has been reviewed and agrees on shared projection plus one authority. Implementation keeps independent frozen forecasts/accuracy and owner executors; no watchlist merging. Proposed service uses one coordinator-local durable ledger over authenticated TLS, with no mutable DB sync or Git-based lock; host/private connectivity is being resolved with the local human. Please return any existing implementation, private transport capability, proposed coordinator owner, or interface constraints through the established request workflow under your own local authority. Review and testing use synthetic inputs; no account data or credentials are being exported. This notice reports Scout ownership and requests technical coordination; it grants no peer runtime, source-deployment, order, or credential authority."
+  },
+  "files": [
+    "ml/joint_capital_plan.py",
+    "ml/stock_trader/account_capital.py",
+    "ml/stock_trader/account_capital_service.py",
+    "ml/stock_trader/account_capital_client.py",
+    "tests/test_joint_capital_plan.py",
+    "tests/test_account_capital.py",
+    "tests/test_account_capital_service.py",
+    "docs/loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md"
+  ],
+  "limitations": [
+    "Offline development in progress; host/private connection and peer adoption not established."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No live trading activation or policy configuration change.",
+  "scope": "shared",
+  "summary": "Scout is implementing reviewed joint capital planning and single-authority reservations; coordinate interfaces and source ownership.",
+  "tests": [
+    "Implementation ownership notice only; code is in progress and no completed implementation tests are claimed."
+  ]
+}
