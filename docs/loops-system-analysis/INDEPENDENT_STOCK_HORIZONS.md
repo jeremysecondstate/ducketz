@@ -1,5 +1,14 @@
 # Independent stock horizons
 
+## October 2 shared account and sole execution host
+
+The new optional [shared-account workflow](SHARED_ACCOUNT_GAMEPLAN.md) combines
+both PCs' immutable forecasts into one cash/share projection and executes through
+one reviewed Atlas coordinator. Forecast identity, model status and native horizon
+ownership remain traceable. Shared cash reservation does not grant another host
+order authority. The existing manual start remains an operator action after
+source installation, peer fencing and ownership reconciliation are verified.
+
 ## September 30 prospective bearish fallback
 
 The user approved a 50% shared daily limit for small cross-horizon bearish
