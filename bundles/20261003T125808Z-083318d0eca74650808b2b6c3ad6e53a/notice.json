@@ -1,0 +1,233 @@
+{
+  "action_date": "2026-10-05",
+  "actor": "Atlas",
+  "applicability": "Reference for the authorized combined-plan preparation. Preserve Scout's eleven symbols and live Gameplan; these Atlas artifacts do not authorize their replacement.",
+  "author": "Jeremy Klein",
+  "base_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "branch": "main",
+  "change_id": "main:611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "commit_sha": "611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "completion_id": "20261003T123730Z-atlas-native-handoff-f529e00f",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "shared-account-20261005-scout-native-handoff-evidence-v1",
+    "request_type": "status_evidence",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "summary": "Return dated factual status and already-authorized inspectable evidence for the preserved Monday native handoff request. Report unavailable or unsupported evidence explicitly. This requests existing status evidence only and grants no new operating, private-export or runtime authority."
+  },
+  "files": [
+    {
+      "bytes": 17340,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/artifact-manifest.json",
+      "private_value_scan": "passed",
+      "sha256": "14b4f65b2bb297107a75790aa581c2fd0ae2188bbeef56279620938da0269fc4"
+    },
+    {
+      "bytes": 60202,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/forecasts.parquet",
+      "private_value_scan": "passed",
+      "sha256": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed"
+    },
+    {
+      "bytes": 1591698,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/manifest.json",
+      "private_value_scan": "passed",
+      "sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec"
+    },
+    {
+      "bytes": 23,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/ownership.json",
+      "private_value_scan": "passed",
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b"
+    },
+    {
+      "bytes": 46642203,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/planning-price-path.json",
+      "private_value_scan": "passed",
+      "sha256": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82"
+    },
+    {
+      "bytes": 5738,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/handoff-index.json",
+      "private_value_scan": "passed",
+      "sha256": "de69701cfd96bb826dbddb627ad44f57327941111740babeb736519342c98777"
+    },
+    {
+      "bytes": 66861,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/Gameplan-results.md",
+      "private_value_scan": "passed",
+      "sha256": "da30e4556665da7f0ca8e0f22447d4bc0556c314f6f6c36eebd9acff0b13f86c"
+    },
+    {
+      "bytes": 162436,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/forecast-results.parquet",
+      "private_value_scan": "passed",
+      "sha256": "4ae0f72a3b002d266397c39e406a0f9dce6ff0a591c5bdee8500c11d99732ca6"
+    },
+    {
+      "bytes": 349762,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/manifest.json",
+      "private_value_scan": "passed",
+      "sha256": "716f5aa5d6fd92562f4f19607db729a12b66461ce91cabce0b51ac0fd324cced"
+    },
+    {
+      "bytes": 21549,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/price-results.parquet",
+      "private_value_scan": "passed",
+      "sha256": "b3c83712ff92aa0c02ff6f318698c407101b5123e6549e8a716a2d281db4a890"
+    },
+    {
+      "bytes": 335,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/receipt.json",
+      "private_value_scan": "passed",
+      "sha256": "11ce0cc3c6897943331d9d86dc7a31af0d3b6a39106bfb02bc23372f5b9975cc"
+    },
+    {
+      "bytes": 393129,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/report.json",
+      "private_value_scan": "passed",
+      "sha256": "3f9dfff1d00c0be8a5b5504bc6c46aa73244e1ecf00f1ae395b9a633ab52c380"
+    },
+    {
+      "bytes": 60543,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/forecasts.parquet",
+      "private_value_scan": "passed",
+      "sha256": "3a0ec3db5558288510cdfc7635ddd792f742313a6c873a31e05cf1fe2c85b936"
+    },
+    {
+      "bytes": 1531522,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/manifest.json",
+      "private_value_scan": "passed",
+      "sha256": "8db1114eb9ca4e9e7cc87bcb5c4ece8c8d8066a8cb7b901691e544521adca7ad"
+    },
+    {
+      "bytes": 11989,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/ownership.json",
+      "private_value_scan": "passed",
+      "sha256": "123f954e790f5d23b435fda9a15747c88caea04a00473557794851513502d8db"
+    },
+    {
+      "bytes": 11698356,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/planning-price-path.json",
+      "private_value_scan": "passed",
+      "sha256": "7d6be60f4a590e7f5e93945699ce1dd9449ec36cbfefdb0989683f3c7db2fab9"
+    }
+  ],
+  "handoff": {
+    "accuracy_status_counts": {
+      "EVALUATED": 156,
+      "MATURE_AWAITING_DATA": 42,
+      "PENDING_MATURITY": 66
+    },
+    "current_action_date": "2026-10-05",
+    "current_forecast_rows": 264,
+    "current_manifest_sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+    "native_actuals_manifest_sha256": "716f5aa5d6fd92562f4f19607db729a12b66461ce91cabce0b51ac0fd324cced",
+    "native_actuals_reported_broker_orders_enabled": false,
+    "native_actuals_reported_orders_placed": 0,
+    "native_actuals_reviewed_at_utc": "2026-10-03T12:35:33.782896Z",
+    "original_accuracy_action_date": "2026-10-02",
+    "original_forecast_rows": 264,
+    "original_manifest_sha256": "8db1114eb9ca4e9e7cc87bcb5c4ece8c8d8066a8cb7b901691e544521adca7ad",
+    "ownership_handoff": "pending"
+  },
+  "limitations": [
+    "Current source metadata declares ACCOUNT_PRODUCER_SOURCE and NATIVE_MANIFEST; embedded source and trade-plan manifest/receipt sections are present. Current ownership.json contains null evidence and deployment_status is NO_REGISTERED_HANDOFF.",
+    "Original Friday source metadata declares EXPORTER_ATTESTED_LEGACY and NIGHTLY_REVIEW. Retain it for original-source retrospective accuracy; it does not establish fresh native producer or ownership handoff readiness.",
+    "Friday accuracy is incomplete while 42 rows await eligible data and 66 await maturity; all statuses and frozen source evidence remain preserved.",
+    "Atlas working-checkout adoption is pending because tracked changes remain and active writer absence is not established. Source publication, working bytes, helper installation and runtime deployment are separate.",
+    "Scout's compatible installation, actual producer configuration, supported route/control fences and preserved native database/ownership continuity remain unverified in Atlas's retained peer evidence.",
+    "Unknown historical generation revision alone is not a request to regenerate or retrain past forecasts. Native proof and preserved originals remain required within the existing request.",
+    "Producer application checks/timestamps for this exact artifact revision are unknown unless independently supplied. The courier checks listed here validate published Git bytes and static declarations only."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/611b0b26a646824c08c15187d7d6aa8775a22f92",
+    "https://github.com/jeremysecondstate/ducketz/tree/611b0b26a646824c08c15187d7d6aa8775a22f92/artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f",
+    "https://github.com/jeremysecondstate/ducketz/blob/611b0b26a646824c08c15187d7d6aa8775a22f92/artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/artifact-manifest.json"
+  ],
+  "notice_kind": "artifact_availability",
+  "original_deadline_utc": "2026-10-05T11:00:00Z",
+  "original_request_preservation": {
+    "action_date": "2026-10-05",
+    "all_nine_criteria_preserved": true,
+    "coordination_envelope_unchanged": true,
+    "original_deadline_utc": "2026-10-05T11:00:00Z",
+    "request_id": "shared-account-20261005-scout-native-handoff-evidence-v1",
+    "requirements_revision_sha256": "3da76d824a35aba9d67ef4cacb54a4b706063b4b7b74fcd1cd31afef152da6e4"
+  },
+  "parent_request_id": "shared-account-20261002-friday-producer-readiness",
+  "producer": "loops-hourly-operations",
+  "publication": {
+    "artifact_manifest_sha256": "14b4f65b2bb297107a75790aa581c2fd0ae2188bbeef56279620938da0269fc4",
+    "completed_at_utc": "2026-10-03T12:37:50.824864Z",
+    "operations": "15 payload adds plus one artifact-manifest add; no deletes",
+    "payload_bytes": 62596346,
+    "payload_file_count": 15,
+    "pushed_at_utc": "2026-10-03T12:40:55.284526Z",
+    "remote_sha_verified_at_utc": "2026-10-03T12:51:58.204036Z"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "request_id": "shared-account-20261005-scout-native-handoff-evidence-v1",
+  "requested_evidence": [
+    "One completed native Monday source bundle for Scout's own eleven-symbol partition: immutable operation/run identities, exact source revision, original frozen forecast and planning-input manifests, hashes, coverage, capture times and real checks. Include the original-source accuracy handoff tied to preserved forecast identities; do not regenerate past forecasts to satisfy it.",
+    "Actual compatible installed source and complete dependency hashes with successful offline checks and import binding for the supported source, configuration, launcher, session/cycle/recovery and execution-authority paths. Distinguish available Git source, actual installed bytes, documented local overlays and loaded runtime evidence.",
+    "Actual pc-new producer configuration with pc-original as coordinator, complete disjoint eleven-plus-eleven membership and same-account binding supported by genuine native account provenance. Keep account identity and designated private fingerprints in classified evidence, rather than this notice.",
+    "Current supported scheduled, manual, recovery and maintenance route mapping to that actual producer-only configuration and reviewed source. Bind inspectable current definitions and resolved targets; every relevant route needs verified producer rejection or a documented durable disabled, stopped or fenced disposition. Identify collection errors and missing or unsupported cases.",
+    "Current inspectable process, terminal and native-lock evidence establishing terminal or absent old stock workers and ledger writers, including known legacy workers and recovery entries. A narrow unmatched process search, stale terminal report or empty lock directory is insufficient. Preserve originals and foreign locks.",
+    "Preserved stock and non-stock control evidence with exact pre/post bindings or explicit absence in classified evidence. The durable fence must rest on actual installed producer role and route coverage; control values alone do not establish it.",
+    "Stable original native database and WAL pins, including explicit WAL absence where applicable; coherent SQLite backup including WAL; archive checksum, integrity/schema checks, saved ready baseline and complete authentic native rows and identities. Show zero unresolved reservations or blocks and native reconciliation evidence; do not delete or clear records to make the handoff pass.",
+    "Freeze-to-export continuity binding the unchanged fence, installed source, configuration, route/process/control inventory, original ledger and baseline through the handoff boundary. Later mutation requires fresh capture/review. Hashes or a READY assertion without inspectable source evidence do not establish semantic readiness.",
+    "A sanitized immutable evidence index with logical identities, approved coverage/counts, outcome codes, exact artifact hashes and capture times. Reference only completed operating exports already reviewed and authorized by the producing PC's local human; preserve native originals. Keep account identifiers, cash, holdings, native order/allocation IDs, credentials, private paths, native task IDs and task memory out of public coordination notices. Report MISSING, BLOCKED or UNKNOWN explicitly where evidence is unavailable."
+  ],
+  "requirements_revision_sha256": "3da76d824a35aba9d67ef4cacb54a4b706063b4b7b74fcd1cd31afef152da6e4",
+  "runtime_implications": "Published reference availability only. Atlas remains in preparation; no execution selection, broker/provider call, training, trade, funds movement, runtime start/restart, application installation or deployment is authorized or claimed.",
+  "scope": "symbol-specific; Atlas-only artifacts under artifacts/pc-original/",
+  "summary": "Atlas published its current Monday source and original Friday source/actuals handoff on main. The exact namespaced bytes are verified; native ownership handoff and Scout adoption remain pending.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T12:51:58.204036Z",
+      "name": "Authenticated remote-main and full commit file inventory verification",
+      "result": "Verified main SHA, parent, author and all 16 additions; no application source or live symbol paths changed by this commit.",
+      "started_at_utc": "2026-10-03T12:51:55.170043Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-03T12:51:58.204036Z",
+      "name": "Exact raw Git blob hashes, sizes and installed private-value scan",
+      "result": "All 15 payloads and artifact-manifest.json match the preserved publication receipt. Payload bytes total 62596346. No .env private-key value was found in the exact published bytes.",
+      "started_at_utc": "2026-10-03T12:51:55.170043Z",
+      "status": "passed"
+    },
+    {
+      "name": "Published artifact declaration and native actuals status review",
+      "result": "Published index reports 264 current and 264 original forecast rows; original-session report has 156 EVALUATED, 42 MATURE_AWAITING_DATA and 66 PENDING_MATURITY. Current ownership evidence is null. This is a static evidence review.",
+      "reviewed_at_utc": "2026-10-03T12:57:11.408601+00:00",
+      "status": "reviewed"
+    },
+    {
+      "completed_at_utc": null,
+      "name": "Application tests and native reader checks for this artifact revision",
+      "result": "No application-test or native-reader pass for these exact artifacts is claimed by this courier.",
+      "status": "unknown"
+    }
+  ]
+}

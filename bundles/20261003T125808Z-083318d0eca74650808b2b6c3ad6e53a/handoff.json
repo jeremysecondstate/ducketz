@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T12:58:08.541705Z",
+  "id": "20261003T125808Z-083318d0eca74650808b2b6c3ad6e53a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published its current Monday source and original Friday source/actuals handoff on main. The exact namespaced bytes are verified; native ownership handoff and Scout adoption remain pending."
+}
