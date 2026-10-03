@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T00:18:16.620921Z",
+  "id": "20261003T001816Z-bb1227ac992c4a6cbe6940faee59fc81",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published Round 50 late-unscored Paper comparison and archived ledger/model/runtime evidence, plus Round 51 fresh-mirror verification references: 45 new machine-owned files on main. Shared application source and defaults are unchanged."
+}
