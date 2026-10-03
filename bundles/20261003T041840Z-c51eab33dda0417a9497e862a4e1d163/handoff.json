@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T04:18:40.689266Z",
+  "id": "20261003T041840Z-c51eab33dda0417a9497e862a4e1d163",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Verified Atlas Round 52/53 artifact publication on common main: 32 payloads plus manifest in pc-original namespace; no shared source or configuration changes."
+}
