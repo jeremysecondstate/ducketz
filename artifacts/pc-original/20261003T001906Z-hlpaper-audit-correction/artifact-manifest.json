@@ -1,0 +1,78 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-03T00:19:06Z",
+  "completion_id": "20261003T001906Z-hlpaper-audit-correction",
+  "details": [
+    "The published audit now matches the 00:09 UTC health snapshot and read-only ledger turnover/qualification counts.",
+    "The bundle index was updated for the corrected audit bytes; all unrelated round evidence remains unchanged."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+      "expected_sha256": "26456ddb15d8e229ed42da86676e7d6d25f581b9437f65560a841b7905f1dee2",
+      "operation": "revision",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+      "published_sha256": "26456ddb15d8e229ed42da86676e7d6d25f581b9437f65560a841b7905f1dee2",
+      "published_size": 5869,
+      "sha256": "26456ddb15d8e229ed42da86676e7d6d25f581b9437f65560a841b7905f1dee2",
+      "size": 5869,
+      "supersedes": {
+        "destination": "artifacts/pc-original/20261003T001125Z-hyperliquid-paper-round50-51/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+        "published_sha256": "a43d5a3fb43891095974bb2a0250fbbd305d51ddf8f354a548c064e9391a4c93",
+        "receipt_id": "20261003T001125Z-hyperliquid-paper-round50-51"
+      }
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+      "expected_sha256": "c7a6fc5ab5262bf3f05899ee8f83a630319b0b3e224a2fb06e894ec26532c3ac",
+      "operation": "revision",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+      "published_sha256": "c7a6fc5ab5262bf3f05899ee8f83a630319b0b3e224a2fb06e894ec26532c3ac",
+      "published_size": 15052,
+      "sha256": "c7a6fc5ab5262bf3f05899ee8f83a630319b0b3e224a2fb06e894ec26532c3ac",
+      "size": 15052,
+      "supersedes": {
+        "destination": "artifacts/pc-original/20261003T001125Z-hyperliquid-paper-round50-51/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+        "published_sha256": "546ff28a7f225e41dac8ffa5eb0ebe642dbb8727028dc39625688c6a9cec9200",
+        "receipt_id": "20261003T001125Z-hyperliquid-paper-round50-51"
+      }
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "26456ddb15d8e229ed42da86676e7d6d25f581b9437f65560a841b7905f1dee2",
+      "operation": "revision",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+      "supersedes": {
+        "destination": "artifacts/pc-original/20261003T001125Z-hyperliquid-paper-round50-51/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+        "published_sha256": "a43d5a3fb43891095974bb2a0250fbbd305d51ddf8f354a548c064e9391a4c93",
+        "receipt_id": "20261003T001125Z-hyperliquid-paper-round50-51"
+      }
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "c7a6fc5ab5262bf3f05899ee8f83a630319b0b3e224a2fb06e894ec26532c3ac",
+      "operation": "revision",
+      "owned": true,
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+      "supersedes": {
+        "destination": "artifacts/pc-original/20261003T001125Z-hyperliquid-paper-round50-51/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+        "published_sha256": "546ff28a7f225e41dac8ffa5eb0ebe642dbb8727028dc39625688c6a9cec9200",
+        "receipt_id": "20261003T001125Z-hyperliquid-paper-round50-51"
+      }
+    }
+  ],
+  "producer": "hyperliquid-paper-improvement",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "machine-local",
+  "source_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Corrected current Round 51 live-health metrics in the reviewed Atlas Paper audit and refreshed its exact-hash index.",
+  "symbols": []
+}
