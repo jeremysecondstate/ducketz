@@ -131,6 +131,33 @@ activation command. The local receipt attests those reviewed facts; it is not a
 substitute for obtaining their evidence. Runtime deployment remains pending until
 this step is completed and verified. The user performs the initial manual start.
 
+`ml.account_gameplan.cutover.reconcile_migration_candidate` supplies the bounded
+union reconciliation step. It consumes an explicit migration-manifest pin, the
+two reviewed symbol partitions, and matching pinned native `PortfolioEvidence`
+and `PortfolioState` from one coherent GET-only capture. The caller checks stable
+account identity before and after capture and retains the ordinary session/cycle
+locks. Evidence must be at most 60 seconds old, before the cutover session's 04:00
+opening, cover the exact union and include zero execution budgets and complete
+order identities with no pending orders. The function makes no broker call.
+
+The function reconstructs and audits the blocked migration from its archived
+originals, then calls unchanged native reconciliation against **each** producer's
+saved baseline in isolated copies. An unexplained reduction in the older baseline
+cannot be hidden by the newer producer's snapshot. After both checks pass, it
+releases only the exact migration-marker blocks in a new union copy and performs
+native reconciliation again. Foreign blocks, unresolved orders, source changes
+and incomplete or stale observations fail closed. It preserves the original
+ledgers, blocked candidate, native IDs and all prior accounting evidence.
+
+The new output contains the observed portfolio, both baseline results, the native
+union result, a hashed manifest and an `UNION_RECONCILIATION_VERIFIED` receipt.
+Its complete pinned broker snapshot and ledgers are private ownership evidence,
+including account cash and holdings; they do not belong in forecast transport.
+A final guard failure marks that receipt failed. This is candidate readiness:
+the function never replaces a live ledger, installs configuration, creates an
+ACTIVE cutover receipt, changes controls or starts a trader. Peer fencing and
+the reviewed installation/activation procedure remain separate requirements.
+
 Daily execution reads the immutable `ml/account-gameplan-by-date/<date>/run.json`
 selection, bound to the host configuration and both source packages. The separate
 `ml/account-gameplan-latest/run.json` is the UI pointer. A missing or bad combined
