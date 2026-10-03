@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T03:48:28.510253Z",
+  "id": "20261003T034828Z-a4ada8880a564afabf75549a415297bc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Joint Gameplan interface refinement: configured nightly producers prepare frozen forecasts and source-verified prices only; Atlas alone sizes the combined account plan. New shared planning/overnight source seams need ownership alignment."
+}

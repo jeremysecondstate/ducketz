@@ -1,0 +1,102 @@
+{
+  "author": "Atlas",
+  "branch": "main",
+  "change_id": "design:joint-gameplan-producer-forecast-only-boundary-v1:99532621db0d42dfe8c655300cc93abda81240d5",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "overnight_gameplan"
+    ],
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-joint-gameplan-producer-forecast-only-boundary-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "summary": "Under the previously verified single-Atlas future executor choice, review the reported forecast/price-only producer boundary. Flag overlap on the two newly declared shared seams and portable immutable forecast-package/export requirements. Preserve existing source ownership and historical publications. This request carries no source-deployment, operating-control, broker or order authority."
+  },
+  "files": [
+    {
+      "bytes": 41263,
+      "candidate_status": "producer-declared modification in progress; final bytes are not covered by this reference",
+      "operation": "unchanged_base_reference",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "ce6a1c5d890add57e616535cb062ef855fc856661016b61c883f3a9f50de7177"
+    },
+    {
+      "bytes": 45806,
+      "candidate_status": "producer-declared modification in progress; final bytes are not covered by this reference",
+      "operation": "unchanged_base_reference",
+      "path": "ml/overnight_runtime.py",
+      "sha256": "6439f746fe78916cbceeba398c62d371ea71b6f6b96744ca3a64b2c50c903cb9"
+    }
+  ],
+  "kind": "design_progress_reference",
+  "limitations": [
+    "This is a substantive interface/ownership progress notice, not a completed source record or installation evidence.",
+    "Base-reference hashes identify unchanged committed source, not final candidate implementation bytes.",
+    "Reported partial test progress does not establish passing checks on the eventual integrated candidate.",
+    "Existing controls, live configuration, source checkouts, symbols, providers, brokers and operating owners remain under their existing authority."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/99532621db0d42dfe8c655300cc93abda81240d5",
+    "https://github.com/jeremysecondstate/ducketz/commit/1efc64d62d9d5b570d5ddd7216c4329e41db3b52"
+  ],
+  "prior_approval_notice": {
+    "id": "20261003T030756Z-064ab1b9826c482c88f7f589946f11ae",
+    "manifest_sha256": "86c7d2adfe7505c95cde94f12993a8c9246020d8d03aa949733974132428db25",
+    "preserve_exact_bytes": true,
+    "stage": "published",
+    "verified_transport_sha": "1efc64d62d9d5b570d5ddd7216c4329e41db3b52"
+  },
+  "producer": "Loops Overnight Gameplan; local producer progress report reviewed by Atlas observer",
+  "producer_reported_interface": {
+    "account_sizing": "Atlas alone sizes the combined plan using consolidated native ownership and a fresh snapshot covering the complete frozen union.",
+    "accuracy": "Existing per-source actuals remain; final combined-accuracy handoff is still being added.",
+    "execution": "Producer reports one Atlas native execution adapter and durable account reservations in the isolated candidate. No completed implementation or live adoption is asserted.",
+    "preparation": "Configured nightly producers emit immutable frozen forecasts and source-verified price paths with explicit unavailable local cash projection.",
+    "reason": "After Atlas manages execution, Scout must not size new plans using an obsolete local holdings ledger.",
+    "status": "Isolated implementation in progress; exact final source completion and integrated test evidence pending."
+  },
+  "producer_reported_ownership": {
+    "documentation": "docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md",
+    "existing_native_adapters": [
+      "ml/stock_trader/independent_runtime.py",
+      "ml/stock_trader/independent_session.py",
+      "ml/stock_trader/state.py"
+    ],
+    "existing_package": "ml/account_gameplan/",
+    "existing_ui": "app/ui/gameplan_data.py",
+    "new_exact_shared_seams": [
+      "ml/gameplan_trade_planning.py",
+      "ml/overnight_runtime.py"
+    ],
+    "ownership_status": "Reported producer scope and read-only worktree path observation; overlap resolution remains explicit.",
+    "tests": "Account Gameplan focused tests; final owned file inventory, dependencies and hashes await producer completion review."
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Producer reports no installation, live configuration, control, broker or running-process change. The future preparation boundary applies only after reviewed installation. Current runtime adoption is unverified.",
+  "scope": "Shared future joint Gameplan preparation and sole Atlas execution design; each PC retains its own frozen forecast universe and accuracy identity.",
+  "source_reference_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+  "summary": "Joint Gameplan interface refinement: configured nightly producers prepare frozen forecasts and source-verified prices only; Atlas alone sizes the combined account plan. New shared planning/overnight source seams need ownership alignment.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T03:48:28.102092Z",
+      "name": "Two committed base-reference sizes and SHA-256 values",
+      "started_at_utc": "2026-10-03T03:48:28.039871Z",
+      "status": "passed"
+    },
+    {
+      "limitation": "Behavior assertions remain producer reports; candidate bytes are changing.",
+      "name": "Native local producer progress and current path inventory",
+      "observed_at_utc": "2026-10-03T03:46:01.378768Z",
+      "status": "reviewed_reference"
+    },
+    {
+      "name": "Final full isolated candidate checks and immutable completion record",
+      "reason": "Not yet supplied to this observer; no code publication is requested by this progress notice.",
+      "status": "unknown"
+    }
+  ]
+}
