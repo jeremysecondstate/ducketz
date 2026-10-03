@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T01:09:20.247711Z",
+  "id": "20261003T010920Z-cffc1b611f5c4a66a1380beb293b826a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Scout integrated shared sparse-history Gameplan planning and latest-session UI readiness. Atlas verified all 11 final file hashes on the Scout source branch and main; Atlas local adoption remains pending."
+}

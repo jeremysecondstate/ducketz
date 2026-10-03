@@ -1,0 +1,141 @@
+{
+  "adoption": {
+    "atlas_checkout_adopted": false,
+    "atlas_local_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "atlas_origin_main_fetched": true,
+    "main_source_verified": true,
+    "parity_verified": false,
+    "runtime_adoption_verified": false,
+    "scout_checkout_adoption_verified": false
+  },
+  "author": "Scout",
+  "branch": "main",
+  "change_details": [
+    "New trade-plan publications inspect 504 exchange sessions while retaining the two-pair minimum, causal cutoff and existing closing-reference rules.",
+    "Projected trade direction and fallback donor protection preserve verified saved no-history abstentions using the execution predicate.",
+    "Gameplan distinguishes missing closing references from insufficient historical pairs. Stats adds Latest session navigation; both tabs release retained Tk images on destruction.",
+    "Documentation and fixture tests cover planning readiness, abstention preservation, history bounds and UI selection/cleanup."
+  ],
+  "change_id": "git:jeremysecondstate/ducketz:main:56f55f05559251fa633b916d86c97487367de88f",
+  "commit_sha": "56f55f05559251fa633b916d86c97487367de88f",
+  "files": [
+    {
+      "bytes": 49659,
+      "operation": "modify",
+      "path": "app/ui/gameplan.py",
+      "sha256": "0336dc0b920683ce946d9a5694fdeb91cb33af27bfee1a616398337bee806b10"
+    },
+    {
+      "bytes": 34104,
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py",
+      "sha256": "f613b67b768337c43c4d9faeb9c2e754752d13c728f4c4322731f5cffb4cca72"
+    },
+    {
+      "bytes": 35924,
+      "operation": "modify",
+      "path": "app/ui/gameplan_stats.py",
+      "sha256": "d735d89a025546b2d280b3cabaed3e1fe80c6184e37d947d973b7d09913f85f5"
+    },
+    {
+      "bytes": 77347,
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+      "sha256": "9527a3012668bfbbd80a6e293e6b47f1aa10d054325f4ba26803b93873166bdf"
+    },
+    {
+      "bytes": 33788,
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py",
+      "sha256": "f90907b265b883428c994f2c5ee452ec5ccb5286bbec94788f5df4768443aa5c"
+    },
+    {
+      "bytes": 41988,
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "c541920152c2d40aa54b243825e880ea77d1823bc00b3e120e17cb82ac39976d"
+    },
+    {
+      "bytes": 19620,
+      "operation": "modify",
+      "path": "tests/test_gameplan_cash_ledger.py",
+      "sha256": "1a15eee95b78039f46aa8f4747c413d2d2b617d416cbea26374c67d6570c8680"
+    },
+    {
+      "bytes": 13761,
+      "operation": "modify",
+      "path": "tests/test_gameplan_data.py",
+      "sha256": "f0b7aad45367170f90838a9cb98449414e2dcf3af5c313793de1f0dba2cfa9ce"
+    },
+    {
+      "bytes": 8307,
+      "operation": "modify",
+      "path": "tests/test_gameplan_stats_ui.py",
+      "sha256": "fb0b8ec3c0a9feba019908bbf51e475f0d23c1889990a5ed05a9ec57fb2b69e3"
+    },
+    {
+      "bytes": 38987,
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_planning.py",
+      "sha256": "b9993b7ac693f75de4fc867fa24f62181105c41f0a272280a90a7bb16bccda80"
+    },
+    {
+      "bytes": 13646,
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py",
+      "sha256": "43b97fb505af3e50eff8183775e46364840f89c8ee9ac855abaae27269b13d66"
+    }
+  ],
+  "git_authors": {
+    "main": "Scout",
+    "source": "jeremysecondstate"
+  },
+  "limitations": [
+    "This observation verifies public Git source availability and the exact 11 changed final files. It does not establish equal complete working trees.",
+    "Peer-reported offline passes remain unknown to Atlas without independently verified execution/output. No application suite was rerun by this courier.",
+    "Raw Git changes include line-ending differences; behavioral inspection used a separate whitespace-insensitive view while published hashes cover original bytes.",
+    "No fresh same-reference Scout inventory or local task/source/runtime adoption evidence was validated by this observation."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/feddd280f6d57feaf1fad95303394f6370efe42d",
+    "https://github.com/jeremysecondstate/ducketz/commit/56f55f05559251fa633b916d86c97487367de88f"
+  ],
+  "main_parent_sha": "3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "producer": "human-authorized-development",
+  "producer_machine": "pc-new",
+  "reporter": "Atlas",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires reviewed local source adoption and separate loaded-runtime evidence. Atlas remains at 99532621db0d42dfe8c655300cc93abda81240d5, 16 commits behind verified main. Fast-forward withheld because active operating processes prevent establishing exclusive writer absence. No provider, broker, trading, training, runtime start/restart or deployment action.",
+  "scope": "shared",
+  "source_branch": "codex/scout/20261003T004706Z-64e7e335e5d44d289e462e0c26d92dc0",
+  "source_commit_sha": "feddd280f6d57feaf1fad95303394f6370efe42d",
+  "summary": "Scout integrated shared sparse-history Gameplan planning and latest-session UI readiness. Atlas verified all 11 final file hashes on the Scout source branch and main; Atlas local adoption remains pending.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T01:07:13.062192Z",
+      "evidence": "Native Git original blobs and SHA-256 checks by Atlas",
+      "files_verified": 11,
+      "name": "Exact source/main file-byte equality and complete operation inventory",
+      "started_at_utc": "unknown",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-03T00:51:15.226048Z",
+      "evidence": "Public source commit metadata; execution/output not independently verified by Atlas",
+      "name": "Scout source offline suite",
+      "peer_reported_output_sha256": "03e1625b3cb91a17580e4f7bbdbaa6a45c20d68a1de80c18f32dbbb34e716bca",
+      "peer_reported_status": "passed",
+      "started_at_utc": "2026-10-03T00:49:32.594099Z",
+      "status": "unknown"
+    },
+    {
+      "completed_at_utc": "2026-10-03T00:54:18.273784Z",
+      "evidence": "Public main commit metadata; execution/output not independently verified by Atlas",
+      "name": "Scout main integration offline suite",
+      "peer_reported_output_sha256": "fcc18856bb709ae1a40e205b3a0075ce2e3750713e963707578575b6151deedf",
+      "peer_reported_status": "passed",
+      "started_at_utc": "2026-10-03T00:52:34.554293Z",
+      "status": "unknown"
+    }
+  ]
+}
