@@ -452,7 +452,7 @@ class GameplanTab:
                 if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else
                 f"Saved {self.plan.saved_at:%b %d, %H:%M %Z} · Projected trades; quantities and exits depend on actual fills."))
             if unavailable:
-                self.footer.configure(text="Saved forecasts remain available. Projected trades, quantities and exits require the missing price references.")
+                self.footer.configure(text="Saved forecasts remain available. Projected trades, quantities and exits require complete planning price evidence.")
             if self.view.get() == "trades":
                 company_count = len({row.symbol for row in actions})
                 forecast_company_count = len({row.symbol for row in forecasts})
@@ -779,6 +779,9 @@ class GameplanTab:
             return
         self._closed = True
         self._request_id += 1
+        # Release Tk images on their owning thread, before a background reader
+        # can collect a retained view/widget cycle after the tab is destroyed.
+        self._photos.clear()
         for job in (self._poll_job, self._auto_job):
             try:
                 self.parent.after_cancel(job)

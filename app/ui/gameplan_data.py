@@ -337,8 +337,32 @@ def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tup
                    or not isinstance(point.get("reason"), str) or not point["reason"].strip()
                    for point in points)):
         raise GameplanError("Unavailable cash projection is missing its price-reference explanation")
-    symbols = ", ".join(sorted({point["symbol"] for point in points}))
-    return status, f"Cash projection unavailable: missing price references for {symbols}. Saved forecasts remain available."
+    missing = sorted({point["symbol"] for point in points
+                      if point.get("status") == "UNAVAILABLE_REFERENCE_PRICE"})
+    sparse = []
+    for point in points:
+        if point.get("status") != "UNAVAILABLE_MINIMUM_SAMPLES":
+            continue
+        label = str(point["symbol"])
+        clock = point.get("clock_local")
+        if isinstance(clock, str) and len(clock) == 5 and clock[2] == ":" and clock.replace(":", "").isdigit():
+            label += f" at {clock} Pacific"
+        count = point.get("sample_count")
+        if type(count) is int and count >= 0:
+            label += f" ({count} historical {'pair' if count == 1 else 'pairs'})"
+        sparse.append(label)
+    reasons = []
+    if missing:
+        reasons.append("missing closing references for " + ", ".join(missing))
+    if sparse:
+        labels = sorted(set(sparse))
+        reasons.append("too few historical pairs for " + ", ".join(labels[:4])
+                       + (f" and {len(labels) - 4} more points" if len(labels) > 4 else ""))
+    other = sorted({point["symbol"] for point in points if point.get("status") not in
+                    {"UNAVAILABLE_REFERENCE_PRICE", "UNAVAILABLE_MINIMUM_SAMPLES"}})
+    if other:
+        reasons.append("incomplete planning price evidence for " + ", ".join(other))
+    return status, "Cash projection unavailable: " + "; ".join(reasons) + ". Saved forecasts remain available."
 
 
 def _validate_fallback_accounting(ledger: dict, session: str) -> None:

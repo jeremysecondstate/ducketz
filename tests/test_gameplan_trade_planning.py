@@ -272,6 +272,8 @@ def publication_case(tmp_path, monkeypatch):
     from ml import nightly_gameplan
     from ml.stock_trader import independent_signals
     from ml import gameplan_price_bands
+    native_entry_bands = gameplan_price_bands.build_entry_price_bands
+    native_price_path = gameplan_price_bands.build_planning_price_path
     source = tmp_path / "ml/nightly-gameplan-runs/frozen"
     source.mkdir(parents=True)
     config = {"preparation_scope": "STOCK_ONLY", "target_contract_version": "independent-stock-targets-v1",
@@ -296,6 +298,7 @@ def publication_case(tmp_path, monkeypatch):
     monkeypatch.setattr(independent_signals, "verified_promoted_model_groups", lambda p: frozenset({"1h", "4h", "1d", "1w"}))
     calls = []
     def entry_bands(*a, **kw):
+        assert kw["lookback_sessions"] == 504
         assert kw["allow_reference_forward_fill"] is True
         assert kw["allow_sparse_session_references"] is True
         result = bands(rows)
@@ -314,7 +317,74 @@ def publication_case(tmp_path, monkeypatch):
     monkeypatch.setattr(gameplan_price_bands, "build_entry_price_bands", entry_bands)
     monkeypatch.setattr(gameplan_price_bands, "build_planning_price_path", price_path)
     return SimpleNamespace(root=tmp_path, source=source, state=snapshot(),
-             prices=lambda *a, **kw: (pd.DataFrame(), (), {}), clock=lambda: pd.Timestamp("2026-09-09T04:10:00Z"), calls=calls)
+             prices=lambda *a, **kw: (pd.DataFrame(), (), {}), clock=lambda: pd.Timestamp("2026-09-09T04:10:00Z"), calls=calls,
+             native_entry_bands=native_entry_bands, native_price_path=native_price_path)
+
+
+@pytest.mark.parametrize("older_sample_sessions", [200, 505])
+def test_publisher_uses_bounded_history_for_sparse_late_clock(publication_case, monkeypatch, older_sample_sessions):
+    import json
+    import exchange_calendars as xcals
+    from ml import gameplan_price_bands
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_trade_planning import publish_trade_plan
+
+    c = publication_case
+    monkeypatch.setattr(gameplan_price_bands, "build_entry_price_bands", c.native_entry_bands)
+    monkeypatch.setattr(gameplan_price_bands, "build_planning_price_path", c.native_price_path)
+    calendar = xcals.get_calendar("XNYS", start="2023-01-01", end="2026-09-10")
+    sessions = calendar.sessions[calendar.sessions < pd.Timestamp("2026-09-09")]
+    bars = []
+
+    def bar(day, clock, price):
+        bars.append({"symbol": "AAPL", "timestamp": pd.Timestamp(f"{day.date()} {clock}", tz="America/Los_Angeles").tz_convert("UTC"),
+                     "open": price, "close": price})
+
+    # Every required clock has recent genuine pairs except 16:00, which has
+    # one recent pair and one older pair on the requested side of the bound.
+    for index, day in enumerate(sessions[-4:]):
+        bar(day, "16:59", 10.)
+        if index:
+            for hour in range(4, 16):
+                bar(day, f"{hour:02d}:00", 10. + index / 100)
+        if index == 3:
+            bar(day, "16:00", 10.2)
+    older = sessions[-older_sample_sessions]
+    bar(calendar.previous_session(older), "16:59", 10.)
+    bar(older, "16:00", 10.4)
+    prices = pd.DataFrame(bars)
+    prices.attrs["stock_price_source"] = {"source_contract": "xnas-itch-archive-v1", "dataset": "XNAS.ITCH"}
+    frozen = pd.read_parquet(c.source / "forecasts.parquet")
+    narrow = c.native_entry_bands(prices, frozen, observed_at=c.clock(),
+                                 allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    key = "AAPL|2026-09-09|16:00"
+    assert narrow["lookback_sessions"] == 120
+    assert narrow["statistics"][key]["sample_count"] == 1
+    assert narrow["statistics"][key]["status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
+    preserved = {p.name: file_checksum(p) for p in c.source.iterdir()}
+    run = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
+                             price_loader=lambda *a, **kw: (prices, (), prices.attrs["stock_price_source"]), clock=c.clock)
+    verify_manifest(run)
+    saved_bands = json.loads((run / "price-bands.json").read_text())
+    saved_path = json.loads((run / "planning-price-path.json").read_text())
+    report = json.loads((run / "report.json").read_text())
+    receipt = json.loads((run / "receipt.json").read_text())
+    assert saved_bands["lookback_sessions"] == saved_path["lookback_sessions"] == 504
+    assert saved_bands["minimum_samples"] == saved_path["minimum_samples"] == 2
+    assert saved_bands["boundary_tolerance_seconds"] == 300
+    point = saved_path["points"][key]
+    if older_sample_sessions <= 504:
+        assert point["sample_count"] == 2 and point["status"] == "AVAILABLE"
+        assert {sample["session"] for sample in point["samples"]} == {str(older.date()), str(sessions[-1].date())}
+        assert point["planned_price_mid"] == 10.3
+        assert report["direction_projection_status"] == "COMPLETE"
+    else:
+        assert point["sample_count"] == 1 and point["status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
+        assert point["planned_price_low"] is point["planned_price_mid"] is point["planned_price_high"] is None
+        assert report["direction_projection_status"] == "UNAVAILABLE_PRICE_REFERENCES"
+    assert receipt["status"] == "COMPLETE" and receipt["orders_placed"] == 0
+    assert receipt["broker_orders_enabled"] is False
+    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == preserved
 
 
 def test_publication_binds_source_and_outputs_without_changing_gameplan(publication_case):
@@ -353,6 +423,48 @@ def test_publication_binds_source_and_outputs_without_changing_gameplan(publicat
             verify_manifest(run)
         path.write_bytes(original)
     verify_manifest(run)
+
+
+@pytest.mark.parametrize("probability", [.8, .4905176089212996])
+def test_publication_keeps_saved_no_history_abstention_neutral(publication_case, probability):
+    import json
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_trade_planning import publish_trade_plan
+    from ml.gameplan_trade_review import _direction
+
+    c = publication_case
+    source_path = c.source / "forecasts.parquet"
+    frozen = pd.read_parquet(source_path)
+    frozen["direction"] = "BULLISH"
+    frozen["symbol_fitted_target_rows"] = 40
+    weekly = frozen.model_group.eq("1w")
+    frozen.loc[weekly, "direction"] = "NO_EDGE"
+    frozen.loc[weekly, "calibrated_probability"] = probability
+    frozen.loc[weekly, "model_status"] = "RESEARCH_NO_TARGET_HISTORY"
+    frozen.loc[weekly, ["symbol_fitted_target_rows", "symbol_route_fitted_target_rows"]] = 0
+    identifier = frozen.loc[weekly, "id"].item()
+    frozen.to_parquet(source_path, index=False)
+    before = {p.name: file_checksum(p) for p in c.source.iterdir()}
+    run = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
+                             price_loader=c.prices, clock=c.clock)
+    verify_manifest(run)
+    rows = pd.read_parquet(run / "trade-plan.parquet")
+    row = rows.loc[rows.id.eq(identifier)].iloc[0]
+    ledger = json.loads((run / "direction-ledger.json").read_text())
+    assert ledger["status"] == "COMPLETE"
+    assert row.direction == row.planning_direction == "NO_EDGE"
+    assert row.calibrated_probability == probability
+    assert row.direction_based_action == "HOLD" and row.direction_based_trade_quantity == 0
+    assert _direction(row.to_dict()) == "Neutral"
+    assert all(event["forecast_id"] != identifier for event in ledger["events"])
+    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
+
+
+@pytest.mark.parametrize("direction", ["BEARISH", "NO_EDGE", "NEUTRAL"])
+def test_planning_label_rejects_unexplained_saved_direction_mismatch(direction):
+    row = {**forecast(probability=.8), "direction": direction}
+    with pytest.raises(ValueError, match="direction disagrees"):
+        plan_trade_rows(pd.DataFrame([row]), snapshot(), bands([row]))
 
 
 def test_direction_ledger_failure_preserves_previous_pointer_without_raw_error(publication_case, monkeypatch):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import tkinter as tk
+import weakref
 from tkinter import ttk
 from types import SimpleNamespace
 
@@ -91,6 +92,55 @@ def test_date_change_clears_old_values_and_loads_requested_publication(tab, tmp_
     assert tab.values["accuracy"].get() == "100.0%"
 
 
+def test_default_refresh_follows_newly_published_session(tab, tmp_path):
+    assert tab.review.session == "2026-09-11"
+    newer = write_review(tmp_path, [forecast(session="2026-09-14", change=.01)], session="2026-09-14")
+    tab.refresh()
+    _finish_refresh(tab)
+    assert tab.review.session == tab.session.get() == "2026-09-14"
+    assert tab.review.run_directory == newer
+    assert tab.values["accuracy"].get() == "0.0%"
+
+
+def test_historical_selection_stays_pinned_until_latest_session_clicked(tab, tmp_path):
+    write_review(tmp_path, [forecast(session="2026-09-10")], session="2026-09-10", latest=False)
+    tab.session.set("2026-09-10")
+    tab.date_box.event_generate("<<ComboboxSelected>>")
+    _finish_refresh(tab)
+    write_review(tmp_path, [forecast(session="2026-09-14", change=.01)], session="2026-09-14")
+    tab.refresh_button.invoke()
+    _finish_refresh(tab)
+    assert tab.review.session == tab.session.get() == "2026-09-10"
+    assert tab.values["accuracy"].get() == "100.0%"
+    tab.latest_button.invoke()
+    _finish_refresh(tab)
+    assert tab.review.session == tab.session.get() == "2026-09-14"
+    assert tab.values["accuracy"].get() == "0.0%"
+    write_review(tmp_path, [forecast(session="2026-09-15")], session="2026-09-15")
+    tab.refresh()
+    _finish_refresh(tab)
+    assert tab.review.session == tab.session.get() == "2026-09-15"
+    assert tab.values["accuracy"].get() == "100.0%"
+
+
+def test_latest_session_ignores_late_reply_from_historical_selection(tab, tmp_path, monkeypatch):
+    old = tab.review
+    write_review(tmp_path, [forecast(session="2026-09-14", change=.01)], session="2026-09-14")
+    newest = load_gameplan_stats(tmp_path)
+    # Control reply arrival without starting another thread; the real button
+    # still creates the request that must invalidate the historical response.
+    monkeypatch.setattr(stats_ui.threading, "Thread", lambda **kwargs: SimpleNamespace(start=lambda: None))
+    tab.session.set("2026-09-11")
+    tab._date_changed()
+    historical_request = tab._request_id
+    tab.latest_button.invoke()
+    tab._messages.put((tab._request_id, ("2026-09-14", "2026-09-11"), newest, None))
+    tab._messages.put((historical_request, ("2026-09-11",), old, None))
+    _finish_refresh(tab)
+    assert tab.review.session == tab.session.get() == "2026-09-14"
+    assert tab.values["accuracy"].get() == "0.0%"
+
+
 def test_refresh_failure_clears_unverifiable_metrics_and_report_action(tab, monkeypatch):
     def fail(*_args):
         raise GameplanStatsError("Fixture review integrity mismatch")
@@ -132,7 +182,13 @@ def test_open_report_uses_the_displayed_immutable_report(tab, monkeypatch):
 
 
 def test_destroy_cancels_polling_and_ignores_completion(tab):
+    photo = tk.PhotoImage(master=tab.root, width=1, height=1)
+    name, reference = str(photo), weakref.ref(photo)
+    tab._photos["cleanup-probe"] = photo
+    del photo
     tab.parent.destroy()
     assert tab._closed
+    assert not tab._photos and reference() is None
+    assert name not in tab.root.tk.call("image", "names")
     jobs = tab.root.tk.call("after", "info")
     assert tab._poll_job not in jobs and tab._auto_job not in jobs
