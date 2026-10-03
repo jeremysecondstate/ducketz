@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T05:53:40.100132Z",
+  "id": "20261003T055340Z-2f44545f3bed4b5f8d8b96e74cb5e91a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout fetched and verified main commit 213eabcc: 22 added Atlas namespace artifact paths, with no shared application source or configuration change. Scout local checkout and symbol binding were preserved."
+}
