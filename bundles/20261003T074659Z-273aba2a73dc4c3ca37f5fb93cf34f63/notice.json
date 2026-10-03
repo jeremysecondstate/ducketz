@@ -1,0 +1,117 @@
+{
+  "actor": "Atlas",
+  "author": "Jeremy Klein",
+  "branch": "codex/atlas/20261003T060801Z-5a235cb7965540f382fa17b272e3e75e",
+  "change_id": "source:c2353e9d5d5dc7b559a807a0931e2e6d0931333e",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/c2353e9d5d5dc7b559a807a0931e2e6d0931333e",
+  "completed_at_utc": "2026-10-03T06:09:13.556865Z",
+  "completion_id": "20261003T060801Z-5a235cb7965540f382fa17b272e3e75e",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "coordination/task-catalog.json",
+      "sha256": "087dd4ed1c1f96dd55419f110a95f054ee3f7af4a6164a7fcd09db0b0ff17eef"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-task-matrix.md",
+      "sha256": "3ad0d0ad5695a069926d3e1dce57951e7d34b7768e9c559f1dbfb67a1d1daa4a"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/CHANGELOG.md",
+      "sha256": "52c758261f7a776bc765ae00e3b3974e3839960786b9268b7f9d83104706b7db"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md",
+      "sha256": "24727bb22822d8bf4cdb956bc35dbeffb3b898424f70c42b42ee50a6c8813c81"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md",
+      "sha256": "eea1cd24953e8bd17d8b7c14f098f9b45bbd3ca4b41ac6c59dd03c1bba707a4e"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/README.md",
+      "sha256": "428cc7d2a492b8572bd85c000bb8151c122d933cbe450b9554f6af470b74bd5e"
+    },
+    {
+      "operation": "add",
+      "path": "docs/hyperliquid-system-analysis/audits/2026-10-02-paper-two-hour-floor.md",
+      "sha256": "ec5535aeacb65219691c5d3bbbb2cfeec0485262605449ef44d2afa00e74b3e3"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/hyperliquid_paper_cadence.py",
+      "sha256": "7357453cbd3474eb6ae20a39cc2f2775ab41600c379529634825463f5fdc89d7"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_hyperliquid_paper_cadence.py",
+      "sha256": "008433c85888a576a1a55e207d5698be68bf44ce7187e58d70fbf6e0848773ca"
+    }
+  ],
+  "limitations": [
+    "Original tests passed 144 with one skip on their immutable 43-input snapshot; 28 committed raw input hashes differ, so those tests do not bind every raw committed byte.",
+    "All 28 mismatches are line-ending-only.",
+    "This observation preserves earlier publication and normalization receipts and repeats no successful source stage."
+  ],
+  "main_owned_file_comparison": "9 of 9 normalize identically under CRLF-to-LF conversion",
+  "parent_commit_sha": "213eabccde7efdedaca41c378692a8d73fb06aeb",
+  "producer": "human-authorized-development",
+  "record_sha256": "7041e6eb3a3b7b7ad7545c4b6faeda06f87ede27be6e845e8ca53949eec5ec41",
+  "related_lf_normalization_sha": "8dccf2c315c162d782324482e4925584d90a9c5a",
+  "related_published_notice": "20261003T061720Z-a8a906e9690f467db44eed3c327a3fdc",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_at_utc": "2026-10-03T07:46:59.549362Z",
+  "runtime_implications": "Prospective Paper cadence uses a two-hour minimum with one-hour WIN/LOSS steps; active native rounds and their history are preserved. This observer changed no scheduler, active round, Paper/Powder configuration or runtime; peer installation and adoption remain unverified.",
+  "scope": "Shared Paper source/defaults; applies to both PCs as source availability, with installation and active-round adoption requiring each PC's own evidence.",
+  "source_commit_sha": "c2353e9d5d5dc7b559a807a0931e2e6d0931333e",
+  "summary": "Historical Atlas Paper cadence-v3 source branch is available; all nine owned files are already represented on current main after line-ending normalization. Original raw test closure and committed bytes remain distinct.",
+  "tests": {
+    "committed_input_hash_matches": 15,
+    "completion_queue": [
+      {
+        "completed_at_utc": "2026-10-03T06:08:21.534820Z",
+        "declared_deselection": null,
+        "exit_code": 0,
+        "import_evidence_sha256": "53058c0141e949772a4e71f595dd65034c573f96259d747157243416eab6e496",
+        "network_access": "disabled by the installed offline test verifier",
+        "output_sha256": "7002b32981044a4ce988eb8e9bfca57821f14804d7d9b93d7f739ddddadb0c73",
+        "result": "144 passed, 1 skipped in 19.40s",
+        "started_at_utc": "2026-10-03T06:08:01.075770Z",
+        "suite_files": [
+          "tests/test_hyperliquid_paper_cadence.py",
+          "tests/test_hyperliquid_paper_exploratory_cadence.py",
+          "tests/test_hyperliquid_paper_review.py"
+        ],
+        "tested_input_count": 43
+      }
+    ],
+    "crlf_only_mismatches": 28,
+    "isolated_candidate": [
+      {
+        "completed_at_utc": "2026-10-03T06:09:05.941753Z",
+        "declared_deselection": null,
+        "exit_code": 0,
+        "import_evidence_sha256": "53058c0141e949772a4e71f595dd65034c573f96259d747157243416eab6e496",
+        "network_access": "disabled by the installed offline test verifier",
+        "output_sha256": "50eb2d7f8b553a93a363236bb19ec1b9266df4abf7881ca2bc3d8b86076e340e",
+        "result": "144 passed, 1 skipped in 19.72s",
+        "started_at_utc": "2026-10-03T06:08:45.148911Z",
+        "suite_files": [
+          "tests/test_hyperliquid_paper_cadence.py",
+          "tests/test_hyperliquid_paper_exploratory_cadence.py",
+          "tests/test_hyperliquid_paper_review.py"
+        ],
+        "tested_input_count": 43
+      }
+    ],
+    "observation_review_sha256": "0f054c2c1dcb984321ea3e7db13ee4140643e1f99dab1e23f832d880f7c4032d",
+    "other_mismatches": 0,
+    "raw_byte_mismatches": 28
+  },
+  "verified_main_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102"
+}

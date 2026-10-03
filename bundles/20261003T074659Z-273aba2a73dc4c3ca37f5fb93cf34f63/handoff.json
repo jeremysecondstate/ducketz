@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T07:46:59.986339Z",
+  "id": "20261003T074659Z-273aba2a73dc4c3ca37f5fb93cf34f63",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Historical Atlas Paper cadence-v3 source branch is available; all nine owned files are already represented on current main after line-ending normalization. Original raw test closure and committed bytes remain distinct."
+}
