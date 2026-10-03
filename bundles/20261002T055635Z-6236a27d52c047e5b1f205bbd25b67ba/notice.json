@@ -1,0 +1,50 @@
+{
+  "author": "Scout",
+  "branch": "codex/atlas/20261002T051236Z-2684b53d4193489286e2b4a7c732049e",
+  "change_id": "source-observation:047f6ad665f1fc9b44866c75384cbb86878aa994",
+  "commit_sha": "047f6ad665f1fc9b44866c75384cbb86878aa994",
+  "commit_title": "Atlas: Update regression coverage for the accepted zero-threshold exploratory Paper policy while preserving its executable guards.",
+  "completion_record": "20261002T051236Z-2684b53d4193489286e2b4a7c732049e",
+  "file_operations": [
+    {
+      "additions": 32,
+      "deletions": 0,
+      "operation": "add",
+      "path": "tests/test_hyperliquid_paper_rebalance_threshold.py"
+    }
+  ],
+  "files": [
+    "tests/test_hyperliquid_paper_rebalance_threshold.py"
+  ],
+  "limitations": [
+    "This added test does not supply local-overlay selector support or resolve the previously identified selector gap inherited from its parent.",
+    "The commit message's Powder inactivity statement is sender-reported and was not independently verified.",
+    "Source publication does not establish main integration, local installation, effective local symbols or running-version parity."
+  ],
+  "parent_sha": "24cf2636f6b467efbce5f92bcd3f9d6e4588469b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application or configuration code changed in this commit. This observation performed no fetch into the application checkout, installation, restart, deployment, provider or broker call, training, trading or account action.",
+  "scope": {
+    "findings": [
+      "The test asserts unqualified forecasts are allowed, entry and exit bands are zero, minimum trade notional is 10, and rebalance delta threshold is zero.",
+      "It checks expected fee, stop-loss, per-symbol and pool exposure, and account-utilization configuration values.",
+      "Rebalance assertions cover changed and unchanged positions, closing positions, forced reduction, minimum-notional boundaries, and a separate 0.35 threshold candidate."
+    ],
+    "review": "Complete 32-line patch inspected through the existing GitHub connection."
+  },
+  "source_author": {
+    "authored_at_utc": "2026-10-02T05:45:48Z",
+    "codex_author_trailer": "Atlas",
+    "committed_at_utc": "2026-10-02T05:45:48Z",
+    "git_author": "Jeremy Klein",
+    "git_committer": "Jeremy Klein",
+    "github_login": "bekahsherry"
+  },
+  "summary": "Scout observed one added shared Paper-policy regression test in the exact Atlas source commit. The commit changes no application, configuration or local-selector code.",
+  "tests": {
+    "scout_verification": "Read-only commit metadata and complete patch inspection only. No local tests or application source execution.",
+    "sender_claim": "The commit message reports one passing offline check command with exact evidence retained locally; no command, detailed result or execution timestamps are included in this commit.",
+    "sender_test_time": "unknown"
+  },
+  "url": "https://github.com/jeremysecondstate/ducketz/commit/047f6ad665f1fc9b44866c75384cbb86878aa994"
+}

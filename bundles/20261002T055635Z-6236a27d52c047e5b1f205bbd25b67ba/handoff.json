@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T05:56:35.728205Z",
+  "id": "20261002T055635Z-6236a27d52c047e5b1f205bbd25b67ba",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout observed one added shared Paper-policy regression test in the exact Atlas source commit. The commit changes no application, configuration or local-selector code."
+}
