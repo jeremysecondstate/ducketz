@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T10:07:52.179761Z",
+  "id": "20261003T100752Z-84ac75e0daa044a78172cd5e1c382356",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserves the Monday native handoff request, reports the existing forecast-package publication and unresolved cutover evidence, and requests the missing protocol envelope for correlated status handling."
+}

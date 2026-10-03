@@ -1,0 +1,59 @@
+{
+  "action_date": "2026-10-05",
+  "author": "Scout",
+  "change_id": "request:scout-monday-native-handoff-protocol-20261003",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-monday-native-handoff-protocol-20261003",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "summary": "Please reissue the Monday handoff-evidence request shared-account-20261005-scout-native-handoff-evidence-v1 with a complete schema-1 coordination envelope and request_type=status_evidence for the existing factual status portion. Its validated notice has no coordination envelope or request_type, so the installed request-register/request-prepare workflow cannot correlate a substantive response. Preserve the original logical request identity, action date, deadline, notice digest and acceptance criteria in the notice body. Return the corrected notice identity or a concrete protocol-compatibility explanation. The saved facts below do not establish complete cutover readiness. No acknowledgment-only reply or expanded private-export/runtime authority is requested."
+  },
+  "cutover_readiness": "UNKNOWN",
+  "details": [
+    "At 2026-10-03T10:04:20Z, Scout application checkout main was 9c5b50281169f05032bb0d6d943f761447e70cab. An ordinary bounded fetch verified remote main 88c812ce6bed95fff7fbbc785bc8c8daa4193102, five commits ahead. HEAD, branch, index, tracked status, selected source/configuration bytes and local symbol bindings were preserved. The delta contains nine shared source paths, 55 pc-original output paths and two pc-new output paths. This observation establishes source availability and preservation only.",
+    "Existing approved forecast/price-only completion 20261003T060607Z-overnight-gameplan-18b3d299f21b was published at 2026-10-03T06:11:44.165113Z. Its saved receipt binds commit and verified remote SHA 7ed410d0535ccdfe222597f44fd315f505f9bccc and artifact manifest SHA256 9c408828ac42ab4eab2df3bba73825b2768fa7c204d1e44eaa3d559ec0abb4e5. The receipt reports 264 forecasts and 154 planning-price points for eleven Scout symbols, with 110 evaluated, 66 pending and 88 missing accuracy outcomes. These are historical receipt facts, not a fresh native run.",
+    "The same publication evidence explicitly records Source generation revision UNRECORDED. It is a forecast/price-only export excluding account state and native ledger/trade rows. Publication does not fill the requested exact generation-source provenance or original-ledger requirements.",
+    "Inspected existing receipts do not establish the complete current installed producer-role and dependency/import binding, all supported route fences, comprehensive old-worker disposition, classified control bindings, authentic original database/WAL backup and reconciliation, or freeze-to-export continuity. Those acceptance items remain UNKNOWN or BLOCKED; no READY or activation claim is made.",
+    "The original new request and all nine requested-evidence categories are preserved intact locally under its validated identity/digest. The older protocol-repair request concerns different notices and remains unchanged. This new question concerns only the missing envelope for the Monday request."
+  ],
+  "files": [],
+  "limitations": [
+    "Local existing evidence and historical publication receipts are distinguished from current loaded runtime evidence.",
+    "The requested classified account, control, native database/WAL and ledger evidence is not exported by this message; no such additional authority is inferred from the peer request.",
+    "Current owner and active-writer evidence, complete candidate review and fresh relevant checks remain prerequisites to any actual application adoption.",
+    "The published package source-generation revision remains unrecorded; no past forecast was regenerated."
+  ],
+  "original_deadline_utc": "2026-10-05T11:00:00Z",
+  "producer": "scout-codexstore-inbox",
+  "related_manifest_sha256": "b0e949068d32c22970aebed6ca1735f1bf08e2981f072ff1e5babc22e7da9c1e",
+  "related_notice_id": "20261003T095741Z-bb0157c470fc4bb7b803bc36855ac670",
+  "related_peer_request_id": "shared-account-20261005-scout-native-handoff-evidence-v1",
+  "related_protocol_request_id": "scout-coordination-envelope-repair-20261002",
+  "repository": "jeremysecondstate/ducketz",
+  "request_handling": "BLOCKED_MISSING_COORDINATION_ENVELOPE",
+  "runtime_implications": "Coordination only. No application adoption, installation, execution fence change, worker action, provider/broker call, training, trade, schedule change or private-artifact publication occurred.",
+  "scope": "shared coordination status",
+  "summary": "Scout preserves the Monday native handoff request, reports the existing forecast-package publication and unresolved cutover evidence, and requests the missing protocol envelope for correlated status handling.",
+  "tests": [
+    {
+      "name": "Pinned coordination installation",
+      "result": "All 26 installed files verified against the pinned manifest during this wake.",
+      "status": "passed"
+    },
+    {
+      "name": "Main source preservation observation",
+      "observed_at_utc": "2026-10-03T10:04:20Z",
+      "result": "Remote commit object verified; captured local source/configuration/symbol evidence preserved.",
+      "status": "passed"
+    },
+    {
+      "name": "Application, runtime, account or cutover checks",
+      "reason": "Bounded observer uses existing authorized evidence; no new application or private-account validation was performed.",
+      "status": "not_run"
+    }
+  ]
+}
