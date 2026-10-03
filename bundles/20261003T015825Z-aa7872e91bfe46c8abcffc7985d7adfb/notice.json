@@ -1,0 +1,142 @@
+{
+  "actor": "Scout",
+  "author": "Scout",
+  "branch": "main",
+  "change_id": "20261003T004706Z-64e7e335e5d44d289e462e0c26d92dc0-main-verified-evidence-v2",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/56f55f05559251fa633b916d86c97487367de88f",
+  "completion_record": "20261003T004706Z-64e7e335e5d44d289e462e0c26d92dc0",
+  "evidence": {
+    "all_eleven_changed_committed_blobs_match_source_and_main": true,
+    "main_integration_receipt_sha256": "8b481b38a7cf1e2786b46b51c3477bff665b13fae24bbb70a591785f0e66cd2c",
+    "publication_fingerprint_count": 129,
+    "source_and_dependency_evidence_manifest_sha256": "050b23d2a902a47d9b5a84bf780e74ed29ee543cd415e4987f45b1e75ba08e59",
+    "test_output_and_import_evidence_revalidated": true
+  },
+  "files": [
+    {
+      "bytes": 33788,
+      "committed_sha256": "f90907b265b883428c994f2c5ee452ec5ccb5286bbec94788f5df4768443aa5c",
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py"
+    },
+    {
+      "bytes": 19620,
+      "committed_sha256": "1a15eee95b78039f46aa8f4747c413d2d2b617d416cbea26374c67d6570c8680",
+      "operation": "modify",
+      "path": "tests/test_gameplan_cash_ledger.py"
+    },
+    {
+      "bytes": 49659,
+      "committed_sha256": "0336dc0b920683ce946d9a5694fdeb91cb33af27bfee1a616398337bee806b10",
+      "operation": "modify",
+      "path": "app/ui/gameplan.py"
+    },
+    {
+      "bytes": 34104,
+      "committed_sha256": "f613b67b768337c43c4d9faeb9c2e754752d13c728f4c4322731f5cffb4cca72",
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py"
+    },
+    {
+      "bytes": 35924,
+      "committed_sha256": "d735d89a025546b2d280b3cabaed3e1fe80c6184e37d947d973b7d09913f85f5",
+      "operation": "modify",
+      "path": "app/ui/gameplan_stats.py"
+    },
+    {
+      "bytes": 41988,
+      "committed_sha256": "c541920152c2d40aa54b243825e880ea77d1823bc00b3e120e17cb82ac39976d",
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py"
+    },
+    {
+      "bytes": 13761,
+      "committed_sha256": "f0b7aad45367170f90838a9cb98449414e2dcf3af5c313793de1f0dba2cfa9ce",
+      "operation": "modify",
+      "path": "tests/test_gameplan_data.py"
+    },
+    {
+      "bytes": 13646,
+      "committed_sha256": "43b97fb505af3e50eff8183775e46364840f89c8ee9ac855abaae27269b13d66",
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py"
+    },
+    {
+      "bytes": 8307,
+      "committed_sha256": "fb0b8ec3c0a9feba019908bbf51e475f0d23c1889990a5ed05a9ec57fb2b69e3",
+      "operation": "modify",
+      "path": "tests/test_gameplan_stats_ui.py"
+    },
+    {
+      "bytes": 38987,
+      "committed_sha256": "b9993b7ac693f75de4fc867fa24f62181105c41f0a272280a90a7bb16bccda80",
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_planning.py"
+    },
+    {
+      "bytes": 77347,
+      "committed_sha256": "9527a3012668bfbbd80a6e293e6b47f1aa10d054325f4ba26803b93873166bdf",
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+    }
+  ],
+  "findings": [
+    "Scout Gameplan: inspect a bounded 504-session history for all planning clocks while retaining two actual entry pairs, causal cutoffs and existing disclosed closing carries.",
+    "Preserve strict saved no-history abstentions in projected trade direction and fallback donor protection using the same predicate as execution.",
+    "Distinguish missing closing references from insufficient historical samples in the Gameplan notice.",
+    "Add Latest session navigation to Stats and release Tk images on the UI thread when either tab is destroyed.",
+    "Document separate native completion, projection readiness and saved actuals coverage; preserve frozen publications and local symbol bindings."
+  ],
+  "limitations": [
+    "Historical passing checks were revalidated from exact sealed evidence; no new test run in this courier wake.",
+    "Skip remains a skip; no additional reason is inferred from the summary.",
+    "Longer history includes older conditions and does not establish forecast accuracy. Frozen publications retain their original scope and results.",
+    "Atlas previously verified source availability; peer installation, running processes and cross-PC working-byte parity remain unverified."
+  ],
+  "local_installation": {
+    "current_129_fingerprints_match_saved_local_installation": true,
+    "current_working_byte_recheck_at_utc": "2026-10-03T01:57:46.334606Z",
+    "exact_matches_to_tested_shared_fingerprints": 127,
+    "head": "56f55f05559251fa633b916d86c97487367de88f",
+    "line_ending_variants": [
+      "datafetching/symbol_universe.py",
+      "ml/overnight_runtime.py"
+    ],
+    "observed_at_utc": "2026-10-03T00:58:48.158313+00:00",
+    "status": "clean",
+    "variant_evidence": "Saved owner installation review reports separate AST and compiled-code equivalence for these two unchanged local dependencies; shared pytest ran on attested shared bytes."
+  },
+  "logical_task": "overnight_gameplan",
+  "machine": "pc-new",
+  "main_commit": "56f55f05559251fa633b916d86c97487367de88f",
+  "parent_commit": "3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "reporting_task": "source_courier",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local source installation has separate saved owner evidence. The current GUI or other process has not been verified to load this source. Future execution and runtime changes retain their existing owner procedures; this notice starts or changes nothing.",
+  "scope": "shared",
+  "source_branch": "codex/scout/20261003T004706Z-64e7e335e5d44d289e462e0c26d92dc0",
+  "source_commit": "feddd280f6d57feaf1fad95303394f6370efe42d",
+  "source_commit_url": "https://github.com/jeremysecondstate/ducketz/commit/feddd280f6d57feaf1fad95303394f6370efe42d",
+  "summary": "Scout confirms Gameplan main installation and exact source evidence; the main candidate passed 583 tests with one skip, while the isolated source candidate passed 584.",
+  "supersedes_unpublished_notice": {
+    "id": "20261003T010116Z-1e8169da714b44a5864dfb273988dc92",
+    "manifest_sha256": "eb8dbd87ad27c8b35a985976094f7a1e07ff1dc80cc4bb941513442f95faba4b",
+    "reason": "Corrects main-candidate pass/skip accounting and distinguishes shared tested bytes from local line-ending variants; the original immutable bundle remains local and unsent."
+  },
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T00:51:15.226048Z",
+      "output_sha256": "03e1625b3cb91a17580e4f7bbdbaa6a45c20d68a1de80c18f32dbbb34e716bca",
+      "result": "584 passed",
+      "stage": "isolated_source_candidate",
+      "started_at_utc": "2026-10-03T00:49:32.594099Z"
+    },
+    {
+      "completed_at_utc": "2026-10-03T00:54:18.273784Z",
+      "output_sha256": "fcc18856bb709ae1a40e205b3a0075ce2e3750713e963707578575b6151deedf",
+      "result": "583 passed, 1 skipped",
+      "stage": "actual_main_candidate",
+      "started_at_utc": "2026-10-03T00:52:34.554293Z"
+    }
+  ]
+}

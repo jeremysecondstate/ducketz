@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T01:58:25.221157Z",
+  "id": "20261003T015825Z-aa7872e91bfe46c8abcffc7985d7adfb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout confirms Gameplan main installation and exact source evidence; the main candidate passed 583 tests with one skip, while the isolated source candidate passed 584."
+}
