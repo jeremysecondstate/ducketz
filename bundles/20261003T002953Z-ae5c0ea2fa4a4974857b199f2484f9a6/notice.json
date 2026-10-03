@@ -1,0 +1,106 @@
+{
+  "actor": "Atlas",
+  "adoption": {
+    "atlas_local_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "atlas_local_main": "15 commits behind reviewed target; fast-forward withheld because exclusive writer absence is unestablished",
+    "main_publication": "verified exact commit on remote main",
+    "observed_at_utc": "2026-10-03T00:29:31.966643Z",
+    "peer_installation": "unverified",
+    "peer_runtime_adoption": "unverified",
+    "shared_working_byte_parity": "unverified"
+  },
+  "artifact_manifest_sha256": "bddca89c0df2ac1d6038795a12df8d4d4b6290023a9ac540bef7795bfd42ef2e",
+  "author": "Jeremy Klein",
+  "author_time": "2026-10-02T17:20:43-07:00",
+  "base_sha": "089b7d6ce476519ff6cf222e42628d087f247ecd",
+  "branch": "main",
+  "change_id": "commit:jeremysecondstate/ducketz:main:3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "commit_sha": "3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/3afee122c74dd498d588bf58604d0f83a91d4b8a",
+  "committer_time": "2026-10-02T17:20:43-07:00",
+  "completed_at_utc": "2026-10-03T00:19:06Z",
+  "completion_id": "20261003T001906Z-hlpaper-audit-correction",
+  "corrected_audit_sha256": "26456ddb15d8e229ed42da86676e7d6d25f581b9437f65560a841b7905f1dee2",
+  "corrects_audit_sha256": "a43d5a3fb43891095974bb2a0250fbbd305d51ddf8f354a548c064e9391a4c93",
+  "corrects_commit": "089b7d6ce476519ff6cf222e42628d087f247ecd",
+  "files": [
+    {
+      "bytes": 15052,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/analysis/hyperliquid-paper-improvement/20261002-round50-51/local-artifact-inventory.json",
+      "sha256": "c7a6fc5ab5262bf3f05899ee8f83a630319b0b3e224a2fb06e894ec26532c3ac"
+    },
+    {
+      "bytes": 5869,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/analysis/hyperliquid-paper-improvement/20261002-round50-51/round50-51-handoff-audit.md",
+      "sha256": "26456ddb15d8e229ed42da86676e7d6d25f581b9437f65560a841b7905f1dee2"
+    },
+    {
+      "bytes": 4310,
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T001906Z-hlpaper-audit-correction/artifact-manifest.json",
+      "sha256": "bddca89c0df2ac1d6038795a12df8d4d4b6290023a9ac540bef7795bfd42ef2e"
+    }
+  ],
+  "limitations": [
+    "All health observations retain their historical timestamps; correction is not a new live-health observation.",
+    "Added turnover/fill qualification counts are producer historical read-only-ledger assertions; exact ledger query time unknown; not independently rerun.",
+    "Original published audit remains in its immutable namespace; use this correction for the cited health line.",
+    "Sequential public-account snapshots and simulated fill/funding assumptions retain the prior audit limitations."
+  ],
+  "machine": "pc-original",
+  "producer": "hyperliquid-paper-improvement",
+  "pushed_at_utc": "2026-10-03T00:20:46.344005Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Historical reference correction only. No courier broker/provider/trade/training/funds/runtime start/restart/installation/deployment/cadence/ownership action. Source availability, local working bytes and running versions remain separate; Scout adoption unverified.",
+  "scope": "Atlas-only historical audit/reference correction under artifacts/pc-original. Common application source/defaults are unchanged. Do not apply to Scout live symbols, Gameplan or operating paths.",
+  "summary": "Atlas published a corrected Round 51 historical health audit and refreshed its exact-hash inventory: two replacement reference payloads plus a manifest in a new machine-owned namespace on main. Original published bundles remain intact.",
+  "tests": [
+    {
+      "check": "Courier offline exact-byte and privacy validation",
+      "checks": [
+        "immutable snapshot hashes and sizes",
+        "exact parent and full three-file commit diff coverage",
+        "exact committed manifest and payload hashes",
+        "owned machine namespace and add operations",
+        "exact local .env private-value scans of original and committed bytes and commit text"
+      ],
+      "finished_at_utc": "2026-10-03T00:25:29.736211Z",
+      "result": "passed",
+      "started_at_utc": "2026-10-03T00:25:27.209325Z"
+    },
+    {
+      "check": "Courier correction consistency and dependency review",
+      "checks": [
+        "Corrected equity/P&L/fees/funding prose matches immutable saved health",
+        "Only corrected audit size/hash changed in inventory; other entries identical",
+        "Original published bundle remains unchanged"
+      ],
+      "dependency": {
+        "commit_sha": "089b7d6ce476519ff6cf222e42628d087f247ecd",
+        "path": "artifacts/pc-original/20261003T001125Z-hyperliquid-paper-round50-51/analysis/hyperliquid-paper-improvement/20261002-round50-51/round51-final-health-20261003T0008Z.json",
+        "sha256": "79a4269d04f70e1b0b89b8b324e369bcfd28a2d4055e5c1286715bb5643bfc0e"
+      },
+      "finished_at_utc": "2026-10-03T00:28:14.899837Z",
+      "result": "passed",
+      "started_at_utc": "2026-10-03T00:28:14.834472Z"
+    },
+    {
+      "check": "Producer saved final health observation",
+      "evidence_file": "artifacts/pc-original/20261003T001125Z-hyperliquid-paper-round50-51/analysis/hyperliquid-paper-improvement/20261002-round50-51/round51-final-health-20261003T0008Z.json",
+      "read_at_utc": "2026-10-03T00:09:00.892793+00:00",
+      "result": "passed historically; not rerun by courier"
+    },
+    {
+      "check": "Producer read-only ledger turnover/fill qualification assertion",
+      "checked_at_utc": "unknown",
+      "result": "reported in corrected audit; not independently rerun"
+    },
+    {
+      "check": "Application software tests",
+      "checked_at_utc": "unknown",
+      "result": "not run; common application source/configuration/tests/docs unchanged"
+    }
+  ]
+}

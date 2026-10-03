@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T00:29:53.249939Z",
+  "id": "20261003T002953Z-ae5c0ea2fa4a4974857b199f2484f9a6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published a corrected Round 51 historical health audit and refreshed its exact-hash inventory: two replacement reference payloads plus a manifest in a new machine-owned namespace on main. Original published bundles remain intact."
+}
