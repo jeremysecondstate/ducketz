@@ -182,6 +182,24 @@ def test_carried_planning_closes_are_disclosed_with_original_age(tmp_path):
     assert "AAPL (143 min)" in plan.planning_note
 
 
+@pytest.mark.parametrize("status,count,expected", [
+    ("UNAVAILABLE_MINIMUM_SAMPLES", 1, "too few historical pairs for AAPL at 16:00 Pacific (1 historical pair)"),
+    ("UNAVAILABLE_MINIMUM_SAMPLES", 0, "too few historical pairs for AAPL at 16:00 Pacific (0 historical pairs)"),
+    ("UNAVAILABLE_REFERENCE_PRICE", 12, "missing closing references for AAPL"),
+])
+def test_projection_warning_distinguishes_sparse_samples_from_missing_anchor(tmp_path, status, count, expected):
+    rows, ledger, report = unavailable_payload()
+    ledger["unavailable_points"] = [{"symbol": "AAPL", "clock_local": "16:00", "status": status,
+                                     "sample_count": count, "reason": "Recorded planning evidence gap"}]
+    report["direction_based_projection"] = ledger
+    write_plan(tmp_path, rows=rows, ledger=ledger, report_updates=report)
+    plan = load_gameplan(tmp_path)
+    assert expected in plan.projection_note
+    assert not plan.projection_available and not plan.actions
+    if status == "UNAVAILABLE_MINIMUM_SAMPLES":
+        assert "missing closing references" not in plan.projection_note
+
+
 @pytest.mark.parametrize("damage", ["symbol", "age", "time"])
 def test_carried_close_notice_rejects_inconsistent_provenance(tmp_path, damage):
     ref = {"status": "AVAILABLE_SYNTHETIC", "symbol": "AAPL", "gap_minutes": 143,

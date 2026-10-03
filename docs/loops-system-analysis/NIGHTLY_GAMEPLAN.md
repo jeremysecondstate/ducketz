@@ -114,8 +114,16 @@ projection status before loading these plans. When the cash projection is
 unavailable, it opens **All forecasts**, retaining company/horizon filters,
 published probabilities, directions, windows and report access. Projected
 trade counts and quantities show unavailable rather than zero or an inferred
-hold. The notice names the companies with missing price references. This is a
-read-only view of the saved publication and does not change the live trader.
+hold. The notice distinguishes missing closing references from insufficient
+historical pairs, naming the company, Pacific clock and sample count when saved.
+This is a read-only view of the saved publication and does not change the live trader.
+
+Both desktop tabs follow the latest verified publication by default. Selecting
+a historical date pins that selection across refreshes. **Latest plan** and
+**Latest session** restore automatic selection in Gameplan and Gameplan Stats,
+respectively. Stats uses the saved completed-session actuals review: an initial
+session without prior saved forecasts has no accuracy to display. Pending
+longer windows and unavailable outcome prices remain explicit.
 
 Company/horizon dropdowns and horizon cards also switch an empty **Trades**
 selection to **All forecasts** when saved forecasts exist. A zero projected-trade
@@ -419,7 +427,13 @@ original source identity, actual close observation time, gap length and separate
 17:00 completion boundary; filling never makes the actual observation newer.
 Entry bands and every working-price clock use the same completed reference.
 The same rule also supplies **historical planning closing references** across the
-120-session lookback. Each affected pair records its synthetic-close flag, actual
+lookback. New trade-plan publications inspect **504 exchange sessions** for all
+symbols and clocks; the generic bands helper retains its 120-session default.
+The bounded longer history supports sparse late-session prints while preserving
+the two-pair minimum and actual intraday endpoints within five minutes. It can
+include older market conditions and does not establish forecast accuracy. The
+saved bands and price path record the lookback, sample dates and coverage. Each
+affected pair records its synthetic-close flag, actual
 observation time, effective close, age and coverage-reference key. Reports separate
 observed-only pair counts from pairs using carried closes. The 17:00 planning
 endpoint can also use that rule; intraday entry opens remain actual observations
@@ -473,9 +487,10 @@ completion of any generation still requires its own verified native receipt.
 
 The publisher can explicitly save `NO_EDGE` with
 `model_status=RESEARCH_NO_TARGET_HISTORY` while retaining the calculated
-probability. Execution honors that abstention when the saved fitted-history
-counts are valid and show zero symbol or route support. It omits that row from
-trade signals and leaves the frozen forecast unchanged. Other direction and
+probability. Execution and prospective cash planning honor that abstention when
+the saved fitted-history counts are valid and show zero symbol or route support.
+The row produces no trade signal or projected trade and leaves the frozen
+forecast unchanged. Other direction and
 probability contradictions remain errors. Manual-policy startup preflight checks
 all saved execution slots with the same validator used by the signal reader,
 including duplicate allocations and abstention evidence. A no-signal cycle does
@@ -793,6 +808,14 @@ The Scheduled operator must:
    the actuals receipt, previous-session date, original saved price source,
    forecast/price comparison counts and explicit pending/missing-data statuses. Preserve
    documented older or explicitly narrower stage boundaries.
+   Separately verify desktop readiness through the saved-data readers: Gameplan
+   must select the newly published action session and preserve its frozen universe;
+   Gameplan Stats must select the latest completed-session review. A native
+   `COMPLETE` forecast-only plan with `UNAVAILABLE_PRICE_REFERENCES` is valid
+   informational output, but does not satisfy full cash-projection readiness.
+   Report the exact missing clock/reference or sample count and retain the saved
+   forecasts. Never fill the cards with invented quantities or rewrite a prior
+   session to make its display appear complete.
 
 The health watch checks current progress and the supervision claim first.
 An active claim prevents a second operator from starting or repairing that run.

@@ -45,6 +45,22 @@ def _time(value: object) -> pd.Timestamp:
     return result.tz_convert("UTC")
 
 
+def _planning_direction(row: Mapping) -> str:
+    """Keep verified publisher abstentions consistent with the live reader."""
+    expected = stock_direction(row["calibrated_probability"])
+    # Older planning callers supplied probabilities without a saved label.
+    if "direction" not in row:
+        return expected
+    from ml.stock_trader.gameplan_execution import _saved_abstention
+
+    if _saved_abstention(row):
+        return "NO_EDGE"
+    saved = str(row["direction"]).upper()
+    if saved != expected and not (saved == "NEUTRAL" and expected == "NO_EDGE"):
+        raise ValueError("Gameplan direction disagrees with its saved probability for " + str(row["id"]))
+    return expected
+
+
 def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                              price_path: Mapping, *, policy: StockTraderPolicy | None = None,
                              signal_driven: bool = False, cross_horizon_fallback_policy: Mapping | None = None
@@ -66,6 +82,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             or ownership.get("safe_for_planning") is not True):
         raise ValueError("The cash ledger requires a complete current account snapshot")
     records = trade_rows.to_dict("records")
+    directions = {str(row["id"]): _planning_direction(row) for row in records}
     symbols = sorted(set(map(str, trade_rows.symbol)))
     days = set(map(str, trade_rows.action_date))
     if len(days) != 1:
@@ -258,7 +275,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
         # shares in an earlier row cannot turn another row into a fallback.
         fallback_eligible = {}
         bullish_horizons = {(row["symbol"], row["model_group"]) for row in batch
-                            if stock_direction(row["calibrated_probability"]) == "BULLISH"}
+                            if directions[str(row["id"])] == "BULLISH"}
         if fallback_policy is not None:
             for row in candidates:
                 symbol, horizon = row["symbol"], row["model_group"]
@@ -268,7 +285,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                     and unallocated_reserved[symbol] == 0 and (symbol, horizon) not in pending_any_horizons)
         # Lower horizon wins a tie for an unallocated share. Other horizon lots
         # are protected. This deterministic precedence is disclosed in the plan.
-        sellers = sorted((row for row in candidates if stock_direction(row["calibrated_probability"]) == "BEARISH"),
+        sellers = sorted((row for row in candidates if directions[str(row["id"])] == "BEARISH"),
                          key=lambda row: (FIXED_HORIZON_WEIGHTS[row["model_group"]], row["symbol"], str(row["id"])))
         for row in sellers:
             symbol, horizon = row["symbol"], row["model_group"]
@@ -349,7 +366,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 quantity = Decimal(int(lot["quantity"]))
                 lot["quantity"] -= quantity
                 trade(timestamp, lot["symbol"], "SELL", quantity, "HORIZON_EXIT", lot=lot)
-        buyers = sorted((row for row in candidates if stock_direction(row["calibrated_probability"]) == "BULLISH"),
+        buyers = sorted((row for row in candidates if directions[str(row["id"])] == "BULLISH"),
                         key=lambda row: (-float(row["calibrated_probability"]), FIXED_HORIZON_WEIGHTS[row["model_group"]],
                                          row["symbol"], str(row["id"])))
         for row in buyers:

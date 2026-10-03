@@ -18,11 +18,12 @@ import pandas as pd
 from ml.artifacts import create_timestamp_directory, file_checksum, verify_manifest, write_manifest, utc_timestamp
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
-from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION, stock_direction
+from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
 
 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
 AUTHORITY = "REVIEW_ONLY_REVALIDATE_AT_ENTRY"
+PLANNING_PRICE_LOOKBACK_SESSIONS = 504
 
 
 def _planning_snapshot(snapshot: Mapping) -> tuple[dict, dict | None]:
@@ -88,6 +89,8 @@ live-control checks are deliberately not simulated; these are review proposals,
 not executable TradeDecisions. A shared ledger of planned dollars prevents the
 same current cash being promised to several horizons or symbols.
 """
+    from ml.gameplan_cash_ledger import _planning_direction
+
     policy = policy or StockTraderPolicy()
     policy.validate()
     data = forecasts.copy()
@@ -152,7 +155,7 @@ same current cash being promised to several horizons or symbols.
                   "cash_available_at_planning": snapshot.get("available_cash"),
                   "broker_price_reference": quote.get("price_reference"),
                   "broker_price_reference_time": quote.get("price_reference_time"),
-                  "planning_direction": stock_direction(row["calibrated_probability"]),
+                  "planning_direction": _planning_direction(row),
                   "projected_trade_quantity": None, "projected_trade_budget": None,
                   "projected_trade_notional": None, "projected_quantity_reason": "NON_ENTRY_CONTEXT"}
         if row["execution_eligible"]:
@@ -426,6 +429,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         phase = "PRICE_BANDS_AND_BUDGETS"
         band_asof = refresh_asof if refresh_asof is not None else utc(clock())
         bands = build_entry_price_bands(prices, forecasts, observed_at=band_asof,
+                                        lookback_sessions=PLANNING_PRICE_LOOKBACK_SESSIONS,
                                         allow_reference_forward_fill=True, allow_sparse_session_references=True)
         price_path = build_planning_price_path(prices, forecasts, observed_at=band_asof, entry_bands=bands,
                                                 allow_reference_forward_fill=True, allow_sparse_session_references=True)

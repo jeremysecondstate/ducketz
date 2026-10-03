@@ -83,6 +83,8 @@ class GameplanStatsTab:
         self.date_box.pack(side="left", padx=(0, 8))
         self.date_box.bind("<<ComboboxSelected>>", self._date_changed)
         _Tooltip(self.date_box, "The session being reviewed, not the next Gameplan's action date.")
+        self.latest_button = ttk.Button(self.controls, text="Latest session", command=self.follow_latest)
+        self.latest_button.pack(side="left", padx=(0, 8))
         self.horizon_box = ttk.Combobox(self.controls, textvariable=self.horizon, state="readonly",
                                       values=tuple(HORIZON_LABELS), width=13)
         self.horizon_box.pack(side="left", padx=(0, 8))
@@ -267,6 +269,10 @@ class GameplanStatsTab:
 
     def _date_changed(self, _event=None):
         self._follow_latest = False
+        self.refresh()
+
+    def follow_latest(self):
+        self._follow_latest = True
         self.refresh()
 
     def refresh(self):
@@ -583,6 +589,9 @@ class GameplanStatsTab:
             return
         self._closed = True
         self._request_id += 1
+        # Release Tk images on their owning thread, before a background reader
+        # can collect a retained view/widget cycle after the tab is destroyed.
+        self._photos.clear()
         for job in (self._poll_job, self._auto_job):
             try:
                 self.parent.after_cancel(job)

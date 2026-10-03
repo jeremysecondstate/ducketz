@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import tkinter as tk
+import weakref
 from tkinter import ttk
 from types import SimpleNamespace
 
@@ -241,8 +242,14 @@ def test_open_gameplan_opens_the_displayed_immutable_report(tab, monkeypatch):
 
 
 def test_destroy_cancels_callbacks_and_ignores_completions(tab):
+    photo = tk.PhotoImage(master=tab.root, width=1, height=1)
+    name, reference = str(photo), weakref.ref(photo)
+    tab._photos["cleanup-probe"] = photo
+    del photo
     tab.parent.destroy()
     assert tab._closed
+    assert not tab._photos and reference() is None
+    assert name not in tab.root.tk.call("image", "names")
     jobs = tab.root.tk.call("after", "info")
     assert tab._poll_job not in jobs and tab._auto_job not in jobs
 

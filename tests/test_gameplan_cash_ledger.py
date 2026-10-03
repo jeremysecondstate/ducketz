@@ -278,3 +278,93 @@ def test_signal_driven_weekly_research_buy_survives_hourly_bearish_and_window_en
     assert len(report["events"]) == 1
     assert report["events"][0]["reason"] == "BULLISH_BUY"
     assert report["ending_allocations"]
+
+
+def abstention(probability=.8, **changes):
+    return {**forecast(probability=probability, horizon="1w"),
+            "direction": "NO_EDGE", "model_status": "RESEARCH_NO_TARGET_HISTORY",
+            "target_contract_version": "independent-stock-targets-v1",
+            "symbol_fitted_target_rows": 0, "symbol_route_fitted_target_rows": 0, **changes}
+
+
+@pytest.mark.parametrize("probability", [.8, .2, .4905176089212996])
+@pytest.mark.parametrize("counts", [(0, 0), (10, 0), (0, 5)])
+def test_verified_abstention_never_buys_or_sells_and_preserves_forecast(probability, counts):
+    frame = pd.DataFrame([abstention(probability, symbol_fitted_target_rows=counts[0],
+                                   symbol_route_fitted_target_rows=counts[1])])
+    before = frame.copy(deep=True)
+    rows, report = project_direction_trades(frame, snapshot(held=2), path(), policy=POLICY, signal_driven=True)
+    pd.testing.assert_frame_equal(frame, before)
+    assert rows.iloc[0].direction == "NO_EDGE"
+    assert rows.iloc[0].calibrated_probability == probability
+    assert rows.iloc[0].direction_based_action == "HOLD"
+    assert rows.iloc[0].direction_based_trade_quantity == 0
+    assert not report["events"]
+    assert report["ending_positions"] == {"AAPL": 2}
+    assert report["summary"]["ending_cash_base"] == 100
+
+
+@pytest.mark.parametrize("field", ["symbol_fitted_target_rows", "symbol_route_fitted_target_rows"])
+@pytest.mark.parametrize("value", [None, True, False, "0", -1, .5, float("nan"), float("inf")])
+def test_abstention_support_is_validated_before_unavailable_prices(field, value):
+    row = abstention(**{field: value})
+    with pytest.raises(ValueError, match="invalid fitted history"):
+        project_direction_trades(pd.DataFrame([row]), snapshot(), unavailable_path(), policy=POLICY, signal_driven=True)
+
+
+@pytest.mark.parametrize("missing", ["symbol_fitted_target_rows", "symbol_route_fitted_target_rows"])
+def test_independent_abstention_cannot_omit_support(missing):
+    row = abstention()
+    del row[missing]
+    with pytest.raises(ValueError, match="invalid fitted history"):
+        project_direction_trades(pd.DataFrame([row]), snapshot(), path(), policy=POLICY, signal_driven=True)
+
+
+def test_abstention_with_positive_support_is_rejected():
+    row = abstention(symbol_fitted_target_rows=10, symbol_route_fitted_target_rows=5)
+    with pytest.raises(ValueError, match="lacks zero fitted history"):
+        project_direction_trades(pd.DataFrame([row]), snapshot(), path(), policy=POLICY, signal_driven=True)
+
+
+@pytest.mark.parametrize("probability", [float("nan"), float("inf"), -.1, 1.1])
+def test_abstention_does_not_excuse_invalid_probability(probability):
+    with pytest.raises(ValueError, match="probability"):
+        project_direction_trades(pd.DataFrame([abstention(probability)]), snapshot(), path(), policy=POLICY, signal_driven=True)
+
+
+@pytest.mark.parametrize("probability,direction", [(.8, "BEARISH"), (.2, "BULLISH"), (.8, "NO_EDGE"), (.8, "NEUTRAL")])
+def test_explicit_non_abstention_direction_mismatch_is_rejected(probability, direction):
+    row = {**forecast(probability=probability), "direction": direction}
+    with pytest.raises(ValueError, match="direction disagrees"):
+        project_direction_trades(pd.DataFrame([row]), snapshot(), path(), policy=POLICY, signal_driven=True)
+
+
+@pytest.mark.parametrize("probability,direction,action", [(.8, "BULLISH", "BUY"), (.2, "BEARISH", "SELL"), (.5, "NEUTRAL", "HOLD")])
+def test_ordinary_saved_research_directions_keep_manual_planning_semantics(probability, direction, action):
+    row = {**forecast(probability=probability, promoted=False), "direction": direction}
+    rows, _ = project_direction_trades(pd.DataFrame([row]), snapshot(held=2), path(), policy=POLICY, signal_driven=True)
+    assert rows.iloc[0].direction_based_action == action
+
+
+@pytest.mark.parametrize("saved_abstention", [True, False])
+def test_only_actual_bullish_instruction_protects_a_fallback_donor(saved_abstention):
+    from test_gameplan_fallback_planning import forecasts, state, prices, DAY
+    from ml.stock_trader.cross_horizon_fallback import policy_for_action_date
+
+    frame = forecasts({("1h", 4): .3, ("1w", 4): .8})
+    weekly = frame.model_group.eq("1w")
+    frame.loc[weekly, "model_status"] = "RESEARCH_NOT_PROMOTED"
+    if saved_abstention:
+        frame.loc[weekly, "direction"] = "NO_EDGE"
+        frame.loc[weekly, "model_status"] = "RESEARCH_NO_TARGET_HISTORY"
+        frame.loc[weekly, "symbol_fitted_target_rows"] = 0
+        frame.loc[weekly, "symbol_route_fitted_target_rows"] = 0
+    rows, report = project_direction_trades(frame, state(), prices(), policy=POLICY, signal_driven=True,
+                                            cross_horizon_fallback_policy=policy_for_action_date(DAY))
+    if saved_abstention:
+        assert len(report["events"]) == 1
+        assert report["events"][0]["reason"] == "BEARISH_CROSS_HORIZON_FALLBACK"
+        assert report["events"][0]["cross_horizon_fallback"]["donor_horizon"] == "1w"
+        assert rows.loc[weekly, "direction_based_trade_quantity"].eq(0).all()
+    else:
+        assert not report["events"]
