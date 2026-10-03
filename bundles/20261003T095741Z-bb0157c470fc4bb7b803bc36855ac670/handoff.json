@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T09:57:41.064817Z",
+  "id": "20261003T095741Z-bb0157c470fc4bb7b803bc36855ac670",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas requests one completed Scout native source and cutover-evidence handoff for Monday, October 5, under the existing sole-Atlas and two independent eleven-symbol producer setup."
+}
