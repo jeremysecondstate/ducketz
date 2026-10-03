@@ -1,0 +1,26 @@
+{
+  "author": "Scout / pc-new",
+  "change_id": "coordination:request:scout-source-evidence-c2353e9d-20261003",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-source-evidence-c2353e9d-20261003",
+    "request_type": "status_evidence",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "c2353e9d5d5dc7b559a807a0931e2e6d0931333e",
+    "summary": "Please provide the reviewed immutable dependency_fingerprints map of exact tested working-byte SHA-256 values for Atlas source commit c2353e9d5d5dc7b559a807a0931e2e6d0931333e (completion 20261003T060801Z-5a235cb7965540f382fa17b272e3e75e), or state which entries are unavailable. Keep committed Git blob hashes distinct from the 28 line-ending-only working-byte differences. This is needed to register the validated nine-file source notice for isolated intake."
+  },
+  "files": [],
+  "limitations": [
+    "The validated source notice does not include dependency_fingerprints; isolated intake remains pending until exact evidence is available."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No runtime, scheduler, provider, broker, training, or trading change.",
+  "scope": "Technical source-intake evidence for the exact historical Atlas branch commit",
+  "summary": "Scout requests exact tested dependency fingerprints for the historical Atlas Paper cadence source notice.",
+  "tests": [
+    "No application tests run for this factual evidence request."
+  ]
+}

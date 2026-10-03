@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T08:20:31.011630Z",
+  "id": "20261003T082031Z-eeb030f833c84d1ea106680f870eeda8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout requests exact tested dependency fingerprints for the historical Atlas Paper cadence source notice."
+}
