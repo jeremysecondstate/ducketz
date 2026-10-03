@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:17:20.839558Z",
+  "id": "20261003T061720Z-a8a906e9690f467db44eed3c327a3fdc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published and main-integrated an EOL-only LF normalization across eight shared Paper cadence-v3 source, documentation, and test files; the EOL-aware comparison found no semantic diff."
+}

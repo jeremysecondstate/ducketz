@@ -1,0 +1,90 @@
+{
+  "author": "Atlas; Git author Jeremy Klein",
+  "branch": "codex/atlas/20261003T061127Z-faae178b95384ac5974f21e1dba6c784",
+  "change_id": "source:8dccf2c315c162d782324482e4925584d90a9c5a",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/8dccf2c315c162d782324482e4925584d90a9c5a",
+  "completed_at_utc": "2026-10-03T06:11:47.379150Z",
+  "completion_id": "20261003T061127Z-faae178b95384ac5974f21e1dba6c784",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "coordination/task-catalog.json"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-task-matrix.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/CHANGELOG.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/README.md"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/hyperliquid_paper_cadence.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_hyperliquid_paper_cadence.py"
+    }
+  ],
+  "integration_url": "https://github.com/jeremysecondstate/ducketz/commit/88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "limitations": [
+    "This revision repairs accidental CRLF-only byte noise in eight pre-existing shared files; it adds no model, account, Paper-policy, Powder, scheduler, or symbol change.",
+    "The offline checks validate unchanged behavior and do not establish a new trading-performance result.",
+    "Publication and main integration are separate from peer adoption, local installation, and loaded runtime-version verification.",
+    "The local checkout moved during active work outside this courier action; no runtime behavior or deployment state is inferred from the Git commits."
+  ],
+  "main_commit_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "main_parent_sha": "7ed410d0535ccdfe222597f44fd315f505f9bccc",
+  "parent_commit_sha": "272b5fbbb82f1e7a42e797cd251b900b6105e5b7",
+  "producer": "human-authorized-development",
+  "record_sha256": "c58332339f28f701bc39b28edf20407d2bed75a966d9fc6492bc4377c61639ac",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No intended runtime behavior change. This factual notice records reviewed source and main availability only; it did not start or restart processes, change schedules or controls, invoke providers or brokers, train, trade, move funds, or deploy a runtime.",
+  "scope": "shared Paper cadence-v3 source, documentation, task-catalog, and regression-test byte normalization",
+  "source_commit_sha": "8dccf2c315c162d782324482e4925584d90a9c5a",
+  "summary": "Atlas published and main-integrated an EOL-only LF normalization across eight shared Paper cadence-v3 source, documentation, and test files; the EOL-aware comparison found no semantic diff.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-03T06:11:47.353515Z",
+      "name": "Queued source offline pytest",
+      "output_sha256": "19e44f7986697d5b24800709501d5a33b17b863bba52a5beb6145bf807730896",
+      "result": "144 passed, 1 skipped",
+      "started_at_utc": "2026-10-03T06:11:27.450283Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-03T06:12:41.051375Z",
+      "name": "Reviewed isolated candidate offline pytest",
+      "output_sha256": "9be3613cea7be5fbc90af91f766a964f0b67735633dc038b7aee7d7e3cdc559d",
+      "result": "144 passed, 1 skipped",
+      "started_at_utc": "2026-10-03T06:12:20.000966Z",
+      "status": "passed"
+    },
+    {
+      "completed_at_utc": "2026-10-03T06:13:17.180235Z",
+      "name": "Main integration candidate offline pytest",
+      "output_sha256": "828e8600ca70cf38b52ca65120fc3c6689f6e5d852a2a0ef1a1ff8ec7596b965",
+      "result": "144 passed, 1 skipped",
+      "started_at_utc": "2026-10-03T06:12:55.970986Z",
+      "status": "passed"
+    },
+    {
+      "name": "EOL-aware source comparison",
+      "result": "No diff under Git --ignore-space-at-eol between the recorded base and source commit.",
+      "status": "passed"
+    }
+  ]
+}
