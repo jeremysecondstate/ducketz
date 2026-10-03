@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:45:10.219349Z",
+  "id": "20261003T064510Z-deaa972f293847e1abb90f8a21f29b1a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Shared source branch is remotely available, with its sole owned test file matching the sealed record. Exact reconciliation found 95 of 105 sealed dependency fingerprints differ in raw bytes; every difference is CRLF/LF representation only, but the published closure is not byte-identical. Do not treat the branch as a reviewed integration candidate until a fresh exact-byte snapshot, review, and tests bind the actual candidate."
+}
