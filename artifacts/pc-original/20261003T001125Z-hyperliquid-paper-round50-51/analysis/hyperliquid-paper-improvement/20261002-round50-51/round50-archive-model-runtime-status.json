@@ -1,0 +1,3240 @@
+{
+  "version": 1,
+  "pid": 58296,
+  "instance_id": "9b747e73e981434fb4faa590c2dce3ee",
+  "status": "stopped",
+  "reason": "stop_requested",
+  "started_at_utc": "2026-10-02T21:34:02.787368+00:00",
+  "updated_at_utc": "2026-10-02T23:38:19.686437+00:00",
+  "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+  "config_error": null,
+  "data_root": "C:\\DATASTORE\\hyperliquid",
+  "horizons_bars": [
+    1
+  ],
+  "retrain_seconds": 300,
+  "model_threads": 2,
+  "training_market": null,
+  "elapsed_seconds": 7456.899073600769,
+  "completed_jobs": [
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.023689399997238,
+      "outcome": "promoted",
+      "source_run_id": "20261002T213506Z-5e35316e",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:35:08.850451+00:00",
+        "worker_started_at_utc": "2026-10-02T21:35:08.850515+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:35:14.382611+00:00",
+        "collected_at_utc": "2026-10-02T21:35:18.874800+00:00",
+        "worker_seconds": 5.531733100011479,
+        "scheduler_observed_seconds": 10.023689399997238,
+        "queue_wait_seconds": 6.329998723231256e-05,
+        "collection_wait_seconds": 4.491892999998527,
+        "publication_seconds": 0.04866790000232868,
+        "completed_at_utc": "2026-10-02T21:35:18.923487+00:00",
+        "end_to_end_seconds": 10.072385400009807,
+        "operation_seconds": 5.580401000013808
+      },
+      "model_id": "20261002T213518Z-6db60b3b",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.028052999987267,
+      "outcome": "research_only",
+      "source_run_id": "20261002T213506Z-a6b62ed6",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:35:19.005545+00:00",
+        "worker_started_at_utc": "2026-10-02T21:35:19.005605+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:35:24.621637+00:00",
+        "collected_at_utc": "2026-10-02T21:35:29.034258+00:00",
+        "worker_seconds": 5.615663100004895,
+        "scheduler_observed_seconds": 10.028052999987267,
+        "queue_wait_seconds": 5.989999044686556e-05,
+        "collection_wait_seconds": 4.412329999991925,
+        "publication_seconds": 0.057294400001410395,
+        "completed_at_utc": "2026-10-02T21:35:29.091570+00:00",
+        "end_to_end_seconds": 10.085373100009747,
+        "operation_seconds": 5.672957500006305
+      },
+      "model_id": "20261002T213529Z-51b8f972",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.016948400007095,
+      "outcome": "promoted",
+      "source_run_id": "20261002T213505Z-6dc6ed38",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:35:29.172751+00:00",
+        "worker_started_at_utc": "2026-10-02T21:35:29.172814+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:35:35.153377+00:00",
+        "collected_at_utc": "2026-10-02T21:35:39.190359+00:00",
+        "worker_seconds": 5.9801695000205655,
+        "scheduler_observed_seconds": 10.016948400007095,
+        "queue_wait_seconds": 6.249998114071786e-05,
+        "collection_wait_seconds": 4.036716400005389,
+        "publication_seconds": 0.051088100008200854,
+        "completed_at_utc": "2026-10-02T21:35:39.241486+00:00",
+        "end_to_end_seconds": 10.068083199992543,
+        "operation_seconds": 6.031257600028766
+      },
+      "model_id": "20261002T213539Z-d504e225",
+      "eligible": true
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.021213300002273,
+      "outcome": "research_only",
+      "source_run_id": "20261002T213505Z-43c042ba",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:35:39.330895+00:00",
+        "worker_started_at_utc": "2026-10-02T21:35:39.330962+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:35:44.909343+00:00",
+        "collected_at_utc": "2026-10-02T21:35:49.352767+00:00",
+        "worker_seconds": 5.57801450000261,
+        "scheduler_observed_seconds": 10.021213300002273,
+        "queue_wait_seconds": 6.709998706355691e-05,
+        "collection_wait_seconds": 4.4431317000126,
+        "publication_seconds": 0.05663629999617115,
+        "completed_at_utc": "2026-10-02T21:35:49.409424+00:00",
+        "end_to_end_seconds": 10.077876800001832,
+        "operation_seconds": 5.634650799998781
+      },
+      "model_id": "20261002T213549Z-fe2d0662",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.01937879997422,
+      "outcome": "promoted",
+      "source_run_id": "20261002T214005Z-1382a871",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:40:10.481152+00:00",
+        "worker_started_at_utc": "2026-10-02T21:40:10.481243+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:40:16.358785+00:00",
+        "collected_at_utc": "2026-10-02T21:40:20.501189+00:00",
+        "worker_seconds": 5.877157100010663,
+        "scheduler_observed_seconds": 10.01937879997422,
+        "queue_wait_seconds": 9.049999061971903e-05,
+        "collection_wait_seconds": 4.142131199972937,
+        "publication_seconds": 0.05532459999085404,
+        "completed_at_utc": "2026-10-02T21:40:20.556535+00:00",
+        "end_to_end_seconds": 10.074734800000442,
+        "operation_seconds": 5.932481700001517
+      },
+      "model_id": "20261002T214020Z-11449aff",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.030291700008092,
+      "outcome": "research_only",
+      "source_run_id": "20261002T214006Z-d245ae7a",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:40:20.646774+00:00",
+        "worker_started_at_utc": "2026-10-02T21:40:20.646841+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:40:26.502319+00:00",
+        "collected_at_utc": "2026-10-02T21:40:30.677726+00:00",
+        "worker_seconds": 5.855093599995598,
+        "scheduler_observed_seconds": 10.030291700008092,
+        "queue_wait_seconds": 6.590000702999532e-05,
+        "collection_wait_seconds": 4.175132200005464,
+        "publication_seconds": 0.06425739999394864,
+        "completed_at_utc": "2026-10-02T21:40:30.742006+00:00",
+        "end_to_end_seconds": 10.094581399986055,
+        "operation_seconds": 5.919350999989547
+      },
+      "model_id": "20261002T214030Z-0fb8a392",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.016761600010796,
+      "outcome": "promoted",
+      "source_run_id": "20261002T214006Z-3ee5ba8c",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:40:30.831924+00:00",
+        "worker_started_at_utc": "2026-10-02T21:40:30.831991+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:40:36.609884+00:00",
+        "collected_at_utc": "2026-10-02T21:40:40.849345+00:00",
+        "worker_seconds": 5.777513700013515,
+        "scheduler_observed_seconds": 10.016761600010796,
+        "queue_wait_seconds": 6.660001236014068e-05,
+        "collection_wait_seconds": 4.239181299984921,
+        "publication_seconds": 0.05306219999329187,
+        "completed_at_utc": "2026-10-02T21:40:40.902425+00:00",
+        "end_to_end_seconds": 10.069849200022873,
+        "operation_seconds": 5.8305759000068065
+      },
+      "model_id": "20261002T214040Z-d3a485f2",
+      "eligible": true
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.0236317999952,
+      "outcome": "research_only",
+      "source_run_id": "20261002T214005Z-217c8dc9",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:40:40.991837+00:00",
+        "worker_started_at_utc": "2026-10-02T21:40:40.991902+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:40:46.578576+00:00",
+        "collected_at_utc": "2026-10-02T21:40:51.016128+00:00",
+        "worker_seconds": 5.586306599987438,
+        "scheduler_observed_seconds": 10.0236317999952,
+        "queue_wait_seconds": 6.510000093840063e-05,
+        "collection_wait_seconds": 4.437260100006824,
+        "publication_seconds": 0.0587734000000637,
+        "completed_at_utc": "2026-10-02T21:40:51.074921+00:00",
+        "end_to_end_seconds": 10.082435699994676,
+        "operation_seconds": 5.645079999987502
+      },
+      "model_id": "20261002T214051Z-fed93bd3",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.025557099987054,
+      "outcome": "promoted",
+      "source_run_id": "20261002T214505Z-988ce827",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:45:07.102351+00:00",
+        "worker_started_at_utc": "2026-10-02T21:45:07.102416+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:45:12.706991+00:00",
+        "collected_at_utc": "2026-10-02T21:45:17.128568+00:00",
+        "worker_seconds": 5.604207500000484,
+        "scheduler_observed_seconds": 10.025557099987054,
+        "queue_wait_seconds": 6.439999560825527e-05,
+        "collection_wait_seconds": 4.421285199990962,
+        "publication_seconds": 0.06196530000306666,
+        "completed_at_utc": "2026-10-02T21:45:17.190550+00:00",
+        "end_to_end_seconds": 10.087547000002814,
+        "operation_seconds": 5.666172800003551
+      },
+      "model_id": "20261002T214517Z-8b47d3e0",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.027255799999693,
+      "outcome": "research_only",
+      "source_run_id": "20261002T214506Z-d62a4e24",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:45:17.321728+00:00",
+        "worker_started_at_utc": "2026-10-02T21:45:17.321794+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:45:22.933170+00:00",
+        "collected_at_utc": "2026-10-02T21:45:27.349644+00:00",
+        "worker_seconds": 5.6110081000078935,
+        "scheduler_observed_seconds": 10.027255799999693,
+        "queue_wait_seconds": 6.550000398419797e-05,
+        "collection_wait_seconds": 4.416182199987816,
+        "publication_seconds": 0.059199599985731766,
+        "completed_at_utc": "2026-10-02T21:45:27.408864+00:00",
+        "end_to_end_seconds": 10.086485800013179,
+        "operation_seconds": 5.670207699993625
+      },
+      "model_id": "20261002T214527Z-362e7d5b",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.010206800012384,
+      "outcome": "research_only",
+      "source_run_id": "20261002T214505Z-ba3e74fa",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:45:27.497726+00:00",
+        "worker_started_at_utc": "2026-10-02T21:45:27.497799+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:45:33.337079+00:00",
+        "collected_at_utc": "2026-10-02T21:45:37.508592+00:00",
+        "worker_seconds": 5.83889710000949,
+        "scheduler_observed_seconds": 10.010206800012384,
+        "queue_wait_seconds": 7.229999755509198e-05,
+        "collection_wait_seconds": 4.171237400005339,
+        "publication_seconds": 0.050628800003323704,
+        "completed_at_utc": "2026-10-02T21:45:37.559240+00:00",
+        "end_to_end_seconds": 10.060863099992275,
+        "operation_seconds": 5.8895259000128135
+      },
+      "model_id": "20261002T214537Z-bd0d52b0",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.026605299994117,
+      "outcome": "research_only",
+      "source_run_id": "20261002T214506Z-077a2d43",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:45:37.639836+00:00",
+        "worker_started_at_utc": "2026-10-02T21:45:37.639899+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:45:43.202991+00:00",
+        "collected_at_utc": "2026-10-02T21:45:47.667101+00:00",
+        "worker_seconds": 5.562726800009841,
+        "scheduler_observed_seconds": 10.026605299994117,
+        "queue_wait_seconds": 6.269998266361654e-05,
+        "collection_wait_seconds": 4.463815800001612,
+        "publication_seconds": 0.052150100003927946,
+        "completed_at_utc": "2026-10-02T21:45:47.719270+00:00",
+        "end_to_end_seconds": 10.078782299999148,
+        "operation_seconds": 5.614876900013769
+      },
+      "model_id": "20261002T214547Z-3e573527",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.023839500005124,
+      "outcome": "promoted",
+      "source_run_id": "20261002T215005Z-133e2535",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:50:08.751210+00:00",
+        "worker_started_at_utc": "2026-10-02T21:50:08.751277+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:50:14.344126+00:00",
+        "collected_at_utc": "2026-10-02T21:50:18.775711+00:00",
+        "worker_seconds": 5.592476899997564,
+        "scheduler_observed_seconds": 10.023839500005124,
+        "queue_wait_seconds": 6.620000931434333e-05,
+        "collection_wait_seconds": 4.431296399998246,
+        "publication_seconds": 0.050040300004184246,
+        "completed_at_utc": "2026-10-02T21:50:18.825770+00:00",
+        "end_to_end_seconds": 10.073907100013457,
+        "operation_seconds": 5.642517200001748
+      },
+      "model_id": "20261002T215018Z-c50adff8",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.023738899995806,
+      "outcome": "research_only",
+      "source_run_id": "20261002T215005Z-e8343ee9",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:50:18.912942+00:00",
+        "worker_started_at_utc": "2026-10-02T21:50:18.913014+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:50:24.626437+00:00",
+        "collected_at_utc": "2026-10-02T21:50:28.937341+00:00",
+        "worker_seconds": 5.713046499993652,
+        "scheduler_observed_seconds": 10.023738899995806,
+        "queue_wait_seconds": 7.199999527074397e-05,
+        "collection_wait_seconds": 4.310620400006883,
+        "publication_seconds": 0.05995729999267496,
+        "completed_at_utc": "2026-10-02T21:50:28.997319+00:00",
+        "end_to_end_seconds": 10.08372659998713,
+        "operation_seconds": 5.773003799986327
+      },
+      "model_id": "20261002T215028Z-88adfc57",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.017801799986046,
+      "outcome": "promoted",
+      "source_run_id": "20261002T215005Z-dc3ca981",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:50:29.092808+00:00",
+        "worker_started_at_utc": "2026-10-02T21:50:29.092879+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:50:34.873938+00:00",
+        "collected_at_utc": "2026-10-02T21:50:39.111270+00:00",
+        "worker_seconds": 5.780676099995617,
+        "scheduler_observed_seconds": 10.017801799986046,
+        "queue_wait_seconds": 7.03000114299357e-05,
+        "collection_wait_seconds": 4.237055399978999,
+        "publication_seconds": 0.06114479998359457,
+        "completed_at_utc": "2026-10-02T21:50:39.172435+00:00",
+        "end_to_end_seconds": 10.078974100004416,
+        "operation_seconds": 5.841820899979211
+      },
+      "model_id": "20261002T215039Z-fbd6f7c3",
+      "eligible": true
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.023923699976876,
+      "outcome": "research_only",
+      "source_run_id": "20261002T215006Z-e6eac145",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:50:39.259019+00:00",
+        "worker_started_at_utc": "2026-10-02T21:50:39.259086+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:50:44.883764+00:00",
+        "collected_at_utc": "2026-10-02T21:50:49.283603+00:00",
+        "worker_seconds": 5.624308600003133,
+        "scheduler_observed_seconds": 10.023923699976876,
+        "queue_wait_seconds": 6.629998097196221e-05,
+        "collection_wait_seconds": 4.399548799992772,
+        "publication_seconds": 0.06089819999760948,
+        "completed_at_utc": "2026-10-02T21:50:49.344522+00:00",
+        "end_to_end_seconds": 10.08485099999234,
+        "operation_seconds": 5.685206800000742
+      },
+      "model_id": "20261002T215049Z-1e5e8efb",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.020044699980645,
+      "outcome": "promoted",
+      "source_run_id": "20261002T215506Z-d62319e1",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:55:10.426292+00:00",
+        "worker_started_at_utc": "2026-10-02T21:55:10.426355+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:55:15.983987+00:00",
+        "collected_at_utc": "2026-10-02T21:55:20.446997+00:00",
+        "worker_seconds": 5.557266300020274,
+        "scheduler_observed_seconds": 10.020044699980645,
+        "queue_wait_seconds": 6.209997809492052e-05,
+        "collection_wait_seconds": 4.462716299982276,
+        "publication_seconds": 0.06482080000569113,
+        "completed_at_utc": "2026-10-02T21:55:20.511838+00:00",
+        "end_to_end_seconds": 10.084895799984224,
+        "operation_seconds": 5.622087100025965
+      },
+      "model_id": "20261002T215520Z-026c3f5e",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.020784799999092,
+      "outcome": "research_only",
+      "source_run_id": "20261002T215506Z-10f76312",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:55:20.604959+00:00",
+        "worker_started_at_utc": "2026-10-02T21:55:20.605026+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:55:26.241907+00:00",
+        "collected_at_utc": "2026-10-02T21:55:30.626404+00:00",
+        "worker_seconds": 5.636509300005855,
+        "scheduler_observed_seconds": 10.020784799999092,
+        "queue_wait_seconds": 6.67999847792089e-05,
+        "collection_wait_seconds": 4.3842087000084575,
+        "publication_seconds": 0.05659240001114085,
+        "completed_at_utc": "2026-10-02T21:55:30.683016+00:00",
+        "end_to_end_seconds": 10.077406199998222,
+        "operation_seconds": 5.693101700016996
+      },
+      "model_id": "20261002T215530Z-ae64c014",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.02436719997786,
+      "outcome": "promoted",
+      "source_run_id": "20261002T215505Z-3c9a6af5",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:55:30.764255+00:00",
+        "worker_started_at_utc": "2026-10-02T21:55:30.764313+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:55:36.549458+00:00",
+        "collected_at_utc": "2026-10-02T21:55:40.789282+00:00",
+        "worker_seconds": 5.784764800017001,
+        "scheduler_observed_seconds": 10.02436719997786,
+        "queue_wait_seconds": 5.8299978263676167e-05,
+        "collection_wait_seconds": 4.239544099982595,
+        "publication_seconds": 0.062211700016632676,
+        "completed_at_utc": "2026-10-02T21:55:40.851513+00:00",
+        "end_to_end_seconds": 10.086605099990265,
+        "operation_seconds": 5.846976500033634
+      },
+      "model_id": "20261002T215540Z-238e1f92",
+      "eligible": true
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.023754299996654,
+      "outcome": "research_only",
+      "source_run_id": "20261002T215505Z-160b4f98",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T21:55:40.935638+00:00",
+        "worker_started_at_utc": "2026-10-02T21:55:40.935714+00:00",
+        "worker_finished_at_utc": "2026-10-02T21:55:46.483760+00:00",
+        "collected_at_utc": "2026-10-02T21:55:50.960053+00:00",
+        "worker_seconds": 5.547682200005511,
+        "scheduler_observed_seconds": 10.023754299996654,
+        "queue_wait_seconds": 7.419998291879892e-05,
+        "collection_wait_seconds": 4.475997900008224,
+        "publication_seconds": 0.06738170000608079,
+        "completed_at_utc": "2026-10-02T21:55:51.027457+00:00",
+        "end_to_end_seconds": 10.09116909999284,
+        "operation_seconds": 5.615063900011592
+      },
+      "model_id": "20261002T215550Z-fd956d34",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.013607700006105,
+      "outcome": "promoted",
+      "source_run_id": "20261002T220006Z-d5ecc5bb",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:00:07.079750+00:00",
+        "worker_started_at_utc": "2026-10-02T22:00:07.079812+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:00:12.773654+00:00",
+        "collected_at_utc": "2026-10-02T22:00:17.094018+00:00",
+        "worker_seconds": 5.693467600009171,
+        "scheduler_observed_seconds": 10.013607700006105,
+        "queue_wait_seconds": 6.120000034570694e-05,
+        "collection_wait_seconds": 4.320078899996588,
+        "publication_seconds": 0.058647099998779595,
+        "completed_at_utc": "2026-10-02T22:00:17.152683+00:00",
+        "end_to_end_seconds": 10.072280699998373,
+        "operation_seconds": 5.752114700007951
+      },
+      "model_id": "20261002T220017Z-8ce03efb",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.032836600003066,
+      "outcome": "research_only",
+      "source_run_id": "20261002T220005Z-a02e429c",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:00:17.237118+00:00",
+        "worker_started_at_utc": "2026-10-02T22:00:17.237178+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:00:22.896573+00:00",
+        "collected_at_utc": "2026-10-02T22:00:27.270615+00:00",
+        "worker_seconds": 5.6590231000154745,
+        "scheduler_observed_seconds": 10.032836600003066,
+        "queue_wait_seconds": 5.959998816251755e-05,
+        "collection_wait_seconds": 4.3737538999994285,
+        "publication_seconds": 0.05017999999108724,
+        "completed_at_utc": "2026-10-02T22:00:27.320815+00:00",
+        "end_to_end_seconds": 10.08304379999754,
+        "operation_seconds": 5.709203100006562
+      },
+      "model_id": "20261002T220027Z-3001ffa5",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.032442700001411,
+      "outcome": "research_only",
+      "source_run_id": "20261002T220006Z-66b55e40",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:00:27.404296+00:00",
+        "worker_started_at_utc": "2026-10-02T22:00:27.404360+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:00:33.144292+00:00",
+        "collected_at_utc": "2026-10-02T22:00:37.437400+00:00",
+        "worker_seconds": 5.739554799976759,
+        "scheduler_observed_seconds": 10.032442700001411,
+        "queue_wait_seconds": 6.290001329034567e-05,
+        "collection_wait_seconds": 4.292825000011362,
+        "publication_seconds": 0.061122899991460145,
+        "completed_at_utc": "2026-10-02T22:00:37.498544+00:00",
+        "end_to_end_seconds": 10.093592499993974,
+        "operation_seconds": 5.800677699968219
+      },
+      "model_id": "20261002T220037Z-0e68f431",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.014210300025297,
+      "outcome": "research_only",
+      "source_run_id": "20261002T220005Z-09bf2863",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:00:37.579870+00:00",
+        "worker_started_at_utc": "2026-10-02T22:00:37.579934+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:00:43.147252+00:00",
+        "collected_at_utc": "2026-10-02T22:00:47.594740+00:00",
+        "worker_seconds": 5.566952299996046,
+        "scheduler_observed_seconds": 10.014210300025297,
+        "queue_wait_seconds": 6.420002318918705e-05,
+        "collection_wait_seconds": 4.447193800006062,
+        "publication_seconds": 0.10493120001046918,
+        "completed_at_utc": "2026-10-02T22:00:47.699694+00:00",
+        "end_to_end_seconds": 10.119169800018426,
+        "operation_seconds": 5.6718835000065155
+      },
+      "model_id": "20261002T220047Z-83710c86",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.02558630000567,
+      "outcome": "promoted",
+      "source_run_id": "20261002T220505Z-27e50dc7",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:05:08.778783+00:00",
+        "worker_started_at_utc": "2026-10-02T22:05:08.778855+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:05:14.391580+00:00",
+        "collected_at_utc": "2026-10-02T22:05:18.805030+00:00",
+        "worker_seconds": 5.612356300000101,
+        "scheduler_observed_seconds": 10.02558630000567,
+        "queue_wait_seconds": 7.169999298639596e-05,
+        "collection_wait_seconds": 4.413158300012583,
+        "publication_seconds": 0.05675229997723363,
+        "completed_at_utc": "2026-10-02T22:05:18.861802+00:00",
+        "end_to_end_seconds": 10.082365300011588,
+        "operation_seconds": 5.669108599977335
+      },
+      "model_id": "20261002T220518Z-c13c1c20",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.015795499988599,
+      "outcome": "research_only",
+      "source_run_id": "20261002T220506Z-500a2dcd",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:05:18.948525+00:00",
+        "worker_started_at_utc": "2026-10-02T22:05:18.948587+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:05:24.494927+00:00",
+        "collected_at_utc": "2026-10-02T22:05:28.964980+00:00",
+        "worker_seconds": 5.545974899985595,
+        "scheduler_observed_seconds": 10.015795499988599,
+        "queue_wait_seconds": 6.210000719875097e-05,
+        "collection_wait_seconds": 4.469758499995805,
+        "publication_seconds": 0.052379700005985796,
+        "completed_at_utc": "2026-10-02T22:05:29.017380+00:00",
+        "end_to_end_seconds": 10.06820300000254,
+        "operation_seconds": 5.5983545999915805
+      },
+      "model_id": "20261002T220528Z-b169a715",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.019854299986036,
+      "outcome": "research_only",
+      "source_run_id": "20261002T220505Z-c05941ac",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:05:29.105210+00:00",
+        "worker_started_at_utc": "2026-10-02T22:05:29.105275+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:05:34.825181+00:00",
+        "collected_at_utc": "2026-10-02T22:05:39.125726+00:00",
+        "worker_seconds": 5.719530700007454,
+        "scheduler_observed_seconds": 10.019854299986036,
+        "queue_wait_seconds": 6.389999180100858e-05,
+        "collection_wait_seconds": 4.300259699986782,
+        "publication_seconds": 0.05381199999828823,
+        "completed_at_utc": "2026-10-02T22:05:39.179559+00:00",
+        "end_to_end_seconds": 10.073695899976883,
+        "operation_seconds": 5.773342700005742
+      },
+      "model_id": "20261002T220539Z-a7c4165c",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.036164799996186,
+      "outcome": "research_only",
+      "source_run_id": "20261002T220506Z-03f9a14b",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:05:39.260736+00:00",
+        "worker_started_at_utc": "2026-10-02T22:05:39.260800+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:05:44.822929+00:00",
+        "collected_at_utc": "2026-10-02T22:05:49.297562+00:00",
+        "worker_seconds": 5.561763200006681,
+        "scheduler_observed_seconds": 10.036164799996186,
+        "queue_wait_seconds": 6.329998723231256e-05,
+        "collection_wait_seconds": 4.474338300002273,
+        "publication_seconds": 0.061900600005174056,
+        "completed_at_utc": "2026-10-02T22:05:49.359484+00:00",
+        "end_to_end_seconds": 10.098094899993157,
+        "operation_seconds": 5.623663800011855
+      },
+      "model_id": "20261002T220549Z-5bc33e60",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.018242799997097,
+      "outcome": "promoted",
+      "source_run_id": "20261002T221006Z-0360b041",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:10:10.402950+00:00",
+        "worker_started_at_utc": "2026-10-02T22:10:10.403013+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:10:15.972139+00:00",
+        "collected_at_utc": "2026-10-02T22:10:20.421852+00:00",
+        "worker_seconds": 5.568760099995416,
+        "scheduler_observed_seconds": 10.018242799997097,
+        "queue_wait_seconds": 6.299998494796455e-05,
+        "collection_wait_seconds": 4.449419700016733,
+        "publication_seconds": 0.06172249998780899,
+        "completed_at_utc": "2026-10-02T22:10:20.483594+00:00",
+        "end_to_end_seconds": 10.079993999999715,
+        "operation_seconds": 5.630482599983225
+      },
+      "model_id": "20261002T221020Z-70cc870a",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.0238762999943,
+      "outcome": "research_only",
+      "source_run_id": "20261002T221005Z-eaa451f5",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:10:20.577756+00:00",
+        "worker_started_at_utc": "2026-10-02T22:10:20.577827+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:10:26.223076+00:00",
+        "collected_at_utc": "2026-10-02T22:10:30.602293+00:00",
+        "worker_seconds": 5.644877300015651,
+        "scheduler_observed_seconds": 10.0238762999943,
+        "queue_wait_seconds": 6.989997928030789e-05,
+        "collection_wait_seconds": 4.378929099999368,
+        "publication_seconds": 0.05937110001104884,
+        "completed_at_utc": "2026-10-02T22:10:30.661685+00:00",
+        "end_to_end_seconds": 10.083273899974301,
+        "operation_seconds": 5.7042484000266995
+      },
+      "model_id": "20261002T221030Z-680a551b",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.02381049998803,
+      "outcome": "research_only",
+      "source_run_id": "20261002T221006Z-d28e4c22",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:10:30.746197+00:00",
+        "worker_started_at_utc": "2026-10-02T22:10:30.746262+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:10:36.560645+00:00",
+        "collected_at_utc": "2026-10-02T22:10:40.770668+00:00",
+        "worker_seconds": 5.8140011000214145,
+        "scheduler_observed_seconds": 10.02381049998803,
+        "queue_wait_seconds": 6.369999027810991e-05,
+        "collection_wait_seconds": 4.209745699976338,
+        "publication_seconds": 0.06059310000273399,
+        "completed_at_utc": "2026-10-02T22:10:40.831280+00:00",
+        "end_to_end_seconds": 10.084430099988822,
+        "operation_seconds": 5.8745942000241484
+      },
+      "model_id": "20261002T221040Z-93fb4eef",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.016639900015434,
+      "outcome": "research_only",
+      "source_run_id": "20261002T221005Z-7150fb34",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:10:40.912600+00:00",
+        "worker_started_at_utc": "2026-10-02T22:10:40.912687+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:10:46.501752+00:00",
+        "collected_at_utc": "2026-10-02T22:10:50.929900+00:00",
+        "worker_seconds": 5.588698000006843,
+        "scheduler_observed_seconds": 10.016639900015434,
+        "queue_wait_seconds": 8.680002065375447e-05,
+        "collection_wait_seconds": 4.427855099987937,
+        "publication_seconds": 0.06031139998231083,
+        "completed_at_utc": "2026-10-02T22:10:50.990230+00:00",
+        "end_to_end_seconds": 10.076977200020337,
+        "operation_seconds": 5.649009399989154
+      },
+      "model_id": "20261002T221050Z-90dfaba7",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.02742309999303,
+      "outcome": "promoted",
+      "source_run_id": "20261002T221506Z-fc058f8b",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:15:07.013442+00:00",
+        "worker_started_at_utc": "2026-10-02T22:15:07.013508+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:15:12.847616+00:00",
+        "collected_at_utc": "2026-10-02T22:15:17.041526+00:00",
+        "worker_seconds": 5.833723899995675,
+        "scheduler_observed_seconds": 10.02742309999303,
+        "queue_wait_seconds": 6.580000626854599e-05,
+        "collection_wait_seconds": 4.193633399991086,
+        "publication_seconds": 0.05547849999857135,
+        "completed_at_utc": "2026-10-02T22:15:17.097024+00:00",
+        "end_to_end_seconds": 10.082929299998796,
+        "operation_seconds": 5.889202399994247
+      },
+      "model_id": "20261002T221517Z-aeac56ff",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.028973900014535,
+      "outcome": "research_only",
+      "source_run_id": "20261002T221505Z-1da3d3f6",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:15:17.186213+00:00",
+        "worker_started_at_utc": "2026-10-02T22:15:17.186277+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:15:22.792206+00:00",
+        "collected_at_utc": "2026-10-02T22:15:27.215848+00:00",
+        "worker_seconds": 5.605560399999376,
+        "scheduler_observed_seconds": 10.028973900014535,
+        "queue_wait_seconds": 6.330001633614302e-05,
+        "collection_wait_seconds": 4.423350199998822,
+        "publication_seconds": 0.055842499976279214,
+        "completed_at_utc": "2026-10-02T22:15:27.271709+00:00",
+        "end_to_end_seconds": 10.08484260001569,
+        "operation_seconds": 5.661402899975656
+      },
+      "model_id": "20261002T221527Z-997e64c4",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.021779899980174,
+      "outcome": "research_only",
+      "source_run_id": "20261002T221506Z-6b6db66f",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:15:27.354134+00:00",
+        "worker_started_at_utc": "2026-10-02T22:15:27.354195+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:15:33.050402+00:00",
+        "collected_at_utc": "2026-10-02T22:15:37.376574+00:00",
+        "worker_seconds": 5.6958328000037,
+        "scheduler_observed_seconds": 10.021779899980174,
+        "queue_wait_seconds": 6.089999806135893e-05,
+        "collection_wait_seconds": 4.325886199978413,
+        "publication_seconds": 0.06328629999188706,
+        "completed_at_utc": "2026-10-02T22:15:37.439881+00:00",
+        "end_to_end_seconds": 10.085098999988986,
+        "operation_seconds": 5.759119099995587
+      },
+      "model_id": "20261002T221537Z-c81448db",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.02017549998709,
+      "outcome": "research_only",
+      "source_run_id": "20261002T221505Z-e6d431be",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:15:37.521948+00:00",
+        "worker_started_at_utc": "2026-10-02T22:15:37.522011+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:15:43.121737+00:00",
+        "collected_at_utc": "2026-10-02T22:15:47.542784+00:00",
+        "worker_seconds": 5.5993583999807015,
+        "scheduler_observed_seconds": 10.02017549998709,
+        "queue_wait_seconds": 6.210000719875097e-05,
+        "collection_wait_seconds": 4.42075499999919,
+        "publication_seconds": 0.05688479999662377,
+        "completed_at_utc": "2026-10-02T22:15:47.599688+00:00",
+        "end_to_end_seconds": 10.077087499987101,
+        "operation_seconds": 5.656243199977325
+      },
+      "model_id": "20261002T221547Z-238aa4b7",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.021077900019009,
+      "outcome": "promoted",
+      "source_run_id": "20261002T222005Z-b0cef031",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:20:08.604348+00:00",
+        "worker_started_at_utc": "2026-10-02T22:20:08.604413+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:20:14.138141+00:00",
+        "collected_at_utc": "2026-10-02T22:20:18.626086+00:00",
+        "worker_seconds": 5.533364600007189,
+        "scheduler_observed_seconds": 10.021077900019009,
+        "queue_wait_seconds": 6.500000017695129e-05,
+        "collection_wait_seconds": 4.487648300011642,
+        "publication_seconds": 0.05529600000591017,
+        "completed_at_utc": "2026-10-02T22:20:18.681402+00:00",
+        "end_to_end_seconds": 10.076405100000557,
+        "operation_seconds": 5.5886606000131
+      },
+      "model_id": "20261002T222018Z-de1c7381",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.017917299992405,
+      "outcome": "research_only",
+      "source_run_id": "20261002T222005Z-18626962",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:20:18.774455+00:00",
+        "worker_started_at_utc": "2026-10-02T22:20:18.774523+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:20:24.358700+00:00",
+        "collected_at_utc": "2026-10-02T22:20:28.793032+00:00",
+        "worker_seconds": 5.583809799980372,
+        "scheduler_observed_seconds": 10.017917299992405,
+        "queue_wait_seconds": 6.819999543949962e-05,
+        "collection_wait_seconds": 4.434039300016593,
+        "publication_seconds": 0.06287939997855574,
+        "completed_at_utc": "2026-10-02T22:20:28.855932+00:00",
+        "end_to_end_seconds": 10.080822999996599,
+        "operation_seconds": 5.646689199958928
+      },
+      "model_id": "20261002T222028Z-329dbd45",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.020055199973285,
+      "outcome": "research_only",
+      "source_run_id": "20261002T222005Z-d3e6a4c1",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:20:28.944472+00:00",
+        "worker_started_at_utc": "2026-10-02T22:20:28.944533+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:20:34.753387+00:00",
+        "collected_at_utc": "2026-10-02T22:20:38.965187+00:00",
+        "worker_seconds": 5.808472199976677,
+        "scheduler_observed_seconds": 10.020055199973285,
+        "queue_wait_seconds": 6.130000110715628e-05,
+        "collection_wait_seconds": 4.211521699995501,
+        "publication_seconds": 0.1077192000229843,
+        "completed_at_utc": "2026-10-02T22:20:39.072928+00:00",
+        "end_to_end_seconds": 10.127801999973599,
+        "operation_seconds": 5.916191399999661
+      },
+      "model_id": "20261002T222038Z-99c2c6db",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.026539399987087,
+      "outcome": "research_only",
+      "source_run_id": "20261002T222006Z-b38a8556",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:20:39.156802+00:00",
+        "worker_started_at_utc": "2026-10-02T22:20:39.156867+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:20:44.729292+00:00",
+        "collected_at_utc": "2026-10-02T22:20:49.184002+00:00",
+        "worker_seconds": 5.5720593000005465,
+        "scheduler_observed_seconds": 10.026539399987087,
+        "queue_wait_seconds": 6.44999963697046e-05,
+        "collection_wait_seconds": 4.4544155999901704,
+        "publication_seconds": 0.06252949999179691,
+        "completed_at_utc": "2026-10-02T22:20:49.246551+00:00",
+        "end_to_end_seconds": 10.089094900002237,
+        "operation_seconds": 5.634588799992343
+      },
+      "model_id": "20261002T222049Z-667be85f",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.016794299997855,
+      "outcome": "promoted",
+      "source_run_id": "20261002T222505Z-26481ae7",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:25:10.311450+00:00",
+        "worker_started_at_utc": "2026-10-02T22:25:10.311519+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:25:16.054633+00:00",
+        "collected_at_utc": "2026-10-02T22:25:20.328903+00:00",
+        "worker_seconds": 5.742736899992451,
+        "scheduler_observed_seconds": 10.016794299997855,
+        "queue_wait_seconds": 6.819999543949962e-05,
+        "collection_wait_seconds": 4.273989200009964,
+        "publication_seconds": 0.06473899999400601,
+        "completed_at_utc": "2026-10-02T22:25:20.393662+00:00",
+        "end_to_end_seconds": 10.081560799997533,
+        "operation_seconds": 5.807475899986457
+      },
+      "model_id": "20261002T222520Z-121803b8",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.028258700011065,
+      "outcome": "research_only",
+      "source_run_id": "20261002T222505Z-dd5f11ce",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:25:20.483872+00:00",
+        "worker_started_at_utc": "2026-10-02T22:25:20.483935+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:25:26.053227+00:00",
+        "collected_at_utc": "2026-10-02T22:25:30.512790+00:00",
+        "worker_seconds": 5.568926200008718,
+        "scheduler_observed_seconds": 10.028258700011065,
+        "queue_wait_seconds": 6.290001329034567e-05,
+        "collection_wait_seconds": 4.459269599989057,
+        "publication_seconds": 0.05465059998095967,
+        "completed_at_utc": "2026-10-02T22:25:30.567460+00:00",
+        "end_to_end_seconds": 10.082937200000742,
+        "operation_seconds": 5.623576799989678
+      },
+      "model_id": "20261002T222530Z-4827909f",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.023660100006964,
+      "outcome": "research_only",
+      "source_run_id": "20261002T222505Z-c3e5fe9b",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:25:30.656033+00:00",
+        "worker_started_at_utc": "2026-10-02T22:25:30.656096+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:25:36.454056+00:00",
+        "collected_at_utc": "2026-10-02T22:25:40.680352+00:00",
+        "worker_seconds": 5.797578799974872,
+        "scheduler_observed_seconds": 10.023660100006964,
+        "queue_wait_seconds": 6.330001633614302e-05,
+        "collection_wait_seconds": 4.226018000015756,
+        "publication_seconds": 0.06149650001316331,
+        "completed_at_utc": "2026-10-02T22:25:40.741870+00:00",
+        "end_to_end_seconds": 10.085185600008117,
+        "operation_seconds": 5.859075299988035
+      },
+      "model_id": "20261002T222540Z-d87dd3e6",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.021958600002108,
+      "outcome": "research_only",
+      "source_run_id": "20261002T222505Z-306acd78",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:25:40.826934+00:00",
+        "worker_started_at_utc": "2026-10-02T22:25:40.826998+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:25:46.405456+00:00",
+        "collected_at_utc": "2026-10-02T22:25:50.849552+00:00",
+        "worker_seconds": 5.578091399976984,
+        "scheduler_observed_seconds": 10.021958600002108,
+        "queue_wait_seconds": 6.410002242773771e-05,
+        "collection_wait_seconds": 4.443803100002697,
+        "publication_seconds": 0.062120200018398464,
+        "completed_at_utc": "2026-10-02T22:25:50.911699+00:00",
+        "end_to_end_seconds": 10.084115200006636,
+        "operation_seconds": 5.640211599995382
+      },
+      "model_id": "20261002T222550Z-9f6b40bb",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.016628299985314,
+      "outcome": "promoted",
+      "source_run_id": "20261002T223005Z-9a2cda36",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:30:06.869009+00:00",
+        "worker_started_at_utc": "2026-10-02T22:30:06.869071+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:30:12.419095+00:00",
+        "collected_at_utc": "2026-10-02T22:30:16.886296+00:00",
+        "worker_seconds": 5.549658800009638,
+        "scheduler_observed_seconds": 10.016628299985314,
+        "queue_wait_seconds": 6.229997961781919e-05,
+        "collection_wait_seconds": 4.466907199996058,
+        "publication_seconds": 0.056245300016598776,
+        "completed_at_utc": "2026-10-02T22:30:16.942559+00:00",
+        "end_to_end_seconds": 10.072899499995401,
+        "operation_seconds": 5.605904100026237
+      },
+      "model_id": "20261002T223016Z-ed200c52",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.027469199994812,
+      "outcome": "research_only",
+      "source_run_id": "20261002T223005Z-b30d32cc",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:30:17.029168+00:00",
+        "worker_started_at_utc": "2026-10-02T22:30:17.029230+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:30:22.610186+00:00",
+        "collected_at_utc": "2026-10-02T22:30:27.057297+00:00",
+        "worker_seconds": 5.580589499993948,
+        "scheduler_observed_seconds": 10.027469199994812,
+        "queue_wait_seconds": 6.170000415295362e-05,
+        "collection_wait_seconds": 4.446817999996711,
+        "publication_seconds": 0.06375519998255186,
+        "completed_at_utc": "2026-10-02T22:30:27.121072+00:00",
+        "end_to_end_seconds": 10.091251700010616,
+        "operation_seconds": 5.6443446999765
+      },
+      "model_id": "20261002T223027Z-8f048d43",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.015162299998337,
+      "outcome": "research_only",
+      "source_run_id": "20261002T223005Z-dfed9229",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:30:27.210250+00:00",
+        "worker_started_at_utc": "2026-10-02T22:30:27.210315+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:30:32.976553+00:00",
+        "collected_at_utc": "2026-10-02T22:30:37.226071+00:00",
+        "worker_seconds": 5.765860600018641,
+        "scheduler_observed_seconds": 10.015162299998337,
+        "queue_wait_seconds": 6.409999332390726e-05,
+        "collection_wait_seconds": 4.2492375999863725,
+        "publication_seconds": 0.053736799978651106,
+        "completed_at_utc": "2026-10-02T22:30:37.279828+00:00",
+        "end_to_end_seconds": 10.068926699983422,
+        "operation_seconds": 5.819597399997292
+      },
+      "model_id": "20261002T223037Z-0c43fad9",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.021416300005512,
+      "outcome": "research_only",
+      "source_run_id": "20261002T223005Z-57ce5ade",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:30:37.361987+00:00",
+        "worker_started_at_utc": "2026-10-02T22:30:37.362052+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:30:42.962147+00:00",
+        "collected_at_utc": "2026-10-02T22:30:47.384062+00:00",
+        "worker_seconds": 5.599727399996482,
+        "scheduler_observed_seconds": 10.021416300005512,
+        "queue_wait_seconds": 6.500000017695129e-05,
+        "collection_wait_seconds": 4.4216239000088535,
+        "publication_seconds": 0.06460479999077506,
+        "completed_at_utc": "2026-10-02T22:30:47.448687+00:00",
+        "end_to_end_seconds": 10.086050799989607,
+        "operation_seconds": 5.664332199987257
+      },
+      "model_id": "20261002T223047Z-92ad2ce1",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.018460499995854,
+      "outcome": "promoted",
+      "source_run_id": "20261002T223505Z-a73f0c3e",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:35:08.567288+00:00",
+        "worker_started_at_utc": "2026-10-02T22:35:08.567354+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:35:14.102111+00:00",
+        "collected_at_utc": "2026-10-02T22:35:18.586408+00:00",
+        "worker_seconds": 5.53439340001205,
+        "scheduler_observed_seconds": 10.018460499995854,
+        "queue_wait_seconds": 6.520000169984996e-05,
+        "collection_wait_seconds": 4.484001899982104,
+        "publication_seconds": 0.0569307999976445,
+        "completed_at_utc": "2026-10-02T22:35:18.643358+00:00",
+        "end_to_end_seconds": 10.075417999993078,
+        "operation_seconds": 5.591324200009694
+      },
+      "model_id": "20261002T223518Z-3937ae43",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.020406700001331,
+      "outcome": "research_only",
+      "source_run_id": "20261002T223506Z-9b7fa701",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:35:18.732648+00:00",
+        "worker_started_at_utc": "2026-10-02T22:35:18.732716+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:35:24.512321+00:00",
+        "collected_at_utc": "2026-10-02T22:35:28.753714+00:00",
+        "worker_seconds": 5.779225399979623,
+        "scheduler_observed_seconds": 10.020406700001331,
+        "queue_wait_seconds": 6.700001540593803e-05,
+        "collection_wait_seconds": 4.241114300006302,
+        "publication_seconds": 0.061256099987076595,
+        "completed_at_utc": "2026-10-02T22:35:28.814987+00:00",
+        "end_to_end_seconds": 10.081688500009477,
+        "operation_seconds": 5.8404814999667
+      },
+      "model_id": "20261002T223528Z-bdab0318",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.015596699988237,
+      "outcome": "research_only",
+      "source_run_id": "20261002T223505Z-6a14eb72",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:35:28.901608+00:00",
+        "worker_started_at_utc": "2026-10-02T22:35:28.901671+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:35:34.685560+00:00",
+        "collected_at_utc": "2026-10-02T22:35:38.917863+00:00",
+        "worker_seconds": 5.783509000000777,
+        "scheduler_observed_seconds": 10.015596699988237,
+        "queue_wait_seconds": 6.349998875521123e-05,
+        "collection_wait_seconds": 4.232024199998705,
+        "publication_seconds": 0.06317969999508932,
+        "completed_at_utc": "2026-10-02T22:35:38.981062+00:00",
+        "end_to_end_seconds": 10.078804899996612,
+        "operation_seconds": 5.846688699995866
+      },
+      "model_id": "20261002T223538Z-ef04f1b8",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.036480100010522,
+      "outcome": "research_only",
+      "source_run_id": "20261002T223506Z-60550a5c",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:35:39.065264+00:00",
+        "worker_started_at_utc": "2026-10-02T22:35:39.065335+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:35:44.685930+00:00",
+        "collected_at_utc": "2026-10-02T22:35:49.102405+00:00",
+        "worker_seconds": 5.620227100007469,
+        "scheduler_observed_seconds": 10.036480100010522,
+        "queue_wait_seconds": 6.990000838413835e-05,
+        "collection_wait_seconds": 4.416183099994669,
+        "publication_seconds": 0.06241449998924509,
+        "completed_at_utc": "2026-10-02T22:35:49.164838+00:00",
+        "end_to_end_seconds": 10.098920200020075,
+        "operation_seconds": 5.682641599996714
+      },
+      "model_id": "20261002T223549Z-db7aea7d",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.027708000008715,
+      "outcome": "promoted",
+      "source_run_id": "20261002T224005Z-cd38f553",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:40:10.234297+00:00",
+        "worker_started_at_utc": "2026-10-02T22:40:10.234364+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:40:15.746308+00:00",
+        "collected_at_utc": "2026-10-02T22:40:20.262664+00:00",
+        "worker_seconds": 5.511581399972783,
+        "scheduler_observed_seconds": 10.027708000008715,
+        "queue_wait_seconds": 6.72000169288367e-05,
+        "collection_wait_seconds": 4.516059400019003,
+        "publication_seconds": 0.06410430002142675,
+        "completed_at_utc": "2026-10-02T22:40:20.326788+00:00",
+        "end_to_end_seconds": 10.091840400011279,
+        "operation_seconds": 5.57568569999421
+      },
+      "model_id": "20261002T224020Z-42adc8f1",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.030162600014592,
+      "outcome": "research_only",
+      "source_run_id": "20261002T224005Z-1b574a62",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:40:20.453132+00:00",
+        "worker_started_at_utc": "2026-10-02T22:40:20.453194+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:40:25.999697+00:00",
+        "collected_at_utc": "2026-10-02T22:40:30.483954+00:00",
+        "worker_seconds": 5.5461393000150565,
+        "scheduler_observed_seconds": 10.030162600014592,
+        "queue_wait_seconds": 6.10999995842576e-05,
+        "collection_wait_seconds": 4.483962199999951,
+        "publication_seconds": 0.06160019998787902,
+        "completed_at_utc": "2026-10-02T22:40:30.545575+00:00",
+        "end_to_end_seconds": 10.091789700003574,
+        "operation_seconds": 5.6077395000029355
+      },
+      "model_id": "20261002T224030Z-0947c589",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.021806200005813,
+      "outcome": "promoted",
+      "source_run_id": "20261002T224006Z-fad5e2e4",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:40:30.636316+00:00",
+        "worker_started_at_utc": "2026-10-02T22:40:30.636380+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:40:36.381401+00:00",
+        "collected_at_utc": "2026-10-02T22:40:40.658781+00:00",
+        "worker_seconds": 5.744643100013491,
+        "scheduler_observed_seconds": 10.021806200005813,
+        "queue_wait_seconds": 6.44999963697046e-05,
+        "collection_wait_seconds": 4.277098599995952,
+        "publication_seconds": 0.054154899989953265,
+        "completed_at_utc": "2026-10-02T22:40:40.712955+00:00",
+        "end_to_end_seconds": 10.07598809999763,
+        "operation_seconds": 5.798798000003444
+      },
+      "model_id": "20261002T224040Z-650d3fa8",
+      "eligible": true
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.031041999987792,
+      "outcome": "research_only",
+      "source_run_id": "20261002T224006Z-b02042be",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:40:40.802154+00:00",
+        "worker_started_at_utc": "2026-10-02T22:40:40.802219+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:40:46.395457+00:00",
+        "collected_at_utc": "2026-10-02T22:40:50.833856+00:00",
+        "worker_seconds": 5.592870399996173,
+        "scheduler_observed_seconds": 10.031041999987792,
+        "queue_wait_seconds": 6.419999408535659e-05,
+        "collection_wait_seconds": 4.438107399997534,
+        "publication_seconds": 0.053156200010562316,
+        "completed_at_utc": "2026-10-02T22:40:50.887031+00:00",
+        "end_to_end_seconds": 10.08422590000555,
+        "operation_seconds": 5.646026600006735
+      },
+      "model_id": "20261002T224050Z-fca78921",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.01976240001386,
+      "outcome": "promoted",
+      "source_run_id": "20261002T224505Z-3238cec3",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:45:06.982480+00:00",
+        "worker_started_at_utc": "2026-10-02T22:45:06.982543+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:45:12.507530+00:00",
+        "collected_at_utc": "2026-10-02T22:45:17.002902+00:00",
+        "worker_seconds": 5.524624600016978,
+        "scheduler_observed_seconds": 10.01976240001386,
+        "queue_wait_seconds": 6.180000491440296e-05,
+        "collection_wait_seconds": 4.495075999991968,
+        "publication_seconds": 0.06432330000097863,
+        "completed_at_utc": "2026-10-02T22:45:17.067247+00:00",
+        "end_to_end_seconds": 10.084116100013489,
+        "operation_seconds": 5.588947900017956
+      },
+      "model_id": "20261002T224517Z-e54a8504",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.029554399981862,
+      "outcome": "research_only",
+      "source_run_id": "20261002T224505Z-6884380a",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:45:17.155606+00:00",
+        "worker_started_at_utc": "2026-10-02T22:45:17.155671+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:45:22.793800+00:00",
+        "collected_at_utc": "2026-10-02T22:45:27.185820+00:00",
+        "worker_seconds": 5.637759500008542,
+        "scheduler_observed_seconds": 10.029554399981862,
+        "queue_wait_seconds": 6.379999103955925e-05,
+        "collection_wait_seconds": 4.39173109998228,
+        "publication_seconds": 0.053326699999161065,
+        "completed_at_utc": "2026-10-02T22:45:27.239166+00:00",
+        "end_to_end_seconds": 10.082907899981365,
+        "operation_seconds": 5.691086200007703
+      },
+      "model_id": "20261002T224527Z-401f8e7b",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.016698199993698,
+      "outcome": "research_only",
+      "source_run_id": "20261002T224506Z-c4acf349",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:45:27.327960+00:00",
+        "worker_started_at_utc": "2026-10-02T22:45:27.328024+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:45:33.024523+00:00",
+        "collected_at_utc": "2026-10-02T22:45:37.345317+00:00",
+        "worker_seconds": 5.6961256000213325,
+        "scheduler_observed_seconds": 10.016698199993698,
+        "queue_wait_seconds": 6.389999180100858e-05,
+        "collection_wait_seconds": 4.320508699980564,
+        "publication_seconds": 0.04826920002233237,
+        "completed_at_utc": "2026-10-02T22:45:37.393603+00:00",
+        "end_to_end_seconds": 10.064992200001143,
+        "operation_seconds": 5.744394800043665
+      },
+      "model_id": "20261002T224537Z-70b808f3",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.020466499991016,
+      "outcome": "research_only",
+      "source_run_id": "20261002T224506Z-f30f475d",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:45:37.472358+00:00",
+        "worker_started_at_utc": "2026-10-02T22:45:37.472421+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:45:43.015411+00:00",
+        "collected_at_utc": "2026-10-02T22:45:47.493484+00:00",
+        "worker_seconds": 5.542625800007954,
+        "scheduler_observed_seconds": 10.020466499991016,
+        "queue_wait_seconds": 6.269998266361654e-05,
+        "collection_wait_seconds": 4.477778000000399,
+        "publication_seconds": 0.06324859999585897,
+        "completed_at_utc": "2026-10-02T22:45:47.556753+00:00",
+        "end_to_end_seconds": 10.083743199997116,
+        "operation_seconds": 5.605874400003813
+      },
+      "model_id": "20261002T224547Z-66e8314f",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.031180799996946,
+      "outcome": "promoted",
+      "source_run_id": "20261002T225005Z-e399c329",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:50:08.595666+00:00",
+        "worker_started_at_utc": "2026-10-02T22:50:08.595735+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:50:14.148905+00:00",
+        "collected_at_utc": "2026-10-02T22:50:18.627506+00:00",
+        "worker_seconds": 5.552805600018473,
+        "scheduler_observed_seconds": 10.031180799996946,
+        "queue_wait_seconds": 6.799999391660094e-05,
+        "collection_wait_seconds": 4.478307199984556,
+        "publication_seconds": 0.06487070000730455,
+        "completed_at_utc": "2026-10-02T22:50:18.692399+00:00",
+        "end_to_end_seconds": 10.096081700001378,
+        "operation_seconds": 5.617676300025778
+      },
+      "model_id": "20261002T225018Z-2816f612",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.028307800006587,
+      "outcome": "research_only",
+      "source_run_id": "20261002T225006Z-868a2e96",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:50:18.783714+00:00",
+        "worker_started_at_utc": "2026-10-02T22:50:18.783783+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:50:24.364686+00:00",
+        "collected_at_utc": "2026-10-02T22:50:28.812681+00:00",
+        "worker_seconds": 5.580536800000118,
+        "scheduler_observed_seconds": 10.028307800006587,
+        "queue_wait_seconds": 6.860002758912742e-05,
+        "collection_wait_seconds": 4.44770239997888,
+        "publication_seconds": 0.05103989999042824,
+        "completed_at_utc": "2026-10-02T22:50:28.863740+00:00",
+        "end_to_end_seconds": 10.079376000008779,
+        "operation_seconds": 5.631576699990546
+      },
+      "model_id": "20261002T225028Z-a7b69fb8",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.01999609998893,
+      "outcome": "research_only",
+      "source_run_id": "20261002T225005Z-7b22aa58",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:50:28.945690+00:00",
+        "worker_started_at_utc": "2026-10-02T22:50:28.945753+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:50:34.666542+00:00",
+        "collected_at_utc": "2026-10-02T22:50:38.966345+00:00",
+        "worker_seconds": 5.720413100003498,
+        "scheduler_observed_seconds": 10.01999609998893,
+        "queue_wait_seconds": 6.289998418651521e-05,
+        "collection_wait_seconds": 4.299520100001246,
+        "publication_seconds": 0.05103370000142604,
+        "completed_at_utc": "2026-10-02T22:50:39.017398+00:00",
+        "end_to_end_seconds": 10.071060199989006,
+        "operation_seconds": 5.771446800004924
+      },
+      "model_id": "20261002T225038Z-31aee839",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.033127399976365,
+      "outcome": "research_only",
+      "source_run_id": "20261002T225006Z-4b0bd7b1",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:50:39.094537+00:00",
+        "worker_started_at_utc": "2026-10-02T22:50:39.094604+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:50:44.597898+00:00",
+        "collected_at_utc": "2026-10-02T22:50:49.128325+00:00",
+        "worker_seconds": 5.502933500014478,
+        "scheduler_observed_seconds": 10.033127399976365,
+        "queue_wait_seconds": 6.569997640326619e-05,
+        "collection_wait_seconds": 4.530128199985484,
+        "publication_seconds": 0.05421530001331121,
+        "completed_at_utc": "2026-10-02T22:50:49.182560+00:00",
+        "end_to_end_seconds": 10.087371499976143,
+        "operation_seconds": 5.5571488000277895
+      },
+      "model_id": "20261002T225049Z-bb452e37",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.01304479999817,
+      "outcome": "promoted",
+      "source_run_id": "20261002T225505Z-9afb9a87",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:55:10.258198+00:00",
+        "worker_started_at_utc": "2026-10-02T22:55:10.258261+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:55:15.799128+00:00",
+        "collected_at_utc": "2026-10-02T22:55:20.271901+00:00",
+        "worker_seconds": 5.5405031999980565,
+        "scheduler_observed_seconds": 10.01304479999817,
+        "queue_wait_seconds": 6.260001100599766e-05,
+        "collection_wait_seconds": 4.472478999989107,
+        "publication_seconds": 0.052258399984566495,
+        "completed_at_utc": "2026-10-02T22:55:20.324179+00:00",
+        "end_to_end_seconds": 10.065333000005921,
+        "operation_seconds": 5.592761599982623
+      },
+      "model_id": "20261002T225520Z-f640a021",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.023707299988018,
+      "outcome": "research_only",
+      "source_run_id": "20261002T225505Z-1e4efa43",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:55:20.413666+00:00",
+        "worker_started_at_utc": "2026-10-02T22:55:20.413732+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:55:25.947939+00:00",
+        "collected_at_utc": "2026-10-02T22:55:30.438033+00:00",
+        "worker_seconds": 5.533843599987449,
+        "scheduler_observed_seconds": 10.023707299988018,
+        "queue_wait_seconds": 6.550000398419797e-05,
+        "collection_wait_seconds": 4.489798199996585,
+        "publication_seconds": 0.05298039998160675,
+        "completed_at_utc": "2026-10-02T22:55:30.491033+00:00",
+        "end_to_end_seconds": 10.076717899995856,
+        "operation_seconds": 5.586823999969056
+      },
+      "model_id": "20261002T225530Z-2aa8e1d8",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.038445700018201,
+      "outcome": "research_only",
+      "source_run_id": "20261002T225505Z-8287fe7e",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:55:30.575167+00:00",
+        "worker_started_at_utc": "2026-10-02T22:55:30.575227+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:55:36.323249+00:00",
+        "collected_at_utc": "2026-10-02T22:55:40.614274+00:00",
+        "worker_seconds": 5.747644099988975,
+        "scheduler_observed_seconds": 10.038445700018201,
+        "queue_wait_seconds": 5.9900019550696015e-05,
+        "collection_wait_seconds": 4.290741700009676,
+        "publication_seconds": 0.06296570002450608,
+        "completed_at_utc": "2026-10-02T22:55:40.677259+00:00",
+        "end_to_end_seconds": 10.101437500008615,
+        "operation_seconds": 5.810609800013481
+      },
+      "model_id": "20261002T225540Z-8b3da563",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.031623199989554,
+      "outcome": "research_only",
+      "source_run_id": "20261002T225505Z-6573ab78",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T22:55:40.761099+00:00",
+        "worker_started_at_utc": "2026-10-02T22:55:40.761168+00:00",
+        "worker_finished_at_utc": "2026-10-02T22:55:46.336069+00:00",
+        "collected_at_utc": "2026-10-02T22:55:50.793383+00:00",
+        "worker_seconds": 5.5745318999979645,
+        "scheduler_observed_seconds": 10.031623199989554,
+        "queue_wait_seconds": 6.78999931551516e-05,
+        "collection_wait_seconds": 4.457023399998434,
+        "publication_seconds": 0.09724889998324215,
+        "completed_at_utc": "2026-10-02T22:55:50.890653+00:00",
+        "end_to_end_seconds": 10.128899899980752,
+        "operation_seconds": 5.671780799981207
+      },
+      "model_id": "20261002T225550Z-9cfaab6d",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.015791399986483,
+      "outcome": "promoted",
+      "source_run_id": "20261002T230005Z-369449ce",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:00:06.942676+00:00",
+        "worker_started_at_utc": "2026-10-02T23:00:06.942745+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:00:12.551894+00:00",
+        "collected_at_utc": "2026-10-02T23:00:16.959127+00:00",
+        "worker_seconds": 5.60877999998047,
+        "scheduler_observed_seconds": 10.015791399986483,
+        "queue_wait_seconds": 6.900000153109431e-05,
+        "collection_wait_seconds": 4.406942400004482,
+        "publication_seconds": 0.05956080000032671,
+        "completed_at_utc": "2026-10-02T23:00:17.018709+00:00",
+        "end_to_end_seconds": 10.07538160000695,
+        "operation_seconds": 5.668340799980797
+      },
+      "model_id": "20261002T230016Z-fd63417a",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.013695900008315,
+      "outcome": "research_only",
+      "source_run_id": "20261002T230006Z-d25e5dd9",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:00:17.105428+00:00",
+        "worker_started_at_utc": "2026-10-02T23:00:17.105484+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:00:22.601970+00:00",
+        "collected_at_utc": "2026-10-02T23:00:27.119783+00:00",
+        "worker_seconds": 5.496124700002838,
+        "scheduler_observed_seconds": 10.013695900008315,
+        "queue_wait_seconds": 5.560001591220498e-05,
+        "collection_wait_seconds": 4.517515599989565,
+        "publication_seconds": 0.04946599999675527,
+        "completed_at_utc": "2026-10-02T23:00:27.169269+00:00",
+        "end_to_end_seconds": 10.063189000007696,
+        "operation_seconds": 5.545590699999593
+      },
+      "model_id": "20261002T230027Z-c4b66759",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.012276099994779,
+      "outcome": "research_only",
+      "source_run_id": "20261002T230006Z-ac10b421",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:00:27.250246+00:00",
+        "worker_started_at_utc": "2026-10-02T23:00:27.250308+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:00:33.038723+00:00",
+        "collected_at_utc": "2026-10-02T23:00:37.263182+00:00",
+        "worker_seconds": 5.788034199998947,
+        "scheduler_observed_seconds": 10.012276099994779,
+        "queue_wait_seconds": 6.150000263005495e-05,
+        "collection_wait_seconds": 4.224180399993202,
+        "publication_seconds": 0.06353050001780502,
+        "completed_at_utc": "2026-10-02T23:00:37.326732+00:00",
+        "end_to_end_seconds": 10.075832499976968,
+        "operation_seconds": 5.851564700016752
+      },
+      "model_id": "20261002T230037Z-c373e63d",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.023432199988747,
+      "outcome": "research_only",
+      "source_run_id": "20261002T230005Z-ea96da7c",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:00:37.409937+00:00",
+        "worker_started_at_utc": "2026-10-02T23:00:37.410001+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:00:42.913847+00:00",
+        "collected_at_utc": "2026-10-02T23:00:47.434030+00:00",
+        "worker_seconds": 5.5034838000137825,
+        "scheduler_observed_seconds": 10.023432199988747,
+        "queue_wait_seconds": 6.369999027810991e-05,
+        "collection_wait_seconds": 4.5198846999846864,
+        "publication_seconds": 0.05356920001213439,
+        "completed_at_utc": "2026-10-02T23:00:47.487616+00:00",
+        "end_to_end_seconds": 10.077027499995893,
+        "operation_seconds": 5.557053000025917
+      },
+      "model_id": "20261002T230047Z-2bfa7705",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.028939200012246,
+      "outcome": "promoted",
+      "source_run_id": "20261002T230505Z-193295df",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:05:08.525573+00:00",
+        "worker_started_at_utc": "2026-10-02T23:05:08.525641+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:05:14.227447+00:00",
+        "collected_at_utc": "2026-10-02T23:05:18.555173+00:00",
+        "worker_seconds": 5.701430699991761,
+        "scheduler_observed_seconds": 10.028939200012246,
+        "queue_wait_seconds": 6.740001845173538e-05,
+        "collection_wait_seconds": 4.327441100002034,
+        "publication_seconds": 0.05371119998744689,
+        "completed_at_utc": "2026-10-02T23:05:18.608907+00:00",
+        "end_to_end_seconds": 10.082683699991321,
+        "operation_seconds": 5.755141899979208
+      },
+      "model_id": "20261002T230518Z-5c46ede4",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.026540499995463,
+      "outcome": "research_only",
+      "source_run_id": "20261002T230505Z-58bfea94",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:05:18.694443+00:00",
+        "worker_started_at_utc": "2026-10-02T23:05:18.694516+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:05:24.370902+00:00",
+        "collected_at_utc": "2026-10-02T23:05:28.721644+00:00",
+        "worker_seconds": 5.6760120000108145,
+        "scheduler_observed_seconds": 10.026540499995463,
+        "queue_wait_seconds": 7.330000516958535e-05,
+        "collection_wait_seconds": 4.3504551999794785,
+        "publication_seconds": 0.06377999999676831,
+        "completed_at_utc": "2026-10-02T23:05:28.785448+00:00",
+        "end_to_end_seconds": 10.09035519999452,
+        "operation_seconds": 5.739792000007583
+      },
+      "model_id": "20261002T230528Z-077a4761",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.02543290000176,
+      "outcome": "research_only",
+      "source_run_id": "20261002T230505Z-84862050",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:05:28.877784+00:00",
+        "worker_started_at_utc": "2026-10-02T23:05:28.877852+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:05:34.648767+00:00",
+        "collected_at_utc": "2026-10-02T23:05:38.903877+00:00",
+        "worker_seconds": 5.770535199990263,
+        "scheduler_observed_seconds": 10.02543290000176,
+        "queue_wait_seconds": 6.820002454333007e-05,
+        "collection_wait_seconds": 4.254829499986954,
+        "publication_seconds": 0.051366600004257634,
+        "completed_at_utc": "2026-10-02T23:05:38.955264+00:00",
+        "end_to_end_seconds": 10.076830100006191,
+        "operation_seconds": 5.821901799994521
+      },
+      "model_id": "20261002T230538Z-e46fbb47",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.02972670001327,
+      "outcome": "research_only",
+      "source_run_id": "20261002T230505Z-583b1aff",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:05:39.038739+00:00",
+        "worker_started_at_utc": "2026-10-02T23:05:39.038809+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:05:44.777218+00:00",
+        "collected_at_utc": "2026-10-02T23:05:49.069126+00:00",
+        "worker_seconds": 5.738031399989268,
+        "scheduler_observed_seconds": 10.02972670001327,
+        "queue_wait_seconds": 7.000000914558768e-05,
+        "collection_wait_seconds": 4.291625300014857,
+        "publication_seconds": 0.05509780001011677,
+        "completed_at_utc": "2026-10-02T23:05:49.124245+00:00",
+        "end_to_end_seconds": 10.08485300000757,
+        "operation_seconds": 5.793129199999385
+      },
+      "model_id": "20261002T230549Z-6d399df9",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.027620500011835,
+      "outcome": "promoted",
+      "source_run_id": "20261002T231006Z-5e66c71f",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:10:10.192346+00:00",
+        "worker_started_at_utc": "2026-10-02T23:10:10.192414+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:10:15.922585+00:00",
+        "collected_at_utc": "2026-10-02T23:10:20.220627+00:00",
+        "worker_seconds": 5.729794299986679,
+        "scheduler_observed_seconds": 10.027620500011835,
+        "queue_wait_seconds": 6.740001845173538e-05,
+        "collection_wait_seconds": 4.297758800006704,
+        "publication_seconds": 0.05637690000003204,
+        "completed_at_utc": "2026-10-02T23:10:20.277025+00:00",
+        "end_to_end_seconds": 10.084027600008994,
+        "operation_seconds": 5.786171199986711
+      },
+      "model_id": "20261002T231020Z-5ab12580",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.016080600005807,
+      "outcome": "research_only",
+      "source_run_id": "20261002T231005Z-5ec68587",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:10:20.365904+00:00",
+        "worker_started_at_utc": "2026-10-02T23:10:20.365969+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:10:25.903577+00:00",
+        "collected_at_utc": "2026-10-02T23:10:30.382645+00:00",
+        "worker_seconds": 5.537244000006467,
+        "scheduler_observed_seconds": 10.016080600005807,
+        "queue_wait_seconds": 6.44999963697046e-05,
+        "collection_wait_seconds": 4.4787721000029705,
+        "publication_seconds": 0.05886079999618232,
+        "completed_at_utc": "2026-10-02T23:10:30.441527+00:00",
+        "end_to_end_seconds": 10.07497180000064,
+        "operation_seconds": 5.596104800002649
+      },
+      "model_id": "20261002T231030Z-eaab46f6",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.022736600018106,
+      "outcome": "research_only",
+      "source_run_id": "20261002T231006Z-5522dea5",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:10:30.526796+00:00",
+        "worker_started_at_utc": "2026-10-02T23:10:30.526863+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:10:36.324918+00:00",
+        "collected_at_utc": "2026-10-02T23:10:40.550193+00:00",
+        "worker_seconds": 5.79767400000128,
+        "scheduler_observed_seconds": 10.022736600018106,
+        "queue_wait_seconds": 6.680001388303936e-05,
+        "collection_wait_seconds": 4.224995800002944,
+        "publication_seconds": 0.05449740000767633,
+        "completed_at_utc": "2026-10-02T23:10:40.604711+00:00",
+        "end_to_end_seconds": 10.077263600018341,
+        "operation_seconds": 5.852171400008956
+      },
+      "model_id": "20261002T231040Z-e7315e6b",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.035846400016453,
+      "outcome": "research_only",
+      "source_run_id": "20261002T231005Z-71ee7d27",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:10:40.688529+00:00",
+        "worker_started_at_utc": "2026-10-02T23:10:40.688593+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:10:46.253980+00:00",
+        "collected_at_utc": "2026-10-02T23:10:50.725037+00:00",
+        "worker_seconds": 5.5650202999822795,
+        "scheduler_observed_seconds": 10.035846400016453,
+        "queue_wait_seconds": 6.340001709759235e-05,
+        "collection_wait_seconds": 4.470762700017076,
+        "publication_seconds": 0.06221259999438189,
+        "completed_at_utc": "2026-10-02T23:10:50.787271+00:00",
+        "end_to_end_seconds": 10.098088099999586,
+        "operation_seconds": 5.627232899976661
+      },
+      "model_id": "20261002T231050Z-d4ad070d",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.013710500003072,
+      "outcome": "promoted",
+      "source_run_id": "20261002T231505Z-94525fc9",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:15:06.835003+00:00",
+        "worker_started_at_utc": "2026-10-02T23:15:06.835068+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:15:12.358421+00:00",
+        "collected_at_utc": "2026-10-02T23:15:16.849373+00:00",
+        "worker_seconds": 5.52299050000147,
+        "scheduler_observed_seconds": 10.013710500003072,
+        "queue_wait_seconds": 6.500000017695129e-05,
+        "collection_wait_seconds": 4.490655000001425,
+        "publication_seconds": 0.05940219998592511,
+        "completed_at_utc": "2026-10-02T23:15:16.908794+00:00",
+        "end_to_end_seconds": 10.073139299987815,
+        "operation_seconds": 5.582392699987395
+      },
+      "model_id": "20261002T231516Z-10b3d4a8",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.029798300005496,
+      "outcome": "research_only",
+      "source_run_id": "20261002T231506Z-8c3620f8",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:15:16.992953+00:00",
+        "worker_started_at_utc": "2026-10-02T23:15:16.993014+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:15:22.568311+00:00",
+        "collected_at_utc": "2026-10-02T23:15:27.023412+00:00",
+        "worker_seconds": 5.574930000002496,
+        "scheduler_observed_seconds": 10.029798300005496,
+        "queue_wait_seconds": 6.10999995842576e-05,
+        "collection_wait_seconds": 4.454807200003415,
+        "publication_seconds": 0.052572400018107146,
+        "completed_at_utc": "2026-10-02T23:15:27.076003+00:00",
+        "end_to_end_seconds": 10.082396999991033,
+        "operation_seconds": 5.627502400020603
+      },
+      "model_id": "20261002T231527Z-c2f49b9c",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.023697800002992,
+      "outcome": "research_only",
+      "source_run_id": "20261002T231505Z-9da39ac6",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:15:27.163454+00:00",
+        "worker_started_at_utc": "2026-10-02T23:15:27.163519+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:15:32.959720+00:00",
+        "collected_at_utc": "2026-10-02T23:15:37.187812+00:00",
+        "worker_seconds": 5.795820300001651,
+        "scheduler_observed_seconds": 10.023697800002992,
+        "queue_wait_seconds": 6.469999789260328e-05,
+        "collection_wait_seconds": 4.2278128000034485,
+        "publication_seconds": 0.09656740000355057,
+        "completed_at_utc": "2026-10-02T23:15:37.284404+00:00",
+        "end_to_end_seconds": 10.120296200009761,
+        "operation_seconds": 5.892387700005202
+      },
+      "model_id": "20261002T231537Z-4731c1a6",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.010933100013062,
+      "outcome": "research_only",
+      "source_run_id": "20261002T231506Z-b56420ec",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:15:37.369094+00:00",
+        "worker_started_at_utc": "2026-10-02T23:15:37.369160+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:15:42.905121+00:00",
+        "collected_at_utc": "2026-10-02T23:15:47.380687+00:00",
+        "worker_seconds": 5.535596600006102,
+        "scheduler_observed_seconds": 10.010933100013062,
+        "queue_wait_seconds": 6.570000550709665e-05,
+        "collection_wait_seconds": 4.475270800001454,
+        "publication_seconds": 0.05179099997621961,
+        "completed_at_utc": "2026-10-02T23:15:47.432497+00:00",
+        "end_to_end_seconds": 10.062750800017966,
+        "operation_seconds": 5.587387599982321
+      },
+      "model_id": "20261002T231547Z-f365f4c3",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.031318599998485,
+      "outcome": "promoted",
+      "source_run_id": "20261002T232005Z-cac89460",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:20:08.498380+00:00",
+        "worker_started_at_utc": "2026-10-02T23:20:08.498468+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:20:14.242974+00:00",
+        "collected_at_utc": "2026-10-02T23:20:18.530359+00:00",
+        "worker_seconds": 5.744129300001077,
+        "scheduler_observed_seconds": 10.031318599998485,
+        "queue_wait_seconds": 8.639998850412667e-05,
+        "collection_wait_seconds": 4.287102900008904,
+        "publication_seconds": 0.06725409999489784,
+        "completed_at_utc": "2026-10-02T23:20:18.597635+00:00",
+        "end_to_end_seconds": 10.09860289999051,
+        "operation_seconds": 5.811383399995975
+      },
+      "model_id": "20261002T232018Z-921b25af",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.027140899997903,
+      "outcome": "research_only",
+      "source_run_id": "20261002T232005Z-4220a609",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:20:18.691207+00:00",
+        "worker_started_at_utc": "2026-10-02T23:20:18.691273+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:20:24.380156+00:00",
+        "collected_at_utc": "2026-10-02T23:20:28.719008+00:00",
+        "worker_seconds": 5.68850879999809,
+        "scheduler_observed_seconds": 10.027140899997903,
+        "queue_wait_seconds": 6.479999865405262e-05,
+        "collection_wait_seconds": 4.338567300001159,
+        "publication_seconds": 0.06334570000763051,
+        "completed_at_utc": "2026-10-02T23:20:28.782372+00:00",
+        "end_to_end_seconds": 10.090512499999022,
+        "operation_seconds": 5.75185450000572
+      },
+      "model_id": "20261002T232028Z-6d6754bb",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.025322200002847,
+      "outcome": "research_only",
+      "source_run_id": "20261002T232006Z-1a42ac67",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:20:28.876239+00:00",
+        "worker_started_at_utc": "2026-10-02T23:20:28.876309+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:20:34.620498+00:00",
+        "collected_at_utc": "2026-10-02T23:20:38.902222+00:00",
+        "worker_seconds": 5.743811499996809,
+        "scheduler_observed_seconds": 10.025322200002847,
+        "queue_wait_seconds": 6.900000153109431e-05,
+        "collection_wait_seconds": 4.281441700004507,
+        "publication_seconds": 0.057395200012251735,
+        "completed_at_utc": "2026-10-02T23:20:38.959637+00:00",
+        "end_to_end_seconds": 10.082743499981007,
+        "operation_seconds": 5.801206700009061
+      },
+      "model_id": "20261002T232038Z-25b4b324",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.028114000015194,
+      "outcome": "research_only",
+      "source_run_id": "20261002T232006Z-ecf2acd7",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:20:39.036564+00:00",
+        "worker_started_at_utc": "2026-10-02T23:20:39.036628+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:20:44.658932+00:00",
+        "collected_at_utc": "2026-10-02T23:20:49.065339+00:00",
+        "worker_seconds": 5.621935100003611,
+        "scheduler_observed_seconds": 10.028114000015194,
+        "queue_wait_seconds": 6.360001862049103e-05,
+        "collection_wait_seconds": 4.406115299992962,
+        "publication_seconds": 0.061194200010504574,
+        "completed_at_utc": "2026-10-02T23:20:49.126553+00:00",
+        "end_to_end_seconds": 10.08933600000455,
+        "operation_seconds": 5.683129300014116
+      },
+      "model_id": "20261002T232049Z-c105a928",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.022675099986373,
+      "outcome": "promoted",
+      "source_run_id": "20261002T232505Z-7d3a1606",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:25:10.189132+00:00",
+        "worker_started_at_utc": "2026-10-02T23:25:10.189205+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:25:15.866692+00:00",
+        "collected_at_utc": "2026-10-02T23:25:20.212467+00:00",
+        "worker_seconds": 5.677112000004854,
+        "scheduler_observed_seconds": 10.022675099986373,
+        "queue_wait_seconds": 7.329997606575489e-05,
+        "collection_wait_seconds": 4.345489800005453,
+        "publication_seconds": 0.06270859998767264,
+        "completed_at_utc": "2026-10-02T23:25:20.275196+00:00",
+        "end_to_end_seconds": 10.085410599975148,
+        "operation_seconds": 5.739820599992527
+      },
+      "model_id": "20261002T232520Z-ad3993d6",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.011799999978393,
+      "outcome": "research_only",
+      "source_run_id": "20261002T232505Z-de509b7a",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:25:20.360907+00:00",
+        "worker_started_at_utc": "2026-10-02T23:25:20.360972+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:25:25.878590+00:00",
+        "collected_at_utc": "2026-10-02T23:25:30.373366+00:00",
+        "worker_seconds": 5.517255599988857,
+        "scheduler_observed_seconds": 10.011799999978393,
+        "queue_wait_seconds": 6.469999789260328e-05,
+        "collection_wait_seconds": 4.494479699991643,
+        "publication_seconds": 0.05964940000558272,
+        "completed_at_utc": "2026-10-02T23:25:30.433037+00:00",
+        "end_to_end_seconds": 10.071480899991002,
+        "operation_seconds": 5.57690499999444
+      },
+      "model_id": "20261002T232530Z-1ea53ce5",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.020181899977615,
+      "outcome": "research_only",
+      "source_run_id": "20261002T232506Z-21e98a68",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:25:30.518019+00:00",
+        "worker_started_at_utc": "2026-10-02T23:25:30.518084+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:25:36.420999+00:00",
+        "collected_at_utc": "2026-10-02T23:25:40.538861+00:00",
+        "worker_seconds": 5.902527400001418,
+        "scheduler_observed_seconds": 10.020181899977615,
+        "queue_wait_seconds": 6.379999103955925e-05,
+        "collection_wait_seconds": 4.117590699985158,
+        "publication_seconds": 0.059802799980388954,
+        "completed_at_utc": "2026-10-02T23:25:40.598684+00:00",
+        "end_to_end_seconds": 10.080011799989734,
+        "operation_seconds": 5.962330199981807
+      },
+      "model_id": "20261002T232540Z-1c40add4",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.012777600000845,
+      "outcome": "research_only",
+      "source_run_id": "20261002T232506Z-de7bd475",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:25:40.679820+00:00",
+        "worker_started_at_utc": "2026-10-02T23:25:40.679883+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:25:46.185641+00:00",
+        "collected_at_utc": "2026-10-02T23:25:50.693257+00:00",
+        "worker_seconds": 5.50539549998939,
+        "scheduler_observed_seconds": 10.012777600000845,
+        "queue_wait_seconds": 6.290001329034567e-05,
+        "collection_wait_seconds": 4.5073191999981645,
+        "publication_seconds": 0.060525799985043705,
+        "completed_at_utc": "2026-10-02T23:25:50.753803+00:00",
+        "end_to_end_seconds": 10.073329600010766,
+        "operation_seconds": 5.565921299974434
+      },
+      "model_id": "20261002T232550Z-252ab858",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.016546900005778,
+      "outcome": "promoted",
+      "source_run_id": "20261002T233005Z-e63cabb3",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:30:06.864182+00:00",
+        "worker_started_at_utc": "2026-10-02T23:30:06.864254+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:30:12.372788+00:00",
+        "collected_at_utc": "2026-10-02T23:30:16.881389+00:00",
+        "worker_seconds": 5.508171499997843,
+        "scheduler_observed_seconds": 10.016546900005778,
+        "queue_wait_seconds": 7.160002132877707e-05,
+        "collection_wait_seconds": 4.5083037999866065,
+        "publication_seconds": 0.05863939999835566,
+        "completed_at_utc": "2026-10-02T23:30:16.940051+00:00",
+        "end_to_end_seconds": 10.075215300021227,
+        "operation_seconds": 5.566810899996199
+      },
+      "model_id": "20261002T233016Z-f3f78859",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.02894039999228,
+      "outcome": "research_only",
+      "source_run_id": "20261002T233005Z-194d0033",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:30:17.025229+00:00",
+        "worker_started_at_utc": "2026-10-02T23:30:17.025290+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:30:22.514392+00:00",
+        "collected_at_utc": "2026-10-02T23:30:27.054830+00:00",
+        "worker_seconds": 5.488741600012872,
+        "scheduler_observed_seconds": 10.02894039999228,
+        "queue_wait_seconds": 6.019999273121357e-05,
+        "collection_wait_seconds": 4.540138599986676,
+        "publication_seconds": 0.06296049998491071,
+        "completed_at_utc": "2026-10-02T23:30:27.117812+00:00",
+        "end_to_end_seconds": 10.09193170000799,
+        "operation_seconds": 5.551702099997783
+      },
+      "model_id": "20261002T233027Z-be3a5010",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.035948400007328,
+      "outcome": "research_only",
+      "source_run_id": "20261002T233006Z-c52a47a5",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:30:27.207889+00:00",
+        "worker_started_at_utc": "2026-10-02T23:30:27.207952+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:30:33.086909+00:00",
+        "collected_at_utc": "2026-10-02T23:30:37.244499+00:00",
+        "worker_seconds": 5.878570100001525,
+        "scheduler_observed_seconds": 10.035948400007328,
+        "queue_wait_seconds": 6.2700011767447e-05,
+        "collection_wait_seconds": 4.157315599994035,
+        "publication_seconds": 0.060497500002384186,
+        "completed_at_utc": "2026-10-02T23:30:37.305016+00:00",
+        "end_to_end_seconds": 10.096472900011577,
+        "operation_seconds": 5.939067600003909
+      },
+      "model_id": "20261002T233037Z-be310c17",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.016298200003803,
+      "outcome": "research_only",
+      "source_run_id": "20261002T233006Z-ce36426f",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:30:37.387597+00:00",
+        "worker_started_at_utc": "2026-10-02T23:30:37.387662+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:30:42.902317+00:00",
+        "collected_at_utc": "2026-10-02T23:30:47.404555+00:00",
+        "worker_seconds": 5.514291800005594,
+        "scheduler_observed_seconds": 10.016298200003803,
+        "queue_wait_seconds": 6.500000017695129e-05,
+        "collection_wait_seconds": 4.501941399998032,
+        "publication_seconds": 0.05543140001827851,
+        "completed_at_utc": "2026-10-02T23:30:47.460003+00:00",
+        "end_to_end_seconds": 10.071752199990442,
+        "operation_seconds": 5.569723200023873
+      },
+      "model_id": "20261002T233047Z-75cb7c62",
+      "eligible": false
+    },
+    {
+      "market": "BTC/5m/h1",
+      "seconds": 10.035748700000113,
+      "outcome": "promoted",
+      "source_run_id": "20261002T233505Z-3c7b9426",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:35:08.529299+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:08.529366+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:14.190719+00:00",
+        "collected_at_utc": "2026-10-02T23:35:18.565709+00:00",
+        "worker_seconds": 5.660980699991342,
+        "scheduler_observed_seconds": 10.035748700000113,
+        "queue_wait_seconds": 6.670001312159002e-05,
+        "collection_wait_seconds": 4.37470129999565,
+        "publication_seconds": 0.0632039999763947,
+        "completed_at_utc": "2026-10-02T23:35:18.628933+00:00",
+        "end_to_end_seconds": 10.098979700007476,
+        "operation_seconds": 5.724184699967736
+      },
+      "model_id": "20261002T233518Z-91efbba9",
+      "eligible": true
+    },
+    {
+      "market": "ETH/5m/h1",
+      "seconds": 10.027937600010773,
+      "outcome": "research_only",
+      "source_run_id": "20261002T233505Z-1ecb416d",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:35:18.750309+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:18.750373+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:24.293153+00:00",
+        "collected_at_utc": "2026-10-02T23:35:28.778907+00:00",
+        "worker_seconds": 5.542416499985848,
+        "scheduler_observed_seconds": 10.027937600010773,
+        "queue_wait_seconds": 6.3000014051795e-05,
+        "collection_wait_seconds": 4.485458100010874,
+        "publication_seconds": 0.06683699999121018,
+        "completed_at_utc": "2026-10-02T23:35:28.845773+00:00",
+        "end_to_end_seconds": 10.094812700001057,
+        "operation_seconds": 5.609253499977058
+      },
+      "model_id": "20261002T233528Z-abd585de",
+      "eligible": false
+    },
+    {
+      "market": "HYPE/5m/h1",
+      "seconds": 10.03685289999703,
+      "outcome": "research_only",
+      "source_run_id": "20261002T233506Z-88e8b127",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:35:28.939711+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:28.939804+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:34.768802+00:00",
+        "collected_at_utc": "2026-10-02T23:35:38.977225+00:00",
+        "worker_seconds": 5.828616000013426,
+        "scheduler_observed_seconds": 10.03685289999703,
+        "queue_wait_seconds": 9.139999747276306e-05,
+        "collection_wait_seconds": 4.208145499986131,
+        "publication_seconds": 0.0617084999976214,
+        "completed_at_utc": "2026-10-02T23:35:39.038954+00:00",
+        "end_to_end_seconds": 10.098592700000154,
+        "operation_seconds": 5.890324500011047
+      },
+      "model_id": "20261002T233538Z-a6c3604f",
+      "eligible": false
+    },
+    {
+      "market": "ZEC/5m/h1",
+      "seconds": 10.02704720001202,
+      "outcome": "research_only",
+      "source_run_id": "20261002T233506Z-2a220e8f",
+      "timing": {
+        "submitted_at_utc": "2026-10-02T23:35:39.123934+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:39.124000+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:44.610707+00:00",
+        "collected_at_utc": "2026-10-02T23:35:49.151642+00:00",
+        "worker_seconds": 5.486346399993636,
+        "scheduler_observed_seconds": 10.02704720001202,
+        "queue_wait_seconds": 6.640001083724201e-05,
+        "collection_wait_seconds": 4.540634400007548,
+        "publication_seconds": 0.060995199979515746,
+        "completed_at_utc": "2026-10-02T23:35:49.212657+00:00",
+        "end_to_end_seconds": 10.08806980002555,
+        "operation_seconds": 5.5473415999731515
+      },
+      "model_id": "20261002T233549Z-5cdfaec7",
+      "eligible": false
+    }
+  ],
+  "timing_write_error": null,
+  "markets": {
+    "BTC/5m/h1": {
+      "status": "predicting_with_active",
+      "training": false,
+      "training_attempts": 26,
+      "last_error": null,
+      "last_prediction_error": null,
+      "last_prediction": {
+        "prediction_id": "cb23734d707a4eddbb445a342fd60225",
+        "model_id": "20261002T233016Z-f3f78859",
+        "data_run_id": "20261002T233505Z-3c7b9426",
+        "coin": "BTC",
+        "interval": "5m",
+        "horizon_bars": 1,
+        "role": "active",
+        "qualified": true,
+        "created_at_utc": "2026-10-02T23:35:08.334576+00:00",
+        "decision_timestamp_utc": "2026-10-02T23:30:00+00:00",
+        "decision_close_utc": "2026-10-02T23:35:00+00:00",
+        "decision_price": 84486.0,
+        "target_close_utc": "2026-10-02T23:40:00+00:00",
+        "p_not_down": 0.4931141076345537,
+        "p_down": 0.5068858923654462,
+        "per_model": {
+          "extra_trees": {
+            "p_down": 0.5055531586062723,
+            "p_not_down": 0.4944468413937278
+          },
+          "hist_gradient_boosting": {
+            "p_down": 0.5288938711225059,
+            "p_not_down": 0.47110612887749415
+          },
+          "logistic": {
+            "p_down": 0.5048328223212811,
+            "p_not_down": 0.4951671776787189
+          },
+          "mlp": {
+            "p_down": 0.49974751473510315,
+            "p_not_down": 0.5002524852648969
+          },
+          "random_forest": {
+            "p_down": 0.5223937652172493,
+            "p_not_down": 0.47760623478275066
+          }
+        }
+      },
+      "candidate": {
+        "model_id": "20261002T233518Z-91efbba9",
+        "source_run_id": "20261002T233505Z-3c7b9426",
+        "source_last_close_utc": "2026-10-02T23:35:00+00:00",
+        "trained_at_utc": "2026-10-02T23:35:18.565725+00:00",
+        "eligible": true,
+        "settings": {
+          "horizon_bars": 1,
+          "min_train_rows": 1000,
+          "calibration_rows": 192,
+          "assessment_rows": 288,
+          "random_state": 42,
+          "model_threads": 2,
+          "max_train_rows": null,
+          "split_mode": "fractions",
+          "train_fraction": 0.7,
+          "calibration_fraction": 0.15,
+          "assessment_fraction": 0.15,
+          "calibration_c": 0.04,
+          "logistic_weight": 0.4,
+          "extra_trees_weight": 0.1,
+          "hist_gradient_boosting_weight": 0.1875,
+          "mlp_weight": 0.05,
+          "random_forest_weight": 0.2625,
+          "ensemble_probability_shrinkage": 0.5
+        },
+        "horizon_bars": 1,
+        "coin": "BTC",
+        "interval": "5m",
+        "codeversion": 1,
+        "feature_revision": "btc_shared_causal_v1",
+        "feature_names": [
+          "log_return_1",
+          "log_return_3",
+          "log_return_6",
+          "ema_close_6",
+          "ema_close_10",
+          "ema_close_20",
+          "ema_close_50",
+          "volatility_log_return_6",
+          "volatility_log_return_10",
+          "volatility_log_return_20",
+          "rsi_14",
+          "atr_14",
+          "bb_mid_20",
+          "bb_width_20",
+          "bb_position_20",
+          "volume_ratio_20",
+          "stochastic_14",
+          "momentum_6",
+          "lwmf_v2",
+          "tdindi_v2",
+          "vaa_v2",
+          "adi_v2",
+          "dirpresh_v2",
+          "vwtmi_v2",
+          "pvam_v2",
+          "apdi_v2",
+          "ivts_v2",
+          "directins_v2",
+          "paindex_v2",
+          "dvwa_v2",
+          "pdpf_v2",
+          "dypim_v2",
+          "pmvf_v2",
+          "epdii_v2",
+          "cvei_v2",
+          "smdi_v2",
+          "etsa_v2",
+          "roc_v2"
+        ],
+        "bundle_path": "C:\\DATASTORE\\hyperliquid\\_models\\BTC\\5m\\h1\\runs\\20261002T233518Z-91efbba9\\bundle.joblib",
+        "report_path": "C:\\DATASTORE\\hyperliquid\\_models\\BTC\\5m\\h1\\runs\\20261002T233518Z-91efbba9\\report.json",
+        "assessment_path": "C:\\DATASTORE\\hyperliquid\\_models\\BTC\\5m\\h1\\runs\\20261002T233518Z-91efbba9\\assessment.parquet"
+      },
+      "data_run_id": "20261002T233505Z-3c7b9426",
+      "forward_metrics": {
+        "n": 25,
+        "brier": 0.24981087821668815,
+        "logloss": 0.6927689289488338,
+        "accuracy": 0.48,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-10-02T23:35:18.710227+00:00",
+        "by_role": {
+          "active": {
+            "n": 25,
+            "brier": 0.24981087821668815,
+            "logloss": 0.6927689289488338,
+            "accuracy": 0.48
+          },
+          "research_candidate": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          }
+        }
+      },
+      "last_report": {
+        "eligible": true,
+        "metrics": {
+          "logistic": {
+            "rows": 924,
+            "log_loss": 0.6927153609131812,
+            "brier_score": 0.24978393451770947,
+            "accuracy": 0.5313852813852814,
+            "roc_auc": 0.5325667266456741
+          },
+          "extra_trees": {
+            "rows": 924,
+            "log_loss": 0.691806003903752,
+            "brier_score": 0.24933010159334554,
+            "accuracy": 0.5151515151515151,
+            "roc_auc": 0.5327494751836857
+          },
+          "hist_gradient_boosting": {
+            "rows": 924,
+            "log_loss": 0.6923819603960484,
+            "brier_score": 0.24961739576537587,
+            "accuracy": 0.5238095238095238,
+            "roc_auc": 0.5274591393012446
+          },
+          "mlp": {
+            "rows": 924,
+            "log_loss": 0.6931599311605737,
+            "brier_score": 0.2500063457506359,
+            "accuracy": 0.5064935064935064,
+            "roc_auc": 0.5184716599190283
+          },
+          "random_forest": {
+            "rows": 924,
+            "log_loss": 0.6906007802242677,
+            "brier_score": 0.24872867125753692,
+            "accuracy": 0.5324675324675324,
+            "roc_auc": 0.5482081271554956
+          },
+          "ensemble": {
+            "rows": 924,
+            "log_loss": 0.6924806101282663,
+            "brier_score": 0.24966674242835085,
+            "accuracy": 0.5313852813852814,
+            "roc_auc": 0.5450732868496027
+          },
+          "prior_baseline": {
+            "rows": 924,
+            "log_loss": 0.6931017452330274,
+            "brier_score": 0.24997727651523294,
+            "accuracy": 0.5064935064935064,
+            "roc_auc": 0.5
+          },
+          "neutral_baseline": {
+            "rows": 924,
+            "log_loss": 0.6931471805599452,
+            "brier_score": 0.25,
+            "accuracy": 0.5064935064935064,
+            "roc_auc": 0.5
+          }
+        },
+        "model_timings": {
+          "logistic": {
+            "fit_seconds": 0.02202709999983199,
+            "calibration_seconds": 0.00208760000532493,
+            "assessment_seconds": 0.0010618999949656427,
+            "total_seconds": 0.02517700000316836
+          },
+          "extra_trees": {
+            "fit_seconds": 0.5669388999813236,
+            "calibration_seconds": 0.011616900010267273,
+            "assessment_seconds": 0.010613199992803857,
+            "total_seconds": 0.5891695999889635
+          },
+          "hist_gradient_boosting": {
+            "fit_seconds": 0.13656370001262985,
+            "calibration_seconds": 0.006366400019032881,
+            "assessment_seconds": 0.005260699981590733,
+            "total_seconds": 0.14819159999024123
+          },
+          "mlp": {
+            "fit_seconds": 0.5501142999855801,
+            "calibration_seconds": 0.002911700023105368,
+            "assessment_seconds": 0.0013244999863673002,
+            "total_seconds": 0.5543510999996215
+          },
+          "random_forest": {
+            "fit_seconds": 4.293535100005101,
+            "calibration_seconds": 0.0105712000222411,
+            "assessment_seconds": 0.008999699988635257,
+            "total_seconds": 4.313106599991443
+          }
+        },
+        "total_fit_seconds": 5.569179099984467,
+        "total_seconds": 5.660652000020491
+      },
+      "last_training_seconds": 10.035748700000113,
+      "last_training_timing": {
+        "submitted_at_utc": "2026-10-02T23:35:08.529299+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:08.529366+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:14.190719+00:00",
+        "collected_at_utc": "2026-10-02T23:35:18.565709+00:00",
+        "worker_seconds": 5.660980699991342,
+        "scheduler_observed_seconds": 10.035748700000113,
+        "queue_wait_seconds": 6.670001312159002e-05,
+        "collection_wait_seconds": 4.37470129999565,
+        "publication_seconds": 0.0632039999763947,
+        "completed_at_utc": "2026-10-02T23:35:18.628933+00:00",
+        "end_to_end_seconds": 10.098979700007476,
+        "operation_seconds": 5.724184699967736
+      }
+    },
+    "ETH/5m/h1": {
+      "status": "predicting_with_research_candidate",
+      "training": false,
+      "training_attempts": 26,
+      "last_error": null,
+      "last_prediction_error": null,
+      "last_prediction": {
+        "prediction_id": "b6663932ab9d44bb824e2cf8e74b0173",
+        "model_id": "20261002T233027Z-be3a5010",
+        "data_run_id": "20261002T233505Z-1ecb416d",
+        "coin": "ETH",
+        "interval": "5m",
+        "horizon_bars": 1,
+        "role": "research_candidate",
+        "qualified": false,
+        "created_at_utc": "2026-10-02T23:35:08.397619+00:00",
+        "decision_timestamp_utc": "2026-10-02T23:30:00+00:00",
+        "decision_close_utc": "2026-10-02T23:35:00+00:00",
+        "decision_price": 2668.1,
+        "target_close_utc": "2026-10-02T23:40:00+00:00",
+        "p_not_down": 0.5054665341324471,
+        "p_down": 0.49453346586755287,
+        "per_model": {
+          "extra_trees": {
+            "p_down": 0.4906358977357149,
+            "p_not_down": 0.5093641022642851
+          },
+          "hist_gradient_boosting": {
+            "p_down": 0.4897510141950473,
+            "p_not_down": 0.5102489858049527
+          },
+          "logistic": {
+            "p_down": 0.4887662799734793,
+            "p_not_down": 0.5112337200265207
+          },
+          "mlp": {
+            "p_down": 0.48845896687772616,
+            "p_not_down": 0.5115410331222738
+          },
+          "random_forest": {
+            "p_down": 0.488554538920704,
+            "p_not_down": 0.511445461079296
+          }
+        }
+      },
+      "candidate": {
+        "model_id": "20261002T233528Z-abd585de",
+        "source_run_id": "20261002T233505Z-1ecb416d",
+        "source_last_close_utc": "2026-10-02T23:35:00+00:00",
+        "trained_at_utc": "2026-10-02T23:35:28.778931+00:00",
+        "eligible": false,
+        "settings": {
+          "horizon_bars": 1,
+          "min_train_rows": 1000,
+          "calibration_rows": 192,
+          "assessment_rows": 288,
+          "random_state": 42,
+          "model_threads": 2,
+          "max_train_rows": null,
+          "split_mode": "fractions",
+          "train_fraction": 0.7,
+          "calibration_fraction": 0.15,
+          "assessment_fraction": 0.15,
+          "calibration_c": 0.04,
+          "logistic_weight": 0.4,
+          "extra_trees_weight": 0.1,
+          "hist_gradient_boosting_weight": 0.1875,
+          "mlp_weight": 0.05,
+          "random_forest_weight": 0.2625,
+          "ensemble_probability_shrinkage": 0.5
+        },
+        "horizon_bars": 1,
+        "coin": "ETH",
+        "interval": "5m",
+        "codeversion": 1,
+        "feature_revision": "btc_shared_causal_v1",
+        "feature_names": [
+          "log_return_1",
+          "log_return_3",
+          "log_return_6",
+          "ema_close_6",
+          "ema_close_10",
+          "ema_close_20",
+          "ema_close_50",
+          "volatility_log_return_6",
+          "volatility_log_return_10",
+          "volatility_log_return_20",
+          "rsi_14",
+          "atr_14",
+          "bb_mid_20",
+          "bb_width_20",
+          "bb_position_20",
+          "volume_ratio_20",
+          "stochastic_14",
+          "momentum_6",
+          "lwmf_v2",
+          "tdindi_v2",
+          "vaa_v2",
+          "adi_v2",
+          "dirpresh_v2",
+          "vwtmi_v2",
+          "pvam_v2",
+          "apdi_v2",
+          "ivts_v2",
+          "directins_v2",
+          "paindex_v2",
+          "dvwa_v2",
+          "pdpf_v2",
+          "dypim_v2",
+          "pmvf_v2",
+          "epdii_v2",
+          "cvei_v2",
+          "smdi_v2",
+          "etsa_v2",
+          "roc_v2"
+        ],
+        "bundle_path": "C:\\DATASTORE\\hyperliquid\\_models\\ETH\\5m\\h1\\runs\\20261002T233528Z-abd585de\\bundle.joblib",
+        "report_path": "C:\\DATASTORE\\hyperliquid\\_models\\ETH\\5m\\h1\\runs\\20261002T233528Z-abd585de\\report.json",
+        "assessment_path": "C:\\DATASTORE\\hyperliquid\\_models\\ETH\\5m\\h1\\runs\\20261002T233528Z-abd585de\\assessment.parquet"
+      },
+      "data_run_id": "20261002T233505Z-1ecb416d",
+      "forward_metrics": {
+        "n": 25,
+        "brier": 0.24913199784234358,
+        "logloss": 0.6914111289852732,
+        "accuracy": 0.64,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-10-02T23:35:28.896256+00:00",
+        "by_role": {
+          "active": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          },
+          "research_candidate": {
+            "n": 25,
+            "brier": 0.24913199784234358,
+            "logloss": 0.6914111289852732,
+            "accuracy": 0.64
+          }
+        }
+      },
+      "last_report": {
+        "eligible": false,
+        "metrics": {
+          "logistic": {
+            "rows": 924,
+            "log_loss": 0.6925512278571729,
+            "brier_score": 0.2497020636301081,
+            "accuracy": 0.5183982683982684,
+            "roc_auc": 0.5142831679081374
+          },
+          "extra_trees": {
+            "rows": 924,
+            "log_loss": 0.6924456958886755,
+            "brier_score": 0.24964931579621968,
+            "accuracy": 0.5119047619047619,
+            "roc_auc": 0.5250389327729517
+          },
+          "hist_gradient_boosting": {
+            "rows": 924,
+            "log_loss": 0.6922263292525405,
+            "brier_score": 0.24953968507709978,
+            "accuracy": 0.5281385281385281,
+            "roc_auc": 0.5250483141640243
+          },
+          "mlp": {
+            "rows": 924,
+            "log_loss": 0.6928202824000068,
+            "brier_score": 0.2498363215409638,
+            "accuracy": 0.5194805194805194,
+            "roc_auc": 0.5116939039720809
+          },
+          "random_forest": {
+            "rows": 924,
+            "log_loss": 0.6925391674295663,
+            "brier_score": 0.24969602926420256,
+            "accuracy": 0.5151515151515151,
+            "roc_auc": 0.5167926900200761
+          },
+          "ensemble": {
+            "rows": 924,
+            "log_loss": 0.6927643882626915,
+            "brier_score": 0.2498086127072952,
+            "accuracy": 0.5097402597402597,
+            "roc_auc": 0.5196962305570669
+          },
+          "prior_baseline": {
+            "rows": 924,
+            "log_loss": 0.692578234487687,
+            "brier_score": 0.24971557354219368,
+            "accuracy": 0.5173160173160173,
+            "roc_auc": 0.5
+          },
+          "neutral_baseline": {
+            "rows": 924,
+            "log_loss": 0.6931471805599452,
+            "brier_score": 0.25,
+            "accuracy": 0.5173160173160173,
+            "roc_auc": 0.5
+          }
+        },
+        "model_timings": {
+          "logistic": {
+            "fit_seconds": 0.0246286999899894,
+            "calibration_seconds": 0.002406999992672354,
+            "assessment_seconds": 0.0012125000066589564,
+            "total_seconds": 0.028248599992366508
+          },
+          "extra_trees": {
+            "fit_seconds": 0.5539948999939952,
+            "calibration_seconds": 0.011191099998541176,
+            "assessment_seconds": 0.008998800010886043,
+            "total_seconds": 0.5741852000064682
+          },
+          "hist_gradient_boosting": {
+            "fit_seconds": 0.11756330000935122,
+            "calibration_seconds": 0.005644599994411692,
+            "assessment_seconds": 0.0043154000013601035,
+            "total_seconds": 0.12752370000816882
+          },
+          "mlp": {
+            "fit_seconds": 0.49936210000305437,
+            "calibration_seconds": 0.0030354999762494117,
+            "assessment_seconds": 0.0014189000066835433,
+            "total_seconds": 0.5038173999928404
+          },
+          "random_forest": {
+            "fit_seconds": 4.258023399976082,
+            "calibration_seconds": 0.010699200007366017,
+            "assessment_seconds": 0.008828699996229261,
+            "total_seconds": 4.277551999985008
+          }
+        },
+        "total_fit_seconds": 5.453572399972472,
+        "total_seconds": 5.542137399985222
+      },
+      "last_training_seconds": 10.027937600010773,
+      "last_training_timing": {
+        "submitted_at_utc": "2026-10-02T23:35:18.750309+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:18.750373+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:24.293153+00:00",
+        "collected_at_utc": "2026-10-02T23:35:28.778907+00:00",
+        "worker_seconds": 5.542416499985848,
+        "scheduler_observed_seconds": 10.027937600010773,
+        "queue_wait_seconds": 6.3000014051795e-05,
+        "collection_wait_seconds": 4.485458100010874,
+        "publication_seconds": 0.06683699999121018,
+        "completed_at_utc": "2026-10-02T23:35:28.845773+00:00",
+        "end_to_end_seconds": 10.094812700001057,
+        "operation_seconds": 5.609253499977058
+      }
+    },
+    "HYPE/5m/h1": {
+      "status": "predicting_with_active",
+      "training": false,
+      "training_attempts": 26,
+      "last_error": null,
+      "last_prediction_error": null,
+      "last_prediction": {
+        "prediction_id": "f231eeecc9184236801cb5f48ce391b0",
+        "model_id": "20261002T224040Z-650d3fa8",
+        "data_run_id": "20261002T233506Z-88e8b127",
+        "coin": "HYPE",
+        "interval": "5m",
+        "horizon_bars": 1,
+        "role": "active",
+        "qualified": true,
+        "created_at_utc": "2026-10-02T23:35:08.460670+00:00",
+        "decision_timestamp_utc": "2026-10-02T23:30:00+00:00",
+        "decision_close_utc": "2026-10-02T23:35:00+00:00",
+        "decision_price": 88.281,
+        "target_close_utc": "2026-10-02T23:40:00+00:00",
+        "p_not_down": 0.5012168476032717,
+        "p_down": 0.4987831523967283,
+        "per_model": {
+          "extra_trees": {
+            "p_down": 0.4958718387102614,
+            "p_not_down": 0.5041281612897386
+          },
+          "hist_gradient_boosting": {
+            "p_down": 0.49709844163394445,
+            "p_not_down": 0.5029015583660555
+          },
+          "logistic": {
+            "p_down": 0.4958752772436932,
+            "p_not_down": 0.5041247227563068
+          },
+          "mlp": {
+            "p_down": 0.4960268044955344,
+            "p_not_down": 0.5039731955044656
+          },
+          "random_forest": {
+            "p_down": 0.501416045690712,
+            "p_not_down": 0.4985839543092881
+          }
+        }
+      },
+      "candidate": {
+        "model_id": "20261002T233538Z-a6c3604f",
+        "source_run_id": "20261002T233506Z-88e8b127",
+        "source_last_close_utc": "2026-10-02T23:35:00+00:00",
+        "trained_at_utc": "2026-10-02T23:35:38.977241+00:00",
+        "eligible": false,
+        "settings": {
+          "horizon_bars": 1,
+          "min_train_rows": 1000,
+          "calibration_rows": 192,
+          "assessment_rows": 288,
+          "random_state": 42,
+          "model_threads": 2,
+          "max_train_rows": null,
+          "split_mode": "fractions",
+          "train_fraction": 0.7,
+          "calibration_fraction": 0.15,
+          "assessment_fraction": 0.15,
+          "calibration_c": 0.04,
+          "logistic_weight": 0.4,
+          "extra_trees_weight": 0.1,
+          "hist_gradient_boosting_weight": 0.1875,
+          "mlp_weight": 0.05,
+          "random_forest_weight": 0.2625,
+          "ensemble_probability_shrinkage": 0.5
+        },
+        "horizon_bars": 1,
+        "coin": "HYPE",
+        "interval": "5m",
+        "codeversion": 1,
+        "feature_revision": "btc_shared_causal_v1",
+        "feature_names": [
+          "log_return_1",
+          "log_return_3",
+          "log_return_6",
+          "ema_close_6",
+          "ema_close_10",
+          "ema_close_20",
+          "ema_close_50",
+          "volatility_log_return_6",
+          "volatility_log_return_10",
+          "volatility_log_return_20",
+          "rsi_14",
+          "atr_14",
+          "bb_mid_20",
+          "bb_width_20",
+          "bb_position_20",
+          "volume_ratio_20",
+          "stochastic_14",
+          "momentum_6",
+          "lwmf_v2",
+          "tdindi_v2",
+          "vaa_v2",
+          "adi_v2",
+          "dirpresh_v2",
+          "vwtmi_v2",
+          "pvam_v2",
+          "apdi_v2",
+          "ivts_v2",
+          "directins_v2",
+          "paindex_v2",
+          "dvwa_v2",
+          "pdpf_v2",
+          "dypim_v2",
+          "pmvf_v2",
+          "epdii_v2",
+          "cvei_v2",
+          "smdi_v2",
+          "etsa_v2",
+          "roc_v2"
+        ],
+        "bundle_path": "C:\\DATASTORE\\hyperliquid\\_models\\HYPE\\5m\\h1\\runs\\20261002T233538Z-a6c3604f\\bundle.joblib",
+        "report_path": "C:\\DATASTORE\\hyperliquid\\_models\\HYPE\\5m\\h1\\runs\\20261002T233538Z-a6c3604f\\report.json",
+        "assessment_path": "C:\\DATASTORE\\hyperliquid\\_models\\HYPE\\5m\\h1\\runs\\20261002T233538Z-a6c3604f\\assessment.parquet"
+      },
+      "data_run_id": "20261002T233506Z-88e8b127",
+      "forward_metrics": {
+        "n": 25,
+        "brier": 0.24918811067554286,
+        "logloss": 0.6915233851123294,
+        "accuracy": 0.68,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-10-02T23:35:39.081748+00:00",
+        "by_role": {
+          "active": {
+            "n": 23,
+            "brier": 0.24933916897159294,
+            "logloss": 0.6918255041180668,
+            "accuracy": 0.6521739130434783
+          },
+          "research_candidate": {
+            "n": 2,
+            "brier": 0.247450940270967,
+            "logloss": 0.6880490165463473,
+            "accuracy": 1.0
+          }
+        }
+      },
+      "last_report": {
+        "eligible": false,
+        "metrics": {
+          "logistic": {
+            "rows": 924,
+            "log_loss": 0.6930539659814736,
+            "brier_score": 0.2499533978435335,
+            "accuracy": 0.5108225108225108,
+            "roc_auc": 0.48174248778224993
+          },
+          "extra_trees": {
+            "rows": 924,
+            "log_loss": 0.693157652705265,
+            "brier_score": 0.25000523678853925,
+            "accuracy": 0.4967532467532468,
+            "roc_auc": 0.5133891546675788
+          },
+          "hist_gradient_boosting": {
+            "rows": 924,
+            "log_loss": 0.6932669005245796,
+            "brier_score": 0.25005986210446784,
+            "accuracy": 0.49242424242424243,
+            "roc_auc": 0.4863578219371284
+          },
+          "mlp": {
+            "rows": 924,
+            "log_loss": 0.693079580784802,
+            "brier_score": 0.24996641356440277,
+            "accuracy": 0.5086580086580087,
+            "roc_auc": 0.5048238441750734
+          },
+          "random_forest": {
+            "rows": 924,
+            "log_loss": 0.6932702701557981,
+            "brier_score": 0.25006149770387864,
+            "accuracy": 0.4945887445887446,
+            "roc_auc": 0.5035774696723347
+          },
+          "ensemble": {
+            "rows": 924,
+            "log_loss": 0.6931372036590158,
+            "brier_score": 0.24999501226263016,
+            "accuracy": 0.5043290043290043,
+            "roc_auc": 0.49658652697276257
+          },
+          "prior_baseline": {
+            "rows": 924,
+            "log_loss": 0.6930899629092122,
+            "brier_score": 0.24997139168243615,
+            "accuracy": 0.5054112554112554,
+            "roc_auc": 0.5
+          },
+          "neutral_baseline": {
+            "rows": 924,
+            "log_loss": 0.6931471805599452,
+            "brier_score": 0.25,
+            "accuracy": 0.5054112554112554,
+            "roc_auc": 0.5
+          }
+        },
+        "model_timings": {
+          "logistic": {
+            "fit_seconds": 0.042331799981184304,
+            "calibration_seconds": 0.0035155000223312527,
+            "assessment_seconds": 0.0019396999850869179,
+            "total_seconds": 0.04778779999469407
+          },
+          "extra_trees": {
+            "fit_seconds": 0.6088431999960449,
+            "calibration_seconds": 0.011249300005147234,
+            "assessment_seconds": 0.009983999974792823,
+            "total_seconds": 0.6300772999820765
+          },
+          "hist_gradient_boosting": {
+            "fit_seconds": 0.16506749999825843,
+            "calibration_seconds": 0.007371399988187477,
+            "assessment_seconds": 0.0055179000191856176,
+            "total_seconds": 0.17795770001248457
+          },
+          "mlp": {
+            "fit_seconds": 0.5353997000202071,
+            "calibration_seconds": 0.002565799979493022,
+            "assessment_seconds": 0.0012241000076755881,
+            "total_seconds": 0.5391900000104215
+          },
+          "random_forest": {
+            "fit_seconds": 4.380495099991094,
+            "calibration_seconds": 0.010629299998981878,
+            "assessment_seconds": 0.008601000008638948,
+            "total_seconds": 4.399726000003284
+          }
+        },
+        "total_fit_seconds": 5.732137299986789,
+        "total_seconds": 5.828348899987759
+      },
+      "last_training_seconds": 10.03685289999703,
+      "last_training_timing": {
+        "submitted_at_utc": "2026-10-02T23:35:28.939711+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:28.939804+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:34.768802+00:00",
+        "collected_at_utc": "2026-10-02T23:35:38.977225+00:00",
+        "worker_seconds": 5.828616000013426,
+        "scheduler_observed_seconds": 10.03685289999703,
+        "queue_wait_seconds": 9.139999747276306e-05,
+        "collection_wait_seconds": 4.208145499986131,
+        "publication_seconds": 0.0617084999976214,
+        "completed_at_utc": "2026-10-02T23:35:39.038954+00:00",
+        "end_to_end_seconds": 10.098592700000154,
+        "operation_seconds": 5.890324500011047
+      }
+    },
+    "ZEC/5m/h1": {
+      "status": "predicting_with_research_candidate",
+      "training": false,
+      "training_attempts": 26,
+      "last_error": null,
+      "last_prediction_error": null,
+      "last_prediction": {
+        "prediction_id": "95bdc807c696444298f07a1c82a35a47",
+        "model_id": "20261002T233047Z-75cb7c62",
+        "data_run_id": "20261002T233506Z-2a220e8f",
+        "coin": "ZEC",
+        "interval": "5m",
+        "horizon_bars": 1,
+        "role": "research_candidate",
+        "qualified": false,
+        "created_at_utc": "2026-10-02T23:35:08.521795+00:00",
+        "decision_timestamp_utc": "2026-10-02T23:30:00+00:00",
+        "decision_close_utc": "2026-10-02T23:35:00+00:00",
+        "decision_price": 1297.2,
+        "target_close_utc": "2026-10-02T23:40:00+00:00",
+        "p_not_down": 0.5072506318279377,
+        "p_down": 0.4927493681720623,
+        "per_model": {
+          "extra_trees": {
+            "p_down": 0.4850849478435775,
+            "p_not_down": 0.5149150521564225
+          },
+          "hist_gradient_boosting": {
+            "p_down": 0.4852709365173371,
+            "p_not_down": 0.5147290634826629
+          },
+          "logistic": {
+            "p_down": 0.48734581202771365,
+            "p_not_down": 0.5126541879722863
+          },
+          "mlp": {
+            "p_down": 0.483411290688913,
+            "p_not_down": 0.516588709311087
+          },
+          "random_forest": {
+            "p_down": 0.48340210139899,
+            "p_not_down": 0.51659789860101
+          }
+        }
+      },
+      "candidate": {
+        "model_id": "20261002T233549Z-5cdfaec7",
+        "source_run_id": "20261002T233506Z-2a220e8f",
+        "source_last_close_utc": "2026-10-02T23:35:00+00:00",
+        "trained_at_utc": "2026-10-02T23:35:49.151657+00:00",
+        "eligible": false,
+        "settings": {
+          "horizon_bars": 1,
+          "min_train_rows": 1000,
+          "calibration_rows": 192,
+          "assessment_rows": 288,
+          "random_state": 42,
+          "model_threads": 2,
+          "max_train_rows": null,
+          "split_mode": "fractions",
+          "train_fraction": 0.7,
+          "calibration_fraction": 0.15,
+          "assessment_fraction": 0.15,
+          "calibration_c": 0.04,
+          "logistic_weight": 0.4,
+          "extra_trees_weight": 0.1,
+          "hist_gradient_boosting_weight": 0.1875,
+          "mlp_weight": 0.05,
+          "random_forest_weight": 0.2625,
+          "ensemble_probability_shrinkage": 0.5
+        },
+        "horizon_bars": 1,
+        "coin": "ZEC",
+        "interval": "5m",
+        "codeversion": 1,
+        "feature_revision": "btc_shared_causal_v1",
+        "feature_names": [
+          "log_return_1",
+          "log_return_3",
+          "log_return_6",
+          "ema_close_6",
+          "ema_close_10",
+          "ema_close_20",
+          "ema_close_50",
+          "volatility_log_return_6",
+          "volatility_log_return_10",
+          "volatility_log_return_20",
+          "rsi_14",
+          "atr_14",
+          "bb_mid_20",
+          "bb_width_20",
+          "bb_position_20",
+          "volume_ratio_20",
+          "stochastic_14",
+          "momentum_6",
+          "lwmf_v2",
+          "tdindi_v2",
+          "vaa_v2",
+          "adi_v2",
+          "dirpresh_v2",
+          "vwtmi_v2",
+          "pvam_v2",
+          "apdi_v2",
+          "ivts_v2",
+          "directins_v2",
+          "paindex_v2",
+          "dvwa_v2",
+          "pdpf_v2",
+          "dypim_v2",
+          "pmvf_v2",
+          "epdii_v2",
+          "cvei_v2",
+          "smdi_v2",
+          "etsa_v2",
+          "roc_v2"
+        ],
+        "bundle_path": "C:\\DATASTORE\\hyperliquid\\_models\\ZEC\\5m\\h1\\runs\\20261002T233549Z-5cdfaec7\\bundle.joblib",
+        "report_path": "C:\\DATASTORE\\hyperliquid\\_models\\ZEC\\5m\\h1\\runs\\20261002T233549Z-5cdfaec7\\report.json",
+        "assessment_path": "C:\\DATASTORE\\hyperliquid\\_models\\ZEC\\5m\\h1\\runs\\20261002T233549Z-5cdfaec7\\assessment.parquet"
+      },
+      "data_run_id": "20261002T233506Z-2a220e8f",
+      "forward_metrics": {
+        "n": 25,
+        "brier": 0.24865883685402518,
+        "logloss": 0.6904646338433758,
+        "accuracy": 0.6,
+        "new_outcomes": 0,
+        "updated_at_utc": "2026-10-02T23:35:49.260284+00:00",
+        "by_role": {
+          "active": {
+            "n": 0,
+            "brier": null,
+            "logloss": null,
+            "accuracy": null
+          },
+          "research_candidate": {
+            "n": 25,
+            "brier": 0.24865883685402518,
+            "logloss": 0.6904646338433758,
+            "accuracy": 0.6
+          }
+        }
+      },
+      "last_report": {
+        "eligible": false,
+        "metrics": {
+          "logistic": {
+            "rows": 924,
+            "log_loss": 0.6939623092817357,
+            "brier_score": 0.250407372590928,
+            "accuracy": 0.487012987012987,
+            "roc_auc": 0.5279083830623046
+          },
+          "extra_trees": {
+            "rows": 924,
+            "log_loss": 0.6942154480644702,
+            "brier_score": 0.25053402910497646,
+            "accuracy": 0.4880952380952381,
+            "roc_auc": 0.5179938403266409
+          },
+          "hist_gradient_boosting": {
+            "rows": 924,
+            "log_loss": 0.6940425122129594,
+            "brier_score": 0.25044765328228485,
+            "accuracy": 0.4880952380952381,
+            "roc_auc": 0.5262489276824346
+          },
+          "mlp": {
+            "rows": 924,
+            "log_loss": 0.6940112761452418,
+            "brier_score": 0.25043223322999025,
+            "accuracy": 0.4880952380952381,
+            "roc_auc": 0.499702329331577
+          },
+          "random_forest": {
+            "rows": 924,
+            "log_loss": 0.6943751054107061,
+            "brier_score": 0.2506136837717098,
+            "accuracy": 0.48484848484848486,
+            "roc_auc": 0.512204497405343
+          },
+          "ensemble": {
+            "rows": 924,
+            "log_loss": 0.6934893857538211,
+            "brier_score": 0.25017109684918704,
+            "accuracy": 0.4880952380952381,
+            "roc_auc": 0.5244394650365878
+          },
+          "prior_baseline": {
+            "rows": 924,
+            "log_loss": 0.6934595992722006,
+            "brier_score": 0.2501562028330374,
+            "accuracy": 0.4880952380952381,
+            "roc_auc": 0.5
+          },
+          "neutral_baseline": {
+            "rows": 924,
+            "log_loss": 0.6931471805599452,
+            "brier_score": 0.25,
+            "accuracy": 0.4880952380952381,
+            "roc_auc": 0.5
+          }
+        },
+        "model_timings": {
+          "logistic": {
+            "fit_seconds": 0.033916400017915294,
+            "calibration_seconds": 0.00264170000446029,
+            "assessment_seconds": 0.001187799993203953,
+            "total_seconds": 0.037746300018625334
+          },
+          "extra_trees": {
+            "fit_seconds": 0.5524931999971159,
+            "calibration_seconds": 0.010286899982020259,
+            "assessment_seconds": 0.008877500018570572,
+            "total_seconds": 0.5716582000022754
+          },
+          "hist_gradient_boosting": {
+            "fit_seconds": 0.1170474000100512,
+            "calibration_seconds": 0.005489900009706616,
+            "assessment_seconds": 0.004501899995375425,
+            "total_seconds": 0.1270397000189405
+          },
+          "mlp": {
+            "fit_seconds": 0.49923370001488365,
+            "calibration_seconds": 0.002836400002706796,
+            "assessment_seconds": 0.0012446999899111688,
+            "total_seconds": 0.503315100009786
+          },
+          "random_forest": {
+            "fit_seconds": 4.1960848000016995,
+            "calibration_seconds": 0.010718899982748553,
+            "assessment_seconds": 0.008995900017907843,
+            "total_seconds": 4.215800300007686
+          }
+        },
+        "total_fit_seconds": 5.3987755000416655,
+        "total_seconds": 5.486091700004181
+      },
+      "last_training_seconds": 10.02704720001202,
+      "last_training_timing": {
+        "submitted_at_utc": "2026-10-02T23:35:39.123934+00:00",
+        "worker_started_at_utc": "2026-10-02T23:35:39.124000+00:00",
+        "worker_finished_at_utc": "2026-10-02T23:35:44.610707+00:00",
+        "collected_at_utc": "2026-10-02T23:35:49.151642+00:00",
+        "worker_seconds": 5.486346399993636,
+        "scheduler_observed_seconds": 10.02704720001202,
+        "queue_wait_seconds": 6.640001083724201e-05,
+        "collection_wait_seconds": 4.540634400007548,
+        "publication_seconds": 0.060995199979515746,
+        "completed_at_utc": "2026-10-02T23:35:49.212657+00:00",
+        "end_to_end_seconds": 10.08806980002555,
+        "operation_seconds": 5.5473415999731515
+      }
+    }
+  }
+}

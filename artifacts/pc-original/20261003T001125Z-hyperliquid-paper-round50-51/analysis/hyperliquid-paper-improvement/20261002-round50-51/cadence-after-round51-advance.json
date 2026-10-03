@@ -1,0 +1,1013 @@
+{
+  "active": {
+    "baseline_evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-51",
+    "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+    "carry_in_unscored": false,
+    "due_at_utc": "2026-10-03T00:44:46.087340+00:00",
+    "evaluation_hours": 1,
+    "experiment_id": "20261002-paper-round-51",
+    "experiment_sha256": "37e887e1accb76b5a82eed85cee20c4464bb532f91ec0c97f67290148a2a3279",
+    "immutable_opening_hashes": {
+      "initial_positions_sha256": "e6316fffa88d24cdb27158843ebeb80d7acf3cd62be5f7e10e3dc42cf42dc168",
+      "opening_cycle_sha256": "1825045f3a9ca97372229a327cb5b100b2d5c171072c4421ef5925cc39cb8800",
+      "opening_snapshot_sha256": "3974026f3f14ef5fb2945945624fc0bc4b525d4e430b2c3e64781f6d86b5f305",
+      "seed_sha256": "4a1a77731457b364eb0baff783c5ecf6675dfc228c1e4b91c33728031494541e"
+    },
+    "opening_equity": 44291.30220340142,
+    "public_owner_sha256": {
+      "alex": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+      "clearpond": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+      "jeremy": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a"
+    },
+    "recipe": {
+      "config_sha256": {
+        "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+        "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+        "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b"
+      },
+      "horizons_bars": [
+        1
+      ],
+      "interval": "5m",
+      "paper_policy_id": "88cd1a6a008df9b9",
+      "require_qualified_forecasts": false,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ]
+    },
+    "seed_at_utc": "2026-10-02T23:44:46.087340593+00:00",
+    "win_forecast_rule": "valid-in-round-forecast-v2"
+  },
+  "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+  "current_evaluation_hours": 1,
+  "history": [
+    {
+      "advanced_at_utc": "2026-09-29T02:22:58.866271+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260928-paper-5m-01.json",
+        "sha256": "36a4518ed5cda1a36ed28024156248af4ed4d49e6d21d1590894715a7118d70d"
+      },
+      "decision": {
+        "ending_evaluation_hours": 2,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "carry_in_unscored",
+        "reason": "experiment_predates_the_committed_duration_policy",
+        "winning": false
+      },
+      "ending_experiment_id": "20260928-paper-5m-01",
+      "successor_experiment_id": "20260928-paper-two-hour-01"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T04:33:43.089235+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260928-paper-two-hour-01.json",
+        "sha256": "b120221352472c615d5ff9dd2a77fab08f099657964fa1520158bd4f97eb132e"
+      },
+      "decision": {
+        "common_mark_equity_edge": -100.30320208811463,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.0022859784054081443,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260928-paper-two-hour-01",
+      "successor_experiment_id": "20260928-paper-round-02"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T06:42:59.193963+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260928-paper-round-02.json",
+        "sha256": "f7efb7415fac527dfaf7a19dfde41faf6f5588827d780d3f20d64513612fc3c4"
+      },
+      "decision": {
+        "common_mark_equity_edge": -266.24889879363036,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.006063766728321534,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260928-paper-round-02",
+      "successor_experiment_id": "20260928-paper-round-03"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T08:51:00.586320+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260928-paper-round-03.json",
+        "sha256": "9622e288c63a8db87bd77a0e6310ded71f931c0ad354846e6f703c31c30e0269"
+      },
+      "decision": {
+        "common_mark_equity_edge": -66.28300958900218,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.001502619732570842,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260928-paper-round-03",
+      "successor_experiment_id": "20260929-paper-round-04"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T11:01:41.524098+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-04.json",
+        "sha256": "137ee1c5b92dc377e0ee255abc4d5406eb1934a8f83f2878d692b4d5b98633c1"
+      },
+      "decision": {
+        "common_mark_equity_edge": -84.84543212650169,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.0019236087335629077,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260929-paper-round-04",
+      "successor_experiment_id": "20260929-paper-round-05"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T13:16:19.032164+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-05.json",
+        "sha256": "9e480d2dc00e9bd4d2fd5567e9010428454f3d171a62414269034262c38ba4ef"
+      },
+      "decision": {
+        "common_mark_equity_edge": -144.4521602736204,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.0032703475040809626,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260929-paper-round-05",
+      "successor_experiment_id": "20260929-paper-round-06"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T15:17:39.115281+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-06.json",
+        "sha256": "b19740cc92e1324e8e860c948757c426eeac61aa4fddcfe8393c9671fb575cd0"
+      },
+      "decision": {
+        "common_mark_equity_edge": 171.87518126880605,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": 0.0038794515886504282,
+        "finalizable": true,
+        "next_evaluation_hours": 3,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20260929-paper-round-06",
+      "successor_experiment_id": "20260929-paper-round-07"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T18:25:43.899189+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-07.json",
+        "sha256": "35d32da0a36a65da35c715d662b07f1d94aa505084310bd84d788031d03f0ea8"
+      },
+      "decision": {
+        "common_mark_equity_edge": -67.36637116586644,
+        "ending_evaluation_hours": 3,
+        "excess_return_fraction": -0.0015308398085349462,
+        "finalizable": true,
+        "next_evaluation_hours": 3,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260929-paper-round-07",
+      "successor_experiment_id": "20260929-paper-round-08"
+    },
+    {
+      "advanced_at_utc": "2026-09-29T21:31:55.274825+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-08.json",
+        "sha256": "cc5d0aefd7a5edbd7118af2f8a8be4d7364bc5759e4206968b035f96dfb8526b"
+      },
+      "decision": {
+        "common_mark_equity_edge": 25.325682077360398,
+        "ending_evaluation_hours": 3,
+        "excess_return_fraction": 0.0005755992442438154,
+        "finalizable": true,
+        "next_evaluation_hours": 4,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20260929-paper-round-08",
+      "successor_experiment_id": "20260929-paper-round-09"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T01:42:05.250250+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-09.json",
+        "sha256": "6e1621b7c8e8742a3f76068a00994fc890ffd813a3dd5d58690baa85e8d4af76"
+      },
+      "decision": {
+        "common_mark_equity_edge": -7.402939481646172,
+        "ending_evaluation_hours": 4,
+        "excess_return_fraction": -0.00016838273949163493,
+        "finalizable": true,
+        "next_evaluation_hours": 4,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260929-paper-round-09",
+      "successor_experiment_id": "20260929-paper-round-10"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T05:52:42.743933+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-10.json",
+        "sha256": "5f4ea67f5c9463804d64b1f6c57db6e705014ae8cf4249e0a29954470c4aae32"
+      },
+      "decision": {
+        "common_mark_equity_edge": -69.57674690446584,
+        "ending_evaluation_hours": 4,
+        "excess_return_fraction": -0.0015833893083587493,
+        "finalizable": true,
+        "next_evaluation_hours": 4,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260929-paper-round-10",
+      "successor_experiment_id": "20260929-paper-round-11"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T08:07:21.800495+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260929-paper-round-11.json",
+        "sha256": "30873b76ffa3a7d87de170091c6c6f64213d59fe4bb7c016e20647fcdbf6bcdd"
+      },
+      "decision": {
+        "common_mark_equity_edge": -29.918116731998452,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.0006804239745838083,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260929-paper-round-11",
+      "successor_experiment_id": "20260930-paper-round-12"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T09:27:04.672844+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-12.json",
+        "sha256": "75f42cad34d4d2a48c2b51adec3654e6dbffb172fb8fa3a495d83facafd65adf"
+      },
+      "decision": {
+        "common_mark_equity_edge": -24.717942557494098,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0005626680297723674,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-12",
+      "successor_experiment_id": "20260930-paper-round-13"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T10:31:47.983227+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-13.json",
+        "sha256": "c2fa2cbfb39006e6b12ed0d50c8a505bf777f67a3d671435573ee44e31a25613"
+      },
+      "decision": {
+        "common_mark_equity_edge": -158.9560843854997,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.003616018493423173,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-13",
+      "successor_experiment_id": "20260930-paper-round-14"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T11:45:00.052474+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-14.json",
+        "sha256": "9257bc51a1d0e969ebf0f2c63ff1956faf28e5dbf60a1ed021f9e6df54537826"
+      },
+      "decision": {
+        "common_mark_equity_edge": -30.978664644586388,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.000702870743120397,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-14",
+      "successor_experiment_id": "20260930-paper-round-15"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T12:59:56.844322+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-15.json",
+        "sha256": "64bde2ec09ad60dd88112f3fcda60874e1f2eb2d94e92299105b7968bd4785a4"
+      },
+      "decision": {
+        "common_mark_equity_edge": -305.43168795042584,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.006921414417020655,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-15",
+      "successor_experiment_id": "20260930-paper-round-16"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T14:03:50.827625+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-16.json",
+        "sha256": "21f54bc3a49d7edb479e6e9330af2f9c31b728bdcc60aa0032d078956b7c6dfa"
+      },
+      "decision": {
+        "common_mark_equity_edge": 203.65140033901116,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": 0.00457272384639526,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20260930-paper-round-16",
+      "successor_experiment_id": "20260930-paper-round-17"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T16:12:33.917385+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-17.json",
+        "sha256": "ff918f4bf9eb0d4f801ab5c8d832d53ed22d099dc601e675daa698ef03f94de3"
+      },
+      "decision": {
+        "common_mark_equity_edge": -20.47938862861338,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.00046268609351669934,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-17",
+      "successor_experiment_id": "20260930-paper-round-18"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T17:21:13.065949+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-18.json",
+        "sha256": "cac411cb54cf2e0761571c3d709a71c88676f1842ab8bedffd627e6f26391052"
+      },
+      "decision": {
+        "common_mark_equity_edge": -69.11073042091448,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0015633720179395467,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-18",
+      "successor_experiment_id": "20260930-paper-round-19"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T18:28:57.465027+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-19.json",
+        "sha256": "8f2d7edb17a2f3e67886adfa4ccd3ea429be5e5ef566c1e86ebdb4a6ef675c10"
+      },
+      "decision": {
+        "common_mark_equity_edge": 1.562478645995725,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": 3.535202556494441e-05,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20260930-paper-round-19",
+      "successor_experiment_id": "20260930-paper-round-20"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T20:48:07.803821+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-20.json",
+        "sha256": "6011109e89e3ee57d237d9fc8a748a68a889caeb85bab20adb246b18ee6c8da5"
+      },
+      "decision": {
+        "common_mark_equity_edge": -1.7854414676257875,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -4.0486219908102163e-05,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-20",
+      "successor_experiment_id": "20260930-paper-round-21"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T21:58:56.695555+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-21.json",
+        "sha256": "35b1cb8bd7c6f0670d23082c8e131488b062ea43226c59444542a767cb65967e"
+      },
+      "decision": {
+        "common_mark_equity_edge": -55.73814923700411,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.001265321017224394,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-21",
+      "successor_experiment_id": "20260930-paper-round-22"
+    },
+    {
+      "advanced_at_utc": "2026-09-30T23:11:12.454413+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-22.json",
+        "sha256": "afb24abf8a5fa1c1070f57625ab6051bea253fd0314e9b535e4a1dbdeea9d5e0"
+      },
+      "decision": {
+        "common_mark_equity_edge": -34.73723951851571,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0007881495158674025,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20260930-paper-round-22",
+      "successor_experiment_id": "20260930-paper-round-23"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T00:18:01.739350+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20260930-paper-round-23.json",
+        "sha256": "c0cef4344e61d3d4d462ef79e9945a6af639adf4a2b4feec945b756b7697f983"
+      },
+      "decision": {
+        "common_mark_equity_edge": 0.9166926961042918,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": 2.0807345150165914e-05,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20260930-paper-round-23",
+      "successor_experiment_id": "20261001-paper-round-24"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T02:37:14.942337+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-24.json",
+        "sha256": "2c8bc1c966b1ff744aa04d7de9be23484947707a23acff19b24ae10ceb1b4319"
+      },
+      "decision": {
+        "common_mark_equity_edge": -67.66995227124426,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": -0.0015379832292436917,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-24",
+      "successor_experiment_id": "20261001-paper-round-25"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T03:46:47.902452+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-25.json",
+        "sha256": "c2373554729868588dad78b041b254fce37e35188b6299689a4b71b0708e5493"
+      },
+      "decision": {
+        "common_mark_equity_edge": -39.89900051474251,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0009065646384064127,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-25",
+      "successor_experiment_id": "20261001-paper-round-26"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T04:59:40.113948+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-26.json",
+        "sha256": "6b0c87141e6d8df5c49dc8ebe7d0393948b3880034f541a42e21667226182a5e"
+      },
+      "decision": {
+        "common_mark_equity_edge": -106.66280257487233,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0024203374403122253,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-26",
+      "successor_experiment_id": "20261001-paper-round-27"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T06:14:26.423163+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-27.json",
+        "sha256": "ed1c1ebed6ed9cc62faf09b33ff55c0c2281ef157437001891cb8397810cc872"
+      },
+      "decision": {
+        "common_mark_equity_edge": -117.68089471000712,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0026651387803154005,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-27",
+      "successor_experiment_id": "20261001-paper-round-28"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T07:20:50.128682+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-28.json",
+        "sha256": "3f423fca7321f2e2265ec5605958c6bae52e8a751351a655095aa52e31c8df87"
+      },
+      "decision": {
+        "common_mark_equity_edge": 42.20168710875441,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": 0.0009536034059768835,
+        "finalizable": true,
+        "next_evaluation_hours": 2,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20261001-paper-round-28",
+      "successor_experiment_id": "20261001-paper-round-29"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T09:28:52.123485+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-29.json",
+        "sha256": "551f96df5d109f70d4e3f04919f2c71d1961377e05c524431b6f48f67822c477"
+      },
+      "decision": {
+        "common_mark_equity_edge": 9.199884223839035,
+        "ending_evaluation_hours": 2,
+        "excess_return_fraction": 0.0002083563024459527,
+        "finalizable": true,
+        "next_evaluation_hours": 3,
+        "outcome": "win",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": true
+      },
+      "ending_experiment_id": "20261001-paper-round-29",
+      "successor_experiment_id": "20261001-paper-round-30"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T12:58:01.628221+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-30.json",
+        "sha256": "29ead1287857a03feca9f33900d4120d952a538b99b0a2d327efa5a93f4b85a3"
+      },
+      "decision": {
+        "common_mark_equity_edge": -119.17161668372864,
+        "ending_evaluation_hours": 3,
+        "excess_return_fraction": -0.002703774644201184,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-30",
+      "successor_experiment_id": "20261001-paper-round-31"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T14:15:07.579474+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-31.json",
+        "sha256": "1f3f7755d2c03989deeafb5f87213961c4b375a415b2aac902dbdd18f71e356b"
+      },
+      "decision": {
+        "common_mark_equity_edge": -71.88026430649916,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0016304692108215627,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-31",
+      "successor_experiment_id": "20261001-paper-round-32"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T15:31:25.550038+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-32.json",
+        "sha256": "0955e6779a18bb1e25f331415d7837320ada1ea4ca90a91effcac65ca68ae549"
+      },
+      "decision": {
+        "common_mark_equity_edge": -99.99827252625983,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0022670638323628012,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-32",
+      "successor_experiment_id": "20261001-paper-round-33"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T16:47:49.729086+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-33.json",
+        "sha256": "bab8f37f4dfd10a4b7bdaf06e3772f63376275a3402b76ec32c8aebf6041f879"
+      },
+      "decision": {
+        "common_mark_equity_edge": -77.7640275068261,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0017608842849422951,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-33",
+      "successor_experiment_id": "20261001-paper-round-34"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T18:09:50.621805+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-34.json",
+        "sha256": "21d7869f2e2ba42157648a0c8d2c1529e021fd24a6b4f9751203e98857358779"
+      },
+      "decision": {
+        "common_mark_equity_edge": -226.531991125863,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.005124434236199637,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-34",
+      "successor_experiment_id": "20261001-paper-round-35"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T19:45:57.655288+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-35.json",
+        "sha256": "0703eddcf739bec88a2c10db3a37d474f1883eecde8f202158aecd2197cb7ebd"
+      },
+      "decision": {
+        "common_mark_equity_edge": -75.65909383150574,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0017071644952711873,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-35",
+      "successor_experiment_id": "20261001-paper-round-36"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T21:03:54.387715+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-36.json",
+        "sha256": "f405b0d9e6e8a22564694db5679e81e707f8d56151e5776e31802e66ef2cb2e0"
+      },
+      "decision": {
+        "common_mark_equity_edge": -39.93995934072882,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0009017302131203086,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-36",
+      "successor_experiment_id": "20261001-paper-round-37"
+    },
+    {
+      "advanced_at_utc": "2026-10-01T22:50:06.698545+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-37.json",
+        "sha256": "943b6821f7fa97ede84e9a0880daff34631944bcbb337275693898b9ea6492fa"
+      },
+      "decision": {
+        "common_mark_equity_edge": -82.32654508360429,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0018582689894113891,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-37",
+      "successor_experiment_id": "20261001-paper-round-38"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T00:02:22.287132+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-38.json",
+        "sha256": "ef2a8604fe4de3e74bb0a6059513bf114b76681fbfb87d74ee42825dea100737"
+      },
+      "decision": {
+        "common_mark_equity_edge": -75.84384009832866,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0017105815628041597,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-38",
+      "successor_experiment_id": "20261001-paper-round-39"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T01:16:53.748209+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-39.json",
+        "sha256": "d7df409fd06c03c7e9ab8aaf4a4e243ca934c8770bdcffd2ccdec5d9ad5d134f"
+      },
+      "decision": {
+        "common_mark_equity_edge": -26.555768385893316,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0005984695844228484,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-39",
+      "successor_experiment_id": "20261001-paper-round-40"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T03:06:19.881774+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261001-paper-round-40.json",
+        "sha256": "4143764f7fdcaeb641104514cbf98acf09bd3899adc7c8d62a6e1e3844984b6c"
+      },
+      "decision": {
+        "common_mark_equity_edge": -145.49389031406463,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0032821764550156995,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261001-paper-round-40",
+      "successor_experiment_id": "20261002-paper-round-41"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T04:35:21.510114+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-41.json",
+        "sha256": "f64c2d2c01552063feb5b20e05064d6cba69231647f16b7ca44cf7340d76460e"
+      },
+      "decision": {
+        "common_mark_equity_edge": -65.16421287407138,
+        "ending_evaluation_hours": 1,
+        "excess_return_fraction": -0.0014653100440195045,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "loss",
+        "reason": "verified_common_mark_account_comparison",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-41",
+      "successor_experiment_id": "20261002-paper-round-42"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T05:51:00.673799+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-42.json",
+        "sha256": "04038459e001abec6459746fed111d40a4f5c5caad8fad71a5551724a11f0ffd"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-42",
+      "successor_experiment_id": "20261002-paper-round-43"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T08:04:27.287765+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-43.json",
+        "sha256": "cb35ac15e5ecec7f16a5cba7dd790359013410acf521f5eebefe73566bfb7d46"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-43",
+      "successor_experiment_id": "20261002-paper-round-44"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T10:27:43.699409+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-44.json",
+        "sha256": "ebc8b60afdf64bd84b1fe9efefff27650f664e5f60fdc40bfea8a8b02447573a"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-44",
+      "successor_experiment_id": "20261002-paper-round-45"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T12:36:34.837201+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-45.json",
+        "sha256": "cf68d6c14905970498739d4841fe5afce158e7abbb921d18244f11f48eb2fb15"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-45",
+      "successor_experiment_id": "20261002-paper-round-46"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T14:56:20.047816+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-46.json",
+        "sha256": "7ebd2f87b44792bacf8802784fdfc733b7b71866724a4bbebc18ab8c5e09b0df"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-46",
+      "successor_experiment_id": "20261002-paper-round-47"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T17:34:22.226625+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-47.json",
+        "sha256": "893d410a352cf50e187aa8b6adf90a5667b05cd5568ce7a99aa1846052ec2413"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-47",
+      "successor_experiment_id": "20261002-paper-round-48"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T19:39:43.775413+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-48.json",
+        "sha256": "7308d5be3f30738dcecda973649409bb9bc8bdc41dbdd18f7b3748124ebd60e8"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-48",
+      "successor_experiment_id": "20261002-paper-round-49"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T21:40:31.606425+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-49.json",
+        "sha256": "0a7d17063a28c3bf7def8b17e947798bc89da97c36f78b16a6b54495d2af4598"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-49",
+      "successor_experiment_id": "20261002-paper-round-50"
+    },
+    {
+      "advanced_at_utc": "2026-10-02T23:49:07.755992+00:00",
+      "assessment": {
+        "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261002-paper-round-50.json",
+        "sha256": "f457b5020488cfdf71b51e7f2b1c69d907cad77d1c39efec79706aaf2e9bfb0b"
+      },
+      "decision": {
+        "ending_evaluation_hours": 1,
+        "finalizable": true,
+        "next_evaluation_hours": 1,
+        "outcome": "late_unscored",
+        "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+        "winning": false
+      },
+      "ending_experiment_id": "20261002-paper-round-50",
+      "successor_experiment_id": "20261002-paper-round-51"
+    }
+  ],
+  "initialized_at_utc": "2026-09-29T02:16:21.720951+00:00",
+  "pending_assessment": null,
+  "policy": {
+    "late_allowance_seconds": 300,
+    "minimum_evaluation_hours": 1,
+    "on_loss": "subtract_two_hours_floor_one",
+    "on_tie_or_unscored": "retain_current_hours",
+    "on_win": "add_one_hour"
+  },
+  "policy_amendments": [
+    {
+      "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\policy-amendments\\20260929-loss-penalty.json",
+      "sha256": "0cb5d009f3f162dd14a5056e3a822e6ce4e80a80058b1eac0f24225c6488a28f"
+    }
+  ],
+  "schema_version": 1
+}
