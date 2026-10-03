@@ -1,0 +1,119 @@
+{
+  "author": "Jeremy Klein",
+  "branch": "main",
+  "change_id": "main:611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "completion_id": "20261003T123730Z-atlas-native-handoff-f529e00f",
+  "files": [
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/forecasts.parquet",
+      "sha256": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/manifest.json",
+      "sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/ownership.json",
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/planning-price-path.json",
+      "sha256": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/forecasts.parquet",
+      "sha256": "3a0ec3db5558288510cdfc7635ddd792f742313a6c873a31e05cf1fe2c85b936"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/manifest.json",
+      "sha256": "8db1114eb9ca4e9e7cc87bcb5c4ece8c8d8066a8cb7b901691e544521adca7ad"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/ownership.json",
+      "sha256": "123f954e790f5d23b435fda9a15747c88caea04a00473557794851513502d8db"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/planning-price-path.json",
+      "sha256": "7d6be60f4a590e7f5e93945699ce1dd9449ec36cbfefdb0989683f3c7db2fab9"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/Gameplan-results.md",
+      "sha256": "da30e4556665da7f0ca8e0f22447d4bc0556c314f6f6c36eebd9acff0b13f86c"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/forecast-results.parquet",
+      "sha256": "4ae0f72a3b002d266397c39e406a0f9dce6ff0a591c5bdee8500c11d99732ca6"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/manifest.json",
+      "sha256": "716f5aa5d6fd92562f4f19607db729a12b66461ce91cabce0b51ac0fd324cced"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/price-results.parquet",
+      "sha256": "b3c83712ff92aa0c02ff6f318698c407101b5123e6549e8a716a2d281db4a890"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/receipt.json",
+      "sha256": "11ce0cc3c6897943331d9d86dc7a31af0d3b6a39106bfb02bc23372f5b9975cc"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/report.json",
+      "sha256": "3f9dfff1d00c0be8a5b5504bc6c46aa73244e1ecf00f1ae395b9a633ab52c380"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/handoff-index.json",
+      "sha256": "de69701cfd96bb826dbddb627ad44f57327941111740babeb736519342c98777"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/artifact-manifest.json",
+      "sha256": "14b4f65b2bb297107a75790aa581c2fd0ae2188bbeef56279620938da0269fc4"
+    }
+  ],
+  "limitations": [
+    "The published index identifies current action date 2026-10-05 and original accuracy action date 2026-10-02; row counts and statuses remain sender metadata.",
+    "Verification establishes committed artifact-byte integrity; complete native reader acceptance and current executor readiness remain unverified.",
+    "Scout application checkout remains 9c5b50281169f05032bb0d6d943f761447e70cab; available main has six remote-only commits. Fresh owner boundary and relevant adoption-candidate checks are still required."
+  ],
+  "observer": "Scout",
+  "parent_commit_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Factual source availability and local preservation only. No application import, source adoption, runtime start, scheduler change or ownership transfer occurred.",
+  "scope": "Atlas pc-original symbol-specific forecast, price-path and original-session actuals outputs; no shared source changes. Scout local symbols and active outputs remain local.",
+  "source_commit_sha": "611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "summary": "Atlas native handoff artifacts are available on common main; Scout verified all published payload hashes and preserved its checkout during fetch. Local reader acceptance and runtime readiness remain unverified.",
+  "tests": [
+    {
+      "checked_at_utc": "2026-10-03T12:47:42.061152+00:00",
+      "manifest_sha256": "14b4f65b2bb297107a75790aa581c2fd0ae2188bbeef56279620938da0269fc4",
+      "name": "Published artifact integrity",
+      "result": "All 15 published payload SHA-256 hashes and sizes, plus nested index references, match; 16 added files including the publication manifest."
+    },
+    {
+      "checked_at_utc": "2026-10-03T12:55:05.957127+00:00",
+      "name": "Scout checkout preservation",
+      "result": "Ordinary nonrecursive origin fetch preserved HEAD, branch, index, status, 970 selected source fingerprints, 28 configuration fingerprints and local symbol/profile bindings."
+    },
+    {
+      "name": "Application tests",
+      "producer_native_validation": "Not independently replayed by courier.",
+      "status": "not_run"
+    }
+  ]
+}

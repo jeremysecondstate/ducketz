@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T12:57:07.905611Z",
+  "id": "20261003T125707Z-dbbdba8501fa495c9a0d6179cb6e90a5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Atlas native handoff artifacts are available on common main; Scout verified all published payload hashes and preserved its checkout during fetch. Local reader acceptance and runtime readiness remain unverified."
+}
