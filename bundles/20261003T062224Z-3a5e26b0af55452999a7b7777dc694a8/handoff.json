@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T06:22:24.103605Z",
+  "id": "20261003T062224Z-3a5e26b0af55452999a7b7777dc694a8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout verified common main 88c812c changes eight previously committed shared files from CRLF to LF bytes. The exact blobs are different, while each file's bytes match its parent after CRLF-to-LF normalization. No further source content change was found."
+}

@@ -1,0 +1,81 @@
+{
+  "author": "Scout",
+  "base_commit_sha": "7ed410d0535ccdfe222597f44fd315f505f9bccc",
+  "branch": "main",
+  "change_id": "observation:main:88c812ce6bed95fff7fbbc785bc8c8daa4193102:scout",
+  "completion_record": "20261003T061127Z-faae178b95384ac5974f21e1dba6c784",
+  "fetch_preservation_sha256": "33ed55c7a42007b26b8a97dd7fb91de3c838e0d1c204eca019cbb8bf2bcd8947",
+  "files": [
+    {
+      "bytes": 25770,
+      "git_blob_oid": "0a26684661069b5957bcf6be9b1a86ec267f6030",
+      "operation": "modify",
+      "path": "coordination/task-catalog.json"
+    },
+    {
+      "bytes": 9884,
+      "git_blob_oid": "8ebcaa79f7d48e92f31ba8984b7367ba748a1e0d",
+      "operation": "modify",
+      "path": "docs/development/cross-pc-task-matrix.md"
+    },
+    {
+      "bytes": 25084,
+      "git_blob_oid": "8954084b8c3ea3a936ab0fab5ebb622afd42e6a8",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/CHANGELOG.md"
+    },
+    {
+      "bytes": 28687,
+      "git_blob_oid": "cec6954fefbf26ec4e4a5bf047663ca119c3ce9e",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md"
+    },
+    {
+      "bytes": 22427,
+      "git_blob_oid": "e144bc43cdabf750528e4ad2d2b33b3b5fea9c80",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md"
+    },
+    {
+      "bytes": 12254,
+      "git_blob_oid": "6226e0c5f4d943c510e8e17e427b08d2f2570d06",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/README.md"
+    },
+    {
+      "bytes": 39179,
+      "git_blob_oid": "98dd414c7d88edb18ac50dbc2243b0ee783afaa8",
+      "operation": "modify",
+      "path": "ml/hyperliquid_paper_cadence.py"
+    },
+    {
+      "bytes": 42820,
+      "git_blob_oid": "f82f2e765cd8efb4020dea747527fc249ad1a898",
+      "operation": "modify",
+      "path": "tests/test_hyperliquid_paper_cadence.py"
+    }
+  ],
+  "limitations": [
+    "This corrects committed line endings; Scout has not run fresh offline application checks on an adoption candidate.",
+    "Scout checkout and runtime remain at their independently observed versions. New local untracked producer output and owner-safe adoption prerequisites remain unresolved."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/88c812ce6bed95fff7fbbc785bc8c8daa4193102"
+  ],
+  "local_checkout_head": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "observed_at_utc": "2026-10-03T06:21:55.695649Z",
+  "producer": "scout-codexstore-outbox",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No additional semantic code change in this commit. Scout made no checkout adoption, scheduled-task edit, worker restart, provider or broker call, training or trade.",
+  "scope": "Shared Paper cadence source, test, task catalog and documentation byte normalization.",
+  "source_author": "Atlas",
+  "source_branch": "codex/atlas/20261003T061127Z-faae178b95384ac5974f21e1dba6c784",
+  "source_branch_commit_sha": "8dccf2c315c162d782324482e4925584d90a9c5a",
+  "source_commit_sha": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "summary": "Scout verified common main 88c812c changes eight previously committed shared files from CRLF to LF bytes. The exact blobs are different, while each file's bytes match its parent after CRLF-to-LF normalization. No further source content change was found.",
+  "tests": {
+    "scout_verification": "Exact Git commit, parent, eight path and blob identities, plus bytewise CRLF-to-LF equivalence; no application tests executed by Scout.",
+    "sender_check_status": "No GitHub status checks observed; claimed tested working-byte fingerprints were not independently bound to the committed LF Git blobs.",
+    "sender_claim": "Main commit text claims a passing offline check from 2026-10-03T06:12:55.970986Z to 2026-10-03T06:13:17.180235Z, output SHA-256 828e8600ca70cf38b52ca65120fc3c6689f6e5d852a2a0ef1a1ff8ec7596b965."
+  }
+}
