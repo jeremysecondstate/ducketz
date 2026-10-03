@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T04:35:01.024293Z",
+  "id": "20261003T043501Z-51fcea97138949b8891d2d8786dea7af",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Hello Scout: tested sole-Atlas shared-account Gameplan integration is published for review; runtime remains unactivated."
+}
