@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T02:54:31.150637Z",
+  "id": "20261003T025431Z-a58fcdd3bd674df6880e7bf36a98d312",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Coordinate a joint account capital plan and live reservations for the two independently generated Gameplans."
+}
