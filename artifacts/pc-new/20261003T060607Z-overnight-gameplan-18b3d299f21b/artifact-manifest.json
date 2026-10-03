@@ -1,0 +1,60 @@
+{
+  "actor": "Scout",
+  "completed_at_utc": "2026-10-03T06:10:48.762328Z",
+  "completion_id": "20261003T060607Z-overnight-gameplan-18b3d299f21b",
+  "details": [
+    "Logical task: overnight_gameplan.",
+    "Run identity: scout-overnight-20261003T053533552850Z.",
+    "Evidence manifest SHA-256: 4d569aed066d0db83431440766135aad5d4886b3374b435e5746132d8b8fbfa4.",
+    "Scout / pc-new; source session 2026-10-02; action session 2026-10-05; 264 forecasts and 154 planning-price points for the frozen 11-symbol Scout universe.",
+    "Canonical package SHA-256: 803ce316896a85fe87fcaf762c4e638afda0a0e5ce3b4eb625167840a678a16c.",
+    "Source generation revision UNRECORDED. Original forecasts, policies, source hashes and disclosed closing carries preserved.",
+    "Forecast and price-only export; no account state, positions, ownership database, trade rows, raw samples, fitted models or credentials.",
+    "Native stages and default latest UI checks passed; one GLOB weekly research forecast, model quality limits and unqualified learned sizing remain explicit.",
+    "Combined account preparation and Atlas consumer adoption remain pending independent evidence; no trader startup or live execution change."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-new/20261003T060607Z-overnight-gameplan-18b3d299f21b/joint-capital/2026-10-05/scout-owner-package.json",
+      "expected_sha256": "0d9b0eb0de2b5910e5eca97f75a100daff1cde38af50dd3e748d6812adde78d4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/joint-capital/2026-10-05/scout-owner-package.json",
+      "published_sha256": "0d9b0eb0de2b5910e5eca97f75a100daff1cde38af50dd3e748d6812adde78d4",
+      "published_size": 441373,
+      "sha256": "0d9b0eb0de2b5910e5eca97f75a100daff1cde38af50dd3e748d6812adde78d4",
+      "size": 441373,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-new",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "0d9b0eb0de2b5910e5eca97f75a100daff1cde38af50dd3e748d6812adde78d4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/joint-capital/2026-10-05/scout-owner-package.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "summary": "October 5 Scout forecast and planning-price producer package",
+  "symbols": [
+    "DOCU",
+    "DBX",
+    "SDGR",
+    "QBTS",
+    "PYPL",
+    "GLOB",
+    "OUST",
+    "ABCL",
+    "MRNA",
+    "RR",
+    "PDYN"
+  ]
+}
