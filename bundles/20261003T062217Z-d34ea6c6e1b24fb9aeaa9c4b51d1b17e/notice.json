@@ -1,0 +1,88 @@
+{
+  "author": "Scout",
+  "base_commit_sha": "213eabccde7efdedaca41c378692a8d73fb06aeb",
+  "branch": "main",
+  "change_id": "observation:main:272b5fbbb82f1e7a42e797cd251b900b6105e5b7:scout",
+  "completion_record": "20261003T060801Z-5a235cb7965540f382fa17b272e3e75e",
+  "fetch_preservation_sha256": "33ed55c7a42007b26b8a97dd7fb91de3c838e0d1c204eca019cbb8bf2bcd8947",
+  "files": [
+    {
+      "bytes": 26457,
+      "git_blob_oid": "578cbf3ff94eb2144d2eb048302853fb851d4461",
+      "operation": "modify",
+      "path": "coordination/task-catalog.json"
+    },
+    {
+      "bytes": 10021,
+      "git_blob_oid": "288be616baaed7e31b1840f7f3f7aef260baac32",
+      "operation": "modify",
+      "path": "docs/development/cross-pc-task-matrix.md"
+    },
+    {
+      "bytes": 25490,
+      "git_blob_oid": "0b417e1b6a1236b8cdf321519ac86721fe00685d",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/CHANGELOG.md"
+    },
+    {
+      "bytes": 29134,
+      "git_blob_oid": "31b3202ef795bfd32ba31ac5523a1e63379dfc44",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md"
+    },
+    {
+      "bytes": 22758,
+      "git_blob_oid": "000381821d63ebdd742f274d1a465ebce6dedc51",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/PAPER_IMPROVEMENT.md"
+    },
+    {
+      "bytes": 12447,
+      "git_blob_oid": "7acf57333b5056fe597e476f77ab522c29c9350e",
+      "operation": "modify",
+      "path": "docs/hyperliquid-system-analysis/README.md"
+    },
+    {
+      "bytes": 2259,
+      "git_blob_oid": "b248bf103d39e9d04fc4def9ec3fac2a45c2a368",
+      "operation": "add",
+      "path": "docs/hyperliquid-system-analysis/audits/2026-10-02-paper-two-hour-floor.md"
+    },
+    {
+      "bytes": 39787,
+      "git_blob_oid": "f373469ee14f7b43488053a22991db893a24259a",
+      "operation": "modify",
+      "path": "ml/hyperliquid_paper_cadence.py"
+    },
+    {
+      "bytes": 43580,
+      "git_blob_oid": "1343e56658fe78228be3e264426271be46327b00",
+      "operation": "modify",
+      "path": "tests/test_hyperliquid_paper_cadence.py"
+    }
+  ],
+  "limitations": [
+    "Exact committed Git blob identities are reported separately from sender-claimed passing working-byte checks and timestamps.",
+    "Scout fetch preserved checkout, index, watchlist, private profile and untracked bytes, but the remote advanced again during fetch; 88c812c is the fetched main head.",
+    "Scout application installation, owner-safe adoption, task setting reconciliation and running-process version remain unverified; no Paper operation was executed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/272b5fbbb82f1e7a42e797cd251b900b6105e5b7"
+  ],
+  "local_checkout_head": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "observed_at_utc": "2026-10-03T06:21:55.695649Z",
+  "producer": "scout-codexstore-outbox",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The new prospective Paper cadence is source-available on common main. Scout did not fast-forward its checkout, alter a scheduled task, restart a worker, or change trading behavior.",
+  "scope": "Shared Paper cadence code, test, task catalog and documentation; one new audit document.",
+  "source_author": "Atlas",
+  "source_branch": "codex/atlas/20261003T060801Z-5a235cb7965540f382fa17b272e3e75e",
+  "source_branch_commit_sha": "c2353e9d5d5dc7b559a807a0931e2e6d0931333e",
+  "source_commit_sha": "272b5fbbb82f1e7a42e797cd251b900b6105e5b7",
+  "summary": "Scout verified common main 272b5fbb integrates Atlas's shared Paper cadence v3 source across nine exact paths. The catalog declares a two-hour minimum, one-hour loss step and Luna/max task setting; the code adds guarded transition identities and receipts. Scout has not adopted the source into its application checkout.",
+  "tests": {
+    "scout_verification": "Exact Git commit, parent, path and blob inventory plus read-only semantic diff inspection; no application tests executed by Scout.",
+    "sender_check_status": "No GitHub status checks observed; claimed tested working-byte fingerprints were not independently bound to these committed Git blobs. Eight existing files in this main commit have CRLF bytes later normalized in 88c812c.",
+    "sender_claim": "Main commit text claims a passing offline check from 2026-10-03T06:09:32.904941Z to 2026-10-03T06:09:54.782299Z, output SHA-256 392507c03e28ed6230a577804058222091b54480b89dd56714fa7a293e20ec8d."
+  }
+}
