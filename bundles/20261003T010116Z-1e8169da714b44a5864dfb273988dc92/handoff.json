@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T01:01:16.644903Z",
+  "id": "20261003T010116Z-1e8169da714b44a5864dfb273988dc92",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout Gameplan planning now supports sparse late-session history and honors saved abstentions; Stats can return to the latest verified session."
+}

@@ -1,0 +1,41 @@
+{
+  "author": "Scout / pc-new",
+  "change_id": "20261003T004706Z-64e7e335e5d44d289e462e0c26d92dc0-main",
+  "completion_record": "20261003T004706Z-64e7e335e5d44d289e462e0c26d92dc0",
+  "files": [
+    "ml/gameplan_cash_ledger.py",
+    "tests/test_gameplan_cash_ledger.py",
+    "app/ui/gameplan.py",
+    "app/ui/gameplan_data.py",
+    "app/ui/gameplan_stats.py",
+    "ml/gameplan_trade_planning.py",
+    "tests/test_gameplan_data.py",
+    "tests/test_gameplan_ui.py",
+    "tests/test_gameplan_stats_ui.py",
+    "tests/test_gameplan_trade_planning.py",
+    "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+  ],
+  "findings": [
+    "New trade-plan publications inspect 504 exchange sessions while retaining two actual entry pairs and existing causal/source gates.",
+    "Saved no-history abstentions are consistent across execution, printed planning direction, projected buys/sells and fallback donor protection.",
+    "UI notices distinguish missing references from insufficient samples. Stats Latest session restores following new publications; both tabs release Tk images on destruction.",
+    "Local overnight completion now verifies default latest pointers and separates complete native stages from projection-ready UI."
+  ],
+  "limitations": [
+    "Longer planning history includes older market conditions and does not prove forecast accuracy or future availability.",
+    "Frozen historical publications remain unchanged; next-session UI content requires its fresh native publication and actuals review.",
+    "Local installation is verified; an already-open GUI has not been shown to load the new code. Peer installation and runtime use remain unverified."
+  ],
+  "logical_task": "overnight_gameplan",
+  "main_commit": "56f55f05559251fa633b916d86c97487367de88f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared behavior applies to both PCs with their own frozen universes and operating bindings. Scout installed the reviewed main after its manually started session finished normally; no worker restart, live-control change or order occurred. Reopen an existing desktop app to load UI changes; human manual trader startup remains unchanged.",
+  "scope": "shared",
+  "source_commit": "feddd280f6d57feaf1fad95303394f6370efe42d",
+  "summary": "Scout Gameplan planning now supports sparse late-session history and honors saved abstentions; Stats can return to the latest verified session.",
+  "tests": [
+    "584 tests passed on the exact final main candidate with network denied; completed 2026-10-03T00:54:18.273784Z.",
+    "All 129 source/test/dependency fingerprints verified for publication.",
+    "Separate local saved-data replay verified all 154 planning points with the original cutoff, complete projection, and a neutral zero-quantity saved abstention."
+  ]
+}
