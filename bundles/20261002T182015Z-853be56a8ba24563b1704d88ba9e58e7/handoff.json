@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-02T18:20:15.841658Z",
+  "id": "20261002T182015Z-853be56a8ba24563b1704d88ba9e58e7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Common main adds 14 pc-original artifact paths for the producer-reported Round 47 assessment and Round 48 Paper rollover; Scout source and local configuration were preserved during acquisition."
+}

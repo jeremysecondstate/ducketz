@@ -1,0 +1,150 @@
+{
+  "author": "Jeremy Klein (Git author); observed by Scout/pc-new",
+  "branch": "main",
+  "change_id": "observer:jeremysecondstate/ducketz:refs/heads/main:dfdb328e812e4ee5fe004f70c666deb3f023212d",
+  "files": [
+    {
+      "bytes": 16753,
+      "git_blob": "b06a509aa81453beb2b4e0e621df1265d32e7885",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-48-audit.json",
+      "sha256": "4aa010e989a57baeba5c06f0c215c9a3b165235afdfec08f9a349b380560f801"
+    },
+    {
+      "bytes": 6622,
+      "git_blob": "83996bd94b5ce1faba42b4ae91b44ffed458dd29",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-48-audit.md",
+      "sha256": "d1bbf9fbf836dd1738ea4ccb71469fc3be367853059596af1091d21c25d1053f"
+    },
+    {
+      "bytes": 307,
+      "git_blob": "c6fd01d95011e94eeda15bf522c29ce23d8ab0da",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-archive-verification.json",
+      "sha256": "9ae90258c7ca6a797359cafdb7e0f4059a79f41682d29ba508018874b27edd7e"
+    },
+    {
+      "bytes": 2679,
+      "git_blob": "748ba91c719c14bf7d4fd2e9423be59d6f6fc4f4",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-cadence-assessment.json",
+      "sha256": "893d410a352cf50e187aa8b6adf90a5667b05cd5568ce7a99aa1846052ec2413"
+    },
+    {
+      "bytes": 1892136,
+      "git_blob": "ecedf29267edfecafdd6dfc77638132b8d985f89",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-closing-comparison.json",
+      "sha256": "ecdbaa04e282b0243fb3da4f594d04286fada684518726376ba686dce84dbef7"
+    },
+    {
+      "bytes": 10145792,
+      "git_blob": "f4e846980ae3b6301a3ccf6dbe82561e35ac820b",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round47-paper-ledger.sqlite3",
+      "sha256": "3195fa01ab0873812754d341511205a04b6c1bbe2ae65b8a638ca9d38c3f60d7"
+    },
+    {
+      "bytes": 31693,
+      "git_blob": "7cc418754b7ebd19ec40cf709fbee699223fe24b",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-closeout-health.json",
+      "sha256": "9e9c7890f44dfad17daba732cb093573a992a2c9238683650848b9bce0959f83"
+    },
+    {
+      "bytes": 9390,
+      "git_blob": "2da2e0a406627b683d48003742bfc928e407c222",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-deployment.json",
+      "sha256": "16055f5af1bf4492e9d5f0e168934d4b250937ab6f7acbf46a03437083ea713c"
+    },
+    {
+      "bytes": 25748,
+      "git_blob": "32f3bebdd7a2867199b104708cb5aacbfa404ef9",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-first-cycle.json",
+      "sha256": "d0bac2e15d3d729c9fc9054b9e5a012839700310ae7786f838329017f2fb3df0"
+    },
+    {
+      "bytes": 12768,
+      "git_blob": "24462dc9d93c976af2889c8b2f8736acbb9162e5",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-opening-public-account-reads.json",
+      "sha256": "40fe4bee0097934c662962626180c34543e0545df58d1d6244a11e383f4bd9e1"
+    },
+    {
+      "bytes": 1418,
+      "git_blob": "74c1d7e71498f087785e3f80cf96840e3767dd3b",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-opening-verification.json",
+      "sha256": "c303ab032d8a3e0a1cb5e7a6fb1b9fe7a920f620e3beab8d52e581287f632db7"
+    },
+    {
+      "bytes": 23829,
+      "git_blob": "d9dda9fa7dedf7607f7db75890211cdecfc0f3e4",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-opening.json",
+      "sha256": "27a9e9b538e57935bfc97aa3c9af5a09b30204b09b19b8db4900a59cdd999e89"
+    },
+    {
+      "bytes": 16760,
+      "git_blob": "d4cfb8370ccfa1d02e515c4b29ab367c260e9af3",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/analysis/hyperliquid-paper-improvement/20261002-round47-48/round48-operation.json",
+      "sha256": "57e297e966480af595c33d9247ba0a85c40232151bbc12bb8463af450dee4c42"
+    },
+    {
+      "bytes": 14930,
+      "git_blob": "aa4175b1b41b9832e8a280a3a8a574af5d896c08",
+      "mode": "100644",
+      "operation": "add",
+      "path": "artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/artifact-manifest.json",
+      "sha256": "c1b4e6fa334d43fec692e6fed8039061667c3a2b9e43f1d1b2361dee12ee361c"
+    }
+  ],
+  "limitations": [
+    "Artifact bytes were read only for hashing; their contents were not interpreted, displayed or stored. The inventory includes a paper-ledger database and account-read/operating reports. Byte integrity does not establish private-export authorization, payload correctness or successful runtime behavior.",
+    "Scout application checkout remains at 9795e96da25962e1dbb931634158d81f12973a96. This output-only observation does not resolve the separate current owner, full source-delta review and fresh candidate-check prerequisites for any future application adoption."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/dfdb328e812e4ee5fe004f70c666deb3f023212d"
+  ],
+  "observed_at_utc": "2026-10-02T18:20:15.488185Z",
+  "parent_commit": "04a92a41dd30594e6a954b408582e678f9980998",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Git objects acquired only. No checkout update, local-output overwrite, application installation, worker restart or runtime deployment. Peer installation and runtime remain unverified.",
+  "scope": "Peer operating artifacts confined to artifacts/pc-original/20261002T180809Z-hl19b1eb9c9d/; no shared application source, configuration or task-definition change from the exact parent.",
+  "source_commit": "dfdb328e812e4ee5fe004f70c666deb3f023212d",
+  "summary": "Common main adds 14 pc-original artifact paths for the producer-reported Round 47 assessment and Round 48 Paper rollover; Scout source and local configuration were preserved during acquisition.",
+  "tests": [
+    {
+      "at_utc": "2026-10-02T18:18:43.503025Z",
+      "kind": "observer byte-integrity verification",
+      "result": "All 14 Git blob identities, byte counts and computed SHA-256 digests verified. All 13 commit-declared payload hashes and sizes match; the manifest has no commit-declared digest."
+    },
+    {
+      "at_utc": "2026-10-02T18:14:56.793209Z",
+      "kind": "local preservation verification",
+      "result": "One ordinary non-recursive origin fetch preserved application HEAD, branch, index, clean tracked/untracked state, all 963 captured source fingerprints, local watchlist, private profile and installed active pointer."
+    },
+    {
+      "kind": "producer validation",
+      "producer_reported_completion_at_utc": "2026-10-02T18:10:06.124128Z",
+      "result": "Unknown to this observer. Commit metadata reports an assessment, archived-ledger integrity and next-round opening/process checks; their correctness and individual check timestamps were not independently verified. No application tests were run by this observer."
+    }
+  ]
+}
