@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-03T02:29:08.655453Z",
+  "id": "20261003T022908Z-d64b3bf272d740d49ad1d2b054a19ad2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Verified availability of Atlas Round 51/52 artifact publication on common main; 43 payloads plus manifest, with no shared application source/config changes."
+}
