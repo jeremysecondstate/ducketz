@@ -1,6 +1,6 @@
 # Hyperliquid Operations Watch
 
-Operating contract: **2026-09-30 / v16**. Companion to [Monitoring and recovery](MONITORING.md).
+Operating contract: **2026-10-02 / v17**. Companion to [Monitoring and recovery](MONITORING.md).
 
 The September 30 user instruction authorizes exploratory Paper from its next
 accepted handoff: admit valid Research forecasts, zero entry/exit bands, zero
@@ -20,12 +20,11 @@ fresh account mirrors and model changes. This watch's authority remains health
 observation and narrowly permitted recovery only; it never improves or reseeds.
 
 The improvement task's persistent cadence receipt defines each ending round:
-a verified win adds one hour to the next round; a verified loss subtracts two
-hours with a one-hour minimum. Ties and unscored/late results retain the duration.
-The September 29 rule amendment applies round10's four-hour loss to the already
-running round11, making it two hours without changing its accepted opening.
-Historical assessments and consumed history remain immutable; the native policy
-amendment records that exception. This watch only reads the amended cadence.
+a verified win adds one hour to the next round; a verified loss subtracts one
+hour with a two-hour minimum. Ties and unscored/late results retain the duration.
+Historical v1/v2 assessments, including the September 29 v2 amendment, remain
+immutable. The first v3 successor is created only by Paper Improvement's guarded
+native advance transition; this watch only reads the committed cadence.
 The prior three-day schedule and
 60-hour guard are historical. This watch keeps its 30-minute schedule, does
 not score/promote rounds or edit improvement timing, and must honor a pending

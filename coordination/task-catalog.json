@@ -378,13 +378,13 @@
       "purpose": "Complete at most one authorized local simulated Paper competition/improvement lifecycle and preserve its adaptive cadence.",
       "prompt_version": "cross-pc-v2",
       "cadence": {
-        "semantic": "Current saved native interval one hour; actual next duration comes from immutable native assessment and accepted seed.",
+        "semantic": "Each active round retains its immutable native duration; v3 successors use one-hour steps with a two-hour floor after the guarded transition.",
         "timezone": "America/Los_Angeles",
         "adaptive_rules": {
           "initial_hours": 2,
           "win_add_hours": 1,
-          "loss_subtract_hours": 2,
-          "minimum_hours": 1,
+          "loss_subtract_hours": 1,
+          "minimum_hours": 2,
           "tie": "retain",
           "unscored_late_unavailable": "retain; no promotion or loss penalty",
           "reanchor": "Preserve full PAUSED then ACTIVE native updates after verified fresh opening; use assessed successor duration and existing timing gates. Never reanchor during infrastructure adoption.",
@@ -392,8 +392,8 @@
         }
       },
       "preferences": {
-        "model": "gpt-6-astra",
-        "reasoning_effort": "ultra",
+        "model": "gpt-6-luna",
+        "reasoning_effort": "max",
         "notification": "preserve_saved_preference"
       },
       "permissions": [

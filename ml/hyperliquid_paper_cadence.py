@@ -7,6 +7,7 @@ The current run can be adopted as an unscored carry-in without resetting it.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -25,7 +26,11 @@ from ml.hyperliquid_paper_forecast_evidence import (
 
 VERSION = 1
 LEGACY_RULE = "win-plus-one-hold-v1"
+# Keep this identifier stable: immutable v2 state and amendments already use it.
 CURRENT_RULE = "win-plus-one-loss-minus-two-floor-one-v2"
+TWO_HOUR_FLOOR_RULE = "win-plus-one-loss-minus-one-floor-two-v3"
+LATEST_RULE = TWO_HOUR_FLOOR_RULE
+SUPPORTED_RULES = (LEGACY_RULE, CURRENT_RULE, TWO_HOUR_FLOOR_RULE)
 LATE_SECONDS = 300
 ACCOUNTS = {"alex", "jeremy", "clearpond"}
 IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,95}")
@@ -58,7 +63,7 @@ def hours(value):
 
 def rule_version(value):
     version = value.get("cadence_rule_version", LEGACY_RULE)
-    if version not in (LEGACY_RULE, CURRENT_RULE):
+    if version not in SUPPORTED_RULES:
         raise ValueError("Unsupported cadence rule version")
     return version
 
@@ -67,21 +72,28 @@ def policy(version):
     if version == LEGACY_RULE:
         return {"on_win": "add_one_hour", "on_loss_tie_or_unscored": "retain_current_hours",
                 "late_allowance_seconds": LATE_SECONDS}
-    if version != CURRENT_RULE:
+    if version == CURRENT_RULE:
+        return {"on_win": "add_one_hour", "on_loss": "subtract_two_hours_floor_one",
+                "on_tie_or_unscored": "retain_current_hours", "minimum_evaluation_hours": 1,
+                "late_allowance_seconds": LATE_SECONDS}
+    if version != TWO_HOUR_FLOOR_RULE:
         raise ValueError("Unsupported cadence rule version")
-    return {"on_win": "add_one_hour", "on_loss": "subtract_two_hours_floor_one",
-            "on_tie_or_unscored": "retain_current_hours", "minimum_evaluation_hours": 1,
+    return {"on_win": "add_one_hour", "on_loss": "subtract_one_hour_floor_two",
+            "on_tie_or_unscored": "retain_current_hours", "minimum_evaluation_hours": 2,
             "late_allowance_seconds": LATE_SECONDS}
 
 
 def next_hours(duration, outcome, version):
     duration = hours(duration)
-    if version not in (LEGACY_RULE, CURRENT_RULE):
+    if version not in SUPPORTED_RULES:
         raise ValueError("Unsupported cadence rule version")
     if outcome == "win":
         return duration + 1
-    if outcome == "loss" and version == CURRENT_RULE:
-        return max(1, duration - 2)
+    if outcome == "loss":
+        if version == CURRENT_RULE:
+            return max(1, duration - 2)
+        if version == TWO_HOUR_FLOOR_RULE:
+            return max(2, duration - 1)
     return duration
 
 
@@ -98,8 +110,11 @@ def validate_active(active):
     if not isinstance(active, dict) or not isinstance(active.get("experiment_id"), str) or not IDENTIFIER.fullmatch(active["experiment_id"]):
         raise ValueError("Invalid active experiment identity")
     duration = hours(active.get("evaluation_hours"))
-    if rule_version(active) == LEGACY_RULE and duration < 2:
+    version = rule_version(active)
+    if version == LEGACY_RULE and duration < 2:
         raise ValueError("Legacy cadence requires at least two hours")
+    if version == TWO_HOUR_FLOOR_RULE and duration < 2:
+        raise ValueError("Two-hour-floor cadence requires at least two hours")
     if type(active.get("carry_in_unscored")) is not bool:
         raise ValueError("Carry-in status must be a strict boolean")
     if active.get("win_forecast_rule") not in (None, *WIN_FORECAST_RULES):
@@ -280,7 +295,7 @@ class Cadence:
                         "paper_policy_id": record["opening_policy_id"],
                         "require_qualified_forecasts": recipe["hyperliquid-paper.json"].get("require_qualified_forecasts", True)}, opening["public_owner_sha256"]
 
-    def active(self, record, recipe, owners, duration, *, carry_in, version=CURRENT_RULE, win_forecast_rule=None):
+    def active(self, record, recipe, owners, duration, *, carry_in, version=LATEST_RULE, win_forecast_rule=None):
         duration = hours(duration)
         active = {"experiment_id": record["experiment_id"], "seed_at_utc": record["seed_at_utc"],
                 "experiment_sha256": file_digest(self.path(self.root / "_paper/experiment.json")),
@@ -325,9 +340,9 @@ class Cadence:
                     raise ValueError("Existing cadence belongs to another run; use advance after its assessment")
                 return self.status()
             value = {"schema_version": VERSION, "initialized_at_utc": utc(),
-                     "cadence_rule_version": CURRENT_RULE, "policy": policy(CURRENT_RULE),
+                     "cadence_rule_version": LATEST_RULE, "policy": policy(LATEST_RULE),
                      "current_evaluation_hours": 2,
-                     "active": self.active(record, recipe, owners, 2, carry_in=True),
+                     "active": self.active(record, recipe, owners, 2, carry_in=True, version=LATEST_RULE),
                      "pending_assessment": None, "history": []}
             write_json(self.state_path, value)
             return self.status()
@@ -361,14 +376,35 @@ class Cadence:
             write_json(self.state_path, state)
             return {"decision": decision, **self.status()}
 
-    def advance(self):
-        with self.lock():
+    def advance(self, *, change_id=None, expected_ending_id=None, expected_active_id=None):
+        transition = any(value is not None for value in (change_id, expected_ending_id, expected_active_id))
+        if transition:
+            if not all((change_id, expected_ending_id, expected_active_id)):
+                raise ValueError("Two-hour-floor transition requires change, ending and active identities")
+            if any(not isinstance(value, str) or not IDENTIFIER.fullmatch(value)
+                   for value in (change_id, expected_ending_id, expected_active_id)):
+                raise ValueError("Valid change, ending and active identities are required")
+        review_lock = FileLock(str(self.path(self.operations / ".paper-review.lock")), timeout=0) if transition else nullcontext()
+        with self.lock(), review_lock:
             state = self.state()
             record, recipe, owners = self.baseline()
             pending = state.get("pending_assessment")
             if pending is None:
                 if (state["history"] and state["active"]["experiment_id"] == record["experiment_id"]
                         and state["active"]["seed_at_utc"] == record["seed_at_utc"]):
+                    if transition:
+                        receipt_path = self.path(self.amendments / (change_id + ".json"))
+                        matching = [item for item in state.get("policy_amendments", [])
+                                    if item.get("path") == str(receipt_path)]
+                        if rule_version(state) != TWO_HOUR_FLOOR_RULE or len(matching) != 1:
+                            raise ValueError("Two-hour-floor transition was not committed for this active round")
+                        receipt = read_json(receipt_path)
+                        if (receipt.get("change_id") != change_id
+                                or receipt.get("ending_experiment_id") != expected_ending_id
+                                or receipt.get("active_experiment_id") != expected_active_id
+                                or receipt.get("to_rule_version") != TWO_HOUR_FLOOR_RULE):
+                            raise ValueError("Committed two-hour-floor transition does not match the requested identities")
+                        return {"policy_amendment": matching[0], **self.status()}
                     return self.status()
                 raise ValueError("A finalized assessment is required before advance")
             path = self.path(pending["path"])
@@ -387,14 +423,56 @@ class Cadence:
             duration = hours(receipt["decision"]["next_evaluation_hours"])
             if classify(receipt["ending_state"], read_json(self.path(receipt["comparison_path"]))) != receipt["decision"]:
                 raise ValueError("Assessment decision does not match its committed rule and comparison")
-            active = self.active(record, recipe, owners, duration, carry_in=False, version=rule_version(state),
+            version = rule_version(state)
+            active = self.active(record, recipe, owners, duration, carry_in=False, version=version,
                                  win_forecast_rule=forecast_rule(recipe["require_qualified_forecasts"]))
+            transition_reference = None
+            if transition:
+                if version != CURRENT_RULE:
+                    raise ValueError("Two-hour-floor transition requires the retained v2 active policy")
+                if ending_id != expected_ending_id or record["experiment_id"] != expected_active_id:
+                    raise ValueError("Expected identities do not match the assessed ending and accepted successor")
+                assert_not_excluded(self.root, {"experiment_id": ending_id})
+                now = utc()
+                prior_successor_due = stamp(record["seed_at_utc"]) + timedelta(hours=duration)
+                duration = max(2, duration)
+                active = self.active(record, recipe, owners, duration, carry_in=False, version=TWO_HOUR_FLOOR_RULE,
+                                     win_forecast_rule=forecast_rule(recipe["require_qualified_forecasts"]))
+                receipt_path = self.path(self.amendments / (change_id + ".json"))
+                amendment = {"schema_version": VERSION, "change_id": change_id,
+                             "ending_experiment_id": ending_id, "active_experiment_id": record["experiment_id"],
+                             "from_rule_version": CURRENT_RULE, "to_rule_version": TWO_HOUR_FLOOR_RULE,
+                             "amended_at_utc": now,
+                             "reason": "direct_human_authorized_two_hour_floor_one_hour_steps",
+                             "consumed_assessment": deepcopy(pending),
+                             "comparison_path": str(self.path(receipt["comparison_path"])),
+                             "comparison_sha256": receipt["comparison_sha256"],
+                             "before_state": deepcopy(state), "before_state_sha256": file_digest(self.state_path),
+                             "after_active": active}
+                if receipt_path.exists():
+                    retained = read_json(receipt_path)
+                    amendment["amended_at_utc"] = retained.get("amended_at_utc")
+                    if (retained != amendment or stamp(amendment["amended_at_utc"]) > stamp(now)
+                            or stamp(amendment["amended_at_utc"]) >= prior_successor_due):
+                        raise ValueError("Existing two-hour-floor transition does not match this transition")
+                else:
+                    if stamp(now) >= prior_successor_due:
+                        raise ValueError("Existing successor deadline is already due; cannot amend retrospectively")
+                    if stamp(now) >= stamp(active["due_at_utc"]):
+                        raise ValueError("Two-hour-floor deadline is already due; cannot amend retrospectively")
+                    self.amendments.mkdir(parents=True, exist_ok=True)
+                    write_json(receipt_path, amendment, exclusive=True)
+                transition_reference = {"path": str(receipt_path), "sha256": file_digest(receipt_path)}
             state["history"].append({"ending_experiment_id": ending_id,
                                      "successor_experiment_id": active["experiment_id"],
                                      "assessment": pending, "decision": receipt["decision"], "advanced_at_utc": utc()})
             state.update(active=active, current_evaluation_hours=duration, pending_assessment=None)
+            if transition_reference is not None:
+                state.update(cadence_rule_version=TWO_HOUR_FLOOR_RULE, policy=policy(TWO_HOUR_FLOOR_RULE),
+                             policy_amendments=[*state.get("policy_amendments", []), transition_reference])
             write_json(self.state_path, state)
-            return self.status()
+            result = self.status()
+            return {"policy_amendment": transition_reference, **result} if transition_reference is not None else result
 
     def adopt_loss_penalty(self, change_id, expected_ending_id, expected_active_id):
         """Apply the latest consumed legacy loss once, retaining its original score.
@@ -501,14 +579,25 @@ def main(argv=None):
     parser.add_argument("--change-id")
     parser.add_argument("--expected-ending-id")
     parser.add_argument("--expected-active-id")
+    parser.add_argument("--adopt-two-hour-floor", action="store_true")
     args = parser.parse_args(argv)
+    transition_args = any((args.change_id, args.expected_ending_id, args.expected_active_id))
     if args.command == "assess" and args.comparison is None:
         parser.error("assess requires --comparison")
+    if args.adopt_two_hour_floor and args.command != "advance":
+        parser.error("--adopt-two-hour-floor is only valid with advance")
+    if args.command == "advance" and transition_args and not args.adopt_two_hour_floor:
+        parser.error("advance transition identities require --adopt-two-hour-floor")
     cadence = Cadence(args.root)
     if args.command == "adopt-loss-penalty":
         if not all((args.change_id, args.expected_ending_id, args.expected_active_id)):
             parser.error("adopt-loss-penalty requires --change-id, --expected-ending-id and --expected-active-id")
         result = cadence.adopt_loss_penalty(args.change_id, args.expected_ending_id, args.expected_active_id)
+    elif args.command == "advance" and args.adopt_two_hour_floor:
+        if not all((args.change_id, args.expected_ending_id, args.expected_active_id)):
+            parser.error("two-hour-floor transition requires --change-id, --expected-ending-id and --expected-active-id")
+        result = cadence.advance(change_id=args.change_id, expected_ending_id=args.expected_ending_id,
+                                 expected_active_id=args.expected_active_id)
     else:
         result = cadence.assess(args.comparison) if args.command == "assess" else getattr(cadence, args.command)()
     print(json.dumps(result, indent=2, allow_nan=False))
