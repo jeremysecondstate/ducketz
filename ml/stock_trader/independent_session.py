@@ -174,6 +174,11 @@ def run_independent_stock_session(
     """
     root = Path(root).resolve()
     sizing_policy = validate_sizing_policy(sizing_policy)
+    from ml.account_gameplan.config import load_account_config, assert_coordinator, verify_cutover
+    account_config = load_account_config(root)
+    assert_coordinator(account_config, sizing_policy)
+    if account_config is not None:
+        verify_cutover(root, account_config)
     started = utc(clock())
     recovery_pending = bool(resume_quote_run or resume_quote_symbol)
     if recovery_pending:

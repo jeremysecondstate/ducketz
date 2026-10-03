@@ -1,5 +1,16 @@
 # Overnight immutable gameplan
 
+## October 2 shared-account coordination
+
+The approved next implementation uses two local forecast producers and one
+Atlas execution host. Follow [Shared-account Gameplan](SHARED_ACCOUNT_GAMEPLAN.md)
+for the opt-in preparation stage, exact two-source handoff, shared account plan,
+combined accuracy and separately reviewed runtime cutover. Source exports and
+planning receipts do not activate the system. Preserve the 21:05 schedule,
+original 04:00 deadline, local watchlists and every existing attempt's saved
+stage order. Scout remains a forecast/accuracy producer after verified cutover;
+the user manually starts only Atlas's coordinated trader.
+
 ## September 30 prospective cross-horizon fallback
 
 New independent Gameplans for October 1 or later bind the operator-approved
