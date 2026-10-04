@@ -1,0 +1,58 @@
+{
+  "author": {
+    "declared_actor": "Atlas",
+    "git_author": "Jeremy Klein",
+    "observed_by": "Scout/pc-new"
+  },
+  "branch": "refs/heads/main",
+  "change_id": "main-observation:76e8d9c6c5247c09e4332aad3c1343c505051894",
+  "commit_sha": "76e8d9c6c5247c09e4332aad3c1343c505051894",
+  "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/76e8d9c6c5247c09e4332aad3c1343c505051894",
+  "committed_at": "2026-10-03T21:15:37-07:00",
+  "completion_id": "20261004T041400Z-atlas-fallback-oct02-3bfd5c3e",
+  "coordination_class": "factual source availability and local preservation observation; no acknowledgment requested",
+  "files": [
+    {
+      "bytes": 744,
+      "classification": "pc-original symbol-specific output; no Scout adoption",
+      "operation": "A",
+      "path": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/analysis/fallback-session-reviews/20261004T0410Z-20261002/manifest.json",
+      "sha256": "e1859700751712d3e813cc462f63ba52ec4887fbdf4be47175ee4283d373f9ee"
+    },
+    {
+      "bytes": 64130,
+      "classification": "pc-original symbol-specific output; no Scout adoption",
+      "operation": "A",
+      "path": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/analysis/fallback-session-reviews/20261004T0410Z-20261002/report.json",
+      "sha256": "b7075b1872f1dd577d1523a6cffed5bcba4d216138c230714b5058a9a200f24e"
+    },
+    {
+      "bytes": 3748,
+      "classification": "pc-original symbol-specific output; no Scout adoption",
+      "operation": "A",
+      "path": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/artifact-manifest.json",
+      "sha256": "33b9f00cd7ba4cf6c6f13ea7c68980db03288972fa35b5edf9b6524128e867fe"
+    }
+  ],
+  "limitations": [
+    "Historical output and sender validation claims do not establish current broker or runtime state.",
+    "Scout source checkout remains 9c5b50281169f05032bb0d6d943f761447e70cab; remote main availability is separate from application adoption.",
+    "No current owner-safe application adoption boundary or fresh candidate test evidence was obtained. Existing unfinished source records retain their prior review blockers."
+  ],
+  "local_preservation": {
+    "completed_at_utc": "2026-10-04T04:19:41.361360Z",
+    "private_fingerprints_exported": false,
+    "verified": true
+  },
+  "parent_sha": "611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application fast-forward, local output replacement, runtime start/restart, provider call, training or trade. Atlas files remain in their own immutable namespace.",
+  "scope": "Atlas pc-original symbol-specific historical outputs only; zero shared-source changes.",
+  "source_commit": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "summary": "Scout verified Atlas-only historical output on common main; Scout checkout and symbols preserved.",
+  "tests": {
+    "scout_checks": "Exact commit and parent, all three changed filenames and committed blob SHA-256 hashes; one ordinary non-recursive origin fetch; before/after HEAD, branch, index, tracked/untracked inventory, private profile, local watchlist and 970 shared-source/28 configuration fingerprints preserved. No application tests executed.",
+    "scout_verified_at_utc": "2026-10-04T04:19:41.361360Z",
+    "sender_claims": "Commit describes a native read-only historical review at 2026-10-04T04:10:09Z to 04:10:10Z and offline validation at 2026-10-04T04:11:00Z. Scout did not independently execute those checks."
+  }
+}
