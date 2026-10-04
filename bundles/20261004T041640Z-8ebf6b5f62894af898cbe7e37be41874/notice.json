@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "base_sha": "611b0b26a646824c08c15187d7d6aa8775a22f92",
+  "branch": "main",
+  "change_id": "artifact:20261004T041400Z-atlas-fallback-oct02-3bfd5c3e",
+  "commit_sha": "76e8d9c6c5247c09e4332aad3c1343c505051894",
+  "files": [
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/analysis/fallback-session-reviews/20261004T0410Z-20261002/manifest.json",
+      "sha256": "e1859700751712d3e813cc462f63ba52ec4887fbdf4be47175ee4283d373f9ee"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/analysis/fallback-session-reviews/20261004T0410Z-20261002/report.json",
+      "sha256": "b7075b1872f1dd577d1523a6cffed5bcba4d216138c230714b5058a9a200f24e"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/artifact-manifest.json",
+      "sha256": "33b9f00cd7ba4cf6c6f13ea7c68980db03288972fa35b5edf9b6524128e867fe"
+    }
+  ],
+  "limitations": [
+    "Historical recorded-ledger observation only; not fresh account evidence, combined plan readiness, or realized profit.",
+    "Existing producer source and tail retained; original source publication reused without repetition.",
+    "Complete verified peer source/actuals, installation/fencing and ownership continuity remain unverified; union reconciliation and activation pending."
+  ],
+  "producer": "loops-hourly-operations",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No source, model, policy, account binding, trader, order or schedule change; original Monday 04:00 Pacific deadline preserved.",
+  "scope": "Atlas-only symbol-specific; Scout must not adopt these live files",
+  "summary": "Atlas completed October 2 read-only fallback-session review; historical operating artifact available, combined cutover still PREPARING.",
+  "task": "overnight_gameplan",
+  "tests": {
+    "completed_at_utc": "2026-10-04T04:14:58.324772Z",
+    "offline_checks": 22,
+    "private_value_scan": "PASS",
+    "publication_verification_sha256": "1dcb3ce5a7a31bf595ca59184de5cca2317f3f078f5c2129d6df7d568935b92a",
+    "result": "PASS",
+    "verification_sha256": "d32caf5366d44859776a91d58659c845dc68080c6920c93a5ee51ee01dc0f61b"
+  }
+}
