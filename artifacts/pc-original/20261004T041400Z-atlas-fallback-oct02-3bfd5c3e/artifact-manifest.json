@@ -1,0 +1,78 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-04T04:14:38.830489Z",
+  "completion_id": "20261004T041400Z-atlas-fallback-oct02-3bfd5c3e",
+  "details": [
+    "Actor Atlas; producer pc-original; task overnight_gameplan; completion 20261004T041400Z-atlas-fallback-oct02-3bfd5c3e.",
+    "Atlas-only symbol-specific; Scout must not adopt these live files. This completed historical review is informational and changes no live symbol selection or Gameplan.",
+    "Native read-only review executed 2026-10-04T04:10:09Z to 04:10:10Z. Retains confirmed recorded fills, cancellations, ordinary sales and frozen fallback cap accounting for the completed October 2 session.",
+    "Offline review at 2026-10-04T04:11:00Z checked all 57 fallback records, manifest report hash/size, quantity arithmetic and all symbol, donor and saved slot limits; no overages.",
+    "Limitations: one existing ledger read snapshot, not fresh broker evidence; no realized profit or hypothetical fills inferred. No code, model, policy, account, trader or order actions. Combined account remains PREPARING.",
+    "Source checkout remains main at 88c812ce6bed95fff7fbbc785bc8c8daa4193102 with verified scoped installation; artifact publication base reviewed at 611b0b26a646824c08c15187d7d6aa8775a22f92."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/analysis/fallback-session-reviews/20261004T0410Z-20261002/manifest.json",
+      "expected_sha256": "e1859700751712d3e813cc462f63ba52ec4887fbdf4be47175ee4283d373f9ee",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261004T0410Z-20261002/manifest.json",
+      "published_sha256": "e1859700751712d3e813cc462f63ba52ec4887fbdf4be47175ee4283d373f9ee",
+      "published_size": 744,
+      "sha256": "e1859700751712d3e813cc462f63ba52ec4887fbdf4be47175ee4283d373f9ee",
+      "size": 744,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261004T041400Z-atlas-fallback-oct02-3bfd5c3e/analysis/fallback-session-reviews/20261004T0410Z-20261002/report.json",
+      "expected_sha256": "b7075b1872f1dd577d1523a6cffed5bcba4d216138c230714b5058a9a200f24e",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261004T0410Z-20261002/report.json",
+      "published_sha256": "b7075b1872f1dd577d1523a6cffed5bcba4d216138c230714b5058a9a200f24e",
+      "published_size": 64130,
+      "sha256": "b7075b1872f1dd577d1523a6cffed5bcba4d216138c230714b5058a9a200f24e",
+      "size": 64130,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "e1859700751712d3e813cc462f63ba52ec4887fbdf4be47175ee4283d373f9ee",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261004T0410Z-20261002/manifest.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "b7075b1872f1dd577d1523a6cffed5bcba4d216138c230714b5058a9a200f24e",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261004T0410Z-20261002/report.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "loops-hourly-operations",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "summary": "Atlas-only October 2 completed fallback session observation",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ]
+}
