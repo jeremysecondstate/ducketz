@@ -1,0 +1,202 @@
+{
+  "accuracy_status_counts": {
+    "EVALUATED": 162,
+    "MATURE_AWAITING_DATA": 36,
+    "PENDING_MATURITY": 66
+  },
+  "current": {
+    "action_date": "2026-10-06",
+    "forecast_rows": 264,
+    "holding_policy_proof": "NATIVE_MANIFEST",
+    "model_status_counts": {
+      "PROMOTED": 209,
+      "RESEARCH_NOT_PROMOTED": 55
+    },
+    "source_manifest_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+    "source_receipt_sha256": "15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ]
+  },
+  "existing_original": {
+    "bundle_path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source",
+    "commit": "611b0b26a646824c08c15187d7d6aa8775a22f92",
+    "files": [
+      {
+        "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/forecasts.parquet",
+        "sha256": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed",
+        "size": 60202
+      },
+      {
+        "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/manifest.json",
+        "sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+        "size": 1591698
+      },
+      {
+        "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/ownership.json",
+        "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+        "size": 23
+      },
+      {
+        "path": "artifacts/pc-original/20261003T123730Z-atlas-native-handoff-f529e00f/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/planning-price-path.json",
+        "sha256": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82",
+        "size": 46642203
+      }
+    ],
+    "manifest_sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+    "repository": "jeremysecondstate/ducketz",
+    "verification": "Read-only local immutable Git tree and blob objects; no fetch or push."
+  },
+  "files": [
+    {
+      "destination": "current-source/forecasts.parquet",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/forecasts.parquet",
+      "publish_new": true,
+      "sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "size": 60489
+    },
+    {
+      "destination": "current-source/manifest.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/manifest.json",
+      "publish_new": true,
+      "sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "size": 1651705
+    },
+    {
+      "destination": "current-source/ownership.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/ownership.json",
+      "publish_new": true,
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23
+    },
+    {
+      "destination": "current-source/planning-price-path.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/planning-price-path.json",
+      "publish_new": true,
+      "sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "size": 46579573
+    },
+    {
+      "destination": "original-source/forecasts.parquet",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/forecasts.parquet",
+      "publish_new": false,
+      "sha256": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed",
+      "size": 60202
+    },
+    {
+      "destination": "original-source/manifest.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/manifest.json",
+      "publish_new": false,
+      "sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+      "size": 1591698
+    },
+    {
+      "destination": "original-source/ownership.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/ownership.json",
+      "publish_new": false,
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23
+    },
+    {
+      "destination": "original-source/planning-price-path.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/planning-price-path.json",
+      "publish_new": false,
+      "sha256": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82",
+      "size": 46642203
+    },
+    {
+      "destination": "native-actuals/Gameplan-results.md",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261006T081728.997591Z/Gameplan-results.md",
+      "publish_new": true,
+      "sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "size": 64479
+    },
+    {
+      "destination": "native-actuals/forecast-results.parquet",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261006T081728.997591Z/forecast-results.parquet",
+      "publish_new": true,
+      "sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "size": 131119
+    },
+    {
+      "destination": "native-actuals/manifest.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261006T081728.997591Z/manifest.json",
+      "publish_new": true,
+      "sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "size": 364626
+    },
+    {
+      "destination": "native-actuals/price-results.parquet",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261006T081728.997591Z/price-results.parquet",
+      "publish_new": true,
+      "sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "size": 21558
+    },
+    {
+      "destination": "native-actuals/receipt.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261006T081728.997591Z/receipt.json",
+      "publish_new": true,
+      "sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "size": 335
+    },
+    {
+      "destination": "native-actuals/report.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261006T081728.997591Z/report.json",
+      "publish_new": true,
+      "sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "size": 409782
+    }
+  ],
+  "limitations": [
+    "Atlas PREPARING producer source and native actuals only; no combined account plan, accuracy union, ownership migration, activation or execution authority.",
+    "Complete verified Scout source/actuals, installation/config/fencing, preserved ownership, fresh union reconciliation and reviewed activation remain missing. Original Monday October5 deadline passed.",
+    "Daily55 forecasts are RESEARCH_NOT_PROMOTED; independent development/partition reviews found no concrete correctness defect or justified assessment-independent retry. Other209 forecasts pass tolerances without baseline outperformance.",
+    "All four sizing groups fitted; zero qualified scopes.",
+    "Monday actuals99/162 raw directional calls correct;36 mature missing and66 pending;134 price comparisons available,20 missing. Cumulative mature missing outcomes1249.",
+    "Planning-only carried anchors CROX239,PATH29,IONQ9,TWST6 minutes retain observed timestamps and synthetic ASSUMED_NO_TRADES references; no live quote or training-label substitution.",
+    "Saved installed v3 planning lookback504 sessions matches prior native plan; older automation prose says120. Existing completed source bytes and policy retained; no new policy authorization inferred from peer Git history.",
+    "CME capped partial coverage, stale FMP context and unavailable/failed-quality Schwab inputs remain disclosed; affected optional families absent from Gameplan fitted features. OPRA metadata retries all recovered.",
+    "Repeated Joblib/NumPy deprecation warnings match prior successful dependencies; no runtime exception or repair.",
+    "Root inspection cadence exceeded one minute during recorded context transitions and occasional processing intervals; bounded helper observations/renewals and native health persisted. Both helper restarts renewed before claim expiry; no competing owner or native restart.",
+    "No raw archive replay or model refit by audits; saved-data reader validation does not establish running UI adoption.",
+    "October5 fallback review NO_BASELINE does not establish zero sales.",
+    "Original source bytes are already published at the exact referenced commit and are not republished.",
+    "Restore those four original-source files with current-source and native-actuals to obtain the complete reader input.",
+    "Source/actuals availability is not a combined account plan, cutover, or execution authority."
+  ],
+  "original": {
+    "action_date": "2026-10-05",
+    "forecast_rows": 264,
+    "holding_policy_proof": "NATIVE_MANIFEST",
+    "model_status_counts": {
+      "PROMOTED": 264
+    },
+    "source_manifest_sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+    "source_receipt_sha256": "59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ]
+  },
+  "producer_id": "pc-original",
+  "schema_version": "atlas-native-artifact-handoff-v2"
+}

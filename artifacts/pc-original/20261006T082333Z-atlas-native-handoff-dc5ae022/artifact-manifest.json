@@ -1,0 +1,315 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-06T08:26:18.331105Z",
+  "completion_id": "20261006T082333Z-atlas-native-handoff-dc5ae022",
+  "details": [
+    "Actor Atlas/pc-original; producer loops-hourly-operations; all ten native stages completed 2026-10-06T08:18:32Z before the original Tuesday 04:00 Pacific deadline, with zero orders.",
+    "Atlas-only symbol-specific; Scout must not adopt these live files. The unchanged eleven-symbol producer source may be consumed as verified input to later combined planning.",
+    "Current October 6 native source has 264 frozen forecasts and 154 available price clocks; preserve original forecast, model, source and holding-policy identities.",
+    "Three forecast groups pass saved tolerances without baseline outperformance; 55 daily forecasts remain RESEARCH_NOT_PROMOTED. Two independent offline selection/partition reviews found no concrete repair or justified retry.",
+    "All four sizing groups fitted but no scopes qualified. Source-only mode contains no cash/share projection, account snapshot or ownership assignment; NATIVE_MANIFEST proof retained.",
+    "October 5 actuals: 99 of 162 raw directional calls correct, 36 mature missing outcomes and 66 pending; 134 available price comparisons and 20 missing. Cumulative mature missing outcomes remain 1249.",
+    "Planning-only carried anchors are CROX239, PATH29, IONQ9 and TWST6 minutes under saved v3 policy. Installed 504-session lookback and prior-native provenance are preserved; older automation wording says120.",
+    "Exact original October 5 source remains at commit611b0b26a646824c08c15187d7d6aa8775a22f92; reuse its four referenced payloads. This completion publishes only the new source/actuals/index and completed fallback files.",
+    "Final offline ten-stage/output/source audit and genuine saved-data UI readers passed on October6 08:18-08:19UTC; 853 installed application inputs and21 coordination inputs verified. Price/content review completed before this snapshot.",
+    "October 5 read-only fallback review is NO_BASELINE, using the latest recorded October3 ledger snapshot. Missing baseline is not evidence of zero sales or realized profit.",
+    "PREPARING producer source and native actuals only; no combined account plan, activation, ownership migration or trading authority. Verified Scout handoff/fencing, union reconciliation and reviewed cutover remain missing.",
+    "No shared source changes, package changes, runtime deployment, trader start/stop or order action. Native originals, prior completed publications, local bindings and schedule preserved."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/forecasts.parquet",
+      "expected_sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/forecasts.parquet",
+      "published_sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "published_size": 60489,
+      "sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "size": 60489,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/manifest.json",
+      "expected_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/manifest.json",
+      "published_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "published_size": 1651705,
+      "sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "size": 1651705,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/ownership.json",
+      "expected_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/ownership.json",
+      "published_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "published_size": 23,
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/planning-price-path.json",
+      "expected_sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/planning-price-path.json",
+      "published_sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "published_size": 46579573,
+      "sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "size": 46579573,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/Gameplan-results.md",
+      "expected_sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/Gameplan-results.md",
+      "published_sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "published_size": 64479,
+      "sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "size": 64479,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/forecast-results.parquet",
+      "expected_sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/forecast-results.parquet",
+      "published_sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "published_size": 131119,
+      "sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "size": 131119,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/manifest.json",
+      "expected_sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/manifest.json",
+      "published_sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "published_size": 364626,
+      "sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "size": 364626,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/price-results.parquet",
+      "expected_sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/price-results.parquet",
+      "published_sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "published_size": 21558,
+      "sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "size": 21558,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/receipt.json",
+      "expected_sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/receipt.json",
+      "published_sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "published_size": 335,
+      "sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "size": 335,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/report.json",
+      "expected_sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/report.json",
+      "published_sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "published_size": 409782,
+      "sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "size": 409782,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/handoff-index.json",
+      "expected_sha256": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/handoff-index.json",
+      "published_sha256": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+      "published_size": 10280,
+      "sha256": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+      "size": 10280,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/analysis/fallback-session-reviews/20261006T0819Z-20261005/report.json",
+      "expected_sha256": "83ce22f35308a13ac7f263aef72508144799fdbb2232147a17b8c33cd8490934",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261006T0819Z-20261005/report.json",
+      "published_sha256": "83ce22f35308a13ac7f263aef72508144799fdbb2232147a17b8c33cd8490934",
+      "published_size": 861,
+      "sha256": "83ce22f35308a13ac7f263aef72508144799fdbb2232147a17b8c33cd8490934",
+      "size": 861,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/analysis/fallback-session-reviews/20261006T0819Z-20261005/manifest.json",
+      "expected_sha256": "0e4dccda53de1d25f63a7ab7c70ff5fbeadc20d8e57ad7fe4db6b468a0927987",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261006T0819Z-20261005/manifest.json",
+      "published_sha256": "0e4dccda53de1d25f63a7ab7c70ff5fbeadc20d8e57ad7fe4db6b468a0927987",
+      "published_size": 683,
+      "sha256": "0e4dccda53de1d25f63a7ab7c70ff5fbeadc20d8e57ad7fe4db6b468a0927987",
+      "size": 683,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/forecasts.parquet",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/manifest.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/ownership.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/planning-price-path.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/Gameplan-results.md",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/forecast-results.parquet",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/manifest.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/price-results.parquet",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/receipt.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/report.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/handoff-index.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "83ce22f35308a13ac7f263aef72508144799fdbb2232147a17b8c33cd8490934",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261006T0819Z-20261005/report.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "0e4dccda53de1d25f63a7ab7c70ff5fbeadc20d8e57ad7fe4db6b468a0927987",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/analysis/fallback-session-reviews/20261006T0819Z-20261005/manifest.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "loops-hourly-operations",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "summary": "Atlas October 6 source, October 5 actuals and fallback observation",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}
