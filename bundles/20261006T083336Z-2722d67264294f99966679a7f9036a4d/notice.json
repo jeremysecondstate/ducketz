@@ -1,0 +1,133 @@
+{
+  "artifact_manifest_sha256": "7a265a0ccd6479734e84b0b587c4427b7fa6e045f049da360dcda335eaa4f9b8",
+  "author": "Atlas",
+  "base_sha": "76e8d9c6c5247c09e4332aad3c1343c505051894",
+  "branch": "main",
+  "change_id": "20261006T082333Z-atlas-native-handoff-dc5ae022",
+  "commit_sha": "7afd23560d09ad8d09def678103113333bb15066",
+  "completion_id": "20261006T082333Z-atlas-native-handoff-dc5ae022",
+  "facts": [
+    "All ten saved native stages completed at 2026-10-06T08:18:32Z before the original October 6 04:00 Pacific deadline; zero overnight orders.",
+    "264 forecasts and 264 stock-only intents; all 154 source-only price clocks available. Native holding-policy proof retained, ownership null and no account projection.",
+    "October 5 actuals: 162 evaluated, 99 correct raw directional calls, 36 mature missing and 66 pending. Price comparisons: 134 available and 20 missing.",
+    "New payloads are current-source, native actuals, a handoff index and the October 5 fallback review. The four original-source payloads are reused unchanged from commit 611b0b26a646824c08c15187d7d6aa8775a22f92; no duplicate publication.",
+    "Artifact commit and all 14 added paths verified against exact reviewed source bytes. No source queue or application installation was performed."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/forecasts.parquet",
+      "sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "size": 60489
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/manifest.json",
+      "sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "size": 1651705
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/ownership.json",
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/planning-price-path.json",
+      "sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "size": 46579573
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/Gameplan-results.md",
+      "sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "size": 64479
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/forecast-results.parquet",
+      "sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "size": 131119
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/manifest.json",
+      "sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "size": 364626
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/price-results.parquet",
+      "sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "size": 21558
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/receipt.json",
+      "sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "size": 335
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/report.json",
+      "sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "size": 409782
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/handoff-index.json",
+      "sha256": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+      "size": 10280
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/analysis/fallback-session-reviews/20261006T0819Z-20261005/report.json",
+      "sha256": "83ce22f35308a13ac7f263aef72508144799fdbb2232147a17b8c33cd8490934",
+      "size": 861
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/analysis/fallback-session-reviews/20261006T0819Z-20261005/manifest.json",
+      "sha256": "0e4dccda53de1d25f63a7ab7c70ff5fbeadc20d8e57ad7fe4db6b468a0927987",
+      "size": 683
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/artifact-manifest.json",
+      "sha256": "7a265a0ccd6479734e84b0b587c4427b7fa6e045f049da360dcda335eaa4f9b8",
+      "size": 17197
+    }
+  ],
+  "limitations": [
+    "All 55 daily forecasts remain RESEARCH_NOT_PROMOTED; all four sizing groups fitted with zero qualified scopes. Independent offline selection reviews found no concrete correctness defect or justified retry.",
+    "Three forecast groups passed saved tolerances without baseline outperformance. Cumulative mature missing outcomes: 1249. Optional provider exclusions remain; recovered OPRA metadata retries are not outstanding failures.",
+    "Planning-only carried anchors: CROX239, PATH29, IONQ9 and TWST6 minutes. The installed v3 504-session lookback was retained; older automation wording says120. No new policy change was made.",
+    "October 5 fallback review is NO_BASELINE using an older recorded ledger observation; absence is not evidence of zero sales or realized profit.",
+    "Scout complete current/original/actuals inputs, exact installation/configuration/fencing and preserved ownership evidence are not verified. Fresh union reconciliation and concretely reviewed activation remain missing. The original October 5 cutover deadline has expired.",
+    "Some operator inspection intervals exceeded one minute during long reviews/context recovery; bounded automatic observations continued and the supervision claim was renewed before expiry."
+  ],
+  "link": "https://github.com/jeremysecondstate/ducketz/commit/7afd23560d09ad8d09def678103113333bb15066",
+  "producer": "overnight_gameplan",
+  "remote_sha": "7afd23560d09ad8d09def678103113333bb15066",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "SOURCE_AND_ACCURACY_READY_PREPARING only. No combined account plan or count-weighted combined accuracy, no activation, no ownership migration, no trader start/stop, no order action or changed controls/schedule. Publication does not establish peer availability, installation or runtime adoption. Broker-usable cash and verified fills govern any later live buying; projected proceeds remain conditional.",
+  "scope": "Atlas-only symbol-specific; Scout must not adopt these live files. These completed machine-namespaced exports preserve the unchanged eleven-stock producer and may be verified as inputs for later combined planning. No shared-source changes.",
+  "summary": "Atlas October 6 native source and October 5 actuals published and byte-verified; combined account remains PREPARING.",
+  "tests": [
+    {
+      "evidence_sha256": "3c8a4459564fc68990318217c6092145b2db8e37222bf34d1c8a50694c18f20b",
+      "finished_at": "2026-10-06T08:18:51.529194+00:00",
+      "name": "Native ten-stage final output and installed source audit",
+      "result": "VERIFIED_SOURCE_AND_ACCURACY_READY_PREPARING",
+      "verified_at": "2026-10-06T08:18:45.445272+00:00"
+    },
+    {
+      "evidence_sha256": "18a281e2d34b6ae69fec986c1ddb590dbc5e7644f183d2f64a662b62de42cf28",
+      "name": "Independent exact Git payload, manifest, remote SHA and private-value scan verification",
+      "result": "PASS",
+      "started_at": "2026-10-06T08:30:40.064110+00:00",
+      "verified_at": "2026-10-06T08:30:42.297879+00:00"
+    }
+  ]
+}
