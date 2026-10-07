@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from datafetching.ids import is_opaque_identifier
-from ml.contracts import FeatureSet, FeatureSpec
+from ml.contracts import FeatureSet, FeatureSpec, MLContractError
 from ml.datasets.families import (
     WEEKLY_CONTEXT_VALUES,
     load_weekly_context_features,
@@ -132,6 +132,11 @@ def test_loop_a_all_profile_dispatches_and_projects_every_ordered_feature(
     monkeypatch.setattr(
         rolling_materialization,
         "_join_symbol_values",
+        append_values,
+    )
+    monkeypatch.setattr(
+        rolling_materialization,
+        "_join_quote_values",
         append_values,
     )
     monkeypatch.setattr(
@@ -391,6 +396,146 @@ def test_daily_routes_report_the_missing_market_regime_file(
             bars=bars,
         )
     assert not expected.exists()
+
+
+def _attach_quote_fixture(tmp_path, monkeypatch, records, *, horizon="1d"):
+    registered = DEFAULT_FEATURE_REGISTRY.feature_set(
+        horizon_specifications_for_profile(
+            "loop-a-all-v1", horizons=(horizon,)
+        )[horizon].feature_set,
+        require_active=True,
+        horizon=horizon,
+    )
+    feature_set = FeatureSet(
+        "quote-attachment-fixture",
+        registered.for_family("quote"),
+        applicable_horizons=(horizon,),
+    )
+    source_path = (
+        tmp_path / "stocks/MU/quotes/features/quote-liquidity/schwab/part.parquet"
+    )
+    source_path.parent.mkdir(parents=True)
+    pd.DataFrame(records).to_parquet(source_path, index=False)
+    monkeypatch.setattr(
+        rolling_materialization.DEFAULT_FEATURE_REGISTRY,
+        "feature_set",
+        lambda *_args, **_kwargs: feature_set,
+    )
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["MU"],
+            "horizon": [horizon],
+            "decision_timestamp": [pd.Timestamp("2026-07-30T10:05:00Z")],
+        }
+    )
+    joined, paths = rolling_materialization._attach_loop_a_features(
+        tmp_path,
+        decisions,
+        symbols=("MU",),
+        horizon=horizon,
+        source_timeframe="1d" if horizon == "1d" else "1h",
+        provider="databento",
+        feature_set_name=feature_set.name,
+        parquet_cache={},
+        derived_cache={},
+    )
+    assert paths == (source_path,)
+    assert "quote__relative_bid_ask_spread" in feature_set.names
+    return joined
+
+
+def _quote_fixture(**overrides):
+    return {
+        "symbol": "MU",
+        "available_at": "2026-07-30T10:00:00Z",
+        "quote_event_at": "2026-07-30T09:59:59Z",
+        "quote_staleness_seconds": 1.0,
+        "quote_quality_pass": True,
+        "bid": 99.0,
+        "ask": 101.0,
+        "mid": 100.0,
+        "relative_bid_ask_spread": 0.02,
+        **overrides,
+    }
+
+
+@pytest.mark.parametrize("quality", [False, None, "malformed"])
+def test_quote_attachment_retains_latest_failed_quality_without_valid_backfill(
+    tmp_path, monkeypatch, quality
+):
+    old = _quote_fixture()
+    latest = _quote_fixture(
+        available_at="2026-07-30T10:04:00Z",
+        quote_event_at="2026-07-30T10:03:59Z",
+        quote_quality_pass=quality,
+    )
+    if isinstance(quality, str):
+        old["quote_quality_pass"] = "true"
+    joined = _attach_quote_fixture(tmp_path, monkeypatch, [old, latest])
+    assert pd.isna(joined.loc[0, "quote__relative_bid_ask_spread"])
+    assert joined.loc[0, "quote__join_status"] == "QUALITY_REJECTED"
+    assert joined.loc[0, "quote__available_at"] == pd.Timestamp(latest["available_at"])
+    assert not bool(joined.loc[0, "quote__audit_quote_quality_pass"])
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"bid": 101.0, "ask": 99.0},
+        {"relative_bid_ask_spread": 0.03},
+        {"quote_event_at": "2026-07-30T10:00:01Z"},
+        {"quote_staleness_seconds": 2.0},
+    ],
+)
+def test_quote_attachment_enforces_physical_and_event_evidence(
+    tmp_path, monkeypatch, overrides
+):
+    joined = _attach_quote_fixture(
+        tmp_path, monkeypatch, [_quote_fixture(**overrides)]
+    )
+    assert pd.isna(joined.loc[0, "quote__relative_bid_ask_spread"])
+    assert joined.loc[0, "quote__join_status"] == "QUALITY_REJECTED"
+
+
+@pytest.mark.parametrize("declared_quality", [True, False])
+def test_quote_attachment_accepts_valid_physical_evidence_and_keeps_mapping(
+    tmp_path, monkeypatch, declared_quality
+):
+    record = _quote_fixture(symbol="mu")
+    if not declared_quality:
+        record.pop("quote_quality_pass")
+    joined = _attach_quote_fixture(tmp_path, monkeypatch, [record])
+    assert joined.loc[0, "quote__relative_bid_ask_spread"] == pytest.approx(0.02)
+    assert joined.loc[0, "quote__join_status"] == "JOINED"
+
+
+def test_quote_attachment_requires_declared_quality_or_physical_evidence(
+    tmp_path, monkeypatch
+):
+    record = _quote_fixture()
+    for name in ("quote_quality_pass", "bid", "ask", "mid"):
+        record.pop(name)
+    with pytest.raises(MLContractError, match="physical bid/ask/mid"):
+        _attach_quote_fixture(tmp_path, monkeypatch, [record])
+
+
+def test_quote_attachment_preserves_last_duplicate_and_freshness(
+    tmp_path, monkeypatch
+):
+    old = _quote_fixture(
+        available_at="2026-07-30T09:59:00Z",
+        quote_event_at="2026-07-30T09:58:59Z",
+    )
+    duplicate = _quote_fixture(quote_quality_pass=False)
+    joined = _attach_quote_fixture(
+        tmp_path, monkeypatch, [old, _quote_fixture(), duplicate]
+    )
+    assert joined.loc[0, "quote__join_status"] == "QUALITY_REJECTED"
+    assert pd.isna(joined.loc[0, "quote__relative_bid_ask_spread"])
+    monkeypatch.undo()
+    stale = _attach_quote_fixture(tmp_path / "stale", monkeypatch, [old], horizon="1h")
+    assert stale.loc[0, "quote__join_status"] == "STALE"
+    assert pd.isna(stale.loc[0, "quote__relative_bid_ask_spread"])
 
 
 def test_symbol_join_is_backward_asof_and_respects_freshness() -> None:
