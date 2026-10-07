@@ -1,0 +1,133 @@
+{
+  "adoption": {
+    "helper_installation": "separate pinned coordination release; unchanged by this source revision",
+    "main_integration": "main integrated; exact SHA and fresh candidate test evidence verified",
+    "pc_local_source_adoption": "pending",
+    "peer_source_adoption": "unverified",
+    "publication": "source branch available; exact source SHA verified",
+    "runtime_deployment": "not performed or verified"
+  },
+  "author": {
+    "actor": "Atlas",
+    "integration_author_time": "2026-10-06T23:36:12-07:00",
+    "integration_git_author": "Atlas",
+    "machine": "pc-original",
+    "producer": "loops-hourly-operations",
+    "source_author_time": "2026-10-06T23:33:53-07:00",
+    "source_git_author": "Jeremy Klein",
+    "task": "overnight_gameplan"
+  },
+  "base_commit": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+  "change_details": [
+    "Task overnight_gameplan; actor Atlas; shared non-trading feature-quality repair applies to both producers without changing their symbol universes.",
+    "Use the existing quote reader for explicit quality, physical bid/ask/mid/spread and causal quote-time validation after existing rolling source normalization.",
+    "Preserve stable last-receipt duplicate handling, registered feature mapping and freshness; rejected latest quotes remain null instead of backfilling older valid values.",
+    "Add actual attachment-path Parquet regressions for false, missing or malformed evidence, physical and event-time contradictions, valid evidence, duplicate order and staleness."
+  ],
+  "change_id": "20261007T063010Z-d7558b4625434fbe9f383fee9a6fd4ec-source-main",
+  "completion_id": "20261007T063010Z-d7558b4625434fbe9f383fee9a6fd4ec",
+  "files": [
+    {
+      "bytes": 61765,
+      "operation": "modify",
+      "path": "ml/rolling_materialization.py",
+      "sha256": "7ef156a9481aea438021a8c22307ae851cb3e93885b9fcad2dc8805587de9ae4"
+    },
+    {
+      "bytes": 34358,
+      "operation": "modify",
+      "path": "tests/test_ml_loop_a_all_family_wiring.py",
+      "sha256": "9270822ea7427b7d87c7910eb7dec8af340253ab22715dc070023bcf4c3a7a5d"
+    },
+    {
+      "bytes": 53488,
+      "operation": "modify",
+      "path": "tests/test_option_pricing_shadow_consumers.py",
+      "sha256": "ae008f3ce20d9d4cbe29f42b955d1b8922c6ccfe361453b2f180ec9c4fe70818"
+    }
+  ],
+  "limitations": [
+    "Offline temporary fixtures; no live provider, broker, account or running-process verification.",
+    "Completed Loop B outputs and saved models are unchanged; this source repair does not retroactively repair completed artifacts or determine current Gameplan readiness.",
+    "The three owned text files use CRLF in the published bytes. Ninety unchanged dependency blobs use LF in Git and CRLF in the tested Windows worktrees; normalized content matches, and exact tested worktree hashes were verified.",
+    "PC-local source adoption, peer installation and loaded runtime remain unverified."
+  ],
+  "main_base_commit": "efeb7b2d58eae9089cd1f27b14f3257d51f016b9",
+  "main_commit_sha": "566e8104a44e7644d39ee084ba188c2f961cbb7f",
+  "original_completion_time_utc": "2026-10-07T06:30:21.222994Z",
+  "record_sha256": "587ba02bb5d51e46dc939c422bccb4d20e97fccf617ed601306bf89ef88e1c53",
+  "repository": "jeremysecondstate/ducketz",
+  "revision_observations": [
+    {
+      "author_time": "2026-10-06T23:33:53-07:00",
+      "branch": "codex/atlas/20261007T063010Z-d7558b4625434fbe9f383fee9a6fd4ec",
+      "commit_sha": "17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39",
+      "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39",
+      "git_author": "Jeremy Klein"
+    },
+    {
+      "author_time": "2026-10-06T23:36:12-07:00",
+      "branch": "main",
+      "commit_sha": "566e8104a44e7644d39ee084ba188c2f961cbb7f",
+      "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/566e8104a44e7644d39ee084ba188c2f961cbb7f",
+      "git_author": "Atlas"
+    }
+  ],
+  "runtime_implications": "Requires separate reviewed application installation. No live checkout replacement, model refit, trader start, process restart, control change or order action.",
+  "scope": "Shared non-trading feature validation for Atlas and Scout. Each PC retains its own symbol universe and local operating bindings.",
+  "source_commit_sha": "17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39",
+  "summary": "Atlas published a shared quote-validation repair and verified its main integration. Invalid latest quotes retain null features instead of using older valid values.",
+  "tests": {
+    "actual_integration_candidate": [
+      {
+        "completed_at_utc": "2026-10-07T06:36:12.286981Z",
+        "dependency_files": 100,
+        "exit_code": 0,
+        "import_evidence_sha256": "deddffeca8f1b72d0ab1ea2ec16db47097e54c46e9c040bc29717d0d34c7c5d2",
+        "import_violations": 0,
+        "output_sha256": "72ab4078e2c06219f9bc4bca5dc593a6e944124402831604412fd0e5eda12513",
+        "result": "77 passed",
+        "started_at_utc": "2026-10-07T06:36:02.540771Z"
+      }
+    ],
+    "command": [
+      "python",
+      "-B",
+      "-m",
+      "pytest",
+      "tests/test_ml_loop_a_all_family_wiring.py",
+      "tests/test_ml_point_in_time_ingestion.py",
+      "tests/test_option_pricing_shadow_consumers.py",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--cross-pc-shared-watchlist"
+    ],
+    "courier_receipt_validation_at_utc": "2026-10-07T06:44:49.009627Z",
+    "isolated_source": [
+      {
+        "completed_at_utc": "2026-10-07T06:33:44.172549Z",
+        "dependency_files": 100,
+        "exit_code": 0,
+        "import_evidence_sha256": "deddffeca8f1b72d0ab1ea2ec16db47097e54c46e9c040bc29717d0d34c7c5d2",
+        "import_violations": 0,
+        "output_sha256": "2792fd81a9c12bd8358db9b38730efbfd4aad837e2d6f0a213611671ee933f7b",
+        "result": "77 passed",
+        "started_at_utc": "2026-10-07T06:33:34.998040Z"
+      }
+    ],
+    "producer": [
+      {
+        "completed_at_utc": "2026-10-07T06:30:21.166451Z",
+        "dependency_files": 100,
+        "exit_code": 0,
+        "import_evidence_sha256": "deddffeca8f1b72d0ab1ea2ec16db47097e54c46e9c040bc29717d0d34c7c5d2",
+        "import_violations": 0,
+        "output_sha256": "cdb5a66dea25a1e72d1b3fe462e520dfe5bca94ae0694b1761e1198b4f83bdce",
+        "result": "77 passed",
+        "started_at_utc": "2026-10-07T06:30:10.815880Z"
+      }
+    ],
+    "validation": "Immutable record, full owned diff, exact published hashes, test/import log hashes and 100-file tested closures verified. Existing checks were verified; no new application test run by the courier."
+  }
+}

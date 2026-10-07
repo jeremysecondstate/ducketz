@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-07T06:46:47.595375Z",
+  "id": "20261007T064647Z-2695c01a35ec449b83bf1ff34f2f9863",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published a shared quote-validation repair and verified its main integration. Invalid latest quotes retain null features instead of using older valid values."
+}
