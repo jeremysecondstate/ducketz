@@ -1,0 +1,267 @@
+{
+  "accuracy_status_counts": {
+    "EVALUATED": 164,
+    "MATURE_AWAITING_DATA": 34,
+    "PENDING_MATURITY": 66
+  },
+  "current": {
+    "action_date": "2026-10-07",
+    "forecast_rows": 264,
+    "holding_policy_proof": "NATIVE_MANIFEST",
+    "model_status_counts": {
+      "PROMOTED": 264
+    },
+    "source_manifest_sha256": "0db5cbe6104bbe52e5991ae74b845b0d4c6355415c0fd6d11d1b81dea1182bd0",
+    "source_receipt_sha256": "24509a9652ee3b4620ad4a7b6a31e29f1f0b9d6c75c3dff457e3029508c17e67",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ]
+  },
+  "existing_original": {
+    "bundle_path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source",
+    "commit": "7afd23560d09ad8d09def678103113333bb15066",
+    "files": [
+      {
+        "path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/forecasts.parquet",
+        "sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+        "size": 60489
+      },
+      {
+        "path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/manifest.json",
+        "sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+        "size": 1651705
+      },
+      {
+        "path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/ownership.json",
+        "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+        "size": 23
+      },
+      {
+        "path": "artifacts/pc-original/20261006T082333Z-atlas-native-handoff-dc5ae022/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/planning-price-path.json",
+        "sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+        "size": 46579573
+      }
+    ],
+    "manifest_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+    "repository": "jeremysecondstate/ducketz",
+    "verification": "Read-only local immutable Git tree and blob objects; no fetch or push."
+  },
+  "files": [
+    {
+      "destination": "current-source/forecasts.parquet",
+      "original_datastore_path": "ml/account-gameplan-source-runs/24509a9652ee3b4620ad4a7b6a31e29f1f0b9d6c75c3dff457e3029508c17e67/forecasts.parquet",
+      "publish_new": true,
+      "sha256": "f034a71abfa393387abf1d87255db23b64ba0b64358a26ff239c5da9fce15784",
+      "size": 60622
+    },
+    {
+      "destination": "current-source/manifest.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/24509a9652ee3b4620ad4a7b6a31e29f1f0b9d6c75c3dff457e3029508c17e67/manifest.json",
+      "publish_new": true,
+      "sha256": "0db5cbe6104bbe52e5991ae74b845b0d4c6355415c0fd6d11d1b81dea1182bd0",
+      "size": 1711725
+    },
+    {
+      "destination": "current-source/ownership.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/24509a9652ee3b4620ad4a7b6a31e29f1f0b9d6c75c3dff457e3029508c17e67/ownership.json",
+      "publish_new": true,
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23
+    },
+    {
+      "destination": "current-source/planning-price-path.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/24509a9652ee3b4620ad4a7b6a31e29f1f0b9d6c75c3dff457e3029508c17e67/planning-price-path.json",
+      "publish_new": true,
+      "sha256": "9259ea4137877a657f929891bbecfd7eef4b89606abe56091ada18ec19d312e0",
+      "size": 46471788
+    },
+    {
+      "destination": "original-source/forecasts.parquet",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/forecasts.parquet",
+      "publish_new": false,
+      "sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "size": 60489
+    },
+    {
+      "destination": "original-source/manifest.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/manifest.json",
+      "publish_new": false,
+      "sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "size": 1651705
+    },
+    {
+      "destination": "original-source/ownership.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/ownership.json",
+      "publish_new": false,
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23
+    },
+    {
+      "destination": "original-source/planning-price-path.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4/planning-price-path.json",
+      "publish_new": false,
+      "sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "size": 46579573
+    },
+    {
+      "destination": "native-actuals/Gameplan-results.md",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z/Gameplan-results.md",
+      "publish_new": true,
+      "sha256": "e32b49ad71cead37ff7536e3512ad4fb29f0917a0f31d50d450694d103c7149f",
+      "size": 64405
+    },
+    {
+      "destination": "native-actuals/forecast-results.parquet",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z/forecast-results.parquet",
+      "publish_new": true,
+      "sha256": "2d89671e778c6538e6fe7bb1f9291aaf704d70ca80485e45e53026fdd614c6e3",
+      "size": 131687
+    },
+    {
+      "destination": "native-actuals/manifest.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z/manifest.json",
+      "publish_new": true,
+      "sha256": "9cb90bde399fc2b53735f572ff3f6fca8ac5e3822f160a4479e3c47a0ea5e306",
+      "size": 379490
+    },
+    {
+      "destination": "native-actuals/price-results.parquet",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z/price-results.parquet",
+      "publish_new": true,
+      "sha256": "84a356f8fbed4328f092f00ae31873f4ec4db85fcbd3c5d6dfc6e4f4e6e2e325",
+      "size": 21534
+    },
+    {
+      "destination": "native-actuals/receipt.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z/receipt.json",
+      "publish_new": true,
+      "sha256": "8ee5af529831b148d161d63ea9cb98d9f4b33de2cbc186ec6319c158ac5aab78",
+      "size": 335
+    },
+    {
+      "destination": "native-actuals/report.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z/report.json",
+      "publish_new": true,
+      "sha256": "aa4540dc91e89ece42fa9fa8f94c69b6e5d1924769603ed9971569b4f62bb6ad",
+      "size": 426431
+    }
+  ],
+  "final_audit_sha256": {
+    "final_audit": "fc910dae081820629b74733823badcd5ca0a27f2f4878a04659d9b1be469788e",
+    "ui_audit": "672d0bb1b8ecce2fedba474907bfa6f61f92fce6ca242e0ea3bf46b9152ae120"
+  },
+  "limitations": [
+    "Atlas-only symbol-specific; Scout must not adopt these live files. Native source forecasts and price inputs preserve their original identities; no shared account projection was created.",
+    "PREPARING only. Verified current and original native peer bundles, actuals, installation/configuration/fencing, preserved ownership migration, fresh union reconciliation and a concretely reviewed cutover remain incomplete. The original Monday cutover deadline expired.",
+    "All264 directional forecasts are PROMOTED under saved tolerance criteria; promotion does not assert baseline outperformance. All four separate sizing groups fitted with zero qualified scopes.",
+    "October6 actuals:72 correct of164 raw directional calls,34 mature missing and66 pending;134 price comparisons available and20 missing. Cumulative evaluation retains1302 mature missing outcomes.",
+    "Planning-only carried anchors: CROX108,PATH64,TWST9 minutes;181 synthetic zero-volume bars. All154 points and65975 saved price sample pairs verified. Actuals and training retain observed five-minute boundaries; these prices are never live quotes.",
+    "Saved v3 price policy uses504 sessions. Older automation wording says120; installed guide/code and prior native provenance are retained without rewriting immutable policy.",
+    "CME GLBX.MDP3 October6 degradation has no disclosed provider cause; schema availability lag and narrowed request windows are recorded separately. All33 OPRA scopes completed, with recovered metadata retries and no outstanding acquisition failure.",
+    "Independent Gameplan fitted feature lists exclude optional quote,CME,energy,options and option-pricing inputs. All nonnull cohort quote values trace to51 quality-passing source rows; current eleven selected rows have null quotes.",
+    "Completed LoopB retains a confirmed quote-quality defect:one1h fitting input,one4h assessment input and11 current daily inputs; actual model influence is unquantified. Prospective shared repair is published separately; no completed model or native output was rewritten or retrained.",
+    "October6 fallback review is NO_BASELINE using latest recorded October3 ledger state; no sales, fills, profit or unused capacity are inferred.",
+    "Zero overnight orders. No trader start/stop, order action, ownership migration, execution selection, controls or schedule change.",
+    "Original source bytes are already published at the exact referenced commit and are not republished.",
+    "Restore those four original-source files with current-source and native-actuals to obtain the complete reader input.",
+    "Source/actuals availability is not a combined account plan, cutover, or execution authority."
+  ],
+  "native_stage_chain": {
+    "completed_stages": [
+      {
+        "log_sha256": "6cead4cb3a978a9accb43b50c8673d7e2f9c1f8664373dfc10d95f5b2c98245a",
+        "native_run": "ml/overnight-runs/20261007T040855.461000Z",
+        "stage": "loop_a_close_fetch"
+      },
+      {
+        "log_sha256": "71e2c2af0ec61c63a4be98e33025e2716446ea3780acd01a0bc6e546eb8d4b28",
+        "native_run": "ml/overnight-runs/20261007T040855.461000Z",
+        "stage": "loop_b_directional_generation"
+      },
+      {
+        "log_sha256": "669f6808fdac5f9178c5b9d508ab75e9c16e5762375c33914651cea3df72727e",
+        "native_run": "ml/overnight-runs/20261007T040855.461000Z",
+        "stage": "stock_target_history"
+      },
+      {
+        "log_sha256": "50e57a9fe3816e84421923ba65fdc611e16e8adb662b4434bad594bd23dd2c2f",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "gameplan_evaluation"
+      },
+      {
+        "log_sha256": "682efc5100348e425d5a6a03a0317b9c3eb41293458d804fa682bc0d86f2f361",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "gameplan_publication"
+      },
+      {
+        "log_sha256": "270b0ba5aa70b0bc2015d95bf12b344f8adfbcce81efd52ada7faffe3a8276b7",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "stock_enrichment_training"
+      },
+      {
+        "log_sha256": "14cc984b2296ddde62b99437b06f1a1dca5329fbe1f3a5c911589e327ec36f17",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "gameplan_trade_planning"
+      },
+      {
+        "log_sha256": "ce24b46e17799a76ffffaf808cdc3ee4b5db4882fc5b3d1706b8f85ad98ff760",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "account_gameplan_preparation"
+      },
+      {
+        "log_sha256": "f20b8f59d3bbbfe841acf4c0bbffc9212d489316bab09abd87ee964248e42b8a",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "gameplan_actuals_review"
+      },
+      {
+        "log_sha256": "90b4a5d07e53f52bc736df3f04ae43089d8a2ddae0c2f1134809590336717a76",
+        "native_run": "ml/overnight-runs/20261007T061959.811247Z",
+        "stage": "account_actuals_summary"
+      }
+    ],
+    "deadline_at": "2026-10-07T11:00:00+00:00",
+    "fresh_stage_count": 7,
+    "inherited_stage_count": 3,
+    "parent_receipt_sha256": "5d3a7ac48c23089ccb925ed727ac82db3cffe21c4ec2a5b8c1b45131f55563b5",
+    "parent_run": "ml/overnight-runs/20261007T040855.461000Z",
+    "parent_status": "CANCELLED",
+    "resumed_run": "ml/overnight-runs/20261007T061959.811247Z",
+    "resumed_status": "COMPLETE"
+  },
+  "original": {
+    "action_date": "2026-10-06",
+    "forecast_rows": 264,
+    "holding_policy_proof": "NATIVE_MANIFEST",
+    "model_status_counts": {
+      "PROMOTED": 209,
+      "RESEARCH_NOT_PROMOTED": 55
+    },
+    "source_manifest_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+    "source_receipt_sha256": "15edfadc5dcc399b129dff7aae48372d9e2d3469c5fc29f69890f38e9643b3e4",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ]
+  },
+  "producer_id": "pc-original",
+  "schema_version": "atlas-native-artifact-handoff-v2"
+}
