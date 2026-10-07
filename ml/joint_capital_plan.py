@@ -517,6 +517,11 @@ def publish_owner_package(root: Path, package: Mapping) -> Path:
     if len(data) > MAXIMUM_JSON_BYTES:
         raise ValueError("Owner package exceeds its JSON size bound")
     path = _ordinary_path(Path(root) / f"{package['package_sha256']}.json", root, missing_leaf=True)
+    if path.exists():
+        _ordinary_path(path, root)
+        if path.read_bytes() != data:
+            raise ValueError("Existing owner package differs from its immutable bytes")
+        return path
     with path.open("xb") as output:
         output.write(data)
         output.flush()

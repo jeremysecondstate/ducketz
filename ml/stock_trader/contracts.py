@@ -12,6 +12,17 @@ from ml.universe import PRODUCTION_LOOPS_SYMBOLS
 
 
 STOCK_TRADER_SYMBOLS: tuple[str, ...] = PRODUCTION_LOOPS_SYMBOLS
+# Research remains this PC's configured universe. Accepted combined execution
+# reads its own explicit union from the receipt, never changes the watchlist.
+STOCK_RESEARCH_SYMBOLS: tuple[str, ...] = PRODUCTION_LOOPS_SYMBOLS
+
+
+def execution_symbols(datastore_root, action_date: str) -> tuple[str, ...]:
+    from ml.joint_capital_adoption import read_accepted_joint_plan
+    selected = read_accepted_joint_plan(datastore_root, action_date)
+    return tuple(selected[1]["execution_symbols"]) if selected else STOCK_TRADER_SYMBOLS
+
+
 STOCK_TRADER_DECISION_SCHEMA_VERSION = "stock-trader-decision-v2"
 STOCK_TRADER_DECISION_RUN_SCHEMA_VERSION = "stock-trader-decision-run-v2"
 STOCK_TRADER_EXECUTION_EVENT_SCHEMA_VERSION = "stock-trader-execution-event-v1"
@@ -135,6 +146,8 @@ class PredictionSignal:
     target_definition_version: str = ""
     target_price_source_contract: str = ""
     enrichment_feature_values: Mapping[str, float] = field(default_factory=dict)
+    planned_quantity: int | None = None
+    catchup_components: tuple[str, ...] = ()
 
     @property
     def suggested_action(self) -> str:
@@ -299,12 +312,14 @@ __all__ = [
     "STOCK_TRADER_EXECUTION_EVENT_SCHEMA_VERSION",
     "STOCK_TRADER_OUTCOME_SCHEMA_VERSION",
     "STOCK_TRADER_SYMBOLS",
+    "STOCK_RESEARCH_SYMBOLS",
     "STOCK_TRADER_WEEKLY_AUDIT_SCHEMA_VERSION",
     "StockTraderPolicy",
     "TradeDecision",
     "canonical_json",
     "canonical_sha256",
     "decision_identifier",
+    "execution_symbols",
     "finite",
     "utc",
 ]

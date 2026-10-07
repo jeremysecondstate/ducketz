@@ -692,6 +692,81 @@ def _synthetic_gameplan_pin(root, *, pinned=None, **kwargs):
                       "receipt_sha256": "synthetic-receipt", "action_date": "2026-09-08"}
 
 
+def test_stats_first_fetch_and_history_precede_stats_without_training(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+    directory = run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True,
+                    stock_price_source="xnas-itch-archive-v1", stop_after="gameplan_stats")
+    report = json.loads((directory / "stage-report.json").read_text())
+    assert report["stage_order"] == ["loop_a_close_fetch", "stock_target_history", "gameplan_stats"]
+    assert [command[3] for command in calls] == ["datafetching.orchestrate", "ml.stock_target_history", "ml.gameplan_actuals_review"]
+    assert "--completed-session" in calls[-1] and "--gameplan-run" not in calls[-1]
+    assert calls[-1][calls[-1].index("--action-date") + 1] == report["review_action_date"]
+
+
+def test_stats_first_requires_separate_reviewed_training_segment(tmp_path, monkeypatch):
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda *a, **kw: pytest.fail("Review boundary cannot launch a process"))
+    with pytest.raises(ValueError, match="Stop after gameplan_stats"):
+        run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True)
+    with pytest.raises(ValueError, match="requires reviewed model feedback"):
+        run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True,
+            start_at="loop_b_directional_generation")
+
+
+def test_stats_first_training_pins_feedback_and_omits_post_training_stats(tmp_path, monkeypatch):
+    feedback = tmp_path / "reviewed-proposal.json"
+    feedback.write_text('{"reviewed": true}')
+    calls = []
+    monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+    directory = run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True,
+                    start_at="loop_b_directional_generation", model_feedback=feedback)
+    report = json.loads((directory / "stage-report.json").read_text())
+    assert report["model_feedback"]["sha256"] == file_checksum(feedback)
+    assert report["stage_order"] == ["loop_b_directional_generation", "gameplan_evaluation",
+                                     "gameplan_publication", "stock_enrichment_training", "gameplan_trade_planning"]
+    publication_command = next(command for command in calls if command[3] == "ml.nightly_gameplan")
+    assert publication_command[-2:] == ("--model-feedback", str(feedback))
+
+
+def test_stats_first_resume_preserves_order_date_and_feedback_bytes(tmp_path, monkeypatch):
+    feedback = tmp_path / "reviewed-proposal.json"
+    feedback.write_text('{"reviewed": true}')
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda *a, **kw: 7)
+    with pytest.raises(RuntimeError):
+        run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True,
+            start_at="loop_b_directional_generation", stop_after="gameplan_publication", model_feedback=feedback)
+    failed = Path(overnight_status(tmp_path)["run_path"])
+    original = json.loads((failed / "stage-report.json").read_text())
+    with pytest.raises(ValueError, match="Stats ordering"):
+        run(tmp_path, resume_run=failed, stats_first=False)
+    calls = []
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+    resumed = run(tmp_path, resume_run=failed)
+    report = json.loads((resumed / "stage-report.json").read_text())
+    assert report["review_action_date"] == original["review_action_date"]
+    assert report["stats_first"] is True and report["model_feedback"] == original["model_feedback"]
+    assert calls[-1][-2:] == ("--model-feedback", str(feedback))
+    feedback.write_text('{"reviewed": false}')
+    with pytest.raises(ValueError, match="feedback changed"):
+        run(tmp_path, resume_run=failed)
+
+
+def test_feedback_mutation_between_stages_stops_publication(tmp_path, monkeypatch):
+    feedback = tmp_path / "reviewed-proposal.json"
+    feedback.write_text('{"reviewed": true}')
+    calls = []
+    def mutate(command, **kwargs):
+        calls.append(command[3])
+        feedback.write_text('{"reviewed": false}')
+        return 0
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", mutate)
+    with pytest.raises(ValueError, match="feedback changed before training"):
+        run(tmp_path, stock_only=True, independent_stock_horizons=True, stats_first=True,
+            start_at="loop_b_directional_generation", stop_after="gameplan_publication", model_feedback=feedback)
+    assert "ml.nightly_gameplan" not in calls
+
+
 def test_enrichment_pin_uses_original_run_when_current_pointer_changes(tmp_path, monkeypatch):
     from types import SimpleNamespace
     from ml.overnight_runtime import _pin_stock_gameplan
