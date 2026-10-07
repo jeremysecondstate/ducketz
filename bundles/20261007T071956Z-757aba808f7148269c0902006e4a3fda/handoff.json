@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-07T07:19:56.758083Z",
+  "id": "20261007T071956Z-757aba808f7148269c0902006e4a3fda",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas October 7 source and October 6 actuals published; focused quote repair installed; combined account remains PREPARING."
+}

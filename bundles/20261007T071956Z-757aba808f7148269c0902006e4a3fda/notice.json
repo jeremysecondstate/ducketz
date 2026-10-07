@@ -1,0 +1,231 @@
+{
+  "artifact_manifest_sha256": "20aec2c46d5f1af64e9c8f7f613652623a4e0a17e1a5aabc1a8c832f668e5a80",
+  "artifact_publication": {
+    "git_added_paths": 14,
+    "original_source_republished": false,
+    "payload_count": 13,
+    "private_value_scan": "PASS",
+    "status": "PUSHED_AND_BYTE_VERIFIED",
+    "verification_sha256": "43f47ea0056ca6be0b8db13f160d83dea87321d6815c7d4d933694a68936c350",
+    "verified_at": "2026-10-07T07:12:07.145784+00:00"
+  },
+  "author": "Atlas",
+  "base_sha": "566e8104a44e7644d39ee084ba188c2f961cbb7f",
+  "branch": "main",
+  "change_id": "20261007T070333Z-atlas-native-handoff-6c986986",
+  "commit_sha": "31fed1b1d790a782c41fd769a5374536d27ff091",
+  "completion_id": "20261007T070333Z-atlas-native-handoff-6c986986",
+  "facts": [
+    "Native completion at 2026-10-07T06:57:03Z preserved the cancelled parent and its three completed stages, then completed seven resumed stages before the original 04:00 Pacific deadline. Zero overnight orders.",
+    "264 forecasts and 264 stock-only intents; 154 source-only price clocks. All directional rows promoted under saved tolerances; four separate fitted sizing groups remain unqualified. Native holding-policy proof, null ownership and no account projection retained.",
+    "October 6 actuals: 72 correct of 164 raw directional calls, 34 mature missing and 66 pending; 134 price comparisons and 20 missing. Cumulative mature missing outcomes: 1302.",
+    "Thirteen payloads plus manifest are published and byte-verified. Original October 6 source files are reused from 7afd23560d09ad8d09def678103113333bb15066; no duplicate publication.",
+    "The previously announced common quote repair was installed locally after native completion. Exact three-file payload, all 853 installed inputs, 77 passing postchecks and released installation locks are verified; active checkout HEAD, branch and index are preserved."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "f034a71abfa393387abf1d87255db23b64ba0b64358a26ff239c5da9fce15784",
+      "original_size": 60622,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/forecasts.parquet",
+      "published_sha256": "f034a71abfa393387abf1d87255db23b64ba0b64358a26ff239c5da9fce15784",
+      "published_size": 60622
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "0db5cbe6104bbe52e5991ae74b845b0d4c6355415c0fd6d11d1b81dea1182bd0",
+      "original_size": 1711725,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/manifest.json",
+      "published_sha256": "0db5cbe6104bbe52e5991ae74b845b0d4c6355415c0fd6d11d1b81dea1182bd0",
+      "published_size": 1711725
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "original_size": 23,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/ownership.json",
+      "published_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "published_size": 23
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "9259ea4137877a657f929891bbecfd7eef4b89606abe56091ada18ec19d312e0",
+      "original_size": 46471788,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/planning-price-path.json",
+      "published_sha256": "9259ea4137877a657f929891bbecfd7eef4b89606abe56091ada18ec19d312e0",
+      "published_size": 46471788
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "e32b49ad71cead37ff7536e3512ad4fb29f0917a0f31d50d450694d103c7149f",
+      "original_size": 64405,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/Gameplan-results.md",
+      "published_sha256": "e32b49ad71cead37ff7536e3512ad4fb29f0917a0f31d50d450694d103c7149f",
+      "published_size": 64405
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "2d89671e778c6538e6fe7bb1f9291aaf704d70ca80485e45e53026fdd614c6e3",
+      "original_size": 131687,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/forecast-results.parquet",
+      "published_sha256": "2d89671e778c6538e6fe7bb1f9291aaf704d70ca80485e45e53026fdd614c6e3",
+      "published_size": 131687
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "9cb90bde399fc2b53735f572ff3f6fca8ac5e3822f160a4479e3c47a0ea5e306",
+      "original_size": 379490,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/manifest.json",
+      "published_sha256": "9cb90bde399fc2b53735f572ff3f6fca8ac5e3822f160a4479e3c47a0ea5e306",
+      "published_size": 379490
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "84a356f8fbed4328f092f00ae31873f4ec4db85fcbd3c5d6dfc6e4f4e6e2e325",
+      "original_size": 21534,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/price-results.parquet",
+      "published_sha256": "84a356f8fbed4328f092f00ae31873f4ec4db85fcbd3c5d6dfc6e4f4e6e2e325",
+      "published_size": 21534
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "8ee5af529831b148d161d63ea9cb98d9f4b33de2cbc186ec6319c158ac5aab78",
+      "original_size": 335,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/receipt.json",
+      "published_sha256": "8ee5af529831b148d161d63ea9cb98d9f4b33de2cbc186ec6319c158ac5aab78",
+      "published_size": 335
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "aa4540dc91e89ece42fa9fa8f94c69b6e5d1924769603ed9971569b4f62bb6ad",
+      "original_size": 426431,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/report.json",
+      "published_sha256": "aa4540dc91e89ece42fa9fa8f94c69b6e5d1924769603ed9971569b4f62bb6ad",
+      "published_size": 426431
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "e7413b19cf7061a90025454f2ee4f090427ae0e14a6eb2df4bcaecf83b1c6ea6",
+      "original_size": 13403,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/handoff-index.json",
+      "published_sha256": "e7413b19cf7061a90025454f2ee4f090427ae0e14a6eb2df4bcaecf83b1c6ea6",
+      "published_size": 13403
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "bc2b523d566e31cec1f276e3046c0a008f8802f02d7c7724db0ab75979f82a45",
+      "original_size": 683,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/analysis/fallback-session-reviews/20261007T065933Z-20261006/manifest.json",
+      "published_sha256": "bc2b523d566e31cec1f276e3046c0a008f8802f02d7c7724db0ab75979f82a45",
+      "published_size": 683
+    },
+    {
+      "compression": "none",
+      "operation": "add",
+      "original_sha256": "d3d0d310861bc89e3575d0a3e8a35fc1cb6a86e50489435411aff63e80397e50",
+      "original_size": 861,
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/analysis/fallback-session-reviews/20261007T065933Z-20261006/report.json",
+      "published_sha256": "d3d0d310861bc89e3575d0a3e8a35fc1cb6a86e50489435411aff63e80397e50",
+      "published_size": 861
+    },
+    {
+      "operation": "add",
+      "published_path": "artifacts/pc-original/20261007T070333Z-atlas-native-handoff-6c986986/artifact-manifest.json",
+      "published_sha256": "20aec2c46d5f1af64e9c8f7f613652623a4e0a17e1a5aabc1a8c832f668e5a80",
+      "published_size": 16926
+    }
+  ],
+  "limitations": [
+    "Completed LoopB retains the diagnosed quote-quality defect with unquantified model influence; no completed models or outputs were rewritten. Independent Gameplan fitted models exclude the optional quote feature, and nonnull historical cohort quotes retain quality proof.",
+    "Planning-only carries: CROX 108, PATH 64 and TWST 9 minutes; 181 synthetic bars and 65975 saved sample pairs verified. Saved 504-session policy remains distinct from older 120-session wording. These references are not live quotes or actuals.",
+    "CME October 6 degradation cause remains undisclosed. All 33 OPRA scopes completed; recovered retries are not outstanding failures. October 6 fallback review is NO_BASELINE, which does not establish zero sales or profit.",
+    "Scout owner-package availability at efeb7b2d58eae9089cd1f27b14f3257d51f016b9 is verified. Complete native current/original sources and actuals, exact installation/configuration/fencing and preserved ownership evidence remain incomplete. Fresh union reconciliation and reviewed activation are absent; original Monday October 5 cutover deadline expired."
+  ],
+  "link": "https://github.com/jeremysecondstate/ducketz/commit/31fed1b1d790a782c41fd769a5374536d27ff091",
+  "local_installation": {
+    "checkout_head": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+    "completed_at": "2026-10-07T07:13:43.123838+00:00",
+    "exact_installed_input_count": 853,
+    "files": [
+      {
+        "operation": "modify",
+        "path": "ml/rolling_materialization.py",
+        "sha256": "7ef156a9481aea438021a8c22307ae851cb3e93885b9fcad2dc8805587de9ae4"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_ml_loop_a_all_family_wiring.py",
+        "sha256": "9270822ea7427b7d87c7910eb7dec8af340253ab22715dc070023bcf4c3a7a5d"
+      },
+      {
+        "operation": "modify",
+        "path": "tests/test_option_pricing_shadow_consumers.py",
+        "sha256": "ae008f3ce20d9d4cbe29f42b955d1b8922c6ccfe361453b2f180ec9c4fe70818"
+      }
+    ],
+    "locks_released": true,
+    "postinstallation_tests_passed": 77,
+    "receipt_sha256": "da64b25ebeb7e82a8529792d10c1d944eeac1d53b6275d5b02b5475afa9c070b",
+    "status": "INSTALLED_AND_VERIFIED",
+    "whole_checkout_at_published_commit": false
+  },
+  "producer": "overnight_gameplan",
+  "remote_sha": "31fed1b1d790a782c41fd769a5374536d27ff091",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "SOURCE_AND_ACCURACY_READY_PREPARING only. No combined plan or combined accuracy, activation, ownership migration, trader start/stop, orders, controls or schedule changes. Scoped installation affects future materialization; completed outputs and loaded process memory are unchanged. Peer adoption requires separate evidence. Broker-usable cash and actual fills govern live buying; projected proceeds remain conditional.",
+  "scope": "Atlas-only symbol-specific; Scout must not adopt these live files. Completed machine-namespaced native exports preserve Atlas eleven-symbol forecasts and price inputs. The separately announced common quote-quality repair applies to both producers only after each machine verifies adoption.",
+  "source_context": {
+    "completion_record": "20261007T063010Z-d7558b4625434fbe9f383fee9a6fd4ec",
+    "duplicate_source_publication_required": false,
+    "main_commit": "566e8104a44e7644d39ee084ba188c2f961cbb7f",
+    "practical_change": "Rolling materialization delegates quote attachment to the existing saved-quality, physical and causal quote validation, preserving latest-row rejection without older valid backfill.",
+    "prior_notice_change_id": "20261007T063010Z-d7558b4625434fbe9f383fee9a6fd4ec-source-main",
+    "source_commit": "17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39",
+    "status": "ALREADY_ANNOUNCED_SOURCE_AND_MAIN_AVAILABLE"
+  },
+  "summary": "Atlas October 7 source and October 6 actuals published; focused quote repair installed; combined account remains PREPARING.",
+  "tests": [
+    {
+      "evidence_sha256": "fc910dae081820629b74733823badcd5ca0a27f2f4878a04659d9b1be469788e",
+      "finished_at": "2026-10-07T07:02:09.061486+00:00",
+      "name": "Native cancelled-parent and completed-resume chain, source, quality and actuals audit",
+      "result": "VERIFIED_SOURCE_AND_ACCURACY_READY_PREPARING",
+      "started_at": "2026-10-07T06:58:26.625189+00:00"
+    },
+    {
+      "evidence_sha256": "f90c62f3ea168919df9f723549142bbe2c64c4818cbbf4dc413828adfbdb355e",
+      "finished_at": "2026-10-07T06:59:42.794201+00:00",
+      "name": "Saved planning sample ratios, medians, cent rounding, synthetic bars and nested source/actuals content",
+      "result": "VERIFIED_WITH_POLICY_AND_PRIVACY_NOTES",
+      "started_at": "2026-10-07T06:59:34.083948+00:00"
+    },
+    {
+      "evidence_sha256": "43f47ea0056ca6be0b8db13f160d83dea87321d6815c7d4d933694a68936c350",
+      "finished_at": "2026-10-07T07:12:07.145784+00:00",
+      "name": "Exact Git payload, manifest, remote SHA and mandatory private-value scan",
+      "result": "PASS",
+      "started_at": "2026-10-07T07:12:04.945536+00:00"
+    },
+    {
+      "evidence_sha256": "6a30b4430381072ef34e03115d493bdec13aca3a6fa134a64c10c20a5574b71b",
+      "finished_at": "2026-10-07T07:13:38.980302Z",
+      "import_evidence_sha256": "7226281c532f780fc32095f7f93fe538a9c2e96f0593004c2c1b49fb90a23923",
+      "installation_receipt_sha256": "da64b25ebeb7e82a8529792d10c1d944eeac1d53b6275d5b02b5475afa9c070b",
+      "name": "Isolated postinstallation checks against all 853 exact installed inputs",
+      "result": "77 passed",
+      "started_at": "2026-10-07T07:13:29.814955Z"
+    }
+  ]
+}
