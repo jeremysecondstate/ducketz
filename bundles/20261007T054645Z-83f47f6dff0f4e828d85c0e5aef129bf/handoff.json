@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-07T05:46:45.151277Z",
+  "id": "20261007T054645Z-83f47f6dff0f4e828d85c0e5aef129bf",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout October 7 forecast and planning-price package published; local projections verified, combined preparation pending."
+}

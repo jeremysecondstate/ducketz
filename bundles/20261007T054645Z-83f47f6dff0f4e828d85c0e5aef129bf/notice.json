@@ -1,0 +1,68 @@
+{
+  "action_session": "2026-10-07",
+  "application_source_revision": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "author": "Scout / pc-new",
+  "change_id": "20261007T053939Z-overnight-gameplan-491cd1b853b4-producer-handoff",
+  "completion_id": "20261007T053939Z-overnight-gameplan-491cd1b853b4",
+  "created_at_utc": "2026-10-07T05:46:36.333495Z",
+  "evidence_manifest_sha256": "57989268a8fb377486f76e3c260849db1af40123d9896b3d1b421fa624fb60be",
+  "files": [
+    {
+      "bytes": 441055,
+      "operation": "add",
+      "path": "artifacts/pc-new/20261007T053939Z-overnight-gameplan-491cd1b853b4/joint-capital/2026-10-07/scout-owner-package.json",
+      "sha256": "21dd45f52284c6fc7285d24d20931fa85181bb8819e70f90d1b79fdecf6224c2"
+    }
+  ],
+  "limitations": [
+    "Generation revision absent from original native evidence remains UNRECORDED.",
+    "Four-hour, daily and weekly model assessments meet saved promotion tolerances but do not beat their baselines; one GLOB weekly forecast remains research-only.",
+    "All four enrichment horizons fitted, with zero qualified learned-sizing scopes.",
+    "Seven symbols retain disclosed closing carries of 9 to 240 minutes; 56 observed reference points and 98 synthetic closing references are preserved. Two observed entry pairs and at most 504 completed sessions remain required.",
+    "CME degraded quality, two saturated captures, target exclusions and OptionPricing feature quarantine remain explicit.",
+    "The independently selected Scout package requires a verified Atlas package for the same action session and one authoritative account snapshot before combined publication. Compatible consumer adoption and execution/ownership transition remain separate evidence."
+  ],
+  "logical_task": "overnight_gameplan",
+  "main_commit_sha": "efeb7b2d58eae9089cd1f27b14f3257d51f016b9",
+  "owner_id": "pc-new",
+  "package_sha256": "63e09155b62ccff19d1e82bcbed2cd99169382582f03d7d66b5d77d156bc777d",
+  "related_request_id": "scout-joint-sole-atlas-interface-review-20261002-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "requested_peer_followthrough": "Use the existing interface request to provide compatible consumer source or concrete schema differences. Independently verify owner, canonical digest, frozen universe and action session before composition.",
+  "run_identity": "scout-overnight-20261007T051159510745Z",
+  "runtime_implications": "Preparation and forecast/price handoff only. No account snapshots, cash, positions, ownership state, account-aware trade rows, credentials, raw samples or fitted models exported. No trader start, live orders, runtime replacement, authorization change or execution-role activation. Combined readiness and sole Atlas execution require separate verified installation and ownership reconciliation.",
+  "scope": {
+    "kind": "symbol-specific",
+    "machine": "pc-new",
+    "symbols": [
+      "DOCU",
+      "DBX",
+      "SDGR",
+      "QBTS",
+      "PYPL",
+      "GLOB",
+      "OUST",
+      "ABCL",
+      "MRNA",
+      "RR",
+      "PDYN"
+    ]
+  },
+  "source_hashes": {
+    "forecasts_sha256": "697e74a4612a0d93ee27931bf10adcef0bc748dacceba85ad401a6e611cc1dd5",
+    "price_path_sha256": "4d0740d0aed8f4f43a1740c2e8ac011528de2b683d04a8106513c8739f2fc5f5"
+  },
+  "source_revision_status": "UNRECORDED",
+  "source_session": "2026-10-06",
+  "summary": "Scout October 7 forecast and planning-price package published; local projections verified, combined preparation pending.",
+  "tests": [
+    "Native eight-stage lineage completed at October 6 22:37 PDT before the original October 7 04:00 PDT deadline, with zero orders; exact receipts, reports, logs and outputs verified.",
+    "One stale ALFRED feature-checksum readiness failure was resolved using the existing imported macro vintage data offline; exact native resume preserved Loop A, endpoint, policies and deadline.",
+    "Default latest Gameplan consumer selects October 7, the exact new publication and frozen Scout eleven symbols, with 264 forecasts, 264 intents, 264 trade-plan rows and projection_available=true.",
+    "All four horizon reports, assessments, archive source contracts, cohorts, OPRA scope cursors and zero-dollar archive preflights verified. All 154 planning-price points are available.",
+    "Default latest Stats correctly selects October 6; no original independent Gameplan exists for that session, so review is explicitly unavailable with zero comparisons.",
+    "Earlier historical evaluation keeps its original frozen universes: 528 total outcomes comprise 229 evaluated, 77 pending and 222 missing mature observations.",
+    "Exact forecast/price allowlists, canonical digest, file hash, pinned private-value scan and remote blob readback passed."
+  ],
+  "verified_remote_main_sha": "efeb7b2d58eae9089cd1f27b14f3257d51f016b9"
+}
