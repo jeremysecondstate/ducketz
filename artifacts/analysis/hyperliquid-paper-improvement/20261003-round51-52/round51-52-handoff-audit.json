@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-03T02:13:11Z",
+  "producer": "hyperliquid-paper-improvement",
+  "actor": "Atlas",
+  "timezone": "America/Los_Angeles",
+  "project": {
+    "path": "C:\\dev\\ducketz",
+    "branch": "main",
+    "working_tree_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "remote_main_base": "56f55f05559251fa633b916d86c97487367de88f",
+    "tracked_source_resulting_sha": "unchanged",
+    "scout_applicability": "none; machine-local operating evidence only"
+  },
+  "ending_round": {
+    "experiment_id": "20261002-paper-round-51",
+    "duration_hours": 1,
+    "seed_at_utc": "2026-10-02T23:44:46.087340593+00:00",
+    "due_at_utc": "2026-10-03T00:44:46.087340+00:00",
+    "paper_observed_at_utc": "2026-10-03T01:32:14.179141+00:00",
+    "paper_lateness_seconds": 2848.091801,
+    "actual_latest_observed_at_utc": "2026-10-03T01:32:46.767985+00:00",
+    "actual_lateness_seconds": 2880.680645,
+    "native_assessment": {
+      "ending_evaluation_hours": 1,
+      "finalizable": true,
+      "next_evaluation_hours": 1,
+      "outcome": "late_unscored",
+      "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+      "winning": false
+    },
+    "assessment_sha256": "4fac73c5c66fcdb2622d476bed413b2328277e1c2e4e99962a58c1b977480349",
+    "comparison_sha256": "1c11824cff630b14794a33535be8874f852ddf288fcbb7e33b292ba6d1d91d0c",
+    "comparability": {
+      "performance_comparable": true,
+      "mirror_baseline_verified": true,
+      "zero_external_flows_verified": true,
+      "observation_skew_seconds": 32.909673,
+      "max_observation_skew_seconds": 120,
+      "within_due_plus_300s": false
+    },
+    "relative_result": {
+      "paper_common_mark_equity_usd": 44263.292439036995,
+      "actual_common_mark_equity_usd": 44332.92407520726,
+      "edge_usd": -69.63163617026294,
+      "paper_return_fraction": -0.0006323987548569887,
+      "actual_return_fraction": 0.0009397301441871342,
+      "after_cost_excess_return_fraction": -0.0015721288990440986,
+      "raw_display_edge_usd": -71.02488031982648,
+      "score": "unscored; late endpoint"
+    },
+    "paper_endpoint": {
+      "cycles": 334,
+      "committed_decisions": 372,
+      "fills": 73,
+      "transfers": 0,
+      "funding_events": 7,
+      "turnover_usd": 61772.18693999999,
+      "fees_usd": 35.21065596049999,
+      "funding_usd": -0.0027677397592120083,
+      "pnl_since_opening_usd": -28.087083721246927,
+      "pooled_max_drawdown_usd": -30.04501620795054,
+      "pooled_max_drawdown_fraction": -0.0006783502564447786,
+      "accounts": {
+        "alex": {
+          "paper_opening_equity_usd": 6687.7195513837905,
+          "paper_common_mark_equity_usd": 6674.281730250437,
+          "actual_common_mark_equity_usd": 6495.094679913693,
+          "common_mark_edge_usd": 179.1870503367445,
+          "paper_pnl_usd": -13.428731313917524,
+          "fees_usd": 8.106547103999997,
+          "funding_usd": 0.001519440740788,
+          "turnover_usd": 18014.54912,
+          "fills": 27,
+          "max_drawdown_usd": -13.428731313917524,
+          "max_drawdown_fraction": -0.002007968667157838,
+          "external_flows": {
+            "start_time_ms": 1790984686087,
+            "end_time_ms": 1790991163947,
+            "range_complete": true,
+            "event_count": 0,
+            "zero_external_flows_verified": true,
+            "net_external_flow_usd": 0.0,
+            "reason": "complete_empty_nonfunding_history"
+          }
+        },
+        "clearpond": {
+          "paper_opening_equity_usd": 32827.08803854187,
+          "paper_common_mark_equity_usd": 32813.17524641648,
+          "actual_common_mark_equity_usd": 32915.63504256149,
+          "common_mark_edge_usd": -102.45979614500538,
+          "paper_pnl_usd": -13.923131260286027,
+          "fees_usd": 20.756881144999994,
+          "funding_usd": 0.0,
+          "turnover_usd": 29652.687349999997,
+          "fills": 5,
+          "max_drawdown_usd": -14.152668541697494,
+          "max_drawdown_fraction": -0.0004311277480683338,
+          "external_flows": {
+            "start_time_ms": 1790984686087,
+            "end_time_ms": 1790991166767,
+            "range_complete": true,
+            "event_count": 0,
+            "zero_external_flows_verified": true,
+            "net_external_flow_usd": 0.0,
+            "reason": "complete_empty_nonfunding_history"
+          }
+        },
+        "jeremy": {
+          "paper_opening_equity_usd": 4776.49461347576,
+          "paper_common_mark_equity_usd": 4775.835462370078,
+          "actual_common_mark_equity_usd": 4922.194352732081,
+          "common_mark_edge_usd": -146.35889036200297,
+          "paper_pnl_usd": -0.7352211470433758,
+          "fees_usd": 6.347227711500002,
+          "funding_usd": -0.004287180500000008,
+          "turnover_usd": 14104.95047,
+          "fills": 41,
+          "max_drawdown_usd": -5.5176660351016835,
+          "max_drawdown_fraction": -0.0011551705762495538,
+          "external_flows": {
+            "start_time_ms": 1790984686087,
+            "end_time_ms": 1790991161785,
+            "range_complete": true,
+            "event_count": 0,
+            "zero_external_flows_verified": true,
+            "net_external_flow_usd": 0.0,
+            "reason": "complete_empty_nonfunding_history"
+          }
+        }
+      },
+      "coins": {
+        "BTC": {
+          "coin": "BTC",
+          "fills": 22,
+          "turnover": 22052.334489999997,
+          "fees": 15.229039887999999,
+          "realized_pnl": 2.495331249673668,
+          "price_pnl_before_fees_funding": 2.4758869279999494,
+          "pnl_after_fees_before_funding": -12.75315296000005
+        },
+        "ETH": {
+          "coin": "ETH",
+          "fills": 19,
+          "turnover": 3197.73528,
+          "fees": 2.108956311,
+          "realized_pnl": 0.3155178603923823,
+          "price_pnl_before_fees_funding": 0.4554613899998402,
+          "pnl_after_fees_before_funding": -1.65349492100016
+        },
+        "HYPE": {
+          "coin": "HYPE",
+          "fills": 14,
+          "turnover": 18860.62099,
+          "fees": 9.600656935499998,
+          "realized_pnl": -158.52104290322612,
+          "price_pnl_before_fees_funding": 2.6259726799195846,
+          "pnl_after_fees_before_funding": -6.974684255580414
+        },
+        "ZEC": {
+          "coin": "ZEC",
+          "fills": 18,
+          "turnover": 17661.49618,
+          "fees": 8.272002826,
+          "realized_pnl": -86.69544723714272,
+          "price_pnl_before_fees_funding": 1.5690189810999016,
+          "pnl_after_fees_before_funding": -6.702983844900098
+        }
+      },
+      "fill_reason_attribution": [
+        {
+          "reason": "risk_cap",
+          "fills": 1,
+          "turnover": 8010.54,
+          "fees": 3.604743,
+          "realized": -258.2550000000002
+        },
+        {
+          "reason": "signal_rebalance",
+          "fills": 72,
+          "turnover": 53761.64694,
+          "fees": 31.605912960499996,
+          "realized": 15.849358969697452
+        }
+      ]
+    },
+    "forecast_evidence": {
+      "rule": "valid-in-round-forecast-v2",
+      "valid_forecasts": 88,
+      "qualified_forecasts": 37,
+      "research_forecasts": 51,
+      "invalid_decisions": 0,
+      "consumed_forecast_decisions": 264,
+      "fills_by_qualification": [
+        {
+          "qualified": 0,
+          "fills": 40,
+          "turnover": 39447.221139999994,
+          "fees": 19.858931982999998
+        },
+        {
+          "qualified": 1,
+          "fills": 33,
+          "turnover": 22324.965799999998,
+          "fees": 15.351723977499999
+        }
+      ],
+      "signal_fills": {
+        "total": 72,
+        "qualified": 33,
+        "research": 39
+      },
+      "risk_cap_fills": {
+        "total": 1,
+        "research": 1
+      }
+    },
+    "holds_and_skips": [
+      {
+        "action": "fill",
+        "reason": "risk_cap",
+        "n": 1
+      },
+      {
+        "action": "fill",
+        "reason": "signal_rebalance",
+        "n": 72
+      },
+      {
+        "action": "hold",
+        "reason": "below_rebalance_threshold",
+        "n": 79
+      },
+      {
+        "action": "hold",
+        "reason": "forecast_unavailable",
+        "n": 108
+      },
+      {
+        "action": "hold",
+        "reason": "gross_capacity_exhausted",
+        "n": 4
+      },
+      {
+        "action": "hold",
+        "reason": "opposite_account_direction",
+        "n": 77
+      },
+      {
+        "action": "skip",
+        "reason": "below_min_notional",
+        "n": 2
+      },
+      {
+        "action": "skip",
+        "reason": "below_size_precision",
+        "n": 29
+      }
+    ],
+    "initial_inventory_adjustments": {
+      "fills": 8,
+      "turnover_usd": 59745.97235,
+      "fees_usd": 34.296192395,
+      "realized_pnl_usd": -238.55175000000122,
+      "included_in_totals": true
+    },
+    "post_endpoint_before_stop": {
+      "fills": 2,
+      "turnover_usd": 24.203519999999997,
+      "fees_usd": 0.010891584,
+      "decisions": 12,
+      "included_in_comparison": false
+    }
+  },
+  "archive": {
+    "path": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-52",
+    "manifest_verification": {
+      "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-52",
+      "bytes": 464301587,
+      "file_count": 429,
+      "manifest_sha256": "2b0eece6dc32d75e24de7afe0ea4c68287b472aa991da76f0c05f41f9aaa74d9",
+      "result": "passed",
+      "verified_at_utc": "2026-10-03T01:38:11.141864+00:00"
+    },
+    "ledger_path": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-52\\_paper\\ledger.sqlite3",
+    "ledger_sha256": "06278653735c17750dfed597cee7eb0973469fd85ac0b91cfc5e024676467b4a",
+    "sqlite_integrity_check": "ok",
+    "archived_row_counts": {
+      "fills": 75,
+      "decisions": 384,
+      "equity": 1388,
+      "funding": 7,
+      "transfers": 0
+    },
+    "stopped_performance": {
+      "as_of_utc": "2026-10-03T01:35:24.644400+00:00",
+      "fill_count": 75,
+      "transfer_count": 0,
+      "turnover": 61796.390459999995,
+      "max_drawdown_fraction": -0.0006783502564448041,
+      "fees": 35.2215475445,
+      "funding": -0.0027677397592120083,
+      "funding_is_estimated": true,
+      "qualification_fill_counts": {
+        "qualified": 34,
+        "research": 41,
+        "unavailable": 0
+      }
+    }
+  },
+  "successor_round": {
+    "experiment_id": "20261003-paper-round-52",
+    "status": "running",
+    "seed_at_utc": "2026-10-03T01:40:54.468557358+00:00",
+    "duration_hours": 1,
+    "due_at_utc": "2026-10-03T02:40:54.468557+00:00",
+    "opening_equity_usd": 44329.06165584752,
+    "inherited_positions": 10,
+    "public_reads": 13,
+    "all_source_open_orders_empty": true,
+    "opening_activity_zero": true,
+    "opening_independent_result": "passed",
+    "accepted_at_utc": "2026-10-03T01:41:29.115963+00:00",
+    "maintenance_completed_at_utc": "2026-10-03T01:43:59.982319+00:00",
+    "first_cycle_counts": {
+      "cycles": 7,
+      "equity": 28,
+      "initial_positions": 10,
+      "fills": 8,
+      "decisions": 12,
+      "transfers": 0,
+      "funding": 0
+    },
+    "first_cycle_latest_observation": "2026-10-03T01:42:31.392802+00:00",
+    "startup_adjustments": {
+      "fills": 8,
+      "turnover_usd": 60098.99592,
+      "fees_usd": 34.470746894,
+      "realized_pnl_usd": -297.55093,
+      "retained_in_live_ledger": true
+    },
+    "final_health": {
+      "result": "passed",
+      "read_at_utc": "2026-10-03T02:03:09.558662+00:00",
+      "portfolio_at_utc": "2026-10-03T02:02:42.454332+00:00",
+      "runtime": {
+        "paper": {
+          "status": "running",
+          "reported_status": "running",
+          "pid": 40460,
+          "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-paper.json",
+          "process_alive": true,
+          "updated_at_utc": "2026-10-03T02:02:42.458583+00:00",
+          "last_error": null,
+          "errors": {},
+          "quote_errors": {},
+          "funding_errors": {},
+          "lifecycle_phase": "trading",
+          "slot_errors": {}
+        },
+        "models": {
+          "status": "running",
+          "reported_status": "running",
+          "pid": 44112,
+          "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+          "process_alive": true,
+          "updated_at_utc": "2026-10-03T02:03:09.242982+00:00",
+          "reason": null,
+          "config_error": null,
+          "training_market": null,
+          "slot_errors": {}
+        },
+        "coordinator": {
+          "status": "running",
+          "reported_status": "running",
+          "pid": 56964,
+          "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json",
+          "process_alive": true,
+          "updated_at_utc": "2026-10-03T02:03:08.642448+00:00",
+          "reason": null,
+          "config_error": null,
+          "slot_errors": {}
+        },
+        "powder": {
+          "pending_intents": 0,
+          "connected": false,
+          "slot_errors": {}
+        }
+      },
+      "powder_active": false,
+      "warnings": []
+    },
+    "policy": {
+      "paper_policy_id": "88cd1a6a008df9b9",
+      "require_qualified_forecasts": false,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ],
+      "interval": "5m",
+      "horizons_bars": [
+        1
+      ],
+      "model_family_weights": {
+        "logistic": 0.4,
+        "extra_trees": 0.1,
+        "hist_gradient_boosting": 0.1875,
+        "mlp": 0.05,
+        "random_forest": 0.2625
+      },
+      "model_config_sha256": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+      "paper_config_sha256": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b",
+      "strict_powder_policy_sha256": "02df66a92c67684d5e743765982ec57f7c2c28d0793bbe44eacfd3dc8ee4c7c2"
+    },
+    "changes": "No Paper/model code, parameter, or model-weight retune; loose exploratory policy and five-family bundle retained."
+  },
+  "workflow": {
+    "maintenance_cycle_id": "20261003-paper-round-52",
+    "phase": "completed",
+    "cadence_advance_consumed_assessment_once": true,
+    "pending_assessment": null,
+    "tracked_source_config_doc_changes": [],
+    "application_tests_run": [],
+    "native_checks_passed": [
+      "pinned cross-PC release verified",
+      "native comparison assessed late_unscored",
+      "cadence advanced exactly once",
+      "Paper/model graceful stop verified",
+      "archive manifest/checksum verified",
+      "archived ledger SQLite integrity_check ok",
+      "four forecast slots prepared",
+      "independent fresh opening verification",
+      "zero-opening-activity verification",
+      "Paper acceptance",
+      "first-cycle verification",
+      "final trading health passed"
+    ],
+    "limitations": [
+      "Timing invalidated Round 51 score despite comparable marks and complete zero-flow evidence.",
+      "Actual account service lacks transaction-level cost/turnover/drawdown attribution.",
+      "Paper funding is estimated and visible-book simulation omits queue, latency and liquidation modeling.",
+      "Round 52 is live; its active ledger is excluded from the published completed artifacts."
+    ],
+    "source_control": {
+      "base_sha": "99532621db0d42dfe8c655300cc93abda81240d5",
+      "branch": "main",
+      "tracked_source_changes": 0,
+      "source_queue_item": "none",
+      "scout_adoption": "not asserted",
+      "runtime_deployment": "not changed"
+    },
+    "public_artifact_root": "artifacts/pc-original/analysis/hyperliquid-paper-improvement/20261003-round51-52",
+    "publisher_base_sha": "56f55f05559251fa633b916d86c97487367de88f"
+  }
+}

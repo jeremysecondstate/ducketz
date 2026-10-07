@@ -1,0 +1,18 @@
+{
+  "schema_version": "hierarchical-bearish-fallback-review-manifest-v1",
+  "action_date": "2026-10-06",
+  "status": "NO_BASELINE",
+  "source_observation": {
+    "source_fingerprint": null,
+    "read_started_at": "2026-10-07T06:59:34.071709+00:00",
+    "read_completed_at": "2026-10-07T06:59:34.499218+00:00",
+    "latest_recorded_snapshot_at": "2026-10-03T10:48:37.932836+00:00",
+    "query_snapshot": "One SQLite read-only BEGIN transaction; recorded evidence, not a fresh broker observation."
+  },
+  "output_files": {
+    "report.json": {
+      "checksum_sha256": "d3d0d310861bc89e3575d0a3e8a35fc1cb6a86e50489435411aff63e80397e50",
+      "size": 861
+    }
+  }
+}

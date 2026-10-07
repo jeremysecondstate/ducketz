@@ -1,0 +1,602 @@
+{
+  "read_at_utc": "2026-10-03T05:32:30.276848+00:00",
+  "expectation": "prepared",
+  "config_sha256": {
+    "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+    "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+    "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b",
+    "hyperliquid-powder.json": "b8e55c22b6eb17db44eabe51817584601ce849e4ae0e9374324e303a84966eff"
+  },
+  "portfolio_at_utc": "2026-10-03T05:32:19.970226526+00:00",
+  "paper_seed_at_utc": "2026-10-03T05:32:19.970226526+00:00",
+  "paper_baseline_equity": {
+    "alex": 6567.46738082042,
+    "clearpond": 32868.66316522186,
+    "jeremy": 4866.29403634048
+  },
+  "paper_pooled": {
+    "cash": 14895.1358474,
+    "equity": 44302.42458238276,
+    "fees": 0.0,
+    "free_cash": 3181.09673727,
+    "funding": 0.0,
+    "gross_exposure": 60086.27500998276,
+    "initial_cash": 14895.1358474,
+    "initial_equity": 44302.42458238276,
+    "initial_unrealized_pnl": -280.2812750000006,
+    "net_realized_pnl": 0.0,
+    "net_transfers": 0.0,
+    "positions": [
+      {
+        "account": "alex",
+        "avg_entry": 86.1365,
+        "coin": "HYPE",
+        "kind": "perp",
+        "mark_price": 88.738,
+        "market": "perp:HYPE",
+        "notional": 7986.42,
+        "passive": false,
+        "quantity": -90.0,
+        "risk_reference_price": 88.738,
+        "risk_reference_source": "opening_mark",
+        "side": "short",
+        "unrealized_pnl": -234.13500000000013
+      },
+      {
+        "account": "alex",
+        "avg_entry": 1356.7158,
+        "coin": "ZEC",
+        "kind": "perp",
+        "mark_price": 1322.5,
+        "market": "perp:ZEC",
+        "notional": 9257.5,
+        "passive": false,
+        "quantity": -7.0,
+        "risk_reference_price": 1322.5,
+        "risk_reference_source": "opening_mark",
+        "side": "short",
+        "unrealized_pnl": 239.5105999999996
+      },
+      {
+        "account": "alex",
+        "avg_entry": 88.774,
+        "coin": "HYPE",
+        "kind": "spot",
+        "mark_price": 88.774,
+        "market": "spot:HYPE",
+        "notional": 0.0029144504200000003,
+        "passive": true,
+        "quantity": 3.283e-05,
+        "risk_reference_price": 88.774,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 0.0
+      },
+      {
+        "account": "clearpond",
+        "avg_entry": 84616.0,
+        "coin": "BTC",
+        "kind": "spot",
+        "mark_price": 84616.0,
+        "market": "spot:BTC",
+        "notional": 21238.0966608384,
+        "passive": false,
+        "quantity": 0.2509938624,
+        "risk_reference_price": 84616.0,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 0.0
+      },
+      {
+        "account": "clearpond",
+        "avg_entry": 2677.5,
+        "coin": "ETH",
+        "kind": "spot",
+        "mark_price": 2677.5,
+        "market": "spot:ETH",
+        "notional": 2678.30137575,
+        "passive": false,
+        "quantity": 1.0002993,
+        "risk_reference_price": 2677.5,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 0.0
+      },
+      {
+        "account": "clearpond",
+        "avg_entry": 88.774,
+        "coin": "HYPE",
+        "kind": "spot",
+        "mark_price": 88.774,
+        "market": "spot:HYPE",
+        "notional": 4442.3512471000595,
+        "passive": false,
+        "quantity": 50.04112969,
+        "risk_reference_price": 88.774,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 0.0
+      },
+      {
+        "account": "clearpond",
+        "avg_entry": 1322.2,
+        "coin": "ZEC",
+        "kind": "spot",
+        "mark_price": 1322.2,
+        "market": "spot:ZEC",
+        "notional": 1328.8171442634,
+        "passive": false,
+        "quantity": 1.005004647,
+        "risk_reference_price": 1322.2,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 0.0
+      },
+      {
+        "account": "jeremy",
+        "avg_entry": 87.6437,
+        "coin": "HYPE",
+        "kind": "perp",
+        "mark_price": 88.738,
+        "market": "perp:HYPE",
+        "notional": 6211.66,
+        "passive": false,
+        "quantity": 70.0,
+        "risk_reference_price": 88.738,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 76.60100000000028
+      },
+      {
+        "account": "jeremy",
+        "avg_entry": 1391.5015,
+        "coin": "ZEC",
+        "kind": "perp",
+        "mark_price": 1322.5,
+        "market": "perp:ZEC",
+        "notional": 6943.125,
+        "passive": false,
+        "quantity": 5.25,
+        "risk_reference_price": 1322.5,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": -362.2578750000004
+      },
+      {
+        "account": "jeremy",
+        "avg_entry": 88.774,
+        "coin": "HYPE",
+        "kind": "spot",
+        "mark_price": 88.774,
+        "market": "spot:HYPE",
+        "notional": 0.00066758048,
+        "passive": true,
+        "quantity": 7.52e-06,
+        "risk_reference_price": 88.774,
+        "risk_reference_source": "opening_mark",
+        "side": "long",
+        "unrealized_pnl": 0.0
+      }
+    ],
+    "realized_pnl": 0.0,
+    "total_pnl": 0.0,
+    "unrealized_pnl": -280.2812750000006,
+    "cycle_id": "opening",
+    "timestamp_utc": "2026-10-03T05:32:19.970226526+00:00",
+    "account": "pooled",
+    "return_fraction": 0.0
+  },
+  "experiment": null,
+  "paper_policy": {
+    "mode": "paper",
+    "seed_mode": "mirror",
+    "data_root": "C:\\DATASTORE\\hyperliquid",
+    "model_config": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+    "initial_cash": {
+      "alex": 10000.0,
+      "jeremy": 10000.0,
+      "clearpond": 10000.0
+    },
+    "require_qualified_forecasts": false,
+    "poll_seconds": 30,
+    "entry_band": 0.0,
+    "exit_band": 0.0,
+    "saturation_band": 0.24,
+    "volatility_budget_fraction": 0.00045,
+    "sigma_floor": 0.005,
+    "per_symbol_gross_fraction": 0.15,
+    "pool_gross_fraction": 0.6,
+    "bullish_spot_fraction": 0.1,
+    "account_utilization": 0.8,
+    "min_trade_notional": 10.0,
+    "rebalance_min_delta_fraction": 0.0,
+    "perp_fee_rate": 0.00045,
+    "spot_fee_rate": 0.0007,
+    "slippage_bps": 0,
+    "stop_loss_fraction": 0.03,
+    "max_forecast_age_seconds": 300,
+    "max_model_age_seconds": 86400,
+    "max_quote_age_seconds": 45,
+    "transfer_min_amount": 100,
+    "reserve_cash_fraction": 0.1,
+    "recipe_version": "direction-volatility-v3-research-hold",
+    "stop_reference_policy": "persisted_position_risk_reference_v1",
+    "quote_execution_policy": "forecast_first_bounded_quote_retry_v1",
+    "policy_id": "88cd1a6a008df9b9"
+  },
+  "maintenance": {
+    "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-54",
+    "cycle_id": "20261003-paper-round-54",
+    "evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-54",
+    "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+    "expected_upstream_state": "data continues; models operator-controlled",
+    "owner": "paper-self-improvement",
+    "phase": "prepared",
+    "powder": "inactive; no real account mutation",
+    "reason": "User-authorized Paper self-improvement and fresh account mirror",
+    "requested_at_utc": "2026-10-03T05:26:32.960989+00:00",
+    "status": "in_progress"
+  },
+  "runtime": {
+    "paper": {
+      "status": "stopped",
+      "reported_status": "stopped",
+      "pid": 45460,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-paper.json",
+      "process_alive": false,
+      "updated_at_utc": "2026-10-03T05:32:19.970226526+00:00",
+      "last_error": null,
+      "lifecycle_phase": "opening_prepared",
+      "prepare_only": true,
+      "stop_reason": "prepare_only",
+      "slot_errors": {}
+    },
+    "models": {
+      "status": "running",
+      "reported_status": "running",
+      "pid": 60368,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "process_alive": true,
+      "updated_at_utc": "2026-10-03T05:32:29.134029+00:00",
+      "reason": null,
+      "config_error": null,
+      "training_market": null,
+      "slot_errors": {}
+    },
+    "coordinator": {
+      "status": "running",
+      "reported_status": "running",
+      "pid": 56964,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json",
+      "process_alive": true,
+      "updated_at_utc": "2026-10-03T05:32:29.558697+00:00",
+      "reason": null,
+      "config_error": null,
+      "slot_errors": {}
+    },
+    "powder": {
+      "pending_intents": 0,
+      "connected": false,
+      "slot_errors": {}
+    }
+  },
+  "process_identity": {
+    "paper": {
+      "pid": 45460,
+      "identity_verified": false,
+      "error": "NoSuchProcess: process PID not found (pid=45460)"
+    },
+    "models": {
+      "pid": 60368,
+      "identity_verified": true,
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.hyperliquid_model_runtime",
+        "--config",
+        "C:\\dev\\ducketz\\configs\\hyperliquid-models.json"
+      ],
+      "cwd": "C:\\dev\\ducketz",
+      "created_at_utc": "2026-10-03T05:31:07.051932+00:00",
+      "parents": [
+        {
+          "pid": 67232,
+          "name": "python.exe",
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.hyperliquid_model_runtime",
+            "--config",
+            "C:\\dev\\ducketz\\configs\\hyperliquid-models.json"
+          ],
+          "created_at_utc": "2026-10-03T05:31:07.044035+00:00"
+        },
+        {
+          "pid": 46492,
+          "name": "cmd.exe",
+          "command": [
+            "C:\\Windows\\System32\\cmd.exe",
+            "/d",
+            "/s",
+            "/c",
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m ml.hyperliquid_model_runtime --config C:\\dev\\ducketz\\configs\\hyperliquid-models.json 1>C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\paper-review-20261002-223106.stdout.log 2>C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\paper-review-20261002-223106.stderr.log"
+          ],
+          "created_at_utc": "2026-10-03T05:31:06.999913+00:00"
+        }
+      ]
+    },
+    "coordinator": {
+      "pid": 56964,
+      "identity_verified": true,
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.hyperliquid_coordinator",
+        "--config",
+        "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+      ],
+      "cwd": "C:\\dev\\ducketz",
+      "created_at_utc": "2026-09-30T02:07:27.888148+00:00",
+      "parents": [
+        {
+          "pid": 57536,
+          "name": "python.exe",
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.hyperliquid_coordinator",
+            "--config",
+            "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+          ],
+          "created_at_utc": "2026-09-30T02:07:27.881571+00:00"
+        },
+        {
+          "pid": 55988,
+          "name": "cmd.exe",
+          "command": [
+            "C:\\Windows\\System32\\cmd.exe",
+            "/d",
+            "/s",
+            "/c",
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m ml.hyperliquid_coordinator --config C:\\dev\\ducketz\\configs\\hyperliquid-markets.json 1>C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stdout.log 2>C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stderr.log"
+          ],
+          "created_at_utc": "2026-09-30T02:07:27.844841+00:00"
+        }
+      ]
+    },
+    "powder": {
+      "pid": null,
+      "identity_verified": false
+    }
+  },
+  "stop_requests": {
+    "coordinator": false,
+    "models": false,
+    "paper": false,
+    "powder": false
+  },
+  "sources": {
+    "ledger": {
+      "name": "ledger",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:32:19.970226526+00:00",
+      "age_seconds": 10.30662202835083,
+      "cadence_seconds": 30,
+      "detail": ""
+    },
+    "paper": {
+      "name": "paper",
+      "state": "stopped",
+      "observed_at_utc": "2026-10-03T05:32:19.970226526+00:00",
+      "age_seconds": 10.30662202835083,
+      "cadence_seconds": 30,
+      "detail": "Opening prepared; stopped intentionally before strategy cycles"
+    },
+    "models": {
+      "name": "models",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:32:29.134029+00:00",
+      "age_seconds": 1.1428191661834717,
+      "cadence_seconds": 5,
+      "detail": ""
+    },
+    "coordinator": {
+      "name": "coordinator",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:32:29.558697+00:00",
+      "age_seconds": 0.7181510925292969,
+      "cadence_seconds": 5,
+      "detail": ""
+    },
+    "performance": {
+      "name": "performance",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:32:19.970226526+00:00",
+      "age_seconds": 10.30662202835083,
+      "cadence_seconds": 900,
+      "detail": "Point-in-time export: every 15 minutes or after trading changes. Current balances and chart read the ledger."
+    },
+    "data:BTC": {
+      "name": "data:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:30:00+00:00",
+      "age_seconds": 150.27684807777405,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:BTC": {
+      "name": "forecast:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:18.509081+00:00",
+      "age_seconds": 71.76776719093323,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:BTC": {
+      "name": "training:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:18.370713+00:00",
+      "age_seconds": 71.90613508224487,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:ETH": {
+      "name": "data:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:30:00+00:00",
+      "age_seconds": 150.27684807777405,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:ETH": {
+      "name": "forecast:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:28.655371+00:00",
+      "age_seconds": 61.621477127075195,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:ETH": {
+      "name": "training:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:28.527966+00:00",
+      "age_seconds": 61.74888205528259,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:HYPE": {
+      "name": "data:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:30:00+00:00",
+      "age_seconds": 150.27684807777405,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:HYPE": {
+      "name": "forecast:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:38.823189+00:00",
+      "age_seconds": 51.45365905761719,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:HYPE": {
+      "name": "training:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:38.690493+00:00",
+      "age_seconds": 51.58635497093201,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:ZEC": {
+      "name": "data:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:30:00+00:00",
+      "age_seconds": 150.27684807777405,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:ZEC": {
+      "name": "forecast:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:49.014039+00:00",
+      "age_seconds": 41.26280903816223,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:ZEC": {
+      "name": "training:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-03T05:31:48.838457+00:00",
+      "age_seconds": 41.4383909702301,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    }
+  },
+  "powder_sources": {
+    "powder_ledger": {
+      "name": "Powder observations",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": "Actual exchange observations; P/L and drawdown await cashflow accounting."
+    }
+  },
+  "warnings": [],
+  "configured_slots": {
+    "result": "passed",
+    "errors": [],
+    "slots": {
+      "BTC/5m/h1": {
+        "result": "passed",
+        "prediction_id": "cafa071b2ca54dda8a8be5b92c4c8759",
+        "model_id": "20261003T053118Z-63c2bb8c",
+        "data_run_id": "20261003T053005Z-16b7b3d1",
+        "decision_close_utc": "2026-10-03T05:30:00+00:00",
+        "target_close_utc": "2026-10-03T05:35:00+00:00",
+        "created_at_utc": "2026-10-03T05:31:18.509081+00:00",
+        "qualified": true,
+        "valid_until_epoch": 1791005700.0,
+        "horizon_sigma": 0.00036705756138131714
+      },
+      "ETH/5m/h1": {
+        "result": "passed",
+        "prediction_id": "c408214b15744b50b1b5daa2a0f69ed6",
+        "model_id": "20261003T053128Z-dabbd663",
+        "data_run_id": "20261003T053006Z-a1b0b270",
+        "decision_close_utc": "2026-10-03T05:30:00+00:00",
+        "target_close_utc": "2026-10-03T05:35:00+00:00",
+        "created_at_utc": "2026-10-03T05:31:28.655371+00:00",
+        "qualified": false,
+        "valid_until_epoch": 1791005700.0,
+        "horizon_sigma": 0.000683243108947366
+      },
+      "HYPE/5m/h1": {
+        "result": "passed",
+        "prediction_id": "4984f9567ce143139eed0dbe23462da9",
+        "model_id": "20261003T053138Z-8490268a",
+        "data_run_id": "20261003T053005Z-42e30490",
+        "decision_close_utc": "2026-10-03T05:30:00+00:00",
+        "target_close_utc": "2026-10-03T05:35:00+00:00",
+        "created_at_utc": "2026-10-03T05:31:38.823189+00:00",
+        "qualified": false,
+        "valid_until_epoch": 1791005700.0,
+        "horizon_sigma": 0.0010284475900883944
+      },
+      "ZEC/5m/h1": {
+        "result": "passed",
+        "prediction_id": "ca00ba1d659c405a9dfcc83b0409182c",
+        "model_id": "20261003T053148Z-8074c5f9",
+        "data_run_id": "20261003T053006Z-8b8f1743",
+        "decision_close_utc": "2026-10-03T05:30:00+00:00",
+        "target_close_utc": "2026-10-03T05:35:00+00:00",
+        "created_at_utc": "2026-10-03T05:31:49.014039+00:00",
+        "qualified": true,
+        "valid_until_epoch": 1791005700.0,
+        "horizon_sigma": 0.001397371516814948
+      }
+    },
+    "configured_recipe": {
+      "interval": "5m",
+      "horizons_bars": [
+        1
+      ],
+      "paper_horizon_bars": 1,
+      "paper_horizon_minutes": 5.0,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ],
+      "model_config": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "markets_config": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+    }
+  },
+  "result": "passed"
+}

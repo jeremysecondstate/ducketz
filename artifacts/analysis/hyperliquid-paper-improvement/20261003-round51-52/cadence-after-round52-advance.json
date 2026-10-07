@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-10-03T02:13:11Z",
+  "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+  "ending_experiment_id": "20261002-paper-round-51",
+  "outcome": "late_unscored",
+  "assessment_sha256": "4fac73c5c66fcdb2622d476bed413b2328277e1c2e4e99962a58c1b977480349",
+  "successor_experiment_id": "20261003-paper-round-52",
+  "current_evaluation_hours": 1,
+  "planned_successor_evaluation_hours": 1,
+  "successor_seed_at_utc": "2026-10-03T01:40:54.468557358+00:00",
+  "successor_due_at_utc": "2026-10-03T02:40:54.468557+00:00",
+  "pending_assessment": null,
+  "cadence_state_sha256": "a20f8c08dfc9df18b0ff6a8ff480d42cfcb7925d4e1c22e3594f838b607ae0f9"
+}

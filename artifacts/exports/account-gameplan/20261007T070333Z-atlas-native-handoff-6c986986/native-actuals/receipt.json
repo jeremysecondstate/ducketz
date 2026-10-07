@@ -1,0 +1,9 @@
+{
+  "action_date": "2026-10-06",
+  "broker_orders_enabled": false,
+  "manifest_sha256": "9cb90bde399fc2b53735f572ff3f6fca8ac5e3822f160a4479e3c47a0ea5e306",
+  "orders_placed": 0,
+  "run_path": "ml/gameplan-actuals-review-runs/20261007T065601.162868Z",
+  "schema_version": "gameplan-actuals-review-v1",
+  "status": "COMPLETE"
+}

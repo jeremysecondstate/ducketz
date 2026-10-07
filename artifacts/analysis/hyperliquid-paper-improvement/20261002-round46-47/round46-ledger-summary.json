@@ -1,0 +1,257 @@
+{
+  "archive": {
+    "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-47",
+    "bytes": 529164553,
+    "file_count": 481,
+    "manifest_sha256": "27e35d7ff0916a4e67d3ddd1471d8ceebac70f3efe719a48b66bb540202b123b",
+    "result": "passed",
+    "verified_at_utc": "2026-10-02T14:42:46.857326+00:00"
+  },
+  "assessment": {
+    "assessed_at_utc": "2026-10-02T14:34:21.593109+00:00",
+    "comparison_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-46\\round46-comparison-20261002T143344Z.json",
+    "comparison_sha256": "82e3399ae247ea0edcea971256af10ee07c3d481ab088ec5469935e9e7ffe1d7",
+    "decision": {
+      "ending_evaluation_hours": 1,
+      "finalizable": true,
+      "next_evaluation_hours": 1,
+      "outcome": "late_unscored",
+      "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+      "winning": false
+    },
+    "ending_state": {
+      "baseline_evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-46",
+      "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+      "carry_in_unscored": false,
+      "due_at_utc": "2026-10-02T13:31:05.198404+00:00",
+      "evaluation_hours": 1,
+      "experiment_id": "20261002-paper-round-46",
+      "experiment_sha256": "020f7d2d4dc33d27a8f39cb8cf698a5d8f94b1060d58ff85f4a023ec8002b4c9",
+      "immutable_opening_hashes": {
+        "initial_positions_sha256": "d382056aac8e3b0e57ab34b71b30e6bb436b28a2fe769d65262c37cd2404ccaf",
+        "opening_cycle_sha256": "4fb8686e4bcecb468d048352bebc873aab4952b9968913c609fe3dd523c652b0",
+        "opening_snapshot_sha256": "87f223ca8b72085a24c747feeb729204d71a91f2445da0ebb9e90071bce0b335",
+        "seed_sha256": "0f66309ec77a5b8a4d56731dd48be64ee94c907bc10422dcca3265b51bf3f8b5"
+      },
+      "opening_equity": 45009.581944127,
+      "public_owner_sha256": {
+        "alex": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+        "clearpond": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+        "jeremy": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a"
+      },
+      "recipe": {
+        "config_sha256": {
+          "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+          "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+          "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b"
+        },
+        "horizons_bars": [
+          1
+        ],
+        "interval": "5m",
+        "paper_policy_id": "88cd1a6a008df9b9",
+        "require_qualified_forecasts": false,
+        "symbols": [
+          "BTC",
+          "ETH",
+          "HYPE",
+          "ZEC"
+        ]
+      },
+      "seed_at_utc": "2026-10-02T12:31:05.198404074+00:00",
+      "win_forecast_rule": "valid-in-round-forecast-v2"
+    },
+    "ending_state_sha256": "d178d5b6443537a2ee81045c2b1a7a0730bdf6e9db2d58deeb61e46908b7521b",
+    "schema_version": 1
+  },
+  "comparison": {
+    "accounts": {
+      "alex": {
+        "actual_common_mark_equity": 6051.8301045985445,
+        "actual_duckets_equity": 6052.08,
+        "actual_return_fraction": 0.029792385213216255,
+        "common_mark_edge": -187.06945946887572,
+        "complete_zero_external_flows": true,
+        "external_flow_events": 0,
+        "opening_equity": 5876.7477711981,
+        "paper_common_mark_equity": 5864.760645129669,
+        "paper_fees_at_comparison": 8.582669833499999,
+        "paper_funding_at_comparison": 0.0018583646250000003,
+        "paper_return_fraction": -0.00203975507119436
+      },
+      "clearpond": {
+        "actual_common_mark_equity": 33373.04979169254,
+        "actual_duckets_equity": 33373.05,
+        "actual_return_fraction": -0.010960232709400053,
+        "common_mark_edge": 263.9461453129916,
+        "complete_zero_external_flows": true,
+        "external_flow_events": 0,
+        "opening_equity": 33742.879604442496,
+        "paper_common_mark_equity": 33636.99593700553,
+        "paper_fees_at_comparison": 21.426574686999995,
+        "paper_funding_at_comparison": 0.0,
+        "paper_return_fraction": -0.003137955879231713
+      },
+      "jeremy": {
+        "actual_common_mark_equity": 5255.23070205048,
+        "actual_duckets_equity": 5262.73,
+        "actual_return_fraction": -0.024995362154555667,
+        "common_mark_edge": 126.86067005454152,
+        "complete_zero_external_flows": true,
+        "external_flow_events": 0,
+        "opening_equity": 5389.9545684864,
+        "paper_common_mark_equity": 5382.091372105022,
+        "paper_fees_at_comparison": 7.293202649999999,
+        "paper_funding_at_comparison": -0.01380351545140003,
+        "paper_return_fraction": -0.0014588613468751177
+      }
+    },
+    "actual_common_mark_equity": 44680.11059834156,
+    "actual_completed_at_utc": "2026-10-02T14:33:54.338356+00:00",
+    "actual_duckets_equity": 44687.86,
+    "actual_endpoint_late_seconds": 3769.139952,
+    "actual_return_fraction": -0.007320026793282142,
+    "common_mark_equity_edge": 203.73735589865828,
+    "due_at_utc": "2026-10-02T13:31:05.198404+00:00",
+    "excess_return_fraction": 0.004526532953617948,
+    "mirror_baseline_verified": true,
+    "observation_skew_seconds": 28.845071,
+    "paper_common_mark_equity": 44883.84795424022,
+    "paper_equity": 44884.44711435863,
+    "paper_observed_at_utc": "2026-10-02T14:33:25.493285+00:00",
+    "paper_return_fraction": -0.0027934938396642073,
+    "performance_comparable": true,
+    "raw_display_edge": 196.58711435862642,
+    "zero_external_flows_verified": true
+  },
+  "final_stopped_paper": {
+    "by_coin": {
+      "BTC": {
+        "fees": 15.72644352,
+        "fills": 23,
+        "realized_pnl": -61.6393259,
+        "turnover": 22841.13842
+      },
+      "ETH": {
+        "fees": 2.61305179,
+        "fills": 31,
+        "realized_pnl": -6.57361252,
+        "turnover": 4250.45244
+      },
+      "HYPE": {
+        "fees": 9.82203391,
+        "fills": 12,
+        "realized_pnl": -211.4780935,
+        "turnover": 19306.20337
+      },
+      "ZEC": {
+        "fees": 9.17515098,
+        "fills": 32,
+        "realized_pnl": -251.19015509,
+        "turnover": 19567.38818
+      }
+    },
+    "decision_count": 402,
+    "fill_count": 98,
+    "fill_qualification_counts": {
+      "qualified": 55,
+      "research": 43,
+      "unavailable": 0
+    },
+    "fill_reasons": {
+      "risk_cap": 1,
+      "signal_rebalance": 97
+    },
+    "final_performance_export_at_utc": "2026-10-02T14:35:34.056595+00:00",
+    "first_eight_opening_adjustment": {
+      "fees": 35.49971298,
+      "fills": 8,
+      "first_at_utc": "2026-10-02T12:32:26.568955+00:00",
+      "last_at_utc": "2026-10-02T12:32:26.584206+00:00",
+      "realized_pnl": -534.40286,
+      "turnover": 61968.704099999995
+    },
+    "holds": {
+      "below_rebalance_threshold": 101,
+      "forecast_unavailable": 90,
+      "gross_capacity_exhausted": 4,
+      "opposite_account_direction": 85
+    },
+    "max_drawdown_fraction": -0.0028123995018806136,
+    "max_drawdown_usd_from_equity_series": 126.58492583951738,
+    "observed_at_utc": "2026-10-02T14:39:48.545471+00:00",
+    "per_account": {
+      "alex": {
+        "fees": 8.582669833499999,
+        "fill_count": 22,
+        "funding": 0.0018583646250000003,
+        "max_drawdown_fraction": -0.002791884942163536,
+        "max_drawdown_usd": 16.407203611301156,
+        "stopped_equity": 5864.7606532222635,
+        "total_pnl": -11.987117975836554,
+        "transfers": 0.0,
+        "turnover": 19072.59963
+      },
+      "clearpond": {
+        "fees": 21.426574686999995,
+        "fill_count": 16,
+        "funding": 0.0,
+        "max_drawdown_fraction": -0.0031403512323480154,
+        "max_drawdown_usd": 105.96449354878132,
+        "stopped_equity": 33637.006406702814,
+        "total_pnl": -105.87319773968193,
+        "transfers": 0.0,
+        "turnover": 30609.392409999997
+      },
+      "jeremy": {
+        "fees": 7.327435666499999,
+        "fill_count": 60,
+        "funding": -0.01380351545140003,
+        "max_drawdown_fraction": -0.003857637541581971,
+        "max_drawdown_usd": 20.83953652049786,
+        "stopped_equity": 5382.264400942204,
+        "total_pnl": -7.690167544195901,
+        "transfers": 0.0,
+        "turnover": 16283.19037
+      }
+    },
+    "pooled": {
+      "equity": 44884.03146086728,
+      "fees": 37.33668018699999,
+      "funding": -0.01194515082640003,
+      "gross_exposure": 593.9498739251198,
+      "initial_equity": 45009.581944127,
+      "net_transfers": 0.0,
+      "realized_pnl": -530.8811870087611,
+      "total_pnl": -125.55048325971438,
+      "unrealized_pnl": -3.396945913118731
+    },
+    "skips": {
+      "below_min_notional": 6,
+      "below_size_precision": 18
+    },
+    "status": "stopped",
+    "turnover": 65965.18241
+  },
+  "retained_policy_id": "88cd1a6a008df9b9",
+  "retained_recipe": {
+    "config_sha256": {
+      "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+      "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+      "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b"
+    },
+    "horizons_bars": [
+      1
+    ],
+    "interval": "5m",
+    "paper_policy_id": "88cd1a6a008df9b9",
+    "require_qualified_forecasts": false,
+    "symbols": [
+      "BTC",
+      "ETH",
+      "HYPE",
+      "ZEC"
+    ]
+  },
+  "sqlite_integrity": "ok"
+}

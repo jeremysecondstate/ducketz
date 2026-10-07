@@ -1,0 +1,388 @@
+{
+  "read_at_utc": "2026-10-02T14:48:42.578640+00:00",
+  "expectation": "observational",
+  "config_sha256": {
+    "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+    "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+    "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b",
+    "hyperliquid-powder.json": "b8e55c22b6eb17db44eabe51817584601ce849e4ae0e9374324e303a84966eff"
+  },
+  "portfolio_at_utc": null,
+  "paper_seed_at_utc": null,
+  "paper_baseline_equity": null,
+  "paper_pooled": {},
+  "experiment": null,
+  "paper_policy": null,
+  "maintenance": {
+    "archive": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261002-paper-round-47",
+    "cycle_id": "20261002-paper-round-47",
+    "evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-47",
+    "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+    "expected_upstream_state": "data continues; models operator-controlled",
+    "owner": "paper-self-improvement",
+    "phase": "archived",
+    "powder": "inactive; no real account mutation",
+    "reason": "User-authorized Paper self-improvement and fresh account mirror",
+    "requested_at_utc": "2026-10-02T14:38:44.861272+00:00",
+    "status": "in_progress"
+  },
+  "runtime": {
+    "paper": {
+      "status": "missing",
+      "reported_status": null,
+      "process_alive": null,
+      "slot_errors": {}
+    },
+    "models": {
+      "status": "running",
+      "reported_status": "running",
+      "pid": 53224,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "process_alive": true,
+      "updated_at_utc": "2026-10-02T14:48:42.077141+00:00",
+      "reason": null,
+      "config_error": null,
+      "training_market": null,
+      "slot_errors": {}
+    },
+    "coordinator": {
+      "status": "running",
+      "reported_status": "running",
+      "pid": 56964,
+      "config_path": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json",
+      "process_alive": true,
+      "updated_at_utc": "2026-10-02T14:48:41.872411+00:00",
+      "reason": null,
+      "config_error": null,
+      "slot_errors": {}
+    },
+    "powder": {
+      "pending_intents": 0,
+      "connected": false,
+      "slot_errors": {}
+    }
+  },
+  "process_identity": {
+    "paper": {
+      "pid": null,
+      "identity_verified": false
+    },
+    "models": {
+      "pid": 53224,
+      "identity_verified": true,
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.hyperliquid_model_runtime",
+        "--config",
+        "C:\\dev\\ducketz\\configs\\hyperliquid-models.json"
+      ],
+      "cwd": "C:\\dev\\ducketz",
+      "created_at_utc": "2026-10-02T14:47:14.875052+00:00",
+      "parents": [
+        {
+          "pid": 16320,
+          "name": "python.exe",
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.hyperliquid_model_runtime",
+            "--config",
+            "C:\\dev\\ducketz\\configs\\hyperliquid-models.json"
+          ],
+          "created_at_utc": "2026-10-02T14:47:14.866372+00:00"
+        },
+        {
+          "pid": 49472,
+          "name": "cmd.exe",
+          "command": [
+            "C:\\Windows\\System32\\cmd.exe",
+            "/d",
+            "/s",
+            "/c",
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m ml.hyperliquid_model_runtime --config C:\\dev\\ducketz\\configs\\hyperliquid-models.json 1>C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\round47-models-20261002-144714.stdout.log 2>C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\round47-models-20261002-144714.stderr.log"
+          ],
+          "created_at_utc": "2026-10-02T14:47:14.829159+00:00"
+        }
+      ]
+    },
+    "coordinator": {
+      "pid": 56964,
+      "identity_verified": true,
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.hyperliquid_coordinator",
+        "--config",
+        "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+      ],
+      "cwd": "C:\\dev\\ducketz",
+      "created_at_utc": "2026-09-30T02:07:27.888148+00:00",
+      "parents": [
+        {
+          "pid": 57536,
+          "name": "python.exe",
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.hyperliquid_coordinator",
+            "--config",
+            "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+          ],
+          "created_at_utc": "2026-09-30T02:07:27.881571+00:00"
+        },
+        {
+          "pid": 55988,
+          "name": "cmd.exe",
+          "command": [
+            "C:\\Windows\\System32\\cmd.exe",
+            "/d",
+            "/s",
+            "/c",
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m ml.hyperliquid_coordinator --config C:\\dev\\ducketz\\configs\\hyperliquid-markets.json 1>C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stdout.log 2>C:\\DATASTORE\\hyperliquid\\_coordinator\\watch-recovery-20260930-0204.stderr.log"
+          ],
+          "created_at_utc": "2026-09-30T02:07:27.844841+00:00"
+        }
+      ]
+    },
+    "powder": {
+      "pid": null,
+      "identity_verified": false
+    }
+  },
+  "stop_requests": {
+    "coordinator": false,
+    "models": false,
+    "paper": false,
+    "powder": false
+  },
+  "sources": {
+    "ledger": {
+      "name": "ledger",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": ""
+    },
+    "paper": {
+      "name": "paper",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": ""
+    },
+    "models": {
+      "name": "models",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:48:42.077141+00:00",
+      "age_seconds": 0.5014994144439697,
+      "cadence_seconds": 5,
+      "detail": ""
+    },
+    "coordinator": {
+      "name": "coordinator",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:48:41.872411+00:00",
+      "age_seconds": 0.7062294483184814,
+      "cadence_seconds": 5,
+      "detail": ""
+    },
+    "performance": {
+      "name": "performance",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 900,
+      "detail": "Point-in-time export: every 15 minutes or after trading changes. Current balances and chart read the ledger."
+    },
+    "data:BTC": {
+      "name": "data:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 222.57864046096802,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:BTC": {
+      "name": "forecast:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:26.433002+00:00",
+      "age_seconds": 76.14563846588135,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:BTC": {
+      "name": "training:BTC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:26.299008+00:00",
+      "age_seconds": 76.27963256835938,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:ETH": {
+      "name": "data:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 222.57864046096802,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:ETH": {
+      "name": "forecast:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:36.594999+00:00",
+      "age_seconds": 65.9836413860321,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:ETH": {
+      "name": "training:ETH",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:36.459237+00:00",
+      "age_seconds": 66.11940336227417,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:HYPE": {
+      "name": "data:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 222.57864046096802,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:HYPE": {
+      "name": "forecast:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:46.760187+00:00",
+      "age_seconds": 55.818453550338745,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:HYPE": {
+      "name": "training:HYPE",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:46.632585+00:00",
+      "age_seconds": 55.94605541229248,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    },
+    "data:ZEC": {
+      "name": "data:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:45:00+00:00",
+      "age_seconds": 222.57864046096802,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "forecast:ZEC": {
+      "name": "forecast:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:56.936638+00:00",
+      "age_seconds": 45.64200234413147,
+      "cadence_seconds": 300.0,
+      "detail": ""
+    },
+    "training:ZEC": {
+      "name": "training:ZEC",
+      "state": "fresh",
+      "observed_at_utc": "2026-10-02T14:47:56.796112+00:00",
+      "age_seconds": 45.78252840042114,
+      "cadence_seconds": 300.0,
+      "detail": "Candidate publication; not the fitting-data cutoff"
+    }
+  },
+  "powder_sources": {
+    "powder_ledger": {
+      "name": "Powder observations",
+      "state": "missing",
+      "observed_at_utc": null,
+      "age_seconds": null,
+      "cadence_seconds": 30,
+      "detail": "Actual exchange observations; P/L and drawdown await cashflow accounting."
+    }
+  },
+  "warnings": [
+    "Paper ledger is missing; no balances have been inferred",
+    "Missing status.json: C:\\DATASTORE\\hyperliquid\\_paper\\_runtime"
+  ],
+  "configured_slots": {
+    "result": "failed",
+    "errors": [
+      "Paper runtime horizon differs from configured recipe"
+    ],
+    "slots": {
+      "BTC/5m/h1": {
+        "result": "passed",
+        "prediction_id": "4a40b8e00ea64dd2b40de313f36d7720",
+        "model_id": "20261002T144726Z-bfe738da",
+        "data_run_id": "20261002T144506Z-751a2090",
+        "decision_close_utc": "2026-10-02T14:45:00+00:00",
+        "target_close_utc": "2026-10-02T14:50:00+00:00",
+        "created_at_utc": "2026-10-02T14:47:26.433002+00:00",
+        "qualified": true,
+        "valid_until_epoch": 1790952600.0,
+        "horizon_sigma": 0.0022560013597517875
+      },
+      "ETH/5m/h1": {
+        "result": "passed",
+        "prediction_id": "99f34239fbbb4a13b54473cb84557211",
+        "model_id": "20261002T144736Z-feaf13e6",
+        "data_run_id": "20261002T144506Z-47473cc1",
+        "decision_close_utc": "2026-10-02T14:45:00+00:00",
+        "target_close_utc": "2026-10-02T14:50:00+00:00",
+        "created_at_utc": "2026-10-02T14:47:36.594999+00:00",
+        "qualified": false,
+        "valid_until_epoch": 1790952600.0,
+        "horizon_sigma": 0.00219387730514225
+      },
+      "HYPE/5m/h1": {
+        "result": "passed",
+        "prediction_id": "f72b05a1b3a44806ae36023a277aca22",
+        "model_id": "20261002T144746Z-e280ba40",
+        "data_run_id": "20261002T144505Z-290ec482",
+        "decision_close_utc": "2026-10-02T14:45:00+00:00",
+        "target_close_utc": "2026-10-02T14:50:00+00:00",
+        "created_at_utc": "2026-10-02T14:47:46.760187+00:00",
+        "qualified": false,
+        "valid_until_epoch": 1790952600.0,
+        "horizon_sigma": 0.0032168326918664528
+      },
+      "ZEC/5m/h1": {
+        "result": "passed",
+        "prediction_id": "b7eb0302027944c1b80fd678b38b2abf",
+        "model_id": "20261002T144756Z-f2f3f965",
+        "data_run_id": "20261002T144505Z-6d7ba549",
+        "decision_close_utc": "2026-10-02T14:45:00+00:00",
+        "target_close_utc": "2026-10-02T14:50:00+00:00",
+        "created_at_utc": "2026-10-02T14:47:56.936638+00:00",
+        "qualified": true,
+        "valid_until_epoch": 1790952600.0,
+        "horizon_sigma": 0.004995916707749086
+      }
+    },
+    "configured_recipe": {
+      "interval": "5m",
+      "horizons_bars": [
+        1
+      ],
+      "paper_horizon_bars": 1,
+      "paper_horizon_minutes": 5.0,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ],
+      "model_config": "C:\\dev\\ducketz\\configs\\hyperliquid-models.json",
+      "markets_config": "C:\\dev\\ducketz\\configs\\hyperliquid-markets.json"
+    }
+  },
+  "result": "observed"
+}

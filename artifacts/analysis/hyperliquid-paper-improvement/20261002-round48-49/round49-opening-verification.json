@@ -1,0 +1,35 @@
+{
+  "baseline_equity": {
+    "alex": 6906.45094298117,
+    "clearpond": 32624.67374725761,
+    "jeremy": 4606.961637678481
+  },
+  "counts": {
+    "decisions": 0,
+    "fills": 0,
+    "funding": 0,
+    "transfers": 0
+  },
+  "immutable_opening_hashes": {
+    "initial_positions_sha256": "4a2f775029954e54621fe55a13b62011005c7a75d195348952a631ca6ed96cdb",
+    "opening_cycle_sha256": "2a1efd8b5aa5b8822d3e188a2984771cb1befe7ea0f65168b1d478f93a9aafc2",
+    "opening_snapshot_sha256": "af3215a41022758e1c9ab5d176dafcbf2f4dfaca86d218d2a1f5024402d7b96d",
+    "seed_sha256": "eebdcc5f689d2ca3ad9fb1505fcc434d0936085a9e9ef555d87eadd04c7285a1"
+  },
+  "opening_equity": 44138.08632791726,
+  "position_count": 10,
+  "public_owner_sha256": {
+    "alex": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+    "clearpond": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+    "jeremy": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a"
+  },
+  "result": "passed",
+  "seed_at_utc": "2026-10-02T19:36:12.740584135+00:00",
+  "source_equity": {
+    "alex": 6906.45755298117,
+    "clearpond": 32624.67374725761,
+    "jeremy": 4606.9603476784805
+  },
+  "valuation_note": "Exact source quantities/collateral; sequential account reads and market marks can differ from displayed live totals.",
+  "verified_at_utc": "2026-10-02T19:36:12.819581+00:00"
+}

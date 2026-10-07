@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "producer": "hyperliquid-paper-improvement",
+  "actor": "Atlas",
+  "machine": "pc-original",
+  "reviewed_at_utc": "2026-10-03T05:38:59.478483Z",
+  "ending_round": {
+    "experiment_id": "20261003-paper-round-53",
+    "evaluation_hours": 1,
+    "seed_at_utc": "2026-10-03T03:36:23.680550575Z",
+    "due_at_utc": "2026-10-03T04:36:23.680550Z",
+    "paper_endpoint_at_utc": "2026-10-03T05:24:33.523029Z",
+    "actual_reads_completed_at_utc": "2026-10-03T05:25:08.160592Z",
+    "late_seconds": 2889.842479,
+    "outcome": "late_unscored",
+    "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+    "assessment_sha256": "2e2de49078f8161163f848238a04fce26d1d225f88b5b64f0ec5c554b8ab1acc",
+    "comparison": {
+      "performance_comparable": true,
+      "mirror_baseline_verified": true,
+      "zero_external_flows_verified": true,
+      "observation_skew_seconds": 34.637563,
+      "common_mark_paper_equity": 44249.54357643072,
+      "common_mark_actual_equity": 44284.99821210791,
+      "common_mark_equity_edge": -35.4546356771898,
+      "paper_return_fraction": -0.0007995587813141025,
+      "actual_return_fraction": 0.0000010435469495195804,
+      "excess_return_fraction": -0.0008006023282636848,
+      "descriptive_only": true
+    },
+    "endpoint_activity": {
+      "cycles": 330,
+      "decisions": 348,
+      "forecast_driven_fills": 67,
+      "qualified_fills": 37,
+      "research_fills": 30,
+      "turnover": 62330.34493,
+      "fees": 35.4636837935,
+      "estimated_funding": -0.004323703690663998,
+      "transfers": 0,
+      "holds": {
+        "below_rebalance": 91,
+        "forecast_unavailable": 84,
+        "opposite_account_direction": 60,
+        "gross_capacity": 4
+      },
+      "skips": {
+        "quantity_precision": 39,
+        "below_executable_minimum_notional": 3
+      }
+    },
+    "archive": {
+      "path": "C:/DATASTORE/hyperliquid/_paper_archives/20261003-paper-round-54",
+      "file_count": 429,
+      "bytes": 463799968,
+      "manifest_sha256": "a68808928075034967668f5624d5b7a02cc23d50458e09ef46b9cccb43d9352e",
+      "ledger_sha256": "da5a6660141498c267edc75d41c451e14bff9f8fcc4326884d5e8d276c142d6f",
+      "sqlite_integrity_check": "ok",
+      "post_endpoint_tail_not_used_for_score": true
+    }
+  },
+  "successor_round": {
+    "experiment_id": "20261003-paper-round-54",
+    "evaluation_hours": 1,
+    "seed_at_utc": "2026-10-03T05:32:19.970226526Z",
+    "due_at_utc": "2026-10-03T06:32:19.970226Z",
+    "opening_equity": 44302.42458238276,
+    "accounts": {
+      "alex": 6567.46738082042,
+      "clearpond": 32868.66316522186,
+      "jeremy": 4866.29403634048
+    },
+    "inherited_position_count": 10,
+    "source_open_orders_empty": true,
+    "opening_activity": {
+      "decisions": 0,
+      "fills": 0,
+      "fees": 0,
+      "funding": 0,
+      "transfers": 0,
+      "pnl": 0
+    },
+    "first_cycle": {
+      "cycles": 6,
+      "decisions": 12,
+      "fills": 8,
+      "turnover": 60022.22486,
+      "fees": 34.430797457,
+      "realized_pnl": -276.352653,
+      "funding": 0,
+      "transfers": 0
+    },
+    "health": {
+      "paper_pid": 42856,
+      "models_pid": 60368,
+      "coordinator_pid": 56964,
+      "powder_active": false,
+      "warnings": [],
+      "forecast_labels": {
+        "BTC": "Qualified",
+        "ETH": "Research",
+        "HYPE": "Research",
+        "ZEC": "Qualified"
+      }
+    }
+  },
+  "retained_recipe": {
+    "paper_policy_id": "88cd1a6a008df9b9",
+    "paper_exploratory_admission": true,
+    "powder_policy_id": "02df66a92c67684d5e743765982ec57f7c2c28d0793bbe44eacfd3dc8ee4c7c2",
+    "powder_active": false,
+    "model_family_count": 5,
+    "interval": "5m",
+    "horizon_bars": 1,
+    "split": "70/15/15",
+    "shrinkage": 0.5,
+    "refit_seconds": 300,
+    "paper_poll_seconds": 30,
+    "retune": false,
+    "retune_reason": "unscored comparisons do not invoke the LOSS/TIE improvement requirement"
+  },
+  "source_and_publication": {
+    "local_source_base": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "origin_main_observed": "40c3aeac83df757e06fe0a234d8998c121c7ee43",
+    "installed_coordination_release": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+    "shared_source_changes": false,
+    "symbol_specific_source_changes": false,
+    "source_queue_created": false,
+    "publication_scope": "machine-local operating artifacts only",
+    "runtime_deployment_authority": false
+  }
+}

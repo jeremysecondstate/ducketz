@@ -1,0 +1,37 @@
+{
+  "audit": {
+    "path": "C:\\dev\\ducketz\\scratch\\cross-pc\\evidence\\overnight-20261002-recovery-051428\\native-six-stage-readers-audit\\final-native-six-stage-audit.json",
+    "sha256": "81b11f3b574ea53d1f96a4a9a1adb4abf902db6311f9ca6ad04658f83a903d13"
+  },
+  "completed_at": "2026-10-03T12:37:50.824864Z",
+  "draft_spec_sha256": "6697f6337006945281de35a4956296924b4d4ad002fc08596e7f800dcd5ecc60",
+  "helper_sha256": "6ab548f48a8630eee190f273e05282be945a16037fd370f101bb43148b587c9a",
+  "payload_files": 14,
+  "private_value_scan": "NOT_YET_RUN_INSTALLED_PUBLISHER_REQUIRED",
+  "profile_sha256": "a73026f0b7b4e041ef08f2d2ff799f4754473f96d205614865f29b51e25efb05",
+  "published": false,
+  "publisher_paths": 15,
+  "snapshot_executed": false,
+  "staged_files": {
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/forecasts.parquet": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/manifest.json": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/ownership.json": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/current-source/planning-price-path.json": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/handoff-index.json": "de69701cfd96bb826dbddb627ad44f57327941111740babeb736519342c98777",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/Gameplan-results.md": "da30e4556665da7f0ca8e0f22447d4bc0556c314f6f6c36eebd9acff0b13f86c",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/forecast-results.parquet": "4ae0f72a3b002d266397c39e406a0f9dce6ff0a591c5bdee8500c11d99732ca6",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/manifest.json": "716f5aa5d6fd92562f4f19607db729a12b66461ce91cabce0b51ac0fd324cced",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/price-results.parquet": "b3c83712ff92aa0c02ff6f318698c407101b5123e6549e8a716a2d281db4a890",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/receipt.json": "11ce0cc3c6897943331d9d86dc7a31af0d3b6a39106bfb02bc23372f5b9975cc",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/native-actuals/report.json": "3f9dfff1d00c0be8a5b5504bc6c46aa73244e1ecf00f1ae395b9a633ab52c380",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/forecasts.parquet": "3a0ec3db5558288510cdfc7635ddd792f742313a6c873a31e05cf1fe2c85b936",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/manifest.json": "8db1114eb9ca4e9e7cc87bcb5c4ece8c8d8066a8cb7b901691e544521adca7ad",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/ownership.json": "123f954e790f5d23b435fda9a15747c88caea04a00473557794851513502d8db",
+    "artifacts/exports/account-gameplan/20261003T123730Z-atlas-native-handoff-f529e00f/original-source/planning-price-path.json": "7d6be60f4a590e7f5e93945699ce1dd9449ec36cbfefdb0989683f3c7db2fab9"
+  },
+  "status": "STAGED_REQUIRES_ROOT_CONTENT_REVIEW",
+  "tail": {
+    "path": "C:\\dev\\ducketz\\scratch\\cross-pc\\evidence\\overnight-20261002-recovery-051428\\account-preparing\\source-only-tail-process-audit\\tail-f529e00f9c493bab02a1\\invocation-20261003T122234-f9f6c753\\receipt.json",
+    "sha256": "828dee50e71e8679ea0de58c2e5f24c2e049f454f8c2272fd90b1157a2e108b1"
+  }
+}

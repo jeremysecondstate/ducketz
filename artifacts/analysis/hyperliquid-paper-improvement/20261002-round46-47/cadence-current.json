@@ -1,0 +1,58 @@
+{
+  "state_path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence.json",
+  "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+  "current_evaluation_hours": 1,
+  "active": {
+    "baseline_evidence_directory": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261002-paper-round-47",
+    "cadence_rule_version": "win-plus-one-loss-minus-two-floor-one-v2",
+    "carry_in_unscored": false,
+    "due_at_utc": "2026-10-02T15:49:38.168449+00:00",
+    "evaluation_hours": 1,
+    "experiment_id": "20261002-paper-round-47",
+    "experiment_sha256": "7d2f3fcd2cf16119ad8b50b94e5bb2e893ff085453f6e543278fcf2280d373e3",
+    "immutable_opening_hashes": {
+      "initial_positions_sha256": "4293902942ec737534f5c44b4e2d0a9ae5d8d1dcbb350a5b383eb71bf77d89d4",
+      "opening_cycle_sha256": "ec9a0a22cff5749af1d3992499f181ff2981a6ab03a311c058d3e5718b7eafad",
+      "opening_snapshot_sha256": "b34dc1b37e8c5672eeb98429fe4d1ef095c22532b0bcc0b7c142b5129af0bdff",
+      "seed_sha256": "f5c5c2323c6c7fb9876a49d06e70d22af3e5a87a5d7943cea0cce366308f0bda"
+    },
+    "opening_equity": 44693.73778320642,
+    "public_owner_sha256": {
+      "alex": "24e761b32a5f99337837c0cf6c6fa501a4c1b7903e04d9be44c0b5964dcb3626",
+      "clearpond": "ee2db9a4f20cd958779ecd338611c81b05d2f30e919f7088c363f7091e05f6ac",
+      "jeremy": "e23b3d05f4d724476db99df21a0b923b462fa647ae64f189a183242c32330f9a"
+    },
+    "recipe": {
+      "config_sha256": {
+        "hyperliquid-markets.json": "4c98b71b9dbed601c99748bf1c409bc24ac7205c67e78c1ce52d87d468a5a2da",
+        "hyperliquid-models.json": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+        "hyperliquid-paper.json": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b"
+      },
+      "horizons_bars": [
+        1
+      ],
+      "interval": "5m",
+      "paper_policy_id": "88cd1a6a008df9b9",
+      "require_qualified_forecasts": false,
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ]
+    },
+    "seed_at_utc": "2026-10-02T14:49:38.168449163+00:00",
+    "win_forecast_rule": "valid-in-round-forecast-v2"
+  },
+  "pending_assessment": null,
+  "policy_amendments": [
+    {
+      "path": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\policy-amendments\\20260929-loss-penalty.json",
+      "sha256": "0cb5d009f3f162dd14a5056e3a822e6ce4e80a80058b1eac0f24225c6488a28f"
+    }
+  ],
+  "next_due_at_utc": "2026-10-02T15:49:38.168449+00:00",
+  "planned_successor_evaluation_hours": null,
+  "schedule_reanchor_deadline_at_utc": "2026-10-02T14:52:38.168449+00:00",
+  "schedule_action": "Bind the app wake to next_due_at_utc after rollover; confirm with the app tool. This helper never edits schedules."
+}

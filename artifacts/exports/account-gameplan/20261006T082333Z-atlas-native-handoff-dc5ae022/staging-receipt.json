@@ -1,0 +1,30 @@
+{
+  "completed_at": "2026-10-06T08:24:01.490557Z",
+  "helper_sha256": "65787e163249e62ac75514973983e828df0f91ae117e80599894632087960d52",
+  "payload_files": 14,
+  "private_value_scan": "NOT_YET_RUN_INSTALLED_PUBLISHER_REQUIRED",
+  "profile_sha256": "a73026f0b7b4e041ef08f2d2ff799f4754473f96d205614865f29b51e25efb05",
+  "published": false,
+  "publisher_paths": 11,
+  "snapshot_executed": false,
+  "spec_sha256": "c73bae230a1a9df6eff34ebecc8ba70b2e04a4eaaf4c1efb9bf31f20daa85531",
+  "staged_files": {
+    "artifact-spec.draft.json": "2e940c99e9fd45feeb9069c775226a33fe8b0e1622331f96b392c36c72f97c35",
+    "current-source/forecasts.parquet": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+    "current-source/manifest.json": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+    "current-source/ownership.json": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+    "current-source/planning-price-path.json": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+    "handoff-index.json": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+    "native-actuals/Gameplan-results.md": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+    "native-actuals/forecast-results.parquet": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+    "native-actuals/manifest.json": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+    "native-actuals/price-results.parquet": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+    "native-actuals/receipt.json": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+    "native-actuals/report.json": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+    "original-source/forecasts.parquet": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed",
+    "original-source/manifest.json": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+    "original-source/ownership.json": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+    "original-source/planning-price-path.json": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82"
+  },
+  "status": "STAGED_REQUIRES_ROOT_CONTENT_REVIEW"
+}

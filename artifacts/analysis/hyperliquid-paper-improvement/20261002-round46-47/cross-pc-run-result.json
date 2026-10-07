@@ -1,0 +1,9 @@
+{
+  "meaningful_change": true,
+  "outcome": "completed",
+  "summary": "Round 46 timing gate produced late_unscored; Round 47 accepted and advancing; no source files changed.",
+  "source_version": "8516a9b40c300c02a28278d3e0016aac852cdb3e",
+  "blocker": null,
+  "at_utc": "2026-10-02T15:41:49.551536Z",
+  "fingerprint": "260b3601ae7dedb4734d7bfafddf649a67200d9a84b9418429368a2446430119"
+}

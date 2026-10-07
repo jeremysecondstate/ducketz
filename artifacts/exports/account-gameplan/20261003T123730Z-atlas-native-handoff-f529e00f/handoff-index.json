@@ -1,0 +1,153 @@
+{
+  "accuracy_status_counts": {
+    "EVALUATED": 156,
+    "MATURE_AWAITING_DATA": 42,
+    "PENDING_MATURITY": 66
+  },
+  "current": {
+    "action_date": "2026-10-05",
+    "forecast_rows": 264,
+    "model_reports_sha256": "8ef5778ca3d06bf6594d2bb3f51af2de54d9c16222411c5da860ea7d423917a4",
+    "model_status_counts": {
+      "PROMOTED": 264
+    },
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ],
+    "verified_promoted_groups": [
+      "1d",
+      "1h",
+      "1w",
+      "4h"
+    ]
+  },
+  "files": [
+    {
+      "destination": "current-source/forecasts.parquet",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/forecasts.parquet",
+      "sha256": "f21a490489ee8f0e479a82d49a3be661cd96170ad4d1e06a444cd3739ef236ed",
+      "size": 60202
+    },
+    {
+      "destination": "current-source/manifest.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/manifest.json",
+      "sha256": "4751dba94f05b4177731afa8b6bc27959f3de6e6259a0166b6a36001a1a24fec",
+      "size": 1591698
+    },
+    {
+      "destination": "current-source/ownership.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/ownership.json",
+      "sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "size": 23
+    },
+    {
+      "destination": "current-source/planning-price-path.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/59b84d11b01680e4ae0ee127d9bf7bffb8c624208fdba138ab2ee6ad23b21cb6/planning-price-path.json",
+      "sha256": "d731fd83a7211256c31a3d786215c4e6e1c6aaafaded7515cee6ff9f8f24db82",
+      "size": 46642203
+    },
+    {
+      "destination": "original-source/forecasts.parquet",
+      "original_datastore_path": "ml/account-gameplan-source-runs/81d6a571c52379cfa0f7919b4470e81063aab56ece19fc9d4c15edf6b1d3ff28/forecasts.parquet",
+      "sha256": "3a0ec3db5558288510cdfc7635ddd792f742313a6c873a31e05cf1fe2c85b936",
+      "size": 60543
+    },
+    {
+      "destination": "original-source/manifest.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/81d6a571c52379cfa0f7919b4470e81063aab56ece19fc9d4c15edf6b1d3ff28/manifest.json",
+      "sha256": "8db1114eb9ca4e9e7cc87bcb5c4ece8c8d8066a8cb7b901691e544521adca7ad",
+      "size": 1531522
+    },
+    {
+      "destination": "original-source/ownership.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/81d6a571c52379cfa0f7919b4470e81063aab56ece19fc9d4c15edf6b1d3ff28/ownership.json",
+      "sha256": "123f954e790f5d23b435fda9a15747c88caea04a00473557794851513502d8db",
+      "size": 11989
+    },
+    {
+      "destination": "original-source/planning-price-path.json",
+      "original_datastore_path": "ml/account-gameplan-source-runs/81d6a571c52379cfa0f7919b4470e81063aab56ece19fc9d4c15edf6b1d3ff28/planning-price-path.json",
+      "sha256": "7d6be60f4a590e7f5e93945699ce1dd9449ec36cbfefdb0989683f3c7db2fab9",
+      "size": 11698356
+    },
+    {
+      "destination": "native-actuals/Gameplan-results.md",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261003T123533.782896Z/Gameplan-results.md",
+      "sha256": "da30e4556665da7f0ca8e0f22447d4bc0556c314f6f6c36eebd9acff0b13f86c",
+      "size": 66861
+    },
+    {
+      "destination": "native-actuals/forecast-results.parquet",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261003T123533.782896Z/forecast-results.parquet",
+      "sha256": "4ae0f72a3b002d266397c39e406a0f9dce6ff0a591c5bdee8500c11d99732ca6",
+      "size": 162436
+    },
+    {
+      "destination": "native-actuals/manifest.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261003T123533.782896Z/manifest.json",
+      "sha256": "716f5aa5d6fd92562f4f19607db729a12b66461ce91cabce0b51ac0fd324cced",
+      "size": 349762
+    },
+    {
+      "destination": "native-actuals/price-results.parquet",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261003T123533.782896Z/price-results.parquet",
+      "sha256": "b3c83712ff92aa0c02ff6f318698c407101b5123e6549e8a716a2d281db4a890",
+      "size": 21549
+    },
+    {
+      "destination": "native-actuals/receipt.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261003T123533.782896Z/receipt.json",
+      "sha256": "11ce0cc3c6897943331d9d86dc7a31af0d3b6a39106bfb02bc23372f5b9975cc",
+      "size": 335
+    },
+    {
+      "destination": "native-actuals/report.json",
+      "original_datastore_path": "ml/gameplan-actuals-review-runs/20261003T123533.782896Z/report.json",
+      "sha256": "3f9dfff1d00c0be8a5b5504bc6c46aa73244e1ecf00f1ae395b9a633ab52c380",
+      "size": 393129
+    }
+  ],
+  "limitations": [
+    "Original native IDs, policies and research/pending statuses retained.",
+    "Portable assembler inputs only; raw archive/model reconstruction and execution activation are separate."
+  ],
+  "original": {
+    "action_date": "2026-10-02",
+    "forecast_rows": 264,
+    "model_reports_sha256": "6c52f0bb57006476bbee7e8095b308f67825dceb0b797a3333aaa14ed3c475d7",
+    "model_status_counts": {
+      "PROMOTED": 264
+    },
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ],
+    "verified_promoted_groups": [
+      "1d",
+      "1h",
+      "1w",
+      "4h"
+    ]
+  },
+  "producer_id": "pc-original",
+  "schema_version": "atlas-native-artifact-handoff-v1"
+}

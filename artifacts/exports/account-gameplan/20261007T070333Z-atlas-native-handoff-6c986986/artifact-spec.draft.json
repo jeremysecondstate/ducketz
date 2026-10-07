@@ -1,0 +1,104 @@
+{
+  "completed": true,
+  "completed_at_utc": "2026-10-07T07:04:14.563348Z",
+  "completion_id": "20261007T070333Z-atlas-native-handoff-6c986986",
+  "details": [
+    "Current action 2026-10-07; original accuracy action 2026-10-06. Verified native parent/resume data retains original identities, cancelled-parent evidence and missing/pending coverage; original source reused from exact prior publication."
+  ],
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "f034a71abfa393387abf1d87255db23b64ba0b64358a26ff239c5da9fce15784",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/forecasts.parquet"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "0db5cbe6104bbe52e5991ae74b845b0d4c6355415c0fd6d11d1b81dea1182bd0",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/manifest.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/ownership.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "9259ea4137877a657f929891bbecfd7eef4b89606abe56091ada18ec19d312e0",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/current-source/planning-price-path.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e32b49ad71cead37ff7536e3512ad4fb29f0917a0f31d50d450694d103c7149f",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/Gameplan-results.md"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "2d89671e778c6538e6fe7bb1f9291aaf704d70ca80485e45e53026fdd614c6e3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/forecast-results.parquet"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "9cb90bde399fc2b53735f572ff3f6fca8ac5e3822f160a4479e3c47a0ea5e306",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/manifest.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "84a356f8fbed4328f092f00ae31873f4ec4db85fcbd3c5d6dfc6e4f4e6e2e325",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/price-results.parquet"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "8ee5af529831b148d161d63ea9cb98d9f4b33de2cbc186ec6319c158ac5aab78",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/receipt.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "aa4540dc91e89ece42fa9fa8f94c69b6e5d1924769603ed9971569b4f62bb6ad",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/native-actuals/report.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e7413b19cf7061a90025454f2ee4f090427ae0e14a6eb2df4bcaecf83b1c6ea6",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261007T070333Z-atlas-native-handoff-6c986986/handoff-index.json"
+    }
+  ],
+  "producer": "loops-hourly-operations",
+  "reviewed": false,
+  "scope": "symbol-specific",
+  "summary": "Atlas frozen source and original-session actuals handoff",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}

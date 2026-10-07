@@ -1,0 +1,104 @@
+{
+  "completed": true,
+  "completed_at_utc": "2026-10-06T08:24:01.490557Z",
+  "completion_id": "20261006T082333Z-atlas-native-handoff-dc5ae022",
+  "details": [
+    "Current action 2026-10-06; original accuracy action 2026-10-05. Complete native data retains all original identities and missing/pending coverage; original source reused from exact prior publication."
+  ],
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "2a6d0315375797a2740c6420dd32c63ab50fdb1cf7698c1de2531b2fbaa1700e",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/forecasts.parquet"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "c5124a721cd3a7b9c75665fa69b30149df313b8a9d410e71f40a0be90b375b7a",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/manifest.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "61277d7e0ba94db9b5e57e0119f5db623d3283306b998c6e0e8933a343446d7b",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/ownership.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "53f9c758f8a82382b1de41b93e7c318500683e7e354c5d1f0903e41d5bbeaee9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/current-source/planning-price-path.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e042e3daba383e01e9b3f1cc3dfbd7d381e5fa1bd3caeb24392defa1769e3514",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/Gameplan-results.md"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "ff4a83ce48c8222f9893afbbe067fe0b8b40fb07e9b00beceeba71cb1d47c6a3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/forecast-results.parquet"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "1088dbbd7bc2e91cbfcd273b23cd16ec86ed91c7c9bb71f3a9be11f6dcd7a687",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/manifest.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "3a0ffebb1650bced52d3a99c81967b9281e5f7317a3ec54fbfc5c64a617371d3",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/price-results.parquet"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "2eecf69eb264723dcd37a95b1334cba43b0738509542abd8208567d22e5f67b9",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/receipt.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "e391bc97f71f18f60ecd82a0f16130b4c0042475a7d207c8b5a3ecf38b25d4c5",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/native-actuals/report.json"
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "fce8a74c5a55e503995507335f9bc1db54f60640bbd6e6a2c61a8ccfdee50166",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/exports/account-gameplan/20261006T082333Z-atlas-native-handoff-dc5ae022/handoff-index.json"
+    }
+  ],
+  "producer": "loops-hourly-operations",
+  "reviewed": false,
+  "scope": "symbol-specific",
+  "summary": "Atlas frozen source and original-session actuals handoff",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ]
+}

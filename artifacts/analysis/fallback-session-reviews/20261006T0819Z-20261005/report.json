@@ -1,0 +1,18 @@
+{
+  "schema_version": "hierarchical-bearish-fallback-review-v1",
+  "action_date": "2026-10-05",
+  "reviewed_at": "2026-10-06T08:19:13.232842+00:00",
+  "fill_date_timezone": "America/Los_Angeles",
+  "observation_scope": "Ledger-recorded orders and broker-confirmed fills; no broker requests or counterfactual profit.",
+  "read_only": true,
+  "baseline": null,
+  "fallback_orders": null,
+  "daily_budget_usage": null,
+  "sales_counts": null,
+  "read_started_at": "2026-10-06T08:19:13.232847+00:00",
+  "query_snapshot": "One SQLite read-only BEGIN transaction; recorded evidence, not a fresh broker observation.",
+  "latest_recorded_snapshot_at": "2026-10-03T10:48:37.932836+00:00",
+  "status": "NO_BASELINE",
+  "reason": "No frozen baseline for this date; execution is not inferred.",
+  "read_completed_at": "2026-10-06T08:19:13.659848+00:00"
+}

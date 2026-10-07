@@ -879,6 +879,7 @@ def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(
         fill_values,
     )
     monkeypatch.setattr(rolling_materialization, "_join_symbol_values", join_values)
+    monkeypatch.setattr(rolling_materialization, "_join_quote_values", fill_values)
     monkeypatch.setattr(rolling_materialization, "_join_shared_values", fill_values)
     monkeypatch.setattr(
         rolling_materialization,

@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "actor": "Atlas",
+  "producer": "hyperliquid-paper-improvement",
+  "base": {
+    "local_branch": "main",
+    "local_head": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "verified_remote_main": "496f533197bda4e706a6f7b90fb7808e64b35bc3"
+  },
+  "classification": "Atlas-local operating artifacts; no shared source, shared configuration, or Atlas symbol settings changed.",
+  "applicability_to_scout": "Reference evidence only; no peer adoption or runtime deployment.",
+  "actual_checks": "Exact SHA-256 and explicit add operations below. Publisher snapshot manifest records this inventory file itself. No application tests ran because no application code/config changed.",
+  "files": [
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-53-handoff-audit.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round52-53-handoff-audit.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 17440,
+      "sha256": "1314dc61d1b8e5937c1ad39f781df885626cb539f9b11c40b0d070f564877adb",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-53-handoff-audit.md",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round52-53-handoff-audit.md",
+      "operation": "add",
+      "owned": true,
+      "bytes": 5752,
+      "sha256": "d4da3b91010e4116542b937c1e8e0f56f3344994f8bbe0e0ed7202a28f5ab9b1",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-decisions.parquet",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\decisions.parquet",
+      "operation": "add",
+      "owned": true,
+      "bytes": 216316,
+      "sha256": "0ae68e10379505572faa57b3db5d450088b22932e3b94d267fcee37faba865b1",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-equity.parquet",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\equity.parquet",
+      "operation": "add",
+      "owned": true,
+      "bytes": 63259,
+      "sha256": "3c88c0db3c5ca5b69e3ac466bf828fb4584397d93e60af53830be1fb45a5f38d",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-experiment.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\experiment.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 9384,
+      "sha256": "89bfc4ecaf3da4eb5af20bff2b4b6a592e3bd1e1fbf411c09107e93dfa2661e0",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-fills.parquet",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\fills.parquet",
+      "operation": "add",
+      "owned": true,
+      "bytes": 103387,
+      "sha256": "9d89a647e4f820c66902281b67273bfcec558aa89073042a5596ded654a67643",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-funding.parquet",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\funding.parquet",
+      "operation": "add",
+      "owned": true,
+      "bytes": 8682,
+      "sha256": "e64129b720fba6d62a72ae3035794c14853b2ed801215d8861dc3fa5090a9140",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-ledger.sqlite3",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\ledger.sqlite3",
+      "operation": "add",
+      "owned": true,
+      "bytes": 7397376,
+      "sha256": "82ac9aee5ec4b9bc3f09e63c1ea8f637c269a451733f55c6255cbb0fde7dffaf",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-policy.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\policy.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 1188,
+      "sha256": "853308b6e56f515e882ecb0db09264d7f3e66ae03d1be2c14302cab5a07599b1",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-archived-transfers.parquet",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\transfers.parquet",
+      "operation": "add",
+      "owned": true,
+      "bytes": 4040,
+      "sha256": "e3a72ad968add80387da2e21356c5506013dbf55e8fd36970ff8b97c8bc52f24",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-cadence-assessment.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement-cadence\\assessments\\20261003-paper-round-52.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 2643,
+      "sha256": "0e99bfec2aa62f787e6daa8e5ed7d7057b0f067672d24caf314eb0aae3c50f39",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-comparison.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-52\\comparison.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 1892665,
+      "sha256": "440e24a7c8265cc4f2ce89eacda6a64dd2ed0d1dc456c44a4e272b6e4d924daa",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-model-start.log",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_models\\_runtime\\round52-start-20261002-183904.stdout.log",
+      "operation": "add",
+      "owned": true,
+      "bytes": 130394,
+      "sha256": "ea7f414f1f31097576de41c5d7aa0c48f12539735ba9830ee1cdbeadf6824f70",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-paper-start.log",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper_archives\\20261003-paper-round-53\\_paper\\_runtime\\round52-start-20261002-184156.stdout.log",
+      "operation": "add",
+      "owned": true,
+      "bytes": 12639,
+      "sha256": "ff19fa396e49ccce234e230a94fc7d140f0ba5249b2bee29976cad52fc9e0d2e",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round52-preservation-verification.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\preservation-verified.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 307,
+      "sha256": "9c5d3facb4bff2995262bd109cce483c2643bfd61835117975be5c49d0c80e62",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-deployment.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\deployment.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 9384,
+      "sha256": "a8ce04964a61fb7a10fccf488f0fac3bf8e2c76cb06db587405d7d30a4e535a5",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-final-closeout-health.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53-closeout-retry\\20261003-paper-round-53-closeout-retry.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 32132,
+      "sha256": "1cb8c35863572c73bc22daf359ccb57e5af0db6618f62ec27a7d622284b5deb9",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-first-cycle.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round53-first-cycle.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 26802,
+      "sha256": "93f1a6bad33f3336781f2a9fc71400844e381736c2e70f7b50f678b7e1029160",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-model-runtime-status.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\status.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 64187,
+      "sha256": "3aa67ca52f0f7d360ac8dfdd5cc46740163448a069bf0b42ebf94afd5f45e469",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-model-training-events.jsonl",
+      "source": "C:\\DATASTORE\\hyperliquid\\_models\\_runtime\\training_events.jsonl",
+      "operation": "add",
+      "owned": true,
+      "bytes": 54484,
+      "sha256": "9016aa6e36f299954e63d546c8b858a0ef891ce7f1dd8842f26c1a65dc9078a2",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-opening-independent.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round53-opening-independent.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 23906,
+      "sha256": "ce1535c62dcb8e4aff3f4f902288fd312aedc22dbe2af6b871b2fdd623f44c11",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-opening-public-account-reads.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\opening-public-account-reads.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 12791,
+      "sha256": "c2c9578440c97dbcbe33b53dbc2ea751d43230754123bc8911579de71b7216f2",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-opening-verification.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\opening-verification.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 1414,
+      "sha256": "c7719ebca235dd090671ecfd32d8abbf96ab64fbe0857444f196f026f55a0c93",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-operation.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\operation.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 16757,
+      "sha256": "6175a6d9dba55df59c67e7491f6279620d008d7035c0e1fd56a4110ddc1a3b39",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-paper-runtime-status.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_paper\\_runtime\\status.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 14489,
+      "sha256": "b93d85ac2e6ba95daf4605e95c20cb431f001db29592d2e68097cd65e35fd5a2",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-pre-publication-health.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53-pre-publication\\20261003-paper-round-53-pre-publication.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 32143,
+      "sha256": "59341dfe47468736a60299b4408b6bc94225820dbed18730b509e02b4495ef54",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-prepare-output.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\prepare.stdout.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 12572,
+      "sha256": "36bcc057ef3351ff2e968989503557afac19c6eeccac9fb6c3e5b19a4977db3c",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-prepared-health.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round53-prepared-health.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 19941,
+      "sha256": "e43669e3b699b86ca69977ff4565bca5cffb312861c2947d10e08a0a36b05876",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-preservation-verification.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\preservation-verified.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 307,
+      "sha256": "9c5d3facb4bff2995262bd109cce483c2643bfd61835117975be5c49d0c80e62",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-trading-followup-health.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round53-trading-followup.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 29428,
+      "sha256": "ee19d9d8c636fb28e9d4dcad1f9e9c789a90028a1f01862ad422f5504cd3fdf5",
+      "classification": "Atlas-local operating artifact"
+    },
+    {
+      "path": "artifacts/analysis/hyperliquid-paper-improvement/20261003-round52-53/round53-trading-health.json",
+      "source": "C:\\DATASTORE\\hyperliquid\\_operations\\paper-improvement\\20261003-paper-round-53\\round53-trading-health.json",
+      "operation": "add",
+      "owned": true,
+      "bytes": 29419,
+      "sha256": "2d2cfe5d9a3c02b18b21274caa5359e8f31d5b03b7771272ea060b51587d32a5",
+      "classification": "Atlas-local operating artifact"
+    }
+  ]
+}

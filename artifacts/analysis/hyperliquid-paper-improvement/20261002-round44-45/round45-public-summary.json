@@ -1,0 +1,74 @@
+{
+  "cycle_id": "20261002-paper-round-45",
+  "status": "accepted_and_running",
+  "evaluation_hours": 1,
+  "seed_at_utc": "2026-10-02T10:22:17.434258699+00:00",
+  "due_at_utc": "2026-10-02T11:22:17.434258Z",
+  "opening_equity_pooled": 44791.21619823784,
+  "opening_verification": "passed; zero opening fills, decisions, transfers, funding and P&L; public account source reads and inherited positions/cash/collateral/basis reconciled",
+  "latest_health": {
+    "read_at_utc": "2026-10-02T10:51:48.673440+00:00",
+    "portfolio_at_utc": "2026-10-02T10:51:33.968785+00:00",
+    "paper_equity": 44715.21837223486,
+    "fees": 35.8305132805,
+    "funding": 0.0,
+    "transfers": 0.0,
+    "health": "passed"
+  },
+  "runtime": {
+    "paper": "running",
+    "models": "running",
+    "coordinator": "running",
+    "powder": "inactive"
+  },
+  "first_committed_cycle": {
+    "result": "passed",
+    "counts": {
+      "cycles": 12,
+      "equity": 48,
+      "initial_positions": 10,
+      "fills": 14,
+      "decisions": 24,
+      "transfers": 0,
+      "funding": 0
+    },
+    "startup_inventory_adjustment": {
+      "fills": 8,
+      "turnover_usd": 61802.73075,
+      "fees_usd": 35.383068485,
+      "realized_pnl_usd": -494.048895,
+      "fill_reasons": {
+        "signal_rebalance": 7,
+        "risk_cap": 1
+      },
+      "included_in_running_result": true
+    },
+    "first_12_cycle_totals": {
+      "fills": 14,
+      "turnover_usd": 62226.00951,
+      "fees_usd": 35.580295847,
+      "funding_usd": 0,
+      "transfers": 0
+    }
+  },
+  "model_policy": {
+    "positive_families": 5,
+    "70_15_15_purged": true,
+    "opening_labels": {
+      "BTC": "Qualified",
+      "ZEC": "Qualified",
+      "ETH": "Research",
+      "HYPE": "Research"
+    },
+    "policy_id": "88cd1a6a008df9b9"
+  },
+  "retention": "No retune after the prior round was correctly assessed unscored; keep existing five-family recipe and startup costs in all running results.",
+  "archive_of_ending_round": {
+    "source_round": "round44",
+    "file_count": 510,
+    "bytes": 553777952,
+    "manifest_sha256": "fba52d40b1b495905728d131960f05bade0dbe656e40e99c02baf319332704f8",
+    "verification": "passed",
+    "sqlite_integrity": "passed"
+  }
+}

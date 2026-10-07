@@ -1,0 +1,698 @@
+{
+  "actor": "Atlas",
+  "changes": {
+    "configuration_fields": [],
+    "retained": "Loose Paper admission, truthful labels, $10 executable floor, 5m/one-bar recipe, five model families, strict Powder policy; Powder inactive.",
+    "runtime_policy_changes": [],
+    "shared_source": [],
+    "symbol_specific_source": []
+  },
+  "checks": {
+    "advancing_health": "passed",
+    "final_read_only_health": "passed",
+    "first_cycle": "passed",
+    "independent_opening": "passed",
+    "native_archive_and_sqlite": "passed",
+    "native_prepare": "passed",
+    "native_review_complete": "passed",
+    "pinned_cross_pc_installation": "passed",
+    "software_tests": "not run; no code/config changed"
+  },
+  "created_at_utc": "2026-10-02T20:01:44.603915+00:00",
+  "cross_pc_contract": "cross-pc-v2",
+  "limitations": [
+    "Round 48 endpoint was late_unscored and cannot promote or incur a loss penalty.",
+    "Public actual account reads are sequential rather than atomic; native source reads did not return actual trading fees, funding totals or turnover.",
+    "No retune was made for an unscored result; no software tests ran because no software/configuration files changed."
+  ],
+  "local_checkout": {
+    "branch": "main",
+    "head": "99532621db0d42dfe8c655300cc93abda81240d5",
+    "preexisting_untracked": [
+      "artifacts/analysis/hyperliquid-paper-improvement/"
+    ]
+  },
+  "producer": "hyperliquid-paper-improvement",
+  "publication": {
+    "artifact_publication": "A separate exact-hash artifact receipt records the public machine-local publication.",
+    "peer_adoption": "not implied",
+    "runtime_deployment": "not implied",
+    "source_queue": "none; no shared source changed"
+  },
+  "purpose": "hyperliquid_paper_improvement",
+  "round48": {
+    "actual_fee_funding_turnover": "Not supplied by native public account comparison; no estimate invented.",
+    "after_cost_returns": {
+      "actual_fraction": -0.004954824387469747,
+      "excess_fraction": 0.003260848863531847,
+      "meaning": "Descriptive only; failed the five-minute endpoint timing gate.",
+      "paper_fraction": -0.0016939755239379073
+    },
+    "assessment_sha256": "7308d5be3f30738dcecda973649409bb9bc8bdc41dbdd18f7b3748124ebd60e8",
+    "collection_lateness_seconds": 3134.771395,
+    "common_mark": {
+      "actual": 44089.238765425864,
+      "edge": 144.4842381490089,
+      "paper": 44233.72300357487
+    },
+    "comparison_created_at_utc": "2026-10-02T19:23:43.010354+00:00",
+    "comparison_sha256": "66e7655094933d4290c7e8c7daad3c3d3a4be584b7131d34dcfb4643f034e087",
+    "due_at_utc": "2026-10-02T18:31:28.238959+00:00",
+    "evaluation_hours": 1,
+    "forecast_evidence": {
+      "committed_decision_count": 594,
+      "consumed_forecast_decision_count": 507,
+      "endpoint_fill_labels": {
+        "qualified": 45,
+        "research_or_unqualified": 34
+      },
+      "invalid_forecast_decision_count": 12,
+      "qualified_decision_count": 129,
+      "rule": "valid-in-round-forecast-v2",
+      "valid_forecast_count": 88,
+      "valid_qualified_forecast_count": 42
+    },
+    "gates": {
+      "max_observation_skew_seconds": 120,
+      "mirror_baseline_verified": true,
+      "observation_skew_seconds": 33.939268,
+      "paper_beating_actual": true,
+      "performance_comparable": true,
+      "zero_external_flows_verified": true
+    },
+    "outcome": {
+      "ending_evaluation_hours": 1,
+      "finalizable": true,
+      "next_evaluation_hours": 1,
+      "outcome": "late_unscored",
+      "reason": "closing_observation_exceeds_five_minute_lateness_allowance",
+      "winning": false
+    },
+    "paper_endpoint_costs": {
+      "counts": {
+        "cycles": 416,
+        "fills": 79,
+        "funding": 8,
+        "transfers": 0
+      },
+      "fees": 36.014357822,
+      "funding": -0.011525258999999989,
+      "turnover": 63451.00991
+    },
+    "paper_lateness_seconds": 3100.831719,
+    "paper_observed_at_utc": "2026-10-02T19:23:09.070678+00:00",
+    "per_account_comparison": {
+      "alex": {
+        "actual_common_mark_equity": 6977.830923496564,
+        "actual_external_flows": {
+          "end_time_ms": 1790969020607,
+          "event_count": 0,
+          "net_external_flow_usd": 0.0,
+          "range_complete": true,
+          "reason": "complete_empty_nonfunding_history",
+          "start_time_ms": 1790962288238,
+          "zero_external_flows_verified": true
+        },
+        "actual_return_fraction": 0.11719132672297028,
+        "common_mark_edge": -715.2011783134994,
+        "opening_equity": 6245.869222744919,
+        "paper_common_mark_equity": 6262.629745183064,
+        "paper_fees": 7.906038313499999,
+        "paper_funding": 0.0,
+        "paper_return_fraction": 0.0026834571523064454
+      },
+      "clearpond": {
+        "actual_common_mark_equity": 32556.86161817394,
+        "actual_external_flows": {
+          "end_time_ms": 1790969022740,
+          "event_count": 0,
+          "net_external_flow_usd": 0.0,
+          "range_complete": true,
+          "reason": "complete_empty_nonfunding_history",
+          "start_time_ms": 1790962288238,
+          "zero_external_flows_verified": true
+        },
+        "actual_return_fraction": -0.012085771790833921,
+        "common_mark_edge": 346.1467355850109,
+        "opening_equity": 32955.15004090096,
+        "paper_common_mark_equity": 32903.00835375895,
+        "paper_fees": 20.891929415,
+        "paper_funding": 0.0,
+        "paper_return_fraction": -0.001582201479201073
+      },
+      "jeremy": {
+        "actual_common_mark_equity": 4554.54622375536,
+        "actual_external_flows": {
+          "end_time_ms": 1790969018656,
+          "event_count": 0,
+          "net_external_flow_usd": 0.0,
+          "range_complete": true,
+          "reason": "complete_empty_nonfunding_history",
+          "start_time_ms": 1790962288238,
+          "zero_external_flows_verified": true
+        },
+        "actual_return_fraction": -0.10830879274916982,
+        "common_mark_edge": 513.5386808774992,
+        "opening_equity": 5107.7617304284795,
+        "paper_common_mark_equity": 5068.084904632859,
+        "paper_fees": 7.2163900935,
+        "paper_funding": -0.011525258999999989,
+        "paper_return_fraction": -0.007767947662721486
+      }
+    },
+    "seed_at_utc": "2026-10-02T17:31:28.238959074+00:00",
+    "stopped_ledger": {
+      "account_balances_and_costs": [
+        {
+          "account": "alex",
+          "cash": 6262.6117696764995,
+          "fees": 7.921183693499999,
+          "funding": 0.0,
+          "initial_cash": 6559.66070337,
+          "initial_equity": 6245.869222744919,
+          "initial_unrealized_pnl": -313.7944000000002,
+          "net_transfers": 0.0,
+          "realized_pnl": -289.1277500000003
+        },
+        {
+          "account": "clearpond",
+          "cash": 32899.40016279001,
+          "fees": 20.90851448,
+          "funding": 0.0,
+          "initial_cash": 3181.09673727,
+          "initial_equity": 32955.15004090096,
+          "initial_unrealized_pnl": 0.0,
+          "net_transfers": 0.0,
+          "realized_pnl": -31.19317938620619
+        },
+        {
+          "account": "jeremy",
+          "cash": 5071.238107742164,
+          "fees": 7.2975508425,
+          "funding": -0.011525258999999989,
+          "initial_cash": 5153.63293672,
+          "initial_equity": 5107.7617304284795,
+          "initial_unrealized_pnl": -45.87187500000036,
+          "net_transfers": 0.0,
+          "realized_pnl": -75.08575287633526
+        }
+      ],
+      "counts": {
+        "cycles": 435,
+        "decisions": 633,
+        "equity": 1740,
+        "events": 1161,
+        "fills": 85,
+        "funding": 8,
+        "initial_positions": 10,
+        "transfers": 0
+      },
+      "decision_action_reasons": [
+        {
+          "action": "skip",
+          "n": 189,
+          "reason": "below_size_precision"
+        },
+        {
+          "action": "hold",
+          "n": 174,
+          "reason": "opposite_account_direction"
+        },
+        {
+          "action": "hold",
+          "n": 89,
+          "reason": "below_rebalance_threshold"
+        },
+        {
+          "action": "fill",
+          "n": 81,
+          "reason": "signal_rebalance"
+        },
+        {
+          "action": "hold",
+          "n": 81,
+          "reason": "forecast_unavailable"
+        },
+        {
+          "action": "hold",
+          "n": 10,
+          "reason": "target_unchanged"
+        },
+        {
+          "action": "hold",
+          "n": 4,
+          "reason": "gross_capacity_exhausted"
+        },
+        {
+          "action": "fill",
+          "n": 3,
+          "reason": "stop_loss"
+        },
+        {
+          "action": "fill",
+          "n": 1,
+          "reason": "risk_cap"
+        },
+        {
+          "action": "skip",
+          "n": 1,
+          "reason": "below_min_notional"
+        }
+      ],
+      "ending_equity": 44234.04249637913,
+      "fees": 36.127249016,
+      "fill_label_counts": {
+        "qualified": 50,
+        "research_or_unqualified": 35
+      },
+      "fills_by_account": [
+        {
+          "account": "alex",
+          "fees": 7.921183693499999,
+          "fills": 5,
+          "realized_pnl": -289.1277500000003,
+          "turnover": 17602.630429999997
+        },
+        {
+          "account": "clearpond",
+          "fees": 20.908514479999997,
+          "fills": 16,
+          "realized_pnl": -31.193179386206186,
+          "turnover": 29869.3064
+        },
+        {
+          "account": "jeremy",
+          "fees": 7.2975508425,
+          "fills": 64,
+          "realized_pnl": -75.08575287633528,
+          "turnover": 16216.77965
+        }
+      ],
+      "fills_by_coin": [
+        {
+          "coin": "BTC",
+          "fees": 15.412065537999998,
+          "fills": 31,
+          "realized_pnl": -16.97777327875188,
+          "turnover": 22402.77079
+        },
+        {
+          "coin": "ETH",
+          "fees": 2.3728198565,
+          "fills": 23,
+          "realized_pnl": -3.914384427055457,
+          "turnover": 3766.23167
+        },
+        {
+          "coin": "HYPE",
+          "fees": 9.687147610499999,
+          "fills": 16,
+          "realized_pnl": -169.24293290894974,
+          "turnover": 19059.203289999998
+        },
+        {
+          "coin": "ZEC",
+          "fees": 8.655216011,
+          "fills": 15,
+          "realized_pnl": -205.27159164778465,
+          "turnover": 18460.51073
+        }
+      ],
+      "fills_by_reason": [
+        {
+          "fees": 2.796318,
+          "fills": 1,
+          "realized_pnl": 78.9810000000007,
+          "reason": "risk_cap",
+          "turnover": 6214.04
+        },
+        {
+          "fees": 33.226475903,
+          "fills": 81,
+          "realized_pnl": -466.03786747630306,
+          "reason": "signal_rebalance",
+          "turnover": 57259.55489
+        },
+        {
+          "fees": 0.10445511299999999,
+          "fills": 3,
+          "realized_pnl": -8.349814786239383,
+          "reason": "stop_loss",
+          "turnover": 215.12159
+        }
+      ],
+      "final_equity_rows": [
+        {
+          "account": "alex",
+          "equity": 6262.629802183239,
+          "fees": 7.921183693499999,
+          "funding": 0.0,
+          "gross_exposure": 33.644032506740004,
+          "timestamp_utc": "2026-10-02T19:26:20.688679+00:00",
+          "total_pnl": 16.760579438319837
+        },
+        {
+          "account": "clearpond",
+          "equity": 32903.02516076683,
+          "fees": 20.90851448,
+          "funding": 0.0,
+          "gross_exposure": 3.6249979768197673,
+          "timestamp_utc": "2026-10-02T19:26:20.688679+00:00",
+          "total_pnl": -52.124880134128034
+        },
+        {
+          "account": "jeremy",
+          "equity": 5068.38753342906,
+          "fees": 7.2975508425,
+          "funding": -0.011525258999999989,
+          "gross_exposure": 165.73049781055954,
+          "timestamp_utc": "2026-10-02T19:26:20.688679+00:00",
+          "total_pnl": -39.37419699941984
+        },
+        {
+          "account": "pooled",
+          "equity": 44234.04249637913,
+          "fees": 36.127249016,
+          "funding": -0.011525258999999989,
+          "gross_exposure": 202.9995282941193,
+          "timestamp_utc": "2026-10-02T19:26:20.688679+00:00",
+          "total_pnl": -74.73849769522803
+        }
+      ],
+      "funding": -0.011525258999999989,
+      "initial_inventory_adjustment": {
+        "fees": 34.64724695,
+        "fills": 8,
+        "included_in_total": true,
+        "realized_pnl": -383.425215,
+        "turnover": 60487.33732
+      },
+      "max_drawdown_by_account": {
+        "alex": {
+          "fraction_of_peak": 0.000151715113415609,
+          "usd": 0.9502749820794634
+        },
+        "clearpond": {
+          "fraction_of_peak": 0.0015831077814051399,
+          "usd": 52.171554467124224
+        },
+        "jeremy": {
+          "fraction_of_peak": 0.007810933204645172,
+          "usd": 39.89638570161969
+        },
+        "pooled": {
+          "fraction_of_peak": 0.0016996048103940626,
+          "usd": 75.3074173202258
+        }
+      },
+      "max_drawdown_fraction": -0.0016996048103941064,
+      "opening_equity": 44308.78099407436,
+      "qualification_fill_counts": {
+        "qualified": 50,
+        "research": 35,
+        "unavailable": 0
+      },
+      "realized_pnl": -395.4066822625417,
+      "total_pnl": -74.73849769522803,
+      "turnover": 63688.71648
+    }
+  },
+  "round49": {
+    "accepted_recipe": {
+      "families": 5,
+      "horizon_bars": [
+        1
+      ],
+      "interval": "5m",
+      "models_config_sha256": "446e2dc5eddb692afe142dae43b6e86c8e65a74a0967b84fd7f319bbad9e32ee",
+      "paper_config_sha256": "5706cfbe74e594d644d33e60d047b2b534515bfde781431c9a91bfcea42b694b",
+      "paper_policy": {
+        "entry_band": 0.0,
+        "exit_band": 0.0,
+        "max_forecast_age_seconds": 300,
+        "max_model_age_seconds": 86400,
+        "max_quote_age_seconds": 45,
+        "min_trade_notional": 10.0,
+        "per_symbol_gross_fraction": 0.15,
+        "perp_fee_rate": 0.00045,
+        "poll_seconds": 30,
+        "pool_gross_fraction": 0.6,
+        "rebalance_min_delta_fraction": 0.0,
+        "require_qualified_forecasts": false,
+        "slippage_bps": 0,
+        "spot_fee_rate": 0.0007,
+        "stop_loss_fraction": 0.03
+      },
+      "paper_policy_id": "88cd1a6a008df9b9",
+      "require_qualified_forecasts": false,
+      "split": "70/15/15",
+      "symbols": [
+        "BTC",
+        "ETH",
+        "HYPE",
+        "ZEC"
+      ]
+    },
+    "archive": {
+      "bytes": 486089233,
+      "file_count": 445,
+      "ledger_integrity": "ok (native archive verification)",
+      "ledger_sha256": "623fb909c87263c48cc55563635ba63de370d0c8a509b8fd40523c937aa186c2",
+      "manifest_sha256": "0468dfbf1566a93e73a8292566d5ec2714acfd00682cb23cb4167ef4fbf461f0",
+      "verified_at_utc": "2026-10-02T19:27:21.215023+00:00"
+    },
+    "current_snapshot": {
+      "decision_action_reasons": [
+        {
+          "action": "hold",
+          "n": 31,
+          "reason": "below_rebalance_threshold"
+        },
+        {
+          "action": "fill",
+          "n": 24,
+          "reason": "signal_rebalance"
+        },
+        {
+          "action": "hold",
+          "n": 24,
+          "reason": "forecast_unavailable"
+        },
+        {
+          "action": "hold",
+          "n": 21,
+          "reason": "opposite_account_direction"
+        },
+        {
+          "action": "skip",
+          "n": 9,
+          "reason": "below_size_precision"
+        },
+        {
+          "action": "skip",
+          "n": 6,
+          "reason": "below_min_notional"
+        },
+        {
+          "action": "hold",
+          "n": 4,
+          "reason": "gross_capacity_exhausted"
+        },
+        {
+          "action": "fill",
+          "n": 1,
+          "reason": "risk_cap"
+        }
+      ],
+      "fill_labels": {
+        "qualified": 7,
+        "research_or_unqualified": 18
+      },
+      "final_health_receipt": {
+        "file": "round49-final-health-20261002T2008Z.json",
+        "sha256": "b8a9a32896e6567b77e5136006d4d8bb0488030ecbc5e1786b738aaaf8597afb"
+      },
+      "health_read_at_utc": "2026-10-02T20:08:33.914762+00:00",
+      "health_result": "passed",
+      "ledger_counts": {
+        "cycles": 108,
+        "decisions": 120,
+        "fills": 25,
+        "funding": 5,
+        "transfers": 0
+      },
+      "ledger_equity_by_account": [
+        {
+          "account": "alex",
+          "equity": 6903.080243851149,
+          "fees": 7.6689291824999986,
+          "funding": 0.0001264215,
+          "gross_exposure": 94.64952324215001,
+          "timestamp_utc": "2026-10-02T20:10:11.007344+00:00",
+          "total_pnl": -3.370699130020512
+        },
+        {
+          "account": "clearpond",
+          "equity": 32611.31619389865,
+          "fees": 20.602034138,
+          "funding": 0.0,
+          "gross_exposure": 19.344150766649637,
+          "timestamp_utc": "2026-10-02T20:10:11.007344+00:00",
+          "total_pnl": -13.357553358961013
+        },
+        {
+          "account": "jeremy",
+          "equity": 4595.971258113101,
+          "fees": 5.902071381000002,
+          "funding": -0.002374725499999987,
+          "gross_exposure": 124.47215926959952,
+          "timestamp_utc": "2026-10-02T20:10:11.007344+00:00",
+          "total_pnl": -10.990379565379953
+        }
+      ],
+      "ledger_fill_totals": {
+        "fees": 34.1730347015,
+        "fills": 25,
+        "realized_pnl": -190.21184000000008,
+        "turnover": 59589.25637
+      },
+      "ledger_funding_by_account": [
+        {
+          "account": "alex",
+          "amount": 0.0001264215,
+          "count": 1
+        },
+        {
+          "account": "jeremy",
+          "amount": -0.0023747254999999874,
+          "count": 4
+        }
+      ],
+      "ledger_funding_total": -0.0022483039999999874,
+      "ledger_snapshot_at_utc": "2026-10-02T20:10:21.516130+00:00",
+      "model_slots": {
+        "BTC/5m/h1": {
+          "model_id": "20261002T200019Z-d1ed1dcd",
+          "prediction_id": "84b9e40a29874061b533a2dc0e1efdfe",
+          "qualified": true,
+          "result": "passed",
+          "target_close_utc": "2026-10-02T20:10:00+00:00"
+        },
+        "ETH/5m/h1": {
+          "model_id": "20261002T200029Z-087dfe67",
+          "prediction_id": "053f7e7f8d8642df969e09d247a6ba01",
+          "qualified": false,
+          "result": "passed",
+          "target_close_utc": "2026-10-02T20:10:00+00:00"
+        },
+        "HYPE/5m/h1": {
+          "model_id": "20261002T200039Z-dcb0e780",
+          "prediction_id": "4e76ef66e7d449c1920411f72fb057a0",
+          "qualified": false,
+          "result": "passed",
+          "target_close_utc": "2026-10-02T20:10:00+00:00"
+        },
+        "ZEC/5m/h1": {
+          "model_id": "20261002T200049Z-3f98509b",
+          "prediction_id": "dbd38da877374979b2eaf6a319a18783",
+          "qualified": false,
+          "result": "passed",
+          "target_close_utc": "2026-10-02T20:10:00+00:00"
+        }
+      },
+      "paper_pooled": {
+        "equity": 44110.555030265656,
+        "fees": 34.1730347015,
+        "funding": -0.0022483039999999874,
+        "gross_exposure": 202.22226912865912,
+        "net_transfers": 0.0
+      },
+      "portfolio_at_utc": "2026-10-02T20:08:02.478397+00:00",
+      "powder_identity_verified": false,
+      "process_pids": {
+        "coordinator": 56964,
+        "models": 67664,
+        "paper": 25632,
+        "powder": null
+      },
+      "warnings": []
+    },
+    "due_at_utc": "2026-10-02T20:36:12.740584+00:00",
+    "evaluation_hours": 1,
+    "experiment_id": "20261002-paper-round-49",
+    "first_cycle": {
+      "counts": {
+        "cycles": 6,
+        "decisions": 12,
+        "equity": 24,
+        "fills": 8,
+        "funding": 0,
+        "initial_positions": 10,
+        "transfers": 0
+      },
+      "inventory_adjustment_costs": {
+        "by_account": {
+          "alex": {
+            "fees": 7.604374499999999,
+            "fills": 2,
+            "realized_pnl": 350.68559999999945,
+            "turnover": 16898.61
+          },
+          "clearpond": {
+            "fees": 20.602034138,
+            "fills": 4,
+            "realized_pnl": 7.324439999999924,
+            "turnover": 29431.477339999998
+          },
+          "jeremy": {
+            "fees": 5.765382450000001,
+            "fills": 2,
+            "realized_pnl": -544.9907849999995,
+            "turnover": 12811.961000000001
+          }
+        },
+        "fees": 33.971791087999996,
+        "fills": 8,
+        "realized_pnl": -186.9807450000001,
+        "turnover": 59142.04834
+      },
+      "latest_committed_at_utc": "2026-10-02T19:37:41.553594+00:00",
+      "result": "passed",
+      "verified_at_utc": "2026-10-02T19:38:12.577915+00:00"
+    },
+    "immutable_opening_hashes": {
+      "initial_positions_sha256": "4a2f775029954e54621fe55a13b62011005c7a75d195348952a631ca6ed96cdb",
+      "opening_cycle_sha256": "2a1efd8b5aa5b8822d3e188a2984771cb1befe7ea0f65168b1d478f93a9aafc2",
+      "opening_snapshot_sha256": "af3215a41022758e1c9ab5d176dafcbf2f4dfaca86d218d2a1f5024402d7b96d",
+      "seed_sha256": "eebdcc5f689d2ca3ad9fb1505fcc434d0936085a9e9ef555d87eadd04c7285a1"
+    },
+    "inherited_positions": 10,
+    "maintenance_completed_at_utc": "2026-10-02T19:39:36.018785+00:00",
+    "opening_by_account": {
+      "alex": 6906.45094298117,
+      "clearpond": 32624.67374725761,
+      "jeremy": 4606.961637678481
+    },
+    "opening_counts": {
+      "decisions": 0,
+      "fills": 0,
+      "funding": 0,
+      "transfers": 0
+    },
+    "opening_equity": 44138.08632791726,
+    "opening_result": "passed",
+    "opening_verified_at_utc": "2026-10-02T19:36:12.819581+00:00",
+    "policy_id": "88cd1a6a008df9b9",
+    "seed_at_utc": "2026-10-02T19:36:12.740584135+00:00",
+    "source_equity_by_account": {
+      "alex": 6906.45755298117,
+      "clearpond": 32624.67374725761,
+      "jeremy": 4606.9603476784805
+    },
+    "source_open_order_read_count": 13,
+    "three_frontend_open_order_reads_empty": true
+  },
+  "schema_version": 1,
+  "scope": "machine-local operating artifact; no shared source/config change",
+  "source_version": "8516a9b40c300c02a28278d3e0016aac852cdb3e"
+}

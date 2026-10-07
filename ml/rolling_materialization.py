@@ -25,8 +25,10 @@ from ml.datasets.families import (
     LIFECYCLE_FRESHNESS,
     OPTION_FRESHNESS,
     QUOTE_FRESHNESS,
+    QUOTE_LIQUIDITY_VALUES,
     load_bar_shape_features,
     load_macro_features,
+    load_quote_liquidity_features,
     load_sec_event_features,
     load_weekly_context_features,
 )
@@ -634,11 +636,11 @@ def _attach_loop_a_features(
             family="Schwab quote-liquidity",
             cache=parquet_cache,
         )
-        output = _join_symbol_values(
+        output = _join_quote_values(
             output,
             source,
-            family="quote",
             value_columns=mapping,
+            horizon=horizon,
             freshness=QUOTE_FRESHNESS[feature_horizon],
         )
         source_files.extend(paths)
@@ -934,6 +936,46 @@ def _read_required_sources(
             raise ValueError(f"Required {family} Parquet input is empty")
         cache[ordered] = combined
     return cache[ordered].copy()
+
+
+def _join_quote_values(
+    decisions: pd.DataFrame,
+    source: pd.DataFrame,
+    *,
+    value_columns: Mapping[str, str],
+    horizon: str,
+    freshness: pd.Timedelta,
+) -> pd.DataFrame:
+    if value_columns != QUOTE_LIQUIDITY_VALUES:
+        raise MLContractError("Quote feature mapping differs from the registered loader")
+    required = {"symbol", "available_at", *value_columns.values()}
+    missing = sorted(required.difference(source.columns))
+    if missing:
+        raise MLContractError(
+            "quote source is missing required model columns: " + ", ".join(missing)
+        )
+    # Preserve the rolling source normalization and deterministic last receipt
+    # before the quote reader selects and validates the latest causal row.
+    # Filtering failed quotes here would silently backfill an older valid quote.
+    prepared = source.copy()
+    prepared["symbol"] = prepared["symbol"].astype("string").str.upper()
+    prepared["available_at"] = pd.to_datetime(
+        prepared["available_at"], utc=True, errors="coerce"
+    )
+    prepared = prepared.dropna(subset=["symbol", "available_at"])
+    requested_symbols = {
+        str(symbol).strip().upper() for symbol in decisions["symbol"].dropna()
+    }
+    prepared = (
+        prepared.loc[prepared["symbol"].isin(requested_symbols)]
+        .sort_values(["symbol", "available_at"], kind="mergesort")
+        .drop_duplicates(["symbol", "available_at"], keep="last")
+        .reset_index(drop=True)
+    )
+    _require_family_value(prepared, value_columns=value_columns, family="quote")
+    return load_quote_liquidity_features(
+        decisions, prepared, horizon=horizon, freshness=freshness
+    )
 
 
 def _join_symbol_values(
