@@ -1,0 +1,46 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261008T212821Z-dc7dadbf5ea04f6c9aaf19dcc0f2064b",
+  "change_id": "20261008T212821Z-dc7dadbf5ea04f6c9aaf19dcc0f2064b",
+  "commit_sha": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/README.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_markdown_documents.py"
+    }
+  ],
+  "limitations": [
+    "Draft design documentation; no prototype, runtime, provider, broker, training or trading verification",
+    "Source available on the Atlas branch; main integration and peer installation are not established"
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/28",
+  "remote_sha": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application, UI, trading, schedule, deployment or execution-authority change",
+  "scope": "shared",
+  "summary": "Atlas saved the proposed intraday 15m architecture and future activity/accuracy tab in draft PR 28",
+  "supersedes": [
+    "20261008T212332Z-18223cb0aeeb49368ecc08e1ea2cba35",
+    "20261008T212606Z-c724523484cd4e1187bdf7e981d35af1"
+  ],
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-08T21:28:42.928611Z",
+      "exit_code": 0,
+      "name": "Offline Markdown hygiene",
+      "output_sha256": "817c0617d314e099d534c1645fdd7bd9daf995e8455470d6cbd3b56514af3d9b",
+      "started_at_utc": "2026-10-08T21:28:42.375458Z"
+    }
+  ]
+}

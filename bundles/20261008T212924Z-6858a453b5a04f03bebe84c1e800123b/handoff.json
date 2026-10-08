@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T21:29:24.405159Z",
+  "id": "20261008T212924Z-6858a453b5a04f03bebe84c1e800123b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas saved the proposed intraday 15m architecture and future activity/accuracy tab in draft PR 28"
+}
