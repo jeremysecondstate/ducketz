@@ -1,0 +1,84 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261008T222401Z-94b30e9dc420407bba0be9d14beb7e53",
+  "change_id": "20261008T222401Z-94b30e9dc420407bba0be9d14beb7e53",
+  "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+  "design_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/28",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/__init__.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prediction.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prototype.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_prediction.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    }
+  ],
+  "limitations": [
+    "Focused offline fixtures only; no acquisition, fitted model, training, provider/broker call or production timing",
+    "BUY/SELL reference and score recipe, tie/equality handling, donor-sale restrictions, contention priority, automatic repricing and session-boundary targets remain explicit unresolved seams",
+    "Existing active Gameplan authority is not connected to the offline book; no Scout or distributed execution, calendar adapter or UI implementation",
+    "Draft PR and verified own-branch publication; main integration and peer installation are not established"
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/29",
+  "related_source_commit": "94d064364757ed33928d94855fd32edb0190c9df",
+  "remote_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adds an isolated offline library and tests. No launcher, active database, operating config, schedule or runtime is changed. Source publication does not authorize merge, application installation or deployment.",
+  "scope": "shared",
+  "summary": "Atlas published the first offline intraday 15m prototype in draft PR 29; no runtime activation",
+  "supersedes": [
+    "20261008T222059Z-1b10698ce0004d5783545fb8be6f2a03"
+  ],
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-08T22:25:04.693744Z",
+      "exit_code": 0,
+      "name": "30 focused offline intraday target, sizing, reservation, fill, recovery and accounting checks",
+      "output_sha256": "ad6e3ceede6cb8f614b2e9c08b79e46b41c6dab91fdf99b53924ac241d0f0e08",
+      "started_at_utc": "2026-10-08T22:25:02.974703Z"
+    }
+  ]
+}

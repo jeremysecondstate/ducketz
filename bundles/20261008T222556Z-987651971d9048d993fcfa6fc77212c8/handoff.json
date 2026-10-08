@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T22:25:56.195239Z",
+  "id": "20261008T222556Z-987651971d9048d993fcfa6fc77212c8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the first offline intraday 15m prototype in draft PR 29; no runtime activation"
+}
