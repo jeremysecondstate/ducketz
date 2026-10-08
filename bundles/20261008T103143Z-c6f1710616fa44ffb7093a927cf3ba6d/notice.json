@@ -1,0 +1,181 @@
+{
+  "author": "Atlas",
+  "base_commit": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "branch": "codex/atlas/20261008T102317Z-e5992da3b1e3467bb3846aea5bbe8b18",
+  "change_id": "20261008T102317Z-e5992da3b1e3467bb3846aea5bbe8b18",
+  "completion_record": "20261008T102317Z-e5992da3b1e3467bb3846aea5bbe8b18",
+  "dependencies": [
+    {
+      "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "app/__init__.py",
+      "relation": "exact",
+      "tested_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "app/services/__init__.py",
+      "relation": "exact",
+      "tested_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "committed_sha256": "0eb11577966952cf5890c8f84d6c4bf74c9650b486e4a28f41b5a2350c8a1b39",
+      "path": "app/services/schwab_policy_inputs.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "94ff76e4fddfd2e39a106848eb2f905aa53345207d9c0f0e1136c79ea02a9e20"
+    },
+    {
+      "committed_sha256": "dcf97fdae508dabe4a9b1499abd73d6225bb03cfefcdbeb5168c014f72e0fa16",
+      "path": "app/services/schwab_retry.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "01f903812be582b972b14cd7b8175a847930410c99b4bff6a37592dd52c35905"
+    },
+    {
+      "committed_sha256": "5545a124cd32e3dda499f6b1c1359951d07ff3c29e8f95204c1ed87387e02cce",
+      "path": "datafetching/__init__.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "795c2639eb8b6bfeaa595aa5e7abe4189ad27fd5b6c42182135631b7083aaecf"
+    },
+    {
+      "committed_sha256": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e",
+      "path": "datafetching/observability.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "45b2bdce024d2929acf1ff2e797feabc9e64521609ca025787b249de00c2dc55"
+    },
+    {
+      "committed_sha256": "4547943d6c8a8670348082fef7e33637467c92c8a6a0cdcc1c876da1e93ee88b",
+      "path": "datafetching/symbol_universe.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "e7cd195bcbc5f7f12b47dc560715d4829ed40898fc2d63e7aa936b23e6e35af3"
+    },
+    {
+      "committed_sha256": "3aa79e6cfbd3701dba7696ca705fbe519e9b24123da7ba86c6e7294a6e7e11df",
+      "path": "datafetching/watchlist.txt",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f"
+    },
+    {
+      "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "ml/__init__.py",
+      "relation": "exact",
+      "tested_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "committed_sha256": "9e91f038d8d3c6b24fbefd894f58568634d607f4d1b7f696f6561580ab811be8",
+      "path": "ml/account_gameplan/__init__.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "11f696f9237a1909ea1ed0d6097b9f37611506a446f3af97c55e6ad6a57c42d7"
+    },
+    {
+      "committed_sha256": "7cda4c80c3ba074b59ee790ea5307f85132441d3cbbb3b9b0cebf9656b2b8fd9",
+      "path": "ml/account_gameplan/config.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "89d0cd91bb422f78544b3bf1e9829a4fec04d0f9e2003c656505451b3fc608e0"
+    },
+    {
+      "committed_sha256": "8e76f065038ab878cb25deeaa973053b06e031b0df32861849da0911fae8d399",
+      "path": "ml/artifacts.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "bce5d9fc2674f1a2f824320a9d242bc4e3ca98fbcdddc6869814dde1c2cc2db6"
+    },
+    {
+      "committed_sha256": "0cdd68b74d3c7b4f75634a0d66a2806368f5285791d1605aa2e51d53b3485c05",
+      "path": "ml/contracts.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564"
+    },
+    {
+      "committed_sha256": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312",
+      "path": "ml/stock_trader/__init__.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "2481b3c4cebda02eed82d72c2dbe03afd8a7c1a65d910ca63c27cdd0b85bcb4a"
+    },
+    {
+      "committed_sha256": "7561035b05058d1f44ed0c98fec65cf91439c63786ef81216c1d39c56a38e234",
+      "path": "ml/stock_trader/contracts.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "5ca92f3feaec546e145519c2000340338eb05c6f452134f81956baca54b522b7"
+    },
+    {
+      "committed_sha256": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b",
+      "path": "ml/stock_trader/sizing_policy.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "6d9356d85be03621d6664bdfa3c6e57aae25d14082b827c84a2b604c74906fda"
+    },
+    {
+      "committed_sha256": "cb2563e83b44fd0aff39e23e033448de534fbe2dfe682f52225497bc73ce8ff0",
+      "path": "ml/stock_trader/state.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "f78ac99d7e4c9d59b1a8969fd23114894d4c204a07216d4e7c61a244176dc129"
+    },
+    {
+      "committed_sha256": "ad91c1a5dcc3ed0b521cb1664045815140ebd56b8765e11267d841cfc2de9880",
+      "path": "ml/universe.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "9b9ddb723732452708f77a35386fc4a1475fdb3dd982df3f0b95da1ceac8af47"
+    },
+    {
+      "committed_sha256": "8ca6322e25f09987862f90ef9fbe15505709ad4f00dc275e79c16965dc75299b",
+      "path": "pyproject.toml",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2"
+    },
+    {
+      "committed_sha256": "ad70e0f40fe55479492938525d1f28a4002e4525f96227676ee34afe5e139345",
+      "path": "tests/conftest.py",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d"
+    },
+    {
+      "committed_sha256": "830953db7551bfd98d497e3309067b7e7408804af9549bbfdfb52c59eae5b65a",
+      "path": "tests/test_start_stock_session.ps1",
+      "relation": "LF-Git/CRLF-tested",
+      "tested_sha256": "540fe2222e5612f17d799b6a27baa24f33e484a85381b3acd142f0a61973620e"
+    }
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "Start-Gameplan-Trader.cmd",
+      "sha256": "5ffa43210339d8b5cdb63f951d91a6f64a7a1413e9bc71fc8e98bed4df88be34"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/datafetch-ml/start_stock_session.ps1",
+      "sha256": "b4fcf445e85bb2386764c042a684eabb4f6e11bd0f3054838ac6f6844f557c56"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_start_stock_session_exit.ps1",
+      "sha256": "6ed3f934ad741bc85a082777942a3fe11792ed2276d5390a1e79a188e449bec6"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_start_stock_session_launcher.py",
+      "sha256": "16a1b1321f857772c4e258278fd25b24f1fb9614377c25f4af0cac4eedc27a46"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures and harmless synthetic child processes only; no trader or broker operations.",
+    "The launcher diagnoses account cutover; it does not migrate inventory or activate the account.",
+    "Saved isolated producer test evidence verified; four owned files match committed bytes exactly. Eighteen dependency hashes differ solely by committed LF versus tested CRLF; both hashes retained separately. Tests not rerun in this wake. Main integration, peer installation and runtime adoption remain separate."
+  ],
+  "producer": "human-authorized-development",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Applies on the next human manual launcher invocation. No running process restart or account activation.",
+  "scope": "shared",
+  "source_commit": "ee946887a296c0485c22ab932e4d1f333bba62ad",
+  "summary": "Show verified trader startup status and block invalid account cutover before manual enablement",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-08T10:25:04.713925Z",
+      "exit_code": 0,
+      "output_sha256": "466bb4c5104af23d0a337faf1bd843e51758ed27ff6afb804727c0bf76ed9f66",
+      "result": "7 passed",
+      "started_at_utc": "2026-10-08T10:24:53.302577Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T10:31:43.783077Z",
+  "id": "20261008T103143Z-c6f1710616fa44ffb7093a927cf3ba6d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Show verified trader startup status and block invalid account cutover before manual enablement"
+}
