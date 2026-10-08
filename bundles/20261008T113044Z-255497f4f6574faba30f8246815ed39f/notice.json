@@ -1,0 +1,24 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-user-startup-direction-20261008-v1",
+  "files": [],
+  "human_direction": {
+    "annotation_on_the_repeated_Scout_approval_requirement": "There is WAY too much arbitrary approval and verification gates here and we CANNOT have this. Look what it's done - we are late to trading - if the market suddenly dips, the benefit you thought this Cutover process would confer would be heavily outweighed by the damage a hold up like this could cause.",
+    "origin": "Direct Jeremy messages and annotations in the Atlas task; transported as evidence of human direction, not autonomous peer authority",
+    "prior_export_approval": "I think so? Sure! If this is what's needed to resolve this, then we need to implement this into our nightly workflow if we don't already have it, and if we do, then we should finish this last step earlier in the night/morning so I'm not scrambling here lol",
+    "scoped_interpretation": "The existing approval covers this particular end-to-end normalized Scout ownership export to Atlas through the existing private CODEXSTORE destination. Jeremy now explicitly objects to asking him to repeat that approval on Scout. Carry this recorded human authorization through the existing request instead of adding another approval ceremony. It does not authorize unrelated private exports.",
+    "startup_requirement": "We can't keep this arbitrary 'Cutover' process if it's going to prevent me from turning on the active trader / have such a halting and significant impact on the execution of everything we worked on throughout the night to be ready by 4am."
+  },
+  "limitations": [
+    "The original request, native operation and original accounting identifiers remain intact. No fabricated empty ownership or relabeled packet is permitted.",
+    "The scanner source correction is being published with exact file operations, hashes, dependencies and passing checks. The earlier failed exporter remains held until that correction arrives.",
+    "No export completion, source installation or broker readiness is claimed by this direction notice. Scout's existing owner must record its actual result."
+  ],
+  "related_request_id": "atlas-native-ownership-cutover-20261008-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_evidence": "scout-native-ownership-cutover-requirements-20261008-v1",
+  "runtime_implications": "Inventory synchronization must finish as part of overnight readiness. Atlas is removing the separate cutover approval ceremony and the artificial before-04:00 setup veto from its manual startup path. Jeremy's manual start remains the activation action; real accounting, current holding/order consistency, exact identities and freshness checks remain. Preserve completed planning receipts and frozen session modes; do not rerun numerical preparation. Scout remains a producer and is not asked to execute orders or start a trader.",
+  "scope": "shared",
+  "summary": "Direct human direction removes repeated approval and separate cutover ceremony from manual startup",
+  "tests": []
+}
