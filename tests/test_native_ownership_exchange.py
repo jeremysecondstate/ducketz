@@ -331,3 +331,271 @@ def test_configuration_uses_exact_existing_reviewed_roots(tmp_path, monkeypatch,
             exchange.load_config(path)
     else:
         assert exchange.load_config(path) == cfg
+
+
+@pytest.fixture
+def failed_scanner_review(tmp_path, monkeypatch):
+    """A real failed exchange, synthetic source release and saved native ledger."""
+    cfg = configuration(tmp_path)
+    native = account()
+    db = ledger(cfg)
+    repository = tmp_path / "repository"
+    scratch = repository / "scratch"
+    scratch.mkdir(parents=True)
+    before_commit, after_commit = "1" * 40, "2" * 40
+    objects, files = {}, {}
+    for name in exchange.RECOVERY_FILES:
+        path = repository / name
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(("original " + name).encode())
+        files[name] = {"before_sha256": exchange._sha(path.read_bytes())}
+        objects[(before_commit, name)] = files[name]["before_sha256"]
+    monkeypatch.setattr(exchange, "_repository", lambda: repository)
+    monkeypatch.setattr(exchange, "_binding_inputs", lambda config: {
+        "profile": Path(config["local_profile"]), "active": Path(config["coordination_active"]),
+        **{name: repository / name for name in exchange.RECOVERY_SOURCES}})
+    monkeypatch.setattr(exchange, "load_account_config", lambda _: native)
+    def broken(config):
+        raise ImportError("cannot import name 'VERSION' from '_native_export_scanner_" + "a" * 32 + "' (unknown location)")
+    monkeypatch.setattr(exchange, "_private_values", broken)
+    with pytest.raises(ImportError):
+        exchange.run(cfg, clock=lambda: NOW)
+    local = Path(cfg["state_root"]) / cfg["operation_id"]
+    original = {str(path.relative_to(local)): path.read_bytes()
+                for path in local.rglob("*") if path.is_file() and path.name != "operation.lock"}
+    failure = next((local / "failures").glob("*.json"))
+    for name in exchange.RECOVERY_FILES:
+        path = repository / name
+        path.write_bytes(("reviewed " + name).encode())
+        files[name]["after_sha256"] = exchange._sha(path.read_bytes())
+        objects[(after_commit, name)] = files[name]["after_sha256"]
+    monkeypatch.setattr(exchange, "_git_source_sha", lambda commit, name: objects[(commit, name)])
+    log = scratch / "offline-check.log"
+    log.write_bytes(b"Synthetic offline fixture: 49 passed in 1.00s\n")
+    review = {"schema_version": exchange.RECOVERY_VERSION,
+        "operation_id": cfg["operation_id"], "cutover_action_date": cfg["cutover_action_date"],
+        "original_binding_sha256": exchange._sha((local / "binding.json").read_bytes()),
+        "previous_revision_sha256": None,
+        "failure_receipt": {"name": failure.name, "sha256": exchange._sha(failure.read_bytes())},
+        "failed_status_sha256": exchange._sha((local / "status.json").read_bytes()),
+        "source_review": {"base_commit": before_commit, "reviewed_commit": after_commit, "files": files},
+        "offline_check": {"command": ["-B", "-m", "pytest", "tests/test_native_ownership_export.py",
+            "tests/test_native_ownership_exchange.py", "-q", "-p", "no:cacheprovider"], "exit_code": 0,
+            "output_path": str(log), "output_sha256": exchange._sha(log.read_bytes()),
+            "checked_files_sha256": {name: pins["after_sha256"] for name, pins in files.items()}},
+        "baseline": {"observed_at": NOW.isoformat(),
+            "account_config_sha256": exchange._sha((Path(cfg["datastore_root"]) / "state/account-gameplan/config.json").read_bytes()),
+            "ledger_files_sha256": exchange._group(db.path)}}
+    path = scratch / "review.json"
+    path.write_bytes(exchange._bytes(review))
+    return SimpleNamespace(config=cfg, native=native, ledger=db, local=local, original=original,
+                           repository=repository, review=review, path=path, objects=objects)
+
+
+def recover(fixture):
+    fixture.path.write_bytes(exchange._bytes(fixture.review))
+    return exchange.recover_pre_export_source(fixture.config, fixture.path, clock=lambda: NOW)
+
+
+def test_explicit_recovery_preserves_originals_and_accepts_only_exact_source(failed_scanner_review, monkeypatch):
+    case = failed_scanner_review
+    binding = exchange._capture_binding(case.config)[2]
+    with pytest.raises(ValueError, match="Frozen"):
+        exchange.resolve_operation_binding(case.local, binding)
+    with monkeypatch.context() as protected:
+        protected.setattr(exchange, "export_ownership", lambda **_: pytest.fail("Recovery must never export"))
+        result = recover(case)
+        assert recover(case) == result
+    assert result["status"] == "PRE_EXPORT_SOURCE_REVISION_RECORDED"
+    assert result["export_performed"] is False and result["broker_calls"] == 0
+    for name, raw in case.original.items():
+        assert (case.local / name).read_bytes() == raw
+    assert not (case.local / "export").exists()
+    assert not Path(case.config["exchange_root"]).exists()
+    effective, watched = exchange.resolve_operation_binding(case.local, binding)
+    assert effective == binding and len(list((case.local / "source-revisions").iterdir())) == 1
+    assert case.local / "binding.json" in watched
+    assert any(path.parent.name == "failures" for path in watched)
+    monkeypatch.setattr(exchange, "_private_values", lambda _: [])
+    result = exchange.run(case.config, clock=lambda: NOW)
+    assert result["status"] == "PENDING" and (case.local / "export").is_dir()
+    assert (case.local / "binding.json").read_bytes() == case.original["binding.json"]
+
+
+def test_unreviewed_ordinary_wake_preserves_original_scanner_recovery_anchor(failed_scanner_review):
+    case = failed_scanner_review
+    with pytest.raises(ValueError, match="Frozen"):
+        exchange.run(case.config, clock=lambda: NOW)
+    assert (case.local / "status.json").read_bytes() == case.original["status.json"]
+    assert len(list((case.local / "failures").glob("*.json"))) == 2
+    assert recover(case)["status"] == "PRE_EXPORT_SOURCE_REVISION_RECORDED"
+
+
+@pytest.mark.parametrize("change", ["profile", "ledger", "remote"])
+def test_recovery_rechecks_mutation_boundary(failed_scanner_review, monkeypatch, change):
+    case = failed_scanner_review
+    original = exchange._write
+    def changes(path, *args, **kwargs):
+        if Path(path).parent.name == "source-revisions":
+            if change == "profile":
+                Path(case.config["local_profile"]).write_bytes(b"changed late")
+            elif change == "ledger":
+                with case.ledger.path.open("ab") as handle:
+                    handle.write(b"changed late")
+            else:
+                exchange._folder(case.config, "Scout").mkdir(parents=True)
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(exchange, "_write", changes)
+    with pytest.raises(ValueError):
+        recover(case)
+    assert not (case.local / "source-revisions").exists()
+    assert (case.local / "status.json").read_bytes() == case.original["status.json"]
+
+
+@pytest.mark.parametrize("change", ["profile", "operation", "active_account", "account_bytes", "ledger", "stale_baseline",
+    "future_baseline", "failure_pin", "status_pin", "wrong_release", "test_bytes", "check_hash", "check_failure",
+    "missing_checks", "changed_old_source", "missing_baseline", "missing_original_pin"])
+def test_pre_export_review_rejects_changed_or_missing_evidence(failed_scanner_review, change):
+    case = failed_scanner_review
+    if change == "profile":
+        Path(case.config["local_profile"]).write_bytes(b"changed private binding")
+    elif change == "operation":
+        case.config["cutover_action_date"] = "2026-10-09"
+    elif change == "active_account":
+        case.native.activation["status"] = "ACTIVE"
+    elif change == "account_bytes":
+        (Path(case.config["datastore_root"]) / "state/account-gameplan/config.json").write_bytes(b"changed")
+    elif change == "ledger":
+        with case.ledger.path.open("ab") as handle:
+            handle.write(b"changed")
+    elif change == "stale_baseline":
+        case.review["baseline"]["observed_at"] = "2026-10-08T09:54:59+00:00"
+    elif change == "future_baseline":
+        case.review["baseline"]["observed_at"] = "2026-10-08T10:00:01+00:00"
+    elif change == "failure_pin":
+        case.review["failure_receipt"]["sha256"] = "f" * 64
+    elif change == "status_pin":
+        case.review["failed_status_sha256"] = "f" * 64
+    elif change == "wrong_release":
+        case.objects[("2" * 40, exchange.RECOVERY_FILES[0])] = "f" * 64
+    elif change == "test_bytes":
+        (case.repository / exchange.RECOVERY_FILES[-1]).write_bytes(b"unreviewed test change")
+    elif change == "check_hash":
+        case.review["offline_check"]["output_sha256"] = "f" * 64
+    elif change == "check_failure":
+        case.review["offline_check"]["exit_code"] = 1
+    elif change == "missing_checks":
+        del case.review["offline_check"]
+    elif change == "changed_old_source":
+        case.review["source_review"]["files"][exchange.RECOVERY_SOURCES[0]]["before_sha256"] = "f" * 64
+    elif change == "missing_baseline":
+        del case.review["baseline"]
+    else:
+        case.review["original_binding_sha256"] = "f" * 64
+    with pytest.raises((ValueError, KeyError)):
+        recover(case)
+    assert not (case.local / "source-revisions").exists()
+    assert (case.local / "binding.json").read_bytes() == case.original["binding.json"]
+    assert (case.local / "status.json").read_bytes() == case.original["status.json"]
+    assert len(list((case.local / "recovery-failures").glob("*.json"))) == 1
+
+
+@pytest.mark.parametrize("output", ["export", "original-backup", "atlas-selection.json", "migration-candidate", "received",
+                                    "remote_selection", "remote_empty_packet"])
+def test_recovery_rejects_any_existing_local_or_remote_output(failed_scanner_review, output):
+    case = failed_scanner_review
+    if output.startswith("remote"):
+        target = exchange._folder(case.config, "Scout")
+        if output == "remote_empty_packet":
+            (target / "packets" / ("f" * 64)).mkdir(parents=True)
+        else:
+            target.mkdir(parents=True)
+            (target / "selection.json").write_bytes(b"{}")
+    else:
+        (case.local / output).mkdir()
+    with pytest.raises(ValueError, match="after any"):
+        recover(case)
+    assert not (case.local / "source-revisions").exists()
+
+
+@pytest.mark.parametrize("change", ["receipt", "failure", "check_log", "fork"])
+def test_recovered_binding_rejects_modified_durable_evidence(failed_scanner_review, change):
+    case = failed_scanner_review
+    recover(case)
+    receipt = next((case.local / "source-revisions").glob("*.json"))
+    if change == "receipt":
+        receipt.write_bytes(receipt.read_bytes() + b" ")
+    elif change == "failure":
+        target = case.local / "failures" / case.review["failure_receipt"]["name"]
+        target.write_bytes(target.read_bytes() + b" ")
+    elif change == "check_log":
+        Path(case.review["offline_check"]["output_path"]).write_bytes(b"changed")
+    else:
+        duplicate = exchange._json(receipt.read_bytes())
+        duplicate["recorded_at"] = "2026-10-08T10:00:01+00:00"
+        raw = exchange._bytes(duplicate)
+        (receipt.parent / (exchange._sha(raw) + ".json")).write_bytes(raw)
+    with pytest.raises(ValueError):
+        exchange.resolve_operation_binding(case.local)
+
+
+def test_recovery_owns_all_native_writer_locks_and_preserves_status(failed_scanner_review, monkeypatch):
+    case = failed_scanner_review
+    original = exchange._write
+    observed = []
+    def check(path, *args, **kwargs):
+        if Path(path).parent.name == "source-revisions":
+            root = Path(case.config["datastore_root"])
+            for lock in (case.local / "operation.lock", root / "state/account-gameplan/preparation.lock"):
+                with pytest.raises(Timeout):
+                    FileLock(str(lock), timeout=0).acquire()
+            for name in ("independent-stock-session.lock", "stock-trader-hourly.lock"):
+                assert (root / "locks" / name).exists()
+            observed.append(path)
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(exchange, "_write", check)
+    recover(case)
+    assert len(observed) == 1
+    assert (case.local / "status.json").read_bytes() == case.original["status.json"]
+
+
+def test_recovered_export_requires_the_new_reviewed_ledger_baseline(failed_scanner_review, monkeypatch):
+    case = failed_scanner_review
+    recover(case)
+    monkeypatch.setattr(exchange, "_private_values", lambda _: [])
+    with case.ledger.path.open("ab") as handle:
+        handle.write(b"changed after source review")
+    with pytest.raises(ValueError, match="baseline changed"):
+        exchange.run(case.config, clock=lambda: NOW)
+    assert not (case.local / "export").exists()
+
+
+def test_reviewed_source_revisions_remain_a_single_append_only_chain(failed_scanner_review):
+    case = failed_scanner_review
+    first = recover(case)
+    # A subsequent genuine scanner failure precedes a second reviewed fix. No
+    # source bytes may change after export; this fixture still has no output.
+    with pytest.raises(ImportError):
+        exchange.run(case.config, clock=lambda: NOW)
+    case.review["previous_revision_sha256"] = first["revision_sha256"]
+    case.review["failed_status_sha256"] = exchange._sha((case.local / "status.json").read_bytes())
+    source = case.review["source_review"]
+    source["base_commit"], source["reviewed_commit"] = "2" * 40, "3" * 40
+    for name, pins in source["files"].items():
+        pins["before_sha256"] = pins["after_sha256"]
+        path = case.repository / name
+        path.write_bytes(("second reviewed " + name).encode())
+        pins["after_sha256"] = exchange._sha(path.read_bytes())
+        case.objects[("3" * 40, name)] = pins["after_sha256"]
+    second_log = case.repository / "scratch/second-offline-check.log"
+    second_log.write_bytes(b"Synthetic offline fixture: 85 passed in 1.00s\n")
+    case.review["offline_check"].update(output_path=str(second_log),
+        output_sha256=exchange._sha(second_log.read_bytes()),
+        checked_files_sha256={name: pins["after_sha256"] for name, pins in source["files"].items()})
+    # New explicit review has a distinct file; old evidence remains immutable.
+    case.path = case.repository / "scratch/second-review.json"
+    second = recover(case)
+    assert second["revision_sha256"] != first["revision_sha256"]
+    _, watched = exchange.resolve_operation_binding(case.local, exchange._capture_binding(case.config)[2])
+    assert len([path for path in watched if path.parent.name == "source-revisions"]) == 2
+    assert (case.local / "binding.json").read_bytes() == case.original["binding.json"]

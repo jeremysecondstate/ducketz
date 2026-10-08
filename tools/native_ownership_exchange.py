@@ -25,7 +25,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.config import load_account_config, verify_cutover
 from ml.account_gameplan.migration import consolidate_ownership_ledgers, pin_ledger_files
 from ml.account_gameplan.migration import _plain
-from tools.native_ownership_export import export_ownership, read_export, _private_scan, _installed_private_values
+from tools.native_ownership_export import export_ownership, read_export, _private_scan, _installed_private_values, _group
 
 VERSION = "native-ownership-exchange-v1"
 MAX_BYTES = 512 * 1024 * 1024
@@ -34,6 +34,12 @@ ACTORS = {"Atlas": "pc-original", "Scout": "pc-new"}
 FIELDS = {"schema_version", "actor", "local_profile", "coordination_active", "datastore_root",
           "exchange_root", "state_root", "operation_id", "cutover_action_date",
           "private_native_ledger_exchange_authorized"}
+RECOVERY_VERSION = "native-ownership-pre-export-source-review-v1"
+RECOVERY_SOURCES = ("tools/native_ownership_export.py", "tools/native_ownership_exchange.py")
+RECOVERY_FILES = RECOVERY_SOURCES + ("tests/test_native_ownership_export.py", "tests/test_native_ownership_exchange.py")
+RECOVERY_FIELDS = {"schema_version", "operation_id", "cutover_action_date", "original_binding_sha256",
+                   "previous_revision_sha256", "failure_receipt", "failed_status_sha256", "source_review",
+                   "offline_check", "baseline"}
 
 
 class Pending(Exception):
@@ -215,6 +221,284 @@ def _binding_inputs(config):
                 "datafetching/runtime_lock.py")}}
 
 
+def _capture_binding(config, config_path=None):
+    root = _absolute(config["datastore_root"])
+    account_path = root / "state/account-gameplan/config.json"
+    account_bytes = _read(account_path)
+    account = load_account_config(root)
+    if account is None or account.machine_id != ACTORS[config["actor"]]:
+        raise ValueError("Native account configuration missing")
+    inputs = _binding_inputs(config)
+    if config_path is not None:
+        inputs["operation_config"] = _plain(config_path)
+        if _json(_read(config_path)) != config:
+            raise ValueError("Native accounting operation configuration changed")
+    frozen = {name: _sha(_read(path)) for name, path in inputs.items()}
+
+    def unchanged():
+        if _read(account_path) != account_bytes or any(
+                _sha(_read(path)) != frozen[name] for name, path in inputs.items()):
+            raise ValueError("Frozen native accounting bindings changed during this operation")
+
+    unchanged()
+    return account, account_bytes, {"config": config, "account_binding_sha256": account.fingerprint,
+                                   "frozen_inputs_sha256": frozen}, unchanged
+
+
+def _source_transition(before, after, review):
+    if (set(review) != RECOVERY_FIELDS or review["schema_version"] != RECOVERY_VERSION
+            or review["operation_id"] != before["config"]["operation_id"]
+            or review["cutover_action_date"] != before["config"]["cutover_action_date"]
+            or set(before) != set(after) or before["config"] != after["config"]
+            or before["account_binding_sha256"] != after["account_binding_sha256"]):
+        raise ValueError("Pre-export source review cannot change operating bindings")
+    old, new = before["frozen_inputs_sha256"], after["frozen_inputs_sha256"]
+    changed = {name for name in set(old) | set(new) if old.get(name) != new.get(name)}
+    if set(old) != set(new) or not changed or not changed <= set(RECOVERY_SOURCES):
+        raise ValueError("Pre-export source review only permits its reviewed helper source changes")
+    source = review["source_review"]
+    if (set(source) != {"base_commit", "reviewed_commit", "files"}
+            or any(not re.fullmatch(r"[0-9a-f]{40}", str(source[key])) for key in ("base_commit", "reviewed_commit"))
+            or set(source["files"]) != set(RECOVERY_FILES)):
+        raise ValueError("Exact reviewed source release pins required")
+    for name, pins in source["files"].items():
+        if (set(pins) != {"before_sha256", "after_sha256"}
+                or any(not re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in pins.values())
+                or (name in RECOVERY_SOURCES and (pins["before_sha256"] != old[name] or pins["after_sha256"] != new[name]))):
+            raise ValueError("Reviewed source pins differ from frozen helper bytes")
+    baseline = review["baseline"]
+    if (set(baseline) != {"observed_at", "account_config_sha256", "ledger_files_sha256"}
+            or not re.fullmatch(r"[0-9a-f]{64}", str(baseline["account_config_sha256"]))
+            or set(baseline["ledger_files_sha256"]) != {"", "-wal", "-shm", "-journal"}
+            or not baseline["ledger_files_sha256"][""]
+            or any(value is not None and not re.fullmatch(r"[0-9a-f]{64}", str(value))
+                   for value in baseline["ledger_files_sha256"].values())):
+        raise ValueError("Truthful newly reviewed account and native ledger baseline required")
+    stamp = datetime.fromisoformat(baseline["observed_at"])
+    if stamp.tzinfo is None or stamp.utcoffset() is None:
+        raise ValueError("Reviewed baseline requires an explicit timezone")
+
+
+def _review_evidence(local, review):
+    failure = review["failure_receipt"]
+    if (set(failure) != {"name", "sha256"} or not re.fullmatch(r"[0-9a-f]{64}\.json", str(failure["name"]))
+            or failure["name"] != failure["sha256"] + ".json"):
+        raise ValueError("Exact immutable scanner failure receipt required")
+    path = local / "failures" / failure["name"]
+    raw = _read(path, MAX_JSON_BYTES)
+    value = _json(raw)
+    if (_sha(raw) != failure["sha256"] or set(value) != {"schema_version", "operation_id", "error_type", "detail"}
+            or value["schema_version"] != VERSION or value["operation_id"] != review["operation_id"]
+            or value["error_type"] != "ImportError"
+            or not re.fullmatch(r"cannot import name 'VERSION' from '_native_export_scanner_[0-9a-f]{32}' \(unknown location\)", value["detail"])):
+        raise ValueError("Recovery is limited to the exact pre-export installed scanner ImportError")
+    check = review["offline_check"]
+    command = ["-B", "-m", "pytest", "tests/test_native_ownership_export.py",
+               "tests/test_native_ownership_exchange.py", "-q", "-p", "no:cacheprovider"]
+    expected = {name: pins["after_sha256"] for name, pins in review["source_review"]["files"].items()}
+    if (set(check) != {"command", "exit_code", "output_path", "output_sha256", "checked_files_sha256"}
+            or check["command"] != command or type(check["exit_code"]) is not int or check["exit_code"] != 0
+            or check["checked_files_sha256"] != expected):
+        raise ValueError("Real passing offline evidence for exact reviewed bytes required")
+    output = _absolute(check["output_path"])
+    if not output.is_relative_to(_repository() / "scratch"):
+        raise ValueError("Offline check evidence must stay in ignored local scratch")
+    log = _read(output, 1024 * 1024)
+    if (_sha(log) != check["output_sha256"] or not re.search(rb"\b[1-9][0-9]* passed\b", log)
+            or re.search(rb"\b[1-9][0-9]* (?:failed|errors?)\b", log)):
+        raise ValueError("Offline check receipt is missing, changed or not passing")
+    return {path: failure["sha256"], output: check["output_sha256"]}
+
+
+def resolve_operation_binding(local, expected_binding=None):
+    """Validate original plus append-only source reviews; return all watched pins.
+
+    Consumers must recheck these pins at mutation boundaries. No review is
+    inferred from current source bytes, and operating fields cannot be revised.
+    """
+    local = _plain(local)
+    original = _read(local / "binding.json", MAX_JSON_BYTES)
+    effective, previous = _json(original), None
+    watched = {local / "binding.json": _sha(original)}
+    directory = _plain(local / "source-revisions")
+    pending = {}
+    members = set()
+    if directory.exists():
+        for path in directory.iterdir():
+            members.add(path.name)
+            raw = _read(path, MAX_JSON_BYTES)
+            digest = _sha(raw)
+            if path.name != digest + ".json":
+                raise ValueError("Reviewed source revision receipt changed")
+            receipt = _json(raw)
+            if (set(receipt) != {"schema_version", "original_binding_sha256", "previous_revision_sha256",
+                                "review", "review_sha256", "effective_binding", "failed_status", "recorded_at"}
+                    or receipt["schema_version"] != RECOVERY_VERSION
+                    or receipt["original_binding_sha256"] != _sha(original)
+                    or receipt["review_sha256"] != _sha(_bytes(receipt["review"]))):
+                raise ValueError("Reviewed source revision receipt is inconsistent")
+            prior = receipt["previous_revision_sha256"]
+            if prior in pending:
+                raise ValueError("Reviewed source revision chain has competing children")
+            pending[prior] = (path, digest, receipt)
+    while previous in pending:
+        path, digest, receipt = pending.pop(previous)
+        review = receipt["review"]
+        if (review["previous_revision_sha256"] != previous or review["original_binding_sha256"] != _sha(original)
+                or _sha(_bytes(receipt["failed_status"])) != review["failed_status_sha256"]):
+            raise ValueError("Reviewed source revision differs from original evidence")
+        _source_transition(effective, receipt["effective_binding"], review)
+        _validate_failed_status(local, receipt["failed_status"], review)
+        watched.update(_review_evidence(local, review))
+        watched[path] = digest
+        effective, previous = receipt["effective_binding"], digest
+    if pending:
+        raise ValueError("Reviewed source revision chain is incomplete")
+    if expected_binding is not None and effective != expected_binding:
+        raise ValueError("Frozen native accounting binding changed without an exact reviewed pre-export revision")
+    if any(_sha(_read(path, 1024 * 1024)) != digest for path, digest in watched.items()):
+        raise ValueError("Reviewed source binding evidence changed during inspection")
+    if members != ({path.name for path in directory.iterdir()} if directory.exists() else set()):
+        raise ValueError("Reviewed source revision membership changed during inspection")
+    return effective, watched
+
+
+def _validate_failed_status(local, status, review):
+    if (status.get("status") != "FAILED" or status.get("reason") != "NATIVE_ACCOUNTING_VALIDATION_FAILED"
+            or status.get("operation_id") != review["operation_id"]
+            or status.get("cutover_action_date") != review["cutover_action_date"]
+            or _absolute(status.get("failure_receipt")) != local / "failures" / review["failure_receipt"]["name"]
+            or status.get("broker_calls") != 0 or status.get("orders_placed") != 0
+            or status.get("activation_changed") is not False):
+        raise ValueError("Exact failed pre-export status required")
+
+
+def _pre_export_only(local, config):
+    allowed = {"binding.json", "status.json", "failures", "recovery-failures", "operation.lock", "source-revisions"}
+    if any(path.name not in allowed for path in _plain(local).iterdir()):
+        raise ValueError("Pre-export recovery is forbidden after any local accounting output")
+    remote = _plain(Path(config["exchange_root"]) / "cutovers" / config["operation_id"])
+    if remote.exists() and any(remote.iterdir()):
+        # Even an incomplete packet directory prevents rebinding.
+        raise ValueError("Pre-export recovery is forbidden after any remote accounting output")
+
+
+def _git_source_sha(commit, name):
+    result = subprocess.run(["git", "show", commit + ":" + name], cwd=_repository(),
+                            capture_output=True, timeout=30)
+    if result.returncode:
+        raise ValueError("Reviewed source Git object is unavailable")
+    return _sha(result.stdout)
+
+
+def _verify_source_release(review):
+    source = review["source_review"]
+    for name, pins in source["files"].items():
+        if (_git_source_sha(source["base_commit"], name) != pins["before_sha256"]
+                or _git_source_sha(source["reviewed_commit"], name) != pins["after_sha256"]
+                or _sha(_read(_repository() / name)) != pins["after_sha256"]):
+            raise ValueError("Reviewed source release does not match the exact local helper and test bytes")
+
+
+def _recover_pre_export_source_locked(config, review_path, *, config_path=None, clock=None):
+    """Explicit local review only: no export, broker read, activation or status rewrite."""
+    clock = clock or (lambda: datetime.now(timezone.utc))
+    config = deepcopy(config)
+    review_path = _absolute(str(review_path))
+    if not review_path.is_relative_to(_repository() / "scratch"):
+        raise ValueError("Pre-export source review must remain in ignored local scratch")
+    raw_review = _read(review_path, MAX_JSON_BYTES)
+    review = _json(raw_review)
+    if config.get("private_native_ledger_exchange_authorized") is not True or config.get("actor") not in ACTORS:
+        raise ValueError("Native accounting recovery is not locally authorized")
+    local = _plain(_absolute(config["state_root"]) / config["operation_id"])
+    root = _absolute(config["datastore_root"])
+    with ExitStack() as stack:
+        for name in ("independent-stock-session.lock", "stock-trader-hourly.lock"):
+            stack.enter_context(exclusive_runtime_lock(root / "locks" / name, process_name="native-source-review"))
+        stack.enter_context(FileLock(str(root / "state/account-gameplan/preparation.lock"), timeout=0))
+        _pre_export_only(local, config)
+        before, watched = resolve_operation_binding(local)
+        account, account_bytes, after, unchanged = _capture_binding(config, config_path)
+        revisions = [path for path in watched if path.parent.name == "source-revisions"]
+        if revisions:
+            saved = _json(_read(revisions[-1], MAX_JSON_BYTES))
+            if saved["review"] == review and before == after:
+                unchanged()
+                baseline = review["baseline"]
+                if (account.activation["status"] != "PREPARING"
+                        or _sha(account_bytes) != baseline["account_config_sha256"]
+                        or _group(root / "state/independent-stock-trader/holdings.sqlite3") != baseline["ledger_files_sha256"]):
+                    raise ValueError("Reviewed recovery baseline changed after the recorded revision")
+                if resolve_operation_binding(local, after)[1] != watched:
+                    raise ValueError("Reviewed recovery evidence changed during retry")
+                return {"status": "PRE_EXPORT_SOURCE_REVISION_RECORDED", "operation_id": config["operation_id"],
+                        "revision_sha256": watched[revisions[-1]], "orders_placed": 0, "broker_calls": 0,
+                        "activation_changed": False, "export_performed": False}
+        _source_transition(before, after, review)
+        previous = _sha(_read(revisions[-1])) if revisions else None
+        if (review["original_binding_sha256"] != watched[local / "binding.json"]
+                or review["previous_revision_sha256"] != previous):
+            raise ValueError("Pre-export review differs from the exact original source revision")
+        status_raw = _read(local / "status.json", MAX_JSON_BYTES)
+        status = _json(status_raw)
+        # Status is emitted canonically by this protocol; retain its actual bytes.
+        if status_raw != _bytes(status) or _sha(status_raw) != review["failed_status_sha256"]:
+            raise ValueError("Failed pre-export status changed since review")
+        _validate_failed_status(local, status, review)
+        watched.update(_review_evidence(local, review))
+        watched[local / "status.json"] = _sha(status_raw)
+        watched[review_path] = _sha(raw_review)
+        _verify_source_release(review)
+        baseline = review["baseline"]
+        observed = datetime.fromisoformat(baseline["observed_at"])
+        ledger = root / "state/independent-stock-trader/holdings.sqlite3"
+
+        def guarded():
+            unchanged()
+            _pre_export_only(local, config)
+            if (account.activation["status"] != "PREPARING"
+                    or not 0 <= (clock() - observed).total_seconds() <= 300
+                    or _sha(account_bytes) != baseline["account_config_sha256"]
+                    or _group(ledger) != baseline["ledger_files_sha256"]
+                    or any(_sha(_read(path, 1024 * 1024)) != pin for path, pin in watched.items())):
+                raise ValueError("Newly reviewed PREPARING baseline or recovery evidence changed")
+            for name, pins in review["source_review"]["files"].items():
+                if _sha(_read(_repository() / name)) != pins["after_sha256"]:
+                    raise ValueError("Reviewed helper or test bytes changed during source recovery")
+
+        guarded()
+        receipt = {"schema_version": RECOVERY_VERSION, "original_binding_sha256": review["original_binding_sha256"],
+                   "previous_revision_sha256": previous, "review": review, "review_sha256": _sha(_bytes(review)),
+                   "effective_binding": after, "failed_status": status, "recorded_at": clock().isoformat()}
+        raw = _bytes(receipt)
+        target = local / "source-revisions" / (_sha(raw) + ".json")
+        _write(target, raw, guard=guarded)
+        guarded()
+        resolve_operation_binding(local, after)
+        return {"status": "PRE_EXPORT_SOURCE_REVISION_RECORDED", "operation_id": config["operation_id"],
+                "revision_sha256": _sha(raw), "orders_placed": 0, "broker_calls": 0,
+                "activation_changed": False, "export_performed": False}
+
+
+def recover_pre_export_source(config, review_path, *, config_path=None, clock=None):
+    # Recovery failures append their own private receipt, preserving the original
+    # failed status and scanner receipt required by the human's reviewed request.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{7,95}", str(config.get("operation_id"))):
+        raise ValueError("Stable native cutover operation identity required")
+    local = _plain(_absolute(config["state_root"]) / config["operation_id"])
+    if not (local / "binding.json").is_file():
+        raise ValueError("Pre-export recovery requires an existing frozen operation")
+    with FileLock(str(local / "operation.lock"), timeout=0):
+        try:
+            return _recover_pre_export_source_locked(config, review_path, config_path=config_path, clock=clock)
+        except Exception as exc:
+            raw = _bytes({"schema_version": RECOVERY_VERSION, "operation_id": config["operation_id"],
+                          "error_type": type(exc).__name__, "detail": str(exc)})
+            _write(local / "recovery-failures" / (_sha(raw) + ".json"), raw)
+            raise
+
+
 def _folder(config, actor):
     return Path(config["exchange_root"]) / "cutovers" / config["operation_id"] / actor.lower()
 
@@ -346,7 +630,28 @@ def _receive(config, actor, account, local, forbidden_values=(), guard=None):
     return source, digest
 
 
-def _record_failure(local, result, exc, clock):
+def _recoverable_scanner_status(local, config):
+    """An unreviewed ordinary wake must not erase the pinned recovery anchor."""
+    try:
+        _pre_export_only(local, config)
+        status = _json(_read(local / "status.json", MAX_JSON_BYTES))
+        path = _absolute(status["failure_receipt"])
+        if path.parent != local / "failures":
+            return False
+        raw = _read(path, MAX_JSON_BYTES)
+        failure = _json(raw)
+        return (path.name == _sha(raw) + ".json" and status.get("status") == "FAILED"
+                and status.get("operation_id") == config["operation_id"]
+                and status.get("cutover_action_date") == config["cutover_action_date"]
+                and failure.get("operation_id") == config["operation_id"]
+                and failure.get("error_type") == "ImportError"
+                and re.fullmatch(r"cannot import name 'VERSION' from '_native_export_scanner_[0-9a-f]{32}' \(unknown location\)",
+                                 failure.get("detail", "")) is not None)
+    except (KeyError, ValueError, OSError):
+        return False
+
+
+def _record_failure(local, result, exc, clock, *, preserve_status=False):
     # Exact diagnostic text stays in an ignored local receipt. Stdout and
     # transport contain only the fixed failure classification.
     failure = {"schema_version": VERSION, "operation_id": result["operation_id"],
@@ -354,6 +659,8 @@ def _record_failure(local, result, exc, clock):
     raw = _bytes(failure)
     receipt = local / "failures" / (_sha(raw) + ".json")
     _write(receipt, raw)
+    if preserve_status:
+        return
     failed = {**result, "status": "FAILED", "reason": "NATIVE_ACCOUNTING_VALIDATION_FAILED",
               "failure_receipt": str(receipt)}
     _write(local / "status.json", _bytes({**failed, "observed_at": clock().isoformat()}), replace=True)
@@ -381,28 +688,21 @@ def run(config, *, clock=None, config_path=None):
         # A losing wake must never overwrite the current owner's durable result.
         return {**result, "status": "PENDING", "reason": "NATIVE_ACCOUNTING_OPERATION_LOCKED"}
     try:
+        binding_verified = False
         try:
-            account_path = root / "state/account-gameplan/config.json"
-            account_bytes = _read(account_path)
-            account = load_account_config(root)
-            if account is None or account.machine_id != ACTORS[config["actor"]]:
-                raise ValueError("Native account configuration missing")
-            inputs = _binding_inputs(config)
-            if config_path is not None:
-                inputs["operation_config"] = _plain(config_path)
-                if _json(_read(config_path)) != config:
-                    raise ValueError("Native accounting operation configuration changed")
-            frozen = {name: _sha(_read(path)) for name, path in inputs.items()}
+            account, account_bytes, binding, bindings_unchanged = _capture_binding(config, config_path)
+            if not (local / "binding.json").exists():
+                _write(local / "binding.json", _bytes(binding), guard=bindings_unchanged)
+            _, watched = resolve_operation_binding(local, binding)
+            binding_verified = True
 
             def unchanged():
-                if _read(account_path) != account_bytes or any(
-                        _sha(_read(path)) != frozen[name] for name, path in inputs.items()):
-                    raise ValueError("Frozen native accounting bindings changed during this operation")
+                bindings_unchanged()
+                _, current = resolve_operation_binding(local, binding)
+                if current != watched:
+                    raise ValueError("Reviewed source binding evidence changed during operation")
 
             unchanged()
-            binding = {"config": config, "account_binding_sha256": account.fingerprint,
-                       "frozen_inputs_sha256": frozen}
-            _write(local / "binding.json", _bytes(binding), guard=unchanged)
             if account.activation["status"] == "ACTIVE":
                 verify_cutover(root, account)
                 unchanged()
@@ -422,6 +722,12 @@ def run(config, *, clock=None, config_path=None):
                     stack.enter_context(FileLock(str(root / "state/account-gameplan/preparation.lock"), timeout=0))
                     unchanged()
                     if not exported.exists():
+                        revisions = [path for path in watched if path.parent.name == "source-revisions"]
+                        if revisions:
+                            baseline = _json(_read(revisions[-1], MAX_JSON_BYTES))["review"]["baseline"]
+                            if (_sha(account_bytes) != baseline["account_config_sha256"]
+                                    or _group(ledger) != baseline["ledger_files_sha256"]):
+                                raise ValueError("Reviewed pre-export account or ledger baseline changed")
                         export_ownership(source=ledger, pins=pin_ledger_files(ledger),
                                          account_fingerprint=account.account_fingerprint, producer=account.machine_id,
                                          symbols=account.participants[account.machine_id], output_directory=exported,
@@ -476,7 +782,8 @@ def run(config, *, clock=None, config_path=None):
         except Timeout:
             result.update(status="PENDING", reason="NATIVE_ACCOUNTING_WRITER_LOCKED")
         except Exception as exc:
-            _record_failure(local, result, exc, clock)
+            _record_failure(local, result, exc, clock,
+                            preserve_status=not binding_verified and _recoverable_scanner_status(local, config))
             raise
         try:
             unchanged()
@@ -492,11 +799,19 @@ def run(config, *, clock=None, config_path=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--check", action="store_true", help="Verify configuration only; no export or writes")
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument("--check", action="store_true", help="Verify configuration only; no export or writes")
+    actions.add_argument("--recover-pre-export-source-review", type=Path,
+                         help="Append the exact explicit local review for a failed pre-export scanner import")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
-        value = {"status": "CONFIGURATION_VERIFIED", "actor": config["actor"]} if args.check else run(config, config_path=args.config)
+        if args.check:
+            value = {"status": "CONFIGURATION_VERIFIED", "actor": config["actor"]}
+        elif args.recover_pre_export_source_review:
+            value = recover_pre_export_source(config, args.recover_pre_export_source_review, config_path=args.config)
+        else:
+            value = run(config, config_path=args.config)
         code = 0
     except Exception as exc:
         value, code = {"status": "FAILED", "reason": "NATIVE_ACCOUNTING_VALIDATION_FAILED", "error_type": type(exc).__name__, "orders_placed": 0, "broker_calls": 0,
