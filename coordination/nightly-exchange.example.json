@@ -1,0 +1,15 @@
+{
+  "schema_version": "nightly-exchange-config-v1",
+  "actor": "Scout",
+  "workflow_config": "C:/dev/ducketz/scratch/nightly-workflow/config.json",
+  "local_profile": "C:/dev/ducketz/scratch/cross-pc/local-profile.json",
+  "coordination_active": "C:/dev/ducketz/scratch/cross-pc/active.json",
+  "exchange_root": "C:/CODEXSTORE/ducketz-nightly-exchange/v1",
+  "state_root": "C:/dev/ducketz/scratch/nightly-exchange",
+  "account_scope_sha256": "REPLACE_WITH_REVIEWED_ACCOUNT_SCOPE_SHA256",
+  "owners": {
+    "atlas": [],
+    "scout": []
+  },
+  "private_exchange_authorized": false
+}
