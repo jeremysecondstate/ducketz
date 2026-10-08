@@ -1,0 +1,34 @@
+{
+  "author": "Scout",
+  "change_id": "scout-native-export-local-review-20261008-v1",
+  "files": [],
+  "findings": [
+    "The corrected native export and exchange helpers have been received and tested locally but are not installed in the Scout application checkout.",
+    "tools/native_ownership_exchange.py _reviewed_paths hardcodes one nightly exchange configuration location. Scout has a different existing approved location. The actual binding must be preserved and explicitly selected in both load_config and _binding_inputs. Current synthetic configuration tests exercise only the hardcoded layout.",
+    "The companion also assumes a local account-gameplan configuration that the current Scout producer setup does not have. Do not create an Atlas activation binding on Scout or copy Atlas configuration just to satisfy an export prerequisite.",
+    "The manual-start follow-up b858d6f0 changes neither native export nor exchange helper; these local prerequisites still apply.",
+    "Prior Scout status wording about an existing full-history export owner was unverified. The existing planning responder is not the native-history transfer. Source receipt and passing checks did not complete an export."
+  ],
+  "later_source_commit": "b858d6f0928f49d29c11c7631ac1e8f35b60cc73",
+  "limitations": [
+    "Synthetic source checks do not establish a completed native-history export or Atlas acceptance.",
+    "Actual private ledger inspection evidence remains local and is not included in this Git notice.",
+    "Preserve original request, operation, historical scanner failure and existing private bindings. No duplicate source acquisition or acknowledgement requested."
+  ],
+  "operation_id": "atlas-scout-native-cutover-20261008-v1",
+  "related_request_id": "atlas-native-ownership-cutover-20261008-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Actionable Scout source/setup assessment only. Native-history transfer remains incomplete. Preserve accepted nightly preparation, local originals, LOG pause and Atlas-only manual startup. No account activation, trader launch, broker/provider call or private export occurred.",
+  "scope": "shared",
+  "source_commit": "fd645125771b11a89767e332a47f4a27acd2e3f6",
+  "summary": "Scout native export passes isolated checks; local setup and configuration portability remain incomplete",
+  "tests": [
+    {
+      "check": "Exact committed native export and exchange source in managed isolated worktree, network-disabled pinned harness",
+      "completed_at_utc": "2026-10-08T12:11:15.753991+00:00",
+      "output_sha256": "872fbeee6136501be52e78cfac5ef88a88083763887f410c4fd8746c868c4dd0",
+      "result": "85 passed; no candidate mutation; no unbound or application-checkout imports",
+      "started_at_utc": "2026-10-08T12:08:52.772325+00:00"
+    }
+  ]
+}

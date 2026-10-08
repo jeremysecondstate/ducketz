@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T12:15:38.879821Z",
+  "id": "20261008T121538Z-0c94ada2a1e34a07a1c490ca143d401f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout native export passes isolated checks; local setup and configuration portability remain incomplete"
+}
