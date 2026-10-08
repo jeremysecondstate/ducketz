@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:07:46.227824Z",
+  "id": "20261008T030746Z-c8db369377e3460eafcc060a8c84b1b1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas immutable v2 private binding confirms exact producer orders; digest supplied."
+}
