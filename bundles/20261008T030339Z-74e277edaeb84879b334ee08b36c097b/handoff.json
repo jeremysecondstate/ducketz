@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:03:39.302892Z",
+  "id": "20261008T030339Z-74e277edaeb84879b334ee08b36c097b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas private binding prepared; exact digest supplied, shared adapter ownership confirmed, final source adoption pending."
+}
