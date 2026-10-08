@@ -1,5 +1,6 @@
 """Private transport regressions: synthetic ledgers only, no broker calls."""
 from datetime import datetime
+import ast
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,6 +16,7 @@ from tools.native_ownership_export import export_ownership, read_export
 
 NOW = datetime.fromisoformat("2026-10-08T10:00:00+00:00")
 ACCOUNT = "a" * 64
+REAL_BINDING_INPUTS = exchange._binding_inputs
 
 
 @pytest.fixture(autouse=True)
@@ -599,3 +601,151 @@ def test_reviewed_source_revisions_remain_a_single_append_only_chain(failed_scan
     _, watched = exchange.resolve_operation_binding(case.local, exchange._capture_binding(case.config)[2])
     assert len([path for path in watched if path.parent.name == "source-revisions"]) == 2
     assert (case.local / "binding.json").read_bytes() == case.original["binding.json"]
+
+
+@pytest.fixture
+def scout_producer(tmp_path, monkeypatch):
+    repository = tmp_path / "scout-repository"
+    root = tmp_path / "scout-datastore"
+    config = {"schema_version": exchange.VERSION, "actor": "Scout", "datastore_root": str(root),
+        "local_profile": str(repository / "scratch/cross-pc/local-profile.json"),
+        "coordination_active": str(repository / "scratch/cross-pc/active.json"),
+        "exchange_root": str(tmp_path / "CODEXSTORE/ducketz-nightly-exchange/v1"),
+        "state_root": str(repository / "scratch/native-transfer"),
+        "operation_id": "test-cutover-20261008", "cutover_action_date": "2026-10-08",
+        "private_native_ledger_exchange_authorized": True,
+        "nightly_exchange_config": str(repository / "scratch/scout-packets/approved-exchange.json")}
+    workflow_path = repository / "scratch/production-preparation/reviewed-workflow.json"
+    common = {"actor": "Scout", "local_profile": config["local_profile"], "coordination_active": config["coordination_active"]}
+    owners = {actor: [prefix + str(n).zfill(2) for n in reversed(range(11))]
+              for actor, prefix in (("atlas", "A"), ("scout", "B"))}
+    shared = {**common, "workflow_config": str(workflow_path), "exchange_root": config["exchange_root"],
+        "private_exchange_authorized": True, "account_scope_sha256": ACCOUNT, "owners": owners}
+    def save(path, value):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(exchange._bytes(value))
+    save(config["local_profile"], {"actor": "Scout", "machine": "pc-new", "checkout": str(repository),
+                                  "symbols": owners["scout"]})
+    save(config["coordination_active"], {})
+    save(workflow_path, {**common, "repository": str(repository), "datastore": str(root)})
+    save(config["nightly_exchange_config"], shared)
+    path = repository / "scratch/native-operation.json"
+    save(path, config)
+    monkeypatch.setattr(exchange, "_repository", lambda: repository)
+    monkeypatch.setattr(exchange, "_binding_inputs", REAL_BINDING_INPUTS)
+    monkeypatch.setattr(exchange, "_verify_installation", lambda _: None)
+    monkeypatch.setattr(exchange, "_private_values", lambda _: [])
+    monkeypatch.setattr(exchange, "load_account_config", lambda _: pytest.fail("Scout producer must not require activation config"))
+    for source in exchange._binding_inputs(config).values():
+        if not source.exists():
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"synthetic immutable input\n")
+    db = HorizonLedger(root / "state/independent-stock-trader/holdings.sqlite3", ACCOUNT)
+    symbols = owners["scout"]
+    assert db.reconcile(PortfolioEvidence("scout-original", ACCOUNT, "2026-10-07T23:00:00+00:00",
+        dict.fromkeys(symbols, 2), dict.fromkeys(symbols, 100), dict.fromkeys(symbols, 0), "c" * 64)).ready
+    return SimpleNamespace(config=config, path=path, shared=shared, workflow=workflow_path, root=root,
+                           repository=repository, ledger=db, save=save)
+
+
+def test_scout_nondefault_existing_config_without_activation_exports_standard_packet(scout_producer):
+    case = scout_producer
+    config = exchange.load_config(case.path)
+    producer, account_bytes, binding, unchanged = exchange._capture_binding(config, case.path)
+    assert account_bytes is None and not hasattr(producer, "activation")
+    assert producer.machine_id == "pc-new" and producer.account_fingerprint == ACCOUNT
+    assert producer.participants["pc-new"] == tuple(sorted(case.shared["owners"]["scout"]))
+    assert exchange._binding_inputs(config)["exchange"] == Path(config["nightly_exchange_config"])
+    assert exchange._binding_inputs(config)["workflow"] == case.workflow
+    original = pin_ledger_files(case.ledger.path)
+    result = exchange.run(config, config_path=case.path, clock=lambda: NOW)
+    assert result["status"] == "NATIVE_LEDGER_EXPORTED" and result["broker_calls"] == 0
+    assert not result["activation_changed"] and not (case.root / "state/account-gameplan/config.json").exists()
+    assert pin_ledger_files(case.ledger.path) == original
+    local = Path(config["state_root"]) / config["operation_id"]
+    assert exchange._json((local / "binding.json").read_bytes()) == binding
+    # This function's exact source digest is pinned to fd645125's installed
+    # Atlas receiver. The packet is therefore read by that unchanged protocol.
+    source = Path(exchange.__file__).read_text()
+    node = next(item for item in ast.parse(source).body if isinstance(item, ast.FunctionDef) and item.name == "_receive")
+    receiver = "\n".join(source.splitlines()[node.lineno - 1:node.end_lineno]) + "\n"
+    assert exchange._sha(receiver.encode()) == "0de3193063fefaecb52f91ec6b0fac6611012e2106ccefd4005c6bf9ff40e13b"
+    atlas = {key: value for key, value in config.items() if key != exchange.SCOUT_SELECTOR}
+    atlas["actor"] = "Atlas"
+    record, packet_id = exchange._receive(atlas, "Scout", producer, case.repository / "scratch/legacy-atlas-receiver")
+    assert record["producer"] == "pc-new" and record["symbols"] == list(producer.participants["pc-new"])
+    assert packet_id and exchange.run(config, config_path=case.path, clock=lambda: NOW) == result
+    unchanged()
+    # Absence is durable across wakes, not only guarded within a single run.
+    case.save(case.root / "state/account-gameplan/config.json", {"unrelated": "new config"})
+    with pytest.raises(ValueError, match="Frozen native accounting binding"):
+        exchange.run(config, config_path=case.path, clock=lambda: NOW)
+    assert exchange._json((local / "binding.json").read_bytes()) == binding
+
+
+@pytest.mark.parametrize("changed", ["exchange", "workflow", "profile", "environment", "helper", "account_created", "selector"])
+def test_scout_actual_binding_inputs_remain_immutable(scout_producer, changed):
+    case = scout_producer
+    config = exchange.load_config(case.path)
+    _, _, _, unchanged = exchange._capture_binding(config, case.path)
+    selected = {"exchange": Path(config["nightly_exchange_config"]), "workflow": case.workflow,
+        "profile": Path(config["local_profile"]), "environment": case.repository / ".env",
+        "helper": case.repository / "tools/native_ownership_exchange.py", "selector": case.path,
+        "account_created": case.root / "state/account-gameplan/config.json"}[changed]
+    selected.parent.mkdir(parents=True, exist_ok=True)
+    selected.write_bytes(b"changed input\n")
+    with pytest.raises(ValueError, match="Frozen"):
+        unchanged()
+
+
+@pytest.mark.parametrize("changed", ["scope", "overlap", "profile", "duplicate", "eleven", "atlas_selector", "workflow_root"])
+def test_scout_producer_rejects_wrong_existing_identity_or_universe(scout_producer, changed):
+    case = scout_producer
+    if changed == "scope":
+        case.shared["account_scope_sha256"] = "not-a-fingerprint"
+    elif changed == "overlap":
+        case.shared["owners"]["scout"][0] = case.shared["owners"]["atlas"][0]
+    elif changed == "duplicate":
+        case.shared["owners"]["scout"][0] = case.shared["owners"]["scout"][1]
+    elif changed == "eleven":
+        case.shared["owners"]["atlas"].pop()
+    elif changed == "profile":
+        profile = exchange._json(Path(case.config["local_profile"]).read_bytes())
+        profile["symbols"][0] = "OTHER"
+        case.save(case.config["local_profile"], profile)
+    elif changed == "atlas_selector":
+        case.config["actor"] = "Atlas"
+        case.save(case.path, case.config)
+    else:
+        workflow = exchange._json(case.workflow.read_bytes())
+        workflow["datastore"] = str(case.root / "another-account")
+        case.save(case.workflow, workflow)
+    case.save(case.config["nightly_exchange_config"], case.shared)
+    with pytest.raises(ValueError):
+        exchange.load_config(case.path)
+    assert not Path(case.config["exchange_root"]).exists()
+
+
+@pytest.mark.parametrize("changed", ["account", "ledger_universe"])
+def test_scout_native_export_still_checks_actual_ledger_identity(scout_producer, changed):
+    case = scout_producer
+    if changed == "account":
+        case.shared["account_scope_sha256"] = "d" * 64
+        case.save(case.config["nightly_exchange_config"], case.shared)
+    else:
+        symbols = case.shared["owners"]["scout"] + ["OUTSIDE"]
+        assert case.ledger.reconcile(PortfolioEvidence("changed-native", ACCOUNT, "2026-10-07T23:01:00+00:00",
+            dict.fromkeys(symbols, 2), dict.fromkeys(symbols, 100), dict.fromkeys(symbols, 0), "c" * 64)).ready
+    config = exchange.load_config(case.path)
+    with pytest.raises(ValueError):
+        exchange.run(config, config_path=case.path, clock=lambda: NOW)
+    assert not Path(config["exchange_root"]).exists()
+    assert not (case.root / "state/account-gameplan/config.json").exists()
+
+
+def test_scout_producer_never_fabricates_legacy_account_recovery_baseline(scout_producer):
+    case = scout_producer
+    with pytest.raises(ValueError, match="Legacy account-config source recovery"):
+        exchange._recover_pre_export_source_locked(case.config, case.repository / "scratch/missing-review.json")
+    assert not (case.root / "state/account-gameplan/config.json").exists()
