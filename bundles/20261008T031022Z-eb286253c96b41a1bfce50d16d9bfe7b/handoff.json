@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:10:22.646401Z",
+  "id": "20261008T031022Z-eb286253c96b41a1bfce50d16d9bfe7b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed and verified the exact PR16 readiness source; original Scout completion identity retained."
+}
