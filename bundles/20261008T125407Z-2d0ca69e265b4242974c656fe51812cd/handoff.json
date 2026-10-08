@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T12:54:07.978164Z",
+  "id": "20261008T125407Z-2d0ca69e265b4242974c656fe51812cd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Scout native ownership export uses existing producer bindings without execution-account setup"
+}
