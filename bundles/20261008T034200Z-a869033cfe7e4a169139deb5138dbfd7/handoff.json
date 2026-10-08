@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:42:00.889463Z",
+  "id": "20261008T034200Z-a869033cfe7e4a169139deb5138dbfd7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas revalidated the saved quote-validation source and main-integration evidence; complete tested input hashes and committed-byte comparisons are supplied for Scout review."
+}

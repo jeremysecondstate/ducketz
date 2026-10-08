@@ -1,0 +1,775 @@
+{
+  "author": "Atlas",
+  "change_id": "scout-source-evidence-17dcf9f7-20261007-atlas-response-v1",
+  "coordination": {
+    "in_reply_to": "scout-source-evidence-17dcf9f7-20261007",
+    "kind": "response",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-source-evidence-17dcf9f7-20261007-atlas-response-v1",
+    "request_type": "status_evidence",
+    "result": "completed",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39",
+    "summary": "Atlas revalidated the saved quote-validation source and main-integration evidence; complete tested input hashes and committed-byte comparisons are supplied for Scout review."
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/rolling_materialization.py",
+      "sha256": "7ef156a9481aea438021a8c22307ae851cb3e93885b9fcad2dc8805587de9ae4"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_ml_loop_a_all_family_wiring.py",
+      "sha256": "9270822ea7427b7d87c7910eb7dec8af340253ab22715dc070023bcf4c3a7a5d"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_option_pricing_shadow_consumers.py",
+      "sha256": "ae008f3ce20d9d4cbe29f42b955d1b8922c6ccfe361453b2f180ec9c4fe70818"
+    }
+  ],
+  "limitations": [
+    "Saved historical evidence only; no new source tests, installation or runtime verification.",
+    "Committed LF bytes and tested CRLF working bytes remain separately identified."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application source, HEAD, runtime, account, symbols or schedules changed.",
+  "scope": "shared",
+  "source_evidence": {
+    "base_commit": "88c812ce6bed95fff7fbbc785bc8c8daa4193102",
+    "byte_comparison": {
+      "app/__init__.py": {
+        "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "comparison": "exact",
+        "tested_working_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "app/models/__init__.py": {
+        "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "comparison": "exact",
+        "tested_working_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "app/models/market_data.py": {
+        "committed_sha256": "c28724cbc075f1b57eca2bb23c86c5dc12b410d4241b660e793c8f55fead63bd",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "026eab22a38b25035584aa6a615eaae5d8bafbc68f25b5d62d793bb997fea3cf"
+      },
+      "app/services/__init__.py": {
+        "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "comparison": "exact",
+        "tested_working_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "app/services/databento_retry.py": {
+        "committed_sha256": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c",
+        "comparison": "exact",
+        "tested_working_sha256": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c"
+      },
+      "app/services/market_fetch_specs.py": {
+        "committed_sha256": "c40ceb7aaaed0804956dfded3407fc295b9c5a7390e0732058ec7d18068db6e4",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "442fbb7c37e4de8dbad09205e5972e661047e812c4d42d9df8653b645b1d9dc8"
+      },
+      "app/services/schwab_strategy_orders.py": {
+        "committed_sha256": "3ad5d499716a00df315f1dcf7dceeec813f76f94907fd6e0d7428958037abe4b",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "bcc60433fc74c924a9361acf44c4ef4fce4a970a11e3471f4d3e566a3935e81c"
+      },
+      "datafetching/__init__.py": {
+        "committed_sha256": "5545a124cd32e3dda499f6b1c1359951d07ff3c29e8f95204c1ed87387e02cce",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "795c2639eb8b6bfeaa595aa5e7abe4189ad27fd5b6c42182135631b7083aaecf"
+      },
+      "datafetching/bar_readiness.py": {
+        "committed_sha256": "9e760e130138985cb9e3708315279a412845d7db4be0bc3b26c6330e541c6b28",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "f1fa2b489f64b753f678a72bb06effffe9b457b017dad2054db119af22347bcc"
+      },
+      "datafetching/bar_schema.py": {
+        "committed_sha256": "a27b8b795bd6a9d936b5e3b0ad18dc96fda8c799db6fe4b10405eade80147950",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "6dec143ad5844c4a2d97fcbe273b5561c7acbbde13709ea3cf508a8a60aa8e0d"
+      },
+      "datafetching/bar_timing.py": {
+        "committed_sha256": "16650cc616ff2b766e9ba45552c2b218ec2cd2cb596156f9a04a3484be1c4004",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "27498e09a70c221b82c2aa2942b21ecd87863987269dc0a4de9e3b81ed15d65e"
+      },
+      "datafetching/calculated_features.py": {
+        "committed_sha256": "97f974f484bef43515607c162b80248da28f531f903056c72658b5f238e06ce9",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "9c9a6e943ec8db4169821df13dd08064e96e505f0f86768684db9828ad6f7dc7"
+      },
+      "datafetching/continuation.py": {
+        "committed_sha256": "f6eaa978d4f4dfe6886f71f67a4967a168a6686a5546bd577a6e94b4d65c3b7d",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "53fcea2beddf7af92d78e4d743c29a75778a712f77861ad91fb81911b54e8d9e"
+      },
+      "datafetching/databento_archive.py": {
+        "committed_sha256": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "4222ee5f80edeb3ac84219051b045a9827896528b2e1a07969e1bdfdc91a6124"
+      },
+      "datafetching/databento_history_policy.py": {
+        "committed_sha256": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "f51f4e84ac3ccbc84d0e37f5ac02afe706fd2c48415621a345cab3550306550f"
+      },
+      "datafetching/databento_opra_history.py": {
+        "committed_sha256": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d",
+        "comparison": "exact",
+        "tested_working_sha256": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d"
+      },
+      "datafetching/databento_storage.py": {
+        "committed_sha256": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "bd15d92c483d5fce538d2ab0073d390d1e6a3d3e95df6353eff3eb2cf0c01ca2"
+      },
+      "datafetching/decision_time.py": {
+        "committed_sha256": "7a683551970d0b9be64ca4e4ed8e56cfb6a0fce553ced3b6cd6fe27d6fa16064",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "a6487e8b6295434949c9c4f46af05224bda1c65f5eaf7e05f985878e43d46199"
+      },
+      "datafetching/fmp_energy_context.py": {
+        "committed_sha256": "d7d648aafc4f1bc064c7d5d93ab099169a712fb933c4b4e3e9c28c7f0e8fc9ab",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d"
+      },
+      "datafetching/fred_alfred_readiness.py": {
+        "committed_sha256": "66a9ed7c36efee16586e0b6fdb0cffb61f52223a0eeb41e3238542fbc95f3888",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ece962a4c1236e45ccd210ae4f3090fd0112e0d99401ae4c9a58735fcd27eb42"
+      },
+      "datafetching/fred_vintage_import.py": {
+        "committed_sha256": "36f95821100489d0dd055503aa25bb708dad1e551c723b2492d97466f1a507ed",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "7519fc873224e1fe024fa9475da32df20b1048be1555c5642201ee369d0aa985"
+      },
+      "datafetching/fred_vintages.py": {
+        "committed_sha256": "d5b1c37f277e7c007f8ae7c0139d105c4ec801010ce2355ac19fe5f1bd45f15e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "5c8779d26b36b82f6fd56d5b35871088170a68fb8b591dd0d096dd047c9be018"
+      },
+      "datafetching/ids.py": {
+        "committed_sha256": "daead3e39055cc9bd4ea4adef9dd715d4371da4c606269a4d88f2e9f088e850a",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "9dc735991bc5a7c1f1e2fd236f726126ec3c080c5ab89796d5809c0458ea3747"
+      },
+      "datafetching/layout.py": {
+        "committed_sha256": "20719c8416759435691457adee1936dd9598b3e4c1f31a785dfa5a7252d6c976",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "67efcc0f866fefb0065f61e13ce1ff4335d027c21ee5e98f8e9a3c3d8d08d872"
+      },
+      "datafetching/observability.py": {
+        "committed_sha256": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "45b2bdce024d2929acf1ff2e797feabc9e64521609ca025787b249de00c2dc55"
+      },
+      "datafetching/pricing_barrier.py": {
+        "committed_sha256": "3eeaf8be2d847c60589c03eff1fe872cd230c424f4cb22934246abca8245b710",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "5912687c15a77b461790ec906436c22ce0231a3412fb1d2070c7ba80464d520e"
+      },
+      "datafetching/runtime_lock.py": {
+        "committed_sha256": "266b676261f7a58a195597f5a2b4a295ff5e80f295c16a2a3b40ee139271a8df",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "f3a0a81a4d12fced18941eda5f18b05311afff6ad20d0cfba57d92e0b18c6f54"
+      },
+      "datafetching/symbol_universe.py": {
+        "committed_sha256": "4547943d6c8a8670348082fef7e33637467c92c8a6a0cdcc1c876da1e93ee88b",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "e7cd195bcbc5f7f12b47dc560715d4829ed40898fc2d63e7aa936b23e6e35af3"
+      },
+      "datafetching/watchlist.txt": {
+        "committed_sha256": "3aa79e6cfbd3701dba7696ca705fbe519e9b24123da7ba86c6e7294a6e7e11df",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f"
+      },
+      "fundamentals/__init__.py": {
+        "committed_sha256": "8b535c883ea067208c7a038855a92c87c6820887dd555c25dba850acdcfbefff",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "7c38d1c6b6508babb6c87ff729e744f10ef71ee256a45f0a37e6b64167797d54"
+      },
+      "fundamentals/calculation.py": {
+        "committed_sha256": "9876f717f4c9d06a2d57a9e69838d2617007e0da894fb6baa17e4e7605b4431d",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "bd9bfc737d3241f425f49dc7683ff96a357e76d2fcf2a756b9adb737c0541df0"
+      },
+      "fundamentals/join.py": {
+        "committed_sha256": "672edf328d23abecd7899448ffdb09006601f3c83d0d72e15fd0816fd922d0c5",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "19bda9d78a16eb80ca1c00d296c48f37d69e0b5369ef46fed979d6b9adc350f4"
+      },
+      "fundamentals/parquet_io.py": {
+        "committed_sha256": "4d75ff5dc665b693efe0f24ac7296800030d42909f50ffb213728b0d156810f6",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "081efb3b9feb05ab8dce59c854fc9e33d01c600e87f03c7d9ae935374de3c9d3"
+      },
+      "ml/__init__.py": {
+        "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "comparison": "exact",
+        "tested_working_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ml/artifacts.py": {
+        "committed_sha256": "8e76f065038ab878cb25deeaa973053b06e031b0df32861849da0911fae8d399",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "bce5d9fc2674f1a2f824320a9d242bc4e3ca98fbcdddc6869814dde1c2cc2db6"
+      },
+      "ml/calendars.py": {
+        "committed_sha256": "c87adbd5527daa93c84490903611cb20a7e57cc6355e3c77b63b67c880663dcc",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "b5c065c39621c681cc9adabd4b0787608d857b6e37b059fe5b8710eb3bfd93e2"
+      },
+      "ml/calibration.py": {
+        "committed_sha256": "07e8d9468f7f7d58f4f566d4eda0b40c329d95ee8b7aa6d54985e0b7095d8926",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "57e0f0d4185e8ef3007351603a6b658d28afe12e5a3efb7778da122b4d92b846"
+      },
+      "ml/contracts.py": {
+        "committed_sha256": "0cdd68b74d3c7b4f75634a0d66a2806368f5285791d1605aa2e51d53b3485c05",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564"
+      },
+      "ml/current_publication.py": {
+        "committed_sha256": "45f4524c2ea2aa146b6ac3ddfb8c200d9657a49300a93a27a7d1ca54cf94a465",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "094dfa9afd8b789f746eb4e6090d925e1462d9fc53ef5d6001ab3880de2a20da"
+      },
+      "ml/datasets/__init__.py": {
+        "committed_sha256": "679cc9e7c2586df6630ff6821c29703cd928979614beced3190699201c681070",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "49190f5a8a73530106d599b383a016ad1d244f31f907b1e4959cdbd82ea51b0e"
+      },
+      "ml/datasets/families.py": {
+        "committed_sha256": "f863c27d68b55d56f2c0fb8bb79a1e4dfd294e6daf19c93a507f1360efed7933",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "76f589d76d8c469af8816569c9ac431e45217816960ae767bd2df173d51f63b3"
+      },
+      "ml/datasets/point_in_time.py": {
+        "committed_sha256": "dc5660528bbb2dc0bc3fbb2122afdff63c15e8c52db95696e6cce82718b1c0df",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "470d5a3af6a7339026312c87ad4230f3b20f8b7705bd660d3b3a8ffc4e1cc072"
+      },
+      "ml/datasets/technical.py": {
+        "committed_sha256": "e6ad615d9c3b0497cd312d609994ef26fd518475565f0033eb5a5faff9ca152e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "3825d62c039749a5fc9787b6655912968b353cd5f2bd3f3bd15bd4da34084f0f"
+      },
+      "ml/feature_registry.py": {
+        "committed_sha256": "e3c554af0ea0550f69617ea519c58ca315ba4c2d124466520f41cb12578b5cbf",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "320546a99df8bab0774c381463994fedcee82015182c821f276fa832636b0162"
+      },
+      "ml/horizons.py": {
+        "committed_sha256": "382c9ebeaf1e286b14476297400a51168a72490df0fe04cee7926b7bfcb334dc",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "8759c007642c45e0fb662156af27b25248b994047c207bf28a8c4a8f335ac99d"
+      },
+      "ml/live_evidence.py": {
+        "committed_sha256": "17fdae66c3c91926a7582fab886fb9e836acccd86216003e87c782222aa617bf",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "7b7924a4af016e0f8808db8d440c15df891a5da4e9ec1dfbe9d7aaf314a2c361"
+      },
+      "ml/model_features.py": {
+        "committed_sha256": "87788d634eb68ae6e45a5c3fd2b3e9232b701ef5c56fcdaf155e0cb173426860",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "dade3b552b1791b34d7cf5f399cf71777e5c471e84d11d260aa0e873b7113156"
+      },
+      "ml/model_runtime.py": {
+        "committed_sha256": "59450a93ea995d2b6524057506f10c4f8fa1cde364935c50407b84e502ed55e1",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "fb5b3a3cc7c7b3e17347e6ce0636b3b162f56f52d04c572013d0c9e2e8080199"
+      },
+      "ml/models/__init__.py": {
+        "committed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "comparison": "exact",
+        "tested_working_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "ml/models/registry.py": {
+        "committed_sha256": "31b2c0c5f5983e039ea8e4bc62068f9dc7b19756a474c9db5db00aaf8affdbdd",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ebf6e4a341ced098b33f928cc53474fa093641717c055ddfd8275ae19d209204"
+      },
+      "ml/option_pricing/__init__.py": {
+        "committed_sha256": "cbe926bcf69cc090d120ca88f75a9d85b3cacca2ca3a4ef9488a98fe021478d3",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "cb21d4798ee2435d319eb602d7d1384bbbbdb6c5e7784d4b98b56d2338ab77d5"
+      },
+      "ml/option_pricing/black_scholes.py": {
+        "committed_sha256": "37a838a75b752d46ceb6d3eb5324eceb2a94ba30b24c470666938d13ea933470",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "3090745e6d63d9417c8938e7bddbcbbd24b451628bd662b5eea6f4fb9cc93edd"
+      },
+      "ml/option_pricing/causal.py": {
+        "committed_sha256": "92a35c597f629a0cba99a38634e40f03b6fb95cf7ba331c6ecf5e47864748a7b",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "b2d040e2042a3fd8c44cdc74d32ee3032edb37a1061a774bf911c92c07162d20"
+      },
+      "ml/option_pricing/constraints.py": {
+        "committed_sha256": "8dc138890ef3ea1a9c445e498594768aa0a7f8519bc50000be657150a9528fdb",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "1ee463121c49e895c834074be2b933294ff5c012aede25ea5e098a0eacb30331"
+      },
+      "ml/option_pricing/consumers.py": {
+        "committed_sha256": "2331e579644dafbcaf1ea36ed55b00912829f0566586f84f06f651a6c0553695",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "64ceabcc70b53c1507b905cf2fcd52989432dfab8eb5e248a73f1988febdc1db"
+      },
+      "ml/option_pricing/model.py": {
+        "committed_sha256": "680674d0e15be60b7f923563f50b4bd6665a1e4bc98c981fea43c72e29b0438e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "2edaf5b0f80ea68a5a535bc0cc62736e22abb1e324bf5c9fab6f5501d654ca9a"
+      },
+      "ml/option_pricing/opra.py": {
+        "committed_sha256": "7dee8fe1f6c744a71b34de6fe8da98cd1b1e1e9ff3a1acd735d944dc355fb514",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "f2a37f51c8ca0a11b26d20f621545b9ffbf62cb3ff5018703d666e94a41fd160"
+      },
+      "ml/option_pricing/opra_materialization.py": {
+        "committed_sha256": "6fd590492ea420201ad8d91b19ee9d31a7d06131a343e60dc29650e8c90ac28e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "c080d72f534efefa8e423ff026af60927ba9dcd20bcc16d059c050f8096952dd"
+      },
+      "ml/option_pricing/policies.py": {
+        "committed_sha256": "0435494ab712a187dc45ed3ce4ac3e7026214a33100eb1ca67e67a840002b9c0",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "c1b214f90d7c3cc59d8d8f09f0d8617759ed681c6e5ebb9b5d30847bb4eb1246"
+      },
+      "ml/option_pricing/prediction.py": {
+        "committed_sha256": "9392de14871aaf5fc99599122f4e799f3bbd7da16921a0d9a992f4fa61060ca4",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "4239a58220bc34173fddf563c353d392e04ef8dc32b623763c255ce29f80980b"
+      },
+      "ml/option_pricing/publication.py": {
+        "committed_sha256": "b5ad7b88749948a6cce06682eef367d3a28cc78007d34cf8d7352f6c4bc5fcf1",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "56e2456ac8c5e61e8059ee0ae396d6409b52e72c5f8fc3f82aad838806d66139"
+      },
+      "ml/option_pricing/reporting.py": {
+        "committed_sha256": "2ed87f21d9805f38a3283437afbcb6ec8bef72f4dd4ff9bacbe08008d3b14eda",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "03ca076a26300755d0cf981f70d38c3c4b5171f059a3cf877a4a05842ec7e98a"
+      },
+      "ml/option_pricing/schwab_materialization.py": {
+        "committed_sha256": "b4fe9176d706c031ef2beaf2f4cb7e123b2f082eff999b1977440cf0f7ee88c0",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "82ac07c5f0ac13506463b76455c148a93661ce39b0a8875be63b04b5b6f79872"
+      },
+      "ml/option_pricing/shadow_model.py": {
+        "committed_sha256": "1eca0b613033f0b592b142b9e89afbfb80e61664c3c5dd602012c9ba4de88954",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "e161e1134fd21b5581daef7a01d2a96457cce4b0faa2ceccf50fae166918aa16"
+      },
+      "ml/option_pricing/strategy_shadow.py": {
+        "committed_sha256": "7ec7dd79f0b327465249183f67ff77301a84675c69b2a548b8d1af9a0cb86db5",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "4c2837bacae939d84ecd40a8134cb5409a915a5a0da73bb0cce638b9d11c556f"
+      },
+      "ml/option_pricing/target_outcome.py": {
+        "committed_sha256": "53cf4b88a174a40c06bfd27554a29d20987665843f1ed18653b3777925f3eaa4",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "6922d37018da5195fc85f3b979ac40823a6b6f3fa10be71d4417e6c1107e75ca"
+      },
+      "ml/parquet_contracts.py": {
+        "committed_sha256": "e274a16295d26b9ccf2af7548419829d3412fcc98aad160ab9b9514e77bee43c",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "59113f0b27c71a6cd94cc6c91198a65ede945c63978957d321f8c1f5ccb58edd"
+      },
+      "ml/preprocessing.py": {
+        "committed_sha256": "048272b92610f1bcecf020c58ab420a2c9afe44c897cf29e3863bde0b598badc",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "8395e5c0b633cafaaf2c20307c04377f893bba20b939fcbf10c467473ede7efd"
+      },
+      "ml/rolling_materialization.py": {
+        "committed_sha256": "7ef156a9481aea438021a8c22307ae851cb3e93885b9fcad2dc8805587de9ae4",
+        "comparison": "exact",
+        "tested_working_sha256": "7ef156a9481aea438021a8c22307ae851cb3e93885b9fcad2dc8805587de9ae4"
+      },
+      "ml/rolling_samples.py": {
+        "committed_sha256": "26eac717bca5a24263dc46a17b61b3aef0b4d7ae34f96a5ae98cd0c95cd9226c",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "4275f1a2721a0d42392b11e47bf1fce5bc87cd8b0e5094bfdf4c53db453fa88f"
+      },
+      "ml/runtime_pipeline.py": {
+        "committed_sha256": "4c51ef048d90fc46fabe0e9d49793a984a6178b9c351f102209e7ea2720e4755",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "01d1374a8aefced91361a5bd127c27742061b624855b7e3801cd1d5cb0effcf5"
+      },
+      "ml/sequence_encoder/__init__.py": {
+        "committed_sha256": "548d63769e3068b75e83315902344591572dec31f129ec3f93cad88c7e9a4cdc",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ecbddb8f58e23b6860f4c883435abe3fdc17d42f71e0ca1d084011a2f4b2b770"
+      },
+      "ml/sequence_encoder/consumer.py": {
+        "committed_sha256": "a8cc68a3b8ee2204ec7152a462768df460c9549914f0f73679af30d2289fcaca",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "65186e5ecf01536472e26dddb6d2646827d39013b06dfea554db80ff706f0720"
+      },
+      "ml/sequence_encoder/contracts.py": {
+        "committed_sha256": "314a85908f743935d78e9d8e3dd104a3fc64c907204f6870e139949fa9ae3bf7",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "0d082d340235c1177da089ae1840401e41340456ece10800824a83f78dbbf3aa"
+      },
+      "ml/sequence_encoder/publication.py": {
+        "committed_sha256": "0d180cfcc96f2994e6ac485e20b133fcdf956737b2997bf2d14d0d07903993f3",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "acb3598aab533c3cc965743f7e80b205f02b7c46494027039f3513b77ef11d98"
+      },
+      "ml/strategy_selection/__init__.py": {
+        "committed_sha256": "93f30056c7858a9df158485b20ebd9f8f3372bed0b1005ea9552e37d20687f72",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "10e7f774a2b5f4428a899b489593688f78f0381d1be990bde7b64de935aada8d"
+      },
+      "ml/strategy_selection/contracts.py": {
+        "committed_sha256": "84efdc4dd225a3fbe95ea8bb025af5d5c52650cab1da5e79a31c99cb0ad42527",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ccafbba815bcee3bed2f4d4827dcabc250ad9747cb479b5bd63060da46c93b82"
+      },
+      "ml/strategy_selection/market_state.py": {
+        "committed_sha256": "745df7a135ac49b03cb436161588e3b987e5160ed68117610611576949378fa7",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "b5ade3deaf0f68ab3cd65c4f22ee88151e1a84fd4dafb64c17d6c6bcf1cf7b04"
+      },
+      "ml/strategy_selection/registry.py": {
+        "committed_sha256": "2e363317bfba811c87c87962d7b7d8e5d736403f48e323ad5caec8696b15076c",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "3315230795138559468ef97a107317c99d31121d4baaa27d8076e4f798149b5e"
+      },
+      "ml/strategy_selection/research_trace.py": {
+        "committed_sha256": "cd7aea283cab67b2816791ce6b6a92194691692a8d290e7c76d7ed4711d7207e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "087ff96297600a149ef7e3351e14ac7bfc6733fb0b567d5ff7aa0c5057bb847e"
+      },
+      "ml/timing.py": {
+        "committed_sha256": "c9e75574a13a8e43a566955ff98082c0da73fef7c4f4914cd520ac737da3582f",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "6157ee95d01e1e6e8525f0dbdc6fdf64776c6ee57f013c994a69b3d54f15ab90"
+      },
+      "ml/universe.py": {
+        "committed_sha256": "ad91c1a5dcc3ed0b521cb1664045815140ebd56b8765e11267d841cfc2de9880",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "9b9ddb723732452708f77a35386fc4a1475fdb3dd982df3f0b95da1ceac8af47"
+      },
+      "options/__init__.py": {
+        "committed_sha256": "5ecb3bc7b73b37a28167302d8d085964f49bf68ed2c3cd7155938a8ef421bff5",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "85bef36df202d0803713dacbefb6b28c858952d0db2a889f77803448880c0cfb"
+      },
+      "options/publication.py": {
+        "committed_sha256": "a01a9b7ede9e8784d253aab0144ce8826efe21fc3e5f9a598e76680ad45e8d6d",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "6e147ccd51600277bd5b72a87e602952d3a341b5cddf67907ccfc93f7fe46d56"
+      },
+      "pyproject.toml": {
+        "committed_sha256": "8ca6322e25f09987862f90ef9fbe15505709ad4f00dc275e79c16965dc75299b",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2"
+      },
+      "requirements-ml-runtime.lock": {
+        "committed_sha256": "d9c3ecb77efe462033d2d6495e22ea9fb74450a10b6c5ef6d7e9ba3d1d905f86",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "5581fb13a924b8b18ca9c36fcf8aca69bfb219d43aa9fbf5ffd433131d32a1f9"
+      },
+      "requirements.txt": {
+        "committed_sha256": "0801547633cc24aee37d57576e659ac54663b2d053db6b059a6aaf4d474a0725",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "da553f42dc78ce9e1ed6186201fe5a6d5bdeb23c28de2ab6f827bec1272b484a"
+      },
+      "technicals/__init__.py": {
+        "committed_sha256": "1efc66c02ed6cd95f37f5edf7544fcde252c2a9242018153bd1ad0923eb8a4a3",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a"
+      },
+      "technicals/calculations/__init__.py": {
+        "committed_sha256": "4479d4a0e8d97eafa245b457c1462bd7d95271b3c2c4c1299c8d2902302520e8",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "c175d278fb0f8a970562e8f0c13996341d03aebabad77b7c8edbe211477f782c"
+      },
+      "technicals/calculations/bar_shape.py": {
+        "committed_sha256": "97f24db22504537a4347ef60cf5f9b0d2f6ddacfda82858556faf66c2d5940c1",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "c1947e689fee7dfdde277d2d6da001a64a7b9360e88c34d11f7e81c9dfe61c43"
+      },
+      "technicals/calculations/breakout_pressure.py": {
+        "committed_sha256": "a1c00934faf8e6ba1e6f2d7a707c90cd8f9b61980c4b6fea4f1cce1f3c8bb3ee",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "2fd6a81a0ea610d4a95758b4eacb19f944a35aaa550b5ecc684d90351bc3082c"
+      },
+      "technicals/calculations/market_regime.py": {
+        "committed_sha256": "929c1039f624aa6bc1a4188eaa2bbfbe10470658935723cd124e8ce2c3df3a01",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "7aff1fb28a04cd075612cdd47a9448a9f237c18b97157769dea6ae0d6e2a0ae9"
+      },
+      "technicals/calculations/session_aware_breakout.py": {
+        "committed_sha256": "52ead979d91d0f456e6d065a514c7a6c2447b008aca7814d64b3b3e1f64ef16e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "387e7efda73ff720705819e54f1d0708363a2a8e93acafe82fd4e2211aa3a231"
+      },
+      "technicals/calculations/weekly_context.py": {
+        "committed_sha256": "b24d794a8fdf391b05631a8298b123ad38814961f4cb76624325a230936d9a9e",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "dad7f6c806cfc98949b2425c6bc63337ddeec1dfc43674a388801a3137d51d54"
+      },
+      "technicals/parquet_io.py": {
+        "committed_sha256": "103d73460bc36b060121ca637f34419257a2128cc40199a8e8b6e9a727ca9460",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ee53dea5813e760ee12f23ced1347071b9622107dedd72bd28e5a76b70a73807"
+      },
+      "technicals/split_adjustments.py": {
+        "committed_sha256": "cc2e053c5dd353d11d3fb1315db17077cc5715d72734cc2f1d3479e7ac79b084",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "a71e2d0e4433118b07d473fd702df5e6e8e713b5d287120823991bf54ecb8ade"
+      },
+      "tests/conftest.py": {
+        "committed_sha256": "ad70e0f40fe55479492938525d1f28a4002e4525f96227676ee34afe5e139345",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d"
+      },
+      "tests/test_ml_loop_a_all_family_wiring.py": {
+        "committed_sha256": "9270822ea7427b7d87c7910eb7dec8af340253ab22715dc070023bcf4c3a7a5d",
+        "comparison": "exact",
+        "tested_working_sha256": "9270822ea7427b7d87c7910eb7dec8af340253ab22715dc070023bcf4c3a7a5d"
+      },
+      "tests/test_ml_point_in_time_ingestion.py": {
+        "committed_sha256": "120ec125f38d64590b3d164c510d0c551945e4697f3dbadd430dae7d0d17e74b",
+        "comparison": "line_endings_only",
+        "tested_working_sha256": "ef42e94a686ecba75f422bd1427d45f2a12ecfc1e26946816c1ee0d12d0f2023"
+      },
+      "tests/test_option_pricing_shadow_consumers.py": {
+        "committed_sha256": "ae008f3ce20d9d4cbe29f42b955d1b8922c6ccfe361453b2f180ec9c4fe70818",
+        "comparison": "exact",
+        "tested_working_sha256": "ae008f3ce20d9d4cbe29f42b955d1b8922c6ccfe361453b2f180ec9c4fe70818"
+      }
+    },
+    "completion_record": "20261007T063010Z-d7558b4625434fbe9f383fee9a6fd4ec",
+    "dependency_fingerprints": {
+      "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/models/market_data.py": "026eab22a38b25035584aa6a615eaae5d8bafbc68f25b5d62d793bb997fea3cf",
+      "app/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/services/databento_retry.py": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c",
+      "app/services/market_fetch_specs.py": "442fbb7c37e4de8dbad09205e5972e661047e812c4d42d9df8653b645b1d9dc8",
+      "app/services/schwab_strategy_orders.py": "bcc60433fc74c924a9361acf44c4ef4fce4a970a11e3471f4d3e566a3935e81c",
+      "datafetching/__init__.py": "795c2639eb8b6bfeaa595aa5e7abe4189ad27fd5b6c42182135631b7083aaecf",
+      "datafetching/bar_readiness.py": "f1fa2b489f64b753f678a72bb06effffe9b457b017dad2054db119af22347bcc",
+      "datafetching/bar_schema.py": "6dec143ad5844c4a2d97fcbe273b5561c7acbbde13709ea3cf508a8a60aa8e0d",
+      "datafetching/bar_timing.py": "27498e09a70c221b82c2aa2942b21ecd87863987269dc0a4de9e3b81ed15d65e",
+      "datafetching/calculated_features.py": "9c9a6e943ec8db4169821df13dd08064e96e505f0f86768684db9828ad6f7dc7",
+      "datafetching/continuation.py": "53fcea2beddf7af92d78e4d743c29a75778a712f77861ad91fb81911b54e8d9e",
+      "datafetching/databento_archive.py": "4222ee5f80edeb3ac84219051b045a9827896528b2e1a07969e1bdfdc91a6124",
+      "datafetching/databento_history_policy.py": "f51f4e84ac3ccbc84d0e37f5ac02afe706fd2c48415621a345cab3550306550f",
+      "datafetching/databento_opra_history.py": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d",
+      "datafetching/databento_storage.py": "bd15d92c483d5fce538d2ab0073d390d1e6a3d3e95df6353eff3eb2cf0c01ca2",
+      "datafetching/decision_time.py": "a6487e8b6295434949c9c4f46af05224bda1c65f5eaf7e05f985878e43d46199",
+      "datafetching/fmp_energy_context.py": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d",
+      "datafetching/fred_alfred_readiness.py": "ece962a4c1236e45ccd210ae4f3090fd0112e0d99401ae4c9a58735fcd27eb42",
+      "datafetching/fred_vintage_import.py": "7519fc873224e1fe024fa9475da32df20b1048be1555c5642201ee369d0aa985",
+      "datafetching/fred_vintages.py": "5c8779d26b36b82f6fd56d5b35871088170a68fb8b591dd0d096dd047c9be018",
+      "datafetching/ids.py": "9dc735991bc5a7c1f1e2fd236f726126ec3c080c5ab89796d5809c0458ea3747",
+      "datafetching/layout.py": "67efcc0f866fefb0065f61e13ce1ff4335d027c21ee5e98f8e9a3c3d8d08d872",
+      "datafetching/observability.py": "45b2bdce024d2929acf1ff2e797feabc9e64521609ca025787b249de00c2dc55",
+      "datafetching/pricing_barrier.py": "5912687c15a77b461790ec906436c22ce0231a3412fb1d2070c7ba80464d520e",
+      "datafetching/runtime_lock.py": "f3a0a81a4d12fced18941eda5f18b05311afff6ad20d0cfba57d92e0b18c6f54",
+      "datafetching/symbol_universe.py": "e7cd195bcbc5f7f12b47dc560715d4829ed40898fc2d63e7aa936b23e6e35af3",
+      "datafetching/watchlist.txt": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+      "fundamentals/__init__.py": "7c38d1c6b6508babb6c87ff729e744f10ef71ee256a45f0a37e6b64167797d54",
+      "fundamentals/calculation.py": "bd9bfc737d3241f425f49dc7683ff96a357e76d2fcf2a756b9adb737c0541df0",
+      "fundamentals/join.py": "19bda9d78a16eb80ca1c00d296c48f37d69e0b5369ef46fed979d6b9adc350f4",
+      "fundamentals/parquet_io.py": "081efb3b9feb05ab8dce59c854fc9e33d01c600e87f03c7d9ae935374de3c9d3",
+      "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml/artifacts.py": "bce5d9fc2674f1a2f824320a9d242bc4e3ca98fbcdddc6869814dde1c2cc2db6",
+      "ml/calendars.py": "b5c065c39621c681cc9adabd4b0787608d857b6e37b059fe5b8710eb3bfd93e2",
+      "ml/calibration.py": "57e0f0d4185e8ef3007351603a6b658d28afe12e5a3efb7778da122b4d92b846",
+      "ml/contracts.py": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564",
+      "ml/current_publication.py": "094dfa9afd8b789f746eb4e6090d925e1462d9fc53ef5d6001ab3880de2a20da",
+      "ml/datasets/__init__.py": "49190f5a8a73530106d599b383a016ad1d244f31f907b1e4959cdbd82ea51b0e",
+      "ml/datasets/families.py": "76f589d76d8c469af8816569c9ac431e45217816960ae767bd2df173d51f63b3",
+      "ml/datasets/point_in_time.py": "470d5a3af6a7339026312c87ad4230f3b20f8b7705bd660d3b3a8ffc4e1cc072",
+      "ml/datasets/technical.py": "3825d62c039749a5fc9787b6655912968b353cd5f2bd3f3bd15bd4da34084f0f",
+      "ml/feature_registry.py": "320546a99df8bab0774c381463994fedcee82015182c821f276fa832636b0162",
+      "ml/horizons.py": "8759c007642c45e0fb662156af27b25248b994047c207bf28a8c4a8f335ac99d",
+      "ml/live_evidence.py": "7b7924a4af016e0f8808db8d440c15df891a5da4e9ec1dfbe9d7aaf314a2c361",
+      "ml/model_features.py": "dade3b552b1791b34d7cf5f399cf71777e5c471e84d11d260aa0e873b7113156",
+      "ml/model_runtime.py": "fb5b3a3cc7c7b3e17347e6ce0636b3b162f56f52d04c572013d0c9e2e8080199",
+      "ml/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml/models/registry.py": "ebf6e4a341ced098b33f928cc53474fa093641717c055ddfd8275ae19d209204",
+      "ml/option_pricing/__init__.py": "cb21d4798ee2435d319eb602d7d1384bbbbdb6c5e7784d4b98b56d2338ab77d5",
+      "ml/option_pricing/black_scholes.py": "3090745e6d63d9417c8938e7bddbcbbd24b451628bd662b5eea6f4fb9cc93edd",
+      "ml/option_pricing/causal.py": "b2d040e2042a3fd8c44cdc74d32ee3032edb37a1061a774bf911c92c07162d20",
+      "ml/option_pricing/constraints.py": "1ee463121c49e895c834074be2b933294ff5c012aede25ea5e098a0eacb30331",
+      "ml/option_pricing/consumers.py": "64ceabcc70b53c1507b905cf2fcd52989432dfab8eb5e248a73f1988febdc1db",
+      "ml/option_pricing/model.py": "2edaf5b0f80ea68a5a535bc0cc62736e22abb1e324bf5c9fab6f5501d654ca9a",
+      "ml/option_pricing/opra.py": "f2a37f51c8ca0a11b26d20f621545b9ffbf62cb3ff5018703d666e94a41fd160",
+      "ml/option_pricing/opra_materialization.py": "c080d72f534efefa8e423ff026af60927ba9dcd20bcc16d059c050f8096952dd",
+      "ml/option_pricing/policies.py": "c1b214f90d7c3cc59d8d8f09f0d8617759ed681c6e5ebb9b5d30847bb4eb1246",
+      "ml/option_pricing/prediction.py": "4239a58220bc34173fddf563c353d392e04ef8dc32b623763c255ce29f80980b",
+      "ml/option_pricing/publication.py": "56e2456ac8c5e61e8059ee0ae396d6409b52e72c5f8fc3f82aad838806d66139",
+      "ml/option_pricing/reporting.py": "03ca076a26300755d0cf981f70d38c3c4b5171f059a3cf877a4a05842ec7e98a",
+      "ml/option_pricing/schwab_materialization.py": "82ac07c5f0ac13506463b76455c148a93661ce39b0a8875be63b04b5b6f79872",
+      "ml/option_pricing/shadow_model.py": "e161e1134fd21b5581daef7a01d2a96457cce4b0faa2ceccf50fae166918aa16",
+      "ml/option_pricing/strategy_shadow.py": "4c2837bacae939d84ecd40a8134cb5409a915a5a0da73bb0cce638b9d11c556f",
+      "ml/option_pricing/target_outcome.py": "6922d37018da5195fc85f3b979ac40823a6b6f3fa10be71d4417e6c1107e75ca",
+      "ml/parquet_contracts.py": "59113f0b27c71a6cd94cc6c91198a65ede945c63978957d321f8c1f5ccb58edd",
+      "ml/preprocessing.py": "8395e5c0b633cafaaf2c20307c04377f893bba20b939fcbf10c467473ede7efd",
+      "ml/rolling_samples.py": "4275f1a2721a0d42392b11e47bf1fce5bc87cd8b0e5094bfdf4c53db453fa88f",
+      "ml/runtime_pipeline.py": "01d1374a8aefced91361a5bd127c27742061b624855b7e3801cd1d5cb0effcf5",
+      "ml/sequence_encoder/__init__.py": "ecbddb8f58e23b6860f4c883435abe3fdc17d42f71e0ca1d084011a2f4b2b770",
+      "ml/sequence_encoder/consumer.py": "65186e5ecf01536472e26dddb6d2646827d39013b06dfea554db80ff706f0720",
+      "ml/sequence_encoder/contracts.py": "0d082d340235c1177da089ae1840401e41340456ece10800824a83f78dbbf3aa",
+      "ml/sequence_encoder/publication.py": "acb3598aab533c3cc965743f7e80b205f02b7c46494027039f3513b77ef11d98",
+      "ml/strategy_selection/__init__.py": "10e7f774a2b5f4428a899b489593688f78f0381d1be990bde7b64de935aada8d",
+      "ml/strategy_selection/contracts.py": "ccafbba815bcee3bed2f4d4827dcabc250ad9747cb479b5bd63060da46c93b82",
+      "ml/strategy_selection/market_state.py": "b5ade3deaf0f68ab3cd65c4f22ee88151e1a84fd4dafb64c17d6c6bcf1cf7b04",
+      "ml/strategy_selection/registry.py": "3315230795138559468ef97a107317c99d31121d4baaa27d8076e4f798149b5e",
+      "ml/strategy_selection/research_trace.py": "087ff96297600a149ef7e3351e14ac7bfc6733fb0b567d5ff7aa0c5057bb847e",
+      "ml/timing.py": "6157ee95d01e1e6e8525f0dbdc6fdf64776c6ee57f013c994a69b3d54f15ab90",
+      "ml/universe.py": "9b9ddb723732452708f77a35386fc4a1475fdb3dd982df3f0b95da1ceac8af47",
+      "options/__init__.py": "85bef36df202d0803713dacbefb6b28c858952d0db2a889f77803448880c0cfb",
+      "options/publication.py": "6e147ccd51600277bd5b72a87e602952d3a341b5cddf67907ccfc93f7fe46d56",
+      "pyproject.toml": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2",
+      "requirements-ml-runtime.lock": "5581fb13a924b8b18ca9c36fcf8aca69bfb219d43aa9fbf5ffd433131d32a1f9",
+      "requirements.txt": "da553f42dc78ce9e1ed6186201fe5a6d5bdeb23c28de2ab6f827bec1272b484a",
+      "technicals/__init__.py": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a",
+      "technicals/calculations/__init__.py": "c175d278fb0f8a970562e8f0c13996341d03aebabad77b7c8edbe211477f782c",
+      "technicals/calculations/bar_shape.py": "c1947e689fee7dfdde277d2d6da001a64a7b9360e88c34d11f7e81c9dfe61c43",
+      "technicals/calculations/breakout_pressure.py": "2fd6a81a0ea610d4a95758b4eacb19f944a35aaa550b5ecc684d90351bc3082c",
+      "technicals/calculations/market_regime.py": "7aff1fb28a04cd075612cdd47a9448a9f237c18b97157769dea6ae0d6e2a0ae9",
+      "technicals/calculations/session_aware_breakout.py": "387e7efda73ff720705819e54f1d0708363a2a8e93acafe82fd4e2211aa3a231",
+      "technicals/calculations/weekly_context.py": "dad7f6c806cfc98949b2425c6bc63337ddeec1dfc43674a388801a3137d51d54",
+      "technicals/parquet_io.py": "ee53dea5813e760ee12f23ced1347071b9622107dedd72bd28e5a76b70a73807",
+      "technicals/split_adjustments.py": "a71e2d0e4433118b07d473fd702df5e6e8e713b5d287120823991bf54ecb8ade",
+      "tests/conftest.py": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d",
+      "tests/test_ml_point_in_time_ingestion.py": "ef42e94a686ecba75f422bd1427d45f2a12ecfc1e26946816c1ee0d12d0f2023"
+    },
+    "fingerprints": {
+      "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/models/market_data.py": "026eab22a38b25035584aa6a615eaae5d8bafbc68f25b5d62d793bb997fea3cf",
+      "app/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/services/databento_retry.py": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c",
+      "app/services/market_fetch_specs.py": "442fbb7c37e4de8dbad09205e5972e661047e812c4d42d9df8653b645b1d9dc8",
+      "app/services/schwab_strategy_orders.py": "bcc60433fc74c924a9361acf44c4ef4fce4a970a11e3471f4d3e566a3935e81c",
+      "datafetching/__init__.py": "795c2639eb8b6bfeaa595aa5e7abe4189ad27fd5b6c42182135631b7083aaecf",
+      "datafetching/bar_readiness.py": "f1fa2b489f64b753f678a72bb06effffe9b457b017dad2054db119af22347bcc",
+      "datafetching/bar_schema.py": "6dec143ad5844c4a2d97fcbe273b5561c7acbbde13709ea3cf508a8a60aa8e0d",
+      "datafetching/bar_timing.py": "27498e09a70c221b82c2aa2942b21ecd87863987269dc0a4de9e3b81ed15d65e",
+      "datafetching/calculated_features.py": "9c9a6e943ec8db4169821df13dd08064e96e505f0f86768684db9828ad6f7dc7",
+      "datafetching/continuation.py": "53fcea2beddf7af92d78e4d743c29a75778a712f77861ad91fb81911b54e8d9e",
+      "datafetching/databento_archive.py": "4222ee5f80edeb3ac84219051b045a9827896528b2e1a07969e1bdfdc91a6124",
+      "datafetching/databento_history_policy.py": "f51f4e84ac3ccbc84d0e37f5ac02afe706fd2c48415621a345cab3550306550f",
+      "datafetching/databento_opra_history.py": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d",
+      "datafetching/databento_storage.py": "bd15d92c483d5fce538d2ab0073d390d1e6a3d3e95df6353eff3eb2cf0c01ca2",
+      "datafetching/decision_time.py": "a6487e8b6295434949c9c4f46af05224bda1c65f5eaf7e05f985878e43d46199",
+      "datafetching/fmp_energy_context.py": "67e0bdd9c116b3fe3b07a133d351a46a8f5e279bcdaa16bc5884d2a955040e7d",
+      "datafetching/fred_alfred_readiness.py": "ece962a4c1236e45ccd210ae4f3090fd0112e0d99401ae4c9a58735fcd27eb42",
+      "datafetching/fred_vintage_import.py": "7519fc873224e1fe024fa9475da32df20b1048be1555c5642201ee369d0aa985",
+      "datafetching/fred_vintages.py": "5c8779d26b36b82f6fd56d5b35871088170a68fb8b591dd0d096dd047c9be018",
+      "datafetching/ids.py": "9dc735991bc5a7c1f1e2fd236f726126ec3c080c5ab89796d5809c0458ea3747",
+      "datafetching/layout.py": "67efcc0f866fefb0065f61e13ce1ff4335d027c21ee5e98f8e9a3c3d8d08d872",
+      "datafetching/observability.py": "45b2bdce024d2929acf1ff2e797feabc9e64521609ca025787b249de00c2dc55",
+      "datafetching/pricing_barrier.py": "5912687c15a77b461790ec906436c22ce0231a3412fb1d2070c7ba80464d520e",
+      "datafetching/runtime_lock.py": "f3a0a81a4d12fced18941eda5f18b05311afff6ad20d0cfba57d92e0b18c6f54",
+      "datafetching/symbol_universe.py": "e7cd195bcbc5f7f12b47dc560715d4829ed40898fc2d63e7aa936b23e6e35af3",
+      "datafetching/watchlist.txt": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+      "fundamentals/__init__.py": "7c38d1c6b6508babb6c87ff729e744f10ef71ee256a45f0a37e6b64167797d54",
+      "fundamentals/calculation.py": "bd9bfc737d3241f425f49dc7683ff96a357e76d2fcf2a756b9adb737c0541df0",
+      "fundamentals/join.py": "19bda9d78a16eb80ca1c00d296c48f37d69e0b5369ef46fed979d6b9adc350f4",
+      "fundamentals/parquet_io.py": "081efb3b9feb05ab8dce59c854fc9e33d01c600e87f03c7d9ae935374de3c9d3",
+      "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml/artifacts.py": "bce5d9fc2674f1a2f824320a9d242bc4e3ca98fbcdddc6869814dde1c2cc2db6",
+      "ml/calendars.py": "b5c065c39621c681cc9adabd4b0787608d857b6e37b059fe5b8710eb3bfd93e2",
+      "ml/calibration.py": "57e0f0d4185e8ef3007351603a6b658d28afe12e5a3efb7778da122b4d92b846",
+      "ml/contracts.py": "1af21ad54de83817d3f0472b8951f3d1a2db6acc534a0453b6bcdbbeaaa6a564",
+      "ml/current_publication.py": "094dfa9afd8b789f746eb4e6090d925e1462d9fc53ef5d6001ab3880de2a20da",
+      "ml/datasets/__init__.py": "49190f5a8a73530106d599b383a016ad1d244f31f907b1e4959cdbd82ea51b0e",
+      "ml/datasets/families.py": "76f589d76d8c469af8816569c9ac431e45217816960ae767bd2df173d51f63b3",
+      "ml/datasets/point_in_time.py": "470d5a3af6a7339026312c87ad4230f3b20f8b7705bd660d3b3a8ffc4e1cc072",
+      "ml/datasets/technical.py": "3825d62c039749a5fc9787b6655912968b353cd5f2bd3f3bd15bd4da34084f0f",
+      "ml/feature_registry.py": "320546a99df8bab0774c381463994fedcee82015182c821f276fa832636b0162",
+      "ml/horizons.py": "8759c007642c45e0fb662156af27b25248b994047c207bf28a8c4a8f335ac99d",
+      "ml/live_evidence.py": "7b7924a4af016e0f8808db8d440c15df891a5da4e9ec1dfbe9d7aaf314a2c361",
+      "ml/model_features.py": "dade3b552b1791b34d7cf5f399cf71777e5c471e84d11d260aa0e873b7113156",
+      "ml/model_runtime.py": "fb5b3a3cc7c7b3e17347e6ce0636b3b162f56f52d04c572013d0c9e2e8080199",
+      "ml/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml/models/registry.py": "ebf6e4a341ced098b33f928cc53474fa093641717c055ddfd8275ae19d209204",
+      "ml/option_pricing/__init__.py": "cb21d4798ee2435d319eb602d7d1384bbbbdb6c5e7784d4b98b56d2338ab77d5",
+      "ml/option_pricing/black_scholes.py": "3090745e6d63d9417c8938e7bddbcbbd24b451628bd662b5eea6f4fb9cc93edd",
+      "ml/option_pricing/causal.py": "b2d040e2042a3fd8c44cdc74d32ee3032edb37a1061a774bf911c92c07162d20",
+      "ml/option_pricing/constraints.py": "1ee463121c49e895c834074be2b933294ff5c012aede25ea5e098a0eacb30331",
+      "ml/option_pricing/consumers.py": "64ceabcc70b53c1507b905cf2fcd52989432dfab8eb5e248a73f1988febdc1db",
+      "ml/option_pricing/model.py": "2edaf5b0f80ea68a5a535bc0cc62736e22abb1e324bf5c9fab6f5501d654ca9a",
+      "ml/option_pricing/opra.py": "f2a37f51c8ca0a11b26d20f621545b9ffbf62cb3ff5018703d666e94a41fd160",
+      "ml/option_pricing/opra_materialization.py": "c080d72f534efefa8e423ff026af60927ba9dcd20bcc16d059c050f8096952dd",
+      "ml/option_pricing/policies.py": "c1b214f90d7c3cc59d8d8f09f0d8617759ed681c6e5ebb9b5d30847bb4eb1246",
+      "ml/option_pricing/prediction.py": "4239a58220bc34173fddf563c353d392e04ef8dc32b623763c255ce29f80980b",
+      "ml/option_pricing/publication.py": "56e2456ac8c5e61e8059ee0ae396d6409b52e72c5f8fc3f82aad838806d66139",
+      "ml/option_pricing/reporting.py": "03ca076a26300755d0cf981f70d38c3c4b5171f059a3cf877a4a05842ec7e98a",
+      "ml/option_pricing/schwab_materialization.py": "82ac07c5f0ac13506463b76455c148a93661ce39b0a8875be63b04b5b6f79872",
+      "ml/option_pricing/shadow_model.py": "e161e1134fd21b5581daef7a01d2a96457cce4b0faa2ceccf50fae166918aa16",
+      "ml/option_pricing/strategy_shadow.py": "4c2837bacae939d84ecd40a8134cb5409a915a5a0da73bb0cce638b9d11c556f",
+      "ml/option_pricing/target_outcome.py": "6922d37018da5195fc85f3b979ac40823a6b6f3fa10be71d4417e6c1107e75ca",
+      "ml/parquet_contracts.py": "59113f0b27c71a6cd94cc6c91198a65ede945c63978957d321f8c1f5ccb58edd",
+      "ml/preprocessing.py": "8395e5c0b633cafaaf2c20307c04377f893bba20b939fcbf10c467473ede7efd",
+      "ml/rolling_materialization.py": "7ef156a9481aea438021a8c22307ae851cb3e93885b9fcad2dc8805587de9ae4",
+      "ml/rolling_samples.py": "4275f1a2721a0d42392b11e47bf1fce5bc87cd8b0e5094bfdf4c53db453fa88f",
+      "ml/runtime_pipeline.py": "01d1374a8aefced91361a5bd127c27742061b624855b7e3801cd1d5cb0effcf5",
+      "ml/sequence_encoder/__init__.py": "ecbddb8f58e23b6860f4c883435abe3fdc17d42f71e0ca1d084011a2f4b2b770",
+      "ml/sequence_encoder/consumer.py": "65186e5ecf01536472e26dddb6d2646827d39013b06dfea554db80ff706f0720",
+      "ml/sequence_encoder/contracts.py": "0d082d340235c1177da089ae1840401e41340456ece10800824a83f78dbbf3aa",
+      "ml/sequence_encoder/publication.py": "acb3598aab533c3cc965743f7e80b205f02b7c46494027039f3513b77ef11d98",
+      "ml/strategy_selection/__init__.py": "10e7f774a2b5f4428a899b489593688f78f0381d1be990bde7b64de935aada8d",
+      "ml/strategy_selection/contracts.py": "ccafbba815bcee3bed2f4d4827dcabc250ad9747cb479b5bd63060da46c93b82",
+      "ml/strategy_selection/market_state.py": "b5ade3deaf0f68ab3cd65c4f22ee88151e1a84fd4dafb64c17d6c6bcf1cf7b04",
+      "ml/strategy_selection/registry.py": "3315230795138559468ef97a107317c99d31121d4baaa27d8076e4f798149b5e",
+      "ml/strategy_selection/research_trace.py": "087ff96297600a149ef7e3351e14ac7bfc6733fb0b567d5ff7aa0c5057bb847e",
+      "ml/timing.py": "6157ee95d01e1e6e8525f0dbdc6fdf64776c6ee57f013c994a69b3d54f15ab90",
+      "ml/universe.py": "9b9ddb723732452708f77a35386fc4a1475fdb3dd982df3f0b95da1ceac8af47",
+      "options/__init__.py": "85bef36df202d0803713dacbefb6b28c858952d0db2a889f77803448880c0cfb",
+      "options/publication.py": "6e147ccd51600277bd5b72a87e602952d3a341b5cddf67907ccfc93f7fe46d56",
+      "pyproject.toml": "35c6fd559b11ed852e8d847bc9a7c2430b2ea55ba15851b0d8c88e1a63da4db2",
+      "requirements-ml-runtime.lock": "5581fb13a924b8b18ca9c36fcf8aca69bfb219d43aa9fbf5ffd433131d32a1f9",
+      "requirements.txt": "da553f42dc78ce9e1ed6186201fe5a6d5bdeb23c28de2ab6f827bec1272b484a",
+      "technicals/__init__.py": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a",
+      "technicals/calculations/__init__.py": "c175d278fb0f8a970562e8f0c13996341d03aebabad77b7c8edbe211477f782c",
+      "technicals/calculations/bar_shape.py": "c1947e689fee7dfdde277d2d6da001a64a7b9360e88c34d11f7e81c9dfe61c43",
+      "technicals/calculations/breakout_pressure.py": "2fd6a81a0ea610d4a95758b4eacb19f944a35aaa550b5ecc684d90351bc3082c",
+      "technicals/calculations/market_regime.py": "7aff1fb28a04cd075612cdd47a9448a9f237c18b97157769dea6ae0d6e2a0ae9",
+      "technicals/calculations/session_aware_breakout.py": "387e7efda73ff720705819e54f1d0708363a2a8e93acafe82fd4e2211aa3a231",
+      "technicals/calculations/weekly_context.py": "dad7f6c806cfc98949b2425c6bc63337ddeec1dfc43674a388801a3137d51d54",
+      "technicals/parquet_io.py": "ee53dea5813e760ee12f23ced1347071b9622107dedd72bd28e5a76b70a73807",
+      "technicals/split_adjustments.py": "a71e2d0e4433118b07d473fd702df5e6e8e713b5d287120823991bf54ecb8ade",
+      "tests/conftest.py": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d",
+      "tests/test_ml_loop_a_all_family_wiring.py": "9270822ea7427b7d87c7910eb7dec8af340253ab22715dc070023bcf4c3a7a5d",
+      "tests/test_ml_point_in_time_ingestion.py": "ef42e94a686ecba75f422bd1427d45f2a12ecfc1e26946816c1ee0d12d0f2023",
+      "tests/test_option_pricing_shadow_consumers.py": "ae008f3ce20d9d4cbe29f42b955d1b8922c6ccfe361453b2f180ec9c4fe70818"
+    },
+    "main_integration_base": "efeb7b2d58eae9089cd1f27b14f3257d51f016b9",
+    "main_integration_commit": "566e8104a44e7644d39ee084ba188c2f961cbb7f",
+    "record_sha256": "587ba02bb5d51e46dc939c422bccb4d20e97fccf617ed601306bf89ef88e1c53",
+    "source_commit": "17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39"
+  },
+  "summary": "Atlas revalidated the saved quote-validation source and main-integration evidence; complete tested input hashes and committed-byte comparisons are supplied for Scout review.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-07T06:33:44.172549Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "deddffeca8f1b72d0ab1ea2ec16db47097e54c46e9c040bc29717d0d34c7c5d2",
+      "output_sha256": "2792fd81a9c12bd8358db9b38730efbfd4aad837e2d6f0a213611671ee933f7b",
+      "result": "77 passed; saved evidence revalidated, no test rerun",
+      "stage": "source",
+      "started_at_utc": "2026-10-07T06:33:34.998040Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "completed_at_utc": "2026-10-07T06:36:12.286981Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "deddffeca8f1b72d0ab1ea2ec16db47097e54c46e9c040bc29717d0d34c7c5d2",
+      "output_sha256": "72ab4078e2c06219f9bc4bca5dc593a6e944124402831604412fd0e5eda12513",
+      "result": "77 passed; saved evidence revalidated, no test rerun",
+      "stage": "main_integration",
+      "started_at_utc": "2026-10-07T06:36:02.540771Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
