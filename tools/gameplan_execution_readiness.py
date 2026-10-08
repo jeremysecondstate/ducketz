@@ -225,7 +225,7 @@ def _session(root, day, now, probe):
             or saved.get("sizing_policy") != GAMEPLAN_SIZING_POLICY):
         return {**absent, "status": "SAVED_SESSION_NOT_FOR_REQUESTED_ACTION_DATE_OR_POLICY"}
     status = saved.get("status")
-    if status not in {"RUNNING", "SLEEPING_UNTIL_OPEN"}:
+    if status not in {"RUNNING", "DEGRADED", "SLEEPING_UNTIL_OPEN"}:
         # Do not emit arbitrary saved status text or counters from private files.
         return {**absent, "status": "SAME_DATE_SESSION_STOPPED"}
     stamp, started = _stamp(saved["heartbeat_at"]), _stamp(saved["started_at"])
