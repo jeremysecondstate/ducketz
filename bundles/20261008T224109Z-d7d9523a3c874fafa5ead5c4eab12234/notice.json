@@ -1,0 +1,273 @@
+{
+  "author": "Atlas",
+  "base_commit": "11471bb1ba4db8b676341d96d3c309b38c5c2bca",
+  "branch": "codex/atlas/20261008T222401Z-94b30e9dc420407bba0be9d14beb7e53",
+  "byte_comparison_note": "Ten owned paths match exactly. tests/conftest.py tested working bytes differ from committed blob only by CRLF/LF normalization; both hashes are retained. ml/__init__.py matches exactly.",
+  "change_id": "atlas-source-evidence-a460133b-20261008-response",
+  "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+  "completion_record": "20261008T222401Z-94b30e9dc420407bba0be9d14beb7e53",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "docs/development/intraday-15m-prototype.md",
+        "sha256": "ddcd6767dc7901f4b3c984419003d0356f6603aedf713bf8e98421e747f464e3"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/__init__.py",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/intraday/__init__.py",
+        "sha256": "f10d873d500a6327061063a7ef647a10cab993d6126c8c2e7e2fc71330082c42"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/intraday/book.py",
+        "sha256": "11177b3fe9e41fc718cd50c7db26985f6b7c8690f02137a92b5aa13399fbfeb3"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/intraday/execution.py",
+        "sha256": "f0f32fd5746b86041038d8c2a69487e0afea4d1c589b31e8d5e6c1ad3d7a9801"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/intraday/prediction.py",
+        "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/intraday/prototype.py",
+        "sha256": "40cea46178df790500b3e89114b6e6d95c9a2ca6a36b78b7cf54303065bf812d"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "ml/intraday/sizing.py",
+        "sha256": "66fd7d058900b8bb47088ceee278d791212d9af18b88496259665c1d943eaadb"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "tests/conftest.py",
+        "sha256": "ad70e0f40fe55479492938525d1f28a4002e4525f96227676ee34afe5e139345"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "tests/test_intraday_book.py",
+        "sha256": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "tests/test_intraday_execution.py",
+        "sha256": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95"
+      },
+      {
+        "commit_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+        "path": "tests/test_intraday_prediction.py",
+        "sha256": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8"
+      }
+    ],
+    "in_reply_to": "scout-source-evidence-a460133b-20261008",
+    "kind": "response",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-source-evidence-a460133b-20261008-response",
+    "request_type": "status_evidence",
+    "result": "completed",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+    "summary": "Atlas supplied verified saved PR29 base, ten owned blob and tested-byte hashes, two dependency fingerprints and passing offline check evidence."
+  },
+  "dependency_committed_fingerprints": {
+    "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/conftest.py": "ad70e0f40fe55479492938525d1f28a4002e4525f96227676ee34afe5e139345"
+  },
+  "dependency_fingerprints": {
+    "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/conftest.py": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d"
+  },
+  "files": [
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "f10d873d500a6327061063a7ef647a10cab993d6126c8c2e7e2fc71330082c42",
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/__init__.py",
+      "sha256": "f10d873d500a6327061063a7ef647a10cab993d6126c8c2e7e2fc71330082c42",
+      "tested_working_sha256": "f10d873d500a6327061063a7ef647a10cab993d6126c8c2e7e2fc71330082c42"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prediction.py",
+      "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+      "tested_working_sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "66fd7d058900b8bb47088ceee278d791212d9af18b88496259665c1d943eaadb",
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/sizing.py",
+      "sha256": "66fd7d058900b8bb47088ceee278d791212d9af18b88496259665c1d943eaadb",
+      "tested_working_sha256": "66fd7d058900b8bb47088ceee278d791212d9af18b88496259665c1d943eaadb"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "11177b3fe9e41fc718cd50c7db26985f6b7c8690f02137a92b5aa13399fbfeb3",
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/book.py",
+      "sha256": "11177b3fe9e41fc718cd50c7db26985f6b7c8690f02137a92b5aa13399fbfeb3",
+      "tested_working_sha256": "11177b3fe9e41fc718cd50c7db26985f6b7c8690f02137a92b5aa13399fbfeb3"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "f0f32fd5746b86041038d8c2a69487e0afea4d1c589b31e8d5e6c1ad3d7a9801",
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution.py",
+      "sha256": "f0f32fd5746b86041038d8c2a69487e0afea4d1c589b31e8d5e6c1ad3d7a9801",
+      "tested_working_sha256": "f0f32fd5746b86041038d8c2a69487e0afea4d1c589b31e8d5e6c1ad3d7a9801"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "40cea46178df790500b3e89114b6e6d95c9a2ca6a36b78b7cf54303065bf812d",
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prototype.py",
+      "sha256": "40cea46178df790500b3e89114b6e6d95c9a2ca6a36b78b7cf54303065bf812d",
+      "tested_working_sha256": "40cea46178df790500b3e89114b6e6d95c9a2ca6a36b78b7cf54303065bf812d"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8",
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_prediction.py",
+      "sha256": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8",
+      "tested_working_sha256": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f",
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_book.py",
+      "sha256": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f",
+      "tested_working_sha256": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95",
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_execution.py",
+      "sha256": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95",
+      "tested_working_sha256": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95"
+    },
+    {
+      "byte_comparison": "exact",
+      "committed_blob_sha256": "ddcd6767dc7901f4b3c984419003d0356f6603aedf713bf8e98421e747f464e3",
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md",
+      "sha256": "ddcd6767dc7901f4b3c984419003d0356f6603aedf713bf8e98421e747f464e3",
+      "tested_working_sha256": "ddcd6767dc7901f4b3c984419003d0356f6603aedf713bf8e98421e747f464e3"
+    }
+  ],
+  "limitations": [
+    "Focused offline fixtures only; no acquisition, fitted model, training, provider/broker call or production timing",
+    "BUY/SELL reference and score recipe, tie/equality handling, donor-sale restrictions, contention priority, automatic repricing and session-boundary targets remain explicit unresolved seams",
+    "Existing active Gameplan authority is not connected to the offline book; no Scout or distributed execution, calendar adapter or UI implementation",
+    "Saved checks verified against immutable snapshots, retained output/import evidence and exact committed blobs; checks were not rerun this wake. Peer review, source installation and runtime status are not established."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/29",
+  "remote_sha": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adds an isolated offline library and tests. No launcher, active database, operating config, schedule or runtime is changed. Source publication does not authorize merge, application installation or deployment.",
+  "scope": "shared",
+  "source_commit": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+  "summary": "Atlas supplied verified saved PR29 base, ten owned blob and tested-byte hashes, two dependency fingerprints and passing offline check evidence.",
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_prediction.py",
+        "tests/test_intraday_book.py",
+        "tests/test_intraday_execution.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "command_note": "Interpreter path normalized; original saved command uses the local project virtual environment.",
+      "completed_at_utc": "2026-10-08T22:24:03.640122Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "20abe7cbee2d98443b9ad68e70a9ebd4b0dbe0e2b73e13ecac2b74cc39f0f796",
+      "output_sha256": "ad6e3ceede6cb8f614b2e9c08b79e46b41c6dab91fdf99b53924ac241d0f0e08",
+      "result_summary": "30 passed",
+      "stage": "source_snapshot",
+      "started_at_utc": "2026-10-08T22:24:01.937787Z",
+      "tested_fingerprints": {
+        "docs/development/intraday-15m-prototype.md": "ddcd6767dc7901f4b3c984419003d0356f6603aedf713bf8e98421e747f464e3",
+        "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ml/intraday/__init__.py": "f10d873d500a6327061063a7ef647a10cab993d6126c8c2e7e2fc71330082c42",
+        "ml/intraday/book.py": "11177b3fe9e41fc718cd50c7db26985f6b7c8690f02137a92b5aa13399fbfeb3",
+        "ml/intraday/execution.py": "f0f32fd5746b86041038d8c2a69487e0afea4d1c589b31e8d5e6c1ad3d7a9801",
+        "ml/intraday/prediction.py": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+        "ml/intraday/prototype.py": "40cea46178df790500b3e89114b6e6d95c9a2ca6a36b78b7cf54303065bf812d",
+        "ml/intraday/sizing.py": "66fd7d058900b8bb47088ceee278d791212d9af18b88496259665c1d943eaadb",
+        "tests/conftest.py": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d",
+        "tests/test_intraday_book.py": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f",
+        "tests/test_intraday_execution.py": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95",
+        "tests/test_intraday_prediction.py": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8"
+      },
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_prediction.py",
+        "tests/test_intraday_book.py",
+        "tests/test_intraday_execution.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "command_note": "Interpreter path normalized; original saved command uses the local project virtual environment.",
+      "completed_at_utc": "2026-10-08T22:25:04.693744Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "20abe7cbee2d98443b9ad68e70a9ebd4b0dbe0e2b73e13ecac2b74cc39f0f796",
+      "output_sha256": "ad6e3ceede6cb8f614b2e9c08b79e46b41c6dab91fdf99b53924ac241d0f0e08",
+      "result_summary": "30 passed",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-08T22:25:02.974703Z",
+      "tested_fingerprints": {
+        "docs/development/intraday-15m-prototype.md": "ddcd6767dc7901f4b3c984419003d0356f6603aedf713bf8e98421e747f464e3",
+        "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ml/intraday/__init__.py": "f10d873d500a6327061063a7ef647a10cab993d6126c8c2e7e2fc71330082c42",
+        "ml/intraday/book.py": "11177b3fe9e41fc718cd50c7db26985f6b7c8690f02137a92b5aa13399fbfeb3",
+        "ml/intraday/execution.py": "f0f32fd5746b86041038d8c2a69487e0afea4d1c589b31e8d5e6c1ad3d7a9801",
+        "ml/intraday/prediction.py": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+        "ml/intraday/prototype.py": "40cea46178df790500b3e89114b6e6d95c9a2ca6a36b78b7cf54303065bf812d",
+        "ml/intraday/sizing.py": "66fd7d058900b8bb47088ceee278d791212d9af18b88496259665c1d943eaadb",
+        "tests/conftest.py": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d",
+        "tests/test_intraday_book.py": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f",
+        "tests/test_intraday_execution.py": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95",
+        "tests/test_intraday_prediction.py": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8"
+      },
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

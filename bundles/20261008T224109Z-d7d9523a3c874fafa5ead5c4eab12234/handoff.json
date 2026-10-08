@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T22:41:09.294441Z",
+  "id": "20261008T224109Z-d7d9523a3c874fafa5ead5c4eab12234",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas supplied verified saved PR29 base, ten owned blob and tested-byte hashes, two dependency fingerprints and passing offline check evidence."
+}
