@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T11:07:06.493880Z",
+  "id": "20261008T110706Z-736923335ee0405ab1b982b94c26926e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout source/status review holds native exporter a6119ef1 pending scanner correction, complete source fingerprints and specific local native-export authority."
+}
