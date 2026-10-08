@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:10:22.569459Z",
+  "id": "20261008T041022Z-f23c8d8bcc2f4c3593bbdb6e4849d92e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas adopted final native ownership correction, passed actual offline ledger validation and enabled production dependency protocol."
+}
