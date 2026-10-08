@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:50:39.548838Z",
+  "id": "20261008T035039Z-7197847641214972b01967ae01fd7b9f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Planning-only two-producer ownership bridge published; exact Atlas adoption and production snapshot flag requested after checks."
+}
