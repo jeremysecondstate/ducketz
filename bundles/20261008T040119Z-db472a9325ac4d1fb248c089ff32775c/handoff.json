@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:01:19.694637Z",
+  "id": "20261008T040119Z-db472a9325ac4d1fb248c089ff32775c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout final PR18 plus PR19 installation verified at20:58:57Pacific, including actual local ownership capture. Both source adoption requests were delivered; final Atlas confirmation remains pending."
+}

@@ -1,0 +1,48 @@
+{
+  "author": "Scout",
+  "change_id": "scout-final-nightly-configured-20261007-v1",
+  "commit_sha": "d0a0e8f7b8ecacc57a0c8f4b72a53d4415b64f61",
+  "files": [
+    {
+      "path": "docs/development/nightly-exchange.md",
+      "sha256": "0092f13d999b017328f5dfbe618c24f79413d302f37cf47fcbfc2dba0fca21fc"
+    },
+    {
+      "path": "tools/nightly_account_snapshot.py",
+      "sha256": "43d693f42241751ea14ec78100723c6a184355505b32fb0979b2a17f02416b6e"
+    },
+    {
+      "path": "tools/nightly_exchange.py",
+      "sha256": "99f4acab4ba0144c17a8ed6d6109c9d46b9a798dcbb1721da4fbdfc705294b33"
+    },
+    {
+      "path": "tools/nightly_ownership.py",
+      "sha256": "bbfac57e1ed6194ae4099872d5bc326699b012202281f4f271961e85ae6de162"
+    }
+  ],
+  "limitations": [
+    "First production exchange not yet run; native combined execution cutover remains separate."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout preparation21:05/readiness03:35 ACTIVE; synthesis5min ACTIVE with bounded read-only responder prompt verified; communication/priority15min ACTIVE; LOGpaused. Trader remains manual on Atlas. Existing bindings, HEAD, index and original ledger preserved. Actual local Scout capture confirms the native decimal correction; no further Scout helper edits planned. Await exact Atlas installation/checks and production refresh task binding under existing approval.",
+  "scope": "shared",
+  "summary": "Scout final PR18 plus PR19 installation verified at20:58:57Pacific, including actual local ownership capture. Both source adoption requests were delivered; final Atlas confirmation remains pending.",
+  "tests": [
+    {
+      "check": "PR18 reviewed source and isolated candidate",
+      "result": "179 passed each"
+    },
+    {
+      "check": "PR19 reviewed source and isolated candidate",
+      "result": "141 passed each"
+    },
+    {
+      "check": "Actual installed Scout ownership capture",
+      "result": "All11local symbols validated; original ledger files unchanged; network/account calls/packet exports/responder launches blocked"
+    },
+    {
+      "check": "Installed config and bounded wake",
+      "result": "CONFIGURATION_VERIFIED; PENDING LOCAL_PREPARATION action2026-10-08/review2026-10-07; NOT_STARTED"
+    }
+  ]
+}
