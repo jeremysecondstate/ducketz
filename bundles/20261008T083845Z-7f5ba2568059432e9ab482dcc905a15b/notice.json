@@ -1,0 +1,63 @@
+{
+  "author": "Scout",
+  "base_commit": "6b40a290f68b5e0ccec3b8b744f50fe3746d7dd5",
+  "branch": "codex/atlas/20261002T011049Z-6bab7e35665f4d5ea3f6a288ccc59e24",
+  "change_id": "scout-priority-review-20261008-1dfb0cb1",
+  "dependency_evidence": {
+    "imported_fingerprints": {
+      "datafetching/__init__.py": "795c2639eb8b6bfeaa595aa5e7abe4189ad27fd5b6c42182135631b7083aaecf",
+      "datafetching/hyperliquid_candles.py": "f298c02fbe253d45e5007d9eed6c51e87197e8d8f9474bd0d046598bd8f6003f",
+      "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ml/hyperliquid_coordinator_config.py": "38a5a4bf69c2405646edae2990fadf4b64e057b866fcc93daa47fabf37e4c71e",
+      "ml/hyperliquid_data_loop.py": "715bf44e7874a95c57b9780eeda9df34d9e65f0fd2675795442b29620baf5f7d",
+      "ml/hyperliquid_data_pipeline.py": "3a00be8a0236fa135c47501881df0f4d4c2679c220c3d58a1687c331037c7478",
+      "ml/hyperliquid_model_artifacts.py": "0f3cfba008917df22d18d58ae5f611c71ffaa3ae929c7014a5fa2d1b311de9d2",
+      "ml/hyperliquid_model_config.py": "19029da90839fae806465400142c32325686b5c71545118f7d2bb54f3385bf44",
+      "ml/hyperliquid_model_runtime.py": "c33f4a87ded28710ba7514cbd395d86ca5aa80924799f0ba972b6af662adbe7f",
+      "ml/hyperliquid_models.py": "0292d8e17fe4b9420310e01e3cee4ceb4f7fb8bac3a48fb3a6c906c2fb133b64",
+      "scratch/priority-calibration-verification.py": "7af69e3b0f80e0ded0d1023416e2a5c3d610dbcdbec2e8d6b667b65cd8b60fd3",
+      "technicals/__init__.py": "37c3478c2fdae918d5c461d374f621eb41b1e7da88a87f9322465a2b062f0c1a",
+      "technicals/hyperliquid_features.py": "6e05a8b4810765dcbcf86192a645d539622c510a41ae7589874c7beebb57d6de",
+      "tests/test_hyperliquid_model_config.py": "7bf428f3674c75fb83559f204d205730ac74f9e0b84d33e992930235191ae8ad",
+      "tests/test_hyperliquid_models.py": "c3a417082d05d55f5bdf8d2b6e03cc7e91dd40a2b7cf3fde19d2c7fa00d80b61",
+      "tests/test_hyperliquid_probability_shrinkage.py": "97530cdf49e684927c52312348a36f51b565bfc66fc0a850031408219d9dc675"
+    },
+    "reviewed_input_count": 24,
+    "source_fingerprints_sha256": "050d05a20867a6315b9929e77b097f02c2d83ee5df7f8304dee5c771f913dbd3"
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "configs/hyperliquid-models.json",
+      "sha256": "b2ae3bd3487434ca455bd11e3272203ebd09cceb6980e7a1d841d8e45fbbef9d"
+    }
+  ],
+  "findings": [
+    "Source changes calibration_c from0.0465 to0.04 and preserves all five positive family weights.",
+    "Scout calibration_c already equals0.04. Source ensemble_probability_shrinkage0.65 differs from later local0.5; both are shared strategy fields, not symbol-specific exclusions.",
+    "October8 routine review complete. Retained cadence and quote review/adoption remain separately pending; existing evidence request identities are retained."
+  ],
+  "limitations": [
+    "Producer committed and tested working bytes retain CRLF/LF distinctions; fresh checks bind the isolated candidate.",
+    "Source availability and offline review do not establish installed or loaded runtime versions.",
+    "Unfinished application work and an accepted current nightly session prevent checkout replacement; no session restart or invalidation performed."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application, HEAD, native schedule or runtime changed. No source installation, training, trading, broker/provider calls or private nightly packets. LOG remains paused and Atlas trader startup remains manual.",
+  "scope": "Shared Hyperliquid strategy defaults; applicable to both PCs after independent later-source review and installation.",
+  "source_commit": "1dfb0cb19d1357f0cb714fdae0ae2785f2c9161d",
+  "summary": "Scout reviewed retained Hyperliquid calibration C0.04 source:122 offline configuration checks passed; source shrinkage differs from later local configuration, so installation remains deferred.",
+  "tests": [
+    {
+      "candidate_mutations": 0,
+      "completed_at_utc": "2026-10-08T08:38:04.801381+00:00",
+      "import_violations": 0,
+      "kind": "fresh isolated source review",
+      "network": "disabled by pinned harness",
+      "output_sha256": "78e367bd40cbf576bf70873788ecfe3c26dc6bd9eb7051429fd3cba2b0ff39fd",
+      "result": "122 passed",
+      "started_at_utc": "2026-10-08T08:37:58.878222+00:00",
+      "training": "none; only reviewed configuration, validation, arithmetic and runtime due predicates selected"
+    }
+  ]
+}

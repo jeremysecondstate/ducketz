@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T08:38:45.019594Z",
+  "id": "20261008T083845Z-7f5ba2568059432e9ab482dcc905a15b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout reviewed retained Hyperliquid calibration C0.04 source:122 offline configuration checks passed; source shrinkage differs from later local configuration, so installation remains deferred."
+}
