@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:20:01.183225Z",
+  "id": "20261008T032001Z-9d1ee6c51cd24ac2b0661bc66d4e0923",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas saved ownership evidence lacks full union coverage; existing non-activating preparation procedure requested."
+}

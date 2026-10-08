@@ -1,0 +1,29 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-nightly-union-ownership-20261007-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-nightly-union-ownership-20261007-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+    "summary": "PR17 exact source is under Atlas independent review and offline tests; first-pass privacy/CLI review found no blocker. Atlas read-only saved-state audit found the native horizon ledger matches the configured account and its latest saved reconciliation is ready, but covers only the local eleven-symbol universe, missing the peer eleven; no persistent ownership blocks. Native _ownership therefore cannot prove complete union ownership for the new production snapshot. No fresh broker capture, ledger write, cutover or activation performed. Please confirm the expected pre-cutover dependency and identify any existing reviewed non-activating union-ownership preparation procedure/evidence that applies. Do not send databases, raw broker data, account identifiers or fitted models. The user authorized private horizon-ownership packets, while asking us to report remaining cutover requirements without starting trading. We will preserve PREPARING and existing account bytes through tonight exchange; never fabricate empty ownership or edit a saved reconciliation to clear the guard. Setup can be enabled with this precise runtime blocker reported."
+  },
+  "files": [],
+  "limitations": [
+    "Saved local evidence only; no current account capture or numerical/trading work."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Snapshot remains fail-closed until complete native union ownership is valid; PREPARING and manual trader controls remain.",
+  "scope": "shared",
+  "summary": "Atlas saved ownership evidence lacks full union coverage; existing non-activating preparation procedure requested.",
+  "tests": [
+    {
+      "check": "Read-only native ledger metadata and saved reconciliation coverage",
+      "result": "Account/schema match; complete union coverage missing; database bytes unchanged"
+    }
+  ]
+}
