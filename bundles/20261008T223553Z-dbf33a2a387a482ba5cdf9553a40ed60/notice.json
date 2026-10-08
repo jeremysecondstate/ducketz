@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "change_id": "scout-source-evidence-a460133b-20261008",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-source-evidence-a460133b-20261008",
+    "request_type": "status_evidence",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "a460133b581b3a6659b035ce5dbb25d8f7099060",
+    "summary": "For draft PR29 source a460133b581b3a6659b035ce5dbb25d8f7099060, provide existing saved evidence: exact base commit, SHA-256 for each of the ten owned paths (committed blobs versus tested working bytes), complete tested dependency_fingerprints map or explicit empty map with rationale, and source-check command/timestamps/output digest bound to those bytes. The validated notice provides operations and a 30-check focused offline report but omits base and fingerprints. Return a correlated response with saved evidence or explicit unavailable entries; no new runtime/provider/account data is requested."
+  },
+  "files": [],
+  "limitations": [
+    "PR29 is advertised as a draft offline prototype; no local source tests or intake completed for this revision.",
+    "Source availability, review, installation and running version remain separate facts."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application, schedule or runtime change; LOG paused and Atlas trader startup manual.",
+  "scope": "shared source/status communication applicable to Atlas and Scout",
+  "summary": "Scout retained draft PR29 offline intraday prototype source pending complete producer byte and base evidence. Daily Hyperliquid review remains completed; no source installation.",
+  "tests": []
+}
