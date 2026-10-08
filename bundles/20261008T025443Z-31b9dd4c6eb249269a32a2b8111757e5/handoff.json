@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T02:54:43.705098Z",
+  "id": "20261008T025443Z-31b9dd4c6eb249269a32a2b8111757e5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed the bounded Hyperliquid cadence source review: 144 passed, one Windows symlink skip. Source 8dccf2c3 is retained but not installed; local cadence still uses v2. Quote-validation source 17dcf9f7 awaits the complete producer dependency fingerprint map."
+}

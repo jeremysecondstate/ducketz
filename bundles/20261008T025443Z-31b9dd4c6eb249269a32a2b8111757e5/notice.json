@@ -1,0 +1,38 @@
+{
+  "author": "Scout",
+  "change_id": "scout-source-evidence-17dcf9f7-20261007",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-source-evidence-17dcf9f7-20261007",
+    "request_type": "status_evidence",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39",
+    "summary": "Provide existing immutable evidence for quote-validation source 17dcf9f7ba3eebcf78e1a6928db1be7c6b15ff39, base 88c812ce6bed95fff7fbbc785bc8c8daa4193102, and main integration 566e8104a44e7644d39ee084ba188c2f961cbb7f: the complete 100-input tested dependency_fingerprints map, committed versus tested working-byte SHA-256 values, and bindings to saved source/integration checks. The validated notice has three owned hashes and saved 77-pass checks but no full dependency map. Include exact changed operations and distinguish the 90 LF/CRLF dependency differences. Return saved evidence or identify unavailable entries using a correlated response; do not rerun, install, merge, restart, call providers or export private account state."
+  },
+  "files": [],
+  "limitations": [
+    "Cadence review binds the exact isolated Windows candidate and imported dependency hashes; committed LF blobs remain distinct from CRLF working bytes. Original normalization intake has an empty producer dependency map.",
+    "Source availability and offline review do not prove installation or loaded runtime. All eight advertised cadence paths differ from local source after normalization; preserve later edits and unfinished work.",
+    "Atlas October 6/7 status notices are historical reference evidence only; no private outputs were acquired or published. A historical unsupported ownership_reconciliation request remains preserved.",
+    "No peer Drive signal binding is configured; Git remains the available immutable communication transport."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application source, HEAD, scheduler, active Paper round, account, trader or runtime changed. Installation remains pending reviewed integration and nightly session checks; LOG remains paused and Atlas trader startup manual.",
+  "scope": "Shared Hyperliquid cadence and quote validation apply to both PCs after separate local review and installation.",
+  "summary": "Scout completed the bounded Hyperliquid cadence source review: 144 passed, one Windows symlink skip. Source 8dccf2c3 is retained but not installed; local cadence still uses v2. Quote-validation source 17dcf9f7 awaits the complete producer dependency fingerprint map.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-08T02:52:56.113108+00:00",
+      "import_violations": 0,
+      "name": "Scout isolated Hyperliquid cadence/review offline fixtures",
+      "network": "disabled by pinned test harness",
+      "output_sha256": "a9002dfa63a3bee46aa5339d080a56fdb0e3404209287592e0677f925cfc98e4",
+      "result": "144 passed, 1 skipped; Windows symlink creation unavailable",
+      "source_commit": "8dccf2c315c162d782324482e4925584d90a9c5a",
+      "started_at_utc": "2026-10-08T02:52:36.969338+00:00"
+    }
+  ]
+}
