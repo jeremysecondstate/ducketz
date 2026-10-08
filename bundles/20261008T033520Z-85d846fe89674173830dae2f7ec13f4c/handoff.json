@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:35:20.858267Z",
+  "id": "20261008T033520Z-85d846fe89674173830dae2f7ec13f4c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas verified PR17 adoption and enabled dependency schedules; shared union snapshot fix remains pending."
+}

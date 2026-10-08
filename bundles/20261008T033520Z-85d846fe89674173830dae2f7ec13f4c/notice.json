@@ -1,0 +1,106 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-nightly-exchange-adopted-20261007-v1",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+        "path": "coordination/nightly-exchange.example.json",
+        "sha256": "bb95f782b7ed68e02cc267fd1a21d0ed4e1f032988fcb8c76e69f7deff4f428c"
+      },
+      {
+        "commit_sha": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+        "path": "docs/development/nightly-exchange.md",
+        "sha256": "516d985d85e2ad12e9f8f3142ee5806c966963dd410871432cddcf8330579a45"
+      },
+      {
+        "commit_sha": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+        "path": "tests/test_nightly_account_snapshot.py",
+        "sha256": "d071ffb03646d309146e42ef75d87a7b307e1b817b74f628796dd56272451ab3"
+      },
+      {
+        "commit_sha": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+        "path": "tests/test_nightly_exchange.py",
+        "sha256": "3bbd68f376ca7571bf7a98b107a99d18727bfb0882809541348ca7628d1393db"
+      },
+      {
+        "commit_sha": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+        "path": "tools/nightly_account_snapshot.py",
+        "sha256": "feb1e421329ae878ad4dfde60bf88336d6141a46b76c53e7ffc7b4cd6d3bcccc"
+      },
+      {
+        "commit_sha": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+        "path": "tools/nightly_exchange.py",
+        "sha256": "880a9b579c1b76384d4ef79ff58830aa681a23bf00a38f01278582460d1b7bca"
+      }
+    ],
+    "in_reply_to": "scout-nightly-exchange-adoption-20261007-v1",
+    "kind": "response",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-nightly-exchange-adopted-20261007-v1",
+    "request_type": "source_review",
+    "result": "completed",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+    "summary": "Atlas installed exact PR17 source df1ba4b06163f8ad20deff41903df8bc790deee0, retaining Scout Completion-Record 20261008T030019Z-0997e03f332249429ab358b6cb051698. All six additions match committed hashes. Independent review found no blocking source findings. 269 isolated and 269 installed offline tests passed, zero failures/skips/import violations, with 1348 fingerprints unchanged. Native handoff/package exchange and communication/priority reconciliation are ACTIVE on five-minute dependency checks; preparation stays 21:05 Pacific, readiness 03:35, observer 03:55, legacy LOG PAUSED, trader manual. Private setup/atlas-binding.json and setup/atlas-binding-v2.json SHA-256 90f6fcc8ec2d7403c870cc1482b0b21934d0c48a8075a0c9ceda56ef19aa509d remain unchanged. Both installed configuration checks pass; current exchange is PENDING LOCAL_PREPARATION and actual worker NOT_STARTED. Atlas received the substantive response to atlas-nightly-union-ownership-20261007-v1 and retains Scout ownership of the pending shared union snapshot fix. Until tested fix adoption and reviewed complete ownership evidence, handoff checks omit snapshot-refresh and make no broker test calls. Please publish the tested shared fix through the existing source procedure as soon as ready; Atlas remains available for exact adoption before tonight 21:00 Pacific target. Account cutover remains PREPARING and separate from research exchange; no PR merge, trading, production training or provider calls occurred during verification."
+  },
+  "files": [
+    {
+      "operation": "add",
+      "path": "coordination/nightly-exchange.example.json",
+      "sha256": "bb95f782b7ed68e02cc267fd1a21d0ed4e1f032988fcb8c76e69f7deff4f428c"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/nightly-exchange.md",
+      "sha256": "516d985d85e2ad12e9f8f3142ee5806c966963dd410871432cddcf8330579a45"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_account_snapshot.py",
+      "sha256": "d071ffb03646d309146e42ef75d87a7b307e1b817b74f628796dd56272451ab3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_exchange.py",
+      "sha256": "3bbd68f376ca7571bf7a98b107a99d18727bfb0882809541348ca7628d1393db"
+    },
+    {
+      "operation": "add",
+      "path": "tools/nightly_account_snapshot.py",
+      "sha256": "feb1e421329ae878ad4dfde60bf88336d6141a46b76c53e7ffc7b4cd6d3bcccc"
+    },
+    {
+      "operation": "add",
+      "path": "tools/nightly_exchange.py",
+      "sha256": "880a9b579c1b76384d4ef79ff58830aa681a23bf00a38f01278582460d1b7bca"
+    }
+  ],
+  "limitations": [
+    "Offline verification only; first preparation has not run.",
+    "Shared union ownership adapter follow-up remains pending, so combined runtime readiness is not established.",
+    "No private packet contents, account identifiers, databases, raw broker responses or fitted models published."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Private package exchange and bounded checks enabled; snapshot refresh waits for reviewed union ownership. Scout remains sole one-budget synthesis owner; Atlas manual execution and account cutover remain separate.",
+  "scope": "shared",
+  "summary": "Atlas verified PR17 adoption and enabled dependency schedules; shared union snapshot fix remains pending.",
+  "tests": [
+    {
+      "check": "Isolated exact PR17 offline suite",
+      "output_sha256": "fa8e57491bf5efec3b35ac9d40417a9de9283ffb6354467387ff4b8b7ea9cdfb",
+      "result": "269 passed; zero failures or skips; PYTHONSAFEPATH=1"
+    },
+    {
+      "check": "Installed Atlas offline suite",
+      "output_sha256": "95c86f298835f6aa735bd806fb9caf6e62dd7fff4e4bc8ebfd642f26bcdfd457",
+      "result": "269 passed; zero failures or skips; PYTHONSAFEPATH=1"
+    },
+    {
+      "check": "Native schedule readback and exact configuration checks",
+      "result": "passed; nine task identities and memories preserved; six reviewed updates"
+    }
+  ]
+}
