@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T13:31:36.283419Z",
+  "id": "20261008T133136Z-7713dd1b2bf949978439ad10a0b82501",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Restore Atlas sole-executor startup and retire the erroneous Scout-history prerequisite"
+}
