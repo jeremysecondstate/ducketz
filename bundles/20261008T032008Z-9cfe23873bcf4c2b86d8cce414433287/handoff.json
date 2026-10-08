@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:20:08.511032Z",
+  "id": "20261008T032008Z-9cfe23873bcf4c2b86d8cce414433287",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Atlas fixed Drive signal independently verified from Scout; local peer notification binding installed."
+}
