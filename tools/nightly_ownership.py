@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 from contextlib import closing
+from decimal import Decimal, InvalidOperation
 import json
+import math
 from pathlib import Path
 import re
 import shutil
@@ -53,6 +55,26 @@ def _partitions(config):
 
 def _fingerprint(record):
     return canonical_sha256({key: value for key, value in record.items() if key != "source_fingerprint"})
+
+
+def _saved_held(value):
+    """Native PortfolioEvidence serializes Decimal quantities as strings.
+
+    Normalize only a real saved quantity, with an exact decimal round trip;
+    missing quantities are never assigned a default. Transport stays numeric.
+    """
+    if type(value) not in (str, int, float):
+        raise ValueError("Saved native held quantity is invalid")
+    try:
+        number = Decimal(str(value))
+        if not number.is_finite() or number < 0 or not math.isfinite(float(number)):
+            raise ValueError("Saved native held quantity is invalid")
+        result = int(number) if number == number.to_integral_value() else float(number)
+        if Decimal(str(result)) != number:
+            raise ValueError("Saved native held quantity cannot be represented exactly")
+        return result
+    except (InvalidOperation, OverflowError):
+        raise ValueError("Saved native held quantity is invalid") from None
 
 
 def validate_observation(config, value, *, observed_at, actor=None):
@@ -185,6 +207,7 @@ def capture_ownership(config, now=None):
                 held = json.loads(latest[2])["held_shares"]
                 if not isinstance(held, dict) or set(held) != set(symbols):
                     raise ValueError("Saved ownership baseline does not cover the exact producer universe")
+                held = {symbol: _saved_held(held[symbol]) for symbol in symbols}
                 ownership = _ownership(copied_root, symbols, scope, held, started.isoformat())
         if _pins(path) != pins:
             raise ValueError("Native ownership ledger changed during observation")

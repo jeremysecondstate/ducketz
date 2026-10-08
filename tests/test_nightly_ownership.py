@@ -93,6 +93,35 @@ def test_real_scout_ledger_preserves_original_baseline_and_private_bytes(configu
     assert "SECRET" not in json.dumps(value) and str(root) not in json.dumps(value)
 
 
+def test_native_decimal_strings_and_sparse_owned_baseline_preserve_exact_quantities(configured, tmp_path):
+    config, root = configured
+    held = dict.fromkeys(SCOUT, "0E-8")
+    held.update(DOCU="2.00", DBX="0.25")
+    with closing(sqlite3.connect(root / module.LEDGER)) as db, db:
+        db.execute("UPDATE snapshots SET payload=?,owned=?",
+                   (json.dumps({"held_shares": held}), json.dumps({"DOCU": 1})))
+    before = files(tmp_path)
+    value = module.capture_ownership(config, now=NOW)
+    assert files(tmp_path) == before
+    record = module.validate_observation(config, value, observed_at=NOW)
+    assert record["held_shares"] == {symbol: 2 if symbol == "DOCU" else .25 if symbol == "DBX" else 0 for symbol in SCOUT}
+    assert record["ownership"]["owned_shares"] == {symbol: int(symbol == "DOCU") for symbol in SCOUT}
+    assert value["saved_baseline_at"] == "2026-09-09T04:00:00Z"
+    assert all(type(value) in (int, float) for value in record["held_shares"].values())
+
+
+@pytest.mark.parametrize("quantity", [True, None, "NaN", "Infinity", "-1", "SECRET", "1e100000", "0.10000000000000000001"])
+def test_native_quantity_normalization_never_defaults_or_rounds_invalid_evidence(configured, tmp_path, quantity):
+    config, root = configured
+    held = dict.fromkeys(SCOUT, "0"); held["DOCU"] = quantity
+    with closing(sqlite3.connect(root / module.LEDGER)) as db, db:
+        db.execute("UPDATE snapshots SET payload=?", (json.dumps({"held_shares": held}),))
+    before = files(tmp_path)
+    with pytest.raises(ValueError, match="Saved native held quantity"):
+        module.capture_ownership(config, now=NOW)
+    assert files(tmp_path) == before
+
+
 @pytest.mark.parametrize("damage", ["missing", "missing_symbol", "unready", "account", "pending", "block", "bad_held", "bad_time"])
 def test_missing_or_unsafe_native_state_cannot_become_empty_ownership(configured, tmp_path, damage):
     config, root = configured
