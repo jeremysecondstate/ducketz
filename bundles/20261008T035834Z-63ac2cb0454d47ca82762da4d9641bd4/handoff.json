@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:58:34.665478Z",
+  "id": "20261008T035834Z-63ac2cb0454d47ca82762da4d9641bd4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Native ownership Decimal-format correction published; exact final Atlas adoption requested."
+}
