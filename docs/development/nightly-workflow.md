@@ -215,15 +215,35 @@ newer local session or accepted joint session takes precedence over an older
 legacy account display; damaged publications still fail verification.
 
 The read-only morning check verifies the intended Pacific action date, source,
-configuration, symbols, all completed output hashes and the actual default UI
-selection. It never launches or resumes a worker:
+configuration, symbols and all completed output hashes. Local readiness uses
+the frozen local Gameplan, Stats and model review saved by preparation, so a
+later combined UI publication does not invalidate that completed work. This
+explicit historical read leaves model review and training's default requirement
+for the latest Stats unchanged. A source change requires a new review. The
+check never launches or resumes a worker:
 
 ```powershell
 & .\.venv\Scripts\python.exe -B -m ml.nightly_readiness --config scratch/nightly-workflow/config.json
 ```
 
-An earlier session's successful receipt cannot satisfy today's readiness.
-Local readiness remains distinct from joint readiness and trading authority.
+Successful synthesis or handoff, including an exact idempotent retry, pins its
+completion receipt at
+`ml/nightly-joint-readiness-by-date/<action_date>/run.json`. Readiness selects
+that receipt automatically and verifies its exact local source and Stats,
+combined Gameplan and Stats UI selections, producer universes, local actor,
+Atlas executor and account scope. Valid combined publications without this
+receipt remain `JOINT_VERIFICATION_PENDING`; damaged or mismatched joint
+evidence returns `JOINT_VERIFICATION_FAILED`. Both preserve `local_ready: true`
+when the frozen local preparation passed. Invalid original local artifacts
+still fail local verification. An earlier session's receipt cannot satisfy
+today's readiness.
+
+An older completed synthesis or handoff receipt can be pinned by retrying its
+exact specification and completion identity under existing authority, after
+the current synthesis/handoff hold is lifted. Do not construct the selection
+file by hand. Local readiness, verified joint publication and trading authority
+remain separate: verification is read-only, does not activate authority or place
+orders, and does not establish that the peer has installed or verified its copy.
 The replacement Trader Representative reads saved session status and process
 liveness at 03:55 Pacific; deterministic catch-up occurs at the actual manual
 trader start and subsequent execution cycles, including a late start.

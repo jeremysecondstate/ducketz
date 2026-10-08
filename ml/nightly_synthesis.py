@@ -226,6 +226,7 @@ def _verify_ui(root: Path, spec: dict, prepared: dict) -> dict:
 
 def run_synthesis(spec: dict, *, now=None) -> dict:
     """Resume one exact local specification through candidate and UI adoption."""
+    from ml.nightly_joint_readiness import publish_joint_readiness
     _validate_spec(spec)
     state_root = _path(spec["state_root"])
     state_root.mkdir(parents=True, exist_ok=True)
@@ -239,16 +240,18 @@ def run_synthesis(spec: dict, *, now=None) -> dict:
             "status": "PREPARING", "steps": {}, "orders_placed": 0, "activation_changed": False}
         if state.get("spec_sha256") != spec_hash:
             raise ValueError("Synthesis retry changed its exact local specification")
-        _write_json(record, state)
         root = _path(spec["datastore_root"])
+        if state["status"] == "JOINT_READY_LOCAL":
+            prepared = preflight_synthesis(spec, now=now)
+            evidence = _verify_ui(root, spec, prepared)
+            receipt = _object((work / "receipt.json").read_bytes())
+            if receipt["ui_evidence"] != evidence or receipt["spec_sha256"] != spec_hash:
+                raise ValueError("Completed synthesis evidence changed")
+            publish_joint_readiness(root, spec, receipt)
+            return receipt
+        _write_json(record, state)
         try:
             prepared = preflight_synthesis(spec, now=now)
-            if state["status"] == "JOINT_READY_LOCAL":
-                evidence = _verify_ui(root, spec, prepared)
-                receipt = _object((work / "receipt.json").read_bytes())
-                if receipt["ui_evidence"] != evidence or receipt["spec_sha256"] != spec_hash:
-                    raise ValueError("Completed synthesis evidence changed")
-                return receipt
             candidate = work / "candidate"
             candidate.mkdir(exist_ok=True)
             _adopt_plan(candidate, spec, prepared)
@@ -282,6 +285,7 @@ def run_synthesis(spec: dict, *, now=None) -> dict:
             state["status"] = "JOINT_READY_LOCAL"
             state.pop("error", None)
             _write_json(record, state)
+            publish_joint_readiness(root, spec, receipt)
             return receipt
         except Exception as exc:
             partial = "plan_adopted" in state["steps"]
