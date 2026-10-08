@@ -122,6 +122,32 @@ def test_complete_setup_still_requires_manual_start_and_runtime_broker_reconcili
     assert result["current_broker_reconciliation_performed"] is False
 
 
+def test_sole_executor_manual_start_does_not_require_research_peer_history(prepared, monkeypatch):
+    _, root = prepared
+    ledger(root, ["AAPL"], pending=True)
+    monkeypatch.setattr(module, "_staged_startup", lambda *args: {
+        "ready": True, "status": "READY_FOR_MANUAL_START", "startup_mode": "ATLAS_SOLE_EXECUTOR"})
+    result = inspect(prepared)
+    assert result["manual_start_ready"] and result["blockers"] == []
+    assert result["startup_mode"] == "ATLAS_SOLE_EXECUTOR"
+    assert "NATIVE_PENDING_RESERVATIONS_PREVENT_CUTOVER" in result["runtime_reconciliation_findings"]
+    assert result["current_broker_reconciliation_performed"] is False
+    assert result["broker_ready"] is None
+
+
+def test_sole_executor_active_start_does_not_wait_for_first_union_snapshot(prepared, monkeypatch):
+    from ml.account_gameplan.config import FIRST_USE_VERSION
+    _, root = prepared
+    ledger(root, ["AAPL"])
+    activate(root)
+    monkeypatch.setattr(module, "verify_cutover", lambda *args: {"schema_version": FIRST_USE_VERSION})
+    monkeypatch.setattr("ml.stock_trader.gameplan_execution.execution_preflight", lambda *a, **k: {"status": "READY"})
+    result = inspect(prepared)
+    assert result["manual_start_ready"] and result["blockers"] == []
+    assert "NATIVE_LEDGER_UNION_INCOMPLETE" in result["runtime_reconciliation_findings"]
+    assert result["current_broker_reconciliation_performed"] is False
+
+
 def test_verified_staged_union_is_ready_for_manual_start_while_preparing(prepared, monkeypatch):
     _, root = prepared
     ledger(root, ["AAPL"])

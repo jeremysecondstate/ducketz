@@ -280,6 +280,8 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
     observed = utc_timestamp(now)
     blockers = []
     account = None
+    first_use = False
+    runtime_findings = []
     config_path = root / CONFIG
     original = config_path.read_bytes() if config_path.is_file() else None
     try:
@@ -290,7 +292,9 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
             blockers.append("ACCOUNT_NOT_ATLAS_COORDINATOR")
         elif account.activation["status"] == "ACTIVE":
             try:
-                verify_cutover(root, account)
+                receipt = verify_cutover(root, account)
+                from ml.account_gameplan.config import FIRST_USE_VERSION
+                first_use = receipt.get("schema_version") == FIRST_USE_VERSION
             except (ValueError, OSError, TypeError, KeyError):
                 blockers.append("CUTOVER_RECEIPT_INVALID")
     except (ValueError, OSError, TypeError, KeyError):
@@ -305,8 +309,10 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
     staged = {"ready": False, "status": "NOT_REQUIRED"}
     if account is not None and account.machine_id == "pc-original" and account.activation["status"] == "PREPARING":
         staged = _staged_startup(root, day, now)
+        first_use = staged.get("startup_mode") == "ATLAS_SOLE_EXECUTOR" and staged["ready"]
         if not staged["ready"]:
             blockers.append(staged["reason"])
+    ledger_blocker_start = len(blockers)
     ledger = {"available": False, "reason": "ACCOUNT_BINDING_REQUIRED"}
     if account is not None:
         try:
@@ -328,6 +334,11 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
         except (ValueError, OSError, TypeError, KeyError, sqlite3.Error):
             ledger = {"available": False, "reason": "NATIVE_LEDGER_INVALID"}
             blockers.append("NATIVE_LEDGER_INVALID")
+    if first_use:
+        # Atlas owns all trading history. Research partitions do not require
+        # another machine's ledger; the normal worker reconciles before orders.
+        runtime_findings = blockers[ledger_blocker_start:]
+        del blockers[ledger_blocker_start:]
     instructions_ready = False
     if account is not None and handoff["ready"] and account.activation["status"] == "ACTIVE" and "CUTOVER_RECEIPT_INVALID" not in blockers:
         from ml.stock_trader.gameplan_execution import execution_preflight
@@ -355,6 +366,8 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
             "status": status,
             "plan_ready": handoff["ready"], "execution_setup_ready": not blockers,
             "manual_start_ready": not blockers, "staged_native_inventory": staged,
+            "runtime_reconciliation_findings": runtime_findings,
+            "startup_mode": "ATLAS_SOLE_EXECUTOR" if first_use else "NATIVE_MIGRATION",
             "account_activation": account.activation["status"] if account else "UNAVAILABLE",
             "handoff": handoff, "native_ledger": ledger, "saved_execution_instructions_ready": instructions_ready,
             "manual_session": session, "manual_start_required": not session["running"],

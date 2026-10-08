@@ -1,12 +1,20 @@
 # Native ownership cutover and early readiness
 
-A completed joint plan and Stats handoff does not install the native ownership
-book required by Atlas's trader. `PREPARING` rejects manual startup until the
-reviewed cutover has preserved both producer histories, reconciled the combined
-book and installed the local activation receipt. Starting the launcher cannot
-perform that transition. Its preflight now reports the blocking prerequisite
-before changing manual intent; worker output and the actual exit code remain
-visible when startup proceeds.
+Use the normal `Start-Gameplan-Trader.cmd` on Atlas. Under the local human's
+Atlas-only execution direction, Scout has no trading ownership history to
+transfer. The command records the first-use account setup, preserves Atlas's
+existing account-wide native history untouched, and starts the worker. It adds
+no prelaunch broker capture, zero-holdings condition or separate approval step.
+The worker performs its ordinary fresh reconciliation and retains its ownership,
+pending-order and trading controls. Setup does not assert that inventory is empty
+or that reconciliation has passed. Starting early to wait for the session is
+supported; there is no 04:00 setup veto.
+
+See [the manual-start workflow](native-ownership-cutover-apply.md) for readiness
+and retry behavior. The native export and union process below applies when
+separate producer trading histories actually exist; it is not a prerequisite
+for this sole-executor setup. Plans, account setup and a running worker remain
+separate facts, and the launcher displays actual worker output and exit status.
 
 ## Check during the existing nightly handoff
 
@@ -14,7 +22,7 @@ The existing handoff task should run the read-only execution-readiness companion
 from the start of nightly preparation, independently of numerical completion:
 
 ```text
-python -B -m tools.gameplan_execution_readiness --datastore-root LOCAL_DATASTORE --action-date ORIGINAL_ACTION_DATE
+python -B -m tools.gameplan_execution_readiness --datastore-root LOCAL_DATASTORE --action-date INTENDED_ACTION_DATE
 ```
 
 The report distinguishes `plan_ready`, `execution_setup_ready`, and a verified
@@ -92,8 +100,9 @@ migration and cutover evidence. The next stage needs the existing coherent,
 fresh read-only account reconciliation, exact union holdings, no pending orders
 or unresolved reservations, and the original migration provenance. Preserve
 saved reconciliation times separately from the time an export was read.
-The existing cutover validator enforces its selected action-date boundary;
-expired dates must be reported for a reviewed next attempt, never relabeled.
+The historical explicit cutover validator retains its selected action-date
+boundary. This does not impose a deadline on the normal manual-start path;
+original dated export and reconciliation evidence must never be relabeled.
 
 Installation, receipt creation and activation are a separate reviewed local
 transition. This companion does not implement that transition. Do not edit
