@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:13:34.736682Z",
+  "id": "20261008T031334Z-71f15eb7138440c682f42dffb48f0941",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Private nightly exchange published and enabled on Scout; exact Atlas source adoption and final local enablement requested."
+}
