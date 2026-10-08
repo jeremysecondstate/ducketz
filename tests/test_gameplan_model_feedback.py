@@ -225,3 +225,29 @@ def test_regressing_or_equal_candidate_keeps_accepted_specification(tmp_path, mo
     assert result["report"]["model_feedback"]["selected_specification"] == incumbent
     assert result["report"]["model_feedback"]["candidate_improved_development"] is False
     assert result["report"]["promotion_gate"]["status"] == "PROMOTED"
+
+
+def test_frozen_feedback_survives_display_replacement_but_training_stays_latest(tmp_path):
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    from ml.artifacts import file_checksum
+    stats = write_review(tmp_path)
+    run = prepare_feedback(tmp_path, now=NOW)
+    path = save_feedback_review(tmp_path, run, proposal(run), now=NOW)
+    expected = load_feedback_review(tmp_path, path)
+    write_review(tmp_path, version="02")
+    assert load_feedback_review(tmp_path, path, require_latest_stats=False) == expected
+    original = load_gameplan_stats(tmp_path, run_directory=stats,
+                                  expected_receipt_sha256=file_checksum(stats / "receipt.json"))
+    assert original.run_directory == stats
+    with pytest.raises(ValueError, match="implementation changed"):
+        load_feedback_review(tmp_path, path)
+    with pytest.raises(ValueError, match="receipt"):
+        load_gameplan_stats(tmp_path, run_directory=stats, expected_receipt_sha256="0" * 64)
+    with pytest.raises(ValueError, match="saved run"):
+        load_gameplan_stats(tmp_path, run_directory=tmp_path,
+                            expected_receipt_sha256=file_checksum(stats / "receipt.json"))
+    with pytest.raises(ValueError, match="exact receipt hash"):
+        load_gameplan_stats(tmp_path, run_directory=stats)
+    (stats / "forecast-results.parquet").write_bytes(b"changed original evidence")
+    with pytest.raises((ValueError, RuntimeError), match="verify|checksum|changed|mismatch"):
+        load_feedback_review(tmp_path, path, require_latest_stats=False)

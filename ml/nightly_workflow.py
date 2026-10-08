@@ -369,6 +369,57 @@ def _display(config: dict, state: dict) -> dict:
             "files": {str(path): file_checksum(path) for path in paths}}
 
 
+def _verify_local_preparation(config: dict, state: dict) -> dict:
+    """Verify frozen completed work without consulting current display pointers."""
+    from ml.artifacts import verify_manifest
+    from ml.gameplan_model_feedback import load_feedback_review
+    from ml.gameplan_trade_planning import VERSION as TRADE_VERSION
+
+    root = Path(config["datastore"]).resolve()
+    saved = state["steps"]["verify_display"]["output"]
+    _verify_outputs(saved)
+    paths = {}
+    for key, folder in (("plan_run", "gameplan-trade-plan-runs"),
+                        ("stats_run", "gameplan-actuals-review-runs"),
+                        ("source_gameplan_run", "nightly-gameplan-runs")):
+        paths[key] = Path(saved[key]).resolve()
+        if paths[key].parent != root / "ml" / folder:
+            raise ValueError("Saved local preparation is outside its immutable run directory")
+    plan, stats, source = (paths[key] for key in ("plan_run", "stats_run", "source_gameplan_run"))
+    required = (plan / "receipt.json", plan / "manifest.json", stats / "receipt.json", source / "receipt.json")
+    if any(saved["files"].get(str(path)) != file_checksum(path) for path in required):
+        raise ValueError("Local completion omits the exact frozen publication hashes")
+    review_output = state["steps"]["model_review"]["output"]
+    native_output = state["steps"]["train_and_plan"]["output"]
+    _verify_outputs(review_output)
+    _verify_outputs(native_output)
+    reviewed = load_feedback_review(root, Path(review_output["proposal"]), require_latest_stats=False)
+    if ((root / reviewed["stats"]["run_path"]).resolve() != stats
+            or reviewed["stats"]["session"] != state["source_session"]
+            or reviewed["stats"]["receipt_sha256"] != file_checksum(stats / "receipt.json")
+            or set(reviewed["stats"]["symbols"]) - set(state["symbols"])):
+        raise ValueError("Frozen local Stats differ from the completed model review")
+    native = Path(native_output["native_run"])
+    _native_outputs(native)
+    pinned = _json(native / "stage-report.json").get("enrichment_gameplan", {})
+    source_hash = file_checksum(source / "receipt.json")
+    if ((root / str(pinned.get("run_path", ""))).resolve() != source
+            or pinned.get("action_date") != state["action_date"]
+            or pinned.get("receipt_sha256") != source_hash):
+        raise ValueError("Frozen local Gameplan differs from its training source")
+    receipt, manifest = _json(plan / "receipt.json"), verify_manifest(plan)
+    metadata = manifest.get("configuration", {})
+    if (receipt.get("schema_version") != TRADE_VERSION or receipt.get("status") != "COMPLETE"
+            or receipt.get("manifest_sha256") != file_checksum(plan / "manifest.json")
+            or (root / str(receipt.get("run_path", ""))).resolve() != plan
+            or any(item.get("action_date") != state["action_date"]
+                   or item.get("source_receipt_sha256") != source_hash
+                   or (root / str(item.get("source_gameplan_run", ""))).resolve() != source
+                   for item in (receipt, metadata))):
+        raise ValueError("Frozen local plan receipt, manifest and source disagree")
+    return saved
+
+
 def _handoff(config: dict, state: dict) -> dict:
     from ml.joint_capital_handoff import export_owner_package
     root = Path(config["datastore"])

@@ -156,6 +156,7 @@ def preflight_handoff(spec, *, local_profile=None, now=None):
 
 def run_handoff(spec, *, local_profile=None, now=None):
     """Resume exact receipt-bound Atlas adoption; never synthesize or activate."""
+    from ml.nightly_joint_readiness import publish_joint_readiness
     prepared = preflight_handoff(spec, local_profile=local_profile, now=now)
     state_root, root = _path(spec["state_root"]), _path(spec["datastore_root"])
     state_root.mkdir(parents=True, exist_ok=True)
@@ -169,14 +170,15 @@ def run_handoff(spec, *, local_profile=None, now=None):
             "status": "PREPARING", "steps": {}, "orders_placed": 0, "activation_changed": False}
         if state.get("spec_sha256") != spec_hash:
             raise ValueError("Handoff retry changed its exact local specification")
+        if state["status"] == "HANDOFF_VERIFIED_LOCAL":
+            evidence = _verify_ui(root, spec, prepared)
+            receipt = _object((work / "receipt.json").read_bytes())
+            if receipt["ui_evidence"] != evidence or receipt["spec_sha256"] != spec_hash:
+                raise ValueError("Completed handoff evidence changed")
+            publish_joint_readiness(root, spec, receipt)
+            return receipt
         _write_json(record, state)
         try:
-            if state["status"] == "HANDOFF_VERIFIED_LOCAL":
-                evidence = _verify_ui(root, spec, prepared)
-                receipt = _object((work / "receipt.json").read_bytes())
-                if receipt["ui_evidence"] != evidence or receipt["spec_sha256"] != spec_hash:
-                    raise ValueError("Completed handoff evidence changed")
-                return receipt
             candidate = work / "candidate"
             candidate.mkdir(exist_ok=True)
             _adopt_plan(candidate, spec, prepared)
@@ -209,6 +211,7 @@ def run_handoff(spec, *, local_profile=None, now=None):
             state["status"] = "HANDOFF_VERIFIED_LOCAL"
             state.pop("error", None)
             _write_json(record, state)
+            publish_joint_readiness(root, spec, receipt)
             return receipt
         except Exception as exc:
             partial = "plan_adopted" in state["steps"]

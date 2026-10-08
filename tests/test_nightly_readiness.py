@@ -1,16 +1,18 @@
 """Readiness reads saved bytes and never starts operational work."""
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from ml import nightly_joint_readiness  # Load reader bindings before per-test UI stubs.
 from ml import nightly_readiness as module
 from ml.artifacts import file_checksum
 
 
 @pytest.fixture
 def saved(monkeypatch, tmp_path):
-    config = {"actor": "Atlas", "repository": str(tmp_path)}
+    config = {"actor": "Atlas", "repository": str(tmp_path), "datastore": str(tmp_path)}
     artifact = tmp_path / "completed.json"
     artifact.write_text("frozen")
     state = {"schema_version": module.workflow.VERSION, "actor": "Atlas", "action_date": "2026-10-06",
@@ -19,12 +21,19 @@ def saved(monkeypatch, tmp_path):
              "steps": {step: {"status": "COMPLETE", "output": {"files": {str(artifact): file_checksum(artifact)}}}
                        for step in module.workflow.STEPS}}
     state["steps"]["local_handoff"]["output"]["delivery"] = "HELD_FOR_SEPARATE_PC_SETUP"
+    state["steps"]["verify_display"]["output"].update(plan_run=str(tmp_path / "plan"),
+        stats_run=str(tmp_path / "stats"), source_gameplan_run=str(tmp_path / "source"))
     monkeypatch.setattr(module.workflow, "verify_installation", lambda config: None)
     monkeypatch.setattr(module.workflow, "status", lambda config: deepcopy(state))
     monkeypatch.setattr(module.workflow, "_verify_configuration_binding", lambda *args: None)
     monkeypatch.setattr(module.workflow, "_verify_symbol_binding", lambda *args: None)
     monkeypatch.setattr(module.workflow, "source_identity", lambda root: {"commit": "reviewed"})
-    monkeypatch.setattr(module.workflow, "_display", lambda *args: deepcopy(state["steps"]["verify_display"]["output"]))
+    monkeypatch.setattr(module.workflow, "_verify_local_preparation", lambda *args: deepcopy(state["steps"]["verify_display"]["output"]))
+    monkeypatch.setattr(module.workflow, "_display", lambda *args: pytest.fail("Readiness cannot reverify the local default display after adoption"))
+    monkeypatch.setattr("app.ui.gameplan_data.load_gameplan", lambda root: SimpleNamespace(
+        session=state["action_date"], run_directory=tmp_path / "plan"))
+    monkeypatch.setattr("app.ui.gameplan_stats_data.load_gameplan_stats", lambda root: SimpleNamespace(
+        session=state["source_session"], run_directory=tmp_path / "stats"))
     return config, state, artifact
 
 
@@ -53,8 +62,17 @@ def test_output_changed_after_completion_fails(saved):
 
 def test_changed_default_ui_selection_fails(saved, monkeypatch):
     config, _, _ = saved
-    monkeypatch.setattr(module.workflow, "_display", lambda *args: {"files": {}})
-    with pytest.raises(ValueError, match="UI selection"):
+    monkeypatch.setattr("app.ui.gameplan_data.load_gameplan", lambda root: SimpleNamespace(
+        session="2026-10-05", run_directory=Path(config["datastore"]) / "plan"))
+    result = module.readiness(config, now="2026-10-06T10:35:00Z")
+    assert result["status"] == "JOINT_VERIFICATION_FAILED" and result["local_ready"]
+    assert not result["joint_ready"] and "UI selection" in result["error"]
+
+
+def test_frozen_local_evidence_must_still_match_saved_completion(saved, monkeypatch):
+    config, _, _ = saved
+    monkeypatch.setattr(module.workflow, "_verify_local_preparation", lambda *args: {"files": {}})
+    with pytest.raises(ValueError, match="Frozen local preparation"):
         module.readiness(config, now="2026-10-06T10:35:00Z")
 
 

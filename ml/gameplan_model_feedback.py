@@ -65,8 +65,15 @@ def _write(path: Path, value: Mapping) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _stats(root: Path, review_run: Path | None = None):
-    review = load_gameplan_stats(root)
+def _stats(root: Path, review_run: Path | None = None, *, frozen_binding: Mapping | None = None):
+    if frozen_binding is None:
+        review = load_gameplan_stats(root)
+    else:
+        relative = Path(frozen_binding["run_path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("Frozen review Stats must use a datastore-relative saved run")
+        review = load_gameplan_stats(root, frozen_binding["session"],
+            run_directory=root / relative, expected_receipt_sha256=frozen_binding["receipt_sha256"])
     if review_run is not None and Path(review_run).resolve() != review.run_directory.resolve():
         raise ValueError("Model feedback requires the exact newest completed Gameplan Stats run")
     run = review.run_directory
@@ -242,8 +249,10 @@ def save_feedback_review(root: Path, feedback_run: Path, proposal: Mapping, *, n
     return output
 
 
-def _verify_diagnostics(root: Path, diagnostics: Mapping) -> None:
-    review, actual = _stats(root)
+def _verify_diagnostics(root: Path, diagnostics: Mapping, *, require_latest_stats: bool = True) -> None:
+    if type(require_latest_stats) is not bool:
+        raise TypeError("Stats freshness mode must be an explicit boolean")
+    review, actual = _stats(root, frozen_binding=None if require_latest_stats else diagnostics["stats"])
     if (diagnostics.get("schema_version") != VERSION or diagnostics.get("stats") != actual
             or diagnostics.get("training_code") != _code_binding()):
         raise ValueError("Model review Stats or training implementation changed; review fresh evidence")
@@ -263,7 +272,13 @@ def _intended_target(stats: Mapping, requested: str | None) -> str:
     return intended
 
 
-def load_feedback_review(root: Path, path: Path, *, as_of=None, probability_target=None) -> dict:
+def load_feedback_review(root: Path, path: Path, *, as_of=None, probability_target=None,
+                         require_latest_stats: bool = True) -> dict:
+    """Verify review evidence; training always retains the default latest check.
+
+    Completed-run readiness can explicitly verify the original frozen Stats
+    after a combined publication replaces the display selection.
+    """
     path = Path(path).resolve()
     if path.stat().st_size > 131072:
         raise ValueError("Model review exceeds the bounded input size")
@@ -273,7 +288,7 @@ def load_feedback_review(root: Path, path: Path, *, as_of=None, probability_targ
     if (payload.get("schema_version") != VERSION or payload.get("status") != "REVIEWED"
             or payload.get("diagnostics_sha256") != file_checksum(diagnostic_path)):
         raise ValueError("Model review is incomplete or its diagnostics changed")
-    _verify_diagnostics(Path(root).resolve(), diagnostics)
+    _verify_diagnostics(Path(root).resolve(), diagnostics, require_latest_stats=require_latest_stats)
     _validate_proposal(payload["proposal"], diagnostics)
     reviewed = pd.Timestamp(payload["reviewed_at"])
     if reviewed.tzinfo is None or reviewed < pd.Timestamp(diagnostics["created_at"]):

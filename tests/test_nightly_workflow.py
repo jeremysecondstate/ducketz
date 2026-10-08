@@ -517,3 +517,29 @@ def test_first_run_empty_stats_reaches_reviewed_raw_training_interface_without_f
     _execute_step(config, state, "train_and_plan", lambda: None)
     assert len(called) == 1
     assert (stats / "forecast-results.parquet").read_bytes() == original
+
+
+def test_frozen_local_preparation_survives_combined_stats_display(tmp_path):
+    from ml.nightly_workflow import _verify_local_preparation
+    from ml.gameplan_stats_handoff import export_stats_package, adopt_combined_stats
+    from gameplan_stats_fixture import write_review, forecast
+    state, trade, stats, source = _display_fixture(tmp_path)
+    config = {"datastore": str(tmp_path)}
+    saved = _display(config, state)
+    state["steps"]["verify_display"] = {"output": saved}
+    peer = tmp_path / "peer"
+    write_review(peer, [forecast("ABCL")])
+    selections, hashes = {}, {}
+    universes = {"Scout": state["symbols"], "Atlas": ["ABCL"]}
+    for actor, root in (("Scout", tmp_path), ("Atlas", peer)):
+        selected = export_stats_package(root, producer=actor, symbols=universes[actor],
+            destination=tmp_path / f"{actor}-stats.json")
+        selections[actor], hashes[actor] = selected, file_checksum(selected)
+    adopt_combined_stats(tmp_path, packages=selections, expected_symbols=universes,
+                        expected_sha256=hashes, reviewed_at="2026-09-14T09:30Z")
+    assert _verify_local_preparation(config, state) == saved
+    with pytest.raises(ValueError, match="Stats or training implementation changed"):
+        _display(config, state)
+    (trade / "direction-ledger.json").write_text("changed")
+    with pytest.raises((ValueError, RuntimeError)):
+        _verify_local_preparation(config, state)
