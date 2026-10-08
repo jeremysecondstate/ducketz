@@ -1,0 +1,41 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-native-ownership-cutover-20261008-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-native-ownership-cutover-20261008-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "a6119ef1126cf18aabd0153f03384131c7cbf8da",
+    "summary": "Jeremy directly requested resolving Atlas manual trader startup and integrating early execution readiness into the existing nightly workflow. The completed joint plan alone left Atlas PREPARING because its native ownership book lacks Scout's original accounting history. Jeremy confirmed he alone manually starts the active trader on Atlas; no separate Scout process report is requested. Atlas-local authorization now permits receipt of one reviewed normalized Scout native ownership export through the existing private CODEXSTORE exchange. This notice is evidence of that request, not Scout-local operating authority. Please review the supplied exact source and your existing local authority; if a specific local export approval is still missing, report that exact requirement promptly rather than substituting empty ownership. Preserve all native allocation/order identifiers and local DB/WAL/SHM originals. The new exporter rebuilds reviewed logical accounting only and excludes credentials, account numbers, raw replies, unrelated databases and models. Atlas retains its own native history locally. Source ownership: Atlas owns the added native ownership export/exchange and execution-readiness helpers and launcher fix; Scout retains the existing nightly exchange coordinator. Review and adopt only the exact new source required for your native export through your normal local process; do not overwrite your profile, symbols, account binding, active session or task identity. Use your own existing nightly workflow/exchange bindings and an explicitly authorized local native-exchange config; shared operation identity atlas-scout-native-cutover-20261008-v1, original cutover action date 2026-10-08, relative namespace ducketz-nightly-exchange/v1/cutovers/atlas-scout-native-cutover-20261008-v1/scout. Do not change that date or relabel a packet if its cutover window expires. Run one bounded tools.native_ownership_exchange invocation under your own native locks when reviewed and locally authorized. Keep its sanitized source-delivery receipt separate from the private packet; no accounting values or packet contents in Git/notices. Preserve one request/operation identity across retries, report only a changed blocker or completed native export. Atlas's existing handoff task will receive and validate the exact private selection and stage a blocked union candidate; fresh reconciliation and reviewed local cutover remain distinct. No orders, activation, trader start or repeated numerical preparation is requested from Scout."
+  },
+  "details": {
+    "branch": "codex/atlas/20261008T105418Z-3794726fedc94909bc86570f4a3803c2",
+    "launcher_pr": "https://github.com/jeremysecondstate/ducketz/pull/20",
+    "source_completion": "20261008T105418Z-3794726fedc94909bc86570f4a3803c2",
+    "source_pr": "https://github.com/jeremysecondstate/ducketz/pull/21"
+  },
+  "files": [],
+  "limitations": [
+    "Scout-local source installation and private export authority must be reviewed by its existing owner.",
+    "Source publication and exact transport do not complete account cutover.",
+    "No private financial values or packets are included in this notice."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "One specifically authorized normalized Scout ownership export through the existing private exchange; preserve manual Atlas-only execution, frozen operation/date and original receipts. Atlas native history stays local.",
+  "scope": "shared",
+  "summary": "Reviewed native ownership export request for Atlas manual cutover and early nightly readiness",
+  "tests": [
+    {
+      "check": "Native export, exchange, readiness, migration and cutover offline suites in reviewed source and isolated candidate",
+      "result": "137 passed in each; source remote SHA verified"
+    },
+    {
+      "check": "Manual launcher offline suite at its account/nightly dependency base",
+      "result": "7 passed; PR20 exposes PREPARING startup blocker"
+    }
+  ]
+}

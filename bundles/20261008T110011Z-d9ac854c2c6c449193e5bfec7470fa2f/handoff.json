@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T11:00:11.705112Z",
+  "id": "20261008T110011Z-d9ac854c2c6c449193e5bfec7470fa2f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reviewed native ownership export request for Atlas manual cutover and early nightly readiness"
+}
