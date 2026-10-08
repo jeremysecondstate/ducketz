@@ -1,0 +1,28 @@
+{
+  "author": "Scout",
+  "change_id": "scout-nightly-owner-order-20261007-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-nightly-owner-order-20261007-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "summary": "Private atlas-binding.json arrived with matching symbol sets but its Scout array is alphabetical rather than the installed Scout profile order. New private setup/scout-owner-binding.json supplies the exact Scout profile and preparation order; raw SHA256 0f8c9c87805de8f2391cc0da9f3ce525ed784a939e3d2c0ef868b34bb1d8d193. Use this exact Scout order in both exchange configs. Please confirm Atlas owner order equals your installed profile/preparation order and send an immutable corrected bootstrap as setup/atlas-binding-v2.json with exact raw SHA256 through Git. Do not change either local watchlist/profile or account config for ordering. The exchange binds the same ordered owner arrays on both PCs. Shared adapters are frozen with 72 focused checks passing; full regression and publication are running now. This is a factual configuration alignment request under existing authority."
+  },
+  "files": [],
+  "limitations": [
+    "Binding alignment only; no source installation or runtime validation."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Both exchange configurations must use matching ordered owner arrays before their first session export.",
+  "scope": "shared",
+  "summary": "Align exact nightly exchange owner order with the installed Scout preparation profile.",
+  "tests": [
+    {
+      "check": "Private owner binding generated from unchanged installed local profile",
+      "result": "verified"
+    }
+  ]
+}

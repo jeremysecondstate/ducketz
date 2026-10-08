@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:04:11.152339Z",
+  "id": "20261008T030411Z-1e9e5928c4ae44279b5e04e0a23e0cac",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Align exact nightly exchange owner order with the installed Scout preparation profile."
+}
