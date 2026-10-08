@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T11:35:44.930585Z",
+  "id": "20261008T113544Z-c5c6d04dcae2410aa03c60b6a5169ab5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reviewed native scanner correction with exact source intake evidence"
+}
