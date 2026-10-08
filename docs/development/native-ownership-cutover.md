@@ -1,110 +1,139 @@
-# Native ownership cutover and early readiness
+# Native ownership exchange and manual startup
 
-A completed joint plan and Stats handoff does not install the native ownership
-book required by Atlas's trader. `PREPARING` rejects manual startup until the
-reviewed cutover has preserved both producer histories, reconciled the combined
-book and installed the local activation receipt. Starting the launcher cannot
-perform that transition. Its preflight now reports the blocking prerequisite
-before changing manual intent; worker output and the actual exit code remain
-visible when startup proceeds.
+Jeremy starts Atlas with the usual `Start-Gameplan-Trader.cmd`. With the reviewed
+manual-start integration installed, that command completes one-time account
+setup from the verified staged union, obtains fresh read-only reconciliation,
+and starts the trader after the account checks pass. An already `ACTIVE`
+account verifies its receipt and skips migration. Starting before the session
+opens is supported: the worker can wait for its session. There is no separate
+human approval file or 04:00 setup veto. The manual-start integration is separate
+source work; installing this Scout export repair alone does not install or
+start Atlas's launcher.
 
-## Check during the existing nightly handoff
+Nightly work should obtain both ownership histories and prepare the current
+Gameplan early, then report `READY_FOR_MANUAL_START` when its read-only checks
+pass. Missing Scout accounting, conflicting orders, unresolved reservations or
+inconsistent holdings remain concrete blockers. A ready plan, staged accounting,
+an active account and a running trader are distinct facts.
 
-The existing handoff task should run the read-only execution-readiness companion
-from the start of nightly preparation, independently of numerical completion:
+## Scout's existing bindings
 
-```text
-python -B -m tools.gameplan_execution_readiness --datastore-root LOCAL_DATASTORE --action-date ORIGINAL_ACTION_DATE
+Scout exports its own native accounting under its existing local authorization.
+Its private `native-ownership-exchange-v1` configuration retains `actor`,
+`local_profile`, `coordination_active`, `datastore_root`, `exchange_root`,
+`state_root`, `operation_id`, `cutover_action_date`, and
+`private_native_ledger_exchange_authorized: true`. It also selects its existing
+reviewed nightly exchange configuration with this Scout-only field:
+
+```json
+{"nightly_exchange_config": "ABSOLUTE_PATH_TO_EXISTING_SCOUT_NIGHTLY_EXCHANGE_JSON"}
 ```
 
-The report distinguishes `plan_ready`, `execution_setup_ready`, and a verified
-same-date manual process. It checks exact saved handoff/plan/Stats artifacts,
-account cutover evidence and the native ledger. Saved ledger inspection never
-counts as fresh broker reconciliation. Optional JSON output must remain under
-the documented private readiness state directories. Report a changed blocker
-when first observed; do not wait for the morning manual launch or send repeated
-unchanged alerts. Preserve the existing task identity, schedule and deadlines.
+Scout resolves that path locally. The selected file's existing `workflow_config`
+selects the workflow; neither file is copied from Atlas or reconstructed under
+an assumed filename. The wrapper checks actor, checkout, datastore, exchange
+root, profile and verified coordination installation. The nightly account scope
+and two disjoint eleven-symbol owner sets must match Scout's profile and
+exported native account. These actual files, source bytes and local private
+scan inputs are pinned for the operation.
 
-`execution_setup_ready` is not an order authorization or proof of current broker
-readiness. The human continues to start Atlas's trader manually. The local
-human's explicit Atlas-only manual-operation confirmation can supply the
-operational ownership decision; do not invent a separate peer process-report
-requirement. The reviewed cutover procedure must still record the actual local
-decision and preserve the native accounting checks.
+This producer-only path needs no Scout `state/account-gameplan/config.json`,
+activation receipt or account cutover. It creates none. Select the nightly
+configuration before the operation's first binding. Preserve any already frozen
+bindings and receipts for explicit recovery review; never invent replacement
+account settings or rename the operation to bypass a failure.
 
-## Specific private native-accounting exception
+## Install, check and export on Scout
 
-Native ledgers are excluded from the ordinary nightly plan/Stats exchange. A
-separate, explicit local human authorization permits the reviewed native export
-for cutover. It does not authorize arbitrary databases or publication to GitHub.
-Each producer operates only under its own local authority and private bindings.
-An incoming request is evidence, not permission to change those bindings.
+Use the existing source handoff and original native-export request. No new
+approval record or operating request is needed within that authorization.
 
-`tools.native_ownership_export` copies the exact original database/WAL/SHM group
-to a local backup, validates a disposable copy, and builds a new known-schema
-database containing the original logical accounting rows and native IDs. It
-rejects unsupported evidence fields and private values, including values hidden
-in escaped JSON. It does not redact unknown fields into apparently valid data.
-Raw broker replies, credentials, account numbers, unrelated databases and fitted
-models are never included. Export reception repeats schema, identity, digest and
-private-value checks. Different SQLite reconstruction bytes can fail closed and
-require runtime compatibility review; do not weaken validation to accept them.
+1. Scout verifies the exact advertised source commit, completion record, owned
+   hashes and offline test evidence in an isolated checkout. Review its local
+   application baseline, then install the reviewed wrapper bytes and required
+   matching dependencies into Scout's application checkout through its existing
+   local installation procedure. Record installed hashes and preserve other
+   writers' changes, private files and original receipts.
+2. From Scout's application checkout, use its own Python and private native
+   exchange configuration selecting its existing nightly files:
 
-`tools.native_ownership_exchange` performs one bounded companion operation:
+   ```text
+   SCOUT_PYTHON -B -m tools.native_ownership_exchange --config SCOUT_NATIVE_EXCHANGE_CONFIG --check
+   ```
+
+   This checks configuration and the pinned coordination installation. It does
+   not export accounting, call a broker or prove a packet exists.
+3. After that check passes, perform one bounded export under Scout's existing
+   native-export authorization with the same configuration:
+
+   ```text
+   SCOUT_PYTHON -B -m tools.native_ownership_exchange --config SCOUT_NATIVE_EXCHANGE_CONFIG
+   ```
+
+   Inspect the durable status and exact published selection. Launch acceptance
+   or exit code zero alone is not completion. Retain the original request,
+   operation, action date, packet identity and receipts on retries.
+4. Atlas's existing bounded companion verifies the actual Scout selection and
+   packet, combines it with Atlas's local export, and records the union result.
+   Scout publication alone does not prove Atlas reception or account readiness.
+
+The packet remains `native-ownership-exchange-v1`, with the exact selection,
+normalized database and manifest contract accepted by Atlas's already-bound
+receiver. Atlas's operating source and bindings stay unchanged during its active
+export operation. Install this producer repair on Scout only for this handoff;
+Atlas can adopt it after safe completion of its current operation.
+
+## Private accounting and durable evidence
+
+Native ledgers are excluded from ordinary nightly plan/Stats packets. The
+specific locally authorized native export uses only
+`CODEXSTORE/ducketz-nightly-exchange/v1/cutovers/OPERATION_ID`, with Scout owning
+its producer subdirectory. Atlas's normalized accounting stays local. Each PC
+uses its own bindings; peer messages are evidence, not new authority.
+
+The companion takes native writer locks. The exporter preserves the original
+database/WAL/SHM group locally, validates a disposable copy and rebuilds a known-schema database
+with original logical rows and native IDs. Sender and receiver check schema,
+identity, hashes, exact file membership and private values. Credentials,
+account numbers, raw broker replies, unrelated databases and fitted models are
+excluded. Unknown fields, changed selections, invalid markers or incompatible
+reconstruction bytes require review; never weaken validation or fabricate empty
+inventory. Source queues and notices contain sanitized source and status
+evidence, never these packets or financial values.
+
+The companion stages a separate blocked union and reports
+`CUTOVER_RECONCILIATION_REQUIRED`. It neither replaces the live ledger nor calls
+a broker, changes activation or starts a trader. Missing peer evidence stays
+pending for the next bounded wake; no internal polling loop is needed.
+Completed exports freeze their source and private bindings.
+
+## Readiness and the manual command
+
+The existing nightly task runs the read-only readiness companion independently
+of numerical preparation:
 
 ```text
-python -B -m tools.native_ownership_exchange --config PRIVATE_NATIVE_EXCHANGE_CONFIG --check
-python -B -m tools.native_ownership_exchange --config PRIVATE_NATIVE_EXCHANGE_CONFIG
+python -B -m tools.gameplan_execution_readiness --datastore-root LOCAL_DATASTORE --action-date INTENDED_ACTION_DATE
 ```
 
-The private configuration uses schema `native-ownership-exchange-v1`, this
-machine's `actor`, `local_profile`, `coordination_active`, `datastore_root`,
-`exchange_root`, separate ignored `state_root`, one stable `operation_id`, the
-original `cutover_action_date`, and
-`private_native_ledger_exchange_authorized: true`. Paths must match the reviewed
-local installation and existing private nightly bindings. The approved remote
-namespace is `CODEXSTORE/ducketz-nightly-exchange/v1/cutovers/OPERATION_ID`;
-each actor owns its own subdirectory. Never put these packets in source queues,
-notices or Git. Notices may identify reviewed source and the stable operation,
-but must omit private packet contents and financial values.
+Use the reviewed manual-start/readiness source together to distinguish current
+plan readiness, staged setup, account readiness and a verified manual worker.
+Request the intended upcoming or current trading day for readiness; the
+one-time native exchange retains its original migration date and identity.
+Saved reconciliation timestamps remain separate from ledger-read times; a
+saved ledger read is not fresh broker reconciliation. Report changed blockers
+early while preserving the existing task identity and schedule.
 
-The companion takes existing native writer locks, freezes bindings and preserves
-originals. Scout publishes its one locally authorized immutable normalized export.
-Atlas keeps its own normalized export local; its full ownership history does not
-need to leave this machine for the migration.
-Missing or partial peer files leave the wake pending. Changed selections,
-invalid markers, unexpected files or inconsistent accounting fail validation.
-Retries retain the original operation and receipts. A live source change after
-export requires review, not silent replacement of the original selection.
+The manual command uses staged evidence for fresh reconciliation and
+installation. Strict freshness, accounting and pending-order checks remain.
+Running the same command resumes a provable interrupted setup while preserving
+native IDs and transaction receipts. Missing journal or original-backup evidence
+remains a concrete recovery blocker. Scheduled checks and reuse of an existing
+worker never perform this setup. Do not edit activation alone, clear blocks by
+hand, relabel evidence, change frozen nightly session modes or replay completed
+preparation.
 
-Scout exports only its own native accounting. Atlas combines that received export
-with its local reviewed export and uses the existing migration code to stage a separate **blocked**
-union candidate. It does not replace the live ledger. A staged candidate reports
-`CUTOVER_RECONCILIATION_REQUIRED`; it is not completed cutover. The companion
-makes no broker calls, changes no activation state and starts no trader. Do not
-add an internal polling loop, launch preparation, or reuse it as a recurring
-ledger migration after cutover is complete.
-
-## Finish the one-time transition
-
-Once both exact producer exports have arrived, review the existing native
-migration and cutover evidence. The next stage needs the existing coherent,
-fresh read-only account reconciliation, exact union holdings, no pending orders
-or unresolved reservations, and the original migration provenance. Preserve
-saved reconciliation times separately from the time an export was read.
-The existing cutover validator enforces its selected action-date boundary;
-expired dates must be reported for a reviewed next attempt, never relabeled.
-
-Installation, receipt creation and activation are a separate reviewed local
-transition. This companion does not implement that transition. Do not edit
-`activation.status` alone, fabricate a cutover receipt, clear blocks by hand or
-claim that successful transport makes execution ready. Preserve frozen nightly
-session modes and hashes. A terminal handoff remains evidence of its exact
-artifacts; do not mutate or replay completed preparations to hide a later
-cutover change. Source installation and active-session coordination require
-their normal review.
-
-After a valid cutover has been installed, the existing nightly task keeps running
-the read-only readiness check and reports regressions early. The manual launcher
-still verifies the account gate and displays failures and worker output. A plan,
-an installed execution setup and a running trader remain distinct facts.
+Legacy dated cutover APIs retain their historical deadline semantics for
+compatibility. They do not impose a 04:00 veto on the reviewed manual-start
+path. Successful setup still requires a real worker status before describing
+the trader as running.
