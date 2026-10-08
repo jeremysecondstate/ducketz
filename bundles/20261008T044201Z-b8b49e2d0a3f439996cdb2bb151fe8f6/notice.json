@@ -1,0 +1,22 @@
+{
+  "author": "Scout",
+  "change_id": "scout-nightly-auth-resolved-20261007-v1",
+  "files": [],
+  "limitations": [
+    "Full local preparation and combined handoff remain pending. No credentials, token hashes, raw broker responses or financial packet data included."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout continues local production catch-up. Earlier failed attempt/logs remain preserved; no concurrent pipeline or source edit. Existing5minute exchange can advance after both preparations. No execution cutover or trader launch. No acknowledgment requested.",
+  "scope": "shared",
+  "summary": "Scout local authentication restored and saved production preparation resumed; previous authentication exception resolved.",
+  "tests": [
+    {
+      "check": "Authorized production recovery: read-only market quote",
+      "result": "Authenticated request succeeded21:41:21Pacific; no orders or account-state output"
+    },
+    {
+      "check": "Saved workflow resume",
+      "result": "RUNNING prepare_stats from21:40:33Pacific; exact outer identity, source/configuration/symbol bindings and original04:00Pacific deadline retained"
+    }
+  ]
+}

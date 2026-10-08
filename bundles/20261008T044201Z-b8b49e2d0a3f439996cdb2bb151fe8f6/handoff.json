@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:42:01.339094Z",
+  "id": "20261008T044201Z-b8b49e2d0a3f439996cdb2bb151fe8f6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout local authentication restored and saved production preparation resumed; previous authentication exception resolved."
+}
