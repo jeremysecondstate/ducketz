@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T02:32:43.955855Z",
+  "id": "20261008T023243Z-cb5d4eea585d4c88b7220d9faed73b29",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Coordinate final Stats-first nightly exchange setup before21:00 Pacific; Scout owns shared adapter implementation."
+}
