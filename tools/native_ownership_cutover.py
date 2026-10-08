@@ -968,6 +968,8 @@ def _pending_continuation(spec, native, root):
 
 def _startup_reason(error):
     message = str(error)
+    if message.startswith("ATLAS_SOLE_EXECUTOR_"):
+        return message
     direct = {"SCOUT_OWNERSHIP_HISTORY_PENDING", "NATIVE_UNION_ASSEMBLY_PENDING", "NATIVE_INVENTORY_CONFIGURATION_MISSING",
               "NATIVE_INVENTORY_DATASTORE_MISMATCH", "GAMEPLAN_HANDOFF_NOT_READY", "MANUAL_START_REQUIRES_ATLAS",
               "MANUAL_START_REQUIRES_GAMEPLAN_POLICY", "MANUAL_START_FROZEN_INPUTS_CHANGED"}
@@ -993,6 +995,10 @@ def _startup_reason(error):
 def inspect_staged_startup(root, *, action_date, now=None):
     """Read-only overnight inventory readiness, with no invocation or broker."""
     root = _path(root)
+    from tools.gameplan_first_use import inspect_first_use
+    first_use = inspect_first_use(root)
+    if first_use is not None:
+        return first_use
     clock = (lambda: now) if now is not None else (lambda: datetime.now(timezone.utc))
     try:
         spec, native = _manual_spec(root, clock=clock, invoke=False)
@@ -1030,6 +1036,9 @@ def ensure_gameplan_account_ready(root, *, sizing_policy, clock=None, capture=No
         if account.activation["status"] == "ACTIVE":
             verify_cutover(root, account)
             return {"status": "ACCOUNT_READY", "ready": True, "activation_changed": False, "broker_read_performed": False}
+        from tools.gameplan_first_use import inspect_first_use, initialize_first_use
+        if inspect_first_use(root) is not None:
+            return initialize_first_use(root)
         spec, _ = _manual_spec(root, clock=clock, invoke=True)
         result = apply(spec, clock=clock, capture=capture)
         if result["status"] != "ACTIVE_CUTOVER_VERIFIED":

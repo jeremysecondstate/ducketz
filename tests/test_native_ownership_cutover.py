@@ -635,7 +635,7 @@ def test_manual_start_automatically_installs_after_open_or_later_day_without_app
     assert again == {"status": "ACCOUNT_READY", "ready": True, "activation_changed": False, "broker_read_performed": False}
 
 
-def test_manual_command_missing_scout_history_is_specific_and_never_captures(fixture, monkeypatch):
+def test_manual_command_without_first_use_direction_keeps_required_history_gate(fixture, monkeypatch):
     manual_inputs(fixture, monkeypatch)
     (fixture["candidate"] / "manifest.json").unlink()
     from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
@@ -645,6 +645,40 @@ def test_manual_command_missing_scout_history_is_specific_and_never_captures(fix
     assert result["reason"] == "SCOUT_OWNERSHIP_HISTORY_PENDING"
     assert "capture" not in fixture["calls"]
     assert_preparing(fixture)
+
+
+def test_manual_first_use_needs_no_scout_packet_union_or_prelaunch_capture(fixture, monkeypatch, tmp_path):
+    manual_inputs(fixture, monkeypatch)
+    candidate = fixture["candidate"].resolve()
+    assert candidate.is_relative_to(tmp_path.resolve())
+    shutil.rmtree(candidate)
+    (fixture["local"] / "migration-review.json").unlink()
+    assert not (fixture["local"] / "scout-selection.json").exists()
+    from tools import gameplan_first_use
+    from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
+    monkeypatch.setattr(gameplan_first_use, "_repository", adapter._repository)
+    account = load_account_config(fixture["root"])
+    write(adapter._repository() / "scratch/nightly-workflow/first-use.json", {
+        "schema_version": "gameplan-first-use-declaration-v1", "operation_id": fixture["native"]["operation_id"],
+        "account_binding_sha256": account.fingerprint, "account_fingerprint": account.account_fingerprint,
+        "executor": "Atlas", "basis": "LOCAL_HUMAN_ATLAS_SOLE_EXECUTOR", "peer_history_expected": False,
+        "manual_start_only": True})
+    before = adapter._group(fixture["ledger"])
+    plan = fixture["plan"].read_bytes()
+    monkeypatch.setattr(adapter, "apply", lambda *a, **k: pytest.fail("First use must not install a union"))
+    checked = adapter.inspect_staged_startup(fixture["root"], action_date="2026-10-05", now=fixture["clock"]())
+    assert checked["ready"] and checked["status"] == "READY_FOR_MANUAL_START"
+    assert checked["startup_mode"] == "ATLAS_SOLE_EXECUTOR"
+    assert checked["broker_reconciliation_pending"] and not checked["activation_changed"]
+    assert_preparing(fixture)
+    result = adapter.ensure_gameplan_account_ready(fixture["root"], sizing_policy=GAMEPLAN_SIZING_POLICY,
+        clock=fixture["clock"], capture=lambda *a: pytest.fail("Normal worker owns account capture"))
+    assert result["ready"] and result["status"] == "ACCOUNT_READY" and result["activation_changed"]
+    assert result["broker_read_performed"] is False
+    assert adapter._group(fixture["ledger"]) == before and fixture["plan"].read_bytes() == plan
+    assert "capture" not in fixture["calls"] and not candidate.exists()
+    assert not (fixture["local"] / "activation").exists()
+    assert verify_cutover(fixture["root"], load_account_config(fixture["root"]))["schema_version"] == "account-gameplan-first-use-v1"
 
 
 def test_readonly_staged_inspection_is_ready_and_cannot_apply_or_capture(fixture, monkeypatch):

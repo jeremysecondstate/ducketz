@@ -6,8 +6,16 @@ Use the normal command on Atlas:
 & "C:\dev\ducketz\Start-Gameplan-Trader.cmd"
 ```
 
-For a PREPARING combined account, this manual command verifies the staged native
-ownership histories, checks the current account through one read-only broker
+When Atlas is the sole executor and Scout has no trading history, the existing
+local direction selects first-use account setup. The manual command records it without
+importing nonexistent Scout history, changing the native ledger, or adding a
+prelaunch broker check. The worker then performs its ordinary fresh account
+reconciliation and applies its existing ownership and order safeguards. First-use
+setup does not claim that holdings are zero or that broker reconciliation passed.
+Atlas's existing account-wide ownership history remains authoritative.
+
+When existing producer histories need preservation, this manual command verifies
+the staged native ownership histories, checks the current account through one read-only broker
 snapshot, installs the coherent native union, records local account readiness,
 and then starts the worker. The launcher performs this setup before changing
 manual intent or starting a process. No separate approval document, hand-written
@@ -15,8 +23,9 @@ JSON specification, or hash-copying step is required. The local human's existing
 Atlas-only manual operating instruction is sufficient; no Scout process proof
 is required.
 
-The overnight handoff's existing bounded companion receives the authorized
-native histories and prepares their union early. Readiness should be established
+The overnight handoff prepares the plan and checks either the authorized
+first-use configuration or the required staged histories early. Readiness should
+be established
 by 04:00 Pacific; that is a preparation target, not a deadline that prevents a
 later manual Start. The worker's existing market-session and trade-entry rules
 still apply. This document describes implemented behavior, not evidence that a
@@ -28,12 +37,14 @@ The read-only execution-readiness report distinguishes the following states:
 
 | State | Meaning |
 | --- | --- |
-| `READY_FOR_MANUAL_START` | The requested day's completed plan and staged native union verify. The account can remain PREPARING. Manual Start will perform the fresh account reconciliation. |
+| `READY_FOR_MANUAL_START` | The requested day's completed plan and authorized first-use configuration or staged native union verify. The account can remain PREPARING. The worker still performs its normal reconciliation. |
 | `EXECUTION_SETUP_READY` | The ACTIVE account's local setup and saved plan evidence verify. This does not establish a running worker or current broker readiness. |
 | `EXECUTION_SETUP_BLOCKED` | A concrete prerequisite is missing or inconsistent; the report identifies it. |
 
-`SCOUT_OWNERSHIP_HISTORY_PENDING` means the exact native Scout history has not
-arrived. A completed financial planning packet does not contain the native IDs
+`SCOUT_OWNERSHIP_HISTORY_PENDING` applies when actual Scout history must be
+preserved and has not arrived. It is not a requirement to manufacture history
+for an authorized first-use setup. A completed financial planning packet does
+not contain the native IDs
 needed to reconstruct ownership. The readiness check does not call a broker to
 fill that gap. Other real blockers include changed native history, unresolved
 reservations, pending orders, damaged evidence, and ownership that disagrees with
@@ -51,13 +62,16 @@ broker capture. Starting early to wait for a future session remains supported.
 ## Retry with the same command
 
 If setup is interrupted, run `Start-Gameplan-Trader.cmd` again. A known incomplete
-attempt resumes automatically: it either retries the original verified candidate
+first-use configuration write resumes from its exact retained receipt without
+touching accounting. A known incomplete history-installation attempt resumes
+automatically: it either retries the original verified candidate
 or continues from the exact union already installed. It preserves committed
 native IDs and snapshot history and obtains a new fresh account observation
 when needed. An already ACTIVE account skips migration. Unknown ledger changes,
 conflicting locks, or inconsistent receipts remain a concrete blocker.
 
-Setup retains the original native files and transaction receipts. It checks the
+History installation retains the original native files and transaction receipts.
+It checks the
 live database before and after installation and only marks the account ACTIVE
 after reconciliation succeeds. The read-only account observation must remain
 within 60 seconds through final activation checks. Existing controls are enabled
