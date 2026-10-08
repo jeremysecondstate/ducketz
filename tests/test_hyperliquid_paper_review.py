@@ -75,6 +75,65 @@ def test_begin_retains_prechange_evidence_and_preserves_incumbent(cycle):
         cycle.begin()
 
 
+def fresh_cycle(tmp_path, monkeypatch):
+    root, project = tmp_path / "data", tmp_path / "project"
+    root.mkdir()
+    (project / "configs").mkdir(parents=True)
+    publish(project / "configs/hyperliquid-paper.json", {"mode": "paper"})
+    monkeypatch.setattr(review, "runtime_processes", lambda: [])
+    return review.ReviewCycle(root, project, "first-session")
+
+
+def test_bootstrap_preserves_data_and_claims_verified_opening_path(tmp_path, monkeypatch):
+    first = fresh_cycle(tmp_path, monkeypatch)
+    publish(first.root / "BTC/5m/latest.json", {"run_id": "retained"})
+    operation = first.bootstrap()
+    assert operation["first_session"] is True
+    assert operation["previous_experiment"] == {}
+    assert operation["archive_directory"] is None
+    assert first.operation("archived") == operation
+    assert not first.archive_path.exists()
+    assert review.read_json(first.root / "BTC/5m/latest.json") == {"run_id": "retained"}
+    assert not (first.root / "_paper").exists()
+    # The ordinary independent opening verification and acceptance still apply.
+    records = make_paper(first.root, stamp="2026-10-08T18:00:00+00:00", mirror=True)
+    opening = review.verify_opening(first.root / "_paper", records)
+    publish(first.directory / "opening-verification.json", opening)
+    first.phase(operation, "prepared")
+    accepted = first.accept()
+    assert accepted["superseded_experiment_id"] is None
+    assert accepted["preserved_previous_archive"] is None
+    assert accepted["immutable_opening_hashes"] == opening["immutable_opening_hashes"]
+    with pytest.raises(ValueError, match="Existing lifecycle"):
+        first.bootstrap()
+
+
+@pytest.mark.parametrize("existing", ["_paper", "_models", "_operations/paper-current-accepted.json",
+                                      "_operations/paper-maintenance.json",
+                                      "_operations/paper-improvement-cadence.json",
+                                      "_operations/paper-improvement/prior/operation.json",
+                                      "_paper_archives/prior/manifest.json"])
+def test_bootstrap_rejects_existing_or_incomplete_history(tmp_path, monkeypatch, existing):
+    first = fresh_cycle(tmp_path, monkeypatch)
+    path = first.root / existing
+    if existing in review.NAMESPACES:
+        path.mkdir()
+    else:
+        publish(path, {"preserve": True})
+    with pytest.raises(ValueError, match="forbids first-session"):
+        first.bootstrap()
+    assert path.exists()
+    assert not first.operation_path.exists()
+
+
+def test_bootstrap_rejects_live_runtime(tmp_path, monkeypatch):
+    first = fresh_cycle(tmp_path, monkeypatch)
+    monkeypatch.setattr(review, "runtime_processes", lambda: [{"pid": 42}])
+    with pytest.raises(ValueError, match="runtime exists"):
+        first.bootstrap()
+    assert not first.guard.exists()
+
+
 def test_other_owner_and_concurrent_stage_block(cycle):
     with FileLock(str(cycle.operations / ".paper-review.lock"), timeout=0):
         with pytest.raises(Timeout):
