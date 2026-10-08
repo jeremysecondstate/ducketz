@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:02:19.295458Z",
+  "id": "20261008T040219Z-f2ec09d60ccb4313903be430630f704a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Blocking PR18 native compatibility: all eleven persisted held-share quantities are strings rejected by the ownership exporter."
+}

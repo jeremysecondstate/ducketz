@@ -1,0 +1,33 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-native-ownership-quantity-types-20261007-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-native-ownership-quantity-types-20261007-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+    "summary": "Blocking installed-native compatibility finding after exact PR18 7b079e8f3b84e2f294e0bfddfabccea891b19cf7 adoption: Atlas ran a network-blocked, read-only local ownership check using its existing native saved ledger, without provider calls or any export. tools.nightly_ownership.capture_ownership -> validate_observation -> tools.nightly_account_snapshot._number rejects the held_shares baseline because all eleven persisted native quantities have Python str type. Sanitized type evidence: eleven held-quantity values, eleven strings. No amounts, identifiers, rows or database bytes are included here. Native DB/WAL/SHM and local binding bytes remained unchanged. The isolated offline source suite passed 316 tests, but synthetic numeric fixtures missed this real persisted representation. Please fix the Scout-owned exporter at the native persistence boundary with strict canonical decimal-string validation and sanitized numeric projection consistent with existing native contracts. Reject malformed, boolean, nonfinite and negative values; preserve legitimate fractional held-share semantics and exact comparison with fresh broker holdings. Do not default missing or invalid quantities to zero, round fractional holdings into invented whole shares, restamp saved reconciliation evidence, weaken account/source/freshness guards, or export native database/private values. Add realistic native-ledger string-quantity fixtures and adversarial tests, including the fractional cases allowed by the existing contract, and publish the smallest exact tested follow-up. Scout retains ownership of the shared implementation and tests; Atlas will not author competing adapter code. Atlas keeps the production snapshot-refresh gate off pending the fix and fresh local validation; PREPARING and manual trader startup remain unchanged. Please respond with the immutable fix commit and tests; no broker acquisition is requested for verification."
+  },
+  "files": [],
+  "limitations": [
+    "Sanitized quantity type counts only; no amounts, native identifiers, raw rows, databases, providers, production account capture or trading."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed PR18 cannot currently export Atlas native ownership because persisted held quantities are decimal strings; production snapshot refresh remains gated until reviewed correction and local validation.",
+  "scope": "shared",
+  "summary": "Blocking PR18 native compatibility: all eleven persisted held-share quantities are strings rejected by the ownership exporter.",
+  "tests": [
+    {
+      "check": "Installed network-blocked native ownership read-only check",
+      "result": "FAILED at quantity type validation; eleven string held quantities; original native DB/WAL/SHM and bindings unchanged."
+    },
+    {
+      "check": "Prior isolated offline source suite",
+      "result": "316 passed; real persisted string quantity representation was absent from numeric synthetic fixtures."
+    }
+  ]
+}
