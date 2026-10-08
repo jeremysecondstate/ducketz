@@ -10,17 +10,27 @@ fallback, with the ticker also shown as text.
 | Ticker | Runtime file | User-supplied source |
 | --- | --- | --- |
 | AAPL | `aapl.png` | `docs/logos-icons/appl-logo.png` |
+| ABCL | `abcl.png` | `docs/logos-icons/abcl-logo.png` |
 | AMZN | `amzn.png` | `docs/logos-icons/amzn-logo.png` |
 | COST | `cost.png` | `docs/logos-icons/costco-logo.png` |
 | CROX | `crox.png` | `docs/logos-icons/crox-logo.png` |
+| DBX | `dbx.png` | `docs/logos-icons/dbx-logo.png` |
+| DOCU | `docu.png` | `docs/logos-icons/docu-logo.png` |
 | EWY | `ewy.png` | `docs/logos-icons/ewy-logo.png` |
+| GLOB | `glob.png` | `docs/logos-icons/glob-logo.png` |
 | GOOG, GOOGL | `goog.png` | `docs/logos-icons/goog-logo.png` |
 | IONQ | `ionq.png` | `docs/logos-icons/ionq-logo.png` |
 | MRNA | `mrna.png` | `docs/logos-icons/mrna-logo.png` |
 | MU | `mu.png` | `docs/logos-icons/micron-logo.png` |
 | NBIS | `nbis.png` | `docs/logos-icons/nbis-logo.png` |
 | NVDA | `nvda.png` | `docs/logos-icons/nvda-logo.png` |
+| OUST | `oust.png` | `docs/logos-icons/oust-logo.png` |
 | PATH | `path.png` | `docs/logos-icons/path-logo.png` |
+| PDYN | `pdyn.png` | `docs/logos-icons/pdyn-logo.png` |
+| PYPL | `pypl.png` | `docs/logos-icons/pypl-logo.png` |
+| QBTS | `qbts.png` | `docs/logos-icons/qbts-logo.png` |
+| RR | `rr.png` | `docs/logos-icons/rr-logo.png` |
+| SDGR | `sdgr.png` | `docs/logos-icons/sdgr-logo.png` |
 | SLS | `sls.png` | `docs/logos-icons/sls-logo.png` |
 | SNDK | `sndk.png` | `docs/logos-icons/sndk-logo.png` |
 | TENB | `tenb.png` | `docs/logos-icons/tenb-logo.png` |
@@ -29,7 +39,7 @@ fallback, with the ticker also shown as text.
 | ZETA | `zeta.png` | `docs/logos-icons/zeta-logo.png` |
 
 These 512x512 PNGs were supplied by the project owner on
-2026-08-30, 2026-08-31, 2026-09-06, and 2026-09-14 for local display in this project. This provenance
+2026-08-30, 2026-08-31, 2026-09-06, 2026-09-14, and 2026-10-08 for local display in this project. This provenance
 record does not grant or independently verify trademark or redistribution
 rights; confirm those rights before redistributing the image files.
 
