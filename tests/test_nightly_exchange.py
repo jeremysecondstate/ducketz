@@ -15,6 +15,9 @@ from app.ui.gameplan_stats_data import load_gameplan_stats
 from tests.test_nightly_synthesis import specification as source_inputs
 from tests.test_joint_capital_plan import NOW, DAY, SCOPE, snapshot
 
+OWNERSHIP_OBSERVATIONS = module._ownership_observations
+ENSURE_RESPONDER = module._ensure_ownership_responder
+
 
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -27,11 +30,41 @@ def files(root):
 
 
 @pytest.fixture
+def rendezvous(exchange, monkeypatch):
+    from tools import nightly_ownership
+    wake(exchange, "scout")
+    assert wake(exchange, "atlas")["reason"] == "ACCOUNT_SNAPSHOT_REFRESH_REQUIRED"
+    configs, natives, _, captures = exchange
+    preparations = {actor: module._receive(configs["atlas"], DAY, "2026-09-08", actor, "preparation")
+                    for actor in ("atlas", "scout")}
+    inputs = {f"{actor}_preparation": selected["digest"] for actor, selected in preparations.items()}
+    tick, ledger_reads = [0.0], []
+    clock = lambda: pd.Timestamp(NOW) + pd.Timedelta(seconds=tick[0])
+    def capture(config, now=None):
+        ledger_reads.append(config["actor"])
+        return {"actor": config["actor"], "ledger_observed_at": pd.Timestamp(now).isoformat(),
+                "held_basis": "SAVED_READY_RECONCILIATION", "saved_baseline_at": "2026-09-08T12:00:00Z"}
+    def validate(config, values, observed_at):
+        assert [value["actor"] for value in values] == ["Atlas", "Scout"]
+        assert all(0 <= (observed_at - pd.Timestamp(value["ledger_observed_at"])).total_seconds() <= 60 for value in values)
+    monkeypatch.setattr(nightly_ownership, "capture_ownership", capture)
+    monkeypatch.setattr(nightly_ownership, "validate_observations", validate)
+    def sleep(seconds):
+        tick[0] += seconds
+        module._respond_ownership(configs["scout"], natives["scout"], DAY, "2026-09-08", inputs, clock)
+    monkeypatch.setattr(module, "sleep", sleep)
+    monkeypatch.setattr(module, "monotonic", lambda: tick[0])
+    return configs, natives, inputs, tick, clock, ledger_reads
+
+
+@pytest.fixture
 def exchange(source_inputs, tmp_path, monkeypatch):
     configs, states, natives = {}, {}, {}
     # Synthetic wake timestamps are explicit and may repeat. Keep their clock
     # deterministic except tests that deliberately advance capture/read time.
     monkeypatch.setattr(module, "monotonic", lambda: 10)
+    monkeypatch.setattr(module, "_ensure_ownership_responder", lambda *args: None)
+    monkeypatch.setattr(module, "_ownership_observations", lambda *args: [])
     for actor in ("scout", "atlas"):
         checkout = tmp_path / f"{actor}-checkout"
         root = tmp_path / f"{actor}-data"
@@ -67,7 +100,7 @@ def exchange(source_inputs, tmp_path, monkeypatch):
     monkeypatch.setattr(nightly_handoff, "__file__", str(Path(natives["atlas"]["repository"]) / "ml/nightly_handoff.py"))
     from tools import nightly_account_snapshot
     captures = []
-    def capture(config, now=None):
+    def capture(config, now=None, ownership_observations=None):
         assert config["actor"] == "Atlas"
         captures.append(now)
         value = snapshot()
@@ -339,7 +372,7 @@ def test_snapshot_capture_uses_post_capture_clock(exchange, monkeypatch):
     wake(exchange, "scout")
     from tools import nightly_account_snapshot
     ticks = [10]
-    def delayed(config, now=None):
+    def delayed(config, now=None, ownership_observations=None):
         value = snapshot()
         value["observed_at"] = (pd.Timestamp(now) + pd.Timedelta(seconds=1)).isoformat()
         ticks[0] += 2
@@ -416,7 +449,7 @@ def test_joint_arriving_during_capture_preserves_snapshot_selection(exchange, mo
     selected = module._folder(config, DAY, "atlas", "snapshot") / "selection.json"
     before = selected.read_bytes()
     from tools import nightly_account_snapshot
-    def concurrent_joint(config, now=None):
+    def concurrent_joint(config, now=None, ownership_observations=None):
         joint = module._folder(config, DAY, "scout", "joint") / "selection.json"
         write(joint, {"fixture": "sync arrival in progress"})
         value = snapshot()
@@ -488,3 +521,170 @@ def test_actual_local_preparation_reader_accepts_frozen_evidence_after_combined_
     source.write_bytes(source.read_bytes() + b" ")
     with pytest.raises(ValueError, match="output changed"):
         module._local_state({"actor": "Scout"}, native, action, review)
+
+
+def test_fresh_ownership_handshake_precedes_single_account_capture(exchange, rendezvous, monkeypatch):
+    monkeypatch.setattr(module, "_ownership_observations", OWNERSHIP_OBSERVATIONS)
+    assert wake(exchange, "atlas", capture=True)["reason"] == "JOINT_SCOUT"
+    assert rendezvous[5] == ["Scout", "Atlas"] and len(exchange[3]) == 1
+    configs, _, inputs, _, clock, reads = rendezvous
+    original = list(reads)
+    values = OWNERSHIP_OBSERVATIONS(configs["atlas"], DAY, "2026-09-08", inputs, clock)
+    assert reads == original and values[0]["actor"] == "Atlas"
+
+
+def test_ownership_timeout_has_no_ledger_or_account_reads(exchange, rendezvous, monkeypatch):
+    tick = rendezvous[3]
+    monkeypatch.setattr(module, "sleep", lambda seconds: tick.__setitem__(0, tick[0] + seconds))
+    monkeypatch.setattr(module, "_ownership_observations", OWNERSHIP_OBSERVATIONS)
+    result = wake(exchange, "atlas", capture=True)
+    assert result["reason"] == "FRESH_SCOUT_OWNERSHIP_RESPONSE"
+    assert tick[0] == 50 and not rendezvous[5] and not exchange[3]
+    config = exchange[0]["atlas"]
+    original = module._receive(config, DAY, "2026-09-08", "atlas", "ownership_request")["digest"]
+    result = wake(exchange, "atlas", now=pd.Timestamp(NOW) + pd.Timedelta(seconds=60), capture=True)
+    assert result["reason"] == "FRESH_SCOUT_OWNERSHIP_RESPONSE"
+    assert module._receive(config, DAY, "2026-09-08", "atlas", "ownership_request")["digest"] != original
+    assert not exchange[3]
+
+
+def test_slow_response_read_past_deadline_never_captures_atlas(exchange, rendezvous, monkeypatch):
+    original = module._receive
+    def slow(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if args[4] == "ownership":
+            rendezvous[3][0] = 51
+        return result
+    monkeypatch.setattr(module, "_receive", slow)
+    monkeypatch.setattr(module, "_ownership_observations", OWNERSHIP_OBSERVATIONS)
+    assert wake(exchange, "atlas", capture=True)["reason"] == "FRESH_SCOUT_OWNERSHIP_RESPONSE"
+    assert rendezvous[5] == ["Scout"] and not exchange[3]
+
+
+def test_ownership_response_is_not_restamped_for_same_challenge(rendezvous):
+    configs, natives, inputs, tick, clock, reads = rendezvous
+    OWNERSHIP_OBSERVATIONS(configs["atlas"], DAY, "2026-09-08", inputs, clock)
+    before = files(module._folder(configs["scout"], DAY, "scout", "ownership"))
+    tick[0] += 1
+    assert module._respond_ownership(configs["scout"], natives["scout"], DAY, "2026-09-08", inputs, clock)
+    assert reads == ["Scout", "Atlas"]
+    assert files(module._folder(configs["scout"], DAY, "scout", "ownership")) == before
+
+
+def test_unknown_ownership_selector_cannot_be_overwritten(rendezvous):
+    configs, _, inputs, _, clock, _ = rendezvous
+    config = configs["atlas"]
+    write(module._folder(config, DAY, "atlas", "ownership_request") / "selection.json",
+          {"content_sha256": "b" * 64})
+    with pytest.raises(ValueError, match="Unknown ownership publication"):
+        OWNERSHIP_OBSERVATIONS(config, DAY, "2026-09-08", inputs, clock)
+
+
+def test_responder_startup_dedup_restart_keeps_deadline_and_live_lock(rendezvous, monkeypatch):
+    configs, _, inputs, tick, clock, _ = rendezvous
+    config = configs["scout"]
+    launches = []
+    monkeypatch.setattr(module, "_spawn_responder", lambda *args: launches.append(args))
+    ENSURE_RESPONDER(config, DAY, "2026-09-08", inputs, clock())
+    record_path = Path(config["state_root"]) / "sessions" / DAY / "ownership-responder.json"
+    record = json.loads(record_path.read_text())
+    tick[0] = 5
+    ENSURE_RESPONDER(config, DAY, "2026-09-08", inputs, clock())
+    assert len(launches) == 1
+    tick[0] = 15
+    ENSURE_RESPONDER(config, DAY, "2026-09-08", inputs, clock())
+    assert len(launches) == 2
+    assert json.loads(record_path.read_text())["deadline_at"] == record["deadline_at"]
+    with module.FileLock(str(Path(config["state_root"]) / "ownership-responder.lock")):
+        tick[0] = 400
+        ENSURE_RESPONDER(config, DAY, "2026-09-08", inputs, clock())
+    assert len(launches) == 2
+
+
+def test_responder_bounded_loop_expires_without_request(rendezvous, monkeypatch):
+    config = rendezvous[0]["scout"]
+    monkeypatch.setattr(module, "_spawn_responder", lambda *args: 123)
+    ENSURE_RESPONDER(config, DAY, "2026-09-08", rendezvous[2], rendezvous[4]())
+    monkeypatch.setattr(module, "sleep", lambda seconds: rendezvous[3].__setitem__(0, rendezvous[3][0] + 60))
+    result = module.serve_ownership(config, now=NOW)
+    assert result["status"] == "OWNERSHIP_RESPONDER_FINISHED"
+    assert rendezvous[3][0] == 360 and not rendezvous[5]
+
+
+def test_responder_source_change_is_durable_failure_without_export(rendezvous, monkeypatch):
+    config = rendezvous[0]["scout"]
+    monkeypatch.setattr(module, "_spawn_responder", lambda *args: 123)
+    ENSURE_RESPONDER(config, DAY, "2026-09-08", rendezvous[2], rendezvous[4]())
+    original = module._binding
+    monkeypatch.setattr(module, "_binding", lambda value: {**original(value), "fixture_changed": True})
+    with pytest.raises(ValueError, match="source, bindings"):
+        module.serve_ownership(config, now=NOW)
+    result = json.loads((Path(config["state_root"]) / "sessions" / DAY / "ownership-responder-result.json").read_text())
+    assert result["status"] == "FAILED" and not rendezvous[5]
+    assert not module._folder(config, DAY, "scout", "ownership").exists()
+
+
+def test_hidden_responder_launch_has_no_recursive_refresh(monkeypatch, tmp_path):
+    seen = {}
+    def popen(command, **kwargs):
+        seen.update(command=command, kwargs=kwargs)
+        return type("Child", (), {"pid": 123})()
+    monkeypatch.setattr(module.subprocess, "Popen", popen)
+    assert module._spawn_responder(tmp_path / "config.json", tmp_path) == 123
+    assert "--serve-ownership" in seen["command"] and "--allow-snapshot-refresh" not in seen["command"]
+    if module.os.name == "nt":
+        assert seen["kwargs"]["creationflags"] == module.subprocess.CREATE_NO_WINDOW
+    assert seen["kwargs"]["stdin"] == module.subprocess.DEVNULL
+
+
+def test_responder_cli_dispatches_only_child_mode(exchange, monkeypatch, tmp_path):
+    config = exchange[0]["scout"]
+    monkeypatch.setattr(module, "load_config", lambda _: config)
+    monkeypatch.setattr(module, "serve_ownership", lambda _: {"status": "fixture-served"})
+    monkeypatch.setattr(module, "run_once", lambda *a, **kw: pytest.fail("child must not launch an exchange wake"))
+    assert module.main(["--config", str(tmp_path / "config.json"), "--serve-ownership"]) == 0
+    assert module.main(["--config", str(tmp_path / "config.json"), "--serve-ownership", "--check"]) == 1
+
+
+def test_responder_does_not_publish_after_its_own_deadline(rendezvous, monkeypatch):
+    configs, natives, inputs, tick, clock, reads = rendezvous
+    request = {"schema_version": "nightly-ownership-request-v1", "challenge": "a" * 64,
+               "requested_at": clock().isoformat(), "expires_at": (clock() + pd.Timedelta(seconds=50)).isoformat()}
+    module._publish(configs["atlas"], DAY, "2026-09-08", "ownership_request", {"request.json": module._bytes(request)}, inputs)
+    from tools import nightly_ownership
+    original = nightly_ownership.capture_ownership
+    def delayed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        tick[0] += 2
+        return result
+    monkeypatch.setattr(nightly_ownership, "capture_ownership", delayed)
+    assert not module._respond_ownership(configs["scout"], natives["scout"], DAY, "2026-09-08", inputs, clock,
+                                         responder_deadline=clock() + pd.Timedelta(seconds=1))
+    assert reads == ["Scout"]
+    assert not module._folder(configs["scout"], DAY, "scout", "ownership").exists()
+
+
+def test_active_account_retains_native_union_snapshot_without_peer_ledger(exchange, monkeypatch):
+    config = exchange[0]["atlas"]
+    path = Path(config["account_config"])
+    value = json.loads(path.read_text())
+    value["activation"]["status"] = "ACTIVE"
+    write(path, value)
+    monkeypatch.setattr(module, "_ownership_observations", lambda *args: pytest.fail("ACTIVE uses its native union ledger"))
+    wake(exchange, "scout")
+    assert wake(exchange, "atlas", capture=True)["reason"] == "JOINT_SCOUT"
+    assert len(exchange[3]) == 1
+
+
+def test_cutover_during_ownership_wait_is_refused_before_account_capture(exchange, monkeypatch):
+    path = Path(exchange[0]["atlas"]["account_config"])
+    def changed(*args):
+        value = json.loads(path.read_text())
+        value["activation"]["status"] = "ACTIVE"
+        write(path, value)
+        return []
+    monkeypatch.setattr(module, "_ownership_observations", changed)
+    wake(exchange, "scout")
+    with pytest.raises(ValueError, match="operating bindings changed"):
+        wake(exchange, "atlas", capture=True)
+    assert not exchange[3]

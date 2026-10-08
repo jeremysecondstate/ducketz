@@ -87,6 +87,8 @@ digest, so partial arrival cannot become a different accepted generation.
 | Packet kind | Writer | Purpose |
 | --- | --- | --- |
 | `preparation` | Each owner | Its exact completed local Gameplan and Stats exports. |
+| `ownership_request` | Atlas | A fresh challenge bound to both completed preparations. |
+| `ownership` | Scout | A fresh observation of its own saved native ownership ledger, bound to that challenge. |
 | `snapshot` | Atlas | One sanitized account snapshot for Scout's synthesis. |
 | `joint` | Scout | The frozen combined plan and exact synthesis evidence. |
 | `accepted` | Atlas | Evidence that Atlas adopted that same combined result. |
@@ -111,6 +113,45 @@ outside the per-symbol union; unknown reserves or incomplete ownership evidence
 block capture. It exposes only the approved fields, using opaque allocation
 digests instead of native allocation identifiers.
 
+While the account is `PREPARING`, each PC's native ledger may cover only its own
+eleven symbols. The ownership exchange reads those partitions separately and
+validates their combined coverage against Atlas's fresh account snapshot.
+A producer observation labels its
+held quantities as the original saved reconciliation baseline, preserves that
+baseline's timestamp, and separately records when the ledger was read. Reading
+the ledger does not create a fresh broker observation or reconcile its contents.
+Changed, missing, blocked or inconsistent ledger evidence cannot become an empty
+safe inventory.
+Validation uses a temporary local copy of the ledger files, removes it after the
+read, and transfers only the sanitized observation.
+
+After both preparations are verified, Scout may launch one hidden, bounded
+ownership responder under a separate local lock. It reads only its own ledger
+and responds to an exact Atlas challenge; it never calls a broker. Its maximum
+loop lifetime is six minutes, and another wake must not extend a running child's
+deadline or create an indefinite chain of workers. Local state retains its
+lifecycle and failures. An expired or failed responder ends; a later scheduled
+wake may start a new bounded attempt. Configuration checks do not launch it.
+This deadline bounds the loop; it cannot forcibly interrupt a stalled filesystem
+call. The responder must recheck expiry before publishing a response.
+
+For that `PREPARING` route, `--allow-snapshot-refresh` lets Atlas issue a challenge
+and wait at most 50 seconds for the matching fresh Scout observation. Missing or incomplete
+responses leave the wake pending without calling a broker. Once the response is
+verified, Atlas reads its own ownership ledger and captures one fresh account
+snapshot. Both producer observations must remain within the existing 60-second
+freshness limit and match that account's exact current holdings. The account
+snapshot supplies cash and exposure once; producer records supply no cash.
+Pending union orders or unresolved ledger reservations still require native
+reconciliation and block this planning route. Immutable responses are never
+relabelled as observations of a later challenge.
+
+After a separately authorized cutover makes the account `ACTIVE`, Atlas retains
+the existing native snapshot route against its own complete 22-symbol ledger.
+That route keeps its account, ownership and freshness checks and does not require
+the two producer observations. The exchange verifies the frozen account binding;
+it neither changes activation nor switches modes underneath a selected session.
+
 Snapshot freshness is checked against the current time for the first synthesis.
 The composition contract permits at most 900 seconds between the snapshot
 observation and synthesis and rejects future observations. A retry of a completed
@@ -128,7 +169,7 @@ for it during handoff.
 ## Completion, retries and source installation
 
 Local state records selected packet hashes, stable completion identities, exact
-configuration and profile bindings, the installed release and both exchange
+configuration and profile bindings, the installed release and all three exchange
 helper source hashes. Retries retain them across partial publication or adoption.
 A process failure after one UI artifact is adopted is not joint completion:
 resume and verify
@@ -157,3 +198,7 @@ the original preparation deadline and deduplicate unchanged pending findings.
 Infrastructure checks use offline fixtures; they do not train, call providers,
 submit orders or restart applications. Current live execution bindings and
 runtime deployment remain separate from exchange enablement.
+Combining planning evidence does not consolidate the two native ledgers, complete
+account migration or activate cutover. An account in `PREPARING` remains blocked
+for joint execution; its execution prerequisites and manual Atlas trader start
+are separate from successful synthesis and UI adoption.

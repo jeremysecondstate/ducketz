@@ -13,11 +13,13 @@ import json
 import os
 from pathlib import Path
 import re
-from time import monotonic
+import subprocess
+import sys
+from time import monotonic, sleep
 import uuid
 
 import pandas as pd
-from filelock import FileLock
+from filelock import FileLock, Timeout
 
 from ml import nightly_workflow as workflow
 from ml.artifacts import file_checksum, utc_timestamp
@@ -35,8 +37,11 @@ FIELDS = {"schema_version", "actor", "workflow_config", "local_profile", "coordi
           "exchange_root", "state_root", "account_scope_sha256", "owners", "private_exchange_authorized"}
 FILES = {"preparation": {"plan.json", "stats.json"}, "snapshot": {"snapshot.json"},
          "joint": {"joint-plan.json", "scout-receipt.json", "atlas-plan.json", "atlas-stats.json",
-                   "scout-plan.json", "scout-stats.json"}, "accepted": {"atlas-receipt.json"}}
-SENDERS = {"preparation": {"atlas", "scout"}, "snapshot": {"atlas"}, "joint": {"scout"}, "accepted": {"atlas"}}
+                   "scout-plan.json", "scout-stats.json"}, "accepted": {"atlas-receipt.json"},
+         "ownership_request": {"request.json"}, "ownership": {"ownership.json"}}
+SENDERS = {"preparation": {"atlas", "scout"}, "snapshot": {"atlas"}, "joint": {"scout"}, "accepted": {"atlas"},
+           "ownership_request": {"atlas"}, "ownership": {"scout"}}
+OWNERSHIP_KINDS = {"ownership_request", "ownership"}
 
 
 class Pending(Exception):
@@ -220,11 +225,21 @@ def _publish(config, action, review, kind, files, inputs=None, *, refresh=False)
     if len(data) > MAX_PACKET_BYTES:
         raise ValueError("Private packet exceeds its byte limit")
     folder = _folder(config, action, actor, kind)
-    if refresh and (kind != "snapshot" or _folder(config, action, "scout", "joint").joinpath("selection.json").exists()):
+    if refresh and (kind not in {"snapshot", *OWNERSHIP_KINDS} or _folder(config, action, "scout", "joint").joinpath("selection.json").exists()):
         raise ValueError("A selected joint plan freezes its account snapshot")
     selector = {"schema_version": SELECTION, "content_sha256": digest, "file_sha256": _sha(data), "bytes": len(data)}
     if not refresh and (folder / "selection.json").exists() and _read(folder / "selection.json", 2048) != _bytes(selector):
         raise ValueError("An immutable exchange selection changed")
+    if kind in OWNERSHIP_KINDS:
+        own = Path(config["state_root"]) / "sessions" / action / "own-ownership" / kind
+        if (folder / "selection.json").exists():
+            previous_bytes = _read(folder / "selection.json", 2048)
+            previous = _object(previous_bytes)
+            known = own / (_digest(previous.get("content_sha256")) + ".selection.json")
+            if not known.is_file() or _read(known, 2048) != previous_bytes:
+                raise ValueError("Unknown ownership publication cannot be overwritten")
+        _write(own / (digest + ".packet.json"), data)
+        _write(own / (digest + ".selection.json"), _bytes(selector))
     if kind == "snapshot":
         # This is origin evidence, distinct from receive caches/history. Only
         # Atlas's explicitly requested capture reaches this publication path.
@@ -297,7 +312,7 @@ def _receive(config, action, review, actor, kind):
         raise Pending("SELECTION_SYNC")
     session = Path(config["state_root"]) / "sessions" / action
     _write(session / "selection-history" / f"{actor}-{kind}-{digest}.json", selector_bytes)
-    if kind != "snapshot":
+    if kind not in {"snapshot", *OWNERSHIP_KINDS}:
         _write(session / "selections" / f"{actor}-{kind}.json", selector_bytes)
     cache = session / "cache" / actor / kind / digest
     _write(cache / "packet.json", data)
@@ -368,10 +383,201 @@ def _binding(config):
               "profile_sha256": file_checksum(Path(config["local_profile"])),
               "coordination_active_sha256": file_checksum(Path(config["coordination_active"])),
               "adapter_sources": {name: file_checksum(Path(__file__).resolve().with_name(name))
-                                  for name in ("nightly_exchange.py", "nightly_account_snapshot.py")}}
+                                  for name in ("nightly_exchange.py", "nightly_account_snapshot.py", "nightly_ownership.py")}}
     if config["actor"] == "Atlas":
         result["account_config_sha256"] = file_checksum(Path(config["account_config"]))
     return result
+
+
+def _request_document(selected, inputs, now):
+    value = _object(_read(selected["files"]["request.json"]))
+    if (selected["inputs"] != inputs or set(value) != {"schema_version", "challenge", "requested_at", "expires_at"}
+            or value["schema_version"] != "nightly-ownership-request-v1"):
+        raise ValueError("Ownership request identity or preparation bindings differ")
+    _digest(value["challenge"])
+    start, end = pd.Timestamp(value["requested_at"]), pd.Timestamp(value["expires_at"])
+    if start.tzinfo is None or end.tzinfo is None or not 0 < (end - start).total_seconds() <= 50 or start > now:
+        raise ValueError("Invalid ownership request time window")
+    return value, end
+
+
+def _ownership_observations(config, action, review, inputs, clock):
+    from tools.nightly_ownership import capture_ownership, validate_observations
+    session = Path(config["state_root"]) / "sessions" / action
+    request_path = session / "ownership-request.json"
+    request = _object(_read(request_path)) if request_path.exists() else None
+    now = clock()
+    if request is None or pd.Timestamp(request["expires_at"]) <= now:
+        request = {"schema_version": "nightly-ownership-request-v1", "challenge": uuid.uuid4().hex + uuid.uuid4().hex,
+                   "requested_at": now.isoformat(), "expires_at": (now + pd.Timedelta(seconds=50)).isoformat()}
+        _write(request_path, _bytes(request), replace=True)
+    selected = _publish(config, action, review, "ownership_request", {"request.json": _bytes(request)}, inputs, refresh=True)
+    request, deadline = _request_document(selected, inputs, clock())
+    while clock() < deadline:
+        try:
+            response = _receive(config, action, review, "scout", "ownership")
+            if response["inputs"] == {**inputs, "ownership_request": selected["digest"]}:
+                scout = _object(_read(response["files"]["ownership.json"]))
+                if clock() >= deadline:
+                    break
+                stamp = pd.Timestamp(scout.get("ledger_observed_at"))
+                if stamp.tzinfo is None or not pd.Timestamp(request["requested_at"]) <= stamp <= clock():
+                    raise ValueError("Ownership response predates its challenge or is future-dated")
+                _check_ownership_binding(config, action)
+                capture_path = session / "ownership-captures" / (selected["digest"] + ".json")
+                if capture_path.exists():
+                    saved = _object(_read(capture_path))
+                    if saved["request"] != selected["digest"] or saved["response"] != response["digest"]:
+                        raise ValueError("Ownership response changed for this challenge")
+                    observations = saved["observations"]
+                else:
+                    observations = [capture_ownership(config, now=clock()), scout]
+                if clock() >= deadline:
+                    break
+                _check_ownership_binding(config, action)
+                validate_observations(config, observations, observed_at=clock())
+                _write(capture_path,
+                       _bytes({"request": selected["digest"], "response": response["digest"], "observations": observations}))
+                if clock() >= deadline:
+                    break
+                return observations
+        except Pending:
+            pass
+        sleep(min(.25, max(0, (deadline - clock()).total_seconds())))
+    raise Pending("FRESH_SCOUT_OWNERSHIP_RESPONSE")
+
+
+def _check_ownership_binding(config, action):
+    frozen = Path(config["state_root"]) / "sessions" / action / "binding.json"
+    if _object(_read(frozen)) != _binding(config):
+        raise ValueError("Ownership source or operating bindings changed")
+
+
+def _respond_ownership(config, native, action, review, inputs, clock, *, responder_deadline=None):
+    try:
+        selected = _receive(config, action, review, "atlas", "ownership_request")
+    except Pending:
+        return False
+    request, deadline = _request_document(selected, inputs, clock())
+    if responder_deadline is not None:
+        deadline = min(deadline, responder_deadline)
+    if clock() >= deadline:
+        return False
+    _local_state(config, native, action, review)
+    _check_ownership_binding(config, action)
+    path = Path(config["state_root"]) / "sessions" / action / "ownership-responses" / (selected["digest"] + ".json")
+    if path.exists():
+        value = _object(_read(path))
+    else:
+        from tools.nightly_ownership import capture_ownership
+        value = capture_ownership(config, now=clock())
+        _write(path, _bytes(value))
+    if clock() >= deadline:
+        return False
+    _check_ownership_binding(config, action)
+    if clock() >= deadline:
+        return False
+    _publish(config, action, review, "ownership", {"ownership.json": _bytes(value)},
+             {**inputs, "ownership_request": selected["digest"]}, refresh=True)
+    return True
+
+
+def _spawn_responder(config_path, repository):
+    options = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL,
+               "cwd": str(repository)}
+    if os.name == "nt":
+        options["creationflags"] = subprocess.CREATE_NO_WINDOW
+    else:
+        options["start_new_session"] = True
+    return subprocess.Popen([sys.executable, "-B", "-m", "tools.nightly_exchange", "--config", str(config_path),
+                             "--serve-ownership"], **options).pid
+
+
+def _ensure_ownership_responder(config, action, review, inputs, now):
+    state_root = Path(config["state_root"])
+    with FileLock(str(state_root / "ownership-launch.lock"), timeout=0):
+        try:
+            with FileLock(str(state_root / "ownership-responder.lock"), timeout=0):
+                pass
+        except Timeout:
+            return
+        session = state_root / "sessions" / action
+        path = session / "ownership-responder.json"
+        record = _object(_read(path)) if path.exists() else None
+        binding = _binding(config)
+        if record is not None and record["binding"] != binding:
+            raise ValueError("Ownership responder source or configuration changed")
+        if record is None or pd.Timestamp(record["deadline_at"]) <= now:
+            record = {"action_date": action, "review_session": review, "inputs": inputs, "binding": binding,
+                      "started_at": now.isoformat(), "deadline_at": (now + pd.Timedelta(seconds=360)).isoformat()}
+        elif record.get("last_launch_at") and (now - pd.Timestamp(record["last_launch_at"])).total_seconds() < 10:
+            return
+        if record["inputs"] != inputs:
+            raise ValueError("Ownership responder preparations changed")
+        config_path = session / "ownership-responder-config.json"
+        _write(config_path, _bytes(config))
+        record["last_launch_at"] = now.isoformat()
+        _write(path, _bytes(record), replace=True)
+        try:
+            _spawn_responder(config_path, Path(_object(_read(config["workflow_config"]))["repository"]))
+        except Exception as error:
+            _write(session / "ownership-responder-result.json",
+                   _bytes({"status": "FAILED", "error_type": type(error).__name__, "orders_placed": 0}), replace=True)
+            raise
+
+
+def _serve_ownership(config, *, now=None):
+    if config["actor"] != "Scout" or config.get("private_exchange_authorized") is not True:
+        raise ValueError("Ownership responder is explicitly authorized Scout-only work")
+    initial, timer = utc_timestamp(now), monotonic()
+    clock = lambda: initial + pd.Timedelta(microseconds=int(max(0, monotonic() - timer) * 1_000_000))
+    action, review = _context(initial)
+    state_root = Path(config["state_root"])
+    session = state_root / "sessions" / action
+    record = _object(_read(session / "ownership-responder.json"))
+    deadline = pd.Timestamp(record["deadline_at"])
+    start = pd.Timestamp(record["started_at"])
+    if (record["action_date"] != action or record["review_session"] != review or start.tzinfo is None
+            or deadline.tzinfo is None or not 0 < (deadline - start).total_seconds() <= 360):
+        raise ValueError("Invalid saved ownership responder deadline")
+    try:
+        with FileLock(str(state_root / "ownership-responder.lock"), timeout=0):
+            native = workflow.load_config(Path(config["workflow_config"]))
+            workflow.verify_installation(native)
+            _local_state(config, native, action, review)
+            preparations = {actor: _receive(config, action, review, actor, "preparation") for actor in ("atlas", "scout")}
+            _owners(config, action, review, preparations)
+            inputs = {f"{actor}_preparation": selected["digest"] for actor, selected in preparations.items()}
+            if record["inputs"] != inputs:
+                raise ValueError("Ownership responder preparations changed")
+            while clock() < deadline:
+                if _binding(config) != record["binding"] or _context(clock()) != (action, review):
+                    raise ValueError("Ownership responder source, bindings or session changed")
+                if (_folder(config, action, "scout", "joint") / "selection.json").exists():
+                    break
+                if _respond_ownership(config, native, action, review, inputs, clock, responder_deadline=deadline):
+                    result = {"status": "OWNERSHIP_SERVED", "action_date": action, "orders_placed": 0}
+                    _write(session / "ownership-responder-result.json", _bytes(result), replace=True)
+                    return result
+                sleep(min(.25, max(0, (deadline - clock()).total_seconds())))
+    except Timeout:
+        return {"status": "OWNERSHIP_RESPONDER_ALREADY_RUNNING", "orders_placed": 0}
+    result = {"status": "OWNERSHIP_RESPONDER_FINISHED", "action_date": action, "orders_placed": 0}
+    _write(session / "ownership-responder-result.json", _bytes(result), replace=True)
+    return result
+
+
+def serve_ownership(config, *, now=None):
+    """Run one bounded loop; disk I/O is not an OS-enforced process timeout."""
+    try:
+        return _serve_ownership(config, now=now)
+    except Exception as error:
+        action, _ = _context(utc_timestamp(now))
+        result = {"status": "PENDING" if isinstance(error, Pending) else "FAILED",
+                  "error_type": type(error).__name__, "orders_placed": 0}
+        _write(Path(config["state_root"]) / "sessions" / action / "ownership-responder-result.json",
+               _bytes(result), replace=True)
+        raise
 
 
 def _own_snapshot(config, action, review, digest, inputs):
@@ -461,6 +667,7 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
                 raise ValueError("Frozen synthesis preparations changed")
             inputs = frozen_inputs
         else:
+            _ensure_ownership_responder(config, action, review, inputs, clock())
             snapshot = _receive(config, action, review, "atlas", "snapshot")
             if snapshot["inputs"] != inputs:
                 raise ValueError("Snapshot belongs to different preparation packages")
@@ -504,7 +711,19 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
             if not allow_snapshot_refresh:
                 raise Pending("ACCOUNT_SNAPSHOT_REFRESH_REQUIRED")
             from tools.nightly_account_snapshot import capture_snapshot
-            value = capture_snapshot(config, now=now)
+            from ml.account_gameplan.config import load_account_config
+            _check_ownership_binding(config, action)
+            account = load_account_config(native["datastore"])
+            if account is None:
+                raise ValueError("Atlas account configuration is missing")
+            if account.activation["status"] == "ACTIVE":
+                _check_ownership_binding(config, action)
+                value = capture_snapshot(config, now=clock())
+            else:
+                observations = _ownership_observations(config, action, review, inputs, clock)
+                _check_ownership_binding(config, action)
+                value = capture_snapshot(config, now=clock(), ownership_observations=observations)
+            _check_ownership_binding(config, action)
             capture_completed = clock()
             if (_folder(config, action, "scout", "joint") / "selection.json").exists():
                 raise Pending("JOINT_ARRIVED_DURING_CAPTURE")
@@ -614,16 +833,23 @@ def main(argv=None):
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--allow-snapshot-refresh", action="store_true")
+    parser.add_argument("--serve-ownership", action="store_true")
     args = parser.parse_args(argv)
     try:
         config = load_config(args.config)
+        if args.serve_ownership and (args.check or args.allow_snapshot_refresh):
+            raise ValueError("Ownership responder mode cannot check or capture accounts")
         if args.allow_snapshot_refresh and config["actor"] != "Atlas":
             raise ValueError("Only Atlas may explicitly refresh the account snapshot")
         result = ({"status": "CONFIGURATION_VERIFIED", "actor": config["actor"], "orders_placed": 0}
-                  if args.check else run_once(config, allow_snapshot_refresh=args.allow_snapshot_refresh))
+                  if args.check else serve_ownership(config) if args.serve_ownership
+                  else run_once(config, allow_snapshot_refresh=args.allow_snapshot_refresh))
         print(json.dumps(result, sort_keys=True))
         return 0
     except Exception as error:
+        if args.serve_ownership and args.config.is_absolute() and args.config.name == "ownership-responder-config.json":
+            _write(args.config.parent / "ownership-responder-result.json",
+                   _bytes({"status": "FAILED", "error_type": type(error).__name__, "orders_placed": 0}), replace=True)
         print(json.dumps({"status": "FAILED", "error_type": type(error).__name__, "error": str(error)}))
         return 1
 

@@ -6,6 +6,7 @@ the budget, inventory and horizon ownership used by the joint planner.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from decimal import Decimal
 import json
 import math
@@ -192,17 +193,33 @@ def _project(captured, *, symbols, scope, observed):
     return result
 
 
-def capture_snapshot(config: dict, now=None) -> dict:
+def capture_snapshot(config: dict, now=None, ownership_observations=None) -> dict:
     """Read Atlas's verified union account once; never persist or activate it."""
     root, workflow, account, frozen = _bindings(config)
-    from ml.account_gameplan.preparation import _native_snapshot
     started, timer = utc_timestamp(now), monotonic()
+    observations = deepcopy(ownership_observations)
+    def clock():
+        return started + pd.Timedelta(seconds=max(0, monotonic() - timer))
+    if observations is not None:
+        from tools.nightly_ownership import validate_observations
+        records = validate_observations(config, observations, observed_at=started)
     try:
-        captured = _native_snapshot(root, account, observed_at=started.isoformat())
+        if observations is None:
+            from ml.account_gameplan.preparation import _native_snapshot
+            captured = _native_snapshot(root, account, observed_at=started.isoformat())
+        else:
+            from ml.account_gameplan.snapshot import capture_account_planning_snapshot
+            from ml.gameplan_trade_snapshot import SchwabSession
+            captured = capture_account_planning_snapshot(symbols=account.symbols,
+                expected_account_fingerprint=account.account_fingerprint,
+                expected_sources={record["producer"]: record["source_fingerprint"] for record in records},
+                ownership_evidence=records, session=SchwabSession(), observed_at=started.isoformat(), clock=clock)
     except Exception:
         # Native failures may contain account identifiers or provider messages.
         raise ValueError("Account-wide read-only snapshot capture failed") from None
-    completed = started + pd.Timedelta(seconds=max(0, monotonic() - timer))
+    completed = clock()
+    if observations is not None:
+        validate_observations(config, observations, observed_at=completed)
     for path, original in frozen.items():
         if _read(path, path.parent) != original:
             raise ValueError("Local account snapshot bindings changed during capture")
