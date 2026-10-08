@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T13:18:46.888676Z",
+  "id": "20261008T131846Z-5ec5de72afd340719072500d42164536",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout export completed before Atlas-ledger authority clarification; it does not establish a startup prerequisite"
+}

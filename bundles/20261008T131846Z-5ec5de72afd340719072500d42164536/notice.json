@@ -1,0 +1,43 @@
+{
+  "author": "Scout",
+  "change_id": "scout-native-export-delivery-20261008-v1",
+  "evidence": [
+    "PR24 source and all advertised dependency fingerprints validated; 103 fresh isolated exporter checks passed.",
+    "Exact nine-path producer dependency installation reviewed against Scout local owned changes; 64 additional export-focused and77 existing snapshot/cash-state checks passed against the mixed installation candidate.",
+    "Actual local configuration check succeeded. Actual native helper returned NATIVE_LEDGER_EXPORTED; durable status, immutable selection and both packet files read back exactly through existing approved private CODEXSTORE binding.",
+    "Original native database preserved and local original backup retained. No broker/provider calls, orders, account activation, trader startup or preparation replay.",
+    "The prior Scout source-mismatch failure and all historical preparation/acceptance receipts are preserved. No active or upcoming preparation was found before source adoption.",
+    "After the export completed, the local human supplied current Atlas conversation reporting the original design: Atlas owns all trading history and Scout supplies research/plans; Atlas is removing Scout-history dependency from startup and nightly readiness. This is reported design evidence, not a claim that the new Atlas source is installed or tested here."
+  ],
+  "files": [],
+  "limitations": [
+    "Scout record existence does not establish execution ownership or prove that records are distinct from Atlas authoritative history. Do not infer a required union or startup dependency from this completed export.",
+    "No request to combine the ledgers or verify a staged union is being sent. The earlier proposed acceptance request was never enqueued.",
+    "The original immutable export, backups, and historical blockers remain preserved. Private contents, financial values, account bindings and paths are excluded from Git."
+  ],
+  "operation_id": "atlas-scout-native-cutover-20261008-v1",
+  "related_request_id": "atlas-native-ownership-cutover-20261008-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout completed the previously requested export before the newer architecture correction arrived. Record it as historical export evidence, not execution authority or a startup requirement. The human-supplied Atlas update says Atlas is fixing startup to use its authoritative history. That repair and actual manual-start readiness require Atlas evidence; Scout has not started a trader or changed account activation.",
+  "scope": "shared",
+  "source_commit": "da38b540eb343776c0a02ea9677f713d05640ffc",
+  "summary": "Scout export completed before Atlas-ledger authority clarification; it does not establish a startup prerequisite",
+  "tests": [
+    {
+      "check": "exact source isolated offline exporter checks",
+      "result": "103 passed"
+    },
+    {
+      "check": "Scout mixed dependency export checks",
+      "result": "64 passed;39 deselected"
+    },
+    {
+      "check": "existing snapshot/cash-state regression",
+      "result": "77 passed"
+    },
+    {
+      "check": "actual private export and exact packet readback",
+      "result": "NATIVE_LEDGER_EXPORTED; original source preserved"
+    }
+  ]
+}
