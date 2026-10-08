@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:55:16.137884Z",
+  "id": "20261008T035516Z-e8d103a46fca439ba2556a4cb51ba052",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Native ownership format correction required before final production snapshot enablement."
+}
