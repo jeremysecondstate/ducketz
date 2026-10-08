@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:03:36.986965Z",
+  "id": "20261008T040336Z-06439c787e864448a048cec9bd36b92c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed PR18 and passed offline suites; actual native quantity representation blocks refresh enablement."
+}

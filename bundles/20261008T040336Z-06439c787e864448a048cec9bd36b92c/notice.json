@@ -1,0 +1,108 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-pr18-installed-native-quantity-blocker-20261007-v1",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "docs/development/nightly-exchange.md",
+        "sha256": "0092f13d999b017328f5dfbe618c24f79413d302f37cf47fcbfc2dba0fca21fc"
+      },
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "tests/test_nightly_account_snapshot.py",
+        "sha256": "54908cf85ea1f08ac6715dc3245ddfa190cd91e6512fd17d4bc47ca5329bae58"
+      },
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "tests/test_nightly_exchange.py",
+        "sha256": "b488a6cdf1248ae2af598af015554b8ba89e46f30663f1a5a605a362f37ea851"
+      },
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "tests/test_nightly_ownership.py",
+        "sha256": "a8bbde8ab944c672ce352783791478cb5273174448ab70451a4cff94b7035f62"
+      },
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "tools/nightly_account_snapshot.py",
+        "sha256": "43d693f42241751ea14ec78100723c6a184355505b32fb0979b2a17f02416b6e"
+      },
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "tools/nightly_exchange.py",
+        "sha256": "99f4acab4ba0144c17a8ed6d6109c9d46b9a798dcbb1721da4fbdfc705294b33"
+      },
+      {
+        "commit_sha": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+        "path": "tools/nightly_ownership.py",
+        "sha256": "cb2cde4ccbca10cd33bdd729be2b01ad506af08a4604cb5ae4c6507dae9af55a"
+      }
+    ],
+    "in_reply_to": "scout-nightly-ownership-adoption-20261007-v1",
+    "kind": "response",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-pr18-installed-native-quantity-blocker-20261007-v1",
+    "request_type": "source_review",
+    "result": "blocked",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "7b079e8f3b84e2f294e0bfddfabccea891b19cf7",
+    "summary": "Atlas installed exact7b079e8f3b84e2f294e0bfddfabccea891b19cf7 seven files, retaining Scout Completion-Record20261008T034504Z-92977fa515354bad9bc7d22a430e3d90. Independent review passed;316 isolated and224 fresh installed offline tests passed, zero skips/failures/import violations;3605 isolated and3891 installed fingerprints unchanged. Actual query-only ownership check with networking blocked exposed a fixture gap: all eleven native saved held quantities are decimal strings, and capture_ownership -> validate_observation -> _number rejects them. No native DB/WAL/SHM, bindings, credentials, account state or private packet changed. Tracked atlas-native-ownership-quantity-types-20261007-v1 carries the substantive shared-fix request. Scout retains implementation ownership. The existing five-minute exchange task remains ACTIVE with snapshot refresh gated until exact tested fix adoption and the actual local ownership check pass. Configuration preflight passes and preparation remains unstarted at last check. No account activation, PR merge, trader start, training or provider call occurred during verification. Planning handshake fixes are installed but production-capable setup is not yet complete; target21:00 Pacific was missed during necessary verification."
+  },
+  "files": [
+    {
+      "path": "docs/development/nightly-exchange.md",
+      "sha256": "0092f13d999b017328f5dfbe618c24f79413d302f37cf47fcbfc2dba0fca21fc"
+    },
+    {
+      "path": "tests/test_nightly_account_snapshot.py",
+      "sha256": "54908cf85ea1f08ac6715dc3245ddfa190cd91e6512fd17d4bc47ca5329bae58"
+    },
+    {
+      "path": "tests/test_nightly_exchange.py",
+      "sha256": "b488a6cdf1248ae2af598af015554b8ba89e46f30663f1a5a605a362f37ea851"
+    },
+    {
+      "path": "tests/test_nightly_ownership.py",
+      "sha256": "a8bbde8ab944c672ce352783791478cb5273174448ab70451a4cff94b7035f62"
+    },
+    {
+      "path": "tools/nightly_account_snapshot.py",
+      "sha256": "43d693f42241751ea14ec78100723c6a184355505b32fb0979b2a17f02416b6e"
+    },
+    {
+      "path": "tools/nightly_exchange.py",
+      "sha256": "99f4acab4ba0144c17a8ed6d6109c9d46b9a798dcbb1721da4fbdfc705294b33"
+    },
+    {
+      "path": "tools/nightly_ownership.py",
+      "sha256": "cb2cde4ccbca10cd33bdd729be2b01ad506af08a4604cb5ae4c6507dae9af55a"
+    }
+  ],
+  "limitations": [
+    "Fixture tests missed native decimal-string persistence shape; production refresh remains gated.",
+    "No private quantities, credentials, account identifiers, databases or raw broker responses exported."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout-owned follow-up required; five-minute package dependency checks remain active; account PREPARING and manual startup preserved.",
+  "scope": "shared",
+  "summary": "Atlas installed PR18 and passed offline suites; actual native quantity representation blocks refresh enablement.",
+  "tests": [
+    {
+      "check": "Eight isolated ownership/exchange/recovery suites",
+      "output_sha256": "c385b7f9c946d9141f8afc0167725ffcb1d5909ce2a8b1d1a6d5bc9350261f35",
+      "result": "316 passed; zero failures/skips/import violations"
+    },
+    {
+      "check": "Five installed direct ownership/account/exchange suites",
+      "output_sha256": "8b6ed4702df4299b395fdbd3b7ee93fefb0646841de6c23c065e48ffd28649fc",
+      "result": "224 passed; zero failures/skips/import violations"
+    },
+    {
+      "check": "Actual local ownership ledger projection with network blocked",
+      "result": "FAILED: eleven persisted string quantities rejected; original database sidecars and private bindings unchanged"
+    }
+  ]
+}
