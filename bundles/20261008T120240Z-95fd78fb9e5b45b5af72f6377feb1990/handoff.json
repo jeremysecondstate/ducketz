@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T12:02:40.912737Z",
+  "id": "20261008T120240Z-95fd78fb9e5b45b5af72f6377feb1990",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Manual trader start now finishes native account setup automatically with concrete readiness reporting"
+}
