@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:14:39.617661Z",
+  "id": "20261008T031439Z-ac83f6f69a5f49849db0429b04e67e07",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas pinned Drive notification signal has verified API readback; peer binding verification requested."
+}

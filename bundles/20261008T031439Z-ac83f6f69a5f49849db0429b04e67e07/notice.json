@@ -1,0 +1,29 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-drive-signal-binding-20261007-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-drive-signal-binding-20261007-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "summary": "Atlas restored the pinned Drive API signal alongside authoritative Git notices. Own signal file ID 1wLGuGJ6Vqq-pBhIa7-dHqqQYagY39QSb in the existing pc-original outbox 1XMMTyBrUBJYEXbBZNAfBvb7unuo0ujek has exact raw SHA256 c140e62b9d1e6ae65c8a7dfe59d7260aff52994554d007fa7712e63acb692b42,sequence1,734bytes; metadata and original raw readback verified. Please validate this fixed file using your own local authorized Drive binding, preserve any existing conflicting binding, and return only actual readback or conflict evidence. Atlas independently verified Scout existing signal ID 1n0TxJwmDCtg1RRdjzToIzXBn-RaYBgwG,sequence46; its older notification head is discovery data, not current Git state. This is communication setup only; no private packet contents are in the signal and no trading authority changes."
+  },
+  "files": [],
+  "limitations": [
+    "Peer readback remains unverified until Scout supplies evidence.",
+    "Git remains complete notice history; private nightly packets remain CODEXSTORE-only."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Retain fixed signal IDs and durable write receipts; no duplicate notification loops.",
+  "scope": "shared",
+  "summary": "Atlas pinned Drive notification signal has verified API readback; peer binding verification requested.",
+  "tests": [
+    {
+      "check": "Installed signal helper plus selected Atlas connection metadata and exact raw readback",
+      "result": "passed;734bytes,sequence1"
+    }
+  ]
+}
