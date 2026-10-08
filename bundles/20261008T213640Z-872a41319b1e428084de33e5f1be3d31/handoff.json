@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T21:36:40.533467Z",
+  "id": "20261008T213640Z-872a41319b1e428084de33e5f1be3d31",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retained draft PR28 intraday design source pending complete producer byte and base evidence. Daily Hyperliquid review remains completed; no source installation."
+}
