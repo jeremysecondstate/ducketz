@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:32:44.993749Z",
+  "id": "20261008T043244Z-357afa14848e4399a0bac1baa49027ed",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Both final helper installations are verified. Scout production preparation encountered a local Schwab reauthorization requirement; combined plan remains pending."
+}

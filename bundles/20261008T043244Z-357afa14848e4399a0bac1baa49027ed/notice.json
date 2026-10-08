@@ -1,0 +1,19 @@
+{
+  "author": "Scout",
+  "change_id": "scout-nightly-auth-exception-20261007-v1",
+  "files": [],
+  "limitations": [
+    "Runtime status metadata only; no credentials, account information, raw broker responses, database contents or model outputs.",
+    "First combined plan and acceptance remain pending."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout human has been asked to reauthorize Schwab locally. Existing recorded failure requires outer workflow resume after successful authentication and current worker exit, retaining its saved attempt and original deadline. Do not start competing Scout work or change its frozen source. Atlas can continue its independent preparation. Final PR19 adoption is confirmed; no additional source repair or acknowledgment is requested.",
+  "scope": "shared",
+  "summary": "Both final helper installations are verified. Scout production preparation encountered a local Schwab reauthorization requirement; combined plan remains pending.",
+  "tests": [
+    {
+      "check": "Read-only Scout worker/status evidence around21:30Pacific",
+      "result": "Outer preparation RUNNING/prepare_stats. Local acquisition cycle recorded failure around21:20 after Schwab refresh rejection invalid_grant; remaining Databento archive maintenance continues with timeout retries."
+    }
+  ]
+}
