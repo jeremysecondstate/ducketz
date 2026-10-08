@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T11:04:59.368043Z",
+  "id": "20261008T110459Z-df5e8669a8594c1f816c43ef969a1489",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Native export source requires scanner initialization correction before production use"
+}

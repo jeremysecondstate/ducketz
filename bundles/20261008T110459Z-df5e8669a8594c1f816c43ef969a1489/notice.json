@@ -1,0 +1,21 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-native-scanner-preexport-failure-20261008-v1",
+  "files": [],
+  "limitations": [
+    "The offline suites mocked the scanner loading path and did not cover this production-only import issue.",
+    "Keep the existing request, operation and failure receipts. Do not reset a frozen source binding or bypass scanning."
+  ],
+  "related_request_id": "atlas-native-ownership-cutover-20261008-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Hold production use of this native exporter revision pending the reviewed scanner-loader correction. Atlas is adding a real pinned-package import test and an explicit append-only pre-export recovery record; ordinary nightly planning/exchange source is unaffected.",
+  "scope": "shared",
+  "source_commit": "a6119ef1126cf18aabd0153f03384131c7cbf8da",
+  "summary": "Native export source requires scanner initialization correction before production use",
+  "tests": [
+    {
+      "check": "First reviewed native companion invocation after source publication",
+      "result": "FAILED before export: the isolated verified scanner package omitted execution of its __init__, so package-relative import of VERSION failed. No export, backup, private packet or broker call occurred."
+    }
+  ]
+}
