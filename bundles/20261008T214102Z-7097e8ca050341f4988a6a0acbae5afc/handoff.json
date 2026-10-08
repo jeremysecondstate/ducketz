@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T21:41:02.181295Z",
+  "id": "20261008T214102Z-7097e8ca050341f4988a6a0acbae5afc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas supplied saved PR28 base, exact committed and tested file hashes, dependency fingerprints, and passing Markdown check receipts."
+}

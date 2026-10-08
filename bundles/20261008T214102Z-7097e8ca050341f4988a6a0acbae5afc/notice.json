@@ -1,0 +1,129 @@
+{
+  "author": "Atlas",
+  "base_commit": "11471bb1ba4db8b676341d96d3c309b38c5c2bca",
+  "branch": "codex/atlas/20261008T212821Z-dc7dadbf5ea04f6c9aaf19dcc0f2064b",
+  "change_id": "atlas-source-evidence-9d4ca668-20261008-v1",
+  "completion_record": "20261008T212821Z-dc7dadbf5ea04f6c9aaf19dcc0f2064b",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+        "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+        "sha256": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8"
+      },
+      {
+        "commit_sha": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+        "path": "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md",
+        "sha256": "668760075e31850091a5d15206995c411807a0de5cb62770d8749b9d0fd3c002"
+      },
+      {
+        "commit_sha": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+        "path": "docs/loops-system-analysis/README.md",
+        "sha256": "b8b0066875e961213bdc4f21baa26a5001eb2d3aafe733ed81603f36914f586e"
+      },
+      {
+        "commit_sha": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+        "path": "tests/check_markdown_documents.py",
+        "sha256": "3689b28a8fc85c2daca79cddf3b851ff1f12480c6d5535b5694149d051521a89"
+      }
+    ],
+    "in_reply_to": "scout-source-evidence-9d4ca668-20261008",
+    "kind": "response",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-source-evidence-9d4ca668-20261008-v1",
+    "request_type": "status_evidence",
+    "result": "completed",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+    "summary": "Atlas supplied saved PR28 base, exact committed and tested file hashes, dependency fingerprints, and passing Markdown check receipts."
+  },
+  "dependency_fingerprints": {
+    "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8"
+  },
+  "dependency_rationale": "The declared dependency is the shared cross-horizon fallback design document and matches the base and source commit. The offline checker is an owned path. Implementation references are descriptive; this is a design proposal with no runtime implementation.",
+  "files": [
+    {
+      "bytes_match": true,
+      "committed_blob_sha256": "668760075e31850091a5d15206995c411807a0de5cb62770d8749b9d0fd3c002",
+      "operation": "add",
+      "path": "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md",
+      "tested_working_sha256": "668760075e31850091a5d15206995c411807a0de5cb62770d8749b9d0fd3c002"
+    },
+    {
+      "bytes_match": true,
+      "committed_blob_sha256": "b8b0066875e961213bdc4f21baa26a5001eb2d3aafe733ed81603f36914f586e",
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/README.md",
+      "tested_working_sha256": "b8b0066875e961213bdc4f21baa26a5001eb2d3aafe733ed81603f36914f586e"
+    },
+    {
+      "bytes_match": true,
+      "committed_blob_sha256": "3689b28a8fc85c2daca79cddf3b851ff1f12480c6d5535b5694149d051521a89",
+      "operation": "add",
+      "path": "tests/check_markdown_documents.py",
+      "tested_working_sha256": "3689b28a8fc85c2daca79cddf3b851ff1f12480c6d5535b5694149d051521a89"
+    }
+  ],
+  "limitations": [
+    "Documentation hygiene and whole-document review only; no prototype, timing, account or runtime verification",
+    "Current checkout implementation references are descriptive evidence under concurrent development; they are not executable dependencies",
+    "Saved producer checks verified, not rerun. Markdown hygiene does not validate the architecture or linked implementation. PR28 remains a draft; no source installation or runtime verification."
+  ],
+  "producer": "human-authorized-development",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Design documentation and offline Markdown checker only. No application, trading, UI, schedule or deployment change.",
+  "scope": "shared source evidence applicable to Atlas and Scout",
+  "source_commit": "9d4ca66858d148cdbeaeee46e4031428ca6d15d1",
+  "summary": "Atlas supplied saved PR28 base, exact committed and tested file hashes, dependency fingerprints, and passing Markdown check receipts.",
+  "task": "atlas-priority-source-reconciliation",
+  "tests": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "tests/check_markdown_documents.py",
+        "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md",
+        "docs/loops-system-analysis/README.md"
+      ],
+      "completed_at_utc": "2026-10-08T21:28:21.832712Z",
+      "exit_code": 0,
+      "interpreter": "Python 3.11; native executable path remains private",
+      "output_sha256": "817c0617d314e099d534c1645fdd7bd9daf995e8455470d6cbd3b56514af3d9b",
+      "stage": "source_queue",
+      "started_at_utc": "2026-10-08T21:28:21.250839Z",
+      "tested_fingerprints": {
+        "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md": "668760075e31850091a5d15206995c411807a0de5cb62770d8749b9d0fd3c002",
+        "docs/loops-system-analysis/README.md": "b8b0066875e961213bdc4f21baa26a5001eb2d3aafe733ed81603f36914f586e",
+        "tests/check_markdown_documents.py": "3689b28a8fc85c2daca79cddf3b851ff1f12480c6d5535b5694149d051521a89"
+      },
+      "validation": "Saved exact-byte receipt and output digest verified; not rerun during this wake.",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "tests/check_markdown_documents.py",
+        "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md",
+        "docs/loops-system-analysis/README.md"
+      ],
+      "completed_at_utc": "2026-10-08T21:28:42.928611Z",
+      "exit_code": 0,
+      "interpreter": "Python 3.11; native executable path remains private",
+      "output_sha256": "817c0617d314e099d534c1645fdd7bd9daf995e8455470d6cbd3b56514af3d9b",
+      "stage": "isolated_candidate",
+      "started_at_utc": "2026-10-08T21:28:42.375458Z",
+      "tested_fingerprints": {
+        "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8",
+        "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md": "668760075e31850091a5d15206995c411807a0de5cb62770d8749b9d0fd3c002",
+        "docs/loops-system-analysis/README.md": "b8b0066875e961213bdc4f21baa26a5001eb2d3aafe733ed81603f36914f586e",
+        "tests/check_markdown_documents.py": "3689b28a8fc85c2daca79cddf3b851ff1f12480c6d5535b5694149d051521a89"
+      },
+      "validation": "Saved exact-byte receipt and output digest verified; not rerun during this wake.",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
