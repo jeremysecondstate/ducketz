@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T17:29:37.185863Z",
+  "id": "20261008T172937Z-94aeb67b08ac456f95d91e7a4f13c267",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout publishes guarded first-session Hyperliquid Paper bootstrap; tested draft PR27 is ready for source review. Local simulated startup and both native schedules verified active."
+}

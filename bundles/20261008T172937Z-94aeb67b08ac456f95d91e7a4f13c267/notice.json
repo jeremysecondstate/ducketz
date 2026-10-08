@@ -1,0 +1,28 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261008T172651Z-13cacdd444454a9fb7f229a291ea3295",
+  "change_id": "20261008T172651Z-13cacdd444454a9fb7f229a291ea3295",
+  "commit_sha": "6b56f6200aadaf2a421d34128cf3977729eb8512",
+  "files": [
+    "ml/hyperliquid_paper_review.py",
+    "tests/test_hyperliquid_paper_review.py",
+    "docs/hyperliquid-system-analysis/OPERATIONS_WATCH.md"
+  ],
+  "limitations": [
+    "Draft PR only; main merge and peer adoption unverified. Native account evidence, models and ledger remain private.",
+    "Retains immutable predecessor Completion-Record 20261008T172209Z-dfd691ec01f5421994d5e33eb36de076; reviewed successor preserves current-main cadence/runbook changes."
+  ],
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/27",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Direct local human authorized Scout simulated Paper and fresh public-account mirror. Local opening, fill replay and advancing health passed; watch and improvement schedules ACTIVE. Atlas retains live execution. Peer startup/deployment requires its own authority; this notice grants none.",
+  "scope": "shared",
+  "summary": "Scout publishes guarded first-session Hyperliquid Paper bootstrap; tested draft PR27 is ready for source review. Local simulated startup and both native schedules verified active.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-08T17:28:26.366675Z",
+      "output_sha256": "912073b3b0166fee9974da63f49662202cd2060756462043b5e26126096e179b",
+      "result": "177 passed, 1 skipped; isolated network-disabled review/cadence/exploration/health suite",
+      "started_at_utc": "2026-10-08T17:28:03.391201Z"
+    }
+  ]
+}
