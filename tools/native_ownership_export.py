@@ -535,9 +535,9 @@ def read_export(root, *, expected_producer, expected_symbols,
 def _installed_private_values(private_env):
     """Use this checkout's verified pinned scanner, returning values only in RAM."""
     import importlib
+    import importlib.util
     import subprocess
     import sys
-    import types
     repository = Path(__file__).resolve().parents[1]
     active_path = repository / "scratch/cross-pc/active.json"
     active = _object(active_path.read_text())
@@ -547,17 +547,31 @@ def _installed_private_values(private_env):
     if result.returncode != 0:
         raise ValueError("Pinned local scanner installation is not verified")
     package = "_native_export_scanner_" + uuid.uuid4().hex
-    namespace = types.ModuleType(package)
-    namespace.__path__ = [str(release / "tools/cross_pc")]
+    package_path = release / "tools/cross_pc"
+    specification = importlib.util.spec_from_file_location(package, package_path / "__init__.py",
+        submodule_search_locations=[str(package_path)])
+    if specification is None or specification.loader is None:
+        raise ValueError("Pinned local scanner package is unavailable")
+    namespace = importlib.util.module_from_spec(specification)
     sys.modules[package] = namespace
-    scanner = importlib.import_module(package + ".artifact_publish")
-    # This private-account export also excludes literal account identifiers;
-    # the public-source scanner's ordinary credential-only key list is narrower.
-    scanner._SENSITIVE_NAME = re.compile(r"KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH|PRIVATE|ACCOUNT", re.I)
-    env = migration._plain(private_env)
-    if env != repository / ".env":
-        raise ValueError("Private scan must use this checkout's local environment file")
-    return scanner._secret_values(env)
+    try:
+        # Package-relative imports consume VERSION and other reviewed exports
+        # from this exact verified __init__; a synthetic namespace is insufficient.
+        specification.loader.exec_module(namespace)
+        scanner = importlib.import_module(package + ".artifact_publish")
+        # This private-account export also excludes literal account identifiers;
+        # the public-source scanner's ordinary credential-only key list is narrower.
+        scanner._SENSITIVE_NAME = re.compile(r"KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH|PRIVATE|ACCOUNT", re.I)
+        env = migration._plain(private_env)
+        if env != repository / ".env":
+            raise ValueError("Private scan must use this checkout's local environment file")
+        return scanner._secret_values(env)
+    finally:
+        # Do not retain a partially initialized or previous-release scanner in
+        # a long-lived caller. Each call verifies and imports its own package.
+        for name in tuple(sys.modules):
+            if name == package or name.startswith(package + "."):
+                sys.modules.pop(name, None)
 
 
 def main(argv=None):

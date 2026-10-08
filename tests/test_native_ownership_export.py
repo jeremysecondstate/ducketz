@@ -4,6 +4,9 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import subprocess
+import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -234,3 +237,39 @@ def test_private_scan_input_is_required_for_publication_and_receive(tmp_path):
     args = arguments(ledger); args.pop("forbidden_values")
     with pytest.raises(ValueError, match="private-value scan"):
         exporter.export_ownership(**args, output_directory=tmp_path / "packet", backup_directory=tmp_path / "backup")
+
+
+@pytest.mark.parametrize("verified", [True, False])
+def test_private_scanner_executes_verified_package_initializer_before_relative_import(tmp_path, monkeypatch, verified):
+    repository = tmp_path / "repository"
+    active_path = repository / "scratch/cross-pc/active.json"
+    active_path.parent.mkdir(parents=True)
+    release = repository / "scratch/cross-pc/releases/offline-fixture"
+    package = release / "tools/cross_pc"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text('VERSION = "verified-offline-version"\n')
+    (package / "core.py").write_text('from . import VERSION\n')
+    (package / "artifact_publish.py").write_text(
+        'from .core import VERSION\n'
+        'def _secret_values(path):\n'
+        '    assert VERSION == "verified-offline-version"\n'
+        '    assert _SENSITIVE_NAME.search("SCHWAB_ACCOUNT_NUMBER")\n'
+        '    return [path.read_bytes().strip()]\n')
+    active_path.write_text(json.dumps({"release_root": str(release)}))
+    env = repository / ".env"
+    env.write_bytes(b"offline-fixture-private-value\n")
+    monkeypatch.setattr(exporter, "__file__", str(repository / "tools/native_ownership_export.py"))
+    calls = []
+    def verify_command(command, **kwargs):
+        calls.append(command)
+        assert command == [sys.executable, "-B", str(package / "cli.py"), "verify-installation", "--active", str(active_path)]
+        assert not any(name.startswith("_native_export_scanner_") for name in sys.modules)
+        return SimpleNamespace(returncode=0 if verified else 1)
+    monkeypatch.setattr(subprocess, "run", verify_command)
+    if verified:
+        assert exporter._installed_private_values(env) == [b"offline-fixture-private-value"]
+    else:
+        with pytest.raises(ValueError, match="not verified"):
+            exporter._installed_private_values(env)
+    assert len(calls) == 1
+    assert not any(name.startswith("_native_export_scanner_") for name in sys.modules)
