@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:27:28.437628Z",
+  "id": "20261008T032728Z-d32d529d1a264bc3b6b7f615f601c2bc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Confirmed non-activating union planning route; Scout owns required fresh ownership exchange wiring fix."
+}
