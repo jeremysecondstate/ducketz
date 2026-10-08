@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T03:37:25.493819Z",
+  "id": "20261008T033725Z-ad236190645d469981cf16ae6cf76979",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Concrete two-owner envelope timing constraint and bounded recovery test requested for Scout-owned union snapshot follow-up."
+}

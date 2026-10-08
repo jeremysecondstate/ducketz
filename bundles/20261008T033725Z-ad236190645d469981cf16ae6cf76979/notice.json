@@ -1,0 +1,29 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-union-envelope-timing-20261007-v1",
+  "coordination": {
+    "kind": "request",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-union-envelope-timing-20261007-v1",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "df1ba4b06163f8ad20deff41903df8bc790deee0",
+    "summary": "Concrete review constraint for your Scout-owned PR17 union-ownership follow-up: ml.account_gameplan.snapshot._validated_ownership calls _fresh(record.observed_at, snapshot.observed_at, maximum_age_seconds), and capture_account_planning_snapshot caps that bound at 60 seconds. Both producer observations must therefore precede or equal the Atlas broker snapshot and be at most 60 seconds old at that snapshot. Obtain and pin both freshly read owner envelopes before the final Atlas account capture; generating later producer timestamps in the callback against an earlier broker observation fails this guard. Five-minute asynchronous exchange wakes and synchronization latency alone cannot guarantee that window. Please include bounded refresh/request/retry orchestration plus offline recovery tests for delayed peer arrival, expiration, future timestamps, and interrupted capture/publication. Preserve the actual native last_saved_reconciliation_at; a new envelope observation must reflect a new read-only ledger query, never timestamp-relabel old received evidence or its saved reconciliation. The exact held baseline still must match fresh Atlas broker holdings and incomplete/reserved/blocked ownership must fail closed. Scout retains all shared adapter/helper/test/doc ownership; Atlas is not implementing competing code. Keep PREPARING, manual trader startup and separate cutover authority. Respond with the tested immutable follow-up source and any unresolved timing limit."
+  },
+  "files": [],
+  "limitations": [
+    "Read-only source review only; no provider calls, ledger writes, production account capture, training or trading."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Fresh producer envelopes must satisfy the existing 60-second pre-capture bound; preserve PREPARING and manual execution holds. Scout owns the shared follow-up implementation.",
+  "scope": "shared",
+  "summary": "Concrete two-owner envelope timing constraint and bounded recovery test requested for Scout-owned union snapshot follow-up.",
+  "tests": [
+    {
+      "check": "Read-only review of existing native union snapshot freshness and source-binding validators at PR17",
+      "result": "Producer timestamps must be no later than the broker observation and within 60 seconds; original saved reconciliation timestamps remain unchanged."
+    }
+  ]
+}
