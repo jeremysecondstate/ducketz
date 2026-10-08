@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-08T04:03:54.291942Z",
+  "id": "20261008T040354Z-6f481cd328854d20ab29c4a69c0d21e0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Published PR19 resolves the exact native Decimal-string finding; actual Scout capture verified."
+}
