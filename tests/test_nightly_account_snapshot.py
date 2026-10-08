@@ -262,3 +262,96 @@ def test_missing_native_ownership_ledger_never_becomes_empty_safe_inventory(conf
     with pytest.raises(ValueError, match="read-only snapshot capture failed"):
         module.capture_snapshot(configured[0], now=NOW)
     assert contents(tmp_path) == before
+
+
+@pytest.fixture
+def partitioned(configured, monkeypatch, tmp_path):
+    from contextlib import closing
+    import gc
+    from tools import nightly_ownership
+    from tests.test_nightly_ownership import setup_owner
+    from tests.test_gameplan_trade_snapshot import ledger, ReadSession, buy_order
+    config, root = configured
+    monkeypatch.setattr(nightly_workflow, "source_identity", lambda _: {"commit": "c" * 40, "source_sha256": "d" * 64})
+    scout, scout_root, scout_probe = setup_owner(tmp_path / "peer", "Scout")
+    atlas_probe = Path(json.loads(Path(config["workflow_config"]).read_text())["repository"]) / "tools/nightly_ownership.py"
+    atlas_probe.parent.mkdir(parents=True); atlas_probe.write_text("# fixture identity\n")
+    path = ledger(root); gc.collect()
+    held = dict.fromkeys(ATLAS, 0); held["AAPL"] = 2
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute("UPDATE snapshots SET payload=?", (json.dumps({"held_shares": held}),))
+    observations = []
+    for producer, probe in ((config, atlas_probe), (scout, scout_probe)):
+        monkeypatch.setattr(nightly_ownership, "__file__", str(probe))
+        observations.append(nightly_ownership.capture_ownership(producer, now=pd.Timestamp(NOW) - pd.Timedelta(seconds=2)))
+    class UnionSession(ReadSession):
+        def get_equity_quotes(self, symbols):
+            assert set(symbols) == set(SYMBOLS)
+            self.calls.append("quotes")
+            return {symbol: deepcopy(self.quotes["AAPL"]) for symbol in symbols}
+    session = UnionSession()
+    scout_position = deepcopy(session.account["securitiesAccount"]["positions"][0])
+    scout_position["instrument"]["symbol"] = "DOCU"
+    outside = deepcopy(scout_position)
+    outside.update(longQuantity=5, marketValue=500); outside["instrument"]["symbol"] = "IBM"
+    session.account["securitiesAccount"]["positions"].extend([scout_position, outside])
+    order = buy_order(); order["orderLegCollection"][0]["instrument"]["symbol"] = "IBM"
+    session.orders = [order]
+    monkeypatch.setattr("ml.gameplan_trade_snapshot.SchwabSession", lambda: session)
+    monkeypatch.setattr("ml.account_gameplan.preparation._native_snapshot", lambda *a, **k: pytest.fail("Union native ledger fallback"))
+    return config, observations, session
+
+
+def test_real_eleven_plus_eleven_ownership_uses_one_account_read_and_preserves_all_native_files(partitioned, tmp_path):
+    config, observations, session = partitioned
+    before = contents(tmp_path)
+    result = module.capture_snapshot(config, now=NOW, ownership_observations=observations)
+    assert contents(tmp_path) == before
+    assert result["ownership"]["owned_shares"]["AAPL"] == result["ownership"]["owned_shares"]["DOCU"] == 1
+    assert result["held_shares"]["AAPL"] == result["held_shares"]["DOCU"] == 2
+    assert result["reserved_cash"] == 200 and result["available_cash"] == 1300
+    assert result["gross_exposure"] == 900
+    assert all(session.calls.count(name) == 1 for name in ("prepare", "verify", "account", "orders", "quotes"))
+    assert "SECRET" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("damage", ["stale", "duplicate", "account", "partition", "private_field"])
+def test_bad_producer_observations_fail_before_broker_capture(partitioned, damage):
+    from tools import nightly_ownership
+    config, observations, session = partitioned
+    value = observations[1]
+    if damage == "stale": stamp = pd.Timestamp(NOW) + pd.Timedelta(seconds=61)
+    else: stamp = NOW
+    if damage == "duplicate": observations[1] = deepcopy(observations[0])
+    elif damage == "account": value["envelope"]["account_fingerprint"] = "b" * 64
+    elif damage == "partition": value["envelope"]["symbols"].pop()
+    elif damage == "private_field": value["envelope"]["raw_account"] = "SECRET"
+    if damage != "duplicate": value["envelope"]["source_fingerprint"] = nightly_ownership._fingerprint(value["envelope"])
+    with pytest.raises(ValueError): module.capture_snapshot(config, now=stamp, ownership_observations=observations)
+    assert session.calls == []
+
+
+def test_current_broker_holdings_must_equal_both_saved_expectations(partitioned, tmp_path):
+    config, observations, session = partitioned
+    session.account["securitiesAccount"]["positions"][1].update(longQuantity=3, marketValue=300)
+    before = contents(tmp_path)
+    with pytest.raises(ValueError): module.capture_snapshot(config, now=NOW, ownership_observations=observations)
+    assert contents(tmp_path) == before and session.calls.count("account") == 1
+
+
+def test_ownership_expiring_during_broker_capture_cannot_be_exported(partitioned, monkeypatch):
+    from tools import nightly_ownership
+    config, observations, session = partitioned
+    old = (pd.Timestamp(NOW) - pd.Timedelta(seconds=50)).isoformat()
+    for value in observations:
+        value["ledger_observed_at"] = value["envelope"]["observed_at"] = old
+        value["envelope"]["source_fingerprint"] = nightly_ownership._fingerprint(value["envelope"])
+    elapsed = [0]
+    original = session.get_account
+    def account():
+        elapsed[0] = 20
+        return original()
+    monkeypatch.setattr(session, "get_account", account)
+    monkeypatch.setattr(module, "monotonic", lambda: elapsed[0])
+    with pytest.raises(ValueError, match="stale"):
+        module.capture_snapshot(config, now=NOW, ownership_observations=observations)
