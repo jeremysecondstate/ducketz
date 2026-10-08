@@ -20,9 +20,11 @@ from tools import gameplan_execution_readiness as module
 
 
 @pytest.fixture
-def prepared(handoff_inputs):
+def prepared(handoff_inputs, monkeypatch):
     spec = handoff_inputs
     nightly_handoff.run_handoff(spec, now=NOW)
+    monkeypatch.setattr(module, "_staged_startup", lambda *args: {"ready": False, "status": "INVENTORY_SETUP_PENDING",
+        "reason": "SCOUT_OWNERSHIP_HISTORY_PENDING", "broker_reconciliation_pending": True, "activation_changed": False})
     return spec, Path(spec["datastore_root"])
 
 
@@ -71,7 +73,7 @@ def inspect(prepared, **kwargs):
 def test_preparing_reports_plan_success_and_missing_native_ledger_separately(prepared):
     result = inspect(prepared)
     assert result["plan_ready"] and not result["execution_setup_ready"]
-    assert result["blockers"] == ["ACCOUNT_CUTOVER_PREPARING", "NATIVE_LEDGER_MISSING"]
+    assert result["blockers"] == ["SCOUT_OWNERSHIP_HISTORY_PENDING", "NATIVE_LEDGER_MISSING"]
     assert result["handoff"]["completion_id"] == prepared[0]["completion_id"]
     assert result["current_broker_reconciliation_performed"] is False and result["broker_ready"] is None
     assert result["manual_start_required"] and not result["execution_authorized"]
@@ -118,6 +120,30 @@ def test_complete_setup_still_requires_manual_start_and_runtime_broker_reconcili
     assert result["account_activation"] == "ACTIVE" and result["blockers"] == []
     assert result["manual_start_required"] and result["broker_ready"] is None
     assert result["current_broker_reconciliation_performed"] is False
+
+
+def test_verified_staged_union_is_ready_for_manual_start_while_preparing(prepared, monkeypatch):
+    _, root = prepared
+    ledger(root, ["AAPL"])
+    before = (root / CONFIG).read_bytes()
+    monkeypatch.setattr(module, "_staged_startup", lambda *args: {"ready": True, "status": "READY_FOR_MANUAL_START",
+        "broker_reconciliation_pending": True, "activation_changed": False})
+    result = inspect(prepared)
+    assert result["status"] == "READY_FOR_MANUAL_START"
+    assert result["plan_ready"] and result["manual_start_ready"] and result["execution_setup_ready"]
+    assert result["account_activation"] == "PREPARING" and result["blockers"] == []
+    assert result["manual_start_required"] and result["broker_ready"] is None
+    assert not result["current_broker_reconciliation_performed"] and not result["activation_changed"]
+    assert (root / CONFIG).read_bytes() == before
+
+
+def test_staged_union_cannot_hide_actual_pending_native_reservations(prepared, monkeypatch):
+    _, root = prepared
+    ledger(root, ["AAPL"], pending=True)
+    monkeypatch.setattr(module, "_staged_startup", lambda *args: {"ready": True, "status": "READY_FOR_MANUAL_START"})
+    result = inspect(prepared)
+    assert result["status"] == "EXECUTION_SETUP_BLOCKED" and not result["manual_start_ready"]
+    assert "NATIVE_PENDING_RESERVATIONS_PREVENT_CUTOVER" in result["blockers"]
 
 
 def test_native_blocks_pending_and_saved_baseline_are_actionable_without_reconciliation(prepared):
@@ -174,7 +200,7 @@ def test_same_date_manual_session_is_authoritative_diagnostic_not_an_execution_g
     session(root, spec["action_date"])
     result = inspect(prepared, process_probe=probe)
     assert result["manual_session"]["running"] and not result["manual_start_required"]
-    assert not result["execution_setup_ready"] and result["blockers"][0] == "ACCOUNT_CUTOVER_PREPARING"
+    assert not result["execution_setup_ready"] and result["blockers"][0] == "SCOUT_OWNERSHIP_HISTORY_PENDING"
 
 
 def test_session_inspection_samples_its_own_current_time_after_artifact_checks(prepared, monkeypatch):

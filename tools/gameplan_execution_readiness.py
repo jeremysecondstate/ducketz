@@ -36,7 +36,14 @@ ACTION = {
     "ACCOUNT_NOT_CONFIGURED": "Install the reviewed Atlas account binding.",
     "ACCOUNT_BINDING_INVALID": "Review the local account binding without changing its identity or universes.",
     "ACCOUNT_NOT_ATLAS_COORDINATOR": "Use Atlas for the human's manual trader start.",
-    "ACCOUNT_CUTOVER_PREPARING": "Complete the reviewed native ledger installation and local activation transition.",
+    "SCOUT_OWNERSHIP_HISTORY_PENDING": "Receive Scout's authorized native ownership history through the private exchange.",
+    "NATIVE_UNION_ASSEMBLY_PENDING": "Finish staging the verified native ownership union during nightly preparation.",
+    "NATIVE_INVENTORY_CONFIGURATION_MISSING": "Restore the existing local native inventory exchange configuration.",
+    "NATIVE_INVENTORY_DATASTORE_MISMATCH": "Resolve the native inventory configuration's datastore mismatch.",
+    "NATIVE_OWNERSHIP_VALIDATION_FAILED": "Resolve inconsistent native inventory evidence; preserve original ownership history.",
+    "NATIVE_OWNERSHIP_CHANGED_SINCE_TRANSFER": "Refresh changed native ownership evidence through the private exchange.",
+    "MANUAL_START_FROZEN_INPUTS_CHANGED": "Resolve changed saved startup inputs while retaining original receipts.",
+    "GAMEPLAN_HANDOFF_NOT_READY": "Complete the matching Gameplan handoff before inventory startup.",
     "CUTOVER_RECEIPT_INVALID": "Repair the reviewed local cutover evidence before manual startup.",
     "JOINT_HANDOFF_MISSING": "Complete and verify this action date's Atlas handoff.",
     "JOINT_HANDOFF_INVALID": "Review this action date's pinned handoff and accepted artifact bytes.",
@@ -48,6 +55,11 @@ ACTION = {
     "NATIVE_PENDING_RESERVATIONS_PREVENT_CUTOVER": "Resolve native pending reservations before account cutover.",
     "SAVED_EXECUTION_INSTRUCTIONS_NOT_READY": "Review the selected plan's local deployment and saved trading instructions.",
 }
+
+
+def _staged_startup(root, day, now):
+    from tools.native_ownership_cutover import inspect_staged_startup
+    return inspect_staged_startup(root, action_date=day, now=now)
 
 
 def _json(path):
@@ -276,9 +288,7 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
             blockers.append("ACCOUNT_NOT_CONFIGURED")
         elif account.machine_id != "pc-original" or account.role != "coordinator":
             blockers.append("ACCOUNT_NOT_ATLAS_COORDINATOR")
-        elif account.activation["status"] != "ACTIVE":
-            blockers.append("ACCOUNT_CUTOVER_PREPARING")
-        else:
+        elif account.activation["status"] == "ACTIVE":
             try:
                 verify_cutover(root, account)
             except (ValueError, OSError, TypeError, KeyError):
@@ -292,6 +302,11 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
         handoff_pins = {}
     if not handoff["ready"]:
         blockers.append(handoff["reason"])
+    staged = {"ready": False, "status": "NOT_REQUIRED"}
+    if account is not None and account.machine_id == "pc-original" and account.activation["status"] == "PREPARING":
+        staged = _staged_startup(root, day, now)
+        if not staged["ready"]:
+            blockers.append(staged["reason"])
     ledger = {"available": False, "reason": "ACCOUNT_BINDING_REQUIRED"}
     if account is not None:
         try:
@@ -299,7 +314,7 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
             if not ledger["available"]:
                 blockers.append(ledger["reason"])
             else:
-                if not ledger["union_coverage"]:
+                if not ledger["union_coverage"] and not staged["ready"]:
                     blockers.append("NATIVE_LEDGER_UNION_INCOMPLETE")
                 if ledger["blocked_symbol_count"]:
                     blockers.append("NATIVE_LEDGER_BLOCKED")
@@ -334,13 +349,16 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
         handoff = {"ready": False, "reason": "JOINT_HANDOFF_INVALID"}
         blockers.append("JOINT_HANDOFF_INVALID")
     blockers = list(dict.fromkeys(blockers))
+    status = "EXECUTION_SETUP_BLOCKED" if blockers else (
+        "READY_FOR_MANUAL_START" if account is not None and account.activation["status"] == "PREPARING" else "EXECUTION_SETUP_READY")
     return {"schema_version": VERSION, "action_date": day, "observed_at": observed.isoformat(),
-            "status": "EXECUTION_SETUP_READY" if not blockers else "EXECUTION_SETUP_BLOCKED",
+            "status": status,
             "plan_ready": handoff["ready"], "execution_setup_ready": not blockers,
+            "manual_start_ready": not blockers, "staged_native_inventory": staged,
             "account_activation": account.activation["status"] if account else "UNAVAILABLE",
             "handoff": handoff, "native_ledger": ledger, "saved_execution_instructions_ready": instructions_ready,
             "manual_session": session, "manual_start_required": not session["running"],
-            "blockers": blockers, "required_actions": [ACTION[reason] for reason in blockers],
+            "blockers": blockers, "required_actions": [ACTION.get(reason, "Resolve the reported native inventory evidence before manual startup.") for reason in blockers],
             "current_broker_reconciliation_performed": False, "broker_ready": None,
             "execution_authorized": False, "activation_changed": False, "orders_placed": 0}
 

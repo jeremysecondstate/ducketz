@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 from datetime import datetime, timedelta
 import hashlib
 import json
+from pathlib import Path
 import shutil
 import sqlite3
 
@@ -103,19 +104,16 @@ def test_older_producer_unexplained_reduction_cannot_hide_behind_newer_peer_snap
     assert len(cutover._tables(args["candidate_directory"]/"holdings.sqlite3")["blocks"]) == 2
 
 
-@pytest.mark.parametrize("failure", ["stale", "future", "deadline", "account", "missing_symbol", "extra_symbol",
+@pytest.mark.parametrize("reconciler", [cutover.reconcile_migration_candidate, cutover.reconcile_startup_candidate])
+@pytest.mark.parametrize("failure", ["stale", "future", "account", "missing_symbol", "extra_symbol",
     "price", "budget", "negative", "pending", "external_pending", "working", "unknown_orders", "portfolio_pin",
     "broker_pin", "source_identity", "observation_time", "source_changed", "archive_changed", "manifest_changed",
     "foreign_block", "missing_block", "unknown_native", "candidate_changed", "destination", "overlap"])
-def test_invalid_or_ambiguous_evidence_never_publishes_ready_output(tmp_path, failure):
+def test_invalid_or_ambiguous_evidence_never_publishes_ready_output(tmp_path, failure, reconciler):
     args, specs = setup(tmp_path)
     portfolio, broker = args["portfolio"], args["broker_snapshot"]
     if failure == "stale": args["clock"] = lambda: datetime.fromisoformat(NOW) + timedelta(seconds=61)
     elif failure == "future": args["clock"] = lambda: datetime.fromisoformat(NOW) - timedelta(seconds=1)
-    elif failure == "deadline":
-        portfolio = replace(portfolio, observed_at="2026-10-05T11:00:00+00:00")
-        broker = replace(broker, observed_at=portfolio.observed_at)
-        args["clock"] = lambda: datetime.fromisoformat(portfolio.observed_at)
     elif failure == "account": portfolio = replace(portfolio, account_fingerprint="f"*64)
     elif failure == "missing_symbol": portfolio = replace(portfolio, held_shares={"COST":5})
     elif failure == "extra_symbol": portfolio = replace(portfolio, held_shares={**portfolio.held_shares,"AAPL":0})
@@ -146,19 +144,186 @@ def test_invalid_or_ambiguous_evidence_never_publishes_ready_output(tmp_path, fa
     pin_observations(args, portfolio, broker)
     if failure == "portfolio_pin": args["expected_portfolio_sha256"] = "0"*64
     if failure == "broker_pin": args["expected_broker_snapshot_sha256"] = "0"*64
-    with pytest.raises(ValueError): cutover.reconcile_migration_candidate(**args)
+    with pytest.raises(ValueError): reconciler(**args)
     assert not (args["destination_directory"]/"receipt.json").exists()
 
 
-def test_final_deadline_crossing_tombstones_receipt_without_touching_inputs(tmp_path):
+@pytest.mark.parametrize("reconciler", [cutover.reconcile_migration_candidate, cutover.reconcile_startup_candidate])
+def test_final_freshness_expiry_tombstones_receipt_without_touching_inputs(tmp_path, reconciler):
     args, _ = setup(tmp_path)
     original = sha(args["candidate_directory"]/"holdings.sqlite3")
     args["clock"] = lambda: datetime.fromisoformat(NOW) + timedelta(seconds=61 if args["destination_directory"].exists() else 0)
     with pytest.raises(ValueError, match="stale"):
-        cutover.reconcile_migration_candidate(**args)
+        reconciler(**args)
     saved = json.loads((args["destination_directory"]/"receipt.json").read_text())
     assert saved["status"] == "FAILED_POST_PUBLICATION_GUARD" and not saved["runtime_activation"]
     assert sha(args["candidate_directory"]/"holdings.sqlite3") == original
+
+
+@pytest.mark.parametrize("observed_at", [
+    "2026-10-05T10:59:59+00:00", "2026-10-05T11:00:00+00:00",
+    "2026-10-05T19:00:00+00:00", "2026-10-06T19:00:00+00:00",
+])
+def test_manual_startup_accepts_fresh_ownership_without_relabeling_original_date(tmp_path, observed_at):
+    args, specs = setup(tmp_path, freeze=True, newer_peer=True)
+    before = {p: sha(p) for p in args["candidate_directory"].rglob("*") if p.is_file()}
+    source_pins = [migration.pin_ledger_files(s["path"]) for s in specs]
+    portfolio = replace(args["portfolio"], observed_at=observed_at)
+    broker = replace(args["broker_snapshot"], observed_at=observed_at)
+    pin_observations(args, portfolio, broker)
+    # At the exact freshness boundary even crossing 04:00 cannot expire ownership.
+    now = datetime.fromisoformat(observed_at) + timedelta(seconds=60)
+    args["clock"] = lambda: now
+    result = cutover.reconcile_startup_candidate(**args)
+    assert result["status"] == "UNION_RECONCILIATION_VERIFIED"
+    assert result["runtime_activation"] is False and result["orders_placed"] == 0
+    report = result["report"]
+    assert report["cutover_action_date"] == "2026-10-05"
+    assert report["reconciliation_mode"] == "MANUAL_STARTUP"
+    assert report["reconciled_at"] == now.isoformat()
+    assert all(c["result"]["ready"] for c in report["producer_checks"])
+    assert {p: sha(p) for p in before} == before
+    assert [migration.pin_ledger_files(s["path"]) for s in specs] == source_pins
+    original = cutover._tables(args["candidate_directory"] / "holdings.sqlite3")
+    final = cutover._tables(args["destination_directory"] / "holdings.sqlite3")
+    for table in ("allocations", "reservations", "fills", "inventory_assignments", "inventory_assignment_releases"):
+        assert original[table] == final[table]
+
+
+def test_original_dated_api_keeps_its_contract_for_existing_callers(tmp_path):
+    args, _ = setup(tmp_path)
+    observed_at = "2026-10-05T11:00:00+00:00"
+    pin_observations(args, replace(args["portfolio"], observed_at=observed_at),
+                     replace(args["broker_snapshot"], observed_at=observed_at))
+    args["clock"] = lambda: datetime.fromisoformat(observed_at)
+    with pytest.raises(ValueError, match="opening deadline"):
+        cutover.reconcile_migration_candidate(**args)
+    assert not args["destination_directory"].exists()
+
+
+def continuation_args(tmp_path):
+    args, _ = setup(tmp_path, freeze=True, newer_peer=True)
+    completed = cutover.reconcile_startup_candidate(**args)
+    observed_at = "2026-10-05T19:00:00+00:00"
+    portfolio = replace(args["portfolio"], snapshot_id="continuation-union", observed_at=observed_at)
+    broker = replace(args["broker_snapshot"], observed_at=observed_at)
+    return dict(previous_directory=args["destination_directory"], expected_manifest_sha256=completed["manifest_sha256"],
+        expected_participants=args["expected_participants"], expected_account_fingerprint=ACCOUNT,
+        portfolio=portfolio, expected_portfolio_sha256=canonical_sha256(asdict(portfolio)),
+        broker_snapshot=broker, expected_broker_snapshot_sha256=canonical_sha256(asdict(broker)),
+        destination_directory=tmp_path / "continued", clock=lambda: datetime.fromisoformat(observed_at))
+
+
+def test_manual_continuation_preserves_every_previously_committed_identity(tmp_path):
+    args = continuation_args(tmp_path)
+    original_files = {p: sha(p) for p in args["previous_directory"].rglob("*") if p.is_file()}
+    prior = cutover._tables(args["previous_directory"] / "holdings.sqlite3")
+    first = cutover.reconcile_startup_continuation(**args)
+    current = cutover._tables(args["destination_directory"] / "holdings.sqlite3")
+    assert first["report"]["reconciliation_mode"] == "MANUAL_STARTUP_CONTINUATION"
+    assert first["report"]["previous_reconciliation_manifest_sha256"] == args["expected_manifest_sha256"]
+    assert first["report"]["cutover_action_date"] == "2026-10-05"
+    assert not first["runtime_activation"] and first["orders_placed"] == 0
+    for table, rows in prior.items():
+        if table in {"snapshots", "evidence"}:
+            assert current[table][:-1] == rows
+        else:
+            assert current[table] == rows
+    assert {p: sha(p) for p in original_files} == original_files
+    # Another interrupted installation can extend the exact chain, never reset it.
+    args.update(previous_directory=args["destination_directory"], expected_manifest_sha256=first["manifest_sha256"],
+                destination_directory=tmp_path / "continued-again")
+    next_observed = "2026-10-05T19:00:01+00:00"
+    pin_observations(args, replace(args["portfolio"], snapshot_id="continuation-again", observed_at=next_observed),
+                     replace(args["broker_snapshot"], observed_at=next_observed))
+    args["clock"] = lambda: datetime.fromisoformat(next_observed)
+    second = cutover.reconcile_startup_continuation(**args)
+    final = cutover._tables(args["destination_directory"] / "holdings.sqlite3")
+    assert final["snapshots"][:-1] == current["snapshots"]
+    assert final["evidence"][:-1] == current["evidence"]
+    assert second["report"]["previous_reconciliation_manifest_sha256"] == first["manifest_sha256"]
+
+
+@pytest.mark.parametrize("failure", ["stale", "future", "pending", "unknown_orders", "holdings", "account",
+    "source_pin", "receipt", "inventory", "prior_changed", "overlap", "post_publish_stale"])
+def test_manual_continuation_blocks_incomplete_or_changed_evidence(tmp_path, failure):
+    args = continuation_args(tmp_path)
+    before = sha(args["previous_directory"] / "holdings.sqlite3")
+    if failure == "stale":
+        args["clock"] = lambda: datetime.fromisoformat(args["portfolio"].observed_at) + timedelta(seconds=61)
+    elif failure == "future":
+        args["clock"] = lambda: datetime.fromisoformat(args["portfolio"].observed_at) - timedelta(seconds=1)
+    elif failure == "pending":
+        pin_observations(args, broker=replace(args["broker_snapshot"], pending_buy_shares={"TSLA": 1}))
+    elif failure == "unknown_orders":
+        pin_observations(args, broker=replace(args["broker_snapshot"], broker_working_orders=None))
+    elif failure == "holdings":
+        held = {"COST": 4, "MSFT": 6}
+        pin_observations(args, replace(args["portfolio"], held_shares=held), replace(args["broker_snapshot"], held_shares=held))
+    elif failure == "account":
+        args["expected_account_fingerprint"] = "f" * 64
+    elif failure == "source_pin":
+        args["expected_manifest_sha256"] = "0" * 64
+    elif failure == "receipt":
+        path = args["previous_directory"] / "receipt.json"
+        saved = json.loads(path.read_bytes()); saved["status"] = "FAILED_POST_PUBLICATION_GUARD"
+        path.write_bytes(cutover._encoded(saved))
+    elif failure == "inventory":
+        (args["previous_directory"] / "INVALID.json").write_text("{}")
+    elif failure == "prior_changed":
+        path = args["previous_directory"] / "report.json"
+        path.write_bytes(path.read_bytes() + b" ")
+    elif failure == "overlap":
+        args["expected_participants"]["pc-new"] = ["COST"]
+    elif failure == "post_publish_stale":
+        args["clock"] = lambda: datetime.fromisoformat(args["portfolio"].observed_at) + timedelta(
+            seconds=61 if args["destination_directory"].exists() else 0)
+    with pytest.raises(ValueError):
+        cutover.reconcile_startup_continuation(**args)
+    if failure == "post_publish_stale":
+        receipt = json.loads((args["destination_directory"] / "receipt.json").read_bytes())
+        assert receipt["status"] == "FAILED_POST_PUBLICATION_GUARD"
+    else:
+        assert not args["destination_directory"].exists()
+    assert sha(args["previous_directory"] / "holdings.sqlite3") == before
+
+
+def test_manual_continuation_rechecks_prior_inventory_during_native_reconciliation(tmp_path, monkeypatch):
+    args = continuation_args(tmp_path)
+    native = HorizonLedger.reconcile
+    def changed(self, *a, **kw):
+        result = native(self, *a, **kw)
+        (args["previous_directory"] / "INVALID.json").write_text("{}")
+        return result
+    monkeypatch.setattr(HorizonLedger, "reconcile", changed)
+    with pytest.raises(ValueError, match="inventory changed"):
+        cutover.reconcile_startup_continuation(**args)
+    assert not args["destination_directory"].exists()
+
+
+@pytest.mark.parametrize("reconciler", [cutover.reconcile_migration_candidate, cutover.reconcile_startup_candidate,
+                                     cutover.reconcile_startup_continuation])
+@pytest.mark.parametrize("unexpected", ["INVALID.json", "holdings.sqlite3-wal"])
+def test_new_output_inventory_change_after_publication_invalidates_receipt(tmp_path, monkeypatch, reconciler, unexpected):
+    if reconciler is cutover.reconcile_startup_continuation:
+        args = continuation_args(tmp_path)
+        source_directory = args["previous_directory"]
+    else:
+        args, _ = setup(tmp_path)
+        source_directory = args["candidate_directory"]
+    before = {p: sha(p) for p in source_directory.rglob("*") if p.is_file()}
+    native_rename = Path.rename
+    def altered(self, target):
+        result = native_rename(self, target)
+        if Path(target) == args["destination_directory"]:
+            (Path(target) / unexpected).write_bytes(b"unexpected")
+        return result
+    monkeypatch.setattr(Path, "rename", altered)
+    with pytest.raises(ValueError, match="output inventory changed"):
+        reconciler(**args)
+    receipt = json.loads((args["destination_directory"] / "receipt.json").read_bytes())
+    assert receipt["status"] == "FAILED_POST_PUBLICATION_GUARD"
+    assert {p: sha(p) for p in before} == before
 
 
 def test_caller_mutating_observation_during_native_checks_fails_final_pin(tmp_path, monkeypatch):
