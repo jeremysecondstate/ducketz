@@ -1,0 +1,205 @@
+{
+  "author": "Scout",
+  "change_id": "scout-nightly-common-20261009T223856Z-968a99094c344758a422956bd1980402",
+  "completion_record": "20261009T223856Z-968a99094c344758a422956bd1980402",
+  "completion_record_sha256": "f710517516b334004fbc153a84ba50d98498af1ba9016b63363edbcb1e585a3a",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/gameplan_data.py",
+      "sha256": "6bd2b3ee89f07602518f6268c28824bad8737b065820bed0c52c8543e48bbd92"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "datafetching/runtime_lock.py",
+      "sha256": "5d4561c68af90cb52f248140cab74beea67abcbc998194bd3c044252f19980fd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_archive_features.py",
+      "sha256": "1263126bb015be0ee0def4c463a0f80689246c81a314921f34ac878d720392e2"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_archive_seconds.py",
+      "sha256": "8e6316dfc8b215eaaf3575bb74e0608bde7659ce0f6e50945a76dcbd9fed19d4"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "a14deea3cd4b49c6778ea3c3cf4ed55e48c1e9aaa810e08c8d430178356252f5"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/nightly_dispatch.py",
+      "sha256": "1683b5cb6a24e5c462ed22dd8c6c1153f0a7f794d618eb017cfcef707cf80968"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/nightly_gameplan.py",
+      "sha256": "2f48a1a8bdc4bc83fef8b81dd4d3522ebc5194e0822426c09edaf788109ec4e1"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/nightly_recovery.py",
+      "sha256": "a53e33297d60bc9bdb0c2fd76283a7024f0d94b05ea89f22ed0b072f65d09ee0"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/nightly_stage_repair.py",
+      "sha256": "f81efcfc22fed58a9d3aad5d1bfd1b847fc277557f966caac836bb85d7046d25"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/nightly_workflow.py",
+      "sha256": "24bfac23d39e98aea881e2a8a68c8d8e0d58b0c82c0283afe9a9a177c8983c11"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/overnight_runtime.py",
+      "sha256": "54c49f8380a7889be2600e0f6aa9df6aa002cd6da968f831c6c05c47bc76ba06"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/preparation_deadline.py",
+      "sha256": "8d2e5790aeb7cc32282a1fdfe28fa994b9fa33e0eccf218dff16b343c5b87d8e"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_signals.py",
+      "sha256": "55e03300e062e427d602b9da598a2d8837ea484daf6be50367d01ad6dc433dbc"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_gameplan_archive_seconds.py",
+      "sha256": "183e54a0a777f994eca5c04790dd12cd4740cf230a29076e0a044768c8a469d3"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_independent_loop_isolation.py",
+      "sha256": "e5d353fa326459234e10e0a03c0f8076783690c8f1d8ef3bd6d8f05820e59e7a"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_nightly_common_union.py",
+      "sha256": "c0d9eb472d2de174e5867c1f0e9eb634c8a3d3eac321fc945cdcac31665093a2"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_nightly_downstream_union.py",
+      "sha256": "0c04eda92830eb1764d1ddf98b9b3e3c3dbee150e261026197bf22721bd8a67f"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_joint_readiness.py",
+      "sha256": "803a3101cfa2ca60d15022429571f0c6b8cd28091d19ac39a1437b547613ddb2"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_nightly_recovery.py",
+      "sha256": "eafd1a0f3c2a542cfdaed02fb63fafc5d97aead5613482b174a51213874031e1"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_nightly_stage_repair.py",
+      "sha256": "e48a4a6050c56c9d1a32518891ecce7ba3ae129e73b14987505e371a854f0955"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_watchdog.py",
+      "sha256": "a913e514c28a097ac894cea1bf66abd69fb1e38747a93f39e76c3c6acb8adb4e"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_workflow.py",
+      "sha256": "309b2bb33509a7b5ef5bc2567cd5bd9c60e79ba6b46ae12a30a8c2f42bc88796"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_recovery_tail_continuation.py",
+      "sha256": "e7e9b3d4526d1cde4b586bbbeb6c020dc2c5c9f16c8930a5015fceb2dd41d52a"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_runtime_lock_identity.py",
+      "sha256": "e812cf12fc3aba959ca2abba02bfc224931acc2bf16f61ac740cda56e490f94b"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_scout_research_handoff.py",
+      "sha256": "b197286379a6006394bac71c95bd7640cf361000eca2bd6420d5f8d2ced60028"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/nightly_source_repair.py",
+      "sha256": "f991603f56ef876f0a7856412ca124753827084bade42aa788086c9e94c2575d"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/nightly_watchdog.py",
+      "sha256": "bf2125a58893e7e5bca3dc156cfc80c4b19e5fd0a4c389ca675c0feb09526d6f"
+    }
+  ],
+  "installation_status": "Not installed by this publication; Atlas global repair registry and exchange repair plus notification helper are separate reviewed follow-up components",
+  "limitations": [
+    "Offline synthetic fixtures and read-only saved-evidence verification; no provider or broker calls, production training, preparation replay or trader control",
+    "Windows symlink privilege may skip one synthetic escape fixture; all other checks must pass",
+    "Publication is separate from each PC audited installation and loaded runtime; main integration and merge remain separate",
+    "Persistent cross-action source repair ownership and exchange-stage source repair are separate Atlas-owned follow-up work; this record is the frozen compatible preparation component, not final end-to-end installation"
+  ],
+  "original_history": "Completed October 8 and October 9 evidence retained unchanged; no production preparation, synthesis, account capture or handover replay",
+  "remote_verified_at": "2026-10-09T23:00:38.012356Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires an audited exact-file installation with native wakes paused and original completed evidence preserved, followed by fresh installed checks and native scheduling readback. Atlas remains sole executor; manual trader controls remain unchanged.",
+  "scope": "Shared compatible preparation component for Atlas and Scout; exact local bindings remain machine owned",
+  "source_branch": "codex/scout/20261009T223856Z-968a99094c344758a422956bd1980402",
+  "source_commit": "003b9d9a57effd5c3b7d73e37139612efc7bb965",
+  "summary": "Scout nightly operations: compatible stage dispatch and audited preparation recovery",
+  "tests": [
+    {
+      "bound_files": 725,
+      "completed_at_utc": "2026-10-09T22:47:35.788472Z",
+      "exit_code": 0,
+      "output_sha256": "87a25b427502fc81a455eb95ff63deb592ec2f10e57de0f812473ad5dad5e8b4",
+      "result": "875 passed, 1 synthetic Windows symlink privilege skip",
+      "stage": "queue",
+      "started_at_utc": "2026-10-09T22:38:57.165636Z"
+    },
+    {
+      "bound_files": 725,
+      "completed_at_utc": "2026-10-09T22:58:50.408379Z",
+      "exit_code": 0,
+      "output_sha256": "9552364ccf6ad1d4b9bee4e143f7a7865bf371d264161d86aabdd05726840233",
+      "result": "875 passed, 1 synthetic Windows symlink privilege skip",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-09T22:51:56.717232Z"
+    }
+  ]
+}
