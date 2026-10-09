@@ -341,7 +341,8 @@ def _review_refresh_basis(root, prior_run, source, source_hash, action_date, now
 
 
 def _publish_producer_prices(root, publication, forecasts, intents, *, binding, observed, deadline_at,
-                             price_loader, clock, fallback_metadata, probability_metadata):
+                             price_loader, clock, fallback_metadata, probability_metadata,
+                             original_deadline=None, late_action_date=None):
     """Save observed planning estimates without reading a producer's account ledger."""
     from ml.account_gameplan.config import load_account_config
     from ml.stock_target_prices import load_stock_target_prices
@@ -360,7 +361,11 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
         "source_receipt_sha256": source_hash, "orders_placed": 0, "broker_orders_enabled": False,
         "execution_authority": AUTHORITY}
     report = {**metadata, "status": "RUNNING", "observed_at": observed.isoformat(),
-              "deadline_at": deadline_at.isoformat(), "effective_deadline_at": deadline_at.isoformat()}
+              "deadline_at": (original_deadline if original_deadline is not None else deadline_at).isoformat(),
+              "effective_deadline_at": deadline_at.isoformat()}
+    if late_action_date is not None:
+        metadata.update(late_action_date=late_action_date, preparation_mode="LATE_RECOVERY")
+        report.update(late_action_date=late_action_date, preparation_mode="LATE_RECOVERY")
     try:
         prices, files, inventory = (price_loader or load_stock_target_prices)(root,
             symbols=tuple(config["symbols"]), source_contract=config["target_price_source_contract"])
@@ -489,7 +494,8 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
                        snapshot_loader=None, price_loader=None, clock=utc_timestamp,
                        deadline_exception: Path | None = None, refresh_plan: Path | None = None,
-                       account_producer_only: bool = False, expected_account_config: str | None = None) -> Path:
+                       account_producer_only: bool = False, expected_account_config: str | None = None,
+                       late_action_date: str | None = None) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups
@@ -524,14 +530,24 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     source_receipt_hash = file_checksum(source / "receipt.json")
     expected_deadline = pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
-    if deadline_at != expected_deadline.tz_convert("UTC"):
-        raise ValueError("Trade planning deadline differs from the pinned action session")
     observed = utc(clock())
+    original_deadline = expected_deadline.tz_convert("UTC")
+    if late_action_date is not None:
+        close = (expected_deadline + pd.Timedelta(hours=13)).tz_convert("UTC")
+        if (late_action_date != action_date
+                or config.get("publication_mode") != "LATE_RECOVERY"
+                or config.get("late_action_date") != action_date
+                or deadline is None or deadline_exception is not None or refresh_plan is not None
+                or not original_deadline <= observed < deadline_at <= close):
+            raise ValueError("Late trade planning requires the matching recovery source and unexpired recovery deadline")
+    elif deadline_at != original_deadline:
+        raise ValueError("Trade planning deadline differs from the pinned action session")
     from ml.preparation_deadline import preparation_deadline
-    original_deadline = deadline_at
     refresh_snapshot = refresh_asof = refresh_evidence = refresh_pointer_hash = None
     refresh_inputs = []
-    if refresh_plan is None:
+    if late_action_date is not None:
+        exception_evidence = None
+    elif refresh_plan is None:
         deadline_at, exception_evidence = preparation_deadline(root, source, original_deadline, observed, deadline_exception)
     else:
         if deadline_exception is not None or snapshot_loader is not None:
@@ -562,7 +578,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             raise ValueError("Producer source universe differs from its account binding")
         return _publish_producer_prices(root, publication, forecasts, intents, binding=binding, observed=observed,
             deadline_at=deadline_at, price_loader=price_loader, clock=clock,
-            fallback_metadata=fallback_metadata, probability_metadata=probability_metadata)
+            fallback_metadata=fallback_metadata, probability_metadata=probability_metadata,
+            original_deadline=original_deadline, late_action_date=late_action_date)
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
               **probability_metadata, **fallback_metadata,
@@ -570,6 +587,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
               "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
               "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
               "orders_placed": 0, "broker_orders_enabled": False, "status": "RUNNING"}
+    if late_action_date is not None:
+        report.update(publication_mode="LATE_RECOVERY", late_action_date=late_action_date)
     if refresh_evidence is not None:
         report.update(publication_mode="INFORMATIONAL_REFRESH", review_refresh=refresh_evidence)
     prior_action_date = previous_action_date(action_date)
@@ -736,6 +755,7 @@ def main(argv: list[str] | None = None) -> int:
     datastore.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
     parser.add_argument("--gameplan-run", required=True, type=Path)
     parser.add_argument("--deadline")
+    parser.add_argument("--late-action-date", help="Explicit date-pinned late recovery using its frozen deadline")
     parser.add_argument('--deadline-exception', type=Path)
     parser.add_argument('--refresh-plan', type=Path,
                         help="Recalculate the current informational review using its original snapshot and planning cutoff")
@@ -745,6 +765,8 @@ def main(argv: list[str] | None = None) -> int:
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-trade-planning.lock", process_name="gameplan trade planning"):
         extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
+        if args.late_action_date is not None:
+            extra['late_action_date'] = args.late_action_date
         if args.refresh_plan is not None:
             extra['refresh_plan'] = args.refresh_plan
         if args.account_producer_only or args.expected_account_config is not None:
