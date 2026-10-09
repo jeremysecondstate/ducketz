@@ -492,7 +492,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                        account_producer_only: bool = False, expected_account_config: str | None = None) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
-    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups
+    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups, late_publication_time
     from ml.stock_target_prices import load_stock_target_prices
     from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
     from ml.gameplan_cash_ledger import project_direction_trades, UnavailablePlanningPricePath
@@ -546,7 +546,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     if observed >= deadline_at:
         raise ValueError("Trade planning publication deadline has passed")
     symbols = tuple(config["symbols"])
-    forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols)
+    forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols,
+        late_publication_at=late_publication_time(config, publication.receipt))
     intents = pd.read_parquet(source / "option-strategy-intents.parquet")
     if (len(intents) != len(forecasts) or not intents.groupby("symbol").size().eq(24).all()
             or set(intents.id) != set(forecasts.id + ":OPTION")

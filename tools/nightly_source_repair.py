@@ -24,6 +24,7 @@ VERSION = "nightly-archive-source-repair-v1"
 ALLOWED = frozenset(("ml/gameplan_archive_features.py", "ml/gameplan_archive_seconds.py",
                      "ml/nightly_gameplan.py", "tools/nightly_source_repair.py"))
 TAIL_ALLOWED = frozenset(("ml/stock_trader/independent_signals.py",
+                         "ml/stock_trader/independent_session.py",
                          "ml/gameplan_trade_planning.py", "ml/preparation_deadline.py",
                          "ml/joint_capital_handoff.py", "ml/joint_capital_plan.py",
                          "ml/account_gameplan/sources.py", "tools/nightly_source_repair.py"))

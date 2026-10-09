@@ -34,5 +34,8 @@ if __name__ == "__main__":
         "tests/test_nightly_source_repair.py", "tests/test_gameplan_archive_features.py",
         "tests/test_gameplan_archive_seconds.py", "tests/test_nightly_recovery.py",
         "tests/test_nightly_workflow.py", "tests/test_gameplan_model_feedback.py",
+        "tests/test_late_forecast_validation.py", "tests/test_gameplan_trade_planning.py",
+        "tests/test_joint_capital_handoff.py", "tests/test_joint_capital_plan.py",
+        "tests/test_independent_stock_signals.py", "tests/test_independent_stock_session.py",
         "-q", "-p", "no:cacheprovider",
     ]))

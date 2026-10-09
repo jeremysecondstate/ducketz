@@ -198,9 +198,11 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
         raise ValueError("Saved Gameplan frozen universe is invalid")
     forecast_bytes = _output(game, root, manifest, "forecasts.parquet", maximum=_PARQUET_LIMIT)
     inputs[game / "forecasts.parquet"] = sha256(forecast_bytes).hexdigest()
-    from ml.stock_trader.independent_signals import _REQUIRED_COLUMNS, _validated_independent_forecasts
+    from ml.stock_trader.independent_signals import _REQUIRED_COLUMNS, _validated_independent_forecasts, late_publication_time
     from ml.stock_trader.gameplan_execution import _validated_instructions
-    frame = _validated_independent_forecasts(pd.read_parquet(BytesIO(forecast_bytes)), action_date=day, symbols=tuple(symbols))
+    late_published = late_publication_time(config, receipt)
+    frame = _validated_independent_forecasts(pd.read_parquet(BytesIO(forecast_bytes)), action_date=day, symbols=tuple(symbols),
+        late_publication_at=late_published)
     if frame[list(_REQUIRED_COLUMNS - {"action_anchor_local"})].isna().any().any():
         raise ValueError("Required forecast fields cannot be null")
     if frame.frozen_at.gt(published).any():
@@ -264,7 +266,8 @@ def export_owner_package(datastore_root: Path, *, gameplan_run: Path, trade_plan
         source_hashes={"receipt_sha256": sha256(receipt_bytes).hexdigest(), "manifest_sha256": sha256(manifest_bytes).hexdigest(),
             "forecasts_sha256": sha256(forecast_bytes).hexdigest(), "price_path_sha256": sha256(price_bytes).hexdigest()},
         forecasts=frame[[name for name in frame if name in _FORECAST_FIELDS]].to_dict("records"),
-        price_path=public_prices, cross_horizon_fallback_policy=fallback, source_reference=reference)
+        price_path=public_prices, cross_horizon_fallback_policy=fallback, source_reference=reference,
+        late_publication_at=late_published)
     for path, expected in inputs.items():
         maximum = (MAX_NATIVE_PRICE_BYTES if path == trade / "planning-price-path.json" else
                    _PARQUET_LIMIT if path.suffix == ".parquet" else _JSON_LIMIT)
