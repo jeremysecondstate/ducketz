@@ -21,8 +21,11 @@ from filelock import FileLock
 from datafetching.runtime_lock import exclusive_runtime_lock, _pid_is_running
 from ml.artifacts import file_checksum, utc_timestamp
 from ml import nightly_workflow as workflow
+from ml import nightly_repair_registry as registry
 
 VERSION = "nightly-stage-source-repair-v1"
+LEGACY_SOURCE_ROOTS = ("ml", "app", "datafetching", "tools")
+SOURCE_ROOTS = (*LEGACY_SOURCE_ROOTS, "fundamentals", "options", "signals", "technicals")
 LEGACY = ("prepare_stats", "model_review", "train_and_plan", "verify_display", "local_handoff")
 SPLIT = ("datastore_catchup", "prepare_stats", "model_review", "train_and_plan",
          "local_gameplan", "verify_display", "local_handoff")
@@ -41,6 +44,30 @@ LIVE_TRADER_SAFE = frozenset(("ml/nightly_workflow.py", "ml/nightly_dispatch.py"
 
 def _encoded(value):
     return (json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n").encode()
+
+
+def _repository_claim(owner, repair_id, action_date, state_sha256, completion_record=None):
+    identity = {"owner": owner, "repair_id": repair_id, "action_date": action_date,
+                "domain": "preparation", "state_sha256": state_sha256}
+    return {key: identity[key] for key in ("owner", "repair_id", "action_date", "domain")} | {
+        "completion_record": completion_record, "token": sha256(_encoded(identity)).hexdigest()}
+
+
+def _acquire_repository(config, record):
+    """Retain a later completion binding when a null pre-edit claim retries."""
+    current = registry.read(config["state_root"])
+    if (current is not None and record["completion_record"] is None
+            and all(current[key] == record[key] for key in registry.FIELDS - {"completion_record"})):
+        registry.assert_owner(config["state_root"], current)
+        return current
+    return registry.acquire(config["state_root"], record)
+
+
+def _same_original_owner(original, current):
+    return (isinstance(original, dict) and isinstance(current, dict)
+            and set(original) == set(current)
+            and all(original[key] == current[key] for key in original if key != "completion_record")
+            and original.get("completion_record") in (None, current.get("completion_record")))
 
 
 def _immutable(path, raw):
@@ -66,10 +93,31 @@ def _immutable(path, raw):
         temporary.unlink(missing_ok=True)
 
 
-def _inventory(repository):
+def _inventory(repository, roots=SOURCE_ROOTS):
     return {path.relative_to(repository).as_posix(): file_checksum(path)
-            for folder in ("ml", "app", "datafetching", "tools")
+            for folder in roots
             for path in sorted((repository / folder).rglob("*.py"))}
+
+
+def _spec_inventory(repository, spec):
+    # Frozen legacy transactions retain their original four-root policy. New
+    # transactions explicitly bind all production dependency roots; historical
+    # specs and their evidence are never expanded or rewritten retroactively.
+    roots = tuple(spec.get("source_roots", LEGACY_SOURCE_ROOTS))
+    if roots not in (LEGACY_SOURCE_ROOTS, SOURCE_ROOTS):
+        raise ValueError("Unknown frozen repair source inventory policy")
+    return _inventory(repository, roots)
+
+
+def _verify_selector_snapshot(config, spec, directory):
+    selector = Path(config["datastore"]).resolve() / "ml/overnight-latest/run.json"
+    frozen = spec.get("native_selector")
+    if frozen is not None:
+        if (frozen != {"path": str(selector), "snapshot": "selectors/overnight-latest-run.json",
+                       "sha256": spec["native_files"].get(str(selector))}
+                or file_checksum(directory / frozen["snapshot"]) != frozen["sha256"]):
+            raise ValueError("Original native selector snapshot changed")
+    return selector
 
 
 def _relative(name):
@@ -299,16 +347,63 @@ def _retry_epochs(state, steps):
     return result
 
 
-def claim(config, *, action_date, repair_id, owner, completion_record, now=None):
+def _claim_repository(config, record, state, raw, directory):
+    """Continue a proved new failure without releasing the global owner fence."""
+    previous = registry.read(config["state_root"])
+    if previous is None or all(previous[key] == record[key]
+                               for key in registry.FIELDS - {"completion_record"}):
+        return _acquire_repository(config, record)
+    if any(previous[key] != record[key] for key in ("owner", "domain", "action_date")):
+        raise ValueError("Another repair owner holds the repository")
+    if not verified_resume(config, previous, state):
+        raise ValueError("Previous repair has no verified applied audit")
+    prior_directory = directory.parent / previous["repair_id"]
+    prior_spec = workflow._json(prior_directory / "spec.json")
+    prior = workflow._json(prior_directory / "applied.json")
+    step = state["current_step"]
+    epochs = prior_spec["prior_retry_epochs"]
+    entry = state.get("steps", {}).get(step, {})
+    failure = state.get("failure") or {}
+    if (step not in epochs or entry.get("status") not in STOPPED
+            or type(entry.get("attempts")) is not int
+            or entry["attempts"] <= epochs[step]["attempts"]
+            or failure.get("disposition") != "OPEN"
+            or failure.get("source_identity") != state["source_identity"]
+            or not state.get("failed_at") or not failure.get("at")
+            or utc_timestamp(state["failed_at"]) <= utc_timestamp(prior["applied_at"])
+            or utc_timestamp(failure["at"]) <= utc_timestamp(prior["applied_at"])):
+        raise ValueError("Continuation requires a newly failed resumed attempt with exact source evidence")
+    # The original state and proof are committed before the atomic owner
+    # replacement. A crash on either side resumes this exact new attempt.
+    _immutable(directory / "before-state.json", raw)
+    proof = {"schema_version": "nightly-stage-repair-continuation-v1",
+             "previous": previous, "replacement": record,
+             "previous_spec": {"path": str(prior_directory / "spec.json"),
+                               "sha256": file_checksum(prior_directory / "spec.json")},
+             "previous_applied": {"path": str(prior_directory / "applied.json"),
+                                  "sha256": file_checksum(prior_directory / "applied.json")},
+             "new_failed_state": {"path": str(directory / "before-state.json"),
+                                  "sha256": sha256(raw).hexdigest()},
+             "failure": failure, "step": step, "attempts": entry["attempts"],
+             "source_identity": state["source_identity"]}
+    proof_path = directory / "continuation.json"
+    _immutable(proof_path, _encoded(proof))
+    return registry.continue_owner(config["state_root"], previous, record,
+        evidence={"path": str(proof_path), "sha256": file_checksum(proof_path)}, verified=True)
+
+
+def claim(config, *, action_date, repair_id, owner, completion_record=None, now=None):
     """Reserve one failed stage before editing an isolated repair candidate.
 
-    The stable completion/repair identities persist through prepare/apply. A
+    The stable repair identity precedes the queue's real completion identity. A
     crashed claimant is resumed using those identities; claims never expire into
     an automatic competing writer or silently extend a recovery deadline.
     """
     if (not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", repair_id)
             or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", action_date)
-            or not all(isinstance(value, str) and value.strip() for value in (owner, completion_record))):
+            or not isinstance(owner, str) or not owner.strip()
+            or (completion_record is not None and
+                (not isinstance(completion_record, str) or not completion_record.strip()))):
         raise ValueError("Stable repair, owner, action date and completion identities required")
     state_path = Path(config["state_root"]).resolve() / "runs" / action_date / "state.json"
     directory = state_path.parent / "source-repairs" / repair_id
@@ -334,7 +429,7 @@ def claim(config, *, action_date, repair_id, owner, completion_record, now=None)
         owner_record = {"repair_id": repair_id, "owner": owner, "completion_record": completion_record,
                         "failure": state.get("failure"), "state_sha256": sha256(raw).hexdigest()}
         owner_path = state_path.parent / "repair-owner.json"
-        if owner_path.exists() and workflow._json(owner_path) != owner_record:
+        if owner_path.exists() and not _same_original_owner(owner_record, workflow._json(owner_path)):
             previous = workflow._json(owner_path)
             if not (state_path.parent / "source-repairs" / previous["repair_id"] / "applied.json").exists():
                 raise ValueError("Another repair owner holds this failure")
@@ -345,11 +440,22 @@ def claim(config, *, action_date, repair_id, owner, completion_record, now=None)
                   "claim": owner_record, "repair_claim": repair_claim, "claimed_at": claimed_at,
                   "before_source": state["source_identity"], "before_files": _inventory(repository),
                   "native_files": native_files}
+        if claim_path.exists():
+            frozen = workflow._json(claim_path)
+            if (not _same_original_owner(frozen.get("claim"), owner_record)
+                    or any(frozen.get(key) != value for key, value in record.items() if key != "claim")):
+                raise ValueError("Original pre-edit claim changed")
+            record = frozen
+        repository_claim = _repository_claim(owner, repair_id, action_date,
+            owner_record["state_sha256"], record["claim"]["completion_record"])
+        acquired = _claim_repository(config, repository_claim, state, raw, directory)
         _immutable(directory / "before-state.json", raw)
         _immutable(claim_path, _encoded(record))
-        workflow._write(owner_path, owner_record)
+        if not owner_path.exists() or not _same_original_owner(owner_record, workflow._json(owner_path)):
+            workflow._write(owner_path, owner_record)
         workflow._write(state_path, {**state, "repair_claim": repair_claim})
-        return {"status": "REPAIR_CLAIMED", "claim_path": str(claim_path), **repair_claim}
+        return {"status": "REPAIR_CLAIMED", "claim_path": str(claim_path),
+                "repository_claim": acquired, **repair_claim}
 
 
 def prepare(config, *, action_date, repair_id, candidate, changes, completion_record,
@@ -395,10 +501,12 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
         native_files = _validate_state(config, state, observed)
         if state["action_date"] != action_date or state["source_identity"] != workflow.source_identity(repository):
             raise ValueError("Reviewed original source/action date differs")
+        if changes and not (destination / "claim.json").is_file():
+            raise ValueError("Source-changing preparation requires the original pre-edit claim")
         claim_path = state_path.parent / "repair-owner.json"
         claim = {"repair_id": repair_id, "owner": owner, "completion_record": completion_record,
                  "failure": state.get("failure"), "state_sha256": sha256(current_raw).hexdigest()}
-        if claim_path.exists() and workflow._json(claim_path) != claim:
+        if claim_path.exists() and not _same_original_owner(workflow._json(claim_path), claim):
             prior = workflow._json(claim_path)
             previous = state_path.parent / "source-repairs" / prior["repair_id"] / "applied.json"
             if not previous.exists():
@@ -411,13 +519,28 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
         if (destination / "claim.json").exists():
             frozen_claim = workflow._json(destination / "claim.json")
             if (frozen_claim.get("config") != config or frozen_claim.get("action_date") != action_date
-                    or frozen_claim.get("claim") != claim or frozen_claim.get("repair_claim") != repair_claim
+                    or not _same_original_owner(frozen_claim.get("claim"), claim)
+                    or frozen_claim.get("repair_claim") != repair_claim
                     or frozen_claim.get("before_source") != state["source_identity"]
                     or frozen_claim.get("before_files") != before_files
                     or frozen_claim.get("native_files") != native_files):
                 raise ValueError("Original claim source, state or recovery evidence changed")
+        initial_completion = (frozen_claim["claim"]["completion_record"]
+                              if (destination / "claim.json").exists() else None)
+        repository_claim = _repository_claim(owner, repair_id, action_date,
+            claim["state_sha256"], initial_completion)
+        _claim_repository(config, repository_claim, state, current_raw, destination)
         expected_files = dict(before_files)
         records, blobs = [], {}
+        selector = Path(config["datastore"]).resolve() / "ml/overnight-latest/run.json"
+        native_selector = None
+        if str(selector) in native_files:
+            frozen_selector = "selectors/overnight-latest-run.json"
+            blobs[frozen_selector] = selector.read_bytes()
+            if sha256(blobs[frozen_selector]).hexdigest() != native_files[str(selector)]:
+                raise ValueError("Original native selector changed during review")
+            native_selector = {"path": str(selector), "snapshot": frozen_selector,
+                               "sha256": native_files[str(selector)]}
         for name, operation in changes.items():
             if operation not in ("add", "modify", "delete"):
                 raise ValueError("Explicit add/modify/delete operation required")
@@ -458,6 +581,7 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
                 raise ValueError("Check timestamps are reversed")
             blobs[f"checks/{index}.log"] = log.read_bytes()
             check_records.append({**check, "log": f"checks/{index}.log", "sha256": file_checksum(log)})
+        repository_claim = registry.bind_completion(config["state_root"], repository_claim, completion_record)
         # The intent is written first. An interrupted prepare can resume exactly
         # these frozen inputs, but cannot silently take new candidate/test bytes.
         spec = {"schema_version": VERSION, "repair_id": repair_id, "owner": owner,
@@ -469,7 +593,8 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
             "runtime_implications": runtime_implications, "review_binding": review_binding,
             "invalidate_from": invalidate_from, "invalidated_steps": invalidated,
             "failure": state.get("failure"), "claim": claim, "repair_claim": repair_claim,
-            "prior_retry_epochs": retry_epochs}
+            "prior_retry_epochs": retry_epochs, "repository_claim": repository_claim,
+            "source_roots": list(SOURCE_ROOTS), "native_selector": native_selector}
         _immutable(destination / "intent.json", _encoded(spec))
         workflow._write(claim_path, claim)
         _immutable(destination / "before-state.json", current_raw)
@@ -512,6 +637,16 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
         raise ValueError("Repair specification differs from the original intent")
     repository = Path(config["repository"]).resolve()
     with _locks(config):
+        _verify_selector_snapshot(config, spec, directory)
+        repository_claim = spec.get("repository_claim") or _repository_claim(
+            owner, spec["repair_id"], spec["action_date"], spec["before_state_sha256"], spec["completion_record"])
+        registry.validate(repository_claim)
+        if repository_claim != _repository_claim(owner, spec["repair_id"], spec["action_date"],
+                                                 spec["before_state_sha256"], spec["completion_record"]):
+            raise ValueError("Repository repair ownership differs from the frozen specification")
+        current_repository_claim = registry.read(config["state_root"])
+        if current_repository_claim is not None:
+            registry.assert_owner(config["state_root"], repository_claim)
         state = workflow._json(state_path)
         original = workflow._json(directory / "before-state.json")
         spec_sha = file_checksum(spec_path)
@@ -522,10 +657,16 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
                     or file_checksum(directory / "before-state.json") != spec["before_state_sha256"]
                     or any(file_checksum(directory / check["log"]) != check["sha256"] for check in spec["checks"])):
                 raise ValueError("Completed repair evidence changed")
-            if _inventory(repository) != spec["expected_files"] or state["source_identity"] != workflow.source_identity(repository):
+            if _spec_inventory(repository, spec) != spec["expected_files"] or state["source_identity"] != workflow.source_identity(repository):
                 raise ValueError("Installed repaired source changed")
             _immutable(directory / "applied.json", _encoded(completed))
             return {"status": "SOURCE_REPAIR_ALREADY_APPLIED", **completed}
+        if spec.get("repository_claim") is None:
+            # A legacy frozen transaction may resume without rewriting its
+            # immutable specification. It must still acquire today's global fence.
+            _acquire_repository(config, repository_claim)
+        else:
+            registry.assert_owner(config["state_root"], repository_claim)
         if (file_checksum(directory / "before-state.json") != spec["before_state_sha256"]
                 or state_path.read_bytes() not in ((directory / "before-state.json").read_bytes(),
                                                   _encoded({**original, "repair_claim": spec["repair_claim"]}))):
@@ -545,7 +686,7 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
             raise ValueError("Retry epoch changed since the repair review")
         if not set(names) <= LIVE_TRADER_SAFE and _trader_running(repository):
             raise ValueError("Active trader requires a separately supported safe installation transition")
-        actual = _inventory(repository)
+        actual = _spec_inventory(repository, spec)
         for record in spec["changes"]:
             name = record["path"]
             target = _regular(repository, name, optional=True)
@@ -596,7 +737,8 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
                     if entry.get("status") == "COMPLETE" and step not in spec["invalidated_steps"]],
                 "original_failure": spec["failure"], "review_binding": spec["review_binding"],
                 "prior_retry_epochs": spec["prior_retry_epochs"],
-                "deadline_at": state["deadline_at"], "effective_deadline_at": state.get("effective_deadline_at")}
+                "deadline_at": state["deadline_at"], "effective_deadline_at": state.get("effective_deadline_at"),
+                "repository_claim": repository_claim}
             transition.update(original_source_identity=spec["before_source"],
                               evidence=str(spec_path), evidence_sha256=spec_sha,
                               at=transition["applied_at"], authorization=spec["rationale"],
@@ -611,7 +753,7 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
             if present != record["after_sha256"]:
                 raw = None if record["after_sha256"] is None else (directory / "candidate" / record["path"]).read_bytes()
                 _install_file(target, raw)
-        if _inventory(repository) != spec["expected_files"]:
+        if _spec_inventory(repository, spec) != spec["expected_files"]:
             raise ValueError("Installed source inventory differs from reviewed candidate")
         transition["after_source"] = workflow.source_identity(repository)
         transition["reviewed_source_identity"] = transition["after_source"]
@@ -656,13 +798,133 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
                 "continuation": "Use existing coordinator; original deadlines and authority still apply"}
 
 
+def verified_resume(config, registry_record, state):
+    """Caller holds workflow.lock; pending claims never authorize dispatch."""
+    registry.validate(registry_record)
+    if (registry_record["domain"] != "preparation"
+            or registry_record["action_date"] != state.get("action_date")):
+        return False
+    current = registry.read(config["state_root"])
+    if current is not None:
+        registry.assert_owner(config["state_root"], registry_record)
+    directory = (Path(config["state_root"]).resolve() / "runs" /
+                 registry_record["action_date"] / "source-repairs" / registry_record["repair_id"])
+    spec_path = directory / "spec.json"
+    transitions = [*state.get("source_repairs", []), *state.get("dependency_restorations", [])]
+    matched = [entry for entry in transitions if entry.get("repair_id") == registry_record["repair_id"]]
+    if not matched:
+        return False
+    if len(matched) != 1:
+        raise ValueError("Repair transition identity is duplicated")
+    transition = matched[0]
+    spec = workflow._json(spec_path)
+    expected = _repository_claim(spec["owner"], spec["repair_id"], spec["action_date"],
+                                 spec["before_state_sha256"], spec["completion_record"])
+    if (registry_record != expected or spec.get("repository_claim", expected) != expected
+            or spec.get("config") != config or spec.get("schema_version") != VERSION
+            or spec_path.read_bytes() != (directory / "intent.json").read_bytes()
+            or transition.get("spec_sha256") != file_checksum(spec_path)
+            or transition.get("owner") != registry_record["owner"]
+            or transition.get("completion_record") != registry_record["completion_record"]
+            or transition.get("repository_claim", expected) != expected
+            or transition.get("before_state_sha256") != spec["before_state_sha256"]
+            or file_checksum(directory / "before-state.json") != spec["before_state_sha256"]):
+        raise ValueError("Applied repair owner, specification or original state changed")
+    original = workflow._json(directory / "before-state.json")
+    retained = ("run_id", "action_date", "source_session", "actor", "deadline_at",
+                "recovery_deadline_at", "effective_deadline_at", "scheduled_recovery",
+                "recovery", "planning_tail_continuation")
+    if any(state.get(key) != original.get(key) for key in retained):
+        raise ValueError("Original workflow identity or frozen recovery deadline changed")
+    invalidated = set(spec["invalidated_steps"])
+    for step, entry in original.get("steps", {}).items():
+        if entry.get("status") == "COMPLETE" and step not in invalidated:
+            if state.get("steps", {}).get(step) != entry:
+                raise ValueError("Original completed stage changed after source repair")
+            workflow._verify_outputs(entry["output"])
+    audit_path = directory / "audit.json"
+    # Older reviewed transactions used the spec itself as evidence. Retain the
+    # exact original reference, but never accept an arbitrary external path.
+    evidence = Path(transition["evidence"])
+    if evidence not in (audit_path, spec_path) or file_checksum(evidence) != transition["evidence_sha256"]:
+        raise ValueError("Applied repair audit changed")
+    if evidence == audit_path:
+        audit = workflow._json(audit_path)
+        expected_audit = {**transition, "evidence": str(spec_path),
+                          "evidence_sha256": file_checksum(spec_path)}
+        if audit != expected_audit:
+            raise ValueError("Applied repair audit differs from saved transition")
+    applied = directory / "applied.json"
+    if applied.exists() and workflow._json(applied) != transition:
+        raise ValueError("Applied repair completion record changed")
+    if (_spec_inventory(Path(config["repository"]), spec) != spec["expected_files"]
+            or state["source_identity"] != workflow.source_identity(Path(config["repository"]))
+            or transition.get("after_source") != state["source_identity"]):
+        raise ValueError("Installed repaired source changed before continuation")
+    for check in spec["checks"]:
+        if file_checksum(directory / check["log"]) != check["sha256"]:
+            raise ValueError("Original repair check evidence changed")
+    selector = _verify_selector_snapshot(config, spec, directory)
+    for name, digest in spec["native_files"].items():
+        if Path(name) == selector:
+            # This is an advancing selector, not an original attempt's receipt.
+            # New specs retain its pre-install bytes; legacy frozen specs keep
+            # their original audit/hash and are never rewritten. Completion is
+            # verified from the saved stage's explicit native output below.
+            if not selector.is_file() or selector.is_symlink():
+                raise ValueError("Native selector is unavailable or linked")
+            pointer = workflow._json(selector)
+            candidate = Path(config["datastore"]).resolve() / str(pointer.get("run_path", ""))
+            run = candidate.resolve()
+            if (run.parent != selector.parent.parent / "overnight-runs" or candidate.is_symlink()
+                    or not (run / "stage-report.json").is_file()):
+                raise ValueError("Advanced native selector escapes its retained run directory")
+            continue
+        if file_checksum(Path(name)) != digest:
+            raise ValueError("Original native repair evidence changed")
+    return True
+
+
+def resolve_verified(config, registry_record, state):
+    """Release only after saved failed-stage success; caller holds workflow.lock."""
+    state_path = (Path(config["state_root"]).resolve() / "runs" /
+                  registry_record["action_date"] / "state.json")
+    if workflow._json(state_path) != state:
+        raise ValueError("Verified repair resolution requires the saved workflow state")
+    if not verified_resume(config, registry_record, state):
+        return False
+    directory = (Path(config["state_root"]).resolve() / "runs" /
+                 registry_record["action_date"] / "source-repairs" / registry_record["repair_id"])
+    original = workflow._json(directory / "before-state.json")
+    failed_step = original["current_step"]
+    entry = state.get("steps", {}).get(failed_step, {})
+    if entry.get("status") != "COMPLETE":
+        return False
+    workflow._verify_outputs(entry["output"])
+    if entry["output"].get("native_run"):
+        run = Path(entry["output"]["native_run"]).resolve()
+        if (run.parent != Path(config["datastore"]).resolve() / "ml/overnight-runs"
+                or workflow._native_outputs(run) != entry["output"]):
+            raise ValueError("Verified recovery native output differs from its completed receipt")
+    resolution = {"schema_version": VERSION, "repository_claim": registry_record,
+                  "action_date": state["action_date"], "run_id": state["run_id"],
+                  "failed_step": failed_step, "verified_output": entry["output"],
+                  "spec_sha256": file_checksum(directory / "spec.json"),
+                  "source_identity": state["source_identity"]}
+    _immutable(directory / "resolved.json", _encoded(resolution))
+    current = registry.read(config["state_root"])
+    if current is not None:
+        registry.release(config["state_root"], registry_record, verified=True)
+    return True
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--owner", required=True)
     parser.add_argument("--reviewed", action="store_true")
     modes = parser.add_mutually_exclusive_group(required=True)
-    modes.add_argument("--claim", type=Path, help="Reserve failure before editing; JSON action_date, repair_id, completion_record")
+    modes.add_argument("--claim", type=Path, help="Reserve failure before editing; JSON action_date, repair_id, optional null completion_record")
     modes.add_argument("--prepare", type=Path, help="Reviewed local request JSON")
     modes.add_argument("--apply", type=Path, help="Exact frozen repair spec")
     args = parser.parse_args(argv)

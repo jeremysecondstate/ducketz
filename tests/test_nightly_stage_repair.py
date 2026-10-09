@@ -71,7 +71,13 @@ def env(tmp_path, monkeypatch):
 
 
 def prepare(env, **changes):
-    return repair.prepare(env["config"], **{**env["request"], **changes})
+    request = {**env["request"], **changes}
+    directory = (Path(env["config"]["state_root"]) / "runs" / request["action_date"] /
+                 "source-repairs" / request["repair_id"])
+    if request["changes"] and not (directory / "claim.json").exists():
+        repair.claim(env["config"], action_date=request["action_date"], repair_id=request["repair_id"],
+                     owner=request["owner"], now=request.get("now"))
+    return repair.prepare(env["config"], **request)
 
 
 def apply(env, spec):
@@ -96,6 +102,129 @@ def test_expired_failed_review_repair_preserves_original_identity_outputs_and_de
     after = env["state_path"].read_bytes()
     assert apply(env, spec)["status"] == "SOURCE_REPAIR_ALREADY_APPLIED"
     assert env["state_path"].read_bytes() == after
+
+
+def new_failed_attempt(env, at="2026-10-09T20:01:00Z"):
+    state = repair.workflow._json(env["state_path"])
+    step = state["current_step"]
+    state.update(status="FAILED", failed_at=at, error="second deterministic failure")
+    state["steps"][step].update(status="FAILED", attempts=state["steps"][step].get("attempts", 0) + 1)
+    state["failure"] = {"at": at, "step": step, "fingerprint": "second-fingerprint",
+                        "disposition": "OPEN", "source_identity": state["source_identity"]}
+    write(env["state_path"], state)
+    return state
+
+
+def test_same_owner_second_fix_preserves_original_chain_and_frozen_deadlines(env):
+    first = prepare(env)
+    apply(env, first)
+    old = repair.registry.read(env["config"]["state_root"])
+    original_evidence = {p.name: p.read_bytes() for p in first.parent.glob("*.json")}
+    failed = new_failed_attempt(env)
+    claim = repair.claim(env["config"], action_date="2026-10-09", repair_id="second-repair-attempt",
+                         owner=old["owner"], now="2026-10-09T20:02:00Z")
+    current = claim["repository_claim"]
+    assert current["token"] != old["token"] and current["completion_record"] is None
+    assert current["owner"] == old["owner"]
+    proof = Path(claim["claim_path"]).parent / "continuation.json"
+    assert repair.workflow._json(proof)["previous"] == old
+    assert repair.workflow._json(proof)["new_failed_state"]["sha256"] == file_checksum(proof.parent / "before-state.json")
+    (env["candidate"] / "ml/nightly_workflow.py").write_text("second focused fix\n")
+    checks = [{**env["request"]["checks"][0], "source_files": repair._inventory(env["candidate"])}]
+    second = prepare(env, repair_id=current["repair_id"], completion_record="second-published-completion",
+                     checks=checks, now="2026-10-09T20:03:00Z")
+    repair.apply(env["config"], second, owner=old["owner"], reviewed=True, now="2026-10-09T20:04:00Z")
+    state = repair.workflow._json(env["state_path"])
+    assert len(state["source_repairs"]) == 2
+    assert state["steps"]["prepare_stats"] == failed["steps"]["prepare_stats"]
+    for field in ("run_id", "deadline_at", "effective_deadline_at", "recovery"):
+        assert state[field] == env["state"][field]
+    assert {p.name: p.read_bytes() for p in first.parent.glob("*.json")} == original_evidence
+    assert repair.verified_resume(env["config"], repair.registry.read(env["config"]["state_root"]), state)
+
+
+@pytest.mark.parametrize("after_replace", [False, True])
+def test_same_owner_continuation_recovers_interrupted_global_transition(env, monkeypatch, after_replace):
+    apply(env, prepare(env))
+    old = repair.registry.read(env["config"]["state_root"])
+    new_failed_attempt(env)
+    original = repair.registry.continue_owner
+    def interrupted(*args, **kwargs):
+        if after_replace:
+            original(*args, **kwargs)
+        raise OSError("simulated continuation interruption")
+    monkeypatch.setattr(repair.registry, "continue_owner", interrupted)
+    request = dict(action_date="2026-10-09", repair_id="second-repair-attempt", owner=old["owner"],
+                   now="2026-10-09T20:02:00Z")
+    with pytest.raises(OSError, match="interruption"):
+        repair.claim(env["config"], **request)
+    proof = env["state_path"].parent / "source-repairs/second-repair-attempt/continuation.json"
+    frozen = proof.read_bytes()
+    monkeypatch.setattr(repair.registry, "continue_owner", original)
+    result = repair.claim(env["config"], **request)
+    assert repair.registry.read(env["config"]["state_root"]) == result["repository_claim"]
+    assert proof.read_bytes() == frozen
+    assert repair.claim(env["config"], **request) == result
+    assert len(list((Path(env["config"]["state_root"]) / "repair-owner-history").glob("*.json"))) == 1
+
+
+def test_same_owner_continuation_stops_after_three_repairs_without_losing_owner(env):
+    apply(env, prepare(env))
+    for attempt in (2, 3):
+        new_failed_attempt(env, at=f"2026-10-09T20:{attempt:02d}:00Z")
+        (env["candidate"] / "ml/nightly_workflow.py").write_text(f"reviewed fix {attempt}\n")
+        checks = [{**env["request"]["checks"][0], "source_files": repair._inventory(env["candidate"])}]
+        spec = prepare(env, repair_id=f"repair-attempt-{attempt}", completion_record=f"published-{attempt}",
+                       checks=checks, now=f"2026-10-09T20:{attempt:02d}:01Z")
+        repair.apply(env["config"], spec, owner=env["request"]["owner"], reviewed=True,
+                     now=f"2026-10-09T20:{attempt:02d}:02Z")
+    new_failed_attempt(env, at="2026-10-09T20:04:00Z")
+    old = repair.registry.read(env["config"]["state_root"])
+    before = env["state_path"].read_bytes()
+    with pytest.raises(ValueError, match="Three repair attempts exhausted"):
+        repair.claim(env["config"], action_date="2026-10-09", repair_id="repair-attempt-4",
+                     owner=old["owner"], now="2026-10-09T20:04:01Z")
+    assert repair.registry.read(env["config"]["state_root"]) == old
+    assert env["state_path"].read_bytes() == before
+
+
+@pytest.mark.parametrize("defect", ["unchanged", "timestamp", "source", "owner", "pending"])
+def test_continuation_requires_same_owner_and_new_verified_failed_attempt(env, defect):
+    first = prepare(env)
+    if defect != "pending":
+        apply(env, first)
+    old = repair.registry.read(env["config"]["state_root"])
+    state = new_failed_attempt(env)
+    if defect == "unchanged":
+        state["steps"]["model_review"]["attempts"] = 0
+    elif defect == "timestamp":
+        state["failure"]["at"] = "2026-10-09T19:59:00Z"
+    elif defect == "source":
+        state["failure"]["source_identity"] = env["state"]["source_identity"]
+    if defect == "pending":
+        state.pop("repair_claim", None)
+    write(env["state_path"], state)
+    before = env["state_path"].read_bytes()
+    with pytest.raises(ValueError):
+        repair.claim(env["config"], action_date="2026-10-09", repair_id="second-repair-attempt",
+                     owner="other owner" if defect == "owner" else old["owner"], now=NOW)
+    assert repair.registry.read(env["config"]["state_root"]) == old
+    assert env["state_path"].read_bytes() == before
+
+
+@pytest.mark.parametrize("root", ["fundamentals", "options", "signals", "technicals"])
+def test_new_source_inventory_binds_additional_production_dependencies(env, root):
+    for path in (env["repo"] / root, env["candidate"] / root):
+        path.mkdir()
+        (path / "source.py").write_text("retained dependency")
+    env["state"]["source_identity"] = repair.workflow.source_identity(env["repo"])
+    write(env["state_path"], env["state"])
+    checks = [{**env["request"]["checks"][0], "source_files": repair._inventory(env["candidate"])}]
+    spec = prepare(env, checks=checks)
+    assert repair.workflow._json(spec)["source_roots"] == list(repair.SOURCE_ROOTS)
+    (env["repo"] / root / "unexpected.py").write_text("unreviewed new dependency")
+    with pytest.raises(ValueError, match="Unrelated application source changed"):
+        apply(env, spec)
 
 
 @pytest.mark.parametrize("step", repair.SPLIT)
@@ -160,6 +289,47 @@ def test_native_receipt_mutation_after_review_blocks_before_install(env):
     assert (env["repo"] / "ml/nightly_workflow.py").read_text() == "original workflow\n"
 
 
+@pytest.mark.parametrize("damage", [None, "snapshot", "old_report", "escape", "incomplete_receipt"])
+def test_native_latest_selector_advances_without_weakening_original_receipts(env, damage):
+    original = native(env)
+    pointer = env["root"] / "ml/overnight-latest/run.json"
+    write(pointer, {"run_path": original.relative_to(env["root"]).as_posix()})
+    original_pointer = pointer.read_bytes()
+    spec = prepare(env)
+    apply(env, spec)
+    frozen = spec.parent / "selectors/overnight-latest-run.json"
+    assert frozen.read_bytes() == original_pointer
+    current = env["root"] / "ml/overnight-runs/resumed-completed"
+    write(current / "stage-report.json", {"status": "COMPLETE", "resumed_from": str(original)})
+    write(current / "receipt.json", {"status": "COMPLETE",
+        "stage_report_checksum_sha256": file_checksum(current / "stage-report.json"), "logs": {}})
+    output = repair.workflow._native_outputs(current)
+    state = repair.workflow._json(env["state_path"])
+    state["steps"]["model_review"] = {"status": "COMPLETE", "native_run": str(current), "output": output}
+    write(env["state_path"], state)
+    write(pointer, {"run_path": current.relative_to(env["root"]).as_posix()})
+    owner = repair.registry.read(env["config"]["state_root"])
+    if damage == "snapshot":
+        frozen.write_text("changed original selector")
+    elif damage == "old_report":
+        (original / "stage-report.json").write_text("changed original failure")
+    elif damage == "escape":
+        write(pointer, {"run_path": "../../foreign-run"})
+    elif damage == "incomplete_receipt":
+        write(current / "receipt.json", {"status": "FAILED",
+            "stage_report_checksum_sha256": file_checksum(current / "stage-report.json"), "logs": {}})
+        state["steps"]["model_review"]["output"]["files"][str(current / "receipt.json")] = file_checksum(current / "receipt.json")
+        write(env["state_path"], state)
+    if damage:
+        with pytest.raises(ValueError):
+            repair.resolve_verified(env["config"], owner, state)
+        assert repair.registry.read(env["config"]["state_root"]) == owner
+    else:
+        assert repair.resolve_verified(env["config"], owner, state)
+        assert repair.registry.read(env["config"]["state_root"]) is None
+        assert frozen.read_bytes() == original_pointer
+
+
 @pytest.mark.parametrize("lock", ["workflow.lock", "stage-repair.lock"])
 def test_held_coordinator_or_repair_lock_prevents_install(env, lock):
     with FileLock(str(Path(env["config"]["state_root"]) / lock)):
@@ -207,15 +377,15 @@ def test_review_policy_requires_explicit_invalidation_and_archives_completed_sta
     changes = {"ml/nightly_gameplan.py": "modify"}
     checks = copy.deepcopy(env["request"]["checks"])
     checks[0]["source_files"] = repair._inventory(env["candidate"])
-    with pytest.raises(ValueError, match="review-binding"):
-        prepare(env, changes=changes, risk="model", checks=checks)
-    with pytest.raises(ValueError, match="downstream invalidation"):
-        prepare(env, changes=changes, risk="model", checks=checks, review_binding="invalidated")
     state = env["state"]
     state["current_step"] = "train_and_plan"
     state["steps"]["model_review"] = {"status": "COMPLETE", "output": {"files": {}}}
     state["steps"]["train_and_plan"] = {"status": "FAILED", "native_run": None}
     write(env["state_path"], state)
+    with pytest.raises(ValueError, match="review-binding"):
+        prepare(env, changes=changes, risk="model", checks=checks)
+    with pytest.raises(ValueError, match="downstream invalidation"):
+        prepare(env, changes=changes, risk="model", checks=checks, review_binding="invalidated")
     spec = prepare(env, changes=changes, risk="model", checks=checks,
                    review_binding="invalidated", invalidate_from="model_review")
     apply(env, spec)
@@ -231,6 +401,10 @@ def test_active_trader_allows_only_isolated_orchestration_entrypoints(env, monke
     monkeypatch.setattr(repair, "_trader_running", lambda _: True)
     spec = prepare(env)
     apply(env, spec)
+    installed = repair.workflow._json(env["state_path"])
+    installed["steps"]["model_review"] = copy.deepcopy(installed["steps"]["prepare_stats"])
+    write(env["state_path"], installed)
+    assert repair.resolve_verified(env["config"], repair.registry.read(env["config"]["state_root"]), installed)
     # A separate fixture after completion remains terminal/READY; prove the
     # guard on the original failed bytes and another reviewed unsafe module.
     write(env["state_path"], env["state"])
@@ -568,6 +742,9 @@ def test_dependency_restoration_then_source_repair_preserves_acyclic_continuatio
     apply(env, restored)
     restored_state = repair.workflow._json(env["state_path"])
     assert restored_state["dependency_restorations"] and not restored_state.get("source_repairs")
+    restored_state["steps"]["model_review"] = copy.deepcopy(restored_state["steps"]["prepare_stats"])
+    write(env["state_path"], restored_state)
+    assert repair.resolve_verified(env["config"], repair.registry.read(env["config"]["state_root"]), restored_state)
     # A distinct later deterministic failure creates a real source edge.
     restored_state.update(status="FAILED", failure={"fingerprint": "next-failure", "kind": "SOURCE_DEFECT"})
     write(env["state_path"], restored_state)
@@ -659,6 +836,126 @@ def claim(env):
     return repair.claim(env["config"], action_date=env["request"]["action_date"],
         repair_id=env["request"]["repair_id"], owner=env["request"]["owner"],
         completion_record=env["request"]["completion_record"], now=NOW)
+
+
+def test_source_prepare_requires_claim_before_candidate_review(env):
+    before = env["state_path"].read_bytes()
+    with pytest.raises(ValueError, match="pre-edit claim"):
+        repair.prepare(env["config"], **env["request"])
+    assert env["state_path"].read_bytes() == before
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+def test_null_pre_edit_claim_binds_real_completion_without_rewriting_claim(env):
+    first = repair.claim(env["config"], action_date=env["request"]["action_date"],
+        repair_id=env["request"]["repair_id"], owner=env["request"]["owner"], now=NOW)
+    frozen = Path(first["claim_path"]).read_bytes()
+    initial = repair.registry.read(env["config"]["state_root"])
+    assert initial["completion_record"] is None and len(initial["token"]) == 64
+    assert not repair.verified_resume(env["config"], initial, repair.workflow._json(env["state_path"]))
+    spec = prepare(env)
+    bound = repair.registry.read(env["config"]["state_root"])
+    assert bound["completion_record"] == env["request"]["completion_record"]
+    assert bound["token"] == initial["token"]
+    assert Path(first["claim_path"]).read_bytes() == frozen
+    retried = repair.claim(env["config"], action_date=env["request"]["action_date"],
+        repair_id=env["request"]["repair_id"], owner=env["request"]["owner"], now=NOW)
+    assert retried["repository_claim"] == bound
+    assert Path(first["claim_path"]).read_bytes() == frozen
+    assert repair.workflow._json(spec)["repository_claim"] == bound
+
+
+@pytest.mark.parametrize("mode", ["claim", "external_dependency"])
+def test_exchange_global_owner_fences_preparation_before_state_changes(env, mode):
+    other = {"owner": "Atlas/exchange", "repair_id": "exchange-owner-claim",
+             "action_date": "2026-10-08", "domain": "exchange", "token": "c" * 64,
+             "completion_record": None}
+    repair.registry.acquire(env["config"]["state_root"], other)
+    if mode == "external_dependency":
+        env["state"]["failure"]["kind"] = "EXTERNAL_DEPENDENCY"
+        write(env["state_path"], env["state"])
+        (env["candidate"] / "ml/nightly_workflow.py").write_text("original workflow\n")
+    before = env["state_path"].read_bytes()
+    with pytest.raises(ValueError, match="Another repair owner"):
+        if mode == "claim":
+            claim(env)
+        else:
+            checks = copy.deepcopy(env["request"]["checks"])
+            checks[0]["source_files"] = repair._inventory(env["candidate"])
+            prepare(env, changes={}, risk="external_dependency", checks=checks)
+    assert env["state_path"].read_bytes() == before
+    assert repair.registry.read(env["config"]["state_root"]) == other
+
+
+def completed_repair(env):
+    spec = prepare(env)
+    apply(env, spec)
+    record = repair.registry.read(env["config"]["state_root"])
+    state = repair.workflow._json(env["state_path"])
+    assert repair.verified_resume(env["config"], record, state)
+    assert not repair.resolve_verified(env["config"], record, state)
+    state["steps"]["model_review"] = copy.deepcopy(state["steps"]["prepare_stats"])
+    write(env["state_path"], state)
+    return spec, record, state
+
+
+@pytest.mark.parametrize("after", [False, True])
+def test_verified_recovery_releases_exact_owner_after_interrupted_release(env, monkeypatch, after):
+    spec, record, state = completed_repair(env)
+    original = repair.registry.release
+    def interrupted(*args, **kwargs):
+        if after:
+            original(*args, **kwargs)
+        raise OSError("interrupted verified release")
+    monkeypatch.setattr(repair.registry, "release", interrupted)
+    with pytest.raises(OSError, match="verified release"):
+        repair.resolve_verified(env["config"], record, state)
+    resolution = (spec.parent / "resolved.json").read_bytes()
+    monkeypatch.setattr(repair.registry, "release", original)
+    assert repair.resolve_verified(env["config"], record, state)
+    assert repair.registry.read(env["config"]["state_root"]) is None
+    assert (spec.parent / "resolved.json").read_bytes() == resolution
+    assert apply(env, spec)["status"] == "SOURCE_REPAIR_ALREADY_APPLIED"
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+@pytest.mark.parametrize("field,value", [("run_id", "different-run"),
+    ("deadline_at", "2026-10-10T11:00Z"), ("source_session", "2026-10-07"),
+    ("planning_tail_continuation", {"path": "different", "sha256": "a" * 64})])
+def test_resume_rejects_changed_original_workflow_identity(env, field, value):
+    spec = prepare(env)
+    apply(env, spec)
+    state = repair.workflow._json(env["state_path"])
+    state[field] = value
+    with pytest.raises(ValueError, match="workflow identity"):
+        repair.verified_resume(env["config"], repair.registry.read(env["config"]["state_root"]), state)
+
+
+def test_verified_resolution_requires_saved_success_and_unchanged_completion_evidence(env):
+    spec, record, state = completed_repair(env)
+    unsaved = {**state, "uncommitted": True}
+    with pytest.raises(ValueError, match="saved workflow state"):
+        repair.resolve_verified(env["config"], record, unsaved)
+    (spec.parent / "checks/0.log").write_text("changed evidence")
+    with pytest.raises(ValueError, match="check evidence"):
+        repair.resolve_verified(env["config"], record, state)
+    assert repair.registry.read(env["config"]["state_root"]) == record
+
+
+def test_legacy_frozen_spec_resumes_under_repository_fence_without_rewriting_spec(env):
+    spec = prepare(env)
+    legacy = repair.workflow._json(spec)
+    legacy.pop("repository_claim")
+    # Synthetic fixture for an already frozen pre-registry producer transaction.
+    spec.write_bytes(repair._encoded(legacy))
+    (spec.parent / "intent.json").write_bytes(spec.read_bytes())
+    repair.registry.path(env["config"]["state_root"]).unlink()
+    frozen = spec.read_bytes()
+    apply(env, spec)
+    assert spec.read_bytes() == frozen
+    record = repair.registry.read(env["config"]["state_root"])
+    assert record["domain"] == "preparation"
+    assert repair.verified_resume(env["config"], record, repair.workflow._json(env["state_path"]))
 
 
 def test_claim_first_fences_dispatch_and_prepare_reuses_exact_original(env):
@@ -777,6 +1074,11 @@ def test_actual_frozen_tail_repair_resumes_native_planning_without_retraining(re
     monkeypatch.setattr(repair, "_pid_is_running", lambda _: False)
     log = tmp_path / "offline-tail-check.log"
     log.write_text("offline fixed native tail fixture passed")
+    latest = root / "ml/overnight-latest/run.json"
+    write(latest, {"run_path": failed_native.relative_to(root).as_posix()})
+    original_selector = latest.read_bytes()
+    repair.claim(config, action_date="2026-10-07", repair_id="frozen-tail-source-repair",
+                 owner="Atlas/planning", now="2026-10-07T19:22Z")
     spec = repair.prepare(config, action_date="2026-10-07", repair_id="frozen-tail-source-repair",
         candidate=candidate, changes={"ml/nightly_dispatch.py": "add"}, completion_record="fixture-source-repair",
         owner="Atlas/planning", risk="orchestration", rationale="Reviewed deterministic tail fix",
@@ -804,6 +1106,9 @@ def test_actual_frozen_tail_repair_resumes_native_planning_without_retraining(re
     assert commands == ["ml.gameplan_trade_planning"]
     assert calls == ["train_and_plan", "verify_display", "local_handoff"]
     assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert latest.read_bytes() != original_selector
+    assert (spec.parent / "selectors/overnight-latest-run.json").read_bytes() == original_selector
+    assert repair.registry.read(config["state_root"]) is None
     for field in ("run_id", "deadline_at", "recovery_deadline_at", "planning_tail_continuation"):
         assert result[field] == before[field]
     for name in ("prepare_stats", "model_review"):

@@ -54,6 +54,9 @@ def _encoded(value):
 @contextmanager
 def _locks(config):
     with FileLock(str(Path(config["state_root"]) / "workflow.lock"), timeout=0):
+        from ml import nightly_repair_registry as registry
+        if registry.read(config["state_root"]) is not None:
+            raise ValueError("Repository repair owner holds source; use its claim-first repair continuation")
         with exclusive_runtime_lock(Path(config["datastore"]) / ".ducketz-overnight-runtime.lock",
                                     process_name="Reviewed nightly source repair"):
             yield

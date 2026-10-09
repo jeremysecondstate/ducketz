@@ -91,6 +91,49 @@ then resume that unfinished stage with the same identity and frozen deadlines.
 Keep the original failure, completed outputs and source transition evidence.
 Never replace source used by a healthy active session to clear a status report.
 
+### Claim, repair and verify the same unfinished stage
+
+`ml.nightly_stage_repair` is the normal preparation repair interface. Before
+editing an isolated candidate, save a private request containing `action_date`,
+`repair_id` and optional null `completion_record`, then claim with the exact
+responsibility/reconciliation owner:
+
+```text
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --claim PRIVATE_CLAIM_REQUEST
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --reviewed --prepare PRIVATE_REPAIR_REQUEST
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --reviewed --apply FROZEN_SPEC
+```
+
+The request for `prepare` binds the same action date and repair ID, isolated
+candidate, explicit `changes` map, actual published `completion_record`, risk,
+rationale, runtime implications and actual passing checks. Checks retain argv,
+integer exit code zero, absolute log, timestamps and exact `source_files` hashes
+across `ml`, `app`, `datafetching`, `tools`, `fundamentals`, `options`, `signals`
+and `technicals`. Source publication generates the Completion-Record after the
+checks; never invent one before claiming. A restored external dependency uses
+`risk: external_dependency`, `changes: {}`, unchanged source and actual
+restoration evidence. Its local completion identity does not claim a source
+publication. Policy/data/model changes must explicitly declare their reviewed
+invalidation and preserve old evidence; orchestration changes retain compatible
+completed stages.
+
+Preparation and exchange share one `state_root/repair-owner.json` under
+`workflow.lock`, across all dates and responsibilities. It contains owner,
+repair ID, token, domain, action date and a completion record that is null until
+reviewed evidence binds it. It has no timeout takeover. Installing the fix does
+not release the owner. Normal dispatch validates the exact applied audit,
+resumes the same stage and releases ownership only after its saved output is
+verified. An interrupted save/release reuses that success without repeating the
+stage. A later genuine failed attempt may continue under the same owner with a
+new stable repair ID and preserved ancestry, up to three repairs per chain.
+Unchanged failures and exhausted budgets retain the precise unresolved
+requirement; no transition renews a deadline. The legacy source-repair helper
+also refuses mutation while any global owner is present.
+
+For a failure after preparation has completed, use the distinct exchange repair
+interface in `nightly-exchange.md`. Never reopen completed preparation merely
+to make the preparation helper accept an exchange failure.
+
 REPO RECONCILIATION owns cross-stage source defects; the failing responsibility
 supplies its exact evidence and verifies recovery. Its five-minute wake also
 checks unresolved external failures for verified restored usage, authentication,
@@ -105,6 +148,14 @@ correction, verified recovery and completion once. Preserve per-action-date
 do not prohibit startup. Record notification identities in local memory/state
 and suppress unchanged notices and acknowledgment loops.
 
+Keep a compact current memory block and small per-task cursor. Historical
+memory is retained but is not reread or appended on every unchanged wake.
+For no new actionable delta, record `outcome=unchanged`, then call the native
+`set_thread_archived` tool with `archived: true` and no thread ID to archive only
+that scheduled run. A scheduler-required inbox directive does not replace the
+archive call. Report new meaningful failure, correction, recovery and completion
+once; a repeated dependency condition is not a new alert.
+
 ## Private handover and execution boundaries
 
 Scout numerically synthesizes both research packages against one Atlas
@@ -114,6 +165,15 @@ synthesis. Once that handover is loaded, planning is complete. Do not add a
 Scout execution-history export, migration, cutover, duplicate broker preflight
 or approval ceremony. A terminal exchange verifies retained evidence without
 preparation, account capture, synthesis or adoption replay.
+
+Read status fields in context. `HANDOFF_VERIFIED_LOCAL` with exact receipt and
+local/joint/UI readiness completes Atlas planning. A local receipt's
+`peer_verified: false` does not negate the terminal exchange's separate peer
+verification. `source_changed_after_completion: true` records a later source
+installation without reopening the historical session. Preparation's
+`execution_authorized: false` and `orders_placed: 0` describe that component,
+not Jeremy's separately controlled active trader. These flags alone do not
+create another approval, broker preflight or failure.
 
 Atlas alone executes all 22 symbols and all horizons. Jeremy alone manually
 starts and stops the trader. No responsibility task or watchdog may change

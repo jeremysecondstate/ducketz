@@ -10,6 +10,41 @@ from ml.nightly_recovery import make_recovery, session_context, verify_recovery,
 from ml.nightly_workflow import run_workflow, status, STEPS
 
 
+@pytest.mark.parametrize("domain", ["preparation", "exchange"])
+@pytest.mark.parametrize("operation", ["prepare", "apply"])
+def test_legacy_source_repair_cannot_bypass_another_repository_claim(configured, domain, operation):
+    from filelock import FileLock
+    from ml import nightly_repair_registry as registry
+    from tools import nightly_source_repair as legacy
+    config = configured
+    root = Path(config["state_root"])
+    root.mkdir()
+    owner = {"owner": "existing-owner", "repair_id": "existing-repair",
+             "token": "e" * 64, "completion_record": None,
+             "domain": domain, "action_date": "2026-10-12"}
+    with FileLock(str(root / "workflow.lock")):
+        registry.acquire(root, owner)
+    original = registry.path(root).read_bytes()
+    state = root / "runs/2026-10-09/state.json"
+    state.parent.mkdir(parents=True)
+    state.write_text('{"original":"failed evidence must not be opened or changed"}')
+    original_state = state.read_bytes()
+    spec = state.parent / "source-repairs/legacy-repair/spec.json"
+    spec.parent.mkdir(parents=True)
+    spec.write_text(json.dumps({"schema_version": legacy.VERSION, "config": config,
+        "state_path": str(state), "changes": [{"path": "ml/nightly_gameplan.py"}]}))
+    with pytest.raises(ValueError, match="Repository repair owner"):
+        if operation == "prepare":
+            legacy.prepare(config, action_date="2026-10-09", repair_id="legacy-another",
+                candidate=config["repository"], paths=["ml/nightly_gameplan.py"],
+                completion_record="fixture-completion", checks=["unused-fixture.log"], reviewed=True, now=NOW)
+        else:
+            legacy.apply(config, spec, reviewed=True, now=NOW)
+    assert registry.path(root).read_bytes() == original
+    assert state.read_bytes() == original_state
+    assert not (root / "runs/2026-10-09/source-repairs/legacy-another").exists()
+
+
 NOW = pd.Timestamp("2026-10-09T14:30:00Z")
 
 
