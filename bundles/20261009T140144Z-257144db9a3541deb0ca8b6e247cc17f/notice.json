@@ -1,0 +1,36 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261009T135721Z-5c202069765a449097ed1ac2df771902",
+  "change_id": "20261009T135721Z-5c202069765a449097ed1ac2df771902",
+  "changes": [
+    "Shared rebalance_min_delta_fraction 0 to 0.2, mandatory exits/risk reductions preserved.",
+    "Two checked-in policy expectations updated; five positive families, probabilities, 70/15/15 and 5m/h1 unchanged."
+  ],
+  "completion_record": "20261009T135721Z-5c202069765a449097ed1ac2df771902",
+  "files": [
+    "configs/hyperliquid-paper.json",
+    "tests/test_hyperliquid_paper_policy.py",
+    "tests/test_hyperliquid_paper_rebalance_threshold.py"
+  ],
+  "limitations": [
+    "Reused assessment halves are development evidence, not untouched confirmation.",
+    "Unit-wallet proxy turnover reduction does not establish realized profitability or solve all inherited-inventory opportunity loss.",
+    "Peer installation/runtime adoption unverified."
+  ],
+  "logical_task": "hyperliquid_paper_improvement",
+  "main_sha": "7c6be9ecb8d4279924bb5dc12a275e57d8d4a96d",
+  "repository": "jeremysecondstate/ducketz",
+  "run_identity": "scout-paper-round-20261009T1152",
+  "runtime_implications": "Local authorized simulated lifecycle completed with independent zero-cost opening, accounting replay and advancing health. No live execution or Powder change.",
+  "scope": "shared",
+  "source_sha": "fadb979b7b92497d551aaa3e6f18d1dbe1e9ced5",
+  "summary": "Scout pc-new completed tested shared 20 percent ordinary rebalance threshold and verified main publication.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-09T13:59:36.862799Z",
+      "output_sha256": "76d43941de707ecd1ab5d3bb71f7b45958639a884d3564a9923b4349f535ed52",
+      "result": "152 passed",
+      "started_at_utc": "2026-10-09T13:59:34.597432Z"
+    }
+  ]
+}

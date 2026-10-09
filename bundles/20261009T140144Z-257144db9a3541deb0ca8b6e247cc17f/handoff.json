@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T14:01:44.474959Z",
+  "id": "20261009T140144Z-257144db9a3541deb0ca8b6e247cc17f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout pc-new completed tested shared 20 percent ordinary rebalance threshold and verified main publication."
+}
