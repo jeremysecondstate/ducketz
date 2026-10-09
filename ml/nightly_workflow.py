@@ -225,6 +225,7 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
     if state.get("recovery"):
         arguments["recovery_spec"] = Path(state["recovery"]["path"])
     if step == "train_and_plan":
+        arguments["research_producer_only"] = config.get("actor") == "Scout"
         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
     if previous:
         run = Path(previous)
@@ -328,6 +329,41 @@ def _review_outputs(feedback: Path, saved: Path, reviewed_by: str, *, reused: bo
                       str(feedback / "diagnostics.json"): file_checksum(feedback / "diagnostics.json")}}
 
 
+def _research_display(root, state, source, pinned, reviewed, stats):
+    """Verify Scout's price-only preparation; account display follows synthesis."""
+    from ml.artifacts import verify_manifest
+    from ml.gameplan_trade_planning import RESEARCH_PRODUCER_MODE
+    pointer = _json(root / "ml/gameplan-trade-plan-latest/run.json")["current"]
+    run = (root / pointer["run_path"]).resolve()
+    if run.parent != root / "ml/gameplan-trade-plan-runs":
+        raise ValueError("Research plan escapes its immutable run directory")
+    receipt, manifest = _json(run / "receipt.json"), verify_manifest(run)
+    metadata = manifest["configuration"]
+    if (receipt.get("status") != "COMPLETE"
+            or pointer.get("receipt_sha256") != file_checksum(run / "receipt.json")
+            or receipt.get("manifest_sha256") != file_checksum(run / "manifest.json")
+            or any(item.get("publication_mode") != RESEARCH_PRODUCER_MODE
+                   or item.get("producer_id") != "scout"
+                   or item.get("action_date") != state["action_date"]
+                   or item.get("source_receipt_sha256") != pinned["receipt_sha256"]
+                   or (root / str(item.get("source_gameplan_run", ""))).resolve() != source
+                   or item.get("broker_orders_enabled") is not False or item.get("orders_placed") != 0
+                   for item in (receipt, metadata))
+            or set(metadata.get("symbols", [])) != set(state["symbols"])
+            or receipt.get("forecast_rows") != 24 * len(state["symbols"])
+            or (run / "account-snapshot.json").exists()):
+        raise ValueError("Scout research preparation differs from its exact frozen forecast source")
+    expected_stats = (root / reviewed["stats"]["run_path"]).resolve()
+    if (stats.session != state["source_session"] or set(stats.symbols) - set(state["symbols"])
+            or stats.run_directory.resolve() != expected_stats
+            or file_checksum(expected_stats / "receipt.json") != reviewed["stats"]["receipt_sha256"]):
+        raise ValueError("Default Stats display differs from the completed review")
+    paths = [run / "receipt.json", run / "manifest.json", expected_stats / "receipt.json", source / "receipt.json"]
+    return {"plan_run": str(run), "stats_run": str(expected_stats), "source_gameplan_run": str(source),
+            "local_research_ready": True, "joint_projection_pending": True,
+            "files": {str(path): file_checksum(path) for path in paths}}
+
+
 def _display(config: dict, state: dict) -> dict:
     from app.ui.gameplan_data import load_gameplan
     from app.ui.gameplan_stats_data import load_gameplan_stats
@@ -346,7 +382,10 @@ def _display(config: dict, state: dict) -> dict:
             or pinned.get("action_date") != state["action_date"]
             or file_checksum(source / "receipt.json") != pinned.get("receipt_sha256")):
         raise ValueError("Native training segment has no matching pinned Gameplan source")
-    plan, stats = load_gameplan(datastore_root=root), load_gameplan_stats(datastore_root=root)
+    stats = load_gameplan_stats(datastore_root=root)
+    if config.get("actor") == "Scout":
+        return _research_display(root, state, source, pinned, reviewed, stats)
+    plan = load_gameplan(datastore_root=root)
     if plan.session != state["action_date"] or stats.session != state["source_session"]:
         raise ValueError("Default UI readers selected a different plan or Stats session")
     if set(plan.symbols) != set(state["symbols"]) or set(stats.symbols) - set(state["symbols"]):

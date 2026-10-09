@@ -28,6 +28,7 @@ TAIL_ALLOWED = frozenset(("ml/stock_trader/independent_signals.py",
                          "ml/gameplan_trade_planning.py", "ml/preparation_deadline.py",
                          "ml/joint_capital_handoff.py", "ml/joint_capital_plan.py",
                          "ml/account_gameplan/sources.py", "tools/nightly_source_repair.py"))
+TAIL_ALLOWED = TAIL_ALLOWED | frozenset(("ml/nightly_workflow.py", "ml/overnight_runtime.py", "app/ui/gameplan_data.py"))
 
 
 def _inventory(repository):
