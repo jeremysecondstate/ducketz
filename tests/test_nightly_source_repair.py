@@ -138,3 +138,98 @@ def test_partial_install_resumes_exact_original_transition(example):
     spec = prepare(example)
     (Path(config["repository"]) / NAME).write_bytes((candidate / NAME).read_bytes())
     assert repair.apply(config, spec, reviewed=True, now=NOW)["status"] == "SOURCE_REPAIR_APPLIED"
+
+
+@pytest.fixture
+def tail_example(example, monkeypatch):
+    from ml import overnight_runtime
+    config, candidate, check, day = example
+    name = "ml/gameplan_trade_planning.py"
+    for root, text in ((Path(config["repository"]), "old planner"), (candidate, "reviewed planner")):
+        (root / name).write_text(text)
+    state = workflow._json(day / "state.json")
+    native = Path(state["steps"]["train_and_plan"]["native_run"])
+    report = {"status": "FAILED", "failed_stage": "gameplan_trade_planning",
+              "recovery": state["recovery"], "enrichment_gameplan": {"run_path": "ml/nightly-gameplan-runs/original"},
+              "stages": [{"stage": stage, "status": "COMPLETE"} for stage in
+                         ("loop_b_directional_generation", "gameplan_evaluation", "gameplan_publication", "stock_enrichment_training")]}
+    workflow._write(native / "stage-report.json", report)
+    receipt = workflow._json(native / "receipt.json")
+    receipt.update(failed_stage="gameplan_trade_planning",
+                   stage_report_checksum_sha256=file_checksum(native / "stage-report.json"))
+    workflow._write(native / "receipt.json", receipt)
+    state["source_identity"] = workflow.source_identity(Path(config["repository"]))
+    workflow._write(day / "state.json", state)
+    pins = []
+    def verify_pin(root, **kwargs):
+        pins.append(kwargs)
+        return kwargs["pinned"]
+    monkeypatch.setattr(overnight_runtime, "_pin_stock_gameplan", verify_pin)
+    return example, name, pins
+
+
+def prepare_tail(tail_example):
+    (config, candidate, check, _), name, _ = tail_example
+    return repair.prepare(config, action_date="2026-10-09", repair_id="reviewed-tail-001",
+        candidate=candidate, paths=[name], completion_record="reviewed-tail-record",
+        checks=[check], reviewed=True, now=NOW, retain_completed_preparation=True)
+
+
+def test_tail_repair_retains_exact_numerical_attempt_and_original_review(tail_example):
+    (config, _, _, day), _, pins = tail_example
+    before = workflow._json(day / "state.json")
+    native = Path(before["steps"]["train_and_plan"]["native_run"])
+    evidence = {p.name: p.read_bytes() for p in native.iterdir()}
+    spec = prepare_tail(tail_example)
+    repair.apply(config, spec, reviewed=True, now=NOW)
+    after = workflow._json(day / "state.json")
+    assert after["steps"] == before["steps"]
+    assert after["current_step"] == "train_and_plan" and after["status"] == "READY"
+    assert after["recovery"] == before["recovery"]
+    assert after["effective_deadline_at"] == before["effective_deadline_at"]
+    assert {p.name: p.read_bytes() for p in native.iterdir()} == evidence
+    assert len(pins) == 2 and pins[0]["pinned"] == pins[1]["pinned"]
+    assert after["source_identity"] != before["source_identity"]
+
+
+@pytest.mark.parametrize("condition", ["missing_stage", "changed_recovery", "missing_pin", "unreviewed_model"])
+def test_tail_repair_requires_complete_original_numerical_evidence(tail_example, condition):
+    (config, _, _, day), _, _ = tail_example
+    state = workflow._json(day / "state.json")
+    native = Path(state["steps"]["train_and_plan"]["native_run"])
+    report = workflow._json(native / "stage-report.json")
+    if condition == "missing_stage":
+        report["stages"].pop()
+    elif condition == "changed_recovery":
+        report["recovery"] = {}
+    elif condition == "missing_pin":
+        report.pop("enrichment_gameplan")
+    else:
+        state["steps"]["model_review"]["status"] = "FAILED"
+        workflow._write(day / "state.json", state)
+    workflow._write(native / "stage-report.json", report)
+    receipt = workflow._json(native / "receipt.json")
+    receipt["stage_report_checksum_sha256"] = file_checksum(native / "stage-report.json")
+    workflow._write(native / "receipt.json", receipt)
+    with pytest.raises(ValueError, match="completed numerical"):
+        prepare_tail(tail_example)
+
+
+def test_tail_mode_cannot_retain_models_when_training_source_changes(tail_example):
+    (config, candidate, check, _), _, _ = tail_example
+    with pytest.raises(ValueError, match="scope"):
+        repair.prepare(config, action_date="2026-10-09", repair_id="invalid-tail-001",
+            candidate=candidate, paths=[NAME], completion_record="record", checks=[check],
+            reviewed=True, now=NOW, retain_completed_preparation=True)
+
+
+def test_tail_rechecks_immutable_gameplan_before_installing(tail_example, monkeypatch):
+    from ml import overnight_runtime
+    (config, _, _, _), name, _ = tail_example
+    spec = prepare_tail(tail_example)
+    def reject(*args, **kwargs):
+        raise ValueError("Pinned stock training publication receipt changed")
+    monkeypatch.setattr(overnight_runtime, "_pin_stock_gameplan", reject)
+    with pytest.raises(ValueError, match="receipt changed"):
+        repair.apply(config, spec, reviewed=True, now=NOW)
+    assert (Path(config["repository"]) / name).read_text() == "old planner"

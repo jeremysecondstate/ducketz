@@ -1,7 +1,8 @@
-"""Explicit, audited installation/rebind for a failed late Gameplan publication.
+"""Explicit, audited installation/rebind for failed late preparation.
 
 This does not run preparation. It preserves the complete original state and
-evidence, reuses only completed Stats, and requires fresh model review/training.
+evidence. Archive repairs require fresh review/training. Planning-only repairs
+can retain completed numerical stages and resume the exact failed tail.
 The source install and state transition hold the existing workflow/runtime locks.
 """
 from __future__ import annotations
@@ -22,6 +23,10 @@ from ml.nightly_recovery import verify_saved_recovery
 VERSION = "nightly-archive-source-repair-v1"
 ALLOWED = frozenset(("ml/gameplan_archive_features.py", "ml/gameplan_archive_seconds.py",
                      "ml/nightly_gameplan.py", "tools/nightly_source_repair.py"))
+TAIL_ALLOWED = frozenset(("ml/stock_trader/independent_signals.py",
+                         "ml/gameplan_trade_planning.py", "ml/preparation_deadline.py",
+                         "ml/joint_capital_handoff.py", "ml/joint_capital_plan.py",
+                         "ml/account_gameplan/sources.py", "tools/nightly_source_repair.py"))
 
 
 def _inventory(repository):
@@ -52,7 +57,7 @@ def _locks(config):
             yield
 
 
-def _verify_failed(config, state, now):
+def _verify_failed(config, state, now, *, retain_completed_preparation=False):
     if (state.get("status") != "FAILED" or state.get("owner_pid") is not None
             or state.get("current_step") != "train_and_plan"
             or state.get("steps", {}).get("prepare_stats", {}).get("status") != "COMPLETE"
@@ -72,26 +77,43 @@ def _verify_failed(config, state, now):
         raise ValueError("Native attempt escapes the datastore")
     receipt = workflow._json(native / "receipt.json")
     report = workflow._json(native / "stage-report.json")
+    failed_stage = "gameplan_trade_planning" if retain_completed_preparation else "gameplan_publication"
     if (receipt.get("status") != "FAILED" or report.get("status") != "FAILED"
-            or receipt.get("failed_stage") != "gameplan_publication"
-            or report.get("failed_stage") != "gameplan_publication"
+            or receipt.get("failed_stage") != failed_stage
+            or report.get("failed_stage") != failed_stage
             or receipt.get("stage_report_checksum_sha256") != file_checksum(native / "stage-report.json")):
         raise ValueError("Failed native publication evidence differs")
     for name, metadata in receipt["logs"].items():
         if Path(name).name != name or file_checksum(native / name) != metadata["checksum_sha256"]:
             raise ValueError("Failed native log evidence differs")
+    if retain_completed_preparation:
+        from ml.overnight_runtime import _pin_stock_gameplan
+        completed = set(report.get("completed_stages_from_previous_attempt", []))
+        completed.update(row["stage"] for row in report.get("stages", []) if row.get("status") == "COMPLETE")
+        if (state["steps"].get("model_review", {}).get("status") != "COMPLETE"
+                or not {"loop_b_directional_generation", "gameplan_evaluation",
+                        "gameplan_publication", "stock_enrichment_training"} <= completed
+                or not report.get("enrichment_gameplan")
+                or report.get("recovery") != state["recovery"]):
+            raise ValueError("Tail repair requires completed numerical preparation and its original recovery")
+        _pin_stock_gameplan(Path(config["datastore"]),
+            stock_price_source=config.get("stock_price_source", "xnas-itch-archive-v1"),
+            deadline_at=utc_timestamp(state["deadline_at"]), pinned=report["enrichment_gameplan"],
+            probability_target=workflow._intended_probability_target(config),
+            archive_history=config.get("archive_history", True))
 
 
 def prepare(config, *, action_date, repair_id, candidate, paths, completion_record,
-            checks, reviewed=False, now=None):
+            checks, reviewed=False, now=None, retain_completed_preparation=False):
     if not reviewed or not completion_record or not checks:
         raise ValueError("Exact source review, completion record and passing check evidence required")
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", repair_id):
         raise ValueError("Invalid repair identity")
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", action_date):
         raise ValueError("Exact action date required")
-    if not paths or len(paths) != len(set(paths)) or not set(paths) <= ALLOWED:
-        raise ValueError("Repair paths must be the reviewed archive-publication scope")
+    allowed = TAIL_ALLOWED if retain_completed_preparation else ALLOWED
+    if not paths or len(paths) != len(set(paths)) or not set(paths) <= allowed:
+        raise ValueError("Repair paths must be within the selected reviewed scope")
     observed = utc_timestamp(now)
     repository, candidate = Path(config["repository"]).resolve(), Path(candidate).resolve()
     state_path = Path(config["state_root"]) / "runs" / action_date / "state.json"
@@ -100,7 +122,7 @@ def prepare(config, *, action_date, repair_id, candidate, paths, completion_reco
         if (destination / "spec.json").exists():
             raise ValueError("Repair already prepared; apply its original specification")
         state = workflow._json(state_path)
-        _verify_failed(config, state, observed)
+        _verify_failed(config, state, observed, retain_completed_preparation=retain_completed_preparation)
         if state["action_date"] != action_date or state["source_identity"] != workflow.source_identity(repository):
             raise ValueError("Original session/source binding differs")
         records = []
@@ -132,8 +154,12 @@ def prepare(config, *, action_date, repair_id, candidate, paths, completion_reco
                 "state_path": str(state_path.resolve()), "before_state_sha256": file_checksum(state_path),
                 "config": config, "before_source": state["source_identity"],
                 "before_files": _inventory(repository), "changes": records, "checks": check_records,
-                "retained_steps": ["prepare_stats"],
-                "review_policy": "Fresh model review and dependent preparation required; prior evidence retained"}
+                "retain_completed_preparation": retain_completed_preparation,
+                "retained_steps": (["prepare_stats", "model_review", "train_and_plan"]
+                                   if retain_completed_preparation else ["prepare_stats"]),
+                "review_policy": ("Retain exact failed planning attempt; native resume verifies and skips completed numerical stages"
+                                  if retain_completed_preparation else
+                                  "Fresh model review and dependent preparation required; prior evidence retained")}
         _immutable(destination / "spec.json", _encoded(spec))
     return destination / "spec.json"
 
@@ -151,7 +177,11 @@ def apply(config, spec_path, *, reviewed=False, now=None):
             or spec_path.parent.parent != state_path.parent.resolve() / "source-repairs"):
         raise ValueError("Repair state/evidence path differs")
     records = spec["changes"]
-    if not records or len({r["path"] for r in records}) != len(records) or not {r["path"] for r in records} <= ALLOWED:
+    retain = spec.get("retain_completed_preparation", False)
+    if not isinstance(retain, bool):
+        raise ValueError("Repair retention mode must be explicit")
+    allowed = TAIL_ALLOWED if retain else ALLOWED
+    if not records or len({r["path"] for r in records}) != len(records) or not {r["path"] for r in records} <= allowed:
         raise ValueError("Repair file scope differs")
     spec_sha = file_checksum(spec_path)
     with _locks(config):
@@ -165,7 +195,7 @@ def apply(config, spec_path, *, reviewed=False, now=None):
         if (file_checksum(state_path) != spec["before_state_sha256"]
                 or file_checksum(spec_path.parent / "before-state.json") != spec["before_state_sha256"]):
             raise ValueError("Saved original preparation changed")
-        _verify_failed(config, state, utc_timestamp(now))
+        _verify_failed(config, state, utc_timestamp(now), retain_completed_preparation=retain)
         if workflow.source_identity(repository)["commit"] != spec["before_source"]["commit"]:
             raise ValueError("Operating Git revision changed")
         expected = dict(spec["before_files"])
@@ -201,11 +231,13 @@ def apply(config, spec_path, *, reviewed=False, now=None):
         transition = {"repair_id": spec["repair_id"], "spec_path": str(spec_path), "spec_sha256": spec_sha,
                       "before_state_sha256": spec["before_state_sha256"],
                       "before_source": spec["before_source"], "after_source": after,
-                      "applied_at": utc_timestamp(now).isoformat(), "retained_steps": ["prepare_stats"]}
+                      "applied_at": utc_timestamp(now).isoformat(),
+                      "retained_steps": (["prepare_stats", "model_review", "train_and_plan"] if retain else ["prepare_stats"])}
         state.setdefault("source_repairs", []).append(transition)
         state["source_identity"] = after
-        state["steps"] = {"prepare_stats": state["steps"]["prepare_stats"]}
-        state.update(status="READY", current_step="model_review", owner_pid=None)
+        if not retain:
+            state["steps"] = {"prepare_stats": state["steps"]["prepare_stats"]}
+        state.update(status="READY", current_step="train_and_plan" if retain else "model_review", owner_pid=None)
         state.pop("error", None)
         state.pop("failed_at", None)
         workflow._write(state_path, state)
@@ -227,13 +259,16 @@ def main(argv=None):
     parser.add_argument("--path", action="append")
     parser.add_argument("--check-log", action="append")
     parser.add_argument("--completion-record")
+    parser.add_argument("--retain-completed-preparation", action="store_true",
+                        help="Planning-only source repair; preserve completed numerical stages for native resume")
     args = parser.parse_args(argv)
     config = workflow.load_config(args.config)
     workflow.verify_installation(config)
     if args.prepare:
         result = {"spec": str(prepare(config, action_date=args.action_date, repair_id=args.repair_id,
                   candidate=args.candidate, paths=args.path, completion_record=args.completion_record,
-                  checks=args.check_log, reviewed=args.reviewed))}
+                  checks=args.check_log, reviewed=args.reviewed,
+                  retain_completed_preparation=args.retain_completed_preparation))}
     else:
         result = apply(config, args.apply, reviewed=args.reviewed)
     print(json.dumps(result, indent=2))
