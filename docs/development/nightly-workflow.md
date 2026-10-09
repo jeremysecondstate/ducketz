@@ -125,6 +125,13 @@ frozen recovery deadline. It accepts that deadline only for a verified matching
 `LATE_RECOVERY` source during that action session, retains the original 04:00
 deadline in its report, and still rejects expiry during publication. Ordinary
 sources, missing late flags, and informational refreshes cannot use this route.
+Late forecast validation distinguishes the actual freeze/publication time from
+input availability. Verified late-source context travels through planning and
+the joint owner package: every input must still predate the action opening,
+every freeze must precede its recorded publication, and publication must be
+within that day's open session. Original forecast IDs and windows remain intact;
+normal sources retain the pre-window freeze check. The peer must install the
+matching validator before accepting a late package.
 Read `--status` and the saved worker log for the real outcome. A separate morning
 readiness task checks durable results and reports missing/failed stages. Success
 during the rollout is `LOCAL_COMPLETE_PEER_SETUP_PENDING`; it is not joint

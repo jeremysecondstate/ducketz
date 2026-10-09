@@ -293,7 +293,7 @@ def publication_case(tmp_path, monkeypatch):
     pd.DataFrame({"id": frame.id + ":OPTION", "symbol": "AAPL", "plan_status": "NO_TRADE_STOCK_ONLY",
                   "legs_json": None, "candidate_key": None, "strategy_source_run": None}).to_parquet(source / "option-strategy-intents.parquet", index=False)
     monkeypatch.setattr(nightly_gameplan, "read_gameplan_run", lambda *a: SimpleNamespace(run_directory=source,
-                        manifest={"configuration": config}, receipt={"action_date": "2026-09-09"}))
+                        manifest={"configuration": config}, receipt=json.loads((source / "receipt.json").read_text())))
     monkeypatch.setattr(independent_signals, "_validated_independent_forecasts", lambda frame, **kw: frame)
     monkeypatch.setattr(independent_signals, "verified_promoted_model_groups", lambda p: frozenset({"1h", "4h", "1d", "1w"}))
     calls = []
@@ -642,9 +642,12 @@ def test_explicit_late_preparation_preserves_source_and_original_deadline(public
 
 
 def _late_source(case):
+    import json
     from ml.nightly_gameplan import read_gameplan_run
     publication = read_gameplan_run(case.root, case.source)
-    publication.manifest['configuration'].update(publication_mode='LATE_RECOVERY', late_action_date='2026-09-09')
+    publication.manifest['configuration'].update(publication_mode='LATE_RECOVERY', late_action_date='2026-09-09', action_date='2026-09-09')
+    receipt = {**publication.receipt, 'published_at': '2026-09-09T15:30:00Z'}
+    (case.source / 'receipt.json').write_text(json.dumps(receipt))
 
 
 def test_recovered_trade_plan_keeps_deadlines_and_forecasts(publication_case):
