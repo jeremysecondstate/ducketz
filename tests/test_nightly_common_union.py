@@ -9,6 +9,125 @@ from ml import nightly_workflow as workflow
 from ml.artifacts import file_checksum
 from test_nightly_dispatch import config, run, identity
 from test_nightly_workflow import _display_fixture, _write_native
+from test_nightly_stage_repair import env as repair_env, prepare as prepare_repair, apply as apply_repair
+
+
+@pytest.mark.parametrize("domain,claim_date", [
+    ("preparation", "2026-10-12"), ("preparation", "2026-10-09"),
+    ("exchange", "2026-10-12"), ("exchange", "2026-10-09"),
+])
+def test_repository_owner_fences_new_dates_and_other_responsibilities(config, domain, claim_date):
+    from ml import nightly_repair_registry as registry
+    root = Path(config["state_root"])
+    root.mkdir(parents=True)
+    owner = {"owner": "Atlas/nightly-repair", "repair_id": "original-repair",
+             "completion_record": None, "token": "a" * 64,
+             "action_date": claim_date, "domain": domain}
+    with FileLock(str(root / "workflow.lock")):
+        registry.acquire(root, owner)
+    original = registry.path(root).read_bytes()
+    decision = workflow.dispatch_status(config, now="2026-10-10T04:15Z")
+    assert decision["status"] == "REPAIR_IN_PROGRESS" and not decision["dispatch"]
+    assert workflow._launch_repository_repair_gate(config, "2026-10-12")["status"] == "REPAIR_IN_PROGRESS"
+    actual = run(config, "datastore", lambda *args: pytest.fail("another owner must retain source"))
+    assert actual["status"] == "REPAIR_IN_PROGRESS"
+    assert not (root / "runs/2026-10-12/state.json").exists()
+    assert registry.path(root).read_bytes() == original
+
+
+def test_repository_exchange_owner_preserves_terminal_preparation(config):
+    from ml import nightly_repair_registry as registry
+    from ml.nightly_dispatch import RESPONSIBILITIES
+    for role in RESPONSIBILITIES:
+        run(config, role)
+    root = Path(config["state_root"])
+    state_path = root / "runs/2026-10-12/state.json"
+    original = state_path.read_bytes()
+    owner = {"owner": "Atlas/exchange", "repair_id": "exchange-repair",
+             "completion_record": None, "token": "b" * 64,
+             "action_date": "2026-10-12", "domain": "exchange"}
+    with FileLock(str(root / "workflow.lock")):
+        registry.acquire(root, owner)
+    assert not workflow.dispatch_status(config, now="2026-10-10T04:15Z")["dispatch"]
+    assert run(config, "datastore")["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert state_path.read_bytes() == original
+    assert registry.read(root) == owner
+
+
+def test_real_applied_repair_resumes_and_releases_only_after_verified_stage(repair_env, monkeypatch):
+    from ml import nightly_repair_registry as registry
+    env = repair_env
+    before = workflow._json(env["state_path"])
+    before.pop("recovery")
+    before.pop("effective_deadline_at")
+    before["deadline_at"] = "2026-10-10T11:00:00Z"
+    workflow._write(env["state_path"], before)
+    spec = prepare_repair(env)
+    apply_repair(env, spec)
+    owner = registry.read(env["config"]["state_root"])
+    assert owner is not None
+    called = []
+    def execute(config, state, step, save):
+        called.append(step)
+        if step == "model_review":
+            assert registry.read(config["state_root"]) == owner
+        else:
+            assert registry.read(config["state_root"]) is None
+        return {"files": {}}
+    result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
+        now="2026-10-09T20:00:00Z", execute_step=execute, supervise=False)
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert called[0] == "model_review" and "prepare_stats" not in called
+    assert registry.read(env["config"]["state_root"]) is None
+    assert (spec.parent / "resolved.json").is_file()
+    assert result["run_id"] == before["run_id"]
+    assert result["deadline_at"] == before["deadline_at"]
+    assert result["steps"]["prepare_stats"] == before["steps"]["prepare_stats"]
+
+
+def test_restart_after_successful_saved_step_finishes_owner_release_without_replay(repair_env, monkeypatch):
+    from ml import nightly_repair_registry as registry
+    env = repair_env
+    before = workflow._json(env["state_path"])
+    before.pop("recovery")
+    before.pop("effective_deadline_at")
+    before["deadline_at"] = "2026-10-10T11:00:00Z"
+    workflow._write(env["state_path"], before)
+    spec = prepare_repair(env)
+    apply_repair(env, spec)
+    calls = []
+    execute = lambda config, state, step, save: calls.append(step) or {"files": {}}
+    original_release = registry.release
+    def interrupt_release(*args, **kwargs):
+        raise InterruptedError("power loss after verified saved output")
+    monkeypatch.setattr(registry, "release", interrupt_release)
+    with pytest.raises(InterruptedError, match="power loss"):
+        workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
+            now="2026-10-09T20:00:00Z", execute_step=execute, supervise=False)
+    assert calls == ["model_review"]
+    assert registry.read(env["config"]["state_root"]) is not None
+    resolution = (spec.parent / "resolved.json").read_bytes()
+    monkeypatch.setattr(registry, "release", original_release)
+    result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
+        now="2026-10-09T20:05:00Z", execute_step=execute, supervise=False)
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert calls.count("model_review") == 1
+    assert registry.read(env["config"]["state_root"]) is None
+    assert (spec.parent / "resolved.json").read_bytes() == resolution
+
+
+def test_changed_repaired_source_cannot_dispatch_or_rewrite_original_failed_state(repair_env):
+    env = repair_env
+    spec = prepare_repair(env)
+    apply_repair(env, spec)
+    before = env["state_path"].read_bytes()
+    (env["repo"] / "ml/nightly_workflow.py").write_text("later unreviewed edit")
+    result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
+        now="2026-10-09T20:00:00Z", supervise=False,
+        execute_step=lambda *args: pytest.fail("changed repaired source cannot execute"))
+    assert result["status"] == "REPAIR_IN_PROGRESS"
+    assert "source changed" in result["reason"]
+    assert env["state_path"].read_bytes() == before
 
 
 @pytest.mark.parametrize("source_changed", [False, True])

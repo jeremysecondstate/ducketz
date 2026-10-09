@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import ExitStack
 import hashlib
 import json
 import os
@@ -185,8 +186,11 @@ def _local_state(config, native, action, review):
         raise Pending("LOCAL_PREPARATION")
     workflow._verify_configuration_binding(native, state)
     workflow._verify_symbol_binding(native, state)
-    if state.get("source_identity") != workflow.source_identity(Path(native["repository"])):
-        raise ValueError("Application source changed since local preparation")
+    session = Path(config["state_root"]) / "sessions" / action
+    if (state.get("source_identity") != workflow.source_identity(Path(native["repository"]))
+            or (session / "repair-transitions.json").exists()):
+        from ml.nightly_exchange_repair import original_binding, verify_transition
+        verify_transition(config, state, original_binding(config, action))
     for step in workflow.workflow_steps(state):
         entry = state.get("steps", {}).get(step, {})
         if entry.get("status") != "COMPLETE":
@@ -647,7 +651,15 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
     # Waiting for preparation must not freeze a setup that has exported nothing.
     # Once local evidence is complete, bind the operating/source bytes before
     # the first private export and preserve that binding across every retry.
-    _frozen(session / "binding.json", _binding(config))
+    binding_path = session / "binding.json"
+    current_binding = _binding(config)
+    if (session / "repair-transitions.json").exists():
+        from ml.nightly_exchange_repair import original_binding, verify_transition
+        frozen_binding = original_binding(config, action, current_binding=current_binding)
+        verify_transition(config, local, frozen_binding, current_binding=current_binding)
+        _frozen(binding_path, frozen_binding)
+    else:
+        _frozen(binding_path, current_binding)
     exported = local["steps"]["local_handoff"]["output"]
     _owners(config, action, review, {actor: {"inputs": {}, "files": {
         "plan.json": Path(exported["package"]), "stats.json": Path(exported["stats_package"])}}})
@@ -860,7 +872,7 @@ def _completed_result(config, native, action, review, common):
     return result
 
 
-def run_once(config, *, now=None, allow_snapshot_refresh=False):
+def _run_once(config, *, now=None, allow_snapshot_refresh=False):
     """Perform one bounded exchange wake; missing inputs are durable pending states."""
     if config.get("private_exchange_authorized") is not True:
         raise ValueError("Private exchange requires direct local authorization")
@@ -874,23 +886,54 @@ def run_once(config, *, now=None, allow_snapshot_refresh=False):
     action, review = _context(observed)
     state_root = Path(config["state_root"])
     state_root.mkdir(parents=True, exist_ok=True)
-    with FileLock(str(state_root / "exchange.lock"), timeout=0):
-        session = state_root / "sessions" / action
-        common = {"action_date": action, "review_session": review, "actor": config["actor"],
+    workflow_root = Path(native["state_root"])
+    workflow_root.mkdir(parents=True, exist_ok=True)
+    common = {"action_date": action, "review_session": review, "actor": config["actor"],
                   "orders_placed": 0, "activation_changed": False, "execution_authorized": False,
                   "joint_ready": False, "ui_ready": False, "peer_verified": False}
+    with ExitStack() as locks:
+        # The workflow lock also excludes source repairs in other domains.
+        # Contention is ordinary liveness, never an exchange failure or retry.
+        for root, name, reason in ((workflow_root, "workflow.lock", "WORKFLOW_BUSY"),
+                                   (state_root, "exchange.lock", "EXCHANGE_BUSY")):
+            try:
+                locks.enter_context(FileLock(str(root / name), timeout=0))
+            except Timeout:
+                return {**common, "status": "PENDING", "reason": reason}
+        session = state_root / "sessions" / action
         completed = _completed_result(config, native, action, review, common)
         if completed is not None:
             return completed
+        from ml.nightly_exchange_repair import dispatch_guard, record_failure
+        blocked = dispatch_guard(config, action, now=clock())
+        if blocked is not None:
+            return {**common, "status": "FAILED", **blocked}
         try:
             result = {**common, **_run(config, native, action, review, clock, allow_snapshot_refresh)}
         except Pending as pending:
             result = {**common, "status": "PENDING", "reason": str(pending)}
         except Exception as error:
-            _write(session / "status.json", _bytes({**common, "status": "FAILED", "error_type": type(error).__name__}), replace=True)
+            failure = record_failure(config, action, error, now=clock())
+            _write(session / "status.json", _bytes({**common, "status": "FAILED", "error_type": type(error).__name__,
+                   "failure_fingerprint": failure["fingerprint"], "owner": failure["owner"]}), replace=True)
             raise
         _write(session / "status.json", _bytes(result), replace=True)
         return result
+
+
+def run_once(config, *, now=None, allow_snapshot_refresh=False):
+    result = _run_once(config, now=now, allow_snapshot_refresh=allow_snapshot_refresh)
+    if result.get("status") == "COMPLETE":
+        from ml import nightly_exchange_repair as repair
+        native = workflow.load_config(Path(config["workflow_config"]))
+        owner = repair.registry.read(native["state_root"])
+        if (owner is not None and owner["domain"] == "exchange"
+                and owner["action_date"] == result["action_date"]):
+            # The exchange lock was released above; repair resolution always
+            # takes workflow then exchange locks, matching installation order.
+            repair.resolve(config, action_date=result["action_date"], owner=owner["owner"],
+                           verified_result=result, now=now)
+    return result
 
 
 def main(argv=None):
@@ -910,7 +953,7 @@ def main(argv=None):
                   if args.check else serve_ownership(config) if args.serve_ownership
                   else run_once(config, allow_snapshot_refresh=args.allow_snapshot_refresh))
         print(json.dumps(result, sort_keys=True))
-        return 0
+        return 1 if result.get("status") == "FAILED" else 0
     except Exception as error:
         if args.serve_ownership and args.config.is_absolute() and args.config.name == "ownership-responder-config.json":
             _write(args.config.parent / "ownership-responder-result.json",
