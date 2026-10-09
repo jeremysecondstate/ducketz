@@ -12,7 +12,7 @@ def test_exploratory_rebalance_threshold_preserves_paper_guards():
     assert config.entry_band == 0
     assert config.exit_band == 0
     assert config.min_trade_notional == 10
-    assert config.rebalance_min_delta_fraction == pytest.approx(0.0)
+    assert config.rebalance_min_delta_fraction == pytest.approx(0.2)
     candidate = replace(config, rebalance_min_delta_fraction=0.35)
     assert config.perp_fee_rate == pytest.approx(0.00045)
     assert config.spot_fee_rate == pytest.approx(0.0007)

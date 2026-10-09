@@ -39,7 +39,7 @@ def test_checked_in_policy_is_exploratory_paper_mirror_without_account_reads():
     assert config.paper_root == config.data_root / "_paper"
     assert config == PaperConfig(
         require_qualified_forecasts=False, entry_band=0, exit_band=0,
-        rebalance_min_delta_fraction=0.0, min_trade_notional=10, max_forecast_age_seconds=300,
+        rebalance_min_delta_fraction=0.2, min_trade_notional=10, max_forecast_age_seconds=300,
         bullish_spot_fraction=0.10, volatility_budget_fraction=0.00045, saturation_band=.24,
     )
 
