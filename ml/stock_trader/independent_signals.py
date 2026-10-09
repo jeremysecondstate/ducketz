@@ -240,6 +240,42 @@ def verified_promoted_model_groups(publication) -> frozenset[str]:
 
 def late_publication_time(configuration: Mapping, receipt: Mapping):
     """Select explicit late-source evidence without changing any forecast time."""
+    recovery = configuration.get("late_preparation")
+    if recovery is not None:
+        # Local publication already verified this recovery record before its
+        # immutable manifest was written. Read its bound metadata; do not open
+        # private paths carried by evidence or backdate existing forecast rows.
+        day = receipt.get("action_date")
+        authorization = recovery.get("authorization", {}) if isinstance(recovery, Mapping) else {}
+        if (not day or configuration.get("action_date") != day
+                or authorization.get("schema_version") != "nightly-preparation-recovery-v1"
+                or authorization.get("action_date") != day
+                or authorization.get("operator_authorized") is not True
+                or authorization.get("orders_authorized") is not False
+                or authorization.get("actor") not in ("Scout", "Atlas")
+                or not authorization.get("authorization_reason")
+                or not isinstance(recovery.get("sha256"), str)
+                or len(recovery["sha256"]) != 64):
+            raise ValueError("Late forecast publication has inconsistent recovery evidence")
+        def stamp(value):
+            result = pd.Timestamp(value)
+            if pd.isna(result) or result.tzinfo is None:
+                raise ValueError("Late recovery timestamps must be timezone aware")
+            return result.tz_convert("UTC")
+        opening = (pd.Timestamp(day).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)).tz_convert("UTC")
+        published = stamp(receipt.get("published_at"))
+        requested, expires = stamp(authorization.get("requested_at")), stamp(authorization.get("expires_at"))
+        cutoff = stamp(authorization.get("training_information_cutoff"))
+        if (stamp(authorization.get("original_deadline_at")) != opening
+                or cutoff != opening - pd.Timedelta(microseconds=1)
+                or stamp(configuration.get("training_information_cutoff")) != cutoff
+                or not opening <= requested <= published < expires
+                or expires > min(requested + pd.Timedelta(hours=7), opening + pd.Timedelta(hours=13))):
+            raise ValueError("Late forecast publication differs from its fixed recovery window or information cutoff")
+        if (configuration.get("publication_mode") == "LATE_RECOVERY"
+                and configuration.get("late_action_date") != day):
+            raise ValueError("Late forecast publication has conflicting recovery dates")
+        return receipt["published_at"]
     if configuration.get("publication_mode") != "LATE_RECOVERY":
         return None
     day = receipt.get("action_date")

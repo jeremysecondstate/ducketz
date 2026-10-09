@@ -13,6 +13,13 @@ from tests.test_nightly_workflow import setup, _identity
 
 @pytest.fixture
 def recovery(setup, monkeypatch):
+    # This fixture exercises Atlas's saved account-planning tail. Scout's
+    # research-only native reports explicitly freeze a different producer role.
+    setup['actor'] = 'Atlas'
+    profile_path = Path(setup['local_profile'])
+    profile = json.loads(profile_path.read_text())
+    profile['actor'] = 'Atlas'
+    profile_path.write_text(json.dumps(profile))
     root = Path(setup['datastore'])
     source = root/'ml/nightly-gameplan-runs/source'
     source.mkdir(parents=True)
@@ -55,6 +62,103 @@ def recovery(setup, monkeypatch):
 def resume(config, path, callback):
     return workflow.run_workflow(config, resume_action_date='2026-10-07', planning_tail_exception=path,
         now='2026-10-07T19:20Z', identity=_identity, supervise=False, execute_step=callback)
+
+
+def scheduled_continuation(recovery, split):
+    from ml import nightly_dispatch as dispatch
+    from test_nightly_workflow import _write_native
+    config, state_path, failed, exception, payload = recovery
+    root = Path(config['datastore'])
+    state = json.loads(state_path.read_text())
+    config['automatic_recovery'] = {'enabled':True, 'authorization':'Standing fixture authority', 'max_attempts':3}
+    record = {'schema_version':dispatch.RECOVERY, 'actor':state['actor'], 'workflow_run_id':state['run_id'],
+        'source_identity':state['source_identity'], 'datastore':str(root), 'action_date':state['action_date'],
+        'source_session':state['source_session'], 'original_deadline_at':state['deadline_at'],
+        'approved_at':'2026-10-07T12:00Z', 'expires_at':state['recovery_deadline_at'],
+        'authorization':'Standing fixture authority', 'orders_authorized':False, 'native_attempts':{}}
+    recovery_path = root/'scheduled-recovery.json'
+    recovery_path.write_text(json.dumps(record))
+    evidence = {'path':str(recovery_path), 'sha256':file_checksum(recovery_path)}
+    state['scheduled_recovery'] = evidence
+    report = json.loads((failed/'stage-report.json').read_text())
+    proposal = root/'reviewed-proposal.json'
+    proposal.write_text('{}')
+    state['steps']['model_review']['output']['proposal'] = str(proposal)
+    report['enrichment_gameplan']['action_date'] = state['action_date']
+    report.update(deadline_at=state['deadline_at'], effective_deadline_at=state['recovery_deadline_at'],
+        workflow_recovery=evidence, stats_first=True, review_action_date=state['source_session'],
+        stage_order=['gameplan_trade_planning'],
+        archive_history=True, probability_target_contract='raw-price-direction-v1',
+        model_feedback={'path':str(proposal), 'sha256':file_checksum(proposal)})
+    (failed/'stage-report.json').write_text(json.dumps(report))
+    receipt = json.loads((failed/'receipt.json').read_text())
+    receipt['stage_report_checksum_sha256'] = file_checksum(failed/'stage-report.json')
+    (failed/'receipt.json').write_text(json.dumps(receipt))
+    payload['failed_native_receipt_sha256'] = file_checksum(failed/'receipt.json')
+    source = root/report['enrichment_gameplan']['run_path']
+    (source/'manifest.json').write_text(json.dumps({'configuration':{'publication_mode':'LATE_RECOVERY'}}))
+    if split:
+        state['workflow_layout'] = dispatch.LAYOUT
+        state['steps']['datastore_catchup'] = {'status':'COMPLETE', 'output':{'files':{}}}
+        state['steps']['local_gameplan'] = state['steps']['train_and_plan']
+        training = root/'ml/overnight-runs/completed-predictions'
+        pin = {**report['enrichment_gameplan'], 'action_date':state['action_date']}
+        _write_native(training, pinned=pin)
+        state['steps']['train_and_plan'] = {'status':'COMPLETE', 'output':workflow._native_outputs(training)}
+        state['current_step'] = 'local_gameplan'
+    exception.write_text(json.dumps(payload))
+    state['planning_tail_continuation'] = {'path':str(exception), 'sha256':file_checksum(exception)}
+    workflow._write(state_path, state)
+    return state
+
+
+@pytest.mark.parametrize('scheduled,split', [(False,False),(True,False),(True,True)])
+def test_automatic_dispatch_and_catchup_use_existing_frozen_continuation(recovery, scheduled, split):
+    config, state_path, failed, exception, payload = recovery
+    config['automatic_recovery'] = {'enabled':True, 'authorization':'Standing fixture authority', 'max_attempts':3}
+    if scheduled:
+        state = scheduled_continuation(recovery, split)
+    else:
+        state = json.loads(state_path.read_text())
+        state['planning_tail_continuation'] = {'path':str(exception), 'sha256':file_checksum(exception)}
+        workflow._write(state_path, state)
+    original = state_path.read_bytes()
+    retained = {p:p.read_bytes() for p in (exception, failed/'receipt.json', failed/'stage-report.json')}
+    decision = workflow.dispatch_status(config, now='2026-10-07T19:20Z')
+    assert decision['dispatch'] and decision['responsibility'] == ('gameplan' if split else 'model')
+    assert state_path.read_bytes() == original
+    calls = []
+    result = workflow.run_workflow(config, catch_up=True, responsibility=decision['responsibility'],
+        now='2026-10-07T19:20Z', identity=_identity, supervise=False,
+        execute_step=lambda c,s,step,save: calls.append(step) or {'files':{}})
+    assert calls == ['local_gameplan' if split else 'train_and_plan']
+    assert result['status'] == 'WAITING_PREREQUISITE'
+    for key in ('deadline_at','recovery_deadline_at','planning_tail_continuation','scheduled_recovery'):
+        assert result.get(key) == state.get(key)
+    assert all(p.read_bytes() == value for p,value in retained.items())
+
+
+def test_native_scheduled_continuation_preserves_both_cutoffs_and_split_prediction_pin(recovery, monkeypatch):
+    config, state_path, failed, exception, payload = recovery
+    state = scheduled_continuation(recovery, True)
+    original = {p:p.read_bytes() for p in (exception, failed/'receipt.json', failed/'stage-report.json')}
+    pin = json.loads((failed/'stage-report.json').read_text())['enrichment_gameplan']
+    monkeypatch.setattr(native, '_pin_stock_gameplan', lambda *args,**kwargs: kwargs['pinned'])
+    calls = []
+    def stage(command, **kwargs):
+        assert kwargs['deadline'] == pd.Timestamp(payload['expires_at'])
+        assert command[command.index('--deadline')+1] == '2026-10-07T19:00:00+00:00'
+        kwargs['log_path'].write_text('offline unchanged tail')
+        calls.append(command[3])
+        return 0
+    monkeypatch.setattr(native, '_run_stage', stage)
+    output = workflow._run_native(config, state, 'local_gameplan', lambda:None)
+    report = json.loads((Path(output['native_run'])/'stage-report.json').read_text())
+    assert report['deadline_at'] == '2026-10-07T11:00:00+00:00'
+    assert report['effective_deadline_at'] == '2026-10-07T21:00:00+00:00'
+    assert report['workflow_recovery'] == state['scheduled_recovery']
+    assert calls == ['ml.gameplan_trade_planning']
+    assert all(p.read_bytes() == value for p,value in original.items())
 
 
 def test_existing_tail_completes_without_retraining_or_replacing_deadlines(recovery):

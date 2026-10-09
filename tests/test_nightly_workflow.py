@@ -462,7 +462,7 @@ def test_local_display_uses_reviewed_stats_before_joint_handoff(tmp_path, monkey
 
 def test_handoff_uses_explicit_immutable_stats_filename_and_is_retryable(tmp_path, monkeypatch):
     state, trade, _, source = _display_fixture(tmp_path)
-    config = {"datastore": str(tmp_path), "state_root": str(tmp_path / "state"), "actor": "Scout"}
+    config = {"datastore": str(tmp_path), "state_root": str(tmp_path / "state"), "actor": "Atlas"}
     state["steps"]["verify_display"] = {"output": _display(config, state)}
     state["steps"]["local_handoff"] = {"started_at": "2026-09-14T09:00Z"}
     def owner_export(root, **kwargs):
@@ -474,8 +474,8 @@ def test_handoff_uses_explicit_immutable_stats_filename_and_is_retryable(tmp_pat
     monkeypatch.setattr("ml.joint_capital_handoff.export_owner_package", owner_export)
     first = _handoff(config, state)
     stats = Path(first["stats_package"])
-    assert stats.is_file() and stats.name.startswith("scout-2026-09-11-") and stats.name.endswith("-stats.json")
-    assert json.loads(stats.read_text())["producer"] == "Scout"
+    assert stats.is_file() and stats.name.startswith("atlas-2026-09-11-") and stats.name.endswith("-stats.json")
+    assert json.loads(stats.read_text())["producer"] == "Atlas"
     assert _handoff(config, state) == first
 
 

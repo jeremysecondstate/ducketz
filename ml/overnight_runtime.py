@@ -247,6 +247,8 @@ def run_overnight_pipeline(
     model_feedback: Path | None = None,
     late_action_date: str | None = None,
     workflow_recovery: Path | None = None,
+    recovery_spec: Path | None = None,
+    research_producer_only: bool = False,
     pinned_gameplan: Mapping[str, str] | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
@@ -257,6 +259,8 @@ def run_overnight_pipeline(
     from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, LEGACY_COST_TARGET, resolve_probability_target
     if deadline_exception is not None and resume_run is None:
         raise ValueError('A deadline exception requires an existing pinned tail attempt')
+    if recovery_spec is not None and any(value is not None for value in (workflow_recovery, deadline_exception, late_action_date)):
+        raise ValueError("Use one frozen native recovery route")
     recovery_record = recovery_evidence = None
     if workflow_recovery is not None:
         from ml.nightly_dispatch import validate_recovery
@@ -264,8 +268,11 @@ def run_overnight_pipeline(
         if deadline_exception is not None:
             raise ValueError("Use one frozen native continuation route")
     resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception,
-                                   workflow_recovery=workflow_recovery) if resume_run else None
+                                   workflow_recovery=workflow_recovery, recovery_spec=recovery_spec) if resume_run else None
     if resume:
+        if research_producer_only and resume.get("research_producer_only") is not True:
+            raise ValueError("Resume must preserve its account or research publication role")
+        research_producer_only = resume.get("research_producer_only") is True
         if pinned_gameplan is not None and pinned_gameplan != resume.get("enrichment_gameplan"):
             raise ValueError("Resume must preserve the original prediction publication")
         previous_late_date = recovery_record["action_date"] if recovery_record else resume.get("late_action_date")
@@ -306,7 +313,7 @@ def run_overnight_pipeline(
     # Stats-first prepares each owner's local plan. An installed legacy account
     # binding must not silently append synthesis or replace it with a prices-only
     # producer publication. Historical retries retain exactly their saved tail.
-    account_config = None if stats_first else load_account_config(root)
+    account_config = None if stats_first or research_producer_only else load_account_config(root)
     account_stage_requested = (any(stage in resume["stage_order"] for stage in ACCOUNT_TAIL_STAGES) if resume
                                else account_config is not None and independent_stock_horizons)
     if account_stage_requested:
@@ -324,6 +331,8 @@ def run_overnight_pipeline(
         raise ValueError("Independent stock horizons require explicit stock-only preparation")
     if stats_first and not independent_stock_horizons:
         raise ValueError("Stats-first preparation requires independent stock horizons")
+    if research_producer_only and (not stats_first or not stock_only or not independent_stock_horizons):
+        raise ValueError("Research-only publication requires Stats-first independent stock preparation")
     if review_action_date is not None and not stats_first:
         raise ValueError("A reviewed action date requires Stats-first preparation")
     probability_target_contract = resolve_probability_target(
@@ -346,6 +355,16 @@ def run_overnight_pipeline(
         raise ValueError("Independent post-publication stages require independent stock horizons")
     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
     effective_deadline = utc_timestamp(resume.get('effective_deadline_at', resume['deadline_at'])) if resume else deadline_at
+    recovery = None
+    if recovery_spec is not None:
+        from ml.nightly_recovery import verify_recovery
+        recovery = verify_recovery(root, recovery_spec, created,
+                                   action_date=deadline_at.tz_convert(SCHEDULE_TIMEZONE).date().isoformat())
+        if (not stats_first or not stock_only or not independent_stock_horizons
+                or review_action_date != recovery['authorization']['source_session']
+                or deadline_at != utc_timestamp(recovery['authorization']['original_deadline_at'])):
+            raise ValueError('Late recovery must preserve the Stats-first session and original deadline')
+        effective_deadline = utc_timestamp(recovery['authorization']['expires_at'])
     if recovery_record:
         if (not stats_first or not stock_only or review_action_date != recovery_record["source_session"]
                 or deadline_at != utc_timestamp(recovery_record["original_deadline_at"])):
@@ -490,6 +509,7 @@ def run_overnight_pipeline(
             *(("--archive-history",) if archive_history else ()),
             *(("--model-feedback", str(model_feedback)) if model_feedback is not None else ()),
             *(("--late-action-date", late_action_date) if late_action_date is not None else ()),
+            *(("--recovery-spec", str(recovery_spec)) if recovery_spec is not None else ()),
         ),
         INDEPENDENT_ENRICHMENT_STAGE: (
             python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
@@ -526,7 +546,9 @@ def run_overnight_pipeline(
         "stats_first": stats_first, "review_action_date": review_action_date,
         "model_feedback": feedback_binding,
         "late_action_date": late_action_date,
-        "workflow_recovery": recovery_evidence,
+        "workflow_recovery": recovery_evidence or (resume.get("workflow_recovery") if resume else None),
+        "recovery": recovery or (resume.get("recovery") if resume else None),
+        "research_producer_only": research_producer_only,
     }
     if pinned_gameplan is not None:
         report["enrichment_gameplan"] = dict(pinned_gameplan)
@@ -597,9 +619,17 @@ def run_overnight_pipeline(
                     )
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE, *ACCOUNT_TAIL_STAGES):
-                        stage_deadline = deadline_at
+                        stage_deadline = (utc_timestamp(resume["deadline_exception"]["authorization"]["original_deadline_at"])
+                                          if resume and resume.get("deadline_exception") else deadline_at)
                         stage_late_date = late_action_date
-                        stage_exception = deadline_exception
+                        stage_exception = recovery_spec if recovery_spec is not None else deadline_exception
+                        if (resume and resume.get("deadline_exception") and report.get("workflow_recovery")):
+                            source = root / report["enrichment_gameplan"]["run_path"]
+                            source_config = json.loads((source / "manifest.json").read_text(encoding="utf-8")).get("configuration", {})
+                            if source_config.get("publication_mode") != "LATE_RECOVERY":
+                                stage_late_date = None
+                        if stage == INDEPENDENT_TRADE_PLANNING_STAGE and research_producer_only:
+                            command = (*command, "--research-producer-only")
                         if recovery_record and stage == INDEPENDENT_TRADE_PLANNING_STAGE:
                             source = root / report["enrichment_gameplan"]["run_path"]
                             source_config = json.loads((source / "manifest.json").read_text(encoding="utf-8")).get("configuration", {})
@@ -879,7 +909,8 @@ def _validated_run(root: Path, run: Path) -> Path:
 
 
 def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | None = None,
-                          workflow_recovery: Path | None = None) -> dict[str, object]:
+                          workflow_recovery: Path | None = None,
+                          recovery_spec: Path | None = None) -> dict[str, object]:
     run = _validated_run(root, run)
     receipt = json.loads((run / "receipt.json").read_text(encoding="utf-8"))
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
@@ -891,7 +922,35 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
         or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
         raise RuntimeError("Only a verified failed or stopped overnight attempt can resume")
     effective_deadline = utc_timestamp(report['deadline_at'])
+    exception_original = effective_deadline
     exception_evidence = None
+    if recovery_spec is not None and (workflow_recovery is not None or deadline_exception is not None):
+        raise ValueError("Use one frozen native recovery route")
+    if report.get('recovery') or recovery_spec is not None:
+        from ml.nightly_recovery import verify_recovery
+        saved = report.get('recovery')
+        if recovery_spec is None and deadline_exception is None:
+            raise ValueError('Resume must explicitly retain its recovery evidence')
+        recovery_path = recovery_spec if recovery_spec is not None else saved["path"]
+        stamp = saved["authorization"]["requested_at"] if deadline_exception is not None else utc_timestamp()
+        recovery = verify_recovery(root, recovery_path, stamp,
+                                   action_date=effective_deadline.tz_convert(SCHEDULE_TIMEZONE).date().isoformat())
+        if saved and saved != recovery:
+            raise ValueError('Recovery evidence changed since the failed attempt')
+        if (recovery['authorization']['source_session'] != report.get('review_action_date')
+                or utc_timestamp(recovery['authorization']['original_deadline_at']) != effective_deadline):
+            raise ValueError('Recovery differs from the failed session')
+        effective_deadline = utc_timestamp(recovery['authorization']['expires_at'])
+        exception_original = effective_deadline
+    if deadline_exception is not None and report.get("workflow_recovery"):
+        from ml.nightly_dispatch import validate_recovery
+        saved = report["workflow_recovery"]
+        record = json.loads(Path(saved["path"]).read_text(encoding="utf-8"))
+        recovery, evidence = validate_recovery(saved["path"], root=root, report=report, run=run,
+                                              now=record["approved_at"])
+        if evidence != saved:
+            raise ValueError("Original scheduled recovery evidence changed before continuation")
+        exception_original = utc_timestamp(recovery["expires_at"])
     if workflow_recovery is not None:
         from ml.nightly_dispatch import validate_recovery
         recovery, _ = validate_recovery(workflow_recovery, root=root, report=report, run=run)
@@ -904,7 +963,7 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
                 or not report.get('enrichment_gameplan')):
             raise ValueError('Deadline exceptions cover only a pinned stock planning/actuals tail')
         effective_deadline, exception_evidence = preparation_deadline(
-            root, root/report['enrichment_gameplan']['run_path'], report['deadline_at'], utc_timestamp(), deadline_exception)
+            root, root/report['enrichment_gameplan']['run_path'], exception_original, utc_timestamp(), deadline_exception)
         if exception_evidence['authorization']['gameplan_receipt_sha256'] != report['enrichment_gameplan']['receipt_sha256']:
             raise ValueError('Deadline exception differs from the saved tail pin')
     if utc_timestamp() >= effective_deadline:

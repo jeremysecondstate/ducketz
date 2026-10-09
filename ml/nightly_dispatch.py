@@ -150,7 +150,7 @@ def failure_record(error, *, step, owner, now, state):
             "local_diagnostic_tail": detail,
             "retry_after": (utc_timestamp(now) + pd.Timedelta(minutes=5)).isoformat(),
             "source_identity": state["source_identity"], "disposition": "OPEN",
-            "corrective_action": ("Retry the same unfinished stage within its fixed deadline" if transient
+            "corrective_action": ("Retry the same unfinished stage within its fixed deadline" if kind == "TRANSIENT"
                                   else "Inspect evidence, repair or restore the dependency, verify, and resume this stage")}
 
 

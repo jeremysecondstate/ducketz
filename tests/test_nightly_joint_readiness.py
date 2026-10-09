@@ -10,7 +10,7 @@ import pytest
 from ml import nightly_handoff, nightly_readiness, nightly_synthesis
 from ml.nightly_joint_readiness import verify_joint_readiness
 from ml.account_gameplan.config import CONFIG, VERSION as ACCOUNT_VERSION, digest
-from ml.artifacts import file_checksum
+from ml.artifacts import file_checksum, write_manifest
 from ml.gameplan_stats_handoff import export_stats_package
 from ml.joint_capital_plan import build_owner_package, content_sha256, publish_owner_package
 from tests.gameplan_stats_fixture import forecast, write_review
@@ -34,6 +34,43 @@ def _bytes(root):
     return {str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()}
 
 
+def _scout_price_only_fixture(root, trade, source):
+    """Publish truthful research-only fixture bytes, then use the real readers."""
+    from app.ui.gameplan_data import load_gameplan
+    from ml.gameplan_trade_planning import RESEARCH_PRODUCER_MODE, SHARED_PROJECTION_UNAVAILABLE
+    rows = [dict(row, id=f"{symbol}-{row['id']}") for symbol in LOCAL_SYMBOLS
+            for row in joint_fixture.records(symbol)]
+    for row in rows:
+        row.update(trade_price_low=10, trade_price_mid=10.5, trade_price_high=11,
+                   trade_quantity=None, projected_trade_quantity=None, scheduled_trade_quantity=None,
+                   direction_based_action=None, direction_based_trade_quantity=None, direction_based_reason=None)
+    pd.DataFrame(rows).to_parquet(trade / "trade-plan.parquet", index=False)
+    metadata = {"publication_mode": RESEARCH_PRODUCER_MODE, "producer_id": "scout", "account_config_sha256": None,
+                "symbols": LOCAL_SYMBOLS, "orders_placed": 0, "broker_orders_enabled": False}
+    ledger = {"status": SHARED_PROJECTION_UNAVAILABLE, "events": [], "hourly": [], "ending_positions": {},
+              "summary": {}, "orders_placed": 0, "broker_orders_enabled": False,
+              "reason": "Scout prepares prices; synthesis alone projects account cash and holdings"}
+    _json(trade / "direction-ledger.json", ledger)
+    report = json.loads((trade / "report.json").read_text(encoding="utf-8"))
+    report.update(metadata, forecast_rows=len(rows), snapshot=None, snapshot_status="NOT_CAPTURED_PRODUCER_ONLY",
+                  direction_projection_status=SHARED_PROJECTION_UNAVAILABLE, direction_based_projection=ledger)
+    _json(trade / "report.json", report)
+    manifest = json.loads((trade / "manifest.json").read_text(encoding="utf-8"))
+    manifest["configuration"].update(metadata)
+    write_manifest(trade, run_timestamp=manifest["run_timestamp"], input_files=[],
+        output_files=list(manifest["output_files"]), configuration=manifest["configuration"])
+    receipt = json.loads((trade / "receipt.json").read_text(encoding="utf-8"))
+    receipt.update(metadata, forecast_rows=len(rows), manifest_sha256=file_checksum(trade / "manifest.json"))
+    _json(trade / "receipt.json", receipt)
+    pointer_path = root / "ml/gameplan-trade-plan-latest/run.json"
+    pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+    pointer["current"]["receipt_sha256"] = file_checksum(trade / "receipt.json")
+    _json(pointer_path, pointer)
+    view = load_gameplan(root)
+    assert not view.projection_available and len(view.forecasts) == 24 * len(LOCAL_SYMBOLS)
+    assert all(row.quantity is None for row in view.forecasts)
+
+
 def _prepare(tmp_path, monkeypatch, actor):
     """Bind synthetic packages to real original worker/feedback artifacts."""
     monkeypatch.setattr(joint_fixture, "DAY", DAY)
@@ -41,7 +78,12 @@ def _prepare(tmp_path, monkeypatch, actor):
     root = tmp_path / "local"
     state, trade, stats, source = _display_fixture(root)
     config = {"actor": actor.title(), "datastore": str(root), "repository": str(tmp_path / "checkout")}
-    source_identity = {"commit": "reviewed-fixture"}
+    source_identity = {"commit": "a" * 40, "source_sha256": "b" * 64}
+    proposal = Path(state["steps"]["model_review"]["output"]["proposal"])
+    diagnostic = proposal.parent / "diagnostics.json"
+    state["steps"]["model_review"]["output"]["files"][str(diagnostic)] = file_checksum(diagnostic)
+    if actor == "scout":
+        _scout_price_only_fixture(root, trade, source)
     state.update(schema_version=nightly_readiness.workflow.VERSION, actor=actor.title(),
                  source_identity=source_identity, status="LOCAL_COMPLETE_PEER_SETUP_PENDING",
                  run_id="local-preparation", completed_at=NOW)
@@ -99,7 +141,7 @@ def _prepare(tmp_path, monkeypatch, actor):
     monkeypatch.setattr(nightly_readiness.workflow, "_verify_configuration_binding", lambda *_: None)
     monkeypatch.setattr(nightly_readiness.workflow, "_verify_symbol_binding", lambda *_: None)
     monkeypatch.setattr(nightly_readiness.workflow, "source_identity", lambda *_: source_identity)
-    monkeypatch.setattr(nightly_readiness.workflow, "status", lambda *_: deepcopy(state))
+    monkeypatch.setattr(nightly_readiness.workflow, "status", lambda *_, **kwargs: deepcopy(state))
     # The regression requires frozen verification, never today's changed default pointers.
     monkeypatch.setattr(nightly_readiness.workflow, "_display", lambda *_: pytest.fail("Readiness must not invoke _display"))
     scout_receipt = nightly_synthesis.run_synthesis(spec, now=NOW)

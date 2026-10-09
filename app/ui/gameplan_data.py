@@ -357,7 +357,7 @@ def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tup
     if status == "COMPLETE":
         return status, ""
     if status == SHARED_PROJECTION_UNAVAILABLE:
-        if (report.get("publication_mode") != "ACCOUNT_PRODUCER_SOURCE"
+        if (report.get("publication_mode") not in {"ACCOUNT_PRODUCER_SOURCE", "RESEARCH_PRODUCER_SOURCE"}
                 or report.get("snapshot") is not None or report.get("snapshot_status") != "NOT_CAPTURED_PRODUCER_ONLY"
                 or report.get("direction_based_projection") != ledger
                 or any(ledger.get(key) != empty for key, empty in (("events", []), ("hourly", []), ("ending_positions", {}), ("summary", {})))
@@ -808,7 +808,12 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
         ledger = _json(run / "direction-ledger.json")
         if ledger.get("status") == SHARED_PROJECTION_UNAVAILABLE:
             binding = report.get("account_config_sha256")
-            if (not isinstance(binding, str) or re.fullmatch(r"[a-f0-9]{64}", binding) is None
+            if report.get("publication_mode") == "RESEARCH_PRODUCER_SOURCE":
+                if (any(item.get("publication_mode") != "RESEARCH_PRODUCER_SOURCE"
+                        or item.get("producer_id") != "scout" or item.get("account_config_sha256") is not None
+                        for item in (report, config, receipt)) or "account-snapshot.json" in manifest["output_files"]):
+                    raise GameplanError("Research-only preparation has inconsistent producer bindings")
+            elif (not isinstance(binding, str) or re.fullmatch(r"[a-f0-9]{64}", binding) is None
                     or any(item.get("publication_mode") != "ACCOUNT_PRODUCER_SOURCE" or item.get("account_config_sha256") != binding
                            for item in (config, receipt)) or "account-snapshot.json" in manifest["output_files"]):
                 raise GameplanError("Producer-only preparation is missing its source-bound account configuration")
