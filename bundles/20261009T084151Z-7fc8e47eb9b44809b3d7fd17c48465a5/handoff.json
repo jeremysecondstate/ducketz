@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T08:41:51.332506Z",
+  "id": "20261009T084151Z-7fc8e47eb9b44809b3d7fd17c48465a5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed isolated first-use and session-liveness source review: 109 passed; application installation deferred to preserve unfinished work and source-pinned nightly preparation."
+}
