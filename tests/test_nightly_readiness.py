@@ -24,7 +24,7 @@ def saved(monkeypatch, tmp_path):
     state["steps"]["verify_display"]["output"].update(plan_run=str(tmp_path / "plan"),
         stats_run=str(tmp_path / "stats"), source_gameplan_run=str(tmp_path / "source"))
     monkeypatch.setattr(module.workflow, "verify_installation", lambda config: None)
-    monkeypatch.setattr(module.workflow, "status", lambda config: deepcopy(state))
+    monkeypatch.setattr(module.workflow, "status", lambda config, **kwargs: deepcopy(state))
     monkeypatch.setattr(module.workflow, "_verify_configuration_binding", lambda *args: None)
     monkeypatch.setattr(module.workflow, "_verify_symbol_binding", lambda *args: None)
     monkeypatch.setattr(module.workflow, "source_identity", lambda root: {"commit": "reviewed"})

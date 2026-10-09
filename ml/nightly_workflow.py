@@ -217,7 +217,7 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
     entry = state["steps"][step]
     previous = entry.get("native_run")
     arguments = dict(datastore_argument=("--datastore", str(root)), repository_root=repository,
-        deadline=state["deadline_at"], stock_only=True, independent_stock_horizons=True,
+        deadline=state.get("recovery_deadline_at", state["deadline_at"]), stock_only=True, independent_stock_horizons=True,
         stock_price_source=config.get("stock_price_source", "xnas-itch-archive-v1"),
         archive_history=config.get("archive_history", True), stats_first=True,
         probability_target_contract=_intended_probability_target(config),
@@ -460,13 +460,14 @@ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
         save()
         if _json(feedback / "diagnostics.json")["stats"]["session"] != state["source_session"]:
             raise ValueError("Model review Stats session differs from this workflow's completed session")
-        return run_reviewer(config, feedback, state["deadline_at"])
+        return run_reviewer(config, feedback, state.get("recovery_deadline_at", state["deadline_at"]))
     if step == "verify_display":
         return _display(config, state)
     return _handoff(config, state)
 
 
-def run_workflow(config: dict, *, resume_action_date: str | None = None, now=None,
+def run_workflow(config: dict, *, resume_action_date: str | None = None,
+                 recover_action_date: str | None = None, recovery_deadline=None, now=None,
                  execute_step=None, identity=None, supervise=True) -> dict:
     from ml.overnight_runtime import scheduled_session_eligibility, next_action_deadline
     root, repository, state_root = map(Path, (config["datastore"], config["repository"], config["state_root"]))
@@ -474,6 +475,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
     observed = utc_timestamp(now)
     identity = identity or source_identity
     executor = execute_step or _execute_step
+    if bool(recover_action_date) != bool(recovery_deadline) or (recover_action_date and resume_action_date):
+        raise ValueError("Recovery requires its exact action date and deadline; do not combine with resume")
     with FileLock(str(state_root / "workflow.lock"), timeout=0):
         if resume_action_date:
             if pd.Timestamp(resume_action_date).date().isoformat() != resume_action_date:
@@ -481,17 +484,37 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
             path = state_root / "runs" / resume_action_date / "state.json"
             state = _json(path)
         else:
-            eligibility = scheduled_session_eligibility(observed)
+            recovery = None
+            if recover_action_date:
+                from ml.gameplan_actuals_review import completed_session_context
+                context = completed_session_context(observed)
+                local = observed.tz_convert("America/Los_Angeles")
+                cutoff = utc_timestamp(recovery_deadline)
+                if (recover_action_date != context["successor_action_date"]
+                        or recover_action_date != local.date().isoformat()
+                        or not 4 <= local.hour < 17
+                        or not observed < cutoff <= local.normalize().replace(hour=17).tz_convert("UTC")
+                        or cutoff > observed + pd.Timedelta(hours=7)):
+                    raise ValueError("Recovery must target today's missed session with a bounded deadline before close")
+                recovery = {"recovery_started_at": observed.isoformat(),
+                            "recovery_deadline_at": cutoff.isoformat(),
+                            "recovery_reason": "Explicit operator recovery of a missed nightly launch"}
+                eligibility = {"eligible": True, "local_date": context["action_date"]}
+            else:
+                eligibility = scheduled_session_eligibility(observed)
             if not eligibility["eligible"]:
                 result = {"schema_version": VERSION, "status": eligibility["status"], "eligibility": eligibility}
                 _write(state_root / "last-wake.json", result)
                 if eligibility["status"] != "NOOP_NON_SESSION_DATE":
                     raise RuntimeError(str(eligibility["reason"]))
                 return result
-            deadline = next_action_deadline(observed)
+            deadline = (pd.Timestamp(recover_action_date).tz_localize("America/Los_Angeles")
+                        .replace(hour=4).tz_convert("UTC") if recovery else next_action_deadline(observed))
             action = deadline.tz_convert("America/Los_Angeles").date().isoformat()
             path = state_root / "runs" / action / "state.json"
             if path.exists():
+                if recovery:
+                    raise ValueError("Recovery cannot replace an existing run; preserve its identity and use resume")
                 state = _json(path)
             else:
                 symbol_binding = _symbol_binding(config)
@@ -501,6 +524,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
                     "configuration_binding": _configuration_binding(config),
                     "symbols": symbol_binding["symbols"], "symbol_binding": symbol_binding,
                     "steps": {}, "status": "READY", "orders_placed": 0, "broker_orders_enabled": False}
+                if recovery:
+                    state.update(recovery)
         def save():
             _write(path, state)
             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
@@ -516,7 +541,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
                     _verify_outputs(completed["output"])
             if state["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING":
                 return state
-            if observed >= utc_timestamp(state["deadline_at"]):
+            if observed >= utc_timestamp(state.get("recovery_deadline_at", state["deadline_at"])):
                 raise TimeoutError("Original nightly preparation deadline reached")
             state.update(status="RUNNING", owner_pid=os.getpid())
             state.pop("error", None)
@@ -569,26 +594,49 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
             raise
 
 
-def status(config: dict) -> dict:
-    path = Path(config["state_root"]) / "latest.json"
-    return _json(Path(_json(path)["state_path"])) if path.exists() else {"status": "NOT_STARTED"}
+def status(config: dict, *, action_date: str | None = None, now=None) -> dict:
+    """Read the intended session, never substitute an older latest completion."""
+    if action_date is None:
+        from ml.gameplan_actuals_review import completed_session_context
+        action_date = completed_session_context(utc_timestamp(now))["successor_action_date"]
+    if pd.Timestamp(action_date).date().isoformat() != action_date:
+        raise ValueError("Use an exact action date")
+    path = Path(config["state_root"]) / "runs" / action_date / "state.json"
+    if not path.exists():
+        return {"schema_version": VERSION, "actor": config["actor"],
+                "action_date": action_date, "status": "NOT_STARTED",
+                "reason": "No preparation run for the intended action date"}
+    state = _json(path)
+    if (state.get("action_date") != action_date or state.get("actor") != config["actor"]
+            or state.get("schema_version") != VERSION):
+        raise ValueError("Saved nightly identity differs from the intended session")
+    return state
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--resume-action-date")
+    parser.add_argument("--recover-action-date", help="Explicit operator recovery of today's missing nightly run")
+    parser.add_argument("--recovery-deadline", help="Fixed zoned deadline for an explicitly requested recovery")
+    parser.add_argument("--action-date", help="Exact session to inspect with --status")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--run", action="store_true")
     modes.add_argument("--launch", action="store_true")
     modes.add_argument("--status", action="store_true")
     modes.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
+    if args.action_date and not args.status:
+        parser.error("--action-date is only supported with --status")
+    if (args.recover_action_date or args.recovery_deadline) and not (args.launch or args.run):
+        parser.error("Recovery is only supported with --launch or --run")
+    if bool(args.recover_action_date) != bool(args.recovery_deadline) or (args.recover_action_date and args.resume_action_date):
+        parser.error("Recovery requires its exact action date and deadline and cannot be combined with resume")
     try:
         config = load_config(args.config)
         verify_installation(config)
         if args.status:
-            result = status(config)
+            result = status(config, action_date=args.action_date)
         elif args.check:
             binary = config.get("codex_executable") or shutil.which("codex")
             result = {"status": "CONFIGURATION_VERIFIED", "actor": config["actor"],
@@ -601,6 +649,9 @@ def main(argv=None) -> int:
             command = [sys.executable, "-B", "-u", "-m", "ml.nightly_workflow", "--config", str(args.config.resolve()), "--run"]
             if args.resume_action_date:
                 command += ["--resume-action-date", args.resume_action_date]
+            if args.recover_action_date:
+                command += ["--recover-action-date", args.recover_action_date,
+                            "--recovery-deadline", args.recovery_deadline]
             with log.open("ab") as stream:
                 process = subprocess.Popen(command, cwd=config["repository"], stdin=subprocess.DEVNULL,
                     stdout=stream, stderr=subprocess.STDOUT, close_fds=True,
@@ -608,7 +659,9 @@ def main(argv=None) -> int:
             result = {"status": "LAUNCHED", "pid": process.pid, "log": str(log),
                       "completion": "Read --status; launch is not completion"}
         else:
-            result = run_workflow(config, resume_action_date=args.resume_action_date)
+            result = run_workflow(config, resume_action_date=args.resume_action_date,
+                                  recover_action_date=args.recover_action_date,
+                                  recovery_deadline=args.recovery_deadline)
         print(json.dumps(result, indent=2, default=str))
         return 0
     except Timeout:

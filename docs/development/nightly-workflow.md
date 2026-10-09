@@ -94,6 +94,22 @@ without making a review call.
 ```
 
 `--launch` starts a hidden worker and returns. **LAUNCHED is not completion.**
+After a successful configuration check, the scheduled launcher must invoke
+`--launch` once for the nightly wake. A prior session's completion is never a
+reason to omit that call; the worker owns session selection and duplicate
+protection. `--status` selects the successor of the newest completed action
+session, not `latest.json`. Use `--status --action-date YYYY-MM-DD` to inspect
+one exact session. Missing preparation returns `NOT_STARTED` for that date;
+report a missed launch explicitly rather than crediting an older completion.
+For an explicitly requested recovery of an entirely missing run after 04:00,
+`--launch --recover-action-date YYYY-MM-DD --recovery-deadline ZONED_TIMESTAMP`
+runs the same stages for today's action date and the newest completed review
+session. It preserves the missed original deadline and separately records a
+fixed recovery deadline, at most seven hours away and no later than 17:00
+Pacific. It cannot replace an existing run or extend a retry's deadline. This
+does not start or restart the trader, grant order authority, or change the
+scheduled nightly workflow. A failed recovery retains its identity and uses
+the existing explicit resume path under its frozen recovery deadline.
 Read `--status` and the saved worker log for the real outcome. A separate morning
 readiness task checks durable results and reports missing/failed stages. Success
 during the rollout is `LOCAL_COMPLETE_PEER_SETUP_PENDING`; it is not joint
