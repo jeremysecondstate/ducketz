@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T15:56:20.227025Z",
+  "id": "20261009T155620Z-5570c78aad4945a9a1f6be392a311ad5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas supplied saved exact Loop B source operations, full tested dependency fingerprints, stacked base evidence and two 196-pass offline check bindings."
+}
