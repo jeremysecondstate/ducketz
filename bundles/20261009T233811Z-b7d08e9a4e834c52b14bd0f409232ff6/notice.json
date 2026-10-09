@@ -1,0 +1,139 @@
+{
+  "author": "Scout",
+  "change_id": "scout-nightly-final-20261009T232631Z-86e85015abb740128ce8ce8a4be3c773",
+  "completion_record": "20261009T232631Z-86e85015abb740128ce8ce8a4be3c773",
+  "completion_record_sha256": "a07f84ca569b02391c655652a2911dfef3feb761381b3782bae0019daa0c4259",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/nightly-exchange.md",
+      "sha256": "e4ca59e709f80470a27f4623ee588aecfff504ff04a59270ceb8009e1c48b50a"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/nightly-operations.md",
+      "sha256": "da1f19b6eb502b574ae8a9af75ed993fa7f27c962d84ac277a18e33297d11387"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/nightly-workflow.md",
+      "sha256": "53d8501c6862ff69a564ef31f5acfaa8e8c54163df4264e300a01c5478732585"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/nightly_exchange_repair.py",
+      "sha256": "aa3aa5ca316eab9561bb318d0b26d6e6ee6048fe6e9832cb99e178ad80154e36"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/nightly_repair_registry.py",
+      "sha256": "8ef3d0c6635d8cb201b886ba86baebfc70db0e1af8a64f80be24a623f6f8a540"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/nightly_stage_repair.py",
+      "sha256": "31875340a4e9339888bbdc45f270ea4a04870facccd15e48b2b3b4273a18c115"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/nightly_workflow.py",
+      "sha256": "6acd2025f71c2184a0f54815c0f34ad009f5eabc42d3b9285f1f4ff0bb728903"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_common_union.py",
+      "sha256": "3368436e4c987380db27e00c3422aa2727e8330530e87c06d8bd306fed362d33"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_exchange.py",
+      "sha256": "2a832d71322754da5d157f00e0a0ca9adbc615ffdbf6346e908ea6cb2f79067c"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_nightly_exchange_repair.py",
+      "sha256": "b02524ce491f4118c7f0ed0a0bd09ef818a1a6728a98f7d3a95a413b130e380f"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_nightly_notifications.py",
+      "sha256": "55314c012cc1bb59382f7ad405bcc25da2177279b97ff3cddd907fb29a418acf"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_recovery.py",
+      "sha256": "d0d8ebbbb46c7c1377feb4f23294992b6f6cac0ef7ab18dc945061b4afba4303"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_nightly_stage_repair.py",
+      "sha256": "5d1f0daf55d8823871ab58f8b1a7f7343d661ae84a4a7d5c374990dbb356bf63"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/nightly_exchange.py",
+      "sha256": "f2ad4595aad808c7fdfdc3dc3aa056cfe5df75e9e6252e1aa304ca5314b2db1b"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/nightly_notifications.py",
+      "sha256": "fa5e76477dfc99a6461eff525dd1a19ddfece499a71792cbd480c16ac03e27ce"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tools/nightly_source_repair.py",
+      "sha256": "a553c3dd829e79991e1a2621816c36631200b695e366d7f9beb82ecfeb4f6694"
+    }
+  ],
+  "installation_status": "This notice publishes source only; per-PC protected installation and fresh native readback are independently recorded",
+  "limitations": [
+    "Offline checks do not establish completion of tonight production run or actual actionable notice delivery",
+    "Publication, each PC exact installation, loaded runtime, native task activation, main integration and merge remain distinct",
+    "The notification ledger requires actual native final/readback evidence; unknown outcome stays pending without expiry takeover",
+    "No production provider/broker calls, training replay, account recapture, trader control or order action was performed for infrastructure verification"
+  ],
+  "original_history": "Original October8/9 preparation and completed October9 exchange evidence retained unchanged",
+  "remote_verified_at": "2026-10-09T23:34:48.271537Z",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install exact reviewed bytes through the audited local transition with launchers controlled and original completed evidence preserved; then verify installed source and native scheduling. Preserve existing claims; no replay of completed October8/9 sessions. Atlas remains sole executor and Jeremy controls trader start/stop.",
+  "scope": "Shared final nightly repair and notification source for Atlas and Scout; private local bindings remain machine owned",
+  "source_branch": "codex/scout/20261009T232631Z-86e85015abb740128ce8ce8a4be3c773",
+  "source_commit": "fe60d55d62b2802716cb5c9af6342480499b910e",
+  "summary": "Scout final nightly operations: shared recovery ownership and verified concurrent-installation guards",
+  "tests": [
+    {
+      "bound_files": 733,
+      "completed_at_utc": "2026-10-09T23:30:09.853853Z",
+      "exit_code": 0,
+      "output_sha256": "8bf8bf895a5fca624a2dce0e7dcd841d0809afb159f1cb63a04f49fa029ac6b6",
+      "result": "534 passed",
+      "stage": "queue",
+      "started_at_utc": "2026-10-09T23:26:32.592218Z"
+    },
+    {
+      "bound_files": 733,
+      "completed_at_utc": "2026-10-09T23:34:31.983355Z",
+      "exit_code": 0,
+      "output_sha256": "fe5c8a59ce6387d0efb856cbaba44a5defcff9675d2cf4de879e1ea0a5f76f84",
+      "result": "534 passed",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-09T23:30:57.475220Z"
+    }
+  ]
+}

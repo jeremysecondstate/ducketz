@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T23:38:11.813054Z",
+  "id": "20261009T233811Z-b7d08e9a4e834c52b14bd0f409232ff6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout final nightly operations: shared recovery ownership and verified concurrent-installation guards"
+}
