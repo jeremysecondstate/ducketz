@@ -18,13 +18,20 @@ watchdog wake use the same coordinator; neither creates another pipeline.
 | Responsibility | Coordinator stages | Prerequisite | Routine supervision |
 | --- | --- | --- | --- |
 | DATASTORE CATCH-UP | `datastore_catchup` | intended kickoff or recorded missed wake | 21:05 Pacific launch |
-| GAMEPLAN STATS | `prepare_stats` | catch-up receipt | 03:00 readiness-risk checkpoint |
-| MODEL REVIEW, TRAINING & PREDICTING | `model_review`, `train_and_plan` | newest completed Stats | 03:00 exception checkpoint; review is dispatched immediately after Stats |
-| GAMEPLAN | `local_gameplan` | accepted predictions | 03:00 readiness-risk checkpoint |
+| GAMEPLAN STATS | `prepare_stats` | catch-up receipt | local daily checkpoint; actual receipt dispatches the stage |
+| MODEL REVIEW, TRAINING & PREDICTING | `model_review`, `train_and_plan` | newest completed Stats | local daily checkpoint; review is dispatched immediately after Stats |
+| GAMEPLAN | `local_gameplan` | accepted predictions | local daily checkpoint; accepted predictions dispatch the stage |
 | GAMEPLAN SYNTHESIS | existing private exchange | both exact research packages | every five minutes |
-| DUCKETZ DISPLAY | `verify_display`, `local_handoff`; accepted combined readers | local plan, then exact synthesis/handoff | 03:35 confirmation checkpoint |
+| DUCKETZ DISPLAY | `verify_display`, `local_handoff`; accepted combined readers | local plan, then exact synthesis/handoff | dated 03:00 risk and 03:35 confirmation coverage |
 | REPO RECONCILIATION | source and coordination queues | independent | every five minutes; ordinary review after 01:25 |
 | TRADER REP | saved readiness and normal worker evidence | Atlas only | morning check and recurring market-session checks |
+
+The native checkpoint schedules are local operating bindings: Atlas uses 03:00
+Stats/model/Gameplan checkpoints, while Scout uses 21:05 checkpoints and a
+04:05 catch-up fallback. Scout display wakes at 03:00 and 03:35; Atlas display
+wakes at 03:35. Both five-minute handoff/synthesis supervisors provide the
+shared dated notification coverage. Verify actual enabled definitions and
+next-run readbacks on each PC; this table is not an installation receipt.
 
 The checkpoint times are supervision and notification times, not guessed stage
 start times. The watchdog launches the next eligible responsibility as soon as
@@ -91,19 +98,88 @@ then resume that unfinished stage with the same identity and frozen deadlines.
 Keep the original failure, completed outputs and source transition evidence.
 Never replace source used by a healthy active session to clear a status report.
 
-REPO RECONCILIATION owns cross-stage source defects; the failing responsibility
-supplies its exact evidence and verifies recovery. Its five-minute wake also
+### Claim, repair and verify the same unfinished stage
+
+`ml.nightly_stage_repair` is the normal preparation repair interface. Before
+editing an isolated candidate, save a private request containing `action_date`,
+`repair_id` and optional null `completion_record`, then claim with the exact
+responsibility/reconciliation owner:
+
+```text
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --claim PRIVATE_CLAIM_REQUEST
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --reviewed --prepare PRIVATE_REPAIR_REQUEST
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --reviewed --apply FROZEN_SPEC
+```
+
+The request for `prepare` binds the same action date and repair ID, isolated
+candidate, explicit `changes` map, actual published `completion_record`, risk,
+rationale, runtime implications and actual passing checks. Checks retain argv,
+integer exit code zero, absolute log, timestamps and exact `source_files` hashes
+across `ml`, `app`, `datafetching`, `tools`, `fundamentals`, `options`, `signals`
+and `technicals`. Source publication generates the Completion-Record after the
+checks; never invent one before claiming. A restored external dependency uses
+`risk: external_dependency`, `changes: {}`, unchanged source and actual
+restoration evidence. Its local completion identity does not claim a source
+publication. Policy/data/model changes must explicitly declare their reviewed
+invalidation and preserve old evidence; orchestration changes retain compatible
+completed stages.
+
+Preparation and exchange share one `state_root/repair-owner.json` under
+`workflow.lock`, across all dates and responsibilities. It contains owner,
+repair ID, token, domain, action date and a completion record that is null until
+reviewed evidence binds it. It has no timeout takeover. Installing the fix does
+not release the owner. Normal dispatch validates the exact applied audit,
+resumes the same stage and releases ownership only after its saved output is
+verified. An interrupted save/release reuses that success without repeating the
+stage. A later genuine failed attempt may continue under the same owner with a
+new stable repair ID and preserved ancestry, up to three repairs per chain.
+Unchanged failures and exhausted budgets retain the precise unresolved
+requirement; no transition renews a deadline. The legacy source-repair helper
+also refuses mutation while any global owner is present.
+
+For a failure after preparation has completed, use the distinct exchange repair
+interface in `nightly-exchange.md`. Never reopen completed preparation merely
+to make the preparation helper accept an exchange failure.
+
+The failing responsibility owns its evidence and verified disposition. REPO
+RECONCILIATION coordinates shared source defects, and the five-minute
+handoff/synthesis supervisor may repair as a bounded delegate for the saved
+responsibility owner between daily checkpoints. Every delegate retains the
+same persistent claim, token and completion identity; it cannot create a
+competing repair. The reconciliation task's five-minute wake also
 checks unresolved external failures for verified restored usage, authentication,
 runtime, storage or private transport availability. It uses the same audited
 dependency-restored transition before retrying; it does not wait for a daily
-checkpoint or repeatedly probe an unchanged unavailable dependency. Handoff
-exclusively owns the dated 03:00 and 03:35 alarms; other tasks supply evidence.
+checkpoint or repeatedly probe an unchanged unavailable dependency. Display
+and handoff/synthesis share one dated notification ledger, so an early or missed
+native wake cannot lose either threshold or produce competing notices.
 For a genuine authority
 boundary, retain the precise remaining requirement. Report meaningful failure,
 correction, verified recovery and completion once. Preserve per-action-date
 03:00 readiness-risk and 03:35 missed-confirmation notifications. These times
 do not prohibit startup. Record notification identities in local memory/state
 and suppress unchanged notices and acknowledgment loops.
+
+Use `tools.nightly_notifications` with the private workflow config and a fresh
+read-only readiness observation for the intended action date. `--inspect`
+returns due or pending events; `--claim` binds a stable event to the actual
+automation and native thread. Include that event ID in the actionable native
+notice. A later wake uses actual native thread and inbox readback with
+`--confirm`; preparing a final message is not delivery. Confirmed non-delivery
+allows another claim for the same event, while an unknown outcome stays pending
+without expiry or takeover. The helper does not send messages or independently
+attest the caller's proof. See the shared
+[notification runbook](https://github.com/jeremysecondstate/atlas-scout/blob/main/coordination/runbooks/nightly-notifications.md)
+for the exact commands and evidence fields. Keep proof and financial evidence
+private, and preserve original claims and outcomes.
+
+Keep a compact current memory block and small per-task cursor. Historical
+memory is retained but is not reread or appended on every unchanged wake.
+For no new actionable delta, record `outcome=unchanged`, then call the native
+`set_thread_archived` tool with `archived: true` and no thread ID to archive only
+that scheduled run. A scheduler-required inbox directive does not replace the
+archive call. Report new meaningful failure, correction, recovery and completion
+once; a repeated dependency condition is not a new alert.
 
 ## Private handover and execution boundaries
 
@@ -114,6 +190,15 @@ synthesis. Once that handover is loaded, planning is complete. Do not add a
 Scout execution-history export, migration, cutover, duplicate broker preflight
 or approval ceremony. A terminal exchange verifies retained evidence without
 preparation, account capture, synthesis or adoption replay.
+
+Read status fields in context. `HANDOFF_VERIFIED_LOCAL` with exact receipt and
+local/joint/UI readiness completes Atlas planning. A local receipt's
+`peer_verified: false` does not negate the terminal exchange's separate peer
+verification. `source_changed_after_completion: true` records a later source
+installation without reopening the historical session. Preparation's
+`execution_authorized: false` and `orders_placed: 0` describe that component,
+not Jeremy's separately controlled active trader. These flags alone do not
+create another approval, broker preflight or failure.
 
 Atlas alone executes all 22 symbols and all horizons. Jeremy alone manually
 starts and stops the trader. No responsibility task or watchdog may change

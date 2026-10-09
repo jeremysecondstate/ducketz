@@ -332,14 +332,26 @@ queues and completion IDs, diagnose missing preparations, and notify only on
 meaningful changes or required action. The 03:00 readiness-risk and 03:35 missed
 pre-session notifications use their existing per-action-date identities; these
 are notification times, not startup prohibitions or approval gates. LOG remains
-paused and reference-only. These descriptions do not authorize schedule changes.
+paused and reference-only. The October 9 local human request authorizes the
+responsibility schedules and bounded recovery described in
+`nightly-operations.md`. Use native scheduling tools and retain each existing
+task identity, memory and completion identity. Earlier rollout holds in this
+document are historical; native readback and installation evidence establish
+the current state on each PC.
 
 
 ## Continue a repaired late planning tail
 
-The ordinary 21:05 Pacific workflow remains primary. An explicitly requested,
-date-pinned missed-night recovery is the fallback. Resume a failed matching run;
-never duplicate completed Stats, model review, forecasts or enrichment.
+The ordinary 21:05 Pacific workflow remains primary. The standing authority
+record from the October 9 local human request permits the documented,
+date-pinned missed-night fallback within its fixed limits; another permission
+request is not required for an eligible recovery. The dispatcher selects the
+intended exchange session, records the authority and exact action date, and
+starts missing work or resumes the matching unfinished run. Resume a failed
+matching run; never duplicate completed Stats, model review, forecasts or
+enrichment. An unavailable prerequisite retains resumable state and its actual
+failure evidence rather than renewing a deadline or repeating an unchanged
+deterministic failure.
 
 If a repair finishes after the fixed recovery deadline, an explicit
 `--resume-action-date YYYY-MM-DD --planning-tail-exception ABSOLUTE_RECORD`

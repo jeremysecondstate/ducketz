@@ -17,6 +17,7 @@ from tests.test_joint_capital_plan import NOW, DAY, SCOPE, snapshot
 
 OWNERSHIP_OBSERVATIONS = module._ownership_observations
 ENSURE_RESPONDER = module._ensure_ownership_responder
+LOCAL_STATE = module._local_state
 
 
 def write(path, value):
@@ -91,10 +92,13 @@ def exchange(source_inputs, tmp_path, monkeypatch):
         owner = source_inputs["owners"][actor]
         output = {"package": owner["plan_package"]["path"], "stats_package": owner["stats_package"]["path"]}
         output["files"] = {path: file_checksum(Path(path)) for path in output.values()}
-        states[actor] = {"steps": {"local_handoff": {"output": output}}}
+        from ml.nightly_exchange_repair import _source_from_files, _inventory
+        states[actor] = {"action_date": DAY, "source_identity": _source_from_files("a" * 40, _inventory(checkout)),
+                         "steps": {"local_handoff": {"output": output}}}
         configs[actor], natives[actor] = config, native
     monkeypatch.setattr(module.workflow, "load_config", lambda path: json.loads(path.read_text()))
     monkeypatch.setattr(module.workflow, "verify_installation", lambda _: None)
+    monkeypatch.setattr(module.workflow, "source_identity", lambda root: _source_from_files("a" * 40, _inventory(root)))
     monkeypatch.setattr(module, "_local_state", lambda config, *_: deepcopy(states[config["actor"].lower()]))
     monkeypatch.setattr(nightly_synthesis, "__file__", str(Path(natives["scout"]["repository"]) / "ml/nightly_synthesis.py"))
     monkeypatch.setattr(nightly_handoff, "__file__", str(Path(natives["atlas"]["repository"]) / "ml/nightly_handoff.py"))
@@ -250,8 +254,8 @@ def test_snapshot_refresh_before_synthesis_and_frozen_retry_after_adoption(excha
 def test_pre_adoption_crash_cannot_backdate_first_synthesis(exchange, monkeypatch):
     prepared(exchange)
     original = nightly_synthesis.run_synthesis
-    monkeypatch.setattr(nightly_synthesis, "run_synthesis", lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("fixture interruption")))
-    with pytest.raises(RuntimeError):
+    monkeypatch.setattr(nightly_synthesis, "run_synthesis", lambda *a, **kw: (_ for _ in ()).throw(InterruptedError("fixture interruption")))
+    with pytest.raises(InterruptedError):
         wake(exchange, "scout")
     frozen = Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json"
     before = frozen.read_bytes()
@@ -266,10 +270,10 @@ def test_partial_ui_adoption_resumes_exact_spec_and_does_not_recapture(exchange,
     original = nightly_synthesis._adopt_stats
     def interrupted(root, *args):
         if root == Path(exchange[1]["scout"]["datastore"]):
-            raise RuntimeError("fixture stop after local plan adoption")
+            raise InterruptedError("fixture stop after local plan adoption")
         return original(root, *args)
     monkeypatch.setattr(nightly_synthesis, "_adopt_stats", interrupted)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(InterruptedError):
         wake(exchange, "scout")
     frozen = Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json"
     before = frozen.read_bytes()
@@ -391,7 +395,8 @@ def test_interrupted_snapshot_publication_replays_exact_bytes_without_capture(ex
     before = selected.read_bytes()
     monkeypatch.setattr(module, "_write", original)
     # Finishing an already authorized saved publication needs no new read flag.
-    assert wake(exchange, "atlas")["reason"] == "JOINT_SCOUT"
+    assert wake(exchange, "atlas")["reason"] == "TRANSIENT_RETRY_COOLDOWN"
+    assert wake(exchange, "atlas", now="2026-09-09T10:05:00Z")["reason"] == "JOINT_SCOUT"
     assert len(exchange[3]) == 1 and selected.read_bytes() == before
     received = module._receive(exchange[0]["scout"], DAY, "2026-09-08", "atlas", "snapshot")
     assert received["digest"] == json.loads(before)["content_sha256"]
@@ -456,10 +461,10 @@ def test_partial_synthesis_retains_original_snapshot_after_atlas_refresh(exchang
     original = nightly_synthesis._adopt_stats
     def interrupted(root, *args):
         if root == Path(exchange[1]["scout"]["datastore"]):
-            raise RuntimeError("fixture stop after plan")
+            raise InterruptedError("fixture stop after plan")
         return original(root, *args)
     monkeypatch.setattr(nightly_synthesis, "_adopt_stats", interrupted)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(InterruptedError):
         wake(exchange, "scout")
     frozen_path = Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json"
     frozen = json.loads(frozen_path.read_text())
@@ -558,11 +563,12 @@ def test_actual_local_preparation_reader_accepts_frozen_evidence_after_combined_
     native, state, _, _ = _prepare(tmp_path, monkeypatch, "scout")
     native["state_root"] = str(tmp_path / "native")
     write(Path(native["state_root"]) / "runs" / action / "state.json", state)
-    assert module._local_state({"actor": "Scout"}, native, action, review) == state
+    config = {"actor": "Scout", "state_root": str(tmp_path / "exchange")}
+    assert module._local_state(config, native, action, review) == state
     source = Path(state["steps"]["verify_display"]["output"]["source_gameplan_run"]) / "receipt.json"
     source.write_bytes(source.read_bytes() + b" ")
     with pytest.raises(ValueError, match="output changed"):
-        module._local_state({"actor": "Scout"}, native, action, review)
+        module._local_state(config, native, action, review)
 
 
 def test_legacy_ownership_handshake_retains_original_observations(exchange, rendezvous):
@@ -749,3 +755,103 @@ def test_binding_change_during_account_capture_is_refused_before_export(exchange
         wake(exchange, "atlas", capture=True)
     assert len(exchange[3]) == 1
     assert not (module._folder(exchange[0]['atlas'], DAY, 'atlas', 'snapshot')/'selection.json').exists()
+
+
+def test_audited_exchange_source_repair_resumes_same_partial_adoption_and_releases_owner(exchange, monkeypatch, tmp_path):
+    import shutil
+    from ml import nightly_exchange_repair as repair
+    from ml import nightly_repair_registry as registry
+    configs, natives, states, captures = exchange
+    for actor in ("scout", "atlas"):
+        native = natives[actor]
+        repo = Path(native["repository"])
+        (repo / "ml").mkdir(exist_ok=True)
+        (repo / "ml/nightly_synthesis.py").write_text("# original fixture source\n")
+        state = {"schema_version": module.workflow.VERSION, "actor": actor.title(), "action_date": DAY,
+                 "source_session": "2026-09-08", "status": "LOCAL_COMPLETE_PEER_SETUP_PENDING", "owner_pid": None,
+                 "source_identity": module.workflow.source_identity(repo), "steps": {}}
+        for step in module.workflow.workflow_steps(state):
+            state["steps"][step] = {"status": "COMPLETE", "output": states[actor]["steps"]["local_handoff"]["output"]}
+        states[actor] = state
+        write(Path(native["state_root"]) / "runs" / DAY / "state.json", state)
+    monkeypatch.setattr(module.workflow, "_verify_configuration_binding", lambda *args: None)
+    monkeypatch.setattr(module.workflow, "_verify_symbol_binding", lambda *args: None)
+    monkeypatch.setattr(module.workflow, "_verify_local_preparation", lambda *args: None)
+    monkeypatch.setattr(module, "_local_state", LOCAL_STATE)
+    prepared(exchange)
+    original_adopt, attempts = nightly_synthesis._adopt_stats, []
+    def defect(root, *args):
+        if root == Path(natives["scout"]["datastore"]):
+            attempts.append(True)
+            raise ValueError("reproduced deterministic Stats-adoption defect")
+        return original_adopt(root, *args)
+    monkeypatch.setattr(nightly_synthesis, "_adopt_stats", defect)
+    with pytest.raises(ValueError, match="deterministic"):
+        wake(exchange, "scout")
+    assert wake(exchange, "scout")["reason"] == "REPAIR_REQUIRED" and len(attempts) == 1
+    config, native = configs["scout"], natives["scout"]
+    session = Path(config["state_root"]) / "sessions" / DAY
+    originals = {path: path.read_bytes() for path in (session / "binding.json", session / "synthesis-selection.json",
+                 Path(native["state_root"]) / "runs" / DAY / "state.json")}
+    claim = repair.claim(config, action_date=DAY, owner="Scout source reconciliation", repair_id="fixture-exchange-repair",
+                         reason="Exact reproduced source defect", reviewed=True, now=NOW)
+    assert wake(exchange, "scout")["reason"] == "SOURCE_REPAIR_OWNED"
+    candidate = tmp_path / "reviewed-candidate"
+    shutil.copytree(Path(native["repository"]), candidate)
+    (candidate / "ml/nightly_synthesis.py").write_text("# reviewed repair fixture source\n")
+    log = tmp_path / "source-check.log"
+    log.write_text("synthetic passing fixture runner evidence")
+    spec = repair.prepare(config, claim_path=claim, owner="Scout source reconciliation", candidate=candidate,
+        changes={"ml/nightly_synthesis.py": "modify"}, completion_record="actual-fixture-queue-record",
+        checks=[{"command": ["pytest", "fixture"], "exit_code": 0, "log": str(log), "started_at": NOW,
+                 "completed_at": NOW, "source_files": repair._inventory(candidate)}],
+        rationale="Fix adoption only", runtime_implications="No numerical inputs or active trader changes", reviewed=True, now=NOW)
+    repair.apply(config, spec, owner="Scout source reconciliation", reviewed=True, now=NOW)
+    monkeypatch.setattr(nightly_synthesis, "_adopt_stats", original_adopt)
+    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["reason"] == "ACCEPTED_ATLAS"
+    assert wake(exchange, "atlas", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
+    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
+    assert registry.read(native["state_root"]) is None
+    assert (spec.parent / "resolved.json").is_file()
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert len(captures) == 1
+    assert (session / "failure.json").is_file()
+
+
+@pytest.mark.parametrize("held,reason", [("workflow", "WORKFLOW_BUSY"), ("exchange", "EXCHANGE_BUSY")])
+@pytest.mark.parametrize("status", ["FAILED", "COMPLETE"])
+def test_healthy_shared_lock_is_quiet_pending_without_mutating_evidence(exchange, monkeypatch, held, reason, status):
+    from filelock import FileLock
+    from ml import nightly_repair_registry as registry
+    config, native = exchange[0]["scout"], exchange[1]["scout"]
+    root = Path(native["state_root"])
+    session = Path(config["state_root"]) / "sessions" / DAY
+    paths = [write(root / "runs" / DAY / "state.json", {"status": "COMPLETE", "original": True}),
+             write(session / "status.json", {"status": status, "original": True}),
+             write(session / "failure.json", {"attempts": 2, "original": True})]
+    claim = {"owner": "Atlas source reconciliation", "repair_id": "fixture-repair", "token": "a" * 64,
+             "action_date": DAY, "domain": "preparation", "completion_record": None}
+    registry.acquire(root, claim)
+    paths.append(registry.path(root))
+    original = {path: path.read_bytes() for path in paths}
+    for name in ("_run", "_completed_result"):
+        monkeypatch.setattr(module, name, lambda *a, **kw: pytest.fail("Healthy lock blocks numerical work and receipt reads"))
+    lock_root = root if held == "workflow" else Path(config["state_root"])
+    with FileLock(str(lock_root / (held + ".lock")), timeout=0):
+        result = wake(exchange, "scout")
+    assert result["status"] == "PENDING" and result["reason"] == reason
+    assert all(path.read_bytes() == raw for path, raw in original.items())
+    assert not exchange[3]
+
+
+def test_normal_exchange_holds_shared_workflow_guard_through_source_relevant_work(exchange, monkeypatch):
+    from filelock import FileLock, Timeout
+    native, config = exchange[1]["scout"], exchange[0]["scout"]
+    def bounded_work(*args):
+        for root, filename in ((native["state_root"], "workflow.lock"), (config["state_root"], "exchange.lock")):
+            with pytest.raises(Timeout):
+                with FileLock(str(Path(root) / filename), timeout=0):
+                    pytest.fail("Source installation must remain excluded until the bounded exchange ends")
+        return {"status": "PENDING", "reason": "FIXTURE_PEER_DELAY"}
+    monkeypatch.setattr(module, "_run", bounded_work)
+    assert wake(exchange, "scout")["reason"] == "FIXTURE_PEER_DELAY"
