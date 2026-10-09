@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T22:00:29.644321Z",
+  "id": "20261009T220029Z-097cbaeee20441bb9ca0ababa609b8c2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published reviewed nightly responsibility dispatch and bounded recovery; compatible repair union remains separately tracked"
+}

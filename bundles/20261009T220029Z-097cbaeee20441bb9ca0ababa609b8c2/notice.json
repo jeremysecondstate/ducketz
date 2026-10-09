@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261009T214429Z-39e0d1ca99fa43d5b741b433791728ee",
+  "change_id": "20261009T214429Z-39e0d1ca99fa43d5b741b433791728ee",
+  "commit_sha": "8eec39070154b3b568744dd20dab49af4239bf39",
+  "files": [
+    "docs/development/nightly-exchange.md",
+    "docs/development/nightly-workflow.md",
+    "ml/nightly_readiness.py",
+    "ml/nightly_workflow.py",
+    "ml/overnight_runtime.py",
+    "tests/test_nightly_exchange.py",
+    "tests/test_nightly_workflow.py",
+    "tools/nightly_exchange.py",
+    "docs/development/nightly-operations.md",
+    "ml/nightly_dispatch.py",
+    "tests/test_nightly_dispatch.py",
+    "tests/test_nightly_operations_catchup.py",
+    "tests/test_nightly_watchdog.py",
+    "tools/nightly_watchdog.py",
+    "tools/register_nightly_watchdog.ps1"
+  ],
+  "limitations": [
+    "Not a completed production run for tonight",
+    "Installation pending corrected compatible Scout repair union; substantive defects owned on Issue1",
+    "No broker/provider/model fitting or trader control used for infrastructure verification"
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/44",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/1"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "One durable dated pipeline with distinct stage owners; normal trader remains under Jeremy manual control. No numerical Atlas synthesis and no completed-session replay.",
+  "scope": "Shared nightly coordinator, terminal handoff evidence and Windows wake adapter; preserve each PC private bindings",
+  "summary": "Atlas published reviewed nightly responsibility dispatch and bounded recovery; compatible repair union remains separately tracked",
+  "tests": [
+    {
+      "checks": 248,
+      "location": "immutable queued bytes",
+      "result": "passed",
+      "suite": "nightly responsibility dispatcher and recovery regressions"
+    },
+    {
+      "checks": 248,
+      "completed_at": "2026-10-09T21:48:31.449264Z",
+      "location": "isolated publication candidate",
+      "result": "passed",
+      "started_at": "2026-10-09T21:46:58.160484Z",
+      "suite": "same exact offline suites"
+    }
+  ]
+}
