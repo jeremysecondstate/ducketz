@@ -77,9 +77,9 @@ def readiness(config: dict, *, now=None) -> dict:
     else:
         day = local.date().isoformat()
     result["action_date"] = day
-    state = workflow.status(config)
+    state = workflow.status(config, action_date=day)
     result["worker_status"] = state["status"]
-    if state.get("action_date") != day:
+    if state.get("action_date") != day or state["status"] == "NOT_STARTED":
         return {**result, "status": "NOT_READY", "reason": "No worker result for the intended action date"}
     if state.get("actor") != config["actor"] or state.get("schema_version") != workflow.VERSION:
         raise ValueError("Saved nightly identity differs from this machine")

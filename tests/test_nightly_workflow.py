@@ -68,6 +68,63 @@ def test_stages_depend_on_success_and_duplicate_wake_does_no_work(setup, actor):
     assert calls == list(STEPS)
 
 
+
+@pytest.mark.parametrize("now, expected", [
+    ("2026-10-07T04:05Z", "2026-10-07"),
+    ("2026-10-07T10:35Z", "2026-10-07"),
+    ("2026-10-07T12:30Z", "2026-10-07"),
+    ("2026-10-10T04:05Z", "2026-10-12"),
+    ("2026-12-25T05:05Z", "2026-12-28"),
+    ("2026-11-03T05:05Z", "2026-11-03"),
+])
+def test_status_does_not_reuse_yesterday_completion(setup, now, expected):
+    from ml.nightly_workflow import status
+    _run(setup, lambda *args: {"files": {}})
+    latest = Path(setup["state_root"]) / "latest.json"
+    before = latest.read_bytes()
+    result = status(setup, now=now)
+    assert result["status"] == "NOT_STARTED"
+    assert result["action_date"] == expected
+    assert latest.read_bytes() == before
+
+
+def test_next_night_runs_all_stages_after_previous_completion(setup):
+    _run(setup, lambda *args: {"files": {}})
+    calls = []
+    result = run_workflow(setup, now="2026-10-07T04:05Z", identity=_identity, supervise=False,
+        execute_step=lambda config, state, step, save: calls.append(step) or {"files": {}})
+    assert calls == list(STEPS)
+    assert result["action_date"] == "2026-10-07"
+
+
+def test_explicit_recovery_preserves_missed_deadline_and_targets_today(setup):
+    calls = []
+    result = run_workflow(setup, now="2026-10-07T12:30Z", identity=_identity, supervise=False,
+        recover_action_date="2026-10-07", recovery_deadline="2026-10-07T19:00Z",
+        execute_step=lambda config, state, step, save: calls.append(step) or {"files": {}})
+    assert calls == list(STEPS)
+    assert result["action_date"] == "2026-10-07"
+    assert result["source_session"] == "2026-10-06"
+    assert result["deadline_at"] == "2026-10-07T11:00:00+00:00"
+    assert result["recovery_deadline_at"] == "2026-10-07T19:00:00+00:00"
+    with pytest.raises(ValueError, match="existing run"):
+        run_workflow(setup, now="2026-10-07T12:35Z", identity=_identity, supervise=False,
+            recover_action_date="2026-10-07", recovery_deadline="2026-10-07T19:05Z")
+
+
+@pytest.mark.parametrize("day, deadline", [
+    ("2026-10-06", "2026-10-07T19:00Z"),
+    ("2026-10-08", "2026-10-07T19:00Z"),
+    ("2026-10-07", "2026-10-07T12:00Z"),
+    ("2026-10-07", "2026-10-08T00:01Z"),
+])
+def test_recovery_rejects_wrong_date_or_unbounded_deadline(setup, day, deadline):
+    with pytest.raises(ValueError, match="today's missed session"):
+        run_workflow(setup, now="2026-10-07T12:30Z", identity=_identity, supervise=False,
+            recover_action_date=day, recovery_deadline=deadline,
+            execute_step=lambda *args: pytest.fail("Invalid recovery launched"))
+
+
 def test_failure_preserves_completed_stats_and_review_then_retries_only_remaining(setup):
     calls = []
     fail = True
