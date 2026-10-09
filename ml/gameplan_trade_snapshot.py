@@ -331,6 +331,15 @@ def capture_trade_planning_snapshot(
     requested = tuple(dict.fromkeys(str(value).strip().upper() for value in symbols))
     if not requested or any(symbol not in STOCK_TRADER_SYMBOLS for symbol in requested):
         raise ValueError("Trade planning requires configured production symbols")
+    return _capture_trade_planning_snapshot(datastore_root, requested=requested,
+        session=session, observed_at=observed_at)
+
+
+def _capture_trade_planning_snapshot(
+    datastore_root, *, requested, session=None, observed_at=None,
+    explicit_universe=False, ownership_reader=None,
+):
+    """Shared read implementation; the account adapter validates its own authority."""
     timestamp = utc(observed_at).isoformat()
     result = {"schema_version": "gameplan-trade-planning-snapshot-v1",
         "authority": "INFORMATIONAL_READ_ONLY", "observed_at": timestamp,
@@ -383,6 +392,7 @@ def capture_trade_planning_snapshot(
                 component = "PORTFOLIO_ECONOMICS"
                 portfolio = capture_portfolio_state(
                     _CachedReads(account, orders, quotes), observed_at=attempt_at, parallel=False,
+                    **({"symbols": requested} if explicit_universe else {}),
                 )
                 return portfolio, normalized, account, quotes, stable_identity
             except Exception as exc:
@@ -454,7 +464,9 @@ def capture_trade_planning_snapshot(
         result["stock_market_value_by_symbol"] = {symbol: float(value) for symbol, value in stock_values.items()}
         result["other_symbol_exposure"] = {symbol: float(value) for symbol, value in other_values.items()}
         result["position_exposure_basis"] = "ABSOLUTE_REPORTED_POSITION_MARKET_VALUE_MATCHING_NATIVE_GROSS_EXPOSURE"
-        result["ownership"] = _ownership(datastore_root, requested, stable_identity, result["held_shares"], timestamp)
+        component = "OWNERSHIP_EVIDENCE"
+        result["ownership"] = (ownership_reader(stable_identity, result) if ownership_reader is not None
+            else _ownership(datastore_root, requested, stable_identity, result["held_shares"], timestamp))
     except Exception as exc:
         # Broker exceptions may contain account URLs or order identifiers.
         # Neither their strings nor payloads are suitable for this artifact.
