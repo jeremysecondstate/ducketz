@@ -246,3 +246,27 @@ def test_signal_driven_remaining_holdings_do_not_create_synthetic_expiry_actions
     assert plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY
     assert all(action.action != "EXPIRY" for action in plan.actions)
     assert len(plan.actions) == ledger["summary"]["trade_events"]
+@pytest.mark.parametrize('damage', [None, 'hash', 'missing-hash', 'directory', 'session', 'output'])
+def test_explicit_local_publication_keeps_validation_without_combined_display(tmp_path, monkeypatch, damage):
+    from types import SimpleNamespace
+    from ml.artifacts import file_checksum
+    from gameplan_fixture import write_plan
+    run = write_plan(tmp_path)
+    receipt_hash = file_checksum(run/'receipt.json')
+    monkeypatch.setattr('ml.account_gameplan.config.load_account_config',
+        lambda root: SimpleNamespace(activation={'status':'ACTIVE'}))
+    with pytest.raises(GameplanError, match='shared account Gameplan is not available'):
+        load_gameplan(tmp_path)
+    kwargs = dict(run_directory=run, expected_receipt_sha256=receipt_hash)
+    if damage == 'hash': kwargs['expected_receipt_sha256'] = '0'*64
+    if damage == 'missing-hash': kwargs.pop('expected_receipt_sha256')
+    if damage == 'directory': kwargs['run_directory'] = tmp_path/'outside'
+    if damage == 'session': kwargs['session'] = '2026-09-15'
+    if damage == 'output': (run/'Gameplan.md').write_text('changed saved output')
+    if damage:
+        with pytest.raises(GameplanError):
+            load_gameplan(tmp_path, **kwargs)
+    else:
+        assert load_gameplan(tmp_path, **kwargs).run_directory == run
+        with pytest.raises(GameplanError, match='explicit saved run'):
+            load_gameplan(tmp_path, expected_receipt_sha256=receipt_hash)

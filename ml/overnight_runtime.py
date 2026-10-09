@@ -38,9 +38,20 @@ STAGE_ORDER = (
 INDEPENDENT_ENRICHMENT_STAGE = "stock_enrichment_training"
 INDEPENDENT_TRADE_PLANNING_STAGE = "gameplan_trade_planning"
 INDEPENDENT_ACTUALS_REVIEW_STAGE = "gameplan_actuals_review"
+ACCOUNT_GAMEPLAN_STAGE = "account_gameplan_preparation"
+ACCOUNT_REVIEW_STAGE = "account_actuals_summary"
+ACCOUNT_TAIL_STAGES = (ACCOUNT_GAMEPLAN_STAGE, ACCOUNT_REVIEW_STAGE)
 INDEPENDENT_HISTORY_STAGE = "stock_target_history"
 INDEPENDENT_TAIL_STAGES = (INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE)
-ALL_STAGE_ORDER = (*STAGE_ORDER[:2], INDEPENDENT_HISTORY_STAGE, *STAGE_ORDER[2:], *INDEPENDENT_TAIL_STAGES)
+LEGACY_STAGE_ORDER = (*STAGE_ORDER[:2], INDEPENDENT_HISTORY_STAGE, *STAGE_ORDER[2:],
+                   INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE,
+                   ACCOUNT_GAMEPLAN_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE, ACCOUNT_REVIEW_STAGE)
+GAMEPLAN_STATS_STAGE = "gameplan_stats"
+# The coordinator completes and reviews model feedback between gameplan_stats
+# and loop_b_directional_generation. Completed segments are not failed resumes.
+STATS_FIRST_STAGE_ORDER = (STAGE_ORDER[0], INDEPENDENT_HISTORY_STAGE, GAMEPLAN_STATS_STAGE,
+                           *STAGE_ORDER[1:], INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE)
+ALL_STAGE_ORDER = (*LEGACY_STAGE_ORDER, GAMEPLAN_STATS_STAGE)
 STOCK_PRICE_SOURCES = ("canonical-equity-minute-v1", "xnas-itch-archive-v1")
 
 
@@ -194,6 +205,26 @@ def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.
             "action_date": action_date}
 
 
+def _pin_account_trade_plan(root, *, gameplan, pinned=None):
+    from ml.artifacts import verify_manifest
+    if pinned is None:
+        pointer = json.loads((root / "ml/gameplan-trade-plan-latest/run.json").read_text())
+        pinned = pointer["current"]
+    path = (root / pinned["run_path"]).resolve()
+    if path.parent != (root / "ml/gameplan-trade-plan-runs").resolve():
+        raise ValueError("Account planning trade reference escapes its native run root")
+    receipt = json.loads((path / "receipt.json").read_text())
+    checksum = file_checksum(path / "receipt.json")
+    if (pinned.get("receipt_sha256") != checksum or receipt.get("status") != "COMPLETE"
+            or receipt.get("source_gameplan_run") != gameplan["run_path"]
+            or receipt.get("source_receipt_sha256") != gameplan["receipt_sha256"]
+            or receipt.get("manifest_sha256") != file_checksum(path / "manifest.json")
+            or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
+        raise ValueError("Account planning requires the exact completed native trade plan")
+    verify_manifest(path)
+    return {"run_path": pinned["run_path"], "receipt_sha256": checksum}
+
+
 def run_overnight_pipeline(
     datastore_root: Path,
     *,
@@ -211,6 +242,12 @@ def run_overnight_pipeline(
     probability_target_contract: str | None = None,
     archive_history: bool | None = None,
     deadline_exception: Path | None = None,
+    stats_first: bool | None = None,
+    review_action_date: str | None = None,
+    model_feedback: Path | None = None,
+    late_action_date: str | None = None,
+    workflow_recovery: Path | None = None,
+    pinned_gameplan: Mapping[str, str] | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
 
@@ -220,8 +257,21 @@ def run_overnight_pipeline(
     from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, LEGACY_COST_TARGET, resolve_probability_target
     if deadline_exception is not None and resume_run is None:
         raise ValueError('A deadline exception requires an existing pinned tail attempt')
-    resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception) if resume_run else None
+    recovery_record = recovery_evidence = None
+    if workflow_recovery is not None:
+        from ml.nightly_dispatch import validate_recovery
+        recovery_record, recovery_evidence = validate_recovery(workflow_recovery, root=root, now=created)
+        if deadline_exception is not None:
+            raise ValueError("Use one frozen native continuation route")
+    resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception,
+                                   workflow_recovery=workflow_recovery) if resume_run else None
     if resume:
+        if pinned_gameplan is not None and pinned_gameplan != resume.get("enrichment_gameplan"):
+            raise ValueError("Resume must preserve the original prediction publication")
+        previous_late_date = recovery_record["action_date"] if recovery_record else resume.get("late_action_date")
+        if late_action_date is not None and late_action_date != previous_late_date:
+            raise ValueError("Resume must preserve its late-publication action date")
+        late_action_date = previous_late_date
         start_at, stop_after = resume["failed_stage"], resume["stage_order"][-1]
         stock_only = stock_only or resume.get("stock_only") is True
         independent_stock_horizons = independent_stock_horizons or resume.get("independent_stock_horizons") is True
@@ -237,6 +287,33 @@ def run_overnight_pipeline(
         if archive_history is not None and archive_history != previous_archive_history:
             raise ValueError("Resume must preserve its verified archive history policy")
         archive_history = previous_archive_history
+        previous_stats_first = resume.get("stats_first") is True
+        if stats_first is not None and stats_first != previous_stats_first:
+            raise ValueError("Resume must preserve its verified Stats ordering")
+        stats_first = previous_stats_first
+        previous_review_date = resume.get("review_action_date")
+        if review_action_date is not None and review_action_date != previous_review_date:
+            raise ValueError("Resume must preserve its reviewed action date")
+        review_action_date = previous_review_date
+        previous_feedback = resume.get("model_feedback")
+        if model_feedback is not None and (not previous_feedback or str(Path(model_feedback).resolve()) != previous_feedback["path"]):
+            raise ValueError("Resume must preserve its reviewed model feedback")
+        model_feedback = Path(previous_feedback["path"]) if previous_feedback else None
+        if previous_feedback and file_checksum(model_feedback) != previous_feedback["sha256"]:
+            raise ValueError("Reviewed model feedback changed since the failed attempt")
+    stats_first = stats_first is True
+    from ml.account_gameplan.config import load_account_config
+    # Stats-first prepares each owner's local plan. An installed legacy account
+    # binding must not silently append synthesis or replace it with a prices-only
+    # producer publication. Historical retries retain exactly their saved tail.
+    account_config = None if stats_first else load_account_config(root)
+    account_stage_requested = (any(stage in resume["stage_order"] for stage in ACCOUNT_TAIL_STAGES) if resume
+                               else account_config is not None and independent_stock_horizons)
+    if account_stage_requested:
+        if account_config is None:
+            raise ValueError("Saved combined-account preparation requires its original configuration")
+        if resume and resume.get("account_config_sha256") != account_config.fingerprint:
+            raise ValueError("Resume must preserve its saved combined-account host and universe binding")
     archive_history = archive_history is True
     stock_price_source = stock_price_source or STOCK_PRICE_SOURCES[0]
     if stock_price_source not in STOCK_PRICE_SOURCES:
@@ -245,6 +322,10 @@ def run_overnight_pipeline(
         raise ValueError("Archive history requires independent XNAS stock preparation")
     if independent_stock_horizons and not stock_only:
         raise ValueError("Independent stock horizons require explicit stock-only preparation")
+    if stats_first and not independent_stock_horizons:
+        raise ValueError("Stats-first preparation requires independent stock horizons")
+    if review_action_date is not None and not stats_first:
+        raise ValueError("A reviewed action date requires Stats-first preparation")
     probability_target_contract = resolve_probability_target(
         probability_target_contract or (RAW_DIRECTION_TARGET if independent_stock_horizons else LEGACY_COST_TARGET))
     if not independent_stock_horizons and probability_target_contract != LEGACY_COST_TARGET:
@@ -252,17 +333,33 @@ def run_overnight_pipeline(
     if stock_price_source != STOCK_PRICE_SOURCES[0] and not independent_stock_horizons:
         raise ValueError("Alternate stock price sources require independent stock horizons")
     if stop_after is None:
-        stop_after = INDEPENDENT_ACTUALS_REVIEW_STAGE if independent_stock_horizons else STAGE_ORDER[-1]
-    if start_at not in ALL_STAGE_ORDER or stop_after not in ALL_STAGE_ORDER:
+        stop_after = (INDEPENDENT_TRADE_PLANNING_STAGE if stats_first else
+                      ACCOUNT_REVIEW_STAGE if account_stage_requested else
+                      INDEPENDENT_ACTUALS_REVIEW_STAGE if independent_stock_horizons else STAGE_ORDER[-1])
+    stage_order = STATS_FIRST_STAGE_ORDER if stats_first else LEGACY_STAGE_ORDER
+    if start_at not in stage_order or stop_after not in stage_order:
         raise ValueError("Unknown overnight stage boundary")
-    start_index, stop_index = ALL_STAGE_ORDER.index(start_at), ALL_STAGE_ORDER.index(stop_after)
+    start_index, stop_index = stage_order.index(start_at), stage_order.index(stop_after)
     if start_index > stop_index:
         raise ValueError("start_at must not come after stop_after")
-    if stop_after in INDEPENDENT_TAIL_STAGES and not independent_stock_horizons:
+    if stop_after in (*INDEPENDENT_TAIL_STAGES, *ACCOUNT_TAIL_STAGES) and not independent_stock_horizons:
         raise ValueError("Independent post-publication stages require independent stock horizons")
     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
     effective_deadline = utc_timestamp(resume.get('effective_deadline_at', resume['deadline_at'])) if resume else deadline_at
-    selected = ALL_STAGE_ORDER[start_index : stop_index + 1]
+    if recovery_record:
+        if (not stats_first or not stock_only or review_action_date != recovery_record["source_session"]
+                or deadline_at != utc_timestamp(recovery_record["original_deadline_at"])):
+            raise ValueError("Scheduled recovery must retain the original stock preparation session")
+        effective_deadline = utc_timestamp(recovery_record["expires_at"])
+        late_action_date = recovery_record["action_date"]
+    selected = stage_order[start_index : stop_index + 1]
+    if resume:
+        # A new optional stage must never extend an older saved attempt.
+        selected = tuple(stage for stage in selected if stage in resume["stage_order"])
+    elif not account_stage_requested:
+        selected = tuple(stage for stage in selected if stage not in ACCOUNT_TAIL_STAGES)
+    if start_at in ACCOUNT_TAIL_STAGES and not account_stage_requested:
+        raise ValueError("Combined-account preparation is not configured")
     if stock_price_source != "xnas-itch-archive-v1":
         selected = tuple(stage for stage in selected if stage != INDEPENDENT_HISTORY_STAGE)
     omitted_option_stages: list[str] = []
@@ -276,6 +373,17 @@ def run_overnight_pipeline(
         selected = tuple(stage for stage in selected if stage not in option_stages)
     if not selected:
         raise ValueError("No overnight stages remain within the requested stock-only boundaries")
+    feedback_binding = None
+    if model_feedback is not None:
+        model_feedback = Path(model_feedback).resolve()
+        feedback_binding = {"path": str(model_feedback), "sha256": file_checksum(model_feedback)}
+    if stats_first:
+        from ml.gameplan_actuals_review import completed_session_context
+        review_action_date = completed_session_context(created, review_action_date)["action_date"]
+        if GAMEPLAN_STATS_STAGE in selected and any(stage in selected for stage in ("loop_b_directional_generation", "gameplan_publication")):
+            raise ValueError("Stop after gameplan_stats for model review before starting the training segment")
+        if any(stage in selected for stage in ("loop_b_directional_generation", "gameplan_publication")) and model_feedback is None:
+            raise ValueError("Stats-first training requires reviewed model feedback; complete the gameplan_stats boundary first")
     run = create_timestamp_directory(
         root / "ml" / "overnight-runs",
         timestamp=created,
@@ -353,6 +461,11 @@ def run_overnight_pipeline(
         "gameplan_evaluation": (
             python, "-u", "-m", "ml.gameplan_evaluation", *datastore_argument,
         ),
+        GAMEPLAN_STATS_STAGE: (
+            python, "-u", "-m", "ml.gameplan_actuals_review", *datastore_argument,
+            "--completed-session", "--action-date", str(review_action_date),
+            "--deadline", effective_deadline.isoformat(),
+        ),
         "strategy_generation": (
             python,
             "-u",
@@ -375,6 +488,8 @@ def run_overnight_pipeline(
             *(("--stock-price-source", stock_price_source) if independent_stock_horizons else ()),
             *(("--probability-target-contract", probability_target_contract) if independent_stock_horizons else ()),
             *(("--archive-history",) if archive_history else ()),
+            *(("--model-feedback", str(model_feedback)) if model_feedback is not None else ()),
+            *(("--late-action-date", late_action_date) if late_action_date is not None else ()),
         ),
         INDEPENDENT_ENRICHMENT_STAGE: (
             python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
@@ -384,6 +499,12 @@ def run_overnight_pipeline(
         ),
         INDEPENDENT_ACTUALS_REVIEW_STAGE: (
             python, "-u", "-m", "ml.gameplan_actuals_review", *datastore_argument,
+        ),
+        ACCOUNT_GAMEPLAN_STAGE: (
+            python, "-u", "-m", "ml.account_gameplan.preparation", *datastore_argument,
+        ),
+        ACCOUNT_REVIEW_STAGE: (
+            python, "-u", "-m", "ml.account_gameplan.review", *datastore_argument,
         ),
         INDEPENDENT_HISTORY_STAGE: (
             python, "-u", "-m", "ml.stock_target_history", *datastore_argument, "--execute",
@@ -402,7 +523,17 @@ def run_overnight_pipeline(
         "completed_stages_from_previous_attempt": resume["completed_stages"] if resume else [],
         "broker_orders_enabled": False, "orders_placed": 0,
         "status": "RUNNING", "stages": [], "current_stage": None,
+        "stats_first": stats_first, "review_action_date": review_action_date,
+        "model_feedback": feedback_binding,
+        "late_action_date": late_action_date,
+        "workflow_recovery": recovery_evidence,
     }
+    if pinned_gameplan is not None:
+        report["enrichment_gameplan"] = dict(pinned_gameplan)
+    if account_stage_requested:
+        report["account_config_sha256"] = account_config.fingerprint
+        if resume and resume.get("account_trade_plan"):
+            report["account_trade_plan"] = resume["account_trade_plan"]
     if stock_only:
         report.update(
             stock_only=True,
@@ -452,8 +583,11 @@ def run_overnight_pipeline(
                     reporter("OVERNIGHT HEALTH " + json.dumps(dict(payload), default=str))
 
             try:
-                if stage in INDEPENDENT_TAIL_STAGES:
-                    if resume and start_at in INDEPENDENT_TAIL_STAGES and not report.get("enrichment_gameplan"):
+                if stage in ("loop_b_directional_generation", "gameplan_publication") and feedback_binding:
+                    if file_checksum(model_feedback) != feedback_binding["sha256"]:
+                        raise ValueError("Reviewed model feedback changed before training")
+                if stage in (*INDEPENDENT_TAIL_STAGES, *ACCOUNT_TAIL_STAGES):
+                    if resume and start_at in (*INDEPENDENT_TAIL_STAGES, *ACCOUNT_TAIL_STAGES) and not report.get("enrichment_gameplan"):
                         raise ValueError("Failed independent tail stage has no pinned Gameplan; resume cannot select another publication")
                     report["enrichment_gameplan"] = _pin_stock_gameplan(
                         root, stock_price_source=stock_price_source, deadline_at=deadline_at,
@@ -462,10 +596,50 @@ def run_overnight_pipeline(
                         archive_history=archive_history,
                     )
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
-                    if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE):
-                        command = (*command, "--deadline", deadline_at.isoformat())
-                        if deadline_exception is not None:
-                            command = (*command, '--deadline-exception', str(Path(deadline_exception).resolve()))
+                    if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE, *ACCOUNT_TAIL_STAGES):
+                        stage_deadline = deadline_at
+                        stage_late_date = late_action_date
+                        stage_exception = deadline_exception
+                        if recovery_record and stage == INDEPENDENT_TRADE_PLANNING_STAGE:
+                            source = root / report["enrichment_gameplan"]["run_path"]
+                            source_config = json.loads((source / "manifest.json").read_text(encoding="utf-8")).get("configuration", {})
+                            if source_config.get("publication_mode") == "LATE_RECOVERY":
+                                stage_deadline = effective_deadline
+                            else:
+                                # Predictions frozen before 04:00 stay normal.
+                                # Only their unchanged planning tail receives a
+                                # scoped exception under the recorded authority.
+                                from ml.preparation_deadline import VERSION as EXCEPTION_VERSION
+                                stage_late_date = None
+                                stage_exception = run / "scheduled-planning-exception.json"
+                                _write_json_atomic(stage_exception, {
+                                    "schema_version": EXCEPTION_VERSION,
+                                    "scope": "PINNED_STOCK_PLANNING_AND_ACTUALS_ONLY",
+                                    "operator_authorized": True, "orders_authorized": False,
+                                    "authorization_text": recovery_record["authorization"],
+                                    "authorization_source": str(Path(workflow_recovery).resolve()),
+                                    "gameplan_run": source.relative_to(root).as_posix(),
+                                    "gameplan_receipt_sha256": report["enrichment_gameplan"]["receipt_sha256"],
+                                    "action_date": recovery_record["action_date"],
+                                    "original_deadline_at": deadline_at.isoformat(),
+                                    "approved_at": recovery_record["approved_at"],
+                                    "expires_at": effective_deadline.isoformat()})
+                        command = (*command, "--deadline", stage_deadline.isoformat())
+                        if stage == INDEPENDENT_TRADE_PLANNING_STAGE and stage_late_date is not None:
+                            command = (*command, "--late-action-date", stage_late_date)
+                        if stage_exception is not None:
+                            command = (*command, '--deadline-exception', str(Path(stage_exception).resolve()))
+                    if stage == ACCOUNT_GAMEPLAN_STAGE:
+                        if load_account_config(root).fingerprint != report["account_config_sha256"]:
+                            raise ValueError("Account preparation configuration changed during the native run")
+                        report["account_trade_plan"] = _pin_account_trade_plan(root,
+                            gameplan=report["enrichment_gameplan"], pinned=report.get("account_trade_plan"))
+                        command = (*command, "--trade-plan-run", str(root / report["account_trade_plan"]["run_path"]),
+                                   "--expected-config", report["account_config_sha256"])
+                    if stage == INDEPENDENT_TRADE_PLANNING_STAGE and account_stage_requested:
+                        command = (*command, "--account-producer-only", "--expected-account-config", report["account_config_sha256"])
+                    if stage == ACCOUNT_REVIEW_STAGE:
+                        command = (*command, "--expected-config", report["account_config_sha256"])
                     _write_json_atomic(report_path, report)
                 exit_code = _run_stage(command, repository=repository, log_path=log_path,
                     deadline=effective_deadline, stop_request=run / "stop-request.json",
@@ -704,19 +878,24 @@ def _validated_run(root: Path, run: Path) -> Path:
     return run
 
 
-def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | None = None) -> dict[str, object]:
+def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | None = None,
+                          workflow_recovery: Path | None = None) -> dict[str, object]:
     run = _validated_run(root, run)
     receipt = json.loads((run / "receipt.json").read_text(encoding="utf-8"))
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
     if (receipt.get("schema_version") != OVERNIGHT_RUNTIME_VERSION
         or receipt.get("run_path") != run.relative_to(root).as_posix()
-        or receipt.get("status") not in {"FAILED", "CANCELLED"}
+        or receipt.get("status") not in {"FAILED", "CANCELLED", "TIMED_OUT"}
         or receipt.get("status") != report.get("status")
         or receipt.get("stage_report_checksum_sha256") != file_checksum(run / "stage-report.json")
         or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
         raise RuntimeError("Only a verified failed or stopped overnight attempt can resume")
     effective_deadline = utc_timestamp(report['deadline_at'])
     exception_evidence = None
+    if workflow_recovery is not None:
+        from ml.nightly_dispatch import validate_recovery
+        recovery, _ = validate_recovery(workflow_recovery, root=root, report=report, run=run)
+        effective_deadline = utc_timestamp(recovery["expires_at"])
     if deadline_exception is not None:
         from ml.preparation_deadline import preparation_deadline
         if (report.get('failed_stage') not in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE)
@@ -831,6 +1010,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--independent-stock-horizons", action="store_true",
                         help="Publish versioned independent stock entry/exit targets with --stock-only")
+    parser.add_argument("--stats-first", action="store_true", default=None,
+                        help="Use completed-session Stats before training; stop at gameplan_stats for model review, then start a new training segment")
+    parser.add_argument("--review-action-date", help="Completed XNYS session to score; retained on failed-stage resume")
+    parser.add_argument("--model-feedback", type=Path, help="Reviewed model proposal consumed by nightly training; exact bytes retained on resume")
     parser.add_argument("--stock-price-source", choices=STOCK_PRICE_SOURCES, default=None,
                         help="Explicit historical equity source for independent stock targets; preserved on resume")
     parser.add_argument("--probability-target-contract", choices=("raw-price-direction-v1", "cost-adjusted-positive-return-v1"),
@@ -908,6 +1091,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 probability_target_contract=args.probability_target_contract,
                 archive_history=args.archive_history,
                 deadline_exception=args.deadline_exception,
+                stats_first=args.stats_first,
+                review_action_date=args.review_action_date,
+                model_feedback=args.model_feedback,
             )
         except Exception as exc:
             print(f"Overnight runtime failed: {type(exc).__name__}: {exc}")

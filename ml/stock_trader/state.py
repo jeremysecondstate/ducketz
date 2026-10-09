@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_FLOOR
 from typing import Any, Callable, Mapping, Protocol, TypeVar
+from collections.abc import Sequence
+import re
 
 from app.services.schwab_policy_inputs import normalize_schwab_policy_inputs
 from app.services.schwab_retry import is_retryable_schwab_error
@@ -18,6 +20,20 @@ from ml.stock_trader.contracts import (
 
 
 _T = TypeVar("_T")
+
+
+def validated_symbols(symbols: Sequence[str] | None = None) -> tuple[str, ...]:
+    """Explicit universes are exact canonical symbols, never local config edits."""
+    if symbols is None:
+        return STOCK_TRADER_SYMBOLS
+    if isinstance(symbols, (str, bytes)) or not isinstance(symbols, Sequence):
+        raise ValueError("Symbols must be an explicit nonempty sequence")
+    result = tuple(symbols)
+    if (not result or any(not isinstance(symbol, str) or
+            re.fullmatch(r"[A-Z][A-Z0-9]*(?:[.-][A-Z0-9]+)*", symbol) is None
+            for symbol in result) or len(set(result)) != len(result)):
+        raise ValueError("Symbols must be unique canonical uppercase stock symbols")
+    return result
 
 
 class SchwabReadSession(Protocol):
@@ -39,9 +55,12 @@ def capture_portfolio_state(
     parallel: bool = True,
     literal_cash_only: bool = False,
     use_actual_quote_timestamps: bool = False,
+    symbols: Sequence[str] | None = None,
+    include_order_identities: bool = False,
 ) -> PortfolioState:
     """Capture one coherent pre-decision input set without serial symbol reads."""
 
+    requested = validated_symbols(symbols)
     timestamp = utc(observed_at)
     broker_identity_fingerprint: str | None = None
     prepare = getattr(session, "prepare_read_snapshot", None)
@@ -60,7 +79,7 @@ def capture_portfolio_state(
             quotes_future = pool.submit(
                 _read_schwab_component,
                 "equity_quotes",
-                lambda: session.get_equity_quotes(STOCK_TRADER_SYMBOLS),
+                lambda: session.get_equity_quotes(requested),
             )
             payloads: dict[str, Any] = {}
             failures: list[Exception] = []
@@ -90,7 +109,7 @@ def capture_portfolio_state(
         account_payload = _read_schwab_component("account", session.get_account)
         orders_payload = _read_schwab_component("open_orders", session.get_open_orders)
         quotes_payload = _read_schwab_component(
-            "equity_quotes", lambda: session.get_equity_quotes(STOCK_TRADER_SYMBOLS)
+            "equity_quotes", lambda: session.get_equity_quotes(requested)
         )
     if broker_identity_fingerprint is not None:
         verify = getattr(session, "verify_read_snapshot", None)
@@ -117,7 +136,7 @@ def capture_portfolio_state(
         pending_buys,
         pending_sells,
         stock_working_status,
-    ) = _stock_working_order_effects(working)
+    ) = _stock_working_order_effects(working, symbols=requested)
     equity = finite(account.get("liquidation_value"))
     if equity is None or equity <= 0.0:
         raise ValueError("Schwab liquidation value is unavailable or nonpositive")
@@ -125,8 +144,8 @@ def capture_portfolio_state(
         account, working, account_payload,
         reserved_cash=reserved_cash, literal_cash_only=literal_cash_only,
     )
-    held_shares = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
-    symbol_exposure = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
+    held_shares = {symbol: 0.0 for symbol in requested}
+    symbol_exposure = {symbol: 0.0 for symbol in requested}
     gross_exposure = 0.0
     daily_pnl = 0.0
     raw_items = positions.get("items")
@@ -151,7 +170,7 @@ def capture_portfolio_state(
     if not isinstance(quotes_payload, Mapping):
         raise ValueError("Schwab quote response is not an object")
     quotes: dict[str, QuoteState] = {}
-    for symbol in STOCK_TRADER_SYMBOLS:
+    for symbol in requested:
         raw_quote = quotes_payload.get(symbol)
         if not isinstance(raw_quote, Mapping):
             continue
@@ -182,6 +201,22 @@ def capture_portfolio_state(
         )
     working_items = working.get("items")
     working_count = len(working_items) if isinstance(working_items, list) else 0
+    broker_working_orders = None
+    if include_order_identities:
+        if working.get("status") != "CURRENT" or not isinstance(working_items, list):
+            raise ValueError("Complete account-wide working order identities are required")
+        broker_working_orders = []
+        identities = set()
+        for item in working_items:
+            identity = item.get("order_id") if isinstance(item, Mapping) else None
+            if (type(identity) not in (str, int) or not str(identity).strip()
+                    or str(identity) in identities or item.get("status") != "CURRENT"):
+                raise ValueError("Working order identity is missing, duplicate or incomplete")
+            identities.add(str(identity))
+            broker_working_orders.append({key: item.get(key) for key in (
+                "order_id", "instruction", "asset_type", "symbol", "underlying_symbol",
+                "remaining_quantity", "filled_quantity", "limit_price", "reserved_cash", "status")})
+        broker_working_orders = tuple(broker_working_orders)
     fingerprint_payload = {
         "observed_at": timestamp.isoformat(),
         "account_equity": equity,
@@ -208,6 +243,8 @@ def capture_portfolio_state(
     }
     if literal_cash_only:
         fingerprint_payload["cash_policy"] = "LITERAL_CASH_LESS_PENDING_RESERVES"
+    if include_order_identities:
+        fingerprint_payload["broker_working_orders"] = broker_working_orders
     if use_actual_quote_timestamps:
         fingerprint_payload["quote_time_policy"] = "REALTIME_NBBO_RESPONSE_WITH_PROVIDER_UPDATE_TIME_V1"
         for symbol, quote in quotes.items():
@@ -228,6 +265,7 @@ def capture_portfolio_state(
         quotes=quotes,
         source_fingerprint=canonical_sha256(fingerprint_payload),
         broker_identity_fingerprint=broker_identity_fingerprint,
+        broker_working_orders=broker_working_orders,
     )
 
 
@@ -312,16 +350,17 @@ def _mapping(value: object, label: str) -> Mapping[str, object]:
     return value
 
 
-def _symbol_map(value: object) -> dict[str, float]:
+def _symbol_map(value: object, *, symbols: Sequence[str] | None = None) -> dict[str, float]:
     source = value if isinstance(value, Mapping) else {}
     return {
         symbol: max(0.0, finite(source.get(symbol), default=0.0) or 0.0)
-        for symbol in STOCK_TRADER_SYMBOLS
+        for symbol in validated_symbols(symbols)
     }
 
 
 def _stock_working_order_effects(
     working: Mapping[str, object],
+    *, symbols: Sequence[str] | None = None,
 ) -> tuple[float, dict[str, float], dict[str, float], str]:
     """Resolve stock-only pending effects without inheriting option metadata gaps.
 
@@ -334,13 +373,14 @@ def _stock_working_order_effects(
     cash bound and already reflects account-wide commitments.
     """
 
+    requested = validated_symbols(symbols)
     status = str(working.get("status") or "").upper()
     if status == "CURRENT":
         reserved = max(0.0, finite(working.get("reserved_cash"), default=0.0) or 0.0)
         return (
             reserved,
-            _symbol_map(working.get("pending_buy_shares_by_symbol")),
-            _symbol_map(working.get("pending_sell_shares_by_symbol")),
+            _symbol_map(working.get("pending_buy_shares_by_symbol"), symbols=requested),
+            _symbol_map(working.get("pending_sell_shares_by_symbol"), symbols=requested),
             "CURRENT",
         )
     if status != "INCOMPLETE":
@@ -350,8 +390,8 @@ def _stock_working_order_effects(
     if not isinstance(raw_items, list):
         raise ValueError("Schwab working orders did not include an items list")
     reserved_cash = 0.0
-    pending_buys = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
-    pending_sells = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
+    pending_buys = {symbol: 0.0 for symbol in requested}
+    pending_sells = {symbol: 0.0 for symbol in requested}
     for item in raw_items:
         if not isinstance(item, Mapping):
             raise ValueError("A Schwab working-order row was not structured")
@@ -395,4 +435,4 @@ def _first_number(row: Mapping[str, object], *keys: str) -> float | None:
     return None
 
 
-__all__ = ["SchwabReadSession", "capture_portfolio_state"]
+__all__ = ["SchwabReadSession", "capture_portfolio_state", "validated_symbols"]
