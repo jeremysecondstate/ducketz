@@ -670,6 +670,30 @@ def test_recovered_trade_plan_keeps_deadlines_and_forecasts(publication_case):
     assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
 
 
+def test_repaired_late_tail_publishes_with_separate_source_bound_continuation(publication_case):
+    import json
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_trade_planning import publish_trade_plan
+    from ml.preparation_deadline import RECOVERY_VERSION
+    from tests.test_preparation_deadline import exception_record
+    c = publication_case
+    _late_source(c)
+    path, record = exception_record(c.root, c.source, session='2026-09-09')
+    record.update(schema_version=RECOVERY_VERSION, original_session_deadline_at=record['original_deadline_at'],
+                  original_deadline_at='2026-09-09T19:00Z', approved_at='2026-09-09T19:01Z', expires_at='2026-09-09T21:00Z')
+    path.write_text(json.dumps(record))
+    before = {p.name: file_checksum(p) for p in c.source.iterdir()}
+    run = publish_trade_plan(c.root, gameplan_run=c.source, deadline='2026-09-09T19:00Z',
+        late_action_date='2026-09-09', deadline_exception=path, snapshot_loader=lambda *a, **kw: c.state,
+        price_loader=c.prices, clock=lambda: pd.Timestamp('2026-09-09T19:20Z'))
+    verify_manifest(run)
+    report = json.loads((run/'report.json').read_text())
+    assert report['deadline_at'] == '2026-09-09T11:00:00+00:00'
+    assert report['effective_deadline_at'] == '2026-09-09T21:00:00+00:00'
+    assert report['deadline_exception']['authorization']['original_deadline_at'] == '2026-09-09T19:00Z'
+    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
+
+
 @pytest.mark.parametrize('damage', ['normal_source', 'wrong_date', 'missing_deadline', 'expired',
     'before_open', 'after_close', 'refresh', 'exception', 'missing_flag'])
 def test_recovery_deadline_cannot_bypass_source_or_time_guards(publication_case, damage):

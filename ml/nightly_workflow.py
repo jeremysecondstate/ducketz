@@ -224,6 +224,8 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         review_action_date=state["source_session"])
     if step == "train_and_plan":
         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
+        if state.get("planning_tail_continuation"):
+            arguments["deadline_exception"] = Path(state["planning_tail_continuation"]["path"])
         if state.get("recovery_deadline_at"):
             arguments["late_action_date"] = state["action_date"]
     if previous:
@@ -468,9 +470,49 @@ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
     return _handoff(config, state)
 
 
+def _planning_tail_continuation(config, state, requested, observed):
+    """Validate a separately authorized continuation without replacing deadlines."""
+    from ml.overnight_runtime import _resume_configuration
+    from ml.preparation_deadline import RECOVERY_VERSION
+    saved = state.get("planning_tail_continuation")
+    if requested is None and saved is None:
+        return utc_timestamp(state.get("recovery_deadline_at", state["deadline_at"]))
+    path = Path(requested or saved["path"]).resolve()
+    record = _json(path)
+    evidence = {"path": str(path), "sha256": file_checksum(path)}
+    if saved is not None and saved != evidence:
+        raise ValueError("The frozen planning continuation cannot be replaced")
+    entry = state["steps"].get("train_and_plan", {})
+    root = Path(config["datastore"]).resolve()
+    origin = (root / record.get("failed_native_run", "")).resolve()
+    if (record.get("schema_version") != RECOVERY_VERSION
+            or record.get("workflow_run_id") != state["run_id"]
+            or record.get("workflow_source_identity") != state["source_identity"]
+            or record.get("action_date") != state["action_date"]
+            or utc_timestamp(record.get("original_session_deadline_at")) != utc_timestamp(state["deadline_at"])
+            or utc_timestamp(record.get("original_deadline_at")) != utc_timestamp(state.get("recovery_deadline_at"))
+            or origin.parent != root / "ml/overnight-runs"
+            or record.get("failed_native_receipt_sha256") != file_checksum(origin / "receipt.json")
+            or any(state["steps"].get(name, {}).get("status") != "COMPLETE" for name in ("prepare_stats", "model_review"))
+            or not entry.get("native_run")
+            or (saved is None and (state["status"] not in {"FAILED", "TIMED_OUT", "CANCELLED"}
+                or Path(entry["native_run"]).resolve() != origin
+                or entry.get("status") == "COMPLETE"))):
+        raise ValueError("Planning continuation does not match this failed recovery tail")
+    # Verify immutable failed receipts, logs and the exact published source pin.
+    _resume_configuration(root, origin, deadline_exception=path)
+    if entry.get("status") != "COMPLETE":
+        _resume_configuration(root, Path(entry["native_run"]), deadline_exception=path)
+    cutoff = utc_timestamp(record["expires_at"])
+    if not utc_timestamp(record["approved_at"]) <= observed < cutoff:
+        raise ValueError("Planning continuation is expired or future-dated")
+    state["planning_tail_continuation"] = evidence
+    return cutoff
+
+
 def run_workflow(config: dict, *, resume_action_date: str | None = None,
                  recover_action_date: str | None = None, recovery_deadline=None, now=None,
-                 execute_step=None, identity=None, supervise=True) -> dict:
+                 execute_step=None, identity=None, supervise=True, planning_tail_exception=None) -> dict:
     from ml.overnight_runtime import scheduled_session_eligibility, next_action_deadline
     root, repository, state_root = map(Path, (config["datastore"], config["repository"], config["state_root"]))
     state_root.mkdir(parents=True, exist_ok=True)
@@ -479,6 +521,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
     executor = execute_step or _execute_step
     if bool(recover_action_date) != bool(recovery_deadline) or (recover_action_date and resume_action_date):
         raise ValueError("Recovery requires its exact action date and deadline; do not combine with resume")
+    if planning_tail_exception is not None and not resume_action_date:
+        raise ValueError("A planning continuation requires the existing recovery action date")
     with FileLock(str(state_root / "workflow.lock"), timeout=0):
         if resume_action_date:
             if pd.Timestamp(resume_action_date).date().isoformat() != resume_action_date:
@@ -543,7 +587,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     _verify_outputs(completed["output"])
             if state["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING":
                 return state
-            if observed >= utc_timestamp(state.get("recovery_deadline_at", state["deadline_at"])):
+            cutoff = _planning_tail_continuation(config, state, planning_tail_exception, observed)
+            if observed >= cutoff:
                 raise TimeoutError("Original nightly preparation deadline reached")
             state.update(status="RUNNING", owner_pid=os.getpid())
             state.pop("error", None)
@@ -621,6 +666,7 @@ def main(argv=None) -> int:
     parser.add_argument("--resume-action-date")
     parser.add_argument("--recover-action-date", help="Explicit operator recovery of today's missing nightly run")
     parser.add_argument("--recovery-deadline", help="Fixed zoned deadline for an explicitly requested recovery")
+    parser.add_argument("--planning-tail-exception", type=Path, help="Explicit source-bound continuation record for a failed recovery tail")
     parser.add_argument("--action-date", help="Exact session to inspect with --status")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--run", action="store_true")
@@ -628,6 +674,8 @@ def main(argv=None) -> int:
     modes.add_argument("--status", action="store_true")
     modes.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
+    if args.planning_tail_exception and (not args.resume_action_date or not (args.launch or args.run)):
+        parser.error("A planning continuation requires --resume-action-date and --launch or --run")
     if args.action_date and not args.status:
         parser.error("--action-date is only supported with --status")
     if (args.recover_action_date or args.recovery_deadline) and not (args.launch or args.run):
@@ -651,6 +699,8 @@ def main(argv=None) -> int:
             command = [sys.executable, "-B", "-u", "-m", "ml.nightly_workflow", "--config", str(args.config.resolve()), "--run"]
             if args.resume_action_date:
                 command += ["--resume-action-date", args.resume_action_date]
+            if args.planning_tail_exception:
+                command += ["--planning-tail-exception", str(args.planning_tail_exception.resolve())]
             if args.recover_action_date:
                 command += ["--recover-action-date", args.recover_action_date,
                             "--recovery-deadline", args.recovery_deadline]
@@ -663,7 +713,8 @@ def main(argv=None) -> int:
         else:
             result = run_workflow(config, resume_action_date=args.resume_action_date,
                                   recover_action_date=args.recover_action_date,
-                                  recovery_deadline=args.recovery_deadline)
+                                  recovery_deadline=args.recovery_deadline,
+                                  planning_tail_exception=args.planning_tail_exception)
         print(json.dumps(result, indent=2, default=str))
         return 0
     except Timeout:
