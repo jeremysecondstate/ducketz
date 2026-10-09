@@ -245,6 +245,7 @@ def run_overnight_pipeline(
     stats_first: bool | None = None,
     review_action_date: str | None = None,
     model_feedback: Path | None = None,
+    late_action_date: str | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
 
@@ -256,6 +257,10 @@ def run_overnight_pipeline(
         raise ValueError('A deadline exception requires an existing pinned tail attempt')
     resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception) if resume_run else None
     if resume:
+        previous_late_date = resume.get("late_action_date")
+        if late_action_date is not None and late_action_date != previous_late_date:
+            raise ValueError("Resume must preserve its late-publication action date")
+        late_action_date = previous_late_date
         start_at, stop_after = resume["failed_stage"], resume["stage_order"][-1]
         stock_only = stock_only or resume.get("stock_only") is True
         independent_stock_horizons = independent_stock_horizons or resume.get("independent_stock_horizons") is True
@@ -467,6 +472,7 @@ def run_overnight_pipeline(
             *(("--probability-target-contract", probability_target_contract) if independent_stock_horizons else ()),
             *(("--archive-history",) if archive_history else ()),
             *(("--model-feedback", str(model_feedback)) if model_feedback is not None else ()),
+            *(("--late-action-date", late_action_date) if late_action_date is not None else ()),
         ),
         INDEPENDENT_ENRICHMENT_STAGE: (
             python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
@@ -502,6 +508,7 @@ def run_overnight_pipeline(
         "status": "RUNNING", "stages": [], "current_stage": None,
         "stats_first": stats_first, "review_action_date": review_action_date,
         "model_feedback": feedback_binding,
+        "late_action_date": late_action_date,
     }
     if account_stage_requested:
         report["account_config_sha256"] = account_config.fingerprint

@@ -110,6 +110,16 @@ Pacific. It cannot replace an existing run or extend a retry's deadline. This
 does not start or restart the trader, grant order authority, or change the
 scheduled nightly workflow. A failed recovery retains its identity and uses
 the existing explicit resume path under its frozen recovery deadline.
+Recovery training carries `--late-action-date` through the native publisher.
+That explicit stock-only route selects the requested current-day source rows
+after 04:00, retains features from before the action session and excludes
+current-session labels from fitting. It writes actual creation/publication
+timestamps and `LATE_RECOVERY` metadata, and must finish before 17:00 Pacific
+and the workflow's earlier fixed recovery deadline. Ordinary nightly
+publication retains its 04:00 boundary. A publisher repair changes the model
+review's code binding: preserve the failed state and original review as audit
+evidence, renew the review and training under the reviewed source, and retain
+the workflow identity, completed Stats and both original deadlines.
 Read `--status` and the saved worker log for the real outcome. A separate morning
 readiness task checks durable results and reports missing/failed stages. Success
 during the rollout is `LOCAL_COMPLETE_PEER_SETUP_PENDING`; it is not joint
