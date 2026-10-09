@@ -331,6 +331,21 @@ def capture_trade_planning_snapshot(
     requested = tuple(dict.fromkeys(str(value).strip().upper() for value in symbols))
     if not requested or any(symbol not in STOCK_TRADER_SYMBOLS for symbol in requested):
         raise ValueError("Trade planning requires configured production symbols")
+    from ml.account_gameplan.config import load_account_config
+    binding = load_account_config(datastore_root)
+    if binding is not None and binding.role == "coordinator" and binding.activation.get("status") == "ACTIVE":
+        if not set(requested).issubset(binding.symbols):
+            raise ValueError("Research symbols differ from the bound execution account")
+        # Atlas's native ledger is account-wide; a research partition cannot
+        # invalidate or discard another symbol's original horizon ownership.
+        def bound_ownership(identity, snapshot):
+            if load_account_config(datastore_root) != binding or identity != binding.account_fingerprint:
+                return _ownership_unavailable("OWNERSHIP_ACCOUNT_BINDING_CHANGED_OR_MISMATCHED")
+            return _ownership(datastore_root, binding.symbols, identity,
+                snapshot["held_shares"], snapshot["observed_at"])
+        return _capture_trade_planning_snapshot(datastore_root, requested=binding.symbols,
+            session=session, observed_at=observed_at, explicit_universe=True,
+            ownership_reader=bound_ownership)
     return _capture_trade_planning_snapshot(datastore_root, requested=requested,
         session=session, observed_at=observed_at)
 
