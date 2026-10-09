@@ -257,6 +257,8 @@ def _history(root: Path) -> list[tuple[str, datetime, Path]]:
 def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
     sessions = {item[0] for item in _history(root)}
+    from ml.joint_capital_adoption import accepted_sessions
+    sessions.update(accepted_sessions(root))
     current = _latest(root)
     if current:
         sessions.add(current["action_date"])
@@ -525,6 +527,20 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
     try:
         requested = _session(session) if session else None
         current = _latest(root)
+        from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
+        combined_dates = accepted_sessions(root)
+        combined_date = requested or (combined_dates[0] if combined_dates else None)
+        if combined_date and (requested or not current or combined_date >= current["action_date"]):
+            accepted = read_accepted_joint_plan(root, combined_date)
+            if accepted:
+                combined, binding, run = accepted
+                forecasts = tuple(sorted((_forecast(row) for row in combined["forecasts"]),
+                    key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
+                return Gameplan(combined_date, _timestamp(combined["as_of"]), _timestamp(binding["accepted_at"]),
+                    run, run / "joint-plan.json", forecasts, _actions(combined["ledger"], forecasts, combined_date),
+                    "COMPLETE", "", "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
+                    _execution_quotes(root, forecasts), combined["holding_policy"],
+                    probability_target_contract(pd.DataFrame(combined["forecasts"])))
         pointer = current if current and (requested is None or requested == current["action_date"]) else None
         if pointer:
             selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
