@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T18:37:20.699136Z",
+  "id": "20261009T183720Z-bcb241f06af2457981ad615b641eaa2b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reviewed late-start archive cutoff repair published, explicitly installed and running on Scout"
+}

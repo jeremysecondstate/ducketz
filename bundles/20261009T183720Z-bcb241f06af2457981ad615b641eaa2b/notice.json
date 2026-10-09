@@ -1,0 +1,46 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261009T182830Z-bafca648331d458bab9a029c5849fd43",
+  "change_id": "nightly-late-archive-repair-2026-10-09-d53d2007",
+  "changes": [
+    "Explicit recovery verifies archive acquisition against real recovery creation time; market rows, features and labels retain the original information cutoff.",
+    "Supported reviewed source transition preserves original failure evidence, Stats, selected session and fixed expiry, records the changed source binding and requires fresh dependent review/preparation."
+  ],
+  "commit_sha": "d53d2007f8665e866c15cc37c608df3323bb9082",
+  "completion_record": "20261009T182830Z-bafca648331d458bab9a029c5849fd43",
+  "files": [
+    "ml/gameplan_archive_features.py",
+    "ml/gameplan_archive_seconds.py",
+    "ml/nightly_gameplan.py",
+    "tools/nightly_source_repair.py",
+    "tests/test_gameplan_archive_features.py",
+    "tests/test_gameplan_archive_seconds.py",
+    "tests/test_nightly_recovery.py",
+    "tests/test_nightly_source_repair.py",
+    "tests/run_nightly_repair_checks.py",
+    "docs/development/nightly-workflow.md"
+  ],
+  "limitations": [
+    "Draft PR is stacked on prior missed-launch recovery branch, not merged main.",
+    "No trading, cutover or peer installation inferred. No private packets, account values, raw data, model bytes or local paths included."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/33",
+    "https://github.com/jeremysecondstate/atlas-scout/blob/main/messages/scout/2026-10-09-late-start-handoff-request.md"
+  ],
+  "portable_reproduction": "Historical archive manifests acquired during late recovery failed the original publication-as-of gate. Run python -B tests/run_nightly_repair_checks.py at the exact published candidate.",
+  "repository": "jeremysecondstate/ducketz",
+  "resolution_status": "Repair installed on Scout through explicit binding transition. Fresh model review complete; preparation worker running. End-to-end completion and Atlas acceptance not yet established.",
+  "runtime_implications": "Shared late-start behavior may apply to Atlas under its local authority. Existing authenticated coordination queues and private exchange remain intact. Human additionally authorized direct sanitized Atlas coordination in atlas-scout repository.",
+  "scope": "shared",
+  "summary": "Reviewed late-start archive cutoff repair published, explicitly installed and running on Scout",
+  "tests": [
+    {
+      "command": "python -B tests/run_nightly_repair_checks.py",
+      "completed_at_utc": "2026-10-09T18:29:36.869056Z",
+      "output_sha256": "c59619bfba55fb9da8d45fb3e693a3367025d68f3537f7984636d3bfdfc47b8e",
+      "result": "143 passed",
+      "scope": "Fresh isolated candidate with strict offline harness; sealed queue also passed 143 tests."
+    }
+  ]
+}
