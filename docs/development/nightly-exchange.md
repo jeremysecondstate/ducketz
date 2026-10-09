@@ -1,5 +1,9 @@
 # Private nightly Gameplan exchange
 
+Current responsibility ownership and recovery authority are in
+[nightly-operations.md](nightly-operations.md). Verified terminal exchanges retain
+their original publications and receipts without replaying preparation or adoption.
+
 `tools.nightly_exchange` connects the two completed local preparation runs to
 Scout's one-account synthesis and Atlas's adoption of that exact result. Each
 invocation performs one bounded wake or reports what evidence is still missing.

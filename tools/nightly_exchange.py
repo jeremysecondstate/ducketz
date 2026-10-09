@@ -187,7 +187,7 @@ def _local_state(config, native, action, review):
     workflow._verify_symbol_binding(native, state)
     if state.get("source_identity") != workflow.source_identity(Path(native["repository"])):
         raise ValueError("Application source changed since local preparation")
-    for step in workflow.STEPS:
+    for step in workflow.workflow_steps(state):
         entry = state.get("steps", {}).get(step, {})
         if entry.get("status") != "COMPLETE":
             raise ValueError("Local completion omits a required preparation stage")
@@ -259,9 +259,10 @@ def _publish(config, action, review, kind, files, inputs=None, *, refresh=False)
     return _receive(config, action, review, actor, kind)
 
 
-def _receive(config, action, review, actor, kind):
+def _receive(config, action, review, actor, kind, *, local_only=False):
+    session = Path(config["state_root"]) / "sessions" / action
     folder = _folder(config, action, actor, kind)
-    selected = folder / "selection.json"
+    selected = session / "selections" / f"{actor}-{kind}.json" if local_only else folder / "selection.json"
     if not selected.exists():
         raise Pending(kind.upper() + "_" + actor.upper())
     selector_bytes = _read(selected, 2048)
@@ -275,7 +276,8 @@ def _receive(config, action, review, actor, kind):
     size = selector["bytes"]
     if type(size) is not int or not 0 < size <= MAX_PACKET_BYTES:
         raise ValueError("Invalid selected packet size")
-    path = folder / "packets" / (digest + ".json")
+    cache = session / "cache" / actor / kind / digest
+    path = cache / "packet.json" if local_only else folder / "packets" / (digest + ".json")
     if not path.exists():
         raise Pending("PACKET_SYNC")
     data = _read(path, MAX_PACKET_BYTES)
@@ -310,14 +312,17 @@ def _receive(config, action, review, actor, kind):
         decoded[name] = value
     if _read(selected, 2048) != selector_bytes:
         raise Pending("SELECTION_SYNC")
-    session = Path(config["state_root"]) / "sessions" / action
-    _write(session / "selection-history" / f"{actor}-{kind}-{digest}.json", selector_bytes)
-    if kind not in {"snapshot", *OWNERSHIP_KINDS}:
-        _write(session / "selections" / f"{actor}-{kind}.json", selector_bytes)
-    cache = session / "cache" / actor / kind / digest
-    _write(cache / "packet.json", data)
-    for name, value in decoded.items():
-        _write(cache / name, value)
+    if local_only:
+        for name, value in decoded.items():
+            if _read(cache / name) != value:
+                raise ValueError("Completed cached exchange file changed")
+    else:
+        _write(session / "selection-history" / f"{actor}-{kind}-{digest}.json", selector_bytes)
+        if kind not in {"snapshot", *OWNERSHIP_KINDS}:
+            _write(session / "selections" / f"{actor}-{kind}.json", selector_bytes)
+        _write(cache / "packet.json", data)
+        for name, value in decoded.items():
+            _write(cache / name, value)
     return {"digest": digest, "inputs": packet["inputs"], "files": {name: cache / name for name in decoded}}
 
 
@@ -794,6 +799,67 @@ def _verify_acceptance(config, action, review, joint, accepted):
         raise ValueError("Atlas acceptance does not bind this exact Scout synthesis")
 
 
+def _completed_result(config, native, action, review, common):
+    """Verify terminal local evidence without replaying any operating stage.
+
+    A later source installation or unavailable peer cannot invalidate completed
+    history. Corrupt retained evidence still fails closed, without replacing the
+    terminal status or letting a later wake attempt preparation/adoption again.
+    """
+    session = Path(config["state_root"]) / "sessions" / action
+    status_path = session / "status.json"
+    if not status_path.exists():
+        return None
+    result = _object(_read(status_path))
+    if result.get("status") != "COMPLETE":
+        return None
+    expected = {**common, "joint_ready": True, "ui_ready": True, "peer_verified": True}
+    if any(result.get(key) != value for key, value in expected.items()):
+        raise ValueError("Completed exchange status identity changed")
+    joint = _receive(config, action, review, "scout", "joint", local_only=True)
+    accepted = _receive(config, action, review, "atlas", "accepted", local_only=True)
+    if (joint["digest"] != result.get("joint_packet_sha256")
+            or accepted["digest"] != result.get("accepted_packet_sha256")):
+        raise ValueError("Completed exchange packet selections changed")
+    _verify_acceptance(config, action, review, joint, accepted)
+    from app.ui.gameplan_data import load_gameplan
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    from ml.joint_capital_adoption import read_accepted_joint_plan
+    from ml.nightly_joint_readiness import FIELDS, VERSION as READINESS_VERSION, _receipt_identity
+    actor = config["actor"].lower()
+    root = Path(native["datastore"]).resolve()
+    pin = _object(_read(root / "ml/nightly-joint-readiness-by-date" / action / "run.json"))
+    receipt = _object(_read((accepted if actor == "atlas" else joint)["files"][f"{actor}-receipt.json"]))
+    _receipt_identity(receipt, actor=actor, action_date=action, review_session=review)
+    operation = "handoff" if actor == "atlas" else "synthesis"
+    receipt_path = session / operation / receipt["completion_id"] / "receipt.json"
+    if (set(pin) != FIELDS or pin.get("schema_version") != READINESS_VERSION
+            or pin.get("local_actor") != actor or pin.get("action_date") != action
+            or pin.get("review_session") != review or pin.get("completion_id") != receipt["completion_id"]
+            or Path(pin.get("receipt_path", "")).resolve() != receipt_path.resolve()
+            or file_checksum(receipt_path) != pin.get("receipt_sha256")
+            or _object(_read(receipt_path)) != receipt or result.get("local_status") != receipt["status"]):
+        raise ValueError("Completed exchange local receipt changed")
+    selected = read_accepted_joint_plan(root, action)
+    plan, stats = load_gameplan(root, action), load_gameplan_stats(root, review)
+    evidence = receipt["ui_evidence"]
+    if (selected is None or selected[0]["plan_sha256"] != evidence["plan_sha256"]
+            or selected[1]["local_actor"] != actor or selected[1]["executor_owner"] != "atlas"
+            or selected[1]["account_scope_sha256"] != config["account_scope_sha256"]
+            or selected[1]["owner_packages"] != receipt["owner_packages"]
+            or plan.run_directory != selected[2] or str(plan.run_directory) != evidence["plan_run"]
+            or str(stats.run_directory) != evidence["stats_run"]
+            or set(plan.symbols) != set(config["owners"]["atlas"] + config["owners"]["scout"])):
+        raise ValueError("Completed exchange dated publications changed")
+    paths = (plan.run_directory / "accepted-plan.json", plan.run_directory / "joint-plan.json",
+             stats.run_directory / "receipt.json", stats.run_directory / "manifest.json",
+             stats.run_directory / "forecast-results.parquet")
+    if (evidence["files"] != {str(path): file_checksum(path) for path in paths}
+            or evidence["stats_receipt_sha256"] != file_checksum(stats.run_directory / "receipt.json")):
+        raise ValueError("Completed exchange publication bytes changed")
+    return result
+
+
 def run_once(config, *, now=None, allow_snapshot_refresh=False):
     """Perform one bounded exchange wake; missing inputs are durable pending states."""
     if config.get("private_exchange_authorized") is not True:
@@ -813,6 +879,9 @@ def run_once(config, *, now=None, allow_snapshot_refresh=False):
         common = {"action_date": action, "review_session": review, "actor": config["actor"],
                   "orders_placed": 0, "activation_changed": False, "execution_authorized": False,
                   "joint_ready": False, "ui_ready": False, "peer_verified": False}
+        completed = _completed_result(config, native, action, review, common)
+        if completed is not None:
+            return completed
         try:
             result = {**common, **_run(config, native, action, review, clock, allow_snapshot_refresh)}
         except Pending as pending:

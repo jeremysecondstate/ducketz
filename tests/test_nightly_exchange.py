@@ -145,6 +145,43 @@ def test_two_machine_real_synthesis_handoff_and_repeat_without_changes(exchange)
     assert json.loads(Path(configs["atlas"]["account_config"]).read_text())["activation"]["status"] == "PREPARING"
 
 
+def test_completed_session_uses_retained_evidence_without_stage_or_peer_replay(exchange, monkeypatch):
+    synthesized(exchange)
+    expected = {"atlas": wake(exchange, "atlas"), "scout": wake(exchange, "scout")}
+    local_before = {actor: files(Path(native["datastore"])) for actor, native in exchange[1].items()}
+    state_before = {actor: files(Path(config["state_root"])) for actor, config in exchange[0].items()}
+    def forbidden(*args, **kwargs):
+        pytest.fail("A completed session cannot replay any preparation, capture, synthesis or adoption")
+    for name in ("_run", "_local_state", "_publish", "_binding"):
+        monkeypatch.setattr(module, name, forbidden)
+    monkeypatch.setattr(nightly_synthesis, "run_synthesis", forbidden)
+    monkeypatch.setattr(nightly_handoff, "run_handoff", forbidden)
+    # A synced drive may be unavailable after completion. Retained verified
+    # input bytes and the dated local publications establish historical result.
+    shared = Path(exchange[0]["atlas"]["exchange_root"])
+    shared.rename(shared.with_name("offline-v1"))
+    for actor in ("atlas", "scout"):
+        assert wake(exchange, actor, now="2026-09-09T23:30:00Z", capture=actor == "atlas") == expected[actor]
+    assert {actor: files(Path(native["datastore"])) for actor, native in exchange[1].items()} == local_before
+    assert {actor: files(Path(config["state_root"])) for actor, config in exchange[0].items()} == state_before
+    assert len(exchange[3]) == 1
+
+
+def test_damaged_terminal_evidence_never_downgrades_completion_or_replays(exchange, monkeypatch):
+    synthesized(exchange)
+    wake(exchange, "atlas")
+    session = Path(exchange[0]["atlas"]["state_root"]) / "sessions" / DAY
+    before = (session / "status.json").read_bytes()
+    receipt = next((session / "handoff").glob("*/receipt.json"))
+    receipt.write_bytes(receipt.read_bytes() + b" ")
+    monkeypatch.setattr(module, "_run", lambda *a, **kw: pytest.fail("Never replay terminal work"))
+    for _ in range(2):
+        with pytest.raises(ValueError, match="Completed exchange local receipt changed"):
+            wake(exchange, "atlas", capture=True)
+        assert (session / "status.json").read_bytes() == before
+    assert len(exchange[3]) == 1
+
+
 def test_no_snapshot_read_until_both_preparations_and_explicit_flag(exchange):
     assert wake(exchange, "atlas", capture=True)["reason"] == "PREPARATION_SCOUT"
     assert exchange[3] == []
@@ -189,8 +226,13 @@ def test_partial_joint_packet_blocks_refresh_even_when_snapshot_stale(exchange):
     folder = module._folder(exchange[0]["atlas"], DAY, "scout", "joint")
     selector = json.loads((folder / "selection.json").read_text())
     payload = folder / "packets" / (selector["content_sha256"] + ".json")
-    payload.write_bytes(payload.read_bytes()[:100])
+    original = payload.read_bytes()
+    payload.write_bytes(original[:100])
     assert wake(exchange, "atlas", now="2026-09-09T10:20:00Z", capture=True)["reason"] == "PACKET_SYNC"
+    payload.write_bytes(original)
+    # Restored peer delivery later in the market session adopts the exact
+    # already synthesized result; its old account observation is not recaptured.
+    assert wake(exchange, "atlas", now="2026-09-09T21:00:00Z", capture=True)["status"] == "COMPLETE"
     assert len(exchange[3]) == 1
 
 

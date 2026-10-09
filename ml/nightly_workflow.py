@@ -28,6 +28,11 @@ VERSION = "ducketz-nightly-workflow-v1"
 STEPS = ("prepare_stats", "model_review", "train_and_plan", "verify_display", "local_handoff")
 
 
+def workflow_steps(state):
+    from ml.nightly_dispatch import LAYOUT, STEPS as RESPONSIBILITY_STEPS
+    return RESPONSIBILITY_STEPS if state.get("workflow_layout") == LAYOUT else STEPS
+
+
 def _json(path: Path) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -222,8 +227,18 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         archive_history=config.get("archive_history", True), stats_first=True,
         probability_target_contract=_intended_probability_target(config),
         review_action_date=state["source_session"])
-    if step == "train_and_plan":
+    if state.get("scheduled_recovery"):
+        arguments["workflow_recovery"] = Path(state["scheduled_recovery"]["path"])
+        arguments["deadline"] = state["deadline_at"]
+    if step in ("train_and_plan", "local_gameplan"):
         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
+        if step == "local_gameplan":
+            training = Path(state["steps"]["train_and_plan"]["output"]["native_run"])
+            _native_outputs(training)
+            pinned = _json(training / "stage-report.json").get("enrichment_gameplan")
+            if not pinned or pinned.get("action_date") != state["action_date"]:
+                raise ValueError("Planning requires this workflow's accepted prediction publication")
+            arguments["pinned_gameplan"] = pinned
         if state.get("planning_tail_continuation"):
             arguments["deadline_exception"] = Path(state["planning_tail_continuation"]["path"])
         if state.get("recovery_deadline_at"):
@@ -236,10 +251,15 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         if receipt.get("status") == "COMPLETE":
             return _native_outputs(run)
         arguments["resume_run"] = run
-    elif step == "prepare_stats":
-        arguments["stop_after"] = "gameplan_stats"
+    elif step in ("prepare_stats", "datastore_catchup"):
+        arguments["stop_after"] = ("stock_target_history" if config.get("stock_price_source", "xnas-itch-archive-v1") == "xnas-itch-archive-v1"
+                                   else "loop_a_close_fetch") if step == "datastore_catchup" else "gameplan_stats"
+        if step == "prepare_stats" and state.get("workflow_layout"):
+            arguments["start_at"] = "gameplan_stats"
     else:
-        arguments["start_at"] = "loop_b_directional_generation"
+        arguments["start_at"] = "gameplan_trade_planning" if step == "local_gameplan" else "loop_b_directional_generation"
+        if state.get("workflow_layout") and step == "train_and_plan":
+            arguments["stop_after"] = "stock_enrichment_training"
         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
     bound_attempt = None
     def record_native_progress(message: str) -> None:
@@ -465,7 +485,7 @@ def _handoff(config: dict, state: dict) -> dict:
 
 
 def _execute_step(config: dict, state: dict, step: str, save) -> dict:
-    if step in ("prepare_stats", "train_and_plan"):
+    if step in ("prepare_stats", "train_and_plan", "datastore_catchup", "local_gameplan"):
         return _run_native(config, state, step, save)
     if step == "model_review":
         from ml.gameplan_model_feedback import prepare_feedback
@@ -575,19 +595,56 @@ def _planning_tail_continuation(config, state, requested, observed):
 
 def run_workflow(config: dict, *, resume_action_date: str | None = None,
                  recover_action_date: str | None = None, recovery_deadline=None, now=None,
-                 execute_step=None, identity=None, supervise=True, planning_tail_exception=None) -> dict:
+                 execute_step=None, identity=None, supervise=True, planning_tail_exception=None,
+                 responsibility=None, catch_up=False) -> dict:
     from ml.overnight_runtime import scheduled_session_eligibility, next_action_deadline
     root, repository, state_root = map(Path, (config["datastore"], config["repository"], config["state_root"]))
     state_root.mkdir(parents=True, exist_ok=True)
     observed = utc_timestamp(now)
     identity = identity or source_identity
     executor = execute_step or _execute_step
+    from ml.nightly_dispatch import (LAYOUT, RESPONSIBILITIES, OWNERS, TERMINAL,
+        intended_session, next_responsibility, authority, recovery_record, validate_recovery,
+        failure_record, retry_disposition)
+    if responsibility is not None and responsibility not in RESPONSIBILITIES:
+        raise ValueError("Unknown nightly responsibility")
+    if catch_up:
+        authority(config)
+        if resume_action_date or recover_action_date or planning_tail_exception:
+            raise ValueError("Catch-up selects its exact session; do not mix explicit recovery modes")
     if bool(recover_action_date) != bool(recovery_deadline) or (recover_action_date and resume_action_date):
         raise ValueError("Recovery requires its exact action date and deadline; do not combine with resume")
     if planning_tail_exception is not None and not resume_action_date:
         raise ValueError("A planning continuation requires the existing recovery action date")
     with FileLock(str(state_root / "workflow.lock"), timeout=0):
-        if resume_action_date:
+        if catch_up:
+            selection = intended_session(observed)
+            path = state_root / "runs" / selection["action_date"] / "state.json"
+            if not selection["eligible"]:
+                return {"status": "WAITING_KICKOFF", **selection}
+            if path.exists():
+                state = _json(path)
+                # Completed sessions remain immutable historical evidence even
+                # when future sessions use a subsequently reviewed installation.
+                if state.get("status") in TERMINAL:
+                    if state.get("actor") != config["actor"] or state.get("action_date") != selection["action_date"]:
+                        raise ValueError("Completed workflow identity differs from the selected session")
+                    _verify_configuration_binding(config, state)
+                    _verify_symbol_binding(config, state)
+                    for completed in state.get("steps", {}).values():
+                        if completed.get("status") == "COMPLETE":
+                            _verify_outputs(completed["output"])
+                    return state
+            else:
+                binding = _symbol_binding(config)
+                state = {"schema_version": VERSION, "run_id": uuid.uuid4().hex,
+                    "actor": config["actor"], "source_session": selection["source_session"],
+                    "action_date": selection["action_date"], "deadline_at": selection["deadline_at"],
+                    "source_identity": identity(repository), "configuration_binding": _configuration_binding(config),
+                    "symbols": binding["symbols"], "symbol_binding": binding,
+                    "workflow_layout": LAYOUT, "steps": {}, "status": "READY",
+                    "orders_placed": 0, "broker_orders_enabled": False}
+        elif resume_action_date:
             if pd.Timestamp(resume_action_date).date().isoformat() != resume_action_date:
                 raise ValueError("Use an exact action date")
             path = state_root / "runs" / resume_action_date / "state.json"
@@ -633,6 +690,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     "configuration_binding": _configuration_binding(config),
                     "symbols": symbol_binding["symbols"], "symbol_binding": symbol_binding,
                     "steps": {}, "status": "READY", "orders_placed": 0, "broker_orders_enabled": False}
+                if responsibility is not None:
+                    state["workflow_layout"] = LAYOUT
                 if recovery:
                     state.update(recovery)
         def save():
@@ -640,6 +699,15 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
         if state.get("schema_version") != VERSION or state.get("actor") != config["actor"]:
             raise ValueError("Workflow state identity differs")
+        if state.get("status") in TERMINAL:
+            if state.get("action_date") != path.parent.name:
+                raise ValueError("Completed workflow identity differs from its action-date path")
+            _verify_configuration_binding(config, state)
+            _verify_symbol_binding(config, state)
+            for completed in state.get("steps", {}).values():
+                if completed.get("status") == "COMPLETE":
+                    _verify_outputs(completed["output"])
+            return state
         try:
             _verify_configuration_binding(config, state)
             _verify_symbol_binding(config, state)
@@ -650,6 +718,35 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     _verify_outputs(completed["output"])
             if state["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING":
                 return state
+            if catch_up:
+                selected_owner = next_responsibility(state)
+                if responsibility is not None and selected_owner != responsibility:
+                    return {"status": "WAITING_PREREQUISITE", "action_date": state["action_date"],
+                            "responsibility": responsibility, "next_responsibility": selected_owner}
+                blocked = retry_disposition(config, state, observed)
+                if blocked:
+                    return {"status": blocked, "action_date": state["action_date"], "failure": state["failure"]}
+                if observed >= utc_timestamp(state["deadline_at"]) and not state.get("recovery_deadline_at"):
+                    # Seal interrupted native evidence before binding recovery.
+                    from ml.overnight_runtime import recover_interrupted_run
+                    for entry in state["steps"].values():
+                        if entry.get("native_run") and not (Path(entry["native_run"]) / "receipt.json").exists():
+                            recover_interrupted_run(root, Path(entry["native_run"]), "Scheduled recovery after worker interruption")
+                    record_path = path.parent / "scheduled-recovery.json"
+                    if not record_path.exists():
+                        _write(record_path, recovery_record(config, state, observed))
+                    record, evidence = validate_recovery(record_path, root=root, now=observed)
+                    if (record["workflow_run_id"] != state["run_id"] or record["source_identity"] != state["source_identity"]
+                            or record["action_date"] != state["action_date"]):
+                        raise ValueError("Frozen scheduled recovery belongs to another workflow")
+                    state.update(scheduled_recovery=evidence, recovery_started_at=record["approved_at"],
+                        recovery_deadline_at=record["expires_at"], recovery_reason=record["authorization"])
+                    save()
+            if state.get("scheduled_recovery"):
+                saved = state["scheduled_recovery"]
+                if file_checksum(Path(saved["path"])) != saved["sha256"]:
+                    raise ValueError("Frozen scheduled recovery evidence changed")
+                validate_recovery(saved["path"], root=root, now=observed)
             cutoff = _planning_tail_continuation(config, state, planning_tail_exception, observed)
             if observed >= cutoff:
                 raise TimeoutError("Original nightly preparation deadline reached")
@@ -662,10 +759,16 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                 yield threading.Event()
             manager = _supervision(root) if supervise else no_supervision()
             with exclusive_runtime_lock(root / ".ducketz-overnight-runtime.lock", process_name="Nightly workflow"), manager as lost:
-                for step in STEPS:
+                for step in workflow_steps(state):
                     entry = state["steps"].setdefault(step, {})
                     if entry.get("status") == "COMPLETE":
                         continue
+                    stage_owner = ("datastore" if step == "prepare_stats" and not state.get("workflow_layout") else OWNERS[step])
+                    if responsibility is not None and stage_owner != responsibility:
+                        state.update(status="WAITING_PREREQUISITE", current_step=step, owner_pid=None,
+                                     next_responsibility=stage_owner)
+                        save()
+                        return state
                     state["current_step"] = step
                     if lost.is_set():
                         raise RuntimeError("Overnight supervision ownership was lost")
@@ -674,12 +777,16 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     _verify_symbol_binding(config, state)
                     _verify_configuration_binding(config, state)
                     entry.setdefault("started_at", utc_timestamp().isoformat())
-                    entry.update(status="RUNNING", attempt_started_at=utc_timestamp().isoformat())
+                    entry.update(status="RUNNING", attempt_started_at=utc_timestamp().isoformat(),
+                        attempts=entry.get("attempts", 0) + 1, responsibility=stage_owner,
+                        owner=config.get("responsibility_owners", {}).get(stage_owner, stage_owner))
                     save()
                     output = executor(config, state, step, save)
                     _verify_outputs(output)
                     entry.update(status="COMPLETE", output=output, completed_at=utc_timestamp().isoformat())
                     entry.pop("error", None)
+                    if state.get("failure", {}).get("step") == step:
+                        state["failure"].update(disposition="RESOLVED", resolved_at=utc_timestamp().isoformat())
                     save()
                 if lost.is_set():
                     raise RuntimeError("Overnight supervision ownership was lost")
@@ -700,6 +807,11 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             current = state["steps"].get(state.get("current_step"))
             if current is not None and current.get("status") != "COMPLETE":
                 current.update(status=failure, error=message)
+            if responsibility is not None or catch_up:
+                record = failure_record(error, step=state.get("current_step"),
+                    owner=(current or {}).get("owner", responsibility), now=observed, state=state)
+                state.setdefault("failure_history", []).append(record.copy())
+                state["failure"] = record
             save()
             raise
 
@@ -723,6 +835,35 @@ def status(config: dict, *, action_date: str | None = None, now=None) -> dict:
     return state
 
 
+def dispatch_status(config, *, now=None):
+    """Read-only dispatch decision; expensive jobs run only after prerequisites."""
+    from ml.nightly_dispatch import intended_session, next_responsibility, TERMINAL, authority, retry_disposition
+    authority(config)
+    selection = intended_session(now)
+    current = status(config, action_date=selection["action_date"])
+    result = {**selection, "actor": config["actor"], "status": current["status"]}
+    if current["status"] in TERMINAL:
+        return {**result, "dispatch": False, "reason": "Retain completed session and its original receipts"}
+    if not selection["eligible"]:
+        return {**result, "status": "WAITING_KICKOFF", "dispatch": False}
+    root = Path(config["state_root"])
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        with FileLock(str(root / "workflow.lock"), timeout=0):
+            pass
+    except Timeout:
+        return {**result, "status": "RUNNING", "dispatch": False}
+    blocked = retry_disposition(config, current, now)
+    if blocked:
+        return {**result, "status": blocked, "dispatch": False, "failure": current["failure"]}
+    if current.get("recovery_deadline_at") and utc_timestamp(now) >= utc_timestamp(current["recovery_deadline_at"]):
+        return {**result, "status": "RECOVERY_EXPIRED", "dispatch": False,
+                "reason": "Retain the fixed cutoff; reviewed planning-tail continuation or human input is required"}
+    owner = next_responsibility(current) if current["status"] != "NOT_STARTED" else "datastore"
+    return {**result, "dispatch": bool(owner), "responsibility": owner,
+            "owner": config.get("responsibility_owners", {}).get(owner, owner)}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
@@ -731,12 +872,19 @@ def main(argv=None) -> int:
     parser.add_argument("--recovery-deadline", help="Fixed zoned deadline for an explicitly requested recovery")
     parser.add_argument("--planning-tail-exception", type=Path, help="Explicit source-bound continuation record for a failed recovery tail")
     parser.add_argument("--action-date", help="Exact session to inspect with --status")
+    from ml.nightly_dispatch import RESPONSIBILITIES
+    parser.add_argument("--responsibility", choices=RESPONSIBILITIES)
+    parser.add_argument("--catch-up", action="store_true", help="Use recorded standing authority and the exchange calendar")
+    parser.add_argument("--dry-run", action="store_true", help="Inspect a dispatch decision without launching work")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--run", action="store_true")
     modes.add_argument("--launch", action="store_true")
     modes.add_argument("--status", action="store_true")
     modes.add_argument("--check", action="store_true")
+    modes.add_argument("--dispatch", action="store_true", help="Launch just the next prerequisite-ready responsibility")
     args = parser.parse_args(argv)
+    if args.dry_run and not args.dispatch:
+        parser.error("--dry-run requires --dispatch")
     if args.planning_tail_exception and (not args.resume_action_date or not (args.launch or args.run)):
         parser.error("A planning continuation requires --resume-action-date and --launch or --run")
     if args.action_date and not args.status:
@@ -748,18 +896,26 @@ def main(argv=None) -> int:
     try:
         config = load_config(args.config)
         verify_installation(config)
-        if args.status:
+        decision = dispatch_status(config) if args.dispatch else None
+        if args.dispatch and (args.dry_run or not decision["dispatch"]):
+            result = decision
+        elif args.status:
             result = status(config, action_date=args.action_date)
         elif args.check:
             binary = config.get("codex_executable") or shutil.which("codex")
             result = {"status": "CONFIGURATION_VERIFIED", "actor": config["actor"],
                 "codex_available": bool(binary and Path(binary).is_file()),
                 "peer_communication_enabled": False, "source_identity": source_identity(Path(config["repository"]))}
-        elif args.launch:
+        elif args.launch or args.dispatch:
             destination = Path(config["state_root"])
             destination.mkdir(parents=True, exist_ok=True)
             log = destination / ("worker-" + utc_timestamp().strftime("%Y%m%dT%H%M%SZ") + ".log")
             command = [sys.executable, "-B", "-u", "-m", "ml.nightly_workflow", "--config", str(args.config.resolve()), "--run"]
+            responsibility = decision["responsibility"] if args.dispatch else args.responsibility
+            if responsibility:
+                command += ["--responsibility", responsibility]
+            if args.catch_up or args.dispatch:
+                command.append("--catch-up")
             if args.resume_action_date:
                 command += ["--resume-action-date", args.resume_action_date]
             if args.planning_tail_exception:
@@ -772,12 +928,14 @@ def main(argv=None) -> int:
                     stdout=stream, stderr=subprocess.STDOUT, close_fds=True,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
             result = {"status": "LAUNCHED", "pid": process.pid, "log": str(log),
+                      "responsibility": responsibility,
                       "completion": "Read --status; launch is not completion"}
         else:
             result = run_workflow(config, resume_action_date=args.resume_action_date,
                                   recover_action_date=args.recover_action_date,
                                   recovery_deadline=args.recovery_deadline,
-                                  planning_tail_exception=args.planning_tail_exception)
+                                  planning_tail_exception=args.planning_tail_exception,
+                                  responsibility=args.responsibility, catch_up=args.catch_up)
         print(json.dumps(result, indent=2, default=str))
         return 0
     except Timeout:

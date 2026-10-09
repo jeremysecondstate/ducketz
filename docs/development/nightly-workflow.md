@@ -1,5 +1,9 @@
 # Stats-first nightly workflow
 
+Current responsibility scheduling, automatic recovery authority and task ownership are
+defined in [nightly-operations.md](nightly-operations.md). The composite workflow below
+also remains the compatibility contract for existing dated runs.
+
 This is the replacement for **Loops Overnight Gameplan (LOG)**. LOG and its
 native task are legacy reference material. Preserve its definition, leave it
 paused. Reuse the installed Stats-first preparation identity. Suitable existing
@@ -33,9 +37,9 @@ lock and a renewable supervision lease:
    Codex CLI review using the configured stronger model and structured schema.
 3. Resume numerical preparation in a new training segment with the exact saved
    review. Generate accepted forecasts, enrich them and build the local plan.
-4. Verify the default UI readers select the exact intended Stats and plan.
+4. Verify the exact saved local Stats and plan before combined synthesis.
 5. Prepare local sanitized owner-plan and Stats packages with immutable hashes.
-   Hold delivery until the separate-PC rollout is complete.
+   The separate private exchange delivers matching completed packages.
 
 Monday night uses Monday's completed outcomes. Longer horizons remain pending
 until mature. Previously published predictions are not rewritten by feedback.

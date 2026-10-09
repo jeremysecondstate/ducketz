@@ -161,11 +161,15 @@ def test_changed_output_rejected_before_retry(setup):
         _run(setup, action)
 
 
-def test_source_change_cannot_inherit_prior_completion(setup):
-    _run(setup, lambda *args: {"files": {}})
-    with pytest.raises(ValueError, match="source changed"):
-        run_workflow(setup, now="2026-10-06T04:05:00Z", identity=lambda _: {"commit": "changed"},
-                     execute_step=lambda *args: pytest.fail("Must not launch"), supervise=False)
+@pytest.mark.parametrize("resume", [False, True])
+def test_source_change_preserves_terminal_original_completion(setup, resume):
+    original = _run(setup, lambda *args: {"files": {}})
+    path = Path(setup["state_root"]) / "runs/2026-10-06/state.json"
+    before = path.read_bytes()
+    result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=lambda _: {"commit": "changed"},
+        resume_action_date="2026-10-06" if resume else None,
+        execute_step=lambda *args: pytest.fail("Must not launch"), supervise=False)
+    assert result == original and path.read_bytes() == before
 
 
 def test_holiday_does_not_launch_or_replace_latest(setup):
@@ -525,6 +529,7 @@ def test_watchlist_must_match_profile_symbols_before_any_work(setup):
 @pytest.mark.parametrize("change", ["datastore", "stock_price_source", "archive_history", "reviewer", "probability_target_contract"])
 def test_operating_configuration_cannot_inherit_another_completed_run(setup, change):
     _run(setup, lambda *args: {"files": {}})
+    original = _saved_state(setup)
     replacement = {"datastore": str(Path(setup["datastore"]) / "other"),
                    "stock_price_source": "canonical-equity-minute-v1", "archive_history": False,
                    "reviewer": {"model": "different-model", "reasoning_effort": "high"},
@@ -533,7 +538,7 @@ def test_operating_configuration_cannot_inherit_another_completed_run(setup, cha
     with pytest.raises(ValueError, match="operating configuration changed"):
         _run(setup, lambda *args: pytest.fail("Cannot reuse a completion under a changed configuration"))
     failed = _saved_state(setup)
-    assert failed["status"] == "FAILED"
+    assert failed == original
     assert all(stage["status"] == "COMPLETE" for stage in failed["steps"].values())
 
 

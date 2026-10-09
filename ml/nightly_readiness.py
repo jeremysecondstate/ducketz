@@ -85,9 +85,12 @@ def readiness(config: dict, *, now=None) -> dict:
         raise ValueError("Saved nightly identity differs from this machine")
     workflow._verify_configuration_binding(config, state)
     workflow._verify_symbol_binding(config, state)
-    if state["source_identity"] != workflow.source_identity(Path(config["repository"])):
-        raise ValueError("Application source differs from the saved nightly run")
-    for step in workflow.STEPS:
+    installed_source = workflow.source_identity(Path(config["repository"]))
+    if state["source_identity"] != installed_source:
+        if state["status"] != "LOCAL_COMPLETE_PEER_SETUP_PENDING":
+            raise ValueError("Application source differs from the saved nightly run")
+        result.update(source_changed_after_completion=True, installed_source_identity=installed_source)
+    for step in workflow.workflow_steps(state):
         entry = state.get("steps", {}).get(step, {})
         if entry.get("status") != "COMPLETE":
             return {**result, "status": "NOT_READY", "step": step,
