@@ -34,6 +34,16 @@ def preparation_deadline(root: Path, gameplan_run: Path, original_deadline,
     payload = json.loads(Path(exception_path).read_text(encoding='utf-8'))
     receipt = json.loads((source/'receipt.json').read_text(encoding='utf-8'))
     session = str(receipt['action_date'])
+    from ml.nightly_recovery import VERSION as RECOVERY_VERSION, verify_recovery
+    if payload.get('schema_version') == RECOVERY_VERSION:
+        evidence = verify_recovery(root, exception_path, now, action_date=session)
+        from ml.artifacts import verify_manifest
+        manifest = verify_manifest(source)
+        if (manifest.get('configuration', {}).get('late_preparation') != evidence
+                or _aware(payload['original_deadline_at']) != original
+                or receipt.get('manifest_checksum_sha256') != file_checksum(source/'manifest.json')):
+            raise ValueError('Late preparation exception differs from its frozen Gameplan')
+        return _aware(payload['expires_at']), evidence
     opening = pd.Timestamp(session).tz_localize('America/Los_Angeles') + pd.Timedelta(hours=4)
     close = opening + pd.Timedelta(hours=13)
     approved, expires = _aware(payload.get('approved_at')), _aware(payload.get('expires_at'))

@@ -222,6 +222,8 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         archive_history=config.get("archive_history", True), stats_first=True,
         probability_target_contract=_intended_probability_target(config),
         review_action_date=state["source_session"])
+    if state.get("recovery"):
+        arguments["recovery_spec"] = Path(state["recovery"]["path"])
     if step == "train_and_plan":
         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
     if previous:
@@ -460,14 +462,15 @@ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
         save()
         if _json(feedback / "diagnostics.json")["stats"]["session"] != state["source_session"]:
             raise ValueError("Model review Stats session differs from this workflow's completed session")
-        return run_reviewer(config, feedback, state["deadline_at"])
+        return run_reviewer(config, feedback, state.get("effective_deadline_at", state["deadline_at"]))
     if step == "verify_display":
         return _display(config, state)
     return _handoff(config, state)
 
 
 def run_workflow(config: dict, *, resume_action_date: str | None = None, now=None,
-                 execute_step=None, identity=None, supervise=True) -> dict:
+                 execute_step=None, identity=None, supervise=True, catch_up=False,
+                 recovery_reason: str | None = None) -> dict:
     from ml.overnight_runtime import scheduled_session_eligibility, next_action_deadline
     root, repository, state_root = map(Path, (config["datastore"], config["repository"], config["state_root"]))
     state_root.mkdir(parents=True, exist_ok=True)
@@ -481,14 +484,20 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
             path = state_root / "runs" / resume_action_date / "state.json"
             state = _json(path)
         else:
-            eligibility = scheduled_session_eligibility(observed)
+            if catch_up:
+                from ml.nightly_recovery import session_context
+                context = session_context(observed)
+                eligibility = {"eligible": True, "local_date": context["source_session"]}
+            else:
+                eligibility = scheduled_session_eligibility(observed)
             if not eligibility["eligible"]:
                 result = {"schema_version": VERSION, "status": eligibility["status"], "eligibility": eligibility}
                 _write(state_root / "last-wake.json", result)
                 if eligibility["status"] != "NOOP_NON_SESSION_DATE":
                     raise RuntimeError(str(eligibility["reason"]))
                 return result
-            deadline = next_action_deadline(observed)
+            deadline = (utc_timestamp(context["original_deadline_at"]) if catch_up
+                        else next_action_deadline(observed))
             action = deadline.tz_convert("America/Los_Angeles").date().isoformat()
             path = state_root / "runs" / action / "state.json"
             if path.exists():
@@ -501,6 +510,18 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
                     "configuration_binding": _configuration_binding(config),
                     "symbols": symbol_binding["symbols"], "symbol_binding": symbol_binding,
                     "steps": {}, "status": "READY", "orders_placed": 0, "broker_orders_enabled": False}
+            if catch_up and observed >= deadline and state["status"] != "LOCAL_COMPLETE_PEER_SETUP_PENDING" and not state.get("recovery"):
+                from ml.nightly_recovery import make_recovery, verify_recovery
+                # Existing attempts keep their frozen source and completed bytes.
+                _verify_configuration_binding(config, state)
+                _verify_symbol_binding(config, state)
+                if state["source_identity"] != identity(repository):
+                    raise ValueError("Application source changed since this run; preserve it for explicit review")
+                evidence_path = path.parent / "recovery.json"
+                if not evidence_path.exists():
+                    _write(evidence_path, make_recovery(config, observed, reason=recovery_reason))
+                evidence = verify_recovery(root, evidence_path, observed, action_date=state["action_date"])
+                state.update(recovery=evidence, effective_deadline_at=evidence["authorization"]["expires_at"])
         def save():
             _write(path, state)
             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
@@ -516,7 +537,12 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
                     _verify_outputs(completed["output"])
             if state["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING":
                 return state
-            if observed >= utc_timestamp(state["deadline_at"]):
+            if state.get("recovery"):
+                from ml.nightly_recovery import verify_saved_recovery
+                evidence = verify_saved_recovery(root, state["recovery"], observed, action_date=state["action_date"])
+                if state.get("effective_deadline_at") != evidence["authorization"]["expires_at"]:
+                    raise ValueError("Recovery deadline changed since authorization")
+            if observed >= utc_timestamp(state.get("effective_deadline_at", state["deadline_at"])):
                 raise TimeoutError("Original nightly preparation deadline reached")
             state.update(status="RUNNING", owner_pid=os.getpid())
             state.pop("error", None)
@@ -531,6 +557,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
                     entry = state["steps"].setdefault(step, {})
                     if entry.get("status") == "COMPLETE":
                         continue
+                    if state.get("recovery"):
+                        verify_saved_recovery(root, state["recovery"], utc_timestamp(), action_date=state["action_date"])
                     state["current_step"] = step
                     if lost.is_set():
                         raise RuntimeError("Overnight supervision ownership was lost")
@@ -569,7 +597,12 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None, now=Non
             raise
 
 
-def status(config: dict) -> dict:
+def status(config: dict, *, current_session=False) -> dict:
+    if current_session:
+        from ml.nightly_recovery import session_context
+        context = session_context(utc_timestamp())
+        path = Path(config["state_root"]) / "runs" / context["action_date"] / "state.json"
+        return _json(path) if path.exists() else {"status": "NOT_STARTED", **context}
     path = Path(config["state_root"]) / "latest.json"
     return _json(Path(_json(path)["state_path"])) if path.exists() else {"status": "NOT_STARTED"}
 
@@ -578,6 +611,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--resume-action-date")
+    parser.add_argument("--catch-up", action="store_true", help="Prepare the latest completed session, including an explicitly authorized late recovery")
+    parser.add_argument("--recovery-reason", help="Local operator authorization for bounded late preparation")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--run", action="store_true")
     modes.add_argument("--launch", action="store_true")
@@ -588,7 +623,7 @@ def main(argv=None) -> int:
         config = load_config(args.config)
         verify_installation(config)
         if args.status:
-            result = status(config)
+            result = status(config, current_session=args.catch_up)
         elif args.check:
             binary = config.get("codex_executable") or shutil.which("codex")
             result = {"status": "CONFIGURATION_VERIFIED", "actor": config["actor"],
@@ -601,6 +636,10 @@ def main(argv=None) -> int:
             command = [sys.executable, "-B", "-u", "-m", "ml.nightly_workflow", "--config", str(args.config.resolve()), "--run"]
             if args.resume_action_date:
                 command += ["--resume-action-date", args.resume_action_date]
+            if args.catch_up:
+                command += ["--catch-up"]
+            if args.recovery_reason:
+                command += ["--recovery-reason", args.recovery_reason]
             with log.open("ab") as stream:
                 process = subprocess.Popen(command, cwd=config["repository"], stdin=subprocess.DEVNULL,
                     stdout=stream, stderr=subprocess.STDOUT, close_fds=True,
@@ -608,7 +647,8 @@ def main(argv=None) -> int:
             result = {"status": "LAUNCHED", "pid": process.pid, "log": str(log),
                       "completion": "Read --status; launch is not completion"}
         else:
-            result = run_workflow(config, resume_action_date=args.resume_action_date)
+            result = run_workflow(config, resume_action_date=args.resume_action_date,
+                                  catch_up=args.catch_up, recovery_reason=args.recovery_reason)
         print(json.dumps(result, indent=2, default=str))
         return 0
     except Timeout:

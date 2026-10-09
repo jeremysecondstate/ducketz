@@ -103,6 +103,26 @@ verified outputs and saved review. Changed source or changed completed outputs
 require explicit review, not blind replay. A new native segment follows completed
 Stats; `resume_run` is reserved for a failed native segment.
 
+### Missed-launch recovery
+
+Under the October 9 local operator authorization, the preparation launcher may
+use `--launch --catch-up --recovery-reason "Operator-authorized missed nightly preparation"`.
+Run `--check` first, then invoke the launcher exactly once. Do not suppress a
+launch because `latest.json` describes a completed older session: the worker
+selects the latest closed exchange session and handles duplicate work under its
+own lock. Read `--status --catch-up` and the exact returned worker log; this status
+reports `NOT_STARTED` if the intended action-date state is absent.
+
+Before the normal deadline, catch-up uses the original deadline. A late run saves
+one recovery record, the actual request time, the original 04:00 Pacific deadline,
+and an effective deadline capped at seven hours after the request and 17:00 on
+the intended action date. Retries reuse that exact record and never renew its
+deadline. Source, configuration, completed-output and symbol checks still apply.
+The native Stats, training and planning stages receive the same evidence.
+Gameplan training uses information available before the original action window;
+its real creation/publication timestamps and late-preparation metadata remain
+visible. The authorization grants preparation only, never trading or cutover.
+
 Private state holds source hashes, actor, symbols, session identities, stage
 receipts, errors and exact output hashes. Keep it out of Git. Preserve the
 existing local watchlist and profile. Native IDs are recorded locally rather
