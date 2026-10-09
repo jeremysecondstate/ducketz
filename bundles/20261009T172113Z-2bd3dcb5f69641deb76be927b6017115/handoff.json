@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T17:21:13.285991Z",
+  "id": "20261009T172113Z-2bd3dcb5f69641deb76be927b6017115",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout nightly failsafe now recovers a missed primary and rejects stale session status across all supervision tasks"
+}

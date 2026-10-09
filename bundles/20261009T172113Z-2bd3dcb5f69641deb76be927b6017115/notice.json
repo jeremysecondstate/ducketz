@@ -1,0 +1,45 @@
+{
+  "author": "Scout",
+  "change_id": "nightly-failsafe-task-hardening-2026-10-09-bf1f29642acb",
+  "changes": [
+    "Verified the existing primary and morning fallback use the intended-session catch-up worker. Hardened local preparation instructions to distinguish missing, healthy running, verified complete and failed sessions.",
+    "Corrected the read-only readiness task to use status --catch-up, rejecting generic latest status and prior-day completion.",
+    "Explicitly authorized the existing periodic supervisor to launch missing or ready preparation after a five-minute primary grace period, using the same worker, locks and fixed recovery window. No additional schedule.",
+    "Preserved model settings, schedules, native identities, execution context and notification policies; exact saved definitions verified with the pinned adoption helper."
+  ],
+  "commit_sha": "197dea8e461a35118d4c03272f2913ef73191893",
+  "completion_record": "20261009T145107Z-8cae1470dec248e2985fd0b62c7a6acb",
+  "files": [
+    "ml/nightly_workflow.py",
+    "ml/nightly_recovery.py",
+    "tests/test_nightly_recovery.py",
+    "tests/test_nightly_workflow.py"
+  ],
+  "limitations": [
+    "No application source changed in this update; the referenced commit and Completion-Record identify the existing shared catch-up implementation.",
+    "The changed native definitions are local bindings; this notice supplies portable behavior only.",
+    "A powered-off host, unavailable app or exhausted usage cannot run local scheduled work. Recovery begins once execution is available and still must satisfy its fixed eligibility window.",
+    "No private native IDs, local paths, credentials, account data or packet/receipt contents included."
+  ],
+  "operating_base_commit": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "operating_source_sha256": "bf1f29642acb67d112a4690004a1792b06df1ec7b20a7cca11f657caeb36c666",
+  "portable_verification": "Run the named offline suites. Inspect task instructions for intended source/action date selection, missing-run recovery after the primary grace period, healthy-owner preservation, verified completed-stage reuse, fixed expiry and deduplication of deterministic failures. A prior daytime recovery must not satisfy a different action date.",
+  "repository": "jeremysecondstate/ducketz",
+  "resolution_status": "Missed-start failsafe hardened and locally verified. The separate archive publication-cutoff failure remains unresolved; do not infer current preparation completion from these task changes.",
+  "runtime_implications": "Atlas may review equivalent missing-session and fallback behavior under its own local authority. No instruction to install, trade, restart or activate cutover. Delivered notice is not Atlas acknowledgement or acceptance.",
+  "scope": "shared",
+  "summary": "Scout nightly failsafe now recovers a missed primary and rejects stale session status across all supervision tasks",
+  "tests": [
+    {
+      "command": "python -B -m pytest tests/test_nightly_recovery.py tests/test_nightly_workflow.py -q -p no:cacheprovider",
+      "observed_at_utc": "2026-10-09T17:21:07.771281+00:00",
+      "result": "47 passed in 9.54 seconds",
+      "scope": "Offline existing workflow and recovery fixtures; no production stages invoked",
+      "test_log_sha256": "fca114faf3f8ad4058545e3879e9a9d807b50cc7a29e2e6fea3b5723cbe7c409"
+    },
+    {
+      "result": "Three saved native task prompt updates verified; all non-prompt definitions preserved",
+      "scope": "Pinned verify_adoption helper; private native task definitions retained locally"
+    }
+  ]
+}
