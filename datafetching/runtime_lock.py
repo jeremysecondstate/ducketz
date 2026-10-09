@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import errno
+import math
 import os
 import re
 import secrets
@@ -72,38 +73,32 @@ def exclusive_runtime_lock(path: Path, *, process_name: str) -> Iterator[None]:
 
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    descriptor: int | None = None
     owned_payload: bytes | None = None
+    owner_created_at = _process_created_at(os.getpid())
+    payload = (
+        f"process={process_name}\n"
+        f"pid={os.getpid()}\n"
+        f"owner_created_at={owner_created_at if owner_created_at is not None else 'unknown'}\n"
+        f"started_at={datetime.now(timezone.utc).isoformat()}\n"
+        f"token={secrets.token_hex(16)}\n"
+    ).encode("utf-8")
     with runtime_lock_maintenance_gate(target.parent):
         for attempt in range(2):
             try:
-                descriptor = os.open(
-                    target,
-                    os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0),
-                )
-                payload = (
-                    f"process={process_name}\n"
-                    f"pid={os.getpid()}\n"
-                    f"started_at={datetime.now(timezone.utc).isoformat()}\n"
-                    f"token={secrets.token_hex(16)}\n"
-                ).encode("utf-8")
-                os.write(descriptor, payload)
-                os.close(descriptor)
-                descriptor = None
+                _publish_lock(target, payload)
                 owned_payload = payload
                 break
             except FileExistsError as exc:
-                detail = (
-                    target.read_text(encoding="utf-8", errors="replace")
-                    if target.is_file()
-                    else ""
-                )
+                original = target.read_bytes() if target.is_file() else b""
+                detail = original.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
                 owner = _lock_pid(detail)
-                if attempt == 0 and owner is not None and not _pid_is_running(owner):
+                if attempt == 0 and owner is not None and _original_owner_exited(owner, detail):
                     stale = target.with_name(
                         f"{target.name}.stale-{owner}-{os.getpid()}"
                     )
                     try:
+                        if target.read_bytes() != original:
+                            raise RuntimeError("Runtime lock changed during owner verification; preserve the new owner")
                         target.replace(stale)
                     except FileNotFoundError:
                         continue
@@ -119,8 +114,6 @@ def exclusive_runtime_lock(path: Path, *, process_name: str) -> Iterator[None]:
     try:
         yield
     finally:
-        if descriptor is not None:
-            os.close(descriptor)
         with runtime_lock_maintenance_gate(target.parent):
             if owned_payload is not None:
                 try:
@@ -131,12 +124,82 @@ def exclusive_runtime_lock(path: Path, *, process_name: str) -> Iterator[None]:
                     target.unlink()
 
 
+def _publish_lock(target: Path, payload: bytes) -> None:
+    """Publish complete fsynced bytes atomically, never overwrite another lock."""
+    temporary = target.with_name(target.name + ".pending-" + secrets.token_hex(16))
+    try:
+        with temporary.open("xb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # Both paths share a directory/filesystem. A crash before link leaves
+        # only an inert temporary; after link the PID/birth/token are complete.
+        os.link(temporary, target)
+    except FileExistsError:
+        raise
+    except BaseException:
+        # An operation may succeed before its caller observes an I/O error.
+        # Remove only this exact unique token, never a concurrent replacement.
+        try:
+            if target.read_bytes() == payload:
+                target.unlink()
+        except FileNotFoundError:
+            pass
+        raise
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def _lock_pid(payload: str) -> int | None:
-    match = re.search(r"(?m)^pid=(\d+)$", payload)
-    if match is None:
+    matches = re.findall(r"(?m)^pid=(.*)$", payload)
+    if len(matches) != 1 or re.fullmatch(r"\d+", matches[0]) is None:
         return None
-    owner = int(match.group(1))
+    owner = int(matches[0])
     return owner if owner > 0 else None
+
+
+def _process_created_at(pid: int) -> float | None:
+    """Read process birth without signals; unknown evidence never proves reuse."""
+    try:
+        import psutil
+    except ImportError:
+        return None
+    try:
+        created = psutil.Process(pid).create_time()
+    except (psutil.Error, OSError):
+        return None
+    return created if type(created) in (int, float) and math.isfinite(created) and created > 0 else None
+
+
+def _original_owner_exited(pid: int, payload: str) -> bool:
+    if not _pid_is_running(pid):
+        return True
+    current_birth = _process_created_at(pid)
+    if current_birth is None:
+        return False
+    recorded = re.findall(r"(?m)^owner_created_at=(.*)$", payload)
+    if recorded:
+        if len(recorded) != 1:
+            return False
+        try:
+            original_birth = float(recorded[0])
+        except ValueError:
+            return False
+        return math.isfinite(original_birth) and original_birth > 0 and current_birth != original_birth
+    # Legacy locks have no process birth. A process born strictly after the
+    # recorded lock creation cannot be its original owner. Require an explicit
+    # zoned timestamp; malformed, future, or inaccessible evidence stays locked.
+    timestamps = re.findall(r"(?m)^started_at=(.*)$", payload)
+    if len(timestamps) != 1:
+        return False
+    try:
+        started = datetime.fromisoformat(timestamps[0].replace("Z", "+00:00"))
+        if started.tzinfo is None or started.utcoffset() is None:
+            return False
+        original_start = started.timestamp()
+    except (ValueError, OverflowError, OSError):
+        return False
+    return math.isfinite(original_start) and original_start > 0 and current_birth > original_start
 
 
 def _pid_is_running(pid: int) -> bool:
