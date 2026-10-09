@@ -1,0 +1,32 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261009T220609Z-4177ed0e6ba047d489c1659d85845745",
+  "change_id": "20261009T220609Z-4177ed0e6ba047d489c1659d85845745",
+  "commit_sha": "e8fdbcf0de1421c7bf66bd206c4aca48fd86bb5e",
+  "files": [
+    "datafetching/runtime_lock.py",
+    "tests/test_runtime_lock_identity.py",
+    "tests/test_independent_loop_isolation.py"
+  ],
+  "limitations": [
+    "Offline tests do not establish tonight production completion.",
+    "Existing unrelated quote-only Schwab test requires fixture credentials and is excluded; no provider was called.",
+    "Atomic lock publication requires local filesystem hardlink support; verified by the real C-drive temporary fixtures. Unknown preexisting malformed locks remain protected for diagnosis."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/45",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/1"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Audited installation only; preserve active trader source/runtime and retained session receipts. Include this exact shared lock correction in Scout compatible source union before declaring restart fallback complete.",
+  "scope": "Shared runtime locking; Scout receives these exact three released paths for compatible union",
+  "summary": "Repair nightly runtime ownership after PID reuse and interrupted lock publication",
+  "tests": [
+    {
+      "completed_at": "2026-10-09T22:09:03.476386Z",
+      "location": "immutable queue and fresh isolated candidate",
+      "result": "143 passed, 1 unrelated credential-dependent fixture deselected",
+      "started_at": "2026-10-09T22:08:40.772956Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T22:11:59.827093Z",
+  "id": "20261009T221159Z-1a8764d56be8449191f33eefe38f02a0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Repair nightly runtime ownership after PID reuse and interrupted lock publication"
+}
