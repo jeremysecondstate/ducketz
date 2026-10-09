@@ -227,3 +227,88 @@ def test_saved_continuation_preserves_native_run_directory_boundary(recovery):
         workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:20Z',
             identity=_identity, supervise=False,
             execute_step=lambda *a: pytest.fail('Native directory boundary bypassed'))
+
+
+def record_source_repair(root, state, target):
+    number = len(state.get('source_repairs', []))
+    snapshot = root/f'failed-state-{number}.json'
+    snapshot.write_text(json.dumps(state))
+    audit_path = root/f'repair-{number}.json'
+    audit = dict(at='2026-10-07T19:21:00Z', authorization='Offline reviewed source repair',
+        completion_record=f'offline-repair-{number}', failed_state=str(snapshot),
+        failed_state_sha256=file_checksum(snapshot), original_source_identity=state['source_identity'],
+        reviewed_source_identity=target)
+    audit_path.write_text(json.dumps(audit))
+    edge = {key:audit[key] for key in ('at','original_source_identity','reviewed_source_identity')}
+    edge.update(evidence=str(audit_path), evidence_sha256=file_checksum(audit_path))
+    state.setdefault('source_repairs', []).append(edge)
+    state['source_identity'] = target
+    return audit_path, snapshot
+
+
+def completed_tail_before_display_repair(recovery):
+    config, state_path, current, state = interrupted_continuation(recovery, completed=True, receipt_present=True)
+    state['status'] = 'FAILED'
+    state['current_step'] = 'verify_display'
+    state['steps']['train_and_plan'].update(status='COMPLETE', output=workflow._native_outputs(current))
+    state['steps']['verify_display'] = {'status':'FAILED'}
+    return config, state_path, current, state
+
+
+@pytest.mark.parametrize('repair_count', [1, 2])
+def test_reviewed_source_repairs_reuse_completed_native_tail_and_frozen_continuation(recovery, repair_count):
+    config, state_path, _, state = completed_tail_before_display_repair(recovery)
+    _, _, origin, exception, _ = recovery
+    before = json.loads(json.dumps(state))
+    original = {p.name:p.read_bytes() for p in origin.iterdir()}
+    authorization = exception.read_bytes()
+    for number in range(repair_count):
+        record_source_repair(Path(config['datastore']), state,
+            {'commit':str(number+1)*40, 'source_sha256':str(number+2)*64})
+    # Equivalent zoned representations preserve the same frozen deadlines.
+    state['deadline_at'] = '2026-10-07T04:00:00-07:00'
+    state['recovery_deadline_at'] = '2026-10-07T12:00:00-07:00'
+    before['deadline_at'], before['recovery_deadline_at'] = state['deadline_at'], state['recovery_deadline_at']
+    state_path.write_text(json.dumps(state))
+    calls = []
+    result = workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:25Z',
+        identity=lambda _:state['source_identity'], supervise=False,
+        execute_step=lambda c,s,step,save: calls.append(step) or {'files':{}})
+    assert result['status'] == 'LOCAL_COMPLETE_PEER_SETUP_PENDING'
+    assert calls == ['verify_display','local_handoff']
+    for key in ('run_id','deadline_at','recovery_deadline_at','planning_tail_continuation'):
+        assert result[key] == before[key]
+    for step in ('prepare_stats','model_review','train_and_plan'):
+        assert result['steps'][step] == before['steps'][step]
+    assert exception.read_bytes() == authorization
+    assert {p.name:p.read_bytes() for p in origin.iterdir()} == original
+
+
+@pytest.mark.parametrize('damage', ['unaudited','audit-hash','snapshot-hash','audit-identity',
+    'authorization','run','deadline','continuation','prefix','disconnected','checkout'])
+def test_continuation_rejects_unaudited_or_tampered_source_transitions(recovery, damage):
+    config, state_path, _, state = completed_tail_before_display_repair(recovery)
+    target = {'commit':'c'*40, 'source_sha256':'d'*64}
+    audit_path, snapshot = record_source_repair(Path(config['datastore']), state, target)
+    audit = json.loads(audit_path.read_text())
+    previous = json.loads(snapshot.read_text())
+    if damage == 'unaudited': state['source_repairs'] = []
+    elif damage == 'audit-hash': audit_path.write_text('{}')
+    elif damage == 'snapshot-hash': snapshot.write_text('{}')
+    else:
+        if damage == 'audit-identity': audit['reviewed_source_identity'] = {}
+        if damage == 'authorization': audit['authorization'] = ''
+        if damage == 'run': previous['run_id'] = 'different-recovery'
+        if damage == 'deadline': previous['recovery_deadline_at'] = '2026-10-07T22:00Z'
+        if damage == 'continuation': previous['planning_tail_continuation']['sha256'] = '0'*64
+        if damage == 'prefix': previous['source_repairs'] = [{'unreviewed':'earlier'}]
+        if damage == 'disconnected': state['source_identity'] = {'commit':'e'*40, 'source_sha256':'f'*64}
+        snapshot.write_text(json.dumps(previous))
+        audit['failed_state_sha256'] = file_checksum(snapshot)
+        audit_path.write_text(json.dumps(audit))
+        state['source_repairs'][-1]['evidence_sha256'] = file_checksum(audit_path)
+    state_path.write_text(json.dumps(state))
+    with pytest.raises(ValueError):
+        workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:25Z',
+            identity=_identity if damage == 'checkout' else lambda _:state['source_identity'], supervise=False,
+            execute_step=lambda *a: pytest.fail('Unaudited source dispatched a stage'))

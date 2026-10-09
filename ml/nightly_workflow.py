@@ -339,7 +339,7 @@ def _display(config: dict, state: dict) -> dict:
     native_output = state["steps"]["train_and_plan"]["output"]
     _verify_outputs(review_output)
     _verify_outputs(native_output)
-    reviewed = load_feedback_review(root, Path(review_output["proposal"]))
+    reviewed = load_feedback_review(root, Path(review_output["proposal"]), require_latest_stats=False)
     native_run = Path(native_output["native_run"])
     _native_outputs(native_run)
     pinned = _json(native_run / "stage-report.json").get("enrichment_gameplan", {})
@@ -348,24 +348,36 @@ def _display(config: dict, state: dict) -> dict:
             or pinned.get("action_date") != state["action_date"]
             or file_checksum(source / "receipt.json") != pinned.get("receipt_sha256")):
         raise ValueError("Native training segment has no matching pinned Gameplan source")
-    plan, stats = load_gameplan(datastore_root=root), load_gameplan_stats(datastore_root=root)
+    # Preparation precedes joint synthesis; verify the exact local publications
+    # without requiring the ordinary UI's combined-account display to exist.
+    from ml.gameplan_trade_planning import VERSION as TRADE_VERSION
+    pointer = _json(root / "ml/gameplan-trade-plan-latest/run.json")
+    current = pointer.get("current", {})
+    if (pointer.get("schema_version") != TRADE_VERSION
+            or current.get("action_date") != state["action_date"]
+            or current.get("source_receipt_sha256") != pinned["receipt_sha256"]):
+        raise ValueError("Local Gameplan pointer differs from this run's pinned training publication")
+    plan = load_gameplan(datastore_root=root, session=state["action_date"],
+        run_directory=root / current["run_path"], expected_receipt_sha256=current["receipt_sha256"])
+    expected_stats = (root / reviewed["stats"]["run_path"]).resolve()
+    stats = load_gameplan_stats(datastore_root=root, session=state["source_session"],
+        run_directory=expected_stats, expected_receipt_sha256=reviewed["stats"]["receipt_sha256"])
     if plan.session != state["action_date"] or stats.session != state["source_session"]:
-        raise ValueError("Default UI readers selected a different plan or Stats session")
+        raise ValueError("Local publications have a different plan or Stats session")
     if set(plan.symbols) != set(state["symbols"]) or set(stats.symbols) - set(state["symbols"]):
-        raise ValueError("Default UI reader symbols differ from this PC's research universe")
+        raise ValueError("Local publication symbols differ from this PC's research universe")
     if not plan.projection_available:
         raise ValueError("Local Gameplan projection is unavailable: " + plan.projection_note)
-    expected_stats = (root / reviewed["stats"]["run_path"]).resolve()
     if (stats.run_directory.resolve() != expected_stats
             or file_checksum(stats.run_directory / "receipt.json") != reviewed["stats"]["receipt_sha256"]):
-        raise ValueError("Default Stats display differs from the exact reviewed publication")
+        raise ValueError("Local Stats differ from the exact reviewed publication")
     receipt = _json(plan.run_directory / "receipt.json")
     configuration = _json(plan.run_directory / "manifest.json").get("configuration", {})
     source_ref = receipt.get("source_gameplan_run") or configuration.get("source_gameplan_run")
     if (not source_ref or (root / str(source_ref)).resolve() != source
             or receipt.get("source_receipt_sha256") != pinned["receipt_sha256"]
             or any(metadata.get("source_gameplan_run", source_ref) != source_ref for metadata in (receipt, configuration))):
-        raise ValueError("Default Gameplan display differs from this run's pinned training publication")
+        raise ValueError("Local Gameplan differs from this run's pinned training publication")
     paths = [plan.run_directory / "receipt.json", plan.run_directory / "manifest.json",
              stats.run_directory / "receipt.json", source / "receipt.json"]
     return {"plan_run": str(plan.run_directory), "stats_run": str(stats.run_directory),
@@ -470,6 +482,54 @@ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
     return _handoff(config, state)
 
 
+def _verify_continuation_source_repair(state, original_identity, saved):
+    """Bridge a frozen authorization only through preserved, reviewed repairs."""
+    if original_identity == state["source_identity"]:
+        return
+    repairs = state.get("source_repairs", [])
+    anchors = [i for i, item in enumerate(repairs)
+               if item.get("original_source_identity") == original_identity]
+    if saved is None or len(anchors) != 1:
+        raise ValueError("Frozen continuation source has no reviewed repair chain")
+    expected = original_identity
+    seen = {json.dumps(expected, sort_keys=True)}
+    for index in range(anchors[0], len(repairs)):
+        edge = repairs[index]
+        evidence = Path(edge["evidence"])
+        if file_checksum(evidence) != edge.get("evidence_sha256"):
+            raise ValueError("Continuation source repair evidence changed")
+        audit = _json(evidence)
+        target = edge.get("reviewed_source_identity")
+        if (edge.get("original_source_identity") != expected
+                or audit.get("original_source_identity") != expected
+                or audit.get("reviewed_source_identity") != target
+                or audit.get("at") != edge.get("at")
+                or any(not isinstance(audit.get(key), str) or not audit[key].strip()
+                       for key in ("authorization", "completion_record"))
+                or not isinstance(target, dict)
+                or set(target) != {"commit", "source_sha256"}
+                or any(not isinstance(target[key], str) or len(target[key]) != length
+                       or any(character not in "0123456789abcdef" for character in target[key])
+                       for key, length in (("commit", 40), ("source_sha256", 64)))
+                or json.dumps(target, sort_keys=True) in seen):
+            raise ValueError("Continuation source repair chain is not a reviewed transition")
+        snapshot = Path(audit["failed_state"])
+        if file_checksum(snapshot) != audit.get("failed_state_sha256"):
+            raise ValueError("Continuation source repair saved state changed")
+        before = _json(snapshot)
+        if (before.get("source_identity") != expected
+                or before.get("planning_tail_continuation") != saved
+                or before.get("source_repairs", []) != repairs[:index]
+                or any(before.get(key) != state.get(key) for key in ("run_id", "action_date"))
+                or any(not before.get(key) or utc_timestamp(before[key]) != utc_timestamp(state[key])
+                       for key in ("deadline_at", "recovery_deadline_at"))):
+            raise ValueError("Continuation source repair belongs to a different frozen recovery")
+        seen.add(json.dumps(target, sort_keys=True))
+        expected = target
+    if expected != state["source_identity"]:
+        raise ValueError("Continuation source repair chain does not reach the current source")
+
+
 def _planning_tail_continuation(config, state, requested, observed):
     """Validate a separately authorized continuation without replacing deadlines."""
     from ml.overnight_runtime import _resume_configuration, _validated_run
@@ -482,12 +542,12 @@ def _planning_tail_continuation(config, state, requested, observed):
     evidence = {"path": str(path), "sha256": file_checksum(path)}
     if saved is not None and saved != evidence:
         raise ValueError("The frozen planning continuation cannot be replaced")
+    _verify_continuation_source_repair(state, record.get("workflow_source_identity"), saved)
     entry = state["steps"].get("train_and_plan", {})
     root = Path(config["datastore"]).resolve()
     origin = (root / record.get("failed_native_run", "")).resolve()
     if (record.get("schema_version") != RECOVERY_VERSION
             or record.get("workflow_run_id") != state["run_id"]
-            or record.get("workflow_source_identity") != state["source_identity"]
             or record.get("action_date") != state["action_date"]
             or utc_timestamp(record.get("original_session_deadline_at")) != utc_timestamp(state["deadline_at"])
             or utc_timestamp(record.get("original_deadline_at")) != utc_timestamp(state.get("recovery_deadline_at"))
