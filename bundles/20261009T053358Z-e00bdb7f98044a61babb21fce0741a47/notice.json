@@ -1,0 +1,35 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261009T052909Z-2ff12f7495594aa687eb47555d386492",
+  "change_id": "20261009T052909Z-2ff12f7495594aa687eb47555d386492",
+  "changes": [
+    "ensemble_probability_shrinkage 0.5 to 0.375; all five positive families retained",
+    "Config expectation updated; configured horizon and purged 70/15/15 recipe retained"
+  ],
+  "completion_record": "20261009T052909Z-2ff12f7495594aa687eb47555d386492",
+  "files": [
+    "configs/hyperliquid-models.json",
+    "tests/test_hyperliquid_model_config.py"
+  ],
+  "limitations": [
+    "Repeatedly inspected assessment data is development evidence, not fresh confirmation.",
+    "Turnover/fee proxy improvement is not realized profitability.",
+    "Peer installation and runtime adoption remain unverified."
+  ],
+  "logical_task": "hyperliquid_paper_improvement",
+  "main_sha": "6e48ceb34b124781e11aeda168ee68496f2234b0",
+  "repository": "jeremysecondstate/ducketz",
+  "run_identity": "scout-paper-round-20261009T0326",
+  "runtime_implications": "Scout local simulated lifecycle completed with independent zero-cost opening and advancing trading verification. Peer may separately review/adopt common model default; no real orders, funds or Powder authority.",
+  "scope": "shared",
+  "source_sha": "4d79d83f9a5b0e3057d839cf568b29508e9f71f5",
+  "summary": "Scout pc-new completed shared probability-amplitude reduction for prospective simulated Paper trial and verified main integration.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-09T05:30:43.687659Z",
+      "output_sha256": "e3ff311ce2bd0efca492336da4bdb476a10e8fc17325651f8ea8f49832c147f3",
+      "result": "126 passed",
+      "started_at_utc": "2026-10-09T05:30:37.217023Z"
+    }
+  ]
+}

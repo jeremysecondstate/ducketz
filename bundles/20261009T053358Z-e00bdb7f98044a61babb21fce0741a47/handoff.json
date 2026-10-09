@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T05:33:58.747742Z",
+  "id": "20261009T053358Z-e00bdb7f98044a61babb21fce0741a47",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout pc-new completed shared probability-amplitude reduction for prospective simulated Paper trial and verified main integration."
+}
