@@ -330,3 +330,37 @@ and priority reconciliation remain paused, and LOG remains paused. Any saved
 handoff wake is provisional until the final dependency-driven delivery bindings
 are verified. The routine reconciliation target remains 01:25 Pacific; final
 priority intake must be connected only after the communication hold is lifted.
+
+
+## Continue a repaired late planning tail
+
+The ordinary 21:05 Pacific workflow remains primary. An explicitly requested,
+date-pinned missed-night recovery is the fallback. Resume a failed matching run;
+never duplicate completed Stats, model review, forecasts or enrichment.
+
+If a repair finishes after the fixed recovery deadline, an explicit
+`--resume-action-date YYYY-MM-DD --planning-tail-exception ABSOLUTE_RECORD`
+can continue only the already published stock planning/actuals tail. The record
+uses `operator-recovery-tail-continuation-v1`, binds the existing workflow ID,
+reviewed source identity, failed native receipt and exact Gameplan receipt, and
+records the operator request and a fixed same-session expiration before 17:00
+Pacific. Both the original 04:00 deadline and the first recovery deadline remain
+unchanged. This is a separately recorded continuation, not an automatic extension.
+The first accepted continuation is frozen; retries cannot replace it or advance
+its expiration. Earlier-stage failures require their own explicit recovery;
+this tail route cannot rerun training. Original failed receipts and logs remain
+byte-identical. A completed matching workflow is returned without replay.
+
+For planning with a current zero-working-order account observation, saved local
+reservations can remain conservatively withheld in the informational snapshot.
+The planner retains their quantities and withholds the greater of recorded buy
+limit notional and current ask notional. It does not release reservations,
+rewrite history, refresh saved reconciliation timestamps or claim current
+reconciliation. Other account/ownership uncertainty still blocks planning.
+
+Scout provides research and synthesizes both packages using Atlas's one account
+snapshot. Normal exchange no longer launches a Scout ownership responder or
+requests Scout execution history, regardless of saved activation state. Historical
+ownership challenge evidence remains available for review but is not a new
+planning dependency. Final completion is exact synthesized Gameplan and Stats
+adoption on Atlas; numerical preparation alone is not joint completion.

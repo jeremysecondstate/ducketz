@@ -124,9 +124,13 @@ def test_active_coordinator_preserves_account_wide_horizon_history(tmp_path, pen
     result = capture(tmp_path, session)
     assert set(result['held_shares']) == {'AAPL', 'MU'}
     own = result['ownership']
-    assert own['safe_for_planning'] is (not pending)
+    assert own['safe_for_planning'] is True
     assert {(r['symbol'], r['horizon']) for r in own['active_allocations']} == {('AAPL', '1d'), ('MU', '4h')}
-    assert ('PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION' in own['reason_codes']) is pending
+    assert own['reason_codes'] == []
+    if pending:
+        assert result['planning_reservation_evidence']['runtime_reconciliation_required'] is True
+        assert result['pending_buy_shares']['MU'] == 1
+        assert own['active_allocations'][1]['reserved_buy_shares'] == 1
     assert session.calls.count('account') == session.calls.count('orders') == session.calls.count('quotes') == 1
     assert path.read_bytes() == before
     assert 'original-other-symbol' not in json.dumps(result)

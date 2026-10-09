@@ -537,8 +537,11 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         if (late_action_date != action_date
                 or config.get("publication_mode") != "LATE_RECOVERY"
                 or config.get("late_action_date") != action_date
-                or deadline is None or deadline_exception is not None or refresh_plan is not None
-                or not original_deadline <= observed < deadline_at <= close):
+                or deadline is None or refresh_plan is not None
+                or observed < original_deadline
+                or (deadline_exception is not None and not Path(deadline_exception).is_file())
+                or (deadline_exception is None and observed >= deadline_at)
+                or not original_deadline <= deadline_at <= close):
             raise ValueError("Late trade planning requires the matching recovery source and unexpired recovery deadline")
     elif deadline_at != original_deadline:
         raise ValueError("Trade planning deadline differs from the pinned action session")
@@ -546,7 +549,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     refresh_snapshot = refresh_asof = refresh_evidence = refresh_pointer_hash = None
     refresh_inputs = []
     if late_action_date is not None:
-        exception_evidence = None
+        deadline_at, exception_evidence = preparation_deadline(root, source, deadline_at, observed, deadline_exception)
     elif refresh_plan is None:
         deadline_at, exception_evidence = preparation_deadline(root, source, original_deadline, observed, deadline_exception)
     else:

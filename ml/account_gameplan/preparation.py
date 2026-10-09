@@ -134,7 +134,8 @@ def _native_snapshot(root, config, *, observed_at):
         checked = True
         return _ownership(root, config.symbols, identity, snapshot["held_shares"], snapshot["observed_at"])
     result = _capture_trade_planning_snapshot(root, requested=config.symbols, observed_at=observed_at,
-                                             explicit_universe=True, ownership_reader=ownership)
+                                             explicit_universe=True, ownership_reader=ownership,
+                                             retain_planning_reservations=True)
     if not checked or result.get("status") != "OBSERVED" or result.get("ownership", {}).get("safe_for_planning") is not True:
         raise ValueError("Fresh matching-account union ownership snapshot is unavailable")
     return {**result, "account_fingerprint": config.account_fingerprint}
