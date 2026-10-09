@@ -4,6 +4,7 @@ import os
 import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -157,7 +158,7 @@ def test_loop_supervisor_lock_never_reclaims_live_or_unverifiable_owner(
     payload = (
         "process=existing test owner\n"
         f"pid={owner}\n"
-        "started_at=2026-09-03T00:00:00+00:00\n"
+        f"started_at={datetime.now(timezone.utc).isoformat()}\n"
         "token=existing\n"
     )
     lock.write_text(payload, encoding="utf-8")

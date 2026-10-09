@@ -1098,7 +1098,7 @@ def test_options_history_guarded_preflight_selects_scopes_within_run_budget(
             active_clients.add(id(client))
             max_active = max(max_active, len(active_clients))
         try:
-            assert client.metadata.TIMEOUT == 30
+            assert client.metadata.TIMEOUT == 100
             if symbol == "AAPL.OPT":
                 first_started.set()
                 assert second_completed.wait(5), "Second preflight did not run concurrently"

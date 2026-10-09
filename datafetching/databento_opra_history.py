@@ -62,7 +62,9 @@ STANDARD_SCHEMAS = (*L0_SCHEMAS, *L1_SCHEMAS)
 # history unless a separate production consumer is explicitly added.
 OPRA_STRATEGY_HISTORY_SCHEMAS = ("ohlcv-1h", "cbbo-1m", "definition")
 
-METADATA_TIMEOUT_SECONDS = 30
+# Match the SDK HTTP allowance; a large exact OPRA estimate can exceed 30s.
+# configure_client sets endpoint instances, leaving unrelated clients unchanged.
+METADATA_TIMEOUT_SECONDS = 100
 TIMESERIES_TIMEOUT_SECONDS = 300
 METADATA_MAX_ATTEMPTS = None
 DOWNLOAD_MAX_ATTEMPTS = None
@@ -246,14 +248,14 @@ def storage_preflight(
             _retry(
                 metadata.get_billable_size,
                 kwargs=kwargs,
-                operation=f"{schema} estimated download size",
+                operation=_metadata_operation("estimated download size", kwargs),
             )
         )
         records = int(
             _retry(
                 metadata.get_record_count,
                 kwargs=kwargs,
-                operation=f"{schema} record count",
+                operation=_metadata_operation("record count", kwargs),
             )
         )
         get_cost = getattr(metadata, "get_cost", None)
@@ -262,7 +264,7 @@ def storage_preflight(
                 _retry(
                     get_cost,
                     kwargs=kwargs,
-                    operation=f"{schema} estimated cost",
+                    operation=_metadata_operation("estimated cost", kwargs),
                 )
             )
             if callable(get_cost)
@@ -3138,16 +3140,17 @@ def _partition_time_segments(
     output: list[tuple[str, str, str | None]] = []
 
     def visit(interval_start: pd.Timestamp, interval_end: pd.Timestamp, *, split: bool) -> None:
+        kwargs = _metadata_request_kwargs(
+            schema=schema,
+            start=interval_start.isoformat(),
+            end=interval_end.isoformat(),
+            symbols=symbols,
+        )
         try:
             record_count = int(_retry(
                 getattr(metadata, "get_record_count"),
-                kwargs=_metadata_request_kwargs(
-                    schema=schema,
-                    start=interval_start.isoformat(),
-                    end=interval_end.isoformat(),
-                    symbols=symbols,
-                ),
-                operation=f"{schema} time-partition record count",
+                kwargs=kwargs,
+                operation=_metadata_operation("time-partition record count", kwargs),
             ))
         except OpraSyncError as exc:
             if not _unresolved_parent_request(exc, symbols=symbols):
@@ -3262,6 +3265,15 @@ def _history_window_start(end: str, policy: Mapping[str, object]) -> str:
     else:
         raise ValueError(f"Unsupported OPRA included-history policy: {policy}")
     return start.date().isoformat()
+
+
+def _metadata_operation(operation: str, request: Mapping[str, object]) -> str:
+    """Identify an exact public market-data request without logging credentials."""
+
+    identity = {name: request[name] for name in (
+        "dataset", "schema", "symbols", "start", "end", "stype_in"
+    )}
+    return f"{operation} request={json.dumps(identity, separators=(',', ':'))}"
 
 
 def _metadata_request_kwargs(

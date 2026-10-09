@@ -192,11 +192,14 @@ def test_stock_only_keeps_publication_deadline(publication_fixture, monkeypatch,
 
 
 @pytest.mark.parametrize("price_source", ["canonical-equity-minute-v1", "xnas-itch-archive-v1"])
-def test_independent_target_publication_uses_new_labels_and_preserves_native_contract(publication_fixture, monkeypatch, price_source):
+@pytest.mark.parametrize("late", [False, True])
+def test_independent_target_publication_uses_new_labels_and_preserves_native_contract(publication_fixture, monkeypatch, price_source, late):
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, stock_target_windows
 
     fixture = publication_fixture
     sources = []
+    if late:
+        fixture.clock[0] = pd.Timestamp("2026-09-08T15:00Z")
     points = set()
     for day in (date(2026, 8, 17), ACTION_DATE):
         windows = stock_target_windows(day)
@@ -235,6 +238,9 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
     monkeypatch.setattr(nightly, "load_stock_target_prices", explicit_source)
 
     def fit_new_targets(training, **kwargs):
+        if late:
+            assert pd.to_datetime(training.target_window_end, utc=True).lt(
+                pd.Timestamp("2026-09-08T11:00Z")).all()
         assert set(training.target) == {0, 1}
         assert training.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
         kwargs["current"] = kwargs["current"].assign(
@@ -250,11 +256,16 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
     # metadata; do not silently inherit the current publication default.
     result = nightly.run_nightly_gameplan_once(fixture.root, stock_only=True,
                                               independent_stock_horizons=True, stock_price_source=price_source,
+                                              late_action_date="2026-09-08" if late else None,
                                               probability_target_contract=nightly.LEGACY_COST_TARGET, reporter=None)
     publication = nightly.read_current_gameplan(fixture.root)
     forecasts = pd.read_parquet(result.run_directory / "forecasts.parquet")
     intents = pd.read_parquet(result.run_directory / "option-strategy-intents.parquet")
     assert len(forecasts) == len(intents) == 168
+    assert publication.manifest["configuration"]["publication_mode"] == ("LATE_RECOVERY" if late else "NIGHTLY")
+    if late:
+        assert pd.Timestamp(publication.receipt["published_at"]) == pd.Timestamp("2026-09-08T15:00Z")
+        assert publication.receipt["action_date"] == "2026-09-08"
     assert publication.manifest["configuration"]["target_contract_version"] == STOCK_TARGET_CONTRACT_VERSION
     assert publication.manifest["configuration"]["target_calendar_feature_contract"] == "independent-stock-known-calendar-inputs-v1"
     assert forecasts.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
