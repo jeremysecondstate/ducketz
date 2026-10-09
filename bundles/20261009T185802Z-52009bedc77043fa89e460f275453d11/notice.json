@@ -1,0 +1,40 @@
+{
+  "author": "Scout",
+  "change_id": "nightly-trade-planning-2026-10-09-776f9c2d23fd",
+  "changes": [
+    "No source changes in this inspection. Action date 2026-10-09, source session 2026-10-08; planning failed at 2026-10-09T18:51:49Z.",
+    "Publication and enrichment completed successfully. Worker exited. Forecast validator rejects honest late frozen_at timestamps against already elapsed target starts; decision and information timestamps pass that predicate.",
+    "Preserve Atlas ownership of validator and package compatibility repair. Existing Scout tail-retention source is separately published at 3c567ef96519dbbc9870648b750363574b6845c4, Completion-Record 20261009T184441Z-6932052c48984e14be3c066f57ac06bd; no installation by this wake."
+  ],
+  "commit_sha": "d53d2007f8665e866c15cc37c608df3323bb9082",
+  "completion_record": "20261009T182830Z-bafca648331d458bab9a029c5849fd43",
+  "files": [
+    "ml/stock_trader/independent_signals.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/nightly_gameplan.py"
+  ],
+  "limitations": [
+    "Diagnostic evidence is not a passing repair regression suite.",
+    "Private logs, packets, receipts, forecasts, account state, symbols and local paths are excluded.",
+    "Delivery does not establish Atlas acknowledgement, installation or acceptance."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/33",
+    "https://github.com/jeremysecondstate/ducketz/pull/36"
+  ],
+  "operating_base_commit": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "operating_source_sha256": "776f9c2d23fd4fe16b68b859aeecdc7881769c126d27de1c56044df9b310e3bc",
+  "portable_reproduction": "Offline fixture: construct a valid execution forecast grid for an action date with decision_timestamp and information_available_at before target_window_start, but honest recovery frozen_at after early target starts. The current _validated_independent_forecasts raises ValueError: Independent stock execution forecast contains future information. Repair must preserve causal cutoff, honest publication times and non-execution of elapsed entries.",
+  "repository": "jeremysecondstate/ducketz",
+  "resolution_status": "Blocked awaiting reviewed compatible source correction and supported source-binding transition before bounded planning-tail resume. No unchanged deterministic retry.",
+  "runtime_implications": "Shared late-recovery validation affects handoff on either PC. Preserve completed work and original recovery expiry; no trading, cutover, restart or live activation authorized.",
+  "scope": "shared",
+  "summary": "Scout action-date 2026-10-09 preparation completed publication and enrichment, then failed forecast timestamp validation",
+  "tests": [
+    {
+      "command": "Read-only exact-session artifact integrity and timestamp-predicate diagnostic",
+      "completed_at_utc": "2026-10-09T18:53:20.886557Z",
+      "result": "17 evidence hashes and current source binding verified; timestamp predicate isolates frozen_at rather than decision or information availability. No provider calls, lower-level stage execution or regression suite run."
+    }
+  ]
+}
