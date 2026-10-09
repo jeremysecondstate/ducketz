@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T15:52:05.494930Z",
+  "id": "20261009T155205Z-35e11001d41340b3af5ce063a713846b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retained shared Loop B expiry-race source e6c9d56f pending producer fingerprint evidence for isolated intake."
+}
