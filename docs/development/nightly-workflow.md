@@ -132,6 +132,12 @@ every freeze must precede its recorded publication, and publication must be
 within that day's open session. Original forecast IDs and windows remain intact;
 normal sources retain the pre-window freeze check. The peer must install the
 matching validator before accepting a late package.
+On an already active Atlas coordinator, a native planning snapshot validates
+ownership over the bound execution-account universe, even when the local
+research plan covers only Atlas's subset. It retains other symbols' original
+horizon allocations and reservations. This read neither reconciles the ledger
+nor enables trading; pending reservations and inconsistent ownership still
+require the normal account reconciliation path.
 Read `--status` and the saved worker log for the real outcome. A separate morning
 readiness task checks durable results and reports missing/failed stages. Success
 during the rollout is `LOCAL_COMPLETE_PEER_SETUP_PENDING`; it is not joint

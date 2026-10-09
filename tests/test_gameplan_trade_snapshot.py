@@ -99,6 +99,67 @@ def ledger(root, *, account=IDENTITY, shares=1, ready=1, block=False):
     return path
 
 
+@pytest.mark.parametrize('pending', [False, True])
+def test_active_coordinator_preserves_account_wide_horizon_history(tmp_path, pending):
+    from test_account_gameplan_config import write_config
+    path = ledger(tmp_path)
+    write_config(tmp_path, status='ACTIVE')
+    with sqlite3.connect(path) as db:
+        db.execute('INSERT INTO allocations VALUES (?,?,?,?,?,?,?)',
+            ('original-other-symbol', IDENTITY, 'MU', '4h', '2026-09-08T11:00:00Z', '2026-09-09T15:00:00Z', 'ACTIVE'))
+        db.execute('INSERT INTO reservations VALUES (?,?,?,?,?,?)',
+            ('original-other-symbol', 'BUY', 2 if pending else 1, '100', 1, 'WORKING' if pending else 'FILLED'))
+        db.execute('UPDATE snapshots SET payload=?,owned=?',
+            (json.dumps({'held_shares': {'AAPL': 2, 'MU': 2}}), json.dumps({'AAPL': 1, 'MU': 1})))
+    before = path.read_bytes()
+    class AccountSession(ReadSession):
+        def get_equity_quotes(self, symbols):
+            self.calls.append('quotes')
+            assert tuple(symbols) == ('AAPL', 'MU')
+            return {**self.quotes, 'MU': self.quotes['AAPL']}
+    session = AccountSession()
+    session.account['securitiesAccount']['positions'].append({
+        'instrument': {'symbol': 'MU', 'assetType': 'EQUITY'},
+        'longQuantity': 2, 'shortQuantity': 0, 'marketValue': 200, 'marketPrice': 100, 'currentDayProfitLoss': 0})
+    result = capture(tmp_path, session)
+    assert set(result['held_shares']) == {'AAPL', 'MU'}
+    own = result['ownership']
+    assert own['safe_for_planning'] is (not pending)
+    assert {(r['symbol'], r['horizon']) for r in own['active_allocations']} == {('AAPL', '1d'), ('MU', '4h')}
+    assert ('PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION' in own['reason_codes']) is pending
+    assert session.calls.count('account') == session.calls.count('orders') == session.calls.count('quotes') == 1
+    assert path.read_bytes() == before
+    assert 'original-other-symbol' not in json.dumps(result)
+
+
+def test_active_coordinator_rejects_account_binding_change(tmp_path):
+    from test_account_gameplan_config import write_config
+    from ml import gameplan_trade_snapshot as module
+    write_config(tmp_path, status='ACTIVE')
+    from unittest.mock import patch
+    def capture_bound(root, **kwargs):
+        reader = kwargs['ownership_reader']
+        assert reader('b' * 64, {})['safe_for_planning'] is False
+        write_config(tmp_path, status='PREPARING')
+        result = reader(IDENTITY, {})
+        assert result['reason_codes'] == ['OWNERSHIP_ACCOUNT_BINDING_CHANGED_OR_MISMATCHED']
+        return result
+    with patch.object(module, '_capture_trade_planning_snapshot', capture_bound):
+        assert capture(tmp_path)['safe_for_planning'] is False
+
+
+@pytest.mark.parametrize('machine,status', [('pc-new','ACTIVE'), ('pc-original','PREPARING')])
+def test_unactivated_or_peer_research_does_not_expand_its_account_scope(tmp_path, monkeypatch, machine, status):
+    from test_account_gameplan_config import write_config
+    from ml import gameplan_trade_snapshot as module
+    write_config(tmp_path, machine=machine, status=status)
+    calls = []
+    monkeypatch.setattr(module, '_capture_trade_planning_snapshot', lambda *a, **k: calls.append(k))
+    capture(tmp_path)
+    assert calls[0]['requested'] == ('AAPL',)
+    assert 'ownership_reader' not in calls[0] and 'explicit_universe' not in calls[0]
+
+
 def test_single_read_sanitized_cash_only_and_no_state_created(tmp_path):
     session = ReadSession()
     session.orders = [buy_order()]
