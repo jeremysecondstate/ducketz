@@ -32,7 +32,7 @@ def test_default_file_uses_shared_market_config_and_next_five_minute_horizon():
     assert (settings.train_fraction, settings.calibration_fraction, settings.assessment_fraction) == (.70, .15, .15)
     assert settings.max_train_rows is None
     assert settings.max_model_age_seconds == 86400
-    assert settings.ensemble_probability_shrinkage == 0.375
+    assert settings.ensemble_probability_shrinkage == 0.25
     assert all(weight > 0 for weight in (settings.logistic_weight, settings.extra_trees_weight,
                                          settings.hist_gradient_boosting_weight, settings.mlp_weight,
                                          settings.random_forest_weight))
