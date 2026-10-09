@@ -431,19 +431,29 @@ def test_display_uses_real_ui_readers_and_exact_review_training_artifacts(tmp_pa
     assert str(source / "receipt.json") in output["files"]
 
 
-@pytest.mark.parametrize("replacement", ["stats", "plan"])
-def test_same_session_pointer_replacement_cannot_pass_display_verification(tmp_path, replacement):
+def test_same_session_plan_replacement_cannot_pass_display_verification(tmp_path):
     state, _, _, _ = _display_fixture(tmp_path)
-    if replacement == "stats":
-        from gameplan_stats_fixture import write_review
-        write_review(tmp_path, version="02")
-        message = "Stats or training implementation changed"
-    else:
-        from gameplan_fixture import write_plan
-        write_plan(tmp_path, run_name="another-same-session-plan")
-        message = "pinned training publication"
-    with pytest.raises(ValueError, match=message):
+    from gameplan_fixture import write_plan
+    write_plan(tmp_path, run_name="another-same-session-plan")
+    with pytest.raises(ValueError, match="pinned training publication"):
         _display({"datastore": str(tmp_path)}, state)
+
+
+def test_local_display_uses_reviewed_stats_before_joint_handoff(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from app.ui.gameplan_data import load_gameplan, GameplanError
+    from gameplan_stats_fixture import write_review
+    state, trade, stats, _ = _display_fixture(tmp_path)
+    write_review(tmp_path, version="02")
+    monkeypatch.setattr("ml.account_gameplan.config.load_account_config",
+        lambda root: SimpleNamespace(activation={"status":"ACTIVE"}))
+    with pytest.raises(GameplanError, match="shared account Gameplan is not available"):
+        load_gameplan(tmp_path)
+    output = _display({"datastore": str(tmp_path)}, state)
+    assert output["plan_run"] == str(trade)
+    assert output["stats_run"] == str(stats)
+    with pytest.raises(GameplanError, match="shared account Gameplan is not available"):
+        load_gameplan(tmp_path)
 
 
 def test_handoff_uses_explicit_immutable_stats_filename_and_is_retryable(tmp_path, monkeypatch):
@@ -595,8 +605,7 @@ def test_frozen_local_preparation_survives_combined_stats_display(tmp_path):
     adopt_combined_stats(tmp_path, packages=selections, expected_symbols=universes,
                         expected_sha256=hashes, reviewed_at="2026-09-14T09:30Z")
     assert _verify_local_preparation(config, state) == saved
-    with pytest.raises(ValueError, match="Stats or training implementation changed"):
-        _display(config, state)
+    assert _display(config, state) == saved
     (trade / "direction-ledger.json").write_text("changed")
     with pytest.raises((ValueError, RuntimeError)):
         _verify_local_preparation(config, state)

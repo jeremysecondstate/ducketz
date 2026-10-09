@@ -2,16 +2,15 @@
 
 This is the replacement for **Loops Overnight Gameplan (LOG)**. LOG and its
 native task are legacy reference material. Preserve its definition, leave it
-paused, and create a separate replacement task identity. Suitable existing
+paused. Reuse the installed Stats-first preparation identity. Suitable existing
 numerical stages remain reusable; old task prompts are not the new launcher.
 
 ## Local rollout and authority
 
-The October 7, 2026 rollout is Scout first, then a separate human-led Atlas
-installation. Do not contact the peer, deliver coordination notices, activate
-cross-PC intake, or claim peer readiness until the human confirms both local
-installations. Reviewed source publication and local completion evidence do
-not prove peer installation. Preserve the pinned coordination installation,
+The October 7, 2026 staged rollout is historical context. Current Atlas and
+Scout preparation and exchange use their existing reviewed local bindings and
+authorized communication. Reviewed source publication and local completion
+evidence do not prove peer installation. Preserve the pinned coordination installation,
 queues, identities, Drive bindings, native memory and receipts.
 
 Machine identity comes from the private coordination profile, not the signed-in
@@ -242,12 +241,11 @@ merely because old profiles still name them.
 
 Obtain this reviewed source through the normal local source procedure. Verify
 Atlas's pinned release, own profile and watchlist; leave its LOG task paused.
-Install its own config and new native preparation/readiness identities. Run the
-offline regression suite and configuration check there. Verify the local
-account/snapshot and manual-start trader bindings separately without placing
-test orders. Only after both installations are confirmed should communication,
-priority reconciliation and synthesis be enabled and an actual joint run be
-verified end to end. Scout's offline tests cannot prove Atlas's installed or
+Preserve the existing config and native preparation/readiness identities. Run
+the offline regression suite and configuration check for a reviewed source
+installation. Existing authorized handoff and priority reconciliation continue
+their bounded dependency checks. Actual joint completion is recorded only after
+the exact returned plan, Stats and receipt are verified. Scout's offline tests cannot prove Atlas's installed or
 running version.
 
 ## Atlas compatibility and receipt verification
@@ -283,8 +281,7 @@ still fail local verification. An earlier session's receipt cannot satisfy
 today's readiness.
 
 An older completed synthesis or handoff receipt can be pinned by retrying its
-exact specification and completion identity under existing authority, after
-the current synthesis/handoff hold is lifted. Do not construct the selection
+exact specification and completion identity under existing authority. Do not construct the selection
 file by hand. Local readiness, verified joint publication and trading authority
 remain separate: verification is read-only, does not activate authority or place
 orders, and does not establish that the peer has installed or verified its copy.
@@ -300,7 +297,7 @@ adoption evidence. A retry retains the same completion identity and exact spec.
 
 ```powershell
 & .\.venv\Scripts\python.exe -B -m ml.nightly_handoff --spec scratch/nightly-workflow/handoff-spec.json --local-profile C:\dev\ducketz\scratch\cross-pc\local-profile.json --validate-only
-# Only after final transport enablement and review of the exact returned bytes:
+# Use the existing reviewed transport and exact returned bytes:
 & .\.venv\Scripts\python.exe -B -m ml.nightly_handoff --spec scratch/nightly-workflow/handoff-spec.json --local-profile C:\dev\ducketz\scratch\cross-pc\local-profile.json
 ```
 
@@ -315,21 +312,23 @@ configuration must belong to the local datastore and match Atlas's identity,
 account and research/execution partitions. Native paths, hashes of private
 bindings and source receipt paths stay in the private specification.
 
-Accepted joint execution retains Atlas's existing account cutover, source
-deployment, account identity, inventory and reservation checks. A PREPARING
-configuration still blocks execution. The bridge maps the two producer names
-to existing account participant identities only after matching their declared
-universes. Each catch-up reservation must match the recomputed outstanding net
-intention; filled and working quantities reduce that intention and cancelled
-residuals may retry. Conflicting old and new selections for the same session
-fail closed. Installing source does not activate cutover or start a trader.
+Atlas is the sole executor for all symbols and horizons when Jeremy manually
+starts the trader. Execution ownership follows the account, symbol, horizon and
+original allocation/order/fill identities; research producer and PC identity do
+not assign ownership. Scout returns the exact synthesized Gameplan and Stats;
+Atlas adopts that result. This completes planning without a Scout execution
+history export or separate migration/cutover approval. The normal worker obtains
+current account evidence and reconciles native ownership, orders and reservations
+before submission. Installing source does not activate or start that worker.
 
-The local setup installs distinct preparation (21:05), readiness (03:35) and
-Trader Representative (03:55) identities in America/Los_Angeles. Joint handoff
-and priority reconciliation remain paused, and LOG remains paused. Any saved
-handoff wake is provisional until the final dependency-driven delivery bindings
-are verified. The routine reconciliation target remains 01:25 Pacific; final
-priority intake must be connected only after the communication hold is lifted.
+The ordinary preparation remains at 21:05 America/Los_Angeles. Preserve the
+existing Atlas Joint Gameplan Handoff and Atlas Priority Source Reconciliation
+identities and their five-minute bounded dependency checks. They retain durable
+queues and completion IDs, diagnose missing preparations, and notify only on
+meaningful changes or required action. The 03:00 readiness-risk and 03:35 missed
+pre-session notifications use their existing per-action-date identities; these
+are notification times, not startup prohibitions or approval gates. LOG remains
+paused and reference-only. These descriptions do not authorize schedule changes.
 
 
 ## Continue a repaired late planning tail
@@ -364,3 +363,13 @@ requests Scout execution history, regardless of saved activation state. Historic
 ownership challenge evidence remains available for review but is not a new
 planning dependency. Final completion is exact synthesized Gameplan and Stats
 adoption on Atlas; numerical preparation alone is not joint completion.
+
+Local preparation display verification reads its exact local trade-plan receipt,
+pinned training Gameplan and reviewed Stats publication before a combined plan
+exists. Ordinary UI selection still uses accepted combined/account publications.
+A reviewed source repair can preserve an already frozen continuation only through
+an unbroken source-repair chain with exact audit and saved-state hashes. The
+original exception, deadline instants, completed outputs and repair prefixes stay
+bound; current checkout source equality is still required. After an interrupted
+save, native recovery verifies owner liveness and existing receipts before reuse,
+so completed numerical work is not duplicated.

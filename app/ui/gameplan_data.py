@@ -709,47 +709,68 @@ def _load_account_view(root: Path, pointer: dict, requested: str | None = None) 
                     contract, producer, tuple(sources), ledger)
 
 
-def load_gameplan(datastore_root: Path | None = None, session: str | None = None) -> Gameplan:
+def load_gameplan(datastore_root: Path | None = None, session: str | None = None, *,
+                  run_directory: Path | None = None,
+                  expected_receipt_sha256: str | None = None) -> Gameplan:
+    """Read the selected display or an explicitly pinned local publication.
+
+    Explicit immutable publications are used by preparation before joint
+    synthesis exists. They never change or consult combined display pointers.
+    """
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
     try:
         requested = _session(session) if session else None
-        current = _latest(root)
-        from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
-        combined_dates = accepted_sessions(root)
-        combined_date = requested or (combined_dates[0] if combined_dates else None)
-        accepted = read_accepted_joint_plan(root, combined_date) if combined_date else None
-        joint_selected = bool(accepted and (requested or not current or combined_date >= current["action_date"]))
-        account_pointer = _account_pointer(root, accepted_joint=joint_selected)
-        # A damaged account publication still fails closed. Once verified, its
-        # old session cannot shadow a newer local or accepted joint publication.
-        account = _load_account_view(root, account_pointer) if account_pointer is not None else None
-        if (joint_selected and account is not None and not requested
-                and combined_date < account.session):
-            joint_selected = False
-        if joint_selected:
-            combined, binding, run = accepted
-            forecasts = tuple(sorted((_forecast(row) for row in combined["forecasts"]),
-                key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
-            return Gameplan(combined_date, _timestamp(combined["as_of"]), _timestamp(binding["accepted_at"]),
-                run, run / "joint-plan.json", forecasts, _actions(combined["ledger"], forecasts, combined_date),
-                "COMPLETE", "", "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
-                _execution_quotes(root, forecasts), combined["holding_policy"],
-                probability_target_contract(pd.DataFrame(combined["forecasts"])))
-        if account is not None:
-            if requested and requested <= account.session:
-                return _load_account_view(root, account_pointer, requested)
-            if not requested and (not current or account.session >= current["action_date"]):
-                return account
-        pointer = current if current and (requested is None or requested == current["action_date"]) else None
-        if pointer:
-            selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
-        elif requested:
-            candidates = [item for item in _history(root) if item[0] == requested]
-            if not candidates:
-                raise GameplanError(f"No completed direction-ledger plan is saved for {requested}")
-            selected, _, run = max(candidates, key=lambda item: (item[1], item[2].name))
+        if run_directory is not None:
+            run = _run_path(root, Path(run_directory).resolve())
+            if (not isinstance(expected_receipt_sha256, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", expected_receipt_sha256) is None):
+                raise GameplanError("Frozen Gameplan requires its exact receipt hash")
+            saved = _json(run / "receipt.json")
+            selected = _session(saved.get("action_date"))
+            if requested is not None and selected != requested:
+                raise GameplanError(f"No verified local Gameplan is saved for {requested}")
+            pointer = {"receipt_sha256": expected_receipt_sha256,
+                       "source_receipt_sha256": saved.get("source_receipt_sha256")}
         else:
-            raise GameplanError("No saved Gameplan is available yet. Refresh after nightly planning finishes.")
+            if expected_receipt_sha256 is not None:
+                raise GameplanError("A frozen receipt hash requires an explicit saved run")
+            current = _latest(root)
+            from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
+            combined_dates = accepted_sessions(root)
+            combined_date = requested or (combined_dates[0] if combined_dates else None)
+            accepted = read_accepted_joint_plan(root, combined_date) if combined_date else None
+            joint_selected = bool(accepted and (requested or not current or combined_date >= current["action_date"]))
+            account_pointer = _account_pointer(root, accepted_joint=joint_selected)
+            # A damaged account publication still fails closed. Once verified, its
+            # old session cannot shadow a newer local or accepted joint publication.
+            account = _load_account_view(root, account_pointer) if account_pointer is not None else None
+            if (joint_selected and account is not None and not requested
+                    and combined_date < account.session):
+                joint_selected = False
+            if joint_selected:
+                combined, binding, run = accepted
+                forecasts = tuple(sorted((_forecast(row) for row in combined["forecasts"]),
+                    key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
+                return Gameplan(combined_date, _timestamp(combined["as_of"]), _timestamp(binding["accepted_at"]),
+                    run, run / "joint-plan.json", forecasts, _actions(combined["ledger"], forecasts, combined_date),
+                    "COMPLETE", "", "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
+                    _execution_quotes(root, forecasts), combined["holding_policy"],
+                    probability_target_contract(pd.DataFrame(combined["forecasts"])))
+            if account is not None:
+                if requested and requested <= account.session:
+                    return _load_account_view(root, account_pointer, requested)
+                if not requested and (not current or account.session >= current["action_date"]):
+                    return account
+            pointer = current if current and (requested is None or requested == current["action_date"]) else None
+            if pointer:
+                selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
+            elif requested:
+                candidates = [item for item in _history(root) if item[0] == requested]
+                if not candidates:
+                    raise GameplanError(f"No completed direction-ledger plan is saved for {requested}")
+                selected, _, run = max(candidates, key=lambda item: (item[1], item[2].name))
+            else:
+                raise GameplanError("No saved Gameplan is available yet. Refresh after nightly planning finishes.")
         receipt_path = run / "receipt.json"
         receipt_hash = file_checksum(receipt_path)
         if pointer and receipt_hash != pointer.get("receipt_sha256"):
