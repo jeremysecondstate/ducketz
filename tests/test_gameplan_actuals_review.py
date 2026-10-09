@@ -9,7 +9,8 @@ import pytest
 from ml.artifacts import file_checksum, verify_manifest, write_manifest
 from ml.gameplan_actuals_review import (
     _latest_saved_gameplan, compare_forecasts, compare_price_points,
-    publish_actuals_review, render_actuals_review,
+    completed_session_context, publish_actuals_review, publish_completed_session_review,
+    render_actuals_review,
 )
 from ml.independent_stock_targets import stock_target_windows
 
@@ -322,6 +323,78 @@ def test_missing_successor_trade_plan_or_expired_deadline_cannot_publish(publica
     assert not (c.root / "ml/gameplan-actuals-review-latest/run.json").exists()
 
 
+def test_completed_session_stats_publish_before_any_successor_and_load_in_existing_ui(publication_case):
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    c = publication_case
+    (c.successor.run_directory / "receipt.json").unlink()
+    (c.successor_trade / "receipt.json").unlink()
+    preserved = {p: file_checksum(p) for folder in (c.original.run_directory, c.original_trade)
+                 for p in folder.iterdir() if p.is_file()}
+    run = publish_completed_session_review(c.root, price_loader=c.loader,
+                                           clock=lambda: pd.Timestamp("2026-09-10T04:05Z"))
+    verify_manifest(run)
+    report = json.loads((run / "report.json").read_text())
+    assert report["action_date"] == "2026-09-09"
+    assert report["review_mode"] == "completed-session-before-training"
+    assert report["successor_gameplan_run"] is None
+    assert report["outcomes_through"] == "2026-09-10T00:00:00+00:00"
+    review = load_gameplan_stats(c.root, "2026-09-09")
+    assert review.run_directory == run and review.metrics().total == 24
+    assert review.metrics().pending == 6
+    assert all(file_checksum(p) == checksum for p, checksum in preserved.items())
+    rendered = (run / "Gameplan-results.md").read_text(encoding="utf-8")
+    assert "Completed-session review for model feedback" in rendered
+    assert "is prepared" not in rendered
+
+
+@pytest.mark.parametrize("observed,expected", [
+    ("2026-09-10T04:05Z", "2026-09-09"),  # 21:05 Pacific, the same completed day.
+    ("2026-09-10T08:05Z", "2026-09-09"),  # After midnight, retain Wednesday.
+    ("2026-09-09T23:59Z", "2026-09-08"),  # Before 17:00, today is unfinished.
+    ("2026-09-10T00:00Z", "2026-09-09"),
+    ("2026-09-08T04:05Z", "2026-09-04"),  # Labor Day Monday.
+    ("2026-09-06T04:05Z", "2026-09-04"),  # Weekend.
+    ("2027-01-13T01:00Z", "2027-01-12"),  # Pacific standard time.
+])
+def test_completed_session_clock_handles_midnight_holidays_and_dst(observed, expected):
+    assert completed_session_context(observed)["action_date"] == expected
+
+
+@pytest.mark.parametrize("day,observed,message", [
+    ("2026-09-07", "2026-09-08T04:05Z", "XNYS session"),
+    ("2026-09-09", "2026-09-09T23:59Z", "has not closed"),
+    ("2026-09-09 00:00", "2026-09-10T04:05Z", "ISO"),
+])
+def test_explicit_review_date_requires_a_completed_exchange_session(day, observed, message):
+    with pytest.raises(ValueError, match=message):
+        completed_session_context(observed, day)
+
+
+def test_standalone_stats_missing_plan_is_explicit_and_does_not_fetch(tmp_path):
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    run = publish_completed_session_review(tmp_path, action_date="2026-09-09",
+        clock=lambda: pd.Timestamp("2026-09-10T04:05Z"),
+        price_loader=lambda *a, **kw: pytest.fail("No plan means no price loader"))
+    report = json.loads((run / "report.json").read_text())
+    assert report["coverage_status"] == "NO_SAVED_INDEPENDENT_GAMEPLAN"
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    review = load_gameplan_stats(tmp_path)
+    assert review.metrics().total == 0
+    assert review.probability_target_contract == RAW_DIRECTION_TARGET
+    assert report["probability_target_contract"] == RAW_DIRECTION_TARGET
+
+
+def test_standalone_stats_tamper_does_not_replace_verified_pointer(publication_case):
+    c = publication_case
+    publish_completed_session_review(c.root, price_loader=c.loader, clock=c.clock)
+    pointer = c.root / "ml/gameplan-actuals-review-latest/run.json"
+    before = pointer.read_bytes()
+    (c.original_trade / "planning-price-path.json").write_text("{}")
+    with pytest.raises(RuntimeError):
+        publish_completed_session_review(c.root, price_loader=c.loader, clock=c.clock)
+    assert pointer.read_bytes() == before
+
+
 def test_explicit_late_successor_does_not_admit_late_historical_estimates(publication_case):
     from tests.test_preparation_deadline import exception_record
     from ml.gameplan_actuals_review import _saved_trade_plan
@@ -369,6 +442,9 @@ def test_holiday_predecessor_is_last_exchange_session(publication_case):
     report = json.loads((run / "report.json").read_text())
     assert report["action_date"] == "2026-09-04"
     assert report["coverage_status"] == "NO_SAVED_INDEPENDENT_GAMEPLAN"
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    from ml.gameplan_probability_target import LEGACY_COST_TARGET
+    assert load_gameplan_stats(c.root).probability_target_contract == LEGACY_COST_TARGET
 
 
 def test_standard_time_keeps_local_price_clocks():

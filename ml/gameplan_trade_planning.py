@@ -24,6 +24,8 @@ from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
 AUTHORITY = "REVIEW_ONLY_REVALIDATE_AT_ENTRY"
 PLANNING_PRICE_LOOKBACK_SESSIONS = 504
+PRODUCER_MODE = "ACCOUNT_PRODUCER_SOURCE"
+SHARED_PROJECTION_UNAVAILABLE = "UNAVAILABLE_SHARED_ACCOUNT_PROJECTION"
 
 
 def _planning_snapshot(snapshot: Mapping) -> tuple[dict, dict | None]:
@@ -338,12 +340,165 @@ def _review_refresh_basis(root, prior_run, source, source_hash, action_date, now
     return snapshot, asof, evidence, inputs, pointer_hash
 
 
+def _publish_producer_prices(root, publication, forecasts, intents, *, binding, observed, deadline_at,
+                             price_loader, clock, fallback_metadata, probability_metadata,
+                             original_deadline=None, late_action_date=None):
+    """Save observed planning estimates without reading a producer's account ledger."""
+    from ml.account_gameplan.config import load_account_config
+    from ml.stock_target_prices import load_stock_target_prices
+    from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
+    source, config = publication.run_directory, publication.manifest["configuration"]
+    source_hash = file_checksum(source / "receipt.json")
+    day = publication.receipt["action_date"]
+    latest_pointer = root / "ml/gameplan-trade-plan-latest/run.json"
+    previous_pointer = latest_pointer.read_bytes() if latest_pointer.exists() else None
+    committed_pointer = None
+    run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
+    metadata = {"schema_version": VERSION, "action_date": day, **fallback_metadata, **probability_metadata,
+        "publication_mode": PRODUCER_MODE, "account_config_sha256": binding.fingerprint,
+        "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+        "producer_id": binding.machine_id, "source_gameplan_run": source.relative_to(root).as_posix(),
+        "source_receipt_sha256": source_hash, "orders_placed": 0, "broker_orders_enabled": False,
+        "execution_authority": AUTHORITY}
+    report = {**metadata, "status": "RUNNING", "observed_at": observed.isoformat(),
+              "deadline_at": (original_deadline if original_deadline is not None else deadline_at).isoformat(),
+              "effective_deadline_at": deadline_at.isoformat()}
+    if late_action_date is not None:
+        metadata.update(late_action_date=late_action_date, preparation_mode="LATE_RECOVERY")
+        report.update(late_action_date=late_action_date, preparation_mode="LATE_RECOVERY")
+    try:
+        prices, files, inventory = (price_loader or load_stock_target_prices)(root,
+            symbols=tuple(config["symbols"]), source_contract=config["target_price_source_contract"])
+        asof = utc(clock())
+        bands = build_entry_price_bands(prices, forecasts, observed_at=asof,
+            lookback_sessions=PLANNING_PRICE_LOOKBACK_SESSIONS,
+            allow_reference_forward_fill=True, allow_sparse_session_references=True)
+        path = build_planning_price_path(prices, forecasts, observed_at=asof, entry_bands=bands,
+            allow_reference_forward_fill=True, allow_sparse_session_references=True)
+        bands_by_id = {row["forecast_id"]: row for row in bands["rows"]}
+        if set(bands_by_id) != set(forecasts.id) or len(bands["rows"]) != len(forecasts):
+            raise ValueError("Producer price bands differ from frozen forecasts")
+        records = []
+        for forecast in forecasts.to_dict("records"):
+            band = bands_by_id[forecast["id"]]
+            row = {**forecast, **{key: value for key, value in band.items() if key.startswith("price_")},
+                   "historical_price_low": band.get("trade_price_low"), "historical_price_high": band.get("trade_price_high"),
+                   "trade_price_low": None, "trade_price_mid": None, "trade_price_high": None,
+                   "trade_planning_reason": SHARED_PROJECTION_UNAVAILABLE, "projected_quantity_reason": SHARED_PROJECTION_UNAVAILABLE}
+            if forecast["execution_eligible"]:
+                start = utc(forecast["target_window_start"])
+                local = start.tz_convert("America/Los_Angeles")
+                key = f"{forecast['symbol']}|{local.date().isoformat()}|{local:%H:%M}"
+                point = path["points"][key]
+                if point["symbol"] != forecast["symbol"] or utc(point["timestamp"]) != start:
+                    raise ValueError("Producer working price differs from the exact frozen entry")
+                row.update(planning_price_point_key=key, planning_price_method=point.get("method"),
+                           price_band_status=point["status"], price_band_reason=point["reason"])
+                if point["status"] == "AVAILABLE":
+                    low, mid, high = (_money(point[f"planned_price_{part}"]) for part in ("low", "mid", "high"))
+                    if not 0 < low <= mid <= high:
+                        raise ValueError("Producer working price range is invalid")
+                    row.update(trade_price_low=float(low), trade_price_mid=float(mid), trade_price_high=float(high))
+            for field in ("trade_quantity", "scheduled_trade_quantity", "projected_trade_quantity", "trade_notional_reserved",
+                          "projected_trade_budget", "projected_trade_notional", "direction_based_trade_quantity",
+                          "direction_based_action", "direction_based_reason", "projected_cash_after_low",
+                          "projected_cash_after_base", "projected_cash_after_high", "projected_shares_after"):
+                row[field] = None
+            records.append(row)
+        rows = pd.DataFrame(records)
+        ledger = {**fallback_metadata, "status": SHARED_PROJECTION_UNAVAILABLE, "events": [], "hourly": [],
+            "ending_positions": {}, "summary": {}, "orders_placed": 0, "broker_orders_enabled": False,
+            "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+            "reason": "This producer prepares frozen prices only. Shared cash and holdings are projected once by the account coordinator."}
+        completion = bands["reference_completion"]
+        synthetic = pd.DataFrame(completion["synthetic_bars"])
+        if synthetic.empty:
+            synthetic = pd.DataFrame(columns=["symbol", "timestamp", "open", "high", "low", "close", "volume", "is_synthetic", "reason", "original_observed_at"])
+        synthetic.to_parquet(run / "synthetic-reference-bars.parquet", index=False)
+        rows.to_parquet(run / "trade-plan.parquet", index=False)
+        report.update(status="COMPLETE", completed_at=utc(clock()).isoformat(), forecast_rows=len(rows),
+            rows_by_symbol=rows.groupby("symbol").size().to_dict(), option_intent_rows=len(intents),
+            snapshot=None, snapshot_status="NOT_CAPTURED_PRODUCER_ONLY", direction_projection_status=SHARED_PROJECTION_UNAVAILABLE,
+            direction_based_projection=ledger, source_price_inventory=inventory,
+            target_price_source_contract=config["target_price_source_contract"],
+            reference_completion={key: value for key, value in completion.items() if key != "synthetic_bars"})
+        for name, payload in (("price-bands.json", bands), ("planning-price-path.json", path),
+                              ("planning-reference-completion.json", completion), ("direction-ledger.json", ledger), ("report.json", report)):
+            _write_json(run / name, payload)
+        lines = [f"# Producer price preparation — {day}", "", ledger["reason"], "",
+                 "No account snapshot, cash projection, holdings assignment, or trade quantity was calculated here.", "",
+                 "| Symbol | Horizon | Original forecast | Model status | P(up) | Working price low | Mid | High |",
+                 "|---|---|---|---|---:|---:|---:|---:|"]
+        for row in records:
+            cells = [row["symbol"], row["model_group"], row["id"], row["model_status"], row["calibrated_probability"],
+                     *(row[f"trade_price_{part}"] for part in ("low", "mid", "high"))]
+            lines.append("| " + " | ".join("—" if value is None else str(value).replace("|", "\\|") for value in cells) + " |")
+        lines += ["", "Working ranges retain the saved historical assumptions and observed timestamps. Carried closes are disclosed below.", ""]
+        for reference in completion.get("references", {}).values():
+            if reference.get("status") == "AVAILABLE_SYNTHETIC":
+                lines.append(f"- {reference['symbol']}: observed {reference['observed_at']}; effective {reference['effective_at']}; assumed carry {reference['gap_minutes']} minutes.")
+        lines += ["", "Full historical carry evidence: planning-reference-completion.json; exact bars: synthetic-reference-bars.parquet."]
+        (run / "Gameplan.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        outputs = ["trade-plan.parquet", "price-bands.json", "planning-price-path.json", "planning-reference-completion.json",
+                   "synthetic-reference-bars.parquet", "direction-ledger.json", "report.json", "Gameplan.md"]
+        write_manifest(run, run_timestamp=observed, input_files=[source / "receipt.json", source / "manifest.json",
+            source / "forecasts.parquet", *files], output_files=outputs, configuration=metadata, datastore_root=root)
+        verify_manifest(run)
+        terminal = {**metadata, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
+            "manifest_sha256": file_checksum(run / "manifest.json"), "forecast_rows": len(rows), "completed_at": utc(clock()).isoformat()}
+        if (utc(clock()) >= deadline_at or file_checksum(source / "receipt.json") != source_hash
+                or load_account_config(root) != binding):
+            raise ValueError("Producer preparation source, binding or original deadline changed")
+        _write_json(run / "receipt.json", terminal)
+        if utc(clock()) >= deadline_at or load_account_config(root) != binding:
+            raise ValueError("Producer preparation deadline or binding changed before publication")
+        if (latest_pointer.read_bytes() if latest_pointer.exists() else None) != previous_pointer:
+            raise ValueError("Producer price-plan pointer advanced independently")
+        pointer_document = {"schema_version": VERSION, "current": {
+            "run_path": terminal["run_path"], "action_date": day, "source_receipt_sha256": source_hash,
+            "receipt_sha256": file_checksum(run / "receipt.json")}}
+        _write_json(latest_pointer, pointer_document)
+        # Capture the exact owned bytes only if the installed value is still
+        # ours; a competing writer's pointer is never rollback material.
+        written_bytes = latest_pointer.read_bytes()
+        if json.loads(written_bytes) == pointer_document:
+            committed_pointer = written_bytes
+        if committed_pointer is None:
+            raise ValueError("Producer price-plan pointer advanced during publication")
+        if (utc(clock()) >= deadline_at or load_account_config(root) != binding
+                or file_checksum(source / "receipt.json") != source_hash or latest_pointer.read_bytes() != committed_pointer):
+            raise ValueError("Producer price-plan deadline, source or binding changed during publication")
+        return run
+    except Exception as exc:
+        if committed_pointer is not None and latest_pointer.exists() and latest_pointer.read_bytes() == committed_pointer:
+            # The native owner holds the trade-planning lock. Restore only its
+            # exact just-written bytes; retain the failed run for inspection.
+            if previous_pointer is None:
+                latest_pointer.unlink()
+            else:
+                import uuid
+                temporary = latest_pointer.with_name(latest_pointer.name + f".producer-rollback-{uuid.uuid4().hex}.tmp")
+                try:
+                    temporary.write_bytes(previous_pointer)
+                    if latest_pointer.read_bytes() == committed_pointer:
+                        temporary.replace(latest_pointer)
+                finally:
+                    temporary.unlink(missing_ok=True)
+        report.update(status="FAILED", failure_code="PRODUCER_PRICE_PREPARATION_FAILED", failure_type=type(exc).__name__)
+        _write_json(run / "report.json", report)
+        _write_json(run / "receipt.json", {"schema_version": VERSION, "status": "FAILED", "orders_placed": 0,
+            "broker_orders_enabled": False, "report_sha256": file_checksum(run / "report.json")})
+        raise RuntimeError(f"Producer price preparation failed; review {run / 'report.json'}") from None
+
+
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
                        snapshot_loader=None, price_loader=None, clock=utc_timestamp,
-                       deadline_exception: Path | None = None, refresh_plan: Path | None = None) -> Path:
+                       deadline_exception: Path | None = None, refresh_plan: Path | None = None,
+                       account_producer_only: bool = False, expected_account_config: str | None = None,
+                       late_action_date: str | None = None) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
-    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups
+    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups, late_publication_time
     from ml.stock_target_prices import load_stock_target_prices
     from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
     from ml.gameplan_cash_ledger import project_direction_trades, UnavailablePlanningPricePath
@@ -352,6 +507,15 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     from ml.gameplan_actuals_review import previous_action_date
 
     root = Path(datastore_root).resolve()
+    binding = None
+    if account_producer_only:
+        from ml.account_gameplan.config import load_account_config
+        binding = load_account_config(root)
+        if (binding is None or binding.fingerprint != expected_account_config
+                or deadline_exception is not None or refresh_plan is not None or snapshot_loader is not None):
+            raise ValueError("Producer-only preparation requires its exact account binding and original deadline, without account snapshots")
+    elif expected_account_config is not None:
+        raise ValueError("Account producer binding requires explicit producer-only mode")
     publication = read_gameplan_run(root, Path(gameplan_run))
     source = publication.run_directory
     config = publication.manifest["configuration"]
@@ -366,14 +530,27 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     source_receipt_hash = file_checksum(source / "receipt.json")
     expected_deadline = pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
-    if deadline_at != expected_deadline.tz_convert("UTC"):
-        raise ValueError("Trade planning deadline differs from the pinned action session")
     observed = utc(clock())
+    original_deadline = expected_deadline.tz_convert("UTC")
+    if late_action_date is not None:
+        close = (expected_deadline + pd.Timedelta(hours=13)).tz_convert("UTC")
+        if (late_action_date != action_date
+                or config.get("publication_mode") != "LATE_RECOVERY"
+                or config.get("late_action_date") != action_date
+                or deadline is None or refresh_plan is not None
+                or observed < original_deadline
+                or (deadline_exception is not None and not Path(deadline_exception).is_file())
+                or (deadline_exception is None and observed >= deadline_at)
+                or not original_deadline <= deadline_at <= close):
+            raise ValueError("Late trade planning requires the matching recovery source and unexpired recovery deadline")
+    elif deadline_at != original_deadline:
+        raise ValueError("Trade planning deadline differs from the pinned action session")
     from ml.preparation_deadline import preparation_deadline
-    original_deadline = deadline_at
     refresh_snapshot = refresh_asof = refresh_evidence = refresh_pointer_hash = None
     refresh_inputs = []
-    if refresh_plan is None:
+    if late_action_date is not None:
+        deadline_at, exception_evidence = preparation_deadline(root, source, deadline_at, observed, deadline_exception)
+    elif refresh_plan is None:
         deadline_at, exception_evidence = preparation_deadline(root, source, original_deadline, observed, deadline_exception)
     else:
         if deadline_exception is not None or snapshot_loader is not None:
@@ -388,7 +565,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     if observed >= deadline_at:
         raise ValueError("Trade planning publication deadline has passed")
     symbols = tuple(config["symbols"])
-    forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols)
+    forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols,
+        late_publication_at=late_publication_time(config, publication.receipt))
     intents = pd.read_parquet(source / "option-strategy-intents.parquet")
     if (len(intents) != len(forecasts) or not intents.groupby("symbol").size().eq(24).all()
             or set(intents.id) != set(forecasts.id + ":OPTION")
@@ -399,6 +577,13 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     promoted = verified_promoted_model_groups(publication)
     if any(row.model_group not in promoted for row in forecasts.loc[forecasts.model_status.eq("PROMOTED")].itertuples()):
         raise ValueError("A forecast claims promotion without verified model authority")
+    if binding is not None:
+        if set(symbols) != set(binding.participants[binding.machine_id]):
+            raise ValueError("Producer source universe differs from its account binding")
+        return _publish_producer_prices(root, publication, forecasts, intents, binding=binding, observed=observed,
+            deadline_at=deadline_at, price_loader=price_loader, clock=clock,
+            fallback_metadata=fallback_metadata, probability_metadata=probability_metadata,
+            original_deadline=original_deadline, late_action_date=late_action_date)
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
               **probability_metadata, **fallback_metadata,
@@ -406,6 +591,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
               "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
               "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
               "orders_placed": 0, "broker_orders_enabled": False, "status": "RUNNING"}
+    if late_action_date is not None:
+        report.update(publication_mode="LATE_RECOVERY", late_action_date=late_action_date)
     if refresh_evidence is not None:
         report.update(publication_mode="INFORMATIONAL_REFRESH", review_refresh=refresh_evidence)
     prior_action_date = previous_action_date(action_date)
@@ -452,6 +639,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             # continue to fail the publication.
             direction_projection = {
                 **fallback_metadata,
+                "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
                 "status":"UNAVAILABLE_PRICE_REFERENCES", "unavailable_points":unavailable.points,
                 "events":[], "hourly":[], "ending_positions":{}, "summary":{},
                 "orders_placed":0, "broker_orders_enabled":False,
@@ -475,6 +663,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                       trade_reason_counts=rows.trade_planning_reason.value_counts().to_dict(),
                       snapshot=snapshot, planning_override=planning_override, sizing_policy=asdict(policy),
                       direction_based_projection=direction_projection,
+                      holding_policy=direction_projection["holding_policy"],
                       direction_projection_status=direction_projection.get("status", "AVAILABLE"),
                       opra_history=config.get("opra_history", {}),
                       price_band_policy={k: v for k, v in bands.items() if k not in {"rows", "statistics", "reference_completion"}},
@@ -525,6 +714,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                        "allow_reference_forward_fill": True,
                        "allow_sparse_session_references": True,
                        "publication_mode": report.get("publication_mode", "NIGHTLY_REVIEW"),
+                       "holding_policy": direction_projection["holding_policy"],
                        "review_refresh": refresh_evidence,
                        "execution_authority": AUTHORITY, "broker_orders_enabled": False, "orders_placed": 0}, datastore_root=root)
         verify_manifest(run)
@@ -535,6 +725,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                     "action_date": action_date, "source_gameplan_run": report["source_gameplan_run"],
                     "source_receipt_sha256": source_receipt_hash, "manifest_sha256": file_checksum(run / "manifest.json"),
                     "forecast_rows": len(rows), "orders_placed": 0, "broker_orders_enabled": False,
+                    "holding_policy": direction_projection["holding_policy"],
                     "execution_authority": AUTHORITY, "completed_at": utc(clock()).isoformat()}
         _write_json(run / "receipt.json", terminal)
         if utc(clock()) >= deadline_at:
@@ -568,15 +759,22 @@ def main(argv: list[str] | None = None) -> int:
     datastore.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
     parser.add_argument("--gameplan-run", required=True, type=Path)
     parser.add_argument("--deadline")
+    parser.add_argument("--late-action-date", help="Explicit date-pinned late recovery using its frozen deadline")
     parser.add_argument('--deadline-exception', type=Path)
     parser.add_argument('--refresh-plan', type=Path,
                         help="Recalculate the current informational review using its original snapshot and planning cutoff")
+    parser.add_argument("--account-producer-only", action="store_true")
+    parser.add_argument("--expected-account-config")
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-trade-planning.lock", process_name="gameplan trade planning"):
         extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
+        if args.late_action_date is not None:
+            extra['late_action_date'] = args.late_action_date
         if args.refresh_plan is not None:
             extra['refresh_plan'] = args.refresh_plan
+        if args.account_producer_only or args.expected_account_config is not None:
+            extra.update(account_producer_only=args.account_producer_only, expected_account_config=args.expected_account_config)
         run = publish_trade_plan(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
     print(json.dumps({"status": "COMPLETE", "run_path": str(run), "review_path": str(run / "Gameplan.md"), "orders_placed": 0}))
     return 0

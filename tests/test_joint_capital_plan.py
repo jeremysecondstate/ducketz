@@ -288,7 +288,7 @@ def test_owner_package_round_trip_checks_external_binding_and_refuses_overwrite(
     source = package()
     path = publish_owner_package(tmp_path, source)
     assert load_owner_package(tmp_path, path, expected_sha256=source["package_sha256"]) == source
-    with pytest.raises(FileExistsError): publish_owner_package(tmp_path, source)
+    assert publish_owner_package(tmp_path, source) == path
     with pytest.raises(ValueError, match="independently selected"):
         load_owner_package(tmp_path, path, expected_sha256="f" * 64)
 

@@ -1251,6 +1251,143 @@ def test_expired_fresh_live_row_is_pruned_without_blocking_publication(
     assert not latest_pointer["path"].endswith(first.run_directory.name)
 
 
+@pytest.mark.parametrize("cross_after_mirror", [False, True])
+def test_publication_boundary_rebuilds_without_refitting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cross_after_mirror: bool,
+) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+    first = run_loop_b_once(
+        tmp_path, symbols=("GOOG",), config=_CONFIG,
+        specifications=_SPECIFICATIONS, run_timestamp=_FIRST_RUN,
+        input_available_at=_FIRST_RUN, reporter=None,
+    )
+    before_pointer = (tmp_path / "ml/latest/run.json").read_bytes()
+    now = [_SECOND_RUN]
+    original_promote = runtime_module._promote_current_outputs
+    original_replace = runtime_module._replace_staged_current_file
+    original_materialize = runtime_module.materialize_rolling_samples
+    original_fit = runtime_module.fit_or_reuse_model
+    calls = {"promotion": 0, "materialization": 0, "fit": 0}
+
+    def fit(*args, **kwargs):
+        calls["fit"] += 1
+        return original_fit(*args, **kwargs)
+
+    def materialize(*args, **kwargs):
+        calls["materialization"] += 1
+        return original_materialize(*args, **kwargs)
+
+    def promote(**kwargs):
+        calls["promotion"] += 1
+        if calls["promotion"] == 1:
+            deadline = kwargs["target_deadline"]
+            assert deadline is not None
+            if cross_after_mirror:
+                def replace_and_expire(stage, destination):
+                    original_replace(stage, destination)
+                    now[0] = pd.Timestamp(deadline)
+                monkeypatch.setattr(runtime_module, "_replace_staged_current_file", replace_and_expire)
+            else:
+                now[0] = pd.Timestamp(deadline)
+        else:
+            assert (tmp_path / "ml/latest/run.json").read_bytes() == before_pointer
+            monkeypatch.setattr(runtime_module, "_replace_staged_current_file", original_replace)
+        return original_promote(**kwargs)
+
+    monkeypatch.setattr(runtime_module, "_promote_current_outputs", promote)
+    monkeypatch.setattr(runtime_module, "materialize_rolling_samples", materialize)
+    monkeypatch.setattr(runtime_module, "fit_or_reuse_model", fit)
+    messages = []
+    result = run_loop_b_once(
+        tmp_path, symbols=("GOOG",), config=_CONFIG,
+        specifications=_SPECIFICATIONS, run_timestamp=_SECOND_RUN,
+        input_available_at=_SECOND_RUN, runtime_clock=lambda: now[0],
+        reporter=messages.append,
+    )
+    assert calls == {"promotion": 2, "materialization": 1, "fit": 1}
+    assert sum("rebuilding once" in message for message in messages) == 1
+    manifest = verify_manifest(result.run_directory)
+    assert runtime_module._verify_publication_receipt(result.run_directory, manifest)
+    assert manifest["configuration"]["publication_counts"]["expired_fresh_live_rows_pruned"] == 1
+    assert pd.Timestamp(manifest["configuration"]["runtime_timing"]["publication_checked_at"]) == now[0]
+    live = pd.read_parquet(result.run_directory / "predictions.parquet")
+    live = live.loc[live["prediction_mode"].eq("LIVE")]
+    # The earlier, receipt-verified forecast may carry into its active window;
+    # the newly scored forecast cannot become live after its entry deadline.
+    assert len(live) == 1
+    assert live["prediction_created_at"].eq(_FIRST_RUN).all()
+    assert result.fresh_live_prediction_rows == 0
+    assert result.carried_active_live_prediction_rows == 1
+    assert read_current_publication(tmp_path).run_directory == result.run_directory
+    assert first.run_directory != result.run_directory
+
+
+@pytest.mark.parametrize("failure", ["deadline", "io", "invalid"])
+def test_publication_retry_is_bounded_and_only_for_expiry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str,
+) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+    calls = []
+
+    def fail(**kwargs):
+        calls.append(kwargs)
+        if failure == "deadline":
+            raise runtime_module._PublicationDeadlineCrossed("expired")
+        if failure == "io":
+            raise OSError("disk failure")
+        runtime_module._enforce_promotion_deadlines(
+            _FIRST_RUN, enforce_target_deadline=True, target_deadline=None,
+        )
+
+    monkeypatch.setattr(runtime_module, "_promote_current_outputs", fail)
+    with pytest.raises((RuntimeError, OSError)):
+        run_loop_b_once(
+            tmp_path, symbols=("GOOG",), config=_CONFIG,
+            specifications=_SPECIFICATIONS, run_timestamp=_FIRST_RUN,
+            input_available_at=_FIRST_RUN, reporter=None,
+        )
+    assert len(calls) == (2 if failure == "deadline" else 1)
+    assert not (tmp_path / "ml/latest/run.json").exists()
+
+
+def test_publication_rebuild_removes_carry_that_expires_during_promotion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+    first = run_loop_b_once(
+        tmp_path, symbols=("GOOG",), config=_CONFIG,
+        specifications=_SPECIFICATIONS, run_timestamp=_FIRST_RUN,
+        input_available_at=_FIRST_RUN, reporter=None,
+    )
+    forecasts = pd.read_parquet(first.run_directory / "predictions.parquet")
+    original = forecasts.loc[forecasts["prediction_mode"].eq("LIVE")].iloc[0]
+    started = pd.Timestamp(original["target_window_start"]) + pd.Timedelta(minutes=10)
+    now = [started]
+    promote = runtime_module._promote_current_outputs
+    calls = []
+
+    def expire_carry(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            assert kwargs["carried_target_window_end"] == original["target_window_end"]
+            now[0] = pd.Timestamp(original["target_window_end"])
+        return promote(**kwargs)
+
+    monkeypatch.setattr(runtime_module, "_promote_current_outputs", expire_carry)
+    result = run_loop_b_once(
+        tmp_path, symbols=("GOOG",), config=_CONFIG,
+        specifications=_SPECIFICATIONS, run_timestamp=started,
+        input_available_at=started, runtime_clock=lambda: now[0], reporter=None,
+    )
+    assert len(calls) == 2
+    assert result.carried_active_live_prediction_rows == 0
+    assert runtime_module._verify_publication_receipt(
+        result.run_directory, verify_manifest(result.run_directory),
+    )
+    intelligence = pd.read_parquet(result.run_directory / "intelligence.parquet")
+    assert intelligence.loc[0, "intelligence_status"] == "NO_CURRENT_FORECAST"
+
+
 def test_expired_nearest_live_target_does_not_veto_later_target() -> None:
     checked_at = pd.Timestamp("2026-07-27T13:30:00Z")
     live = pd.DataFrame(

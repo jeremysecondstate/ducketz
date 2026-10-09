@@ -10,6 +10,8 @@ import math
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
+import re
+from typing import Mapping
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -24,6 +26,7 @@ VERSION = "cash-aware-gameplan-trade-planning-v4"
 LEDGER_VERSION = "direction-based-gameplan-cash-ledger-v1"
 SIGNAL_DRIVEN_HOLDING_POLICY = "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
 UNAVAILABLE_PROJECTION = "UNAVAILABLE_PRICE_REFERENCES"
+SHARED_PROJECTION_UNAVAILABLE = "UNAVAILABLE_SHARED_ACCOUNT_PROJECTION"
 PACIFIC = ZoneInfo("America/Los_Angeles")
 HORIZONS = ("1h", "4h", "1d", "1w")
 REASONS = {
@@ -42,6 +45,7 @@ REASONS = {
     "HORIZON_POSITION_ALREADY_HELD": "Position already held in this horizon",
     "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE": "Insufficient cash or allocation",
     "PRICE_REFERENCES_UNAVAILABLE": "Cash projection unavailable",
+    "UNAVAILABLE_SHARED_ACCOUNT_PROJECTION": "Shared account projection is prepared by the coordinator",
 }
 
 
@@ -74,6 +78,12 @@ class PlanForecast:
     price: float | None
     fallback_donor_horizon: str | None = None
     fallback_donor_allocation_id_sha256: str | None = None
+    producer_id: str | None = None
+    original_forecast_id: str | None = None
+    source_receipt_sha256: str | None = None
+    cash_after_low: float | None = None
+    cash_after_base: float | None = None
+    cash_after_high: float | None = None
 
 
 @dataclass(frozen=True)
@@ -119,6 +129,14 @@ class Gameplan:
     execution_quotes: tuple[ExecutionQuote, ...] = ()
     holding_policy: str = "fixed_target_expiry"
     probability_target_contract: str = LEGACY_COST_TARGET
+    producer_id: str | None = None
+    source_provenance: tuple[Mapping, ...] = ()
+    account_ledger: Mapping | None = None
+
+    @property
+    def account_hourly(self) -> tuple[Mapping, ...]:
+        """Full account post-clock cash; a producer view never recomputes it."""
+        return tuple((self.account_ledger or {}).get("hourly", ()))
 
     @property
     def display_name(self) -> str:
@@ -256,14 +274,32 @@ def _history(root: Path) -> list[tuple[str, datetime, Path]]:
 
 def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
-    sessions = {item[0] for item in _history(root)}
-    current = _latest(root)
-    if current:
-        sessions.add(current["action_date"])
+    from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
+    joint_dates = accepted_sessions(root)
+    current_local = _latest(root)
+    latest_joint = read_accepted_joint_plan(root, joint_dates[0]) if joint_dates else None
+    account_pointer = _account_pointer(root, accepted_joint=bool(latest_joint and (
+        not current_local or joint_dates[0] >= current_local["action_date"])))
+    sessions = set(joint_dates)
+    if account_pointer is not None:
+        try:
+            current = _load_account_view(root, account_pointer)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError, RuntimeError) as exc:
+            raise GameplanError(f"Could not verify the account Gameplan: {exc}") from exc
+        sessions.update({current.session, *(item[0] for item in _account_history(root))})
+        # Keep historical account selections intact while exposing replacement
+        # local sessions prepared after that publication during rollout.
+        sessions.update(item[0] for item in _history(root) if item[0] > current.session)
+        if current_local and current_local["action_date"] > current.session:
+            sessions.add(current_local["action_date"])
+    else:
+        sessions.update(item[0] for item in _history(root))
+        if current_local:
+            sessions.add(current_local["action_date"])
     return tuple(sorted(sessions, reverse=True))
 
 
-def _forecast(row: dict, *, projection_available: bool = True) -> PlanForecast:
+def _forecast(row: dict, *, projection_available: bool = True, unavailable_reason: str = "PRICE_REFERENCES_UNAVAILABLE") -> PlanForecast:
     probability = _number(row["calibrated_probability"], optional=True)
     eligible = row["execution_eligible"]
     if not isinstance(eligible, bool) or (probability is not None and probability > 1):
@@ -278,7 +314,7 @@ def _forecast(row: dict, *, projection_available: bool = True) -> PlanForecast:
     else:
         # Missing simulation is not a HOLD decision or a zero-share trade.
         action, quantity = ("UNAVAILABLE" if eligible else "CONTEXT"), None
-        reason = "PRICE_REFERENCES_UNAVAILABLE" if eligible else "NON_ENTRY_CONTEXT"
+        reason = unavailable_reason if eligible else "NON_ENTRY_CONTEXT"
     if horizon not in HORIZONS or direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
         raise GameplanError("Unsupported forecast horizon or direction")
     allowed = {"BUY", "SELL", "HOLD", "CONTEXT"} if projection_available else {"UNAVAILABLE", "CONTEXT"}
@@ -309,7 +345,9 @@ def _forecast(row: dict, *, projection_available: bool = True) -> PlanForecast:
     return PlanForecast(str(row["id"]), str(row["symbol"]), horizon, str(row["route"]),
                         str(row["target_role"]), eligible, str(row["model_status"]), probability,
                         direction, action, quantity, reason, start, end,
-                        price, donor_horizon, donor_allocation)
+                        price, donor_horizon, donor_allocation,
+                        row.get("producer_id"), row.get("original_forecast_id"), row.get("source_receipt_sha256"),
+                        *(_number(row.get(f"projected_cash_after_{key}"), optional=True) for key in ("low", "base", "high")))
 
 
 def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tuple[str, str]:
@@ -318,6 +356,18 @@ def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tup
         raise GameplanError("Saved report and direction ledger projection statuses disagree")
     if status == "COMPLETE":
         return status, ""
+    if status == SHARED_PROJECTION_UNAVAILABLE:
+        if (report.get("publication_mode") != "ACCOUNT_PRODUCER_SOURCE"
+                or report.get("snapshot") is not None or report.get("snapshot_status") != "NOT_CAPTURED_PRODUCER_ONLY"
+                or report.get("direction_based_projection") != ledger
+                or any(ledger.get(key) != empty for key, empty in (("events", []), ("hourly", []), ("ending_positions", {}), ("summary", {})))
+                or ledger.get("orders_placed") != 0 or ledger.get("broker_orders_enabled") is not False):
+            raise GameplanError("Producer-only preparation contains a shared-account projection")
+        columns = [name for name in frame if name.startswith(("direction_based_", "projected_cash_after_"))
+                   or name in {"trade_quantity", "scheduled_trade_quantity", "projected_trade_quantity", "projected_shares_after"}]
+        if columns and frame[columns].notna().any().any():
+            raise GameplanError("Producer-only preparation cannot invent quantities or cash")
+        return status, "Shared account projection is prepared by the coordinator. This producer view contains frozen forecasts and saved price estimates only."
     if status != UNAVAILABLE_PROJECTION or report.get("direction_based_projection") != ledger:
         raise GameplanError("Unsupported or inconsistent unavailable cash projection")
     # Only the publisher's explicit unavailable state can omit direction columns.
@@ -520,21 +570,207 @@ def _planning_note(report: dict, symbols: set[str]) -> str:
     return ""
 
 
-def load_gameplan(datastore_root: Path | None = None, session: str | None = None) -> Gameplan:
+def _account_run_path(root: Path, value: object) -> Path:
+    if (not isinstance(value, str) or "\\" in value or ":" in value
+            or not value.startswith("ml/account-gameplan-runs/") or ".." in value.split("/")):
+        raise GameplanError("Account Gameplan points outside its saved run directory")
+    run = (root / value).resolve()
+    if run.parent != (root / "ml/account-gameplan-runs").resolve():
+        raise GameplanError("Account Gameplan points outside its saved run directory")
+    return run
+
+
+def _account_hash(value: object) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+        raise GameplanError("Account Gameplan requires its explicit manifest SHA256")
+    return value
+
+
+def _account_pointer(root: Path, *, accepted_joint: bool = False) -> dict | None:
+    path = root / "ml/account-gameplan-latest/run.json"
+    if not path.exists():
+        from ml.account_gameplan.config import load_account_config
+        try:
+            config = load_account_config(root)
+            if config is not None and config.activation["status"] == "ACTIVE" and not accepted_joint:
+                raise GameplanError("The shared account Gameplan is not available yet.")
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            raise GameplanError(f"Could not verify the shared account configuration: {exc}") from exc
+        return None
+    try:
+        pointer = _json(path)
+        from ml.account_gameplan.config import load_account_config, VERSION as ACCOUNT_CONFIG_VERSION
+        config = load_account_config(root)
+        if config is not None and (pointer.get("schema_version") != ACCOUNT_CONFIG_VERSION
+                or pointer.get("status") != "SELECTED" or pointer.get("config_sha256") != config.fingerprint
+                or pointer.get("producer_id") != config.machine_id):
+            raise GameplanError("Account view differs from this PC's configured producer binding")
+        current, producer = pointer.get("current"), pointer.get("producer_id")
+        if (not isinstance(current, dict) or not isinstance(producer, str)
+                or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", producer) is None):
+            raise GameplanError("Invalid account Gameplan pointer or producer view")
+        _account_run_path(root, current.get("run_path"))
+        _account_hash(current.get("manifest_sha256"))
+        return pointer
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise GameplanError(f"Could not verify the account Gameplan pointer: {exc}") from exc
+
+
+def _account_history(root: Path) -> list[tuple[str, datetime, Path, str]]:
+    from ml.account_gameplan.planner import VERSION as ACCOUNT_VERSION
+    history = []
+    for file in (root / "ml/account-gameplan-runs").glob("*/receipt.json"):
+        try:
+            receipt = _json(file)
+            if receipt.get("schema_version") == ACCOUNT_VERSION and receipt.get("status") == "COMPLETE":
+                run = _account_run_path(root, file.parent.relative_to(root).as_posix())
+                history.append((_session(receipt["action_date"]), _timestamp(receipt["completed_at"]),
+                                run, _account_hash(receipt["manifest_sha256"])))
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+    return history
+
+
+def _load_account_view(root: Path, pointer: dict, requested: str | None = None) -> Gameplan:
+    from ml.account_gameplan.planner import read_account_plan, account_forecast_id
+    current, producer = pointer["current"], pointer["producer_id"]
+    # Validate the current pin even when selecting history. An invalid active
+    # account pointer never silently routes this PC back to its legacy ledger.
+    plan = read_account_plan(_account_run_path(root, current["run_path"]),
+                             expected_manifest_sha256=current["manifest_sha256"])
+    if requested is not None and requested != plan.report["action_date"]:
+        candidates = [item for item in _account_history(root) if item[0] == requested]
+        if not candidates:
+            raise GameplanError(f"No completed account Gameplan is saved for {requested}")
+        _, _, run, manifest_hash = max(candidates, key=lambda item: (item[1], item[2].name))
+        plan = read_account_plan(run, expected_manifest_sha256=manifest_hash)
+    report, ledger, frame = dict(plan.report), dict(plan.ledger), plan.rows
+    session = _session(report["action_date"])
+    sources = report["sources"]
+    registry = {source["producer_id"]: source for source in sources}
+    from ml.account_gameplan.config import load_account_config
+    config = load_account_config(root)
+    if config is not None and (report.get("account_fingerprint") != config.account_fingerprint
+            or {identity: tuple(sorted(source["symbols"])) for identity, source in registry.items()} != config.participants):
+        raise GameplanError("Account view universe or account differs from this PC's binding")
+    if len(registry) != 2 or len(sources) != 2 or producer not in registry:
+        raise GameplanError("Account Gameplan requires two distinct producer identities and this PC's view")
+    membership = {}
+    for identity, source in registry.items():
+        _account_hash(source["source_receipt_sha256"])
+        _account_hash(source["bundle_manifest_sha256"])
+        symbols = source["symbols"]
+        if not symbols or len(set(symbols)) != len(symbols) or set(symbols) & set(membership):
+            raise GameplanError("Account Gameplan producer universes overlap or are invalid")
+        membership.update({symbol: identity for symbol in symbols})
+    if (report["symbol_producers"] != membership or set(frame.symbol) != set(membership)
+            or len(frame) != 24 * len(membership) or not frame.groupby("symbol").size().eq(24).all()
+            or frame.id.isna().any() or frame.id.duplicated().any()
+            or frame.duplicated(["symbol", "route"]).any() or not frame.action_date.astype(str).eq(session).all()):
+        raise GameplanError("Account Gameplan forecast coverage differs from its producer registry")
+    for row in frame.to_dict("records"):
+        identity = membership[row["symbol"]]
+        if (row.get("producer_id") != identity or row.get("source_receipt_sha256") != registry[identity]["source_receipt_sha256"]
+                or row["id"] != account_forecast_id(identity, Path(registry[identity]["source_gameplan_run"]).name,
+                                                   row.get("original_forecast_id"))):
+            raise GameplanError("Account forecast lost its original producer or source identity")
+    contract = probability_target_contract(frame)
+    if "gameplan_variant" in frame and not frame.gameplan_variant.eq(probability_target_metadata(contract)["gameplan_variant"]).all():
+        raise GameplanError("Account Gameplan variant disagrees with its frozen target")
+    status, note = _projection_metadata(ledger, report, frame)
+    available = status == "COMPLETE"
+    # Validate the entire account first, including the other producer's events.
+    # Only presentation is filtered; the shared cash ledger remains untouched.
+    forecasts = tuple(sorted((_forecast(row, projection_available=available) for row in frame.to_dict("records")),
+                            key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
+    all_actions = _actions(ledger, forecasts, session) if available else ()
+    if available:
+        hourly = {_timestamp(item["timestamp"]): tuple(_number(item[f"cash_{key}"]) for key in ("low", "base", "high"))
+                  for item in ledger["hourly"]}
+        expected_clocks = {_timestamp(pd.Timestamp(f"{session} {hour:02d}:00", tz=PACIFIC))
+                           for hour in range(4, 18)}
+        if len(ledger["hourly"]) != 14 or set(hourly) != expected_clocks:
+            raise GameplanError("Account hourly cash coverage is incomplete or duplicated")
+        for row in forecasts:
+            if row.eligible and (row.cash_after_low, row.cash_after_base, row.cash_after_high) != hourly.get(row.start):
+                raise GameplanError("Producer forecast cash differs from the shared account post-clock balance")
+    symbols = set(registry[producer]["symbols"])
+    forecasts = tuple(row for row in forecasts if row.symbol in symbols)
+    actions = tuple(row for row in all_actions if row.symbol in symbols)
+    receipt = _json(plan.path / "receipt.json")
+    view_name = f"Gameplan-{producer}.md"
+    if view_name not in _json(plan.path / "manifest.json").get("output_files", {}):
+        raise GameplanError("Account Gameplan is missing its bound producer report")
+    planning_note = ("This producer view uses the combined account's post-clock cash after all companies. "
+                     "Projected fills and sale proceeds are conditional; actual cash follows broker evidence.")
+    return Gameplan(session, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
+                    plan.path, plan.path / view_name, forecasts, actions, status, note,
+                    planning_note, _execution_quotes(root, forecasts), ledger.get("holding_policy", "fixed_target_expiry"),
+                    contract, producer, tuple(sources), ledger)
+
+
+def load_gameplan(datastore_root: Path | None = None, session: str | None = None, *,
+                  run_directory: Path | None = None,
+                  expected_receipt_sha256: str | None = None) -> Gameplan:
+    """Read the selected display or an explicitly pinned local publication.
+
+    Explicit immutable publications are used by preparation before joint
+    synthesis exists. They never change or consult combined display pointers.
+    """
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
     try:
         requested = _session(session) if session else None
-        current = _latest(root)
-        pointer = current if current and (requested is None or requested == current["action_date"]) else None
-        if pointer:
-            selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
-        elif requested:
-            candidates = [item for item in _history(root) if item[0] == requested]
-            if not candidates:
-                raise GameplanError(f"No completed direction-ledger plan is saved for {requested}")
-            selected, _, run = max(candidates, key=lambda item: (item[1], item[2].name))
+        if run_directory is not None:
+            run = _run_path(root, Path(run_directory).resolve())
+            if (not isinstance(expected_receipt_sha256, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", expected_receipt_sha256) is None):
+                raise GameplanError("Frozen Gameplan requires its exact receipt hash")
+            saved = _json(run / "receipt.json")
+            selected = _session(saved.get("action_date"))
+            if requested is not None and selected != requested:
+                raise GameplanError(f"No verified local Gameplan is saved for {requested}")
+            pointer = {"receipt_sha256": expected_receipt_sha256,
+                       "source_receipt_sha256": saved.get("source_receipt_sha256")}
         else:
-            raise GameplanError("No saved Gameplan is available yet. Refresh after nightly planning finishes.")
+            if expected_receipt_sha256 is not None:
+                raise GameplanError("A frozen receipt hash requires an explicit saved run")
+            current = _latest(root)
+            from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
+            combined_dates = accepted_sessions(root)
+            combined_date = requested or (combined_dates[0] if combined_dates else None)
+            accepted = read_accepted_joint_plan(root, combined_date) if combined_date else None
+            joint_selected = bool(accepted and (requested or not current or combined_date >= current["action_date"]))
+            account_pointer = _account_pointer(root, accepted_joint=joint_selected)
+            # A damaged account publication still fails closed. Once verified, its
+            # old session cannot shadow a newer local or accepted joint publication.
+            account = _load_account_view(root, account_pointer) if account_pointer is not None else None
+            if (joint_selected and account is not None and not requested
+                    and combined_date < account.session):
+                joint_selected = False
+            if joint_selected:
+                combined, binding, run = accepted
+                forecasts = tuple(sorted((_forecast(row) for row in combined["forecasts"]),
+                    key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
+                return Gameplan(combined_date, _timestamp(combined["as_of"]), _timestamp(binding["accepted_at"]),
+                    run, run / "joint-plan.json", forecasts, _actions(combined["ledger"], forecasts, combined_date),
+                    "COMPLETE", "", "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
+                    _execution_quotes(root, forecasts), combined["holding_policy"],
+                    probability_target_contract(pd.DataFrame(combined["forecasts"])))
+            if account is not None:
+                if requested and requested <= account.session:
+                    return _load_account_view(root, account_pointer, requested)
+                if not requested and (not current or account.session >= current["action_date"]):
+                    return account
+            pointer = current if current and (requested is None or requested == current["action_date"]) else None
+            if pointer:
+                selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
+            elif requested:
+                candidates = [item for item in _history(root) if item[0] == requested]
+                if not candidates:
+                    raise GameplanError(f"No completed direction-ledger plan is saved for {requested}")
+                selected, _, run = max(candidates, key=lambda item: (item[1], item[2].name))
+            else:
+                raise GameplanError("No saved Gameplan is available yet. Refresh after nightly planning finishes.")
         receipt_path = run / "receipt.json"
         receipt_hash = file_checksum(receipt_path)
         if pointer and receipt_hash != pointer.get("receipt_sha256"):
@@ -570,6 +806,12 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 or not frame.action_date.astype(str).eq(selected).all()):
             raise GameplanError("Invalid saved forecast identities, counts or session")
         ledger = _json(run / "direction-ledger.json")
+        if ledger.get("status") == SHARED_PROJECTION_UNAVAILABLE:
+            binding = report.get("account_config_sha256")
+            if (not isinstance(binding, str) or re.fullmatch(r"[a-f0-9]{64}", binding) is None
+                    or any(item.get("publication_mode") != "ACCOUNT_PRODUCER_SOURCE" or item.get("account_config_sha256") != binding
+                           for item in (config, receipt)) or "account-snapshot.json" in manifest["output_files"]):
+                raise GameplanError("Producer-only preparation is missing its source-bound account configuration")
         from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
         fallback_policy = validate_fallback_policy(config.get("cross_horizon_fallback_policy"), selected)
         if any(metadata.get("cross_horizon_fallback_policy") != fallback_policy for metadata in (ledger, report, receipt)):
@@ -588,7 +830,9 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 raise GameplanError("Saved fallback policy differs from its pinned source")
         projection_status, projection_note = _projection_metadata(ledger, report, frame)
         available = projection_status == "COMPLETE"
-        forecasts = tuple(sorted((_forecast(row, projection_available=available) for row in frame.to_dict("records")),
+        forecasts = tuple(sorted((_forecast(row, projection_available=available,
+                                           unavailable_reason=SHARED_PROJECTION_UNAVAILABLE if projection_status == SHARED_PROJECTION_UNAVAILABLE else "PRICE_REFERENCES_UNAVAILABLE")
+                                  for row in frame.to_dict("records")),
                                  key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
         actions = _actions(ledger, forecasts, selected) if available else ()
         if file_checksum(receipt_path) != receipt_hash:
