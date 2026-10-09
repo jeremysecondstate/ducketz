@@ -224,6 +224,8 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         review_action_date=state["source_session"])
     if step == "train_and_plan":
         arguments["model_feedback"] = Path(state["steps"]["model_review"]["output"]["proposal"])
+        if state.get("recovery_deadline_at"):
+            arguments["late_action_date"] = state["action_date"]
     if previous:
         run = Path(previous)
         if not (run / "receipt.json").exists():

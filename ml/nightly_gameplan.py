@@ -153,6 +153,7 @@ def run_nightly_gameplan_once(
     probability_target_contract: str | None = None,
     archive_history: bool = False,
     model_feedback: Path | None = None,
+    late_action_date: str | None = None,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -175,6 +176,8 @@ def run_nightly_gameplan_once(
     probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
+    if late_action_date is not None and not independent_stock_horizons:
+        raise ValueError("Late recovery requires independent stock preparation")
     feedback = None
     if model_feedback is not None:
         if not independent_stock_horizons:
@@ -241,10 +244,11 @@ def run_nightly_gameplan_once(
         sources,
         symbols=symbols,
         as_of=created,
+        late_action_date=late_action_date,
     )
     action_start = _local_timestamp(action_date, ACTION_START_HOUR)
     action_end = _local_timestamp(action_date, ACTION_END_HOUR)
-    if created >= action_start:
+    if created >= action_start and late_action_date is None:
         raise RuntimeError(
             "A new immutable gameplan cannot be published after the 04:00 PT "
             f"action window begins: action_date={action_date.isoformat()}"
@@ -269,7 +273,8 @@ def run_nightly_gameplan_once(
         )
     if independent_stock_horizons:
         groups = build_stock_training_groups(
-            sources, feature_columns=feature_columns, minute_bars=minute_bars, available_at=created,
+            sources, feature_columns=feature_columns, minute_bars=minute_bars,
+            available_at=(action_start - pd.Timedelta(microseconds=1) if late_action_date else created),
             price_source_contract=stock_price_source,
             probability_target=probability_target,
         )
@@ -484,6 +489,8 @@ def run_nightly_gameplan_once(
             "definition": "inclusive forecast anchors from 04:00 through 17:00 PT",
         },
         "frozen_at": created.isoformat(),
+        "publication_mode": "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+        "late_action_date": late_action_date,
         "immutable": True,
         "execution_authority": EXECUTION_AUTHORITY,
         "broker_orders_enabled": False,
@@ -614,6 +621,8 @@ def run_nightly_gameplan_once(
                 "archive_history": archive_history,
                 "source_selection": source_selection_report} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
+            "publication_mode": "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+            "late_action_date": late_action_date,
             "timezone": str(SCHEDULE_TIMEZONE),
             "execution_authority": EXECUTION_AUTHORITY,
             "broker_orders_enabled": False,
@@ -631,9 +640,10 @@ def run_nightly_gameplan_once(
         datastore_root=root,
     )
     published_at = utc_timestamp()
-    if published_at >= action_start:
+    if published_at >= (action_end if late_action_date else action_start):
         raise RuntimeError(
-            "The completed gameplan missed the 04:00 PT publication boundary; "
+            ("The completed late gameplan missed the 17:00 PT publication boundary; " if late_action_date else
+             "The completed gameplan missed the 04:00 PT publication boundary; ") +
             "its immutable pointer was not advanced. "
             f"action_date={action_date.isoformat()}; "
             f"finished_at={published_at.isoformat()}"
@@ -757,12 +767,28 @@ def _current_overnight_sources(
     *,
     symbols: Sequence[str],
     as_of: pd.Timestamp,
+    late_action_date: str | None = None,
 ) -> tuple[pd.DataFrame, date]:
     starts = pd.to_datetime(sources["source_action_start" if "source_action_start" in sources else "target_window_start"],
                             utc=True, errors="coerce")
-    future = sources.loc[starts.gt(as_of)].copy()
+    if late_action_date is not None:
+        selected = pd.Timestamp(late_action_date)
+        local = as_of.tz_convert(SCHEDULE_TIMEZONE)
+        if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
+                or late_action_date != local.date().isoformat() or not 4 <= local.hour < 17):
+            raise ValueError("Late recovery must select today's open action session")
+        future = sources.loc[sources["action_date"].eq(selected.date())].copy()
+        boundary = _local_timestamp(selected.date(), ACTION_START_HOUR)
+        # Keep the original causal overnight features, even when publication is late.
+        for field in ("decision_timestamp", "information_available_at"):
+            clocks = pd.to_datetime(future[field], utc=True, errors="coerce")
+            if clocks.isna().any() or clocks.ge(boundary).any():
+                raise ValueError("Late recovery features must predate the action session")
+    else:
+        future = sources.loc[starts.gt(as_of)].copy()
     if future.empty:
-        raise RuntimeError("No future 04:00 PT source row exists for a new gameplan")
+        raise RuntimeError("No source row exists for the requested late action date" if late_action_date else
+                           "No future 04:00 PT source row exists for a new gameplan")
     next_date = min(future["action_date"])
     current = future.loc[future["action_date"].eq(next_date)].copy()
     observed = set(current["symbol"].astype("string").str.upper())
@@ -2689,6 +2715,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="Completed Stats-bound model review; adds bounded candidates to chronological selection")
     parser.add_argument("--archive-history", action="store_true",
                         help="Use verified historical XNAS feature rows; preserves price and model quality gates")
+    parser.add_argument("--late-action-date", help="Explicit same-day late recovery; preserves actual publication time")
     parser.add_argument(
         "--stock-only", action="store_true",
         help="Prepare stock forecasts with explicit no-trade options intents, without Strategy models or candidates",
@@ -2714,6 +2741,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                       stock_price_source=args.stock_price_source,
                                       archive_history=args.archive_history,
                                       model_feedback=args.model_feedback,
+                                      late_action_date=args.late_action_date,
                                       probability_target_contract=args.probability_target_contract)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")
