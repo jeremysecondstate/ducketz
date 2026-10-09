@@ -275,3 +275,21 @@ def test_loader_requires_both_schemas_and_unique_universe(native_headers, tmp_pa
         verify(tmp_path)
     with pytest.raises(ValueError, match="unique configured universe"):
         archive.verify_second_minute_overlap(tmp_path, symbols=("COST", "cost"), available_at=CUTOFF)
+
+
+def test_late_acquisition_preserves_second_minute_information_boundary(native_headers, tmp_path):
+    fixtures(tmp_path)
+    cutoff = START + pd.Timedelta(seconds=60)
+    with pytest.raises(ValueError, match="after cutoff"):
+        archive.verify_second_minute_overlap(tmp_path, symbols=("COST",), available_at=cutoff)
+    report, _ = archive.verify_second_minute_overlap(tmp_path, symbols=("COST",),
+        available_at=cutoff, evidence_available_at=CUTOFF)
+    assert report["available_at"] == cutoff.isoformat()
+    assert report["evidence_available_at"] == CUTOFF.isoformat()
+    assert report["by_symbol"]["COST"]["overlap_minutes"] == 1
+    before, _ = archive.verify_second_minute_overlap(tmp_path, symbols=("COST",),
+        available_at=cutoff - pd.Timedelta(seconds=1), evidence_available_at=CUTOFF)
+    assert before["by_symbol"]["COST"]["overlap_minutes"] == 0
+    with pytest.raises(ValueError, match="precedes"):
+        archive.verify_second_minute_overlap(tmp_path, symbols=("COST",),
+            available_at=CUTOFF, evidence_available_at=cutoff)

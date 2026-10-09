@@ -269,6 +269,28 @@ def test_loader_rejects_wrong_dataset_and_unclassified_warning(tmp_path, monkeyp
         archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=pd.Timestamp("2026-09-24T00:00Z"))
 
 
+def test_late_archive_acquisition_does_not_advance_information_cutoff(tmp_path, monkeypatch):
+    part = _partition(tmp_path)
+    # Use an actual boundary inside the fixture rather than assuming its dates.
+    original = pd.read_parquet(part.normalized_path)
+    cutoff = pd.Timestamp(original.ts_event.iloc[12]) + pd.Timedelta(days=1, minutes=5)
+    acquired = pd.Timestamp("2026-09-24T01:00Z")
+    part.manifest["published_at"] = acquired.isoformat()
+    monkeypatch.setattr(archive, "discover_archive_partitions", lambda *a, **k: (part,))
+    with pytest.raises(ValueError, match="published after"):
+        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff)
+    frame, _, _, _ = archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d",
+        as_of=cutoff, evidence_available_at=acquired)
+    assert len(frame) == 13
+    assert (frame.timestamp + pd.Timedelta(days=1, minutes=5)).le(cutoff).all()
+    with pytest.raises(ValueError, match="published after"):
+        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
+                             evidence_available_at=acquired - pd.Timedelta(seconds=1))
+    with pytest.raises(ValueError, match="precedes"):
+        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
+                             evidence_available_at=cutoff - pd.Timedelta(seconds=1))
+
+
 def test_provider_quality_days_keep_exact_evidence(tmp_path):
     part = _partition(tmp_path)
     part.manifest["provider_warnings"] = [{"message": "Reduced quality: 2021-07-07 (degraded), 2022-09-19 (degraded)."}]

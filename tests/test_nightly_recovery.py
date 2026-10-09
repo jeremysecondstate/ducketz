@@ -153,7 +153,8 @@ def test_native_stages_receive_original_deadline_and_recovery(configured, monkey
     assert commands[0][commands[0].index("--deadline") + 1] == "2026-10-09T21:30:00+00:00"
 
 
-def test_late_gameplan_uses_preopen_information_with_real_creation_time(configured, monkeypatch):
+@pytest.mark.parametrize("archive_history", [False, True])
+def test_late_gameplan_uses_preopen_information_with_real_creation_time(configured, monkeypatch, archive_history):
     import ml.nightly_gameplan as gameplan
     from types import SimpleNamespace
     root = Path(configured["datastore"])
@@ -176,6 +177,20 @@ def test_late_gameplan_uses_preopen_information_with_real_creation_time(configur
             "source_action_start": [pd.Timestamp("2026-10-09T11:00Z")] * 2,
             "source_feature_cutoff": [pd.Timestamp("2026-10-09T00:00Z")] * 2})
     monkeypatch.setattr(gameplan, "select_prior_session_sources", sources)
+    if archive_history:
+        from ml.gameplan_archive_features import ArchiveFeatureSources
+        def archive_sources(*args, **kwargs):
+            assert kwargs["available_at"] == cutoff
+            assert kwargs["evidence_available_at"] == NOW
+            return ArchiveFeatureSources(sources(available_at=cutoff), (), (), {})
+        def overlap(*args, **kwargs):
+            assert kwargs["available_at"] == cutoff
+            assert kwargs["evidence_available_at"] == NOW
+            return {}, ()
+        monkeypatch.setattr("ml.gameplan_archive_features.load_archive_feature_sources", archive_sources)
+        monkeypatch.setattr("ml.gameplan_archive_integration.combine_archive_sources", lambda archive, *a, **k: archive)
+        monkeypatch.setattr("ml.gameplan_archive_seconds.verify_second_minute_overlap", overlap)
+        monkeypatch.setattr(gameplan, "load_stock_target_prices", lambda *a, **k: (pd.DataFrame(), (), {}))
     monkeypatch.setattr(gameplan, "source_selection_contract", lambda _: "fixture")
     monkeypatch.setattr(gameplan, "_verify_opra_history", lambda *args, **kwargs: ((), {}))
     monkeypatch.setattr(gameplan, "_load_equity_minute_bars", lambda *args, **kwargs: (pd.DataFrame(), ()))
@@ -185,7 +200,9 @@ def test_late_gameplan_uses_preopen_information_with_real_creation_time(configur
     monkeypatch.setattr(gameplan, "build_stock_training_groups", groups)
     with pytest.raises(RuntimeError, match="Reached chronological"):
         gameplan.run_nightly_gameplan_once(root, run_timestamp=NOW, stock_only=True,
-            independent_stock_horizons=True, model_feedback=root / "proposal.json", recovery_spec=spec)
+            independent_stock_horizons=True, model_feedback=root / "proposal.json", recovery_spec=spec,
+            archive_history=archive_history,
+            **({"stock_price_source": "xnas-itch-archive-v1"} if archive_history else {}))
 
 
 def test_native_training_and_tail_forward_same_recovery(configured, monkeypatch):
