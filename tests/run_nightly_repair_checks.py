@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 from types import ModuleType
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path[:] = [entry for entry in sys.path
                if not (Path(entry).name == "cross_pc" and (Path(entry) / "test_runner.py").is_file())]
 

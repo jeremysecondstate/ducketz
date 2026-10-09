@@ -105,6 +105,16 @@ Stats; `resume_run` is reserved for a failed native segment.
 
 ### Missed-launch recovery
 
+For a reviewed source correction after `gameplan_trade_planning` fails, the
+source-repair helper supports `--retain-completed-preparation` during `--prepare`.
+This mode only accepts planning/validation/handoff source paths. It verifies the
+original failed native receipt, completed numerical stages, pinned Gameplan,
+completed review and unchanged recovery. Applying the frozen specification keeps
+that native attempt and all completed outputs, then the ordinary checked catch-up
+launcher resumes its failed tail. Archive/training changes cannot use this mode:
+they still require fresh dependent preparation. Neither mode can install beside
+a live worker, rewrite old evidence or extend a recovery expiry.
+
 Under the October 9 local operator authorization, the preparation launcher may
 use `--launch --catch-up --recovery-reason "Operator-authorized missed nightly preparation"`.
 Run `--check` first, then invoke the launcher exactly once. Do not suppress a
