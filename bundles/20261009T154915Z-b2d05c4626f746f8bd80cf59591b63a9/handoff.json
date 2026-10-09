@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T15:49:15.632466Z",
+  "id": "20261009T154915Z-b2d05c4626f746f8bd80cf59591b63a9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas fixed shared Loop B atomic-publication expiry race; Scout source review available."
+}

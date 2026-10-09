@@ -1,0 +1,30 @@
+{
+  "author": "Atlas / human-authorized-development / atlas-joint-gameplan-handoff",
+  "base_commit": "c78a29c95c82dd47e76f4049c77d632eee42b111",
+  "branch": "codex/atlas/20261009T154536Z-8a104310947f483bb67b5dafe05fa285",
+  "cause": "A forecast can expire between the prepublication check and atomic promotion. The rollback guard correctly rejects the stale generation, but previously aborted the whole preparation.",
+  "change_id": "20261009T154536Z-8a104310947f483bb67b5dafe05fa285",
+  "commit_sha": "e6c9d56f79c7ff309cc385846bacf1925f4e7fcf",
+  "files": [
+    "ml/runtime_pipeline.py",
+    "tests/test_ml_runtime_pipeline.py"
+  ],
+  "fix": "After successful rollback, rebuild publication once from already scored rows. Recheck fresh and carried forecast expiry, regenerate dependent outputs and receipt with actual times, and preserve atomic guards. No repeat model fitting inside the retry.",
+  "limitations": [
+    "Not main-integrated; stacked on PR 31. Scout installation and loaded runtime are unverified.",
+    "Second expiry, invalid deadlines, disk failures and conflicting publication remain failures.",
+    "Production recovery and exact joint handoff remain pending; this notice does not claim an operational end-to-end fallback."
+  ],
+  "peer_applicability": "Common Loop B logic applies to both Atlas and Scout regardless of research symbols. Scout failure or installation has not been observed from Atlas.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/32",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas installed reviewed bytes and explicitly resumed its existing failed recovery, retaining completed Stats, revalidated unchanged model review and fixed deadlines. On Scout, source adoption must follow local authority and active-session binding rules. This notice grants no startup, deployment or trading authority.",
+  "scope": "shared",
+  "summary": "Atlas fixed shared Loop B atomic-publication expiry race; Scout source review available.",
+  "tests": {
+    "isolated_completed_at_utc": "2026-10-09T15:48:15.524261Z",
+    "isolated_started_at_utc": "2026-10-09T15:47:14.447487Z",
+    "network": "disabled by pinned verification harness",
+    "result": "196 passed across seven offline suites in immutable queue and isolated candidate; six new regression cases"
+  }
+}
