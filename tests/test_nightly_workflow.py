@@ -392,7 +392,9 @@ def test_same_session_pointer_replacement_cannot_pass_display_verification(tmp_p
 def test_handoff_uses_explicit_immutable_stats_filename_and_is_retryable(tmp_path, monkeypatch):
     state, trade, _, source = _display_fixture(tmp_path)
     config = {"datastore": str(tmp_path), "state_root": str(tmp_path / "state"), "actor": "Scout"}
-    state["steps"]["verify_display"] = {"output": _display(config, state)}
+    # This historical cash-plan fixture tests handoff filename/idempotence;
+    # Scout research-only readiness is covered by test_scout_research_handoff.
+    state["steps"]["verify_display"] = {"output": _display({"datastore": str(tmp_path)}, state)}
     state["steps"]["local_handoff"] = {"started_at": "2026-09-14T09:00Z"}
     def owner_export(root, **kwargs):
         assert kwargs["gameplan_run"] == source and kwargs["trade_plan_run"] == trade

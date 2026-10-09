@@ -25,6 +25,7 @@ VERSION = "cash-aware-gameplan-trade-planning-v4"
 AUTHORITY = "REVIEW_ONLY_REVALIDATE_AT_ENTRY"
 PLANNING_PRICE_LOOKBACK_SESSIONS = 504
 PRODUCER_MODE = "ACCOUNT_PRODUCER_SOURCE"
+RESEARCH_PRODUCER_MODE = "RESEARCH_PRODUCER_SOURCE"
 SHARED_PROJECTION_UNAVAILABLE = "UNAVAILABLE_SHARED_ACCOUNT_PROJECTION"
 
 
@@ -341,7 +342,8 @@ def _review_refresh_basis(root, prior_run, source, source_hash, action_date, now
 
 
 def _publish_producer_prices(root, publication, forecasts, intents, *, binding, observed, deadline_at,
-                             price_loader, clock, fallback_metadata, probability_metadata):
+                             price_loader, clock, fallback_metadata, probability_metadata,
+                             research_producer_only=False, original_deadline=None):
     """Save observed planning estimates without reading a producer's account ledger."""
     from ml.account_gameplan.config import load_account_config
     from ml.stock_target_prices import load_stock_target_prices
@@ -354,13 +356,18 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
     committed_pointer = None
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     metadata = {"schema_version": VERSION, "action_date": day, **fallback_metadata, **probability_metadata,
-        "publication_mode": PRODUCER_MODE, "account_config_sha256": binding.fingerprint,
+        "publication_mode": RESEARCH_PRODUCER_MODE if research_producer_only else PRODUCER_MODE,
+        "account_config_sha256": None if research_producer_only else binding.fingerprint,
         "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
-        "producer_id": binding.machine_id, "source_gameplan_run": source.relative_to(root).as_posix(),
+        "producer_id": "scout" if research_producer_only else binding.machine_id,
+        "symbols": list(config["symbols"]), "source_gameplan_run": source.relative_to(root).as_posix(),
         "source_receipt_sha256": source_hash, "orders_placed": 0, "broker_orders_enabled": False,
         "execution_authority": AUTHORITY}
     report = {**metadata, "status": "RUNNING", "observed_at": observed.isoformat(),
-              "deadline_at": deadline_at.isoformat(), "effective_deadline_at": deadline_at.isoformat()}
+              "deadline_at": (original_deadline if original_deadline is not None else deadline_at).isoformat(),
+              "effective_deadline_at": deadline_at.isoformat()}
+    def binding_unchanged():
+        return research_producer_only or load_account_config(root) == binding
     try:
         prices, files, inventory = (price_loader or load_stock_target_prices)(root,
             symbols=tuple(config["symbols"]), source_contract=config["target_price_source_contract"])
@@ -442,10 +449,10 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
         terminal = {**metadata, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
             "manifest_sha256": file_checksum(run / "manifest.json"), "forecast_rows": len(rows), "completed_at": utc(clock()).isoformat()}
         if (utc(clock()) >= deadline_at or file_checksum(source / "receipt.json") != source_hash
-                or load_account_config(root) != binding):
+                or not binding_unchanged()):
             raise ValueError("Producer preparation source, binding or original deadline changed")
         _write_json(run / "receipt.json", terminal)
-        if utc(clock()) >= deadline_at or load_account_config(root) != binding:
+        if utc(clock()) >= deadline_at or not binding_unchanged():
             raise ValueError("Producer preparation deadline or binding changed before publication")
         if (latest_pointer.read_bytes() if latest_pointer.exists() else None) != previous_pointer:
             raise ValueError("Producer price-plan pointer advanced independently")
@@ -460,7 +467,7 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
             committed_pointer = written_bytes
         if committed_pointer is None:
             raise ValueError("Producer price-plan pointer advanced during publication")
-        if (utc(clock()) >= deadline_at or load_account_config(root) != binding
+        if (utc(clock()) >= deadline_at or not binding_unchanged()
                 or file_checksum(source / "receipt.json") != source_hash or latest_pointer.read_bytes() != committed_pointer):
             raise ValueError("Producer price-plan deadline, source or binding changed during publication")
         return run
@@ -489,7 +496,8 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
                        snapshot_loader=None, price_loader=None, clock=utc_timestamp,
                        deadline_exception: Path | None = None, refresh_plan: Path | None = None,
-                       account_producer_only: bool = False, expected_account_config: str | None = None) -> Path:
+                       account_producer_only: bool = False, expected_account_config: str | None = None,
+                       research_producer_only: bool = False) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups, late_publication_time
@@ -501,6 +509,9 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     from ml.gameplan_actuals_review import previous_action_date
 
     root = Path(datastore_root).resolve()
+    if research_producer_only and (account_producer_only or expected_account_config is not None
+                                 or snapshot_loader is not None or refresh_plan is not None):
+        raise ValueError("Research-only preparation cannot capture an account or combine producer modes")
     binding = None
     if account_producer_only:
         from ml.account_gameplan.config import load_account_config
@@ -558,6 +569,11 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     promoted = verified_promoted_model_groups(publication)
     if any(row.model_group not in promoted for row in forecasts.loc[forecasts.model_status.eq("PROMOTED")].itertuples()):
         raise ValueError("A forecast claims promotion without verified model authority")
+    if research_producer_only:
+        return _publish_producer_prices(root, publication, forecasts, intents, binding=None, observed=observed,
+            deadline_at=deadline_at, price_loader=price_loader, clock=clock,
+            fallback_metadata=fallback_metadata, probability_metadata=probability_metadata,
+            research_producer_only=True, original_deadline=original_deadline)
     if binding is not None:
         if set(symbols) != set(binding.participants[binding.machine_id]):
             raise ValueError("Producer source universe differs from its account binding")
@@ -741,6 +757,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--refresh-plan', type=Path,
                         help="Recalculate the current informational review using its original snapshot and planning cutoff")
     parser.add_argument("--account-producer-only", action="store_true")
+    parser.add_argument("--research-producer-only", action="store_true")
     parser.add_argument("--expected-account-config")
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
@@ -750,6 +767,8 @@ def main(argv: list[str] | None = None) -> int:
             extra['refresh_plan'] = args.refresh_plan
         if args.account_producer_only or args.expected_account_config is not None:
             extra.update(account_producer_only=args.account_producer_only, expected_account_config=args.expected_account_config)
+        if args.research_producer_only:
+            extra["research_producer_only"] = True
         run = publish_trade_plan(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
     print(json.dumps({"status": "COMPLETE", "run_path": str(run), "review_path": str(run / "Gameplan.md"), "orders_placed": 0}))
     return 0

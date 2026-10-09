@@ -37,5 +37,6 @@ if __name__ == "__main__":
         "tests/test_late_forecast_validation.py", "tests/test_gameplan_trade_planning.py",
         "tests/test_joint_capital_handoff.py", "tests/test_joint_capital_plan.py",
         "tests/test_independent_stock_signals.py", "tests/test_independent_stock_session.py",
+        "tests/test_scout_research_handoff.py", "tests/test_account_gameplan_producer_prices.py",
         "-q", "-p", "no:cacheprovider",
     ]))

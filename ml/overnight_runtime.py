@@ -246,6 +246,7 @@ def run_overnight_pipeline(
     review_action_date: str | None = None,
     model_feedback: Path | None = None,
     recovery_spec: Path | None = None,
+    research_producer_only: bool = False,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
 
@@ -258,6 +259,7 @@ def run_overnight_pipeline(
     resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception,
                                    recovery_spec=recovery_spec) if resume_run else None
     if resume:
+        research_producer_only = research_producer_only or resume.get("research_producer_only") is True
         start_at, stop_after = resume["failed_stage"], resume["stage_order"][-1]
         stock_only = stock_only or resume.get("stock_only") is True
         independent_stock_horizons = independent_stock_horizons or resume.get("independent_stock_horizons") is True
@@ -509,6 +511,7 @@ def run_overnight_pipeline(
         "deadline_at": deadline_at.isoformat(), "stage_order": list(selected),
         "effective_deadline_at": effective_deadline.isoformat(),
         "recovery": recovery,
+        "research_producer_only": research_producer_only,
         "deadline_exception": resume.get('deadline_exception') if resume else None,
         "resumed_from": str(Path(resume_run).resolve()) if resume_run else None,
         "completed_stages_from_previous_attempt": resume["completed_stages"] if resume else [],
@@ -587,6 +590,8 @@ def run_overnight_pipeline(
                     )
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE, *ACCOUNT_TAIL_STAGES):
+                        if stage == INDEPENDENT_TRADE_PLANNING_STAGE and research_producer_only:
+                            command = (*command, "--research-producer-only")
                         command = (*command, "--deadline", deadline_at.isoformat())
                         if deadline_exception is not None:
                             command = (*command, '--deadline-exception', str(Path(deadline_exception).resolve()))
