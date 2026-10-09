@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T23:17:08.909686Z",
+  "id": "20261009T231708Z-ffaaec002c604188adb9f76074a90d59",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Complete single-owner nightly recovery and exact exchange continuation"
+}

@@ -1,0 +1,42 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261009T230415Z-17ed0753a3674f8bae45d714af3f6bf1",
+  "change_id": "20261009T230415Z-17ed0753a3674f8bae45d714af3f6bf1",
+  "commit_sha": "410b5cb0b173d440ffbd808261e10c17db75f3ab",
+  "files": [
+    "docs/development/nightly-exchange.md",
+    "docs/development/nightly-operations.md",
+    "ml/nightly_exchange_repair.py",
+    "ml/nightly_repair_registry.py",
+    "ml/nightly_stage_repair.py",
+    "ml/nightly_workflow.py",
+    "tests/test_nightly_common_union.py",
+    "tests/test_nightly_exchange.py",
+    "tests/test_nightly_exchange_repair.py",
+    "tests/test_nightly_recovery.py",
+    "tests/test_nightly_stage_repair.py",
+    "tools/nightly_exchange.py",
+    "tools/nightly_source_repair.py"
+  ],
+  "limitations": [
+    "Source publication is not main integration, local installation or tonight production completion.",
+    "Atlas preserves its published local dependency closure and active trader; no trader restart or provider verification was performed.",
+    "Notification helper b9ffaecaa5c54572e9d28ea79004f85d1b357b41 is a separately published component."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/46",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/1"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install only the reviewed owned overlay with immutable originals and exact passing offline evidence. Preserve terminal October9 receipts, fixed deadlines, active trader and local bindings. Scout alone synthesizes; Atlas alone executes under Jeremy manual start/stop.",
+  "scope": "Shared preparation/exchange recovery; applicable to both PCs",
+  "summary": "Complete single-owner nightly recovery and exact exchange continuation",
+  "tests": [
+    {
+      "completed_at": "2026-10-09T23:12:25.969294Z",
+      "location": "exact final publication; 716 bound source/dependency fingerprints",
+      "result": "496 passed against immutable queue capture and 496 passed in fresh isolated courier",
+      "started_at": "2026-10-09T23:08:47.421565Z"
+    }
+  ]
+}
