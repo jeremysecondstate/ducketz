@@ -578,6 +578,8 @@ def run_overnight_pipeline(
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE, *ACCOUNT_TAIL_STAGES):
                         command = (*command, "--deadline", deadline_at.isoformat())
+                        if stage == INDEPENDENT_TRADE_PLANNING_STAGE and late_action_date is not None:
+                            command = (*command, "--late-action-date", late_action_date)
                         if deadline_exception is not None:
                             command = (*command, '--deadline-exception', str(Path(deadline_exception).resolve()))
                     if stage == ACCOUNT_GAMEPLAN_STAGE:

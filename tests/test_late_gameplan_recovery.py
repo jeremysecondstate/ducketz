@@ -89,3 +89,23 @@ def test_workflow_passes_late_mode_only_for_recovery(tmp_path, monkeypatch):
     state["steps"]["train_and_plan"] = {}
     workflow._run_native(config, state, "train_and_plan", lambda: None)
     assert "late_action_date" not in calls[1]
+
+
+@pytest.mark.parametrize('late', [None, '2026-10-09'])
+def test_runtime_passes_frozen_recovery_date_to_trade_planning(tmp_path, monkeypatch, late):
+    from ml import overnight_runtime as runtime
+    calls = []
+    monkeypatch.setattr(runtime, '_run_stage', lambda command, **kwargs: calls.append((command, kwargs['deadline'])) or 0)
+    monkeypatch.setattr(runtime, '_pin_stock_gameplan', lambda *a, **k: {'run_path': 'ml/nightly-gameplan-runs/frozen'})
+    deadline = pd.Timestamp('2026-10-09T19:00Z' if late else '2026-10-09T11:00Z')
+    runtime.run_overnight_pipeline(tmp_path, datastore_argument=('--datastore', str(tmp_path)),
+        repository_root=tmp_path, start_at='gameplan_trade_planning', stop_after='gameplan_trade_planning',
+        stock_only=True, independent_stock_horizons=True, late_action_date=late,
+        deadline=deadline, reporter=None)
+    command, process_deadline = calls[0]
+    assert command[command.index('--deadline') + 1] == deadline.isoformat()
+    assert process_deadline == deadline
+    if late:
+        assert command[command.index('--late-action-date') + 1] == late
+    else:
+        assert '--late-action-date' not in command

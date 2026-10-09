@@ -120,6 +120,11 @@ publication retains its 04:00 boundary. A publisher repair changes the model
 review's code binding: preserve the failed state and original review as audit
 evidence, renew the review and training under the reviewed source, and retain
 the workflow identity, completed Stats and both original deadlines.
+The native trade-planning tail carries the same explicit late action date and
+frozen recovery deadline. It accepts that deadline only for a verified matching
+`LATE_RECOVERY` source during that action session, retains the original 04:00
+deadline in its report, and still rejects expiry during publication. Ordinary
+sources, missing late flags, and informational refreshes cannot use this route.
 Read `--status` and the saved worker log for the real outcome. A separate morning
 readiness task checks durable results and reports missing/failed stages. Success
 during the rollout is `LOCAL_COMPLETE_PEER_SETUP_PENDING`; it is not joint
