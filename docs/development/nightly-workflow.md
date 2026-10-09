@@ -123,6 +123,37 @@ Gameplan training uses information available before the original action window;
 its real creation/publication timestamps and late-preparation metadata remain
 visible. The authorization grants preparation only, never trading or cutover.
 
+Late archive acquisition has two clocks. `available_at` still limits market
+information, completed bars and training labels to the original pre-action
+cutoff. Only after recovery authorization verifies, the archive feature loader
+and second/minute verifier accept `evidence_available_at` equal to the actual
+Gameplan creation time. This admits historical archives fetched during recovery
+without admitting later market information or backdating their manifests. Both
+clocks remain in the source reports; normal callers retain one-clock checks.
+
+### Reviewed repair of failed late publication
+
+An unchanged deterministic publication failure is not retryable. For a reviewed
+archive-publication source fix, `tools.nightly_source_repair` provides a narrow
+explicit transition under the existing workflow and runtime locks. Prepare it
+with the exact action date, stable repair ID, reviewed candidate directory,
+explicit `--path` entries, immutable source Completion-Record and actual passing
+offline `--check-log` evidence, using `--prepare --reviewed`. Then apply that
+exact returned specification with `--apply SPEC --reviewed`. The local human
+must authorize this source repair and installation; a peer notice cannot.
+
+The helper accepts only the failed unpublished Gameplan-publication state with
+verified completed Stats and an unexpired original recovery. It preserves a full
+immutable before-state snapshot, original source bytes, original feedback and
+native attempt files. It installs only the explicit allowed archive-publication
+files, verifies the complete remaining application inventory, and records old
+and new source bindings. The same workflow/session identity, Stats, operating
+bindings and fixed recovery expiry survive. It requires a fresh model review
+and dependent preparation under the new code; old review receipts are not
+relabeled. Interrupted installs resume only from the same frozen specification.
+The helper never launches preparation. After reviewing its applied record, use
+the ordinary `--check` then `--launch --catch-up --recovery-reason` path once.
+
 Private state holds source hashes, actor, symbols, session identities, stage
 receipts, errors and exact output hashes. Keep it out of Git. Preserve the
 existing local watchlist and profile. Native IDs are recorded locally rather

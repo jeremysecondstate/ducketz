@@ -267,7 +267,8 @@ def _verify_partition(partition, root, *, available_at):
                  "provider_warnings": partition.manifest.get("provider_warnings", [])}
 
 
-def verify_second_minute_overlap(root: Path, *, symbols: Sequence[str], available_at):
+def verify_second_minute_overlap(root: Path, *, symbols: Sequence[str], available_at,
+                                evidence_available_at=None):
     """Verify saved 1s and 1m evidence and return a report plus bound source files.
 
     Uses the native cold-archive verifier for both payloads and Parquet metadata;
@@ -275,6 +276,9 @@ def verify_second_minute_overlap(root: Path, *, symbols: Sequence[str], availabl
     The caller controls the existing production symbol universe and publication.
     """
     root, cutoff = Path(root).resolve(), _utc(available_at)
+    evidence_cutoff = cutoff if evidence_available_at is None else _utc(evidence_available_at)
+    if evidence_cutoff < cutoff:
+        raise ValueError("Archive evidence cutoff precedes its information cutoff")
     clean = tuple(str(s).strip().upper() for s in symbols)
     if not clean or len(set(clean)) != len(clean) or any(not s for s in clean):
         raise ValueError("Archive consistency requires a unique configured universe")
@@ -285,7 +289,7 @@ def verify_second_minute_overlap(root: Path, *, symbols: Sequence[str], availabl
             symbol = partition.request["symbol_scope"][0]
             if symbol not in by_symbol:
                 continue
-            raw, note = _verify_partition(partition, root, available_at=cutoff)
+            raw, note = _verify_partition(partition, root, available_at=evidence_cutoff)
             files.extend((*partition.source_files, raw))
             evidence.append(note)
             by_symbol[symbol][schema].append(partition)
@@ -303,6 +307,7 @@ def verify_second_minute_overlap(root: Path, *, symbols: Sequence[str], availabl
         reports[symbol]["minute_partitions"] = len(minutes)
     report = {"schema_version": SECOND_MINUTE_CHECK_CONTRACT, "status": "VERIFIED",
               "dataset": _DATASET, "available_at": cutoff.isoformat(), "symbols": list(clean),
+              "evidence_available_at": evidence_cutoff.isoformat(),
               "native_archive_partitions_verified": len(evidence), "by_symbol": reports,
               "partitions": evidence, "raw_record_replay": "NOT_PERFORMED",
               "verification": "Native archive payload hashes and normalized metadata; exact native DBN request headers",

@@ -234,10 +234,15 @@ def run_nightly_gameplan_once(
         from ml.gameplan_archive_integration import combine_archive_sources
         from ml.gameplan_archive_seconds import verify_second_minute_overlap
         from dataclasses import replace
+        # Acquisition time is distinct from market information time during an
+        # explicitly verified late recovery. Filtering and fitting still use
+        # information_cutoff; late archive manifests keep their real timestamps.
+        archive_clocks = {"evidence_available_at": created} if recovery else {}
         archive = combine_archive_sources(
-            load_archive_feature_sources(root, symbols=symbols, available_at=information_cutoff),
+            load_archive_feature_sources(root, symbols=symbols, available_at=information_cutoff, **archive_clocks),
             operational_sources, feature_columns=source_feature_columns)
-        seconds_report, seconds_files = verify_second_minute_overlap(root, symbols=symbols, available_at=information_cutoff)
+        seconds_report, seconds_files = verify_second_minute_overlap(
+            root, symbols=symbols, available_at=information_cutoff, **archive_clocks)
         archive = replace(archive, report={**archive.report, "second_minute_consistency": seconds_report},
                           source_files=tuple(dict.fromkeys((*archive.source_files, *seconds_files))))
         archive.sources.attrs["source_selection"] = archive.report
