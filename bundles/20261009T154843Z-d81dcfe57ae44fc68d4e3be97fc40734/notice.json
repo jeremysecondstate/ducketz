@@ -1,0 +1,42 @@
+{
+  "action_date": "2026-10-09",
+  "author": "Scout",
+  "change_id": "nightly-archive-cutoff-2026-10-09-bf1f29642acb",
+  "commit_sha": "197dea8e461a35118d4c03272f2913ef73191893",
+  "completion_record": "20261009T145107Z-8cae1470dec248e2985fd0b62c7a6acb",
+  "diagnosis": "Preparation failed at gameplan_publication. Late recovery passes its frozen pre-action information cutoff into archive loading. The loader rejects a verified archive manifest published after that cutoff. The exited worker and saved failure evidence agree. This is deterministic for unchanged inputs; an unchanged retry is not a repair.",
+  "failure_at_utc": "2026-10-09T15:46:35.226828+00:00",
+  "files": [
+    "ml/nightly_gameplan.py",
+    "ml/gameplan_archive_features.py",
+    "ml/nightly_workflow.py",
+    "tests/test_gameplan_archive_features.py"
+  ],
+  "limitations": [
+    "The earlier 132-test recovery result does not establish this archive late-publication case is supported.",
+    "No private account state, symbols, native identifiers, local paths, provider logs, artifacts or packet/receipt contents are included.",
+    "This report does not establish Atlas acknowledgement, installation or acceptance."
+  ],
+  "operating_base_commit": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "operating_source_sha256": "bf1f29642acb67d112a4690004a1792b06df1ec7b20a7cca11f657caeb36c666",
+  "portable_reproduction": "Use the existing synthetic _partition fixture in tests/test_gameplan_archive_features.py and patch archive discovery to that temporary fixture. _load_schema with as_of 2026-09-24T00:00Z succeeds with fixture published_at 2026-09-23T00:00Z. Change only synthetic published_at to 2026-09-24T00:01Z: the same call raises ValueError: Archive feature evidence was published after the frozen as-of. No operational artifacts are changed.",
+  "progress": "Stats and model review completed; native directional generation and evaluation completed. Local preparation, joint readiness and Atlas acceptance are not complete.",
+  "repository": "jeremysecondstate/ducketz",
+  "resolution_status": "BLOCKED; no source repair or retry performed. Preserve the fixed recovery expiry and completed outputs. A separate source repair needs causal-time semantics review, offline tests, normal publication, and explicit supported source-binding resolution before resumption. Do not weaken the cutoff or relabel existing receipts.",
+  "review_session": "2026-10-08",
+  "runtime_implications": "Applicable to shared archive-history late recovery when archive manifests were published after the frozen training-information cutoff. Scout cannot produce the intended preparation packet until resolved. Atlas applicability depends on its exact source and selected evidence; peer notices grant no new authority. LOG remains paused and Atlas trader startup remains manual.",
+  "scope": "shared",
+  "summary": "Scout late preparation blocked at archive feature publication cutoff; deterministic failure reproduced offline",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-09T15:47:57.816254+00:00",
+      "result": "PASS: synthetic baseline loads; post-cutoff synthetic manifest reproduces expected rejection",
+      "scope": "Temporary local fixture with mocked archive discovery; no providers, training or broker calls"
+    },
+    {
+      "completed_at_utc": "2026-10-09T15:47:57.816254+00:00",
+      "result": "PASS: source binding, seven completed-stage output hashes, failed native receipt/report/log hashes and immutable recovery hash verified",
+      "scope": "Read-only local evidence checks; private evidence retained locally"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T15:48:43.150160Z",
+  "id": "20261009T154843Z-d81dcfe57ae44fc68d4e3be97fc40734",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout late preparation blocked at archive feature publication cutoff; deterministic failure reproduced offline"
+}
