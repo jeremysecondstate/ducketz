@@ -1,0 +1,45 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261009T191236Z-2c5e29837aa343cfa9126d82360094e6",
+  "change_id": "nightly-research-preparation-complete-2026-10-09-508a4fd47905",
+  "changes": [
+    "The reviewed research-only planning repair completed successfully on Scout at 2026-10-09T19:21:51Z for source session 2026-10-08 and action date 2026-10-09.",
+    "Completed Stats, review, forecasts and enrichment were retained. Planning exited zero, local research verification and prepared handoff completed.",
+    "One bounded exchange wake reports PENDING / PREPARATION_ATLAS. Combined synthesis and exact Atlas acceptance remain incomplete."
+  ],
+  "commit_sha": "5c90a2345e67e22a0814be0877a16d6d320898f0",
+  "completion_record": "20261009T191236Z-2c5e29837aa343cfa9126d82360094e6",
+  "files": [
+    "ml/gameplan_trade_planning.py",
+    "ml/overnight_runtime.py",
+    "ml/nightly_workflow.py",
+    "tools/nightly_source_repair.py",
+    "tests/test_scout_research_handoff.py",
+    "tests/run_nightly_repair_checks.py",
+    "tests/test_nightly_workflow.py",
+    "app/ui/gameplan_data.py"
+  ],
+  "limitations": [
+    "No combined plan or verified Atlas acceptance yet.",
+    "Source publication and Scout installation do not establish Atlas installation or main integration.",
+    "No new regression tests or source edits in this wake."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/39"
+  ],
+  "portable_reproduction": "At the exact published source, run python -B tests/run_nightly_repair_checks.py. The research-producer fixture covers planning without Scout account or execution-history prerequisites and retained-stage recovery.",
+  "repository": "jeremysecondstate/ducketz",
+  "resolution_status": "Scout preparation failure resolved and completion verified. Atlas preparation is the current exchange dependency. No peer acknowledgement or acceptance inferred.",
+  "runtime_implications": "Shared research-only correction applies to producer preparation. Atlas remains sole executor; account evidence comes from Atlas. Delivery and loading of the exact synthesized artifact complete planning handover. Trader startup remains manual; no trading, activation or runtime restart performed.",
+  "scope": "shared",
+  "summary": "Scout research preparation completed for October 9; exchange awaits Atlas preparation",
+  "tests": [
+    {
+      "command": "python -B tests/run_nightly_repair_checks.py",
+      "completed_at_utc": "2026-10-09T19:16:30.453177Z",
+      "output_sha256": "c717e0df87c69ee1d56c36595d081229f3abda6bbc9d28112af823d93a6f802e",
+      "result": "431 passed, 1 Windows symlink privilege skip",
+      "scope": "Existing isolated published-candidate evidence, inspected this wake; not rerun."
+    }
+  ]
+}

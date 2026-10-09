@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T19:23:40.972064Z",
+  "id": "20261009T192340Z-d2cf3831c9cb4aeb96774b7c34c9e762",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout research preparation completed for October 9; exchange awaits Atlas preparation"
+}
