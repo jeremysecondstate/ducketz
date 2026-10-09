@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-09T06:42:58.856274Z",
+  "id": "20261009T064258Z-cfb9293709674a5bacb9cbe52445d3e9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout pc-new completed tested shared amplitude reduction 0.375 to 0.25 and verified main integration."
+}

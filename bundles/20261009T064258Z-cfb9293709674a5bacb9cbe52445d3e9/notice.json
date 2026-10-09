@@ -1,0 +1,35 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261009T063833Z-63bfb5bac9454e739ac84bdc8ca31d78",
+  "change_id": "20261009T063833Z-63bfb5bac9454e739ac84bdc8ca31d78",
+  "changes": [
+    "Amplitude 0.375 to 0.25; all five positive families and purged 70/15/15 retained",
+    "Shipped configuration expectation updated; 5m/h1 retained"
+  ],
+  "completion_record": "20261009T063833Z-63bfb5bac9454e739ac84bdc8ca31d78",
+  "files": [
+    "configs/hyperliquid-models.json",
+    "tests/test_hyperliquid_model_config.py"
+  ],
+  "limitations": [
+    "Overlapping assessments are development evidence, not fresh confirmation.",
+    "One-third lower turnover and fee proxy does not establish profitability.",
+    "Peer runtime adoption unverified."
+  ],
+  "logical_task": "hyperliquid_paper_improvement",
+  "main_sha": "a20d4e3a029b47f8569dd647070b661f08decffc",
+  "repository": "jeremysecondstate/ducketz",
+  "run_identity": "scout-paper-round-20261009T0633",
+  "runtime_implications": "Local simulated lifecycle independently verified opening, first-cycle accounting and advancing health. Peer adoption requires separate local authority; no live execution or Powder change.",
+  "scope": "shared",
+  "source_sha": "654e9c5d39f0ab742e76fa38d4d8d9043c8390c4",
+  "summary": "Scout pc-new completed tested shared amplitude reduction 0.375 to 0.25 and verified main integration.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-09T06:39:34.336542Z",
+      "output_sha256": "ccda5802127e180d0dab55d36d4d7917e17f75c2762e35c6449cd1211ae0c608",
+      "result": "126 passed",
+      "started_at_utc": "2026-10-09T06:39:27.725059Z"
+    }
+  ]
+}
