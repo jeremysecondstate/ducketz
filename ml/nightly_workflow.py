@@ -472,7 +472,7 @@ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
 
 def _planning_tail_continuation(config, state, requested, observed):
     """Validate a separately authorized continuation without replacing deadlines."""
-    from ml.overnight_runtime import _resume_configuration
+    from ml.overnight_runtime import _resume_configuration, _validated_run
     from ml.preparation_deadline import RECOVERY_VERSION
     saved = state.get("planning_tail_continuation")
     if requested is None and saved is None:
@@ -501,8 +501,11 @@ def _planning_tail_continuation(config, state, requested, observed):
         raise ValueError("Planning continuation does not match this failed recovery tail")
     # Verify immutable failed receipts, logs and the exact published source pin.
     _resume_configuration(root, origin, deadline_exception=path)
-    if entry.get("status") != "COMPLETE":
-        _resume_configuration(root, Path(entry["native_run"]), deadline_exception=path)
+    # The current attempt may have lost its owner before writing a receipt, or
+    # completed before the workflow saved its result. Let _run_native recover or
+    # verify that attempt under the native lock instead of requiring a failure
+    # receipt here. A failed retry still undergoes normal native resume checks.
+    _validated_run(root, Path(entry["native_run"]))
     cutoff = utc_timestamp(record["expires_at"])
     if not utc_timestamp(record["approved_at"]) <= observed < cutoff:
         raise ValueError("Planning continuation is expired or future-dated")

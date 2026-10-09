@@ -125,3 +125,105 @@ def test_native_continuation_dispatches_only_pinned_tail_with_effective_cutoff(r
     assert report['effective_deadline_at'] == '2026-10-07T21:00:00+00:00'
     assert calls == ['ml.gameplan_trade_planning', 'ml.gameplan_actuals_review']
     assert {p.name:p.read_bytes() for p in failed.iterdir()} == original
+
+
+def interrupted_continuation(recovery, *, completed=False, receipt_present=False):
+    """Persist the two independent save boundaries of a resumed native tail."""
+    config, state_path, failed, exception, _ = recovery
+    root = Path(config['datastore'])
+    state = json.loads(state_path.read_text())
+    workflow._planning_tail_continuation(config, state, exception, pd.Timestamp('2026-10-07T19:20Z'))
+    current = root/'ml/overnight-runs/interrupted'; current.mkdir()
+    proposal = root/'reviewed-proposal.json'; proposal.write_text('{}')
+    state['steps']['model_review']['output'].update(proposal=str(proposal), files={str(proposal):file_checksum(proposal)})
+    state['status'] = 'RUNNING'
+    state['steps']['train_and_plan'].update(status='RUNNING', native_run=str(current))
+    report = json.loads((failed/'stage-report.json').read_text())
+    report.update(status='COMPLETE' if receipt_present else 'RUNNING', failed_stage=None,
+        owner_pid=99999999, owner_created_at=42.0, child_pid=None,
+        stage_order=['gameplan_trade_planning'],
+        stages=[{'stage':'gameplan_trade_planning', 'status':'COMPLETE'}] if completed else [],
+        probability_target_contract='raw-price-direction-v1', archive_history=True,
+        stats_first=True, review_action_date=state['source_session'],
+        model_feedback={'path':str(proposal.resolve()), 'sha256':file_checksum(proposal)},
+        effective_deadline_at='2026-10-07T21:00:00+00:00',
+        deadline_exception={'path':str(exception.resolve()), 'sha256':file_checksum(exception)})
+    (current/'stage-report.json').write_text(json.dumps(report))
+    if receipt_present:
+        (current/'receipt.json').write_text(json.dumps(dict(schema_version=native.OVERNIGHT_RUNTIME_VERSION,
+            run_path=current.relative_to(root).as_posix(), status='COMPLETE', orders_placed=0,
+            broker_orders_enabled=False, stage_report_checksum_sha256=file_checksum(current/'stage-report.json'))))
+    state_path.write_text(json.dumps(state))
+    return config, state_path, current, state
+
+
+@pytest.mark.parametrize('completed,receipt_present', [(False,False), (True,False), (True,True)])
+def test_saved_continuation_recovers_native_save_boundaries_without_duplicate_work(recovery, monkeypatch, completed, receipt_present):
+    config, state_path, current, before = interrupted_continuation(
+        recovery, completed=completed, receipt_present=receipt_present)
+    _, _, origin, exception, _ = recovery
+    original = {p.name:p.read_bytes() for p in origin.iterdir()}
+    authorization = exception.read_bytes()
+    pin = json.loads((origin/'stage-report.json').read_text())['enrichment_gameplan']
+    monkeypatch.setattr(native, '_process_created_at', lambda pid: None)
+    monkeypatch.setattr(native, '_pin_stock_gameplan', lambda *a, **k: pin)
+    stages = []
+    def complete(command, **kwargs):
+        assert command[3] == 'ml.gameplan_trade_planning'
+        assert kwargs['deadline'] == pd.Timestamp('2026-10-07T21:00Z')
+        kwargs['log_path'].write_text('offline interrupted tail completed')
+        stages.append(command[3]); return 0
+    monkeypatch.setattr(native, '_run_stage', complete)
+    calls = []
+    def execute(c, s, step, save):
+        calls.append(step)
+        return workflow._run_native(c, s, step, save) if step == 'train_and_plan' else {'files':{}}
+    result = workflow.run_workflow(config, resume_action_date='2026-10-07',
+        now='2026-10-07T19:20Z', identity=_identity, supervise=False, execute_step=execute)
+    assert result['status'] == 'LOCAL_COMPLETE_PEER_SETUP_PENDING'
+    assert stages == ([] if completed else ['ml.gameplan_trade_planning'])
+    assert calls == ['train_and_plan','verify_display','local_handoff']
+    for key in ('run_id','deadline_at','recovery_deadline_at','planning_tail_continuation'):
+        assert result[key] == before[key]
+    for step in ('prepare_stats','model_review'):
+        assert result['steps'][step] == before['steps'][step]
+    assert {p.name:p.read_bytes() for p in origin.iterdir()} == original
+    assert exception.read_bytes() == authorization
+    receipt = json.loads((current/'receipt.json').read_text())
+    assert receipt['status'] == ('COMPLETE' if completed else 'CANCELLED')
+    assert len(list((Path(config['datastore'])/'ml/overnight-runs').iterdir())) == (2 if completed else 3)
+    workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:20Z',
+        identity=_identity, supervise=False, execute_step=lambda *a: pytest.fail('Completed tail dispatched again'))
+
+
+def test_saved_continuation_cannot_recover_a_live_native_owner(recovery, monkeypatch):
+    config, _, current, _ = interrupted_continuation(recovery)
+    original = (current/'stage-report.json').read_bytes()
+    monkeypatch.setattr(native, '_process_created_at', lambda pid: 42.0 if pid == 99999999 else None)
+    monkeypatch.setattr(native, '_run_stage', lambda *a, **k: pytest.fail('Live native owner duplicated'))
+    with pytest.raises(RuntimeError, match='owner is still alive'):
+        workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:20Z',
+            identity=_identity, supervise=False, execute_step=workflow._run_native)
+    assert (current/'stage-report.json').read_bytes() == original
+    assert not (current/'receipt.json').exists()
+
+
+def test_saved_continuation_still_rejects_changed_failed_retry_evidence(recovery, monkeypatch):
+    config, _, current, _ = interrupted_continuation(recovery)
+    monkeypatch.setattr(native, '_process_created_at', lambda pid: None)
+    native.recover_interrupted_run(Path(config['datastore']), current, 'Offline fixture owner exited')
+    (current/'stage-report.json').write_text('{}')
+    monkeypatch.setattr(native, '_run_stage', lambda *a, **k: pytest.fail('Changed native evidence dispatched'))
+    with pytest.raises(RuntimeError, match='Only a verified failed or stopped'):
+        workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:20Z',
+            identity=_identity, supervise=False, execute_step=workflow._run_native)
+
+
+def test_saved_continuation_preserves_native_run_directory_boundary(recovery):
+    config, state_path, _, state = interrupted_continuation(recovery)
+    state['steps']['train_and_plan']['native_run'] = str(Path(config['datastore'])/'other-run')
+    state_path.write_text(json.dumps(state))
+    with pytest.raises(ValueError, match='escapes its expected directory'):
+        workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:20Z',
+            identity=_identity, supervise=False,
+            execute_step=lambda *a: pytest.fail('Native directory boundary bypassed'))
