@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T08:28:49.765945Z",
+  "id": "20261010T082849Z-5369cf96c0be436abcefa2c120fa7306",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Keep accepted Gameplan history accessible during joint preparation and explain unscored sessions"
+}
