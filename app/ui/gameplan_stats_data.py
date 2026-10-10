@@ -123,6 +123,7 @@ class GameplanStatsReview:
     outcomes: tuple[PredictionOutcome, ...]
     excluded_forecasts: int = 0
     probability_target_contract: str = LEGACY_COST_TARGET
+    coverage_status: str | None = None
 
     @property
     def display_name(self) -> str:
@@ -323,7 +324,7 @@ def load_gameplan_stats(datastore_root: Path | None = None, session: str | None 
         return GameplanStatsReview(
             selected, _timestamp(report["reviewed_at"], "review time"),
             _timestamp(report["outcomes_through"], "outcome cutoff"), run,
-            run / "Gameplan-results.md", outcomes, excluded, contract,
+            run / "Gameplan-results.md", outcomes, excluded, contract, report.get("coverage_status"),
         )
     except GameplanStatsError:
         raise

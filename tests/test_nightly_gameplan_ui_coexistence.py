@@ -64,6 +64,12 @@ def test_verified_joint_replaces_missing_legacy_active_display_guard(tmp_path, m
     write_plan(tmp_path, session="2026-10-07")
     with pytest.raises(GameplanError, match="shared account Gameplan"):
         load_gameplan(tmp_path)
+    # Current readiness and historical navigation are separate: enumerating or
+    # opening accepted history never promotes the unaccepted newer local plan.
+    assert plan_sessions(tmp_path) == ("2026-10-07", "2026-10-06")
+    assert load_gameplan(tmp_path, "2026-10-06").run_directory == accepted
+    with pytest.raises(GameplanError, match="2026-10-07.*awaiting the accepted combined plan"):
+        load_gameplan(tmp_path, "2026-10-07")
 
 
 def test_new_joint_does_not_hide_a_damaged_legacy_pointer(account, monkeypatch):
@@ -72,3 +78,5 @@ def test_new_joint_does_not_hide_a_damaged_legacy_pointer(account, monkeypatch):
     pin(root, legacy, digest="0" * 64)
     with pytest.raises(GameplanError):
         load_gameplan(root)
+    with pytest.raises(GameplanError):
+        plan_sessions(root)

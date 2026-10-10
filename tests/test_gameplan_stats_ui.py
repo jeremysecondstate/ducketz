@@ -111,6 +111,25 @@ def test_default_refresh_follows_newly_published_session(tab, tmp_path):
     assert tab.values["accuracy"].get() == "0.0%"
 
 
+def test_no_preopen_forecasts_explains_empty_review_and_preserves_history(tab, tmp_path):
+    write_review(tmp_path, [], session="2026-09-14", coverage_status="NO_SAVED_INDEPENDENT_GAMEPLAN")
+    tab.refresh()
+    _finish_refresh(tab)
+    assert tab.review.session == "2026-09-14" and tab.review.outcomes == ()
+    assert "no eligible forecasts were saved before the 04:00 Pacific opening" in tab.status.get()
+    assert all(value.get() == "—" for value in tab.values.values())
+    assert "2026-09-11" in tab.date_box.cget("values")
+    tab.session.set("2026-09-11")
+    tab._date_changed()
+    _finish_refresh(tab)
+    assert tab.review.session == "2026-09-11"
+    assert tab.values["accuracy"].get() == "50.0%"
+    tab.follow_latest()
+    _finish_refresh(tab)
+    assert tab.review.session == "2026-09-14" and tab.review.outcomes == ()
+    assert "Later forecasts are not counted as pre-open predictions" in tab.status.get()
+
+
 def test_historical_selection_stays_pinned_until_latest_session_clicked(tab, tmp_path):
     write_review(tmp_path, [forecast(session="2026-09-10")], session="2026-09-10", latest=False)
     tab.session.set("2026-09-10")

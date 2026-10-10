@@ -344,12 +344,13 @@ class GameplanTab:
             self.render(reset_scroll=True)
 
         def work():
+            dates = ()
             try:
-                loaded = load_gameplan(self.datastore_root, selected)
                 dates = plan_sessions(self.datastore_root)
+                loaded = load_gameplan(self.datastore_root, selected)
                 self._messages.put((request, dates, loaded, None))
             except Exception as exc:
-                self._messages.put((request, (), None, exc))
+                self._messages.put((request, dates, None, exc))
         threading.Thread(target=work, name="gameplan-read", daemon=True).start()
 
     def _poll(self):
@@ -362,8 +363,11 @@ class GameplanTab:
                     continue
                 self._loading = False
                 self.refresh_button.configure(state="normal")
+                self.date_box.configure(values=dates)
                 if error is not None:
                     self.plan = None
+                    if self._follow_latest:
+                        self.session.set(dates[0] if dates else "")
                     self.status.set(str(error))
                     self.status_label.configure(foreground=WARNING)
                     self.report_button.configure(state="disabled")
