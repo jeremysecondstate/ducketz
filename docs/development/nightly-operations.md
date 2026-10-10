@@ -4,8 +4,14 @@ This is the current operating arrangement under Jeremy's October 9, 2026
 implementation request. Earlier rollout holds and report-only recovery
 instructions in task history are historical. Preserve the completed October 9
 recovery and its original receipts. A completed prior date does not satisfy a
-new night. Jeremy has manually started Atlas's trader; inspect actual saved
-status and process liveness instead of assuming it remains stopped.
+new night. Jeremy controls Atlas's trader start and stop. Inspect actual saved
+status, process liveness and current human reports before describing its state.
+
+October 9 status note: Jeremy subsequently reported manually stopping the trader
+after repeated order attempts appeared stuck. Atlas later found the original
+worker still alive. Current liveness and the Atlas-owned diagnosis are tracked
+in [execution issue #4](https://github.com/jeremysecondstate/atlas-scout/issues/4).
+Offline nightly verification does not resolve that separate production incident.
 
 ## One pipeline, distinct responsibility owners
 
