@@ -8,6 +8,22 @@
 
 This is Atlas's independently observed chapter of the [Codex–Ducketz system details](https://github.com/jeremysecondstate/atlas-scout/blob/main/system-details/README.md). It describes saved Codex schedules and Windows support tasks on this PC. The inventory was read without launching a Ducketz workflow, contacting a broker or provider, training a model, or changing a task. A registered or active schedule is an opportunity to run; it is not evidence that a particular action date completed.
 
+## October 10 scheduling revision (12:58 p.m. PDT)
+
+Sections 1–8 below preserve the approximately noon inventory as a historical snapshot. This revision records the later native Codex settings. Atlas now has **15 Ducketz-related Codex definitions: ten active and five paused**. The two new definitions are after-midnight companions; each pair shares one logical responsibility, memory, claims, and receipts. The original task IDs were retained.
+
+| Logical responsibility | Current native definitions and Pacific launches | Model / reasoning |
+| --- | --- | --- |
+| Joint Gameplan Handoff | Original: **ACTIVE**, Monday–Friday 21:00, 21:20, 21:40, 22:00, 22:20, 22:40, 23:00, 23:20, 23:40. After Midnight companion: **ACTIVE**, Tuesday–Saturday 00:00, 00:20, 00:40. | `gpt-6-astra` / ultra on both |
+| Priority Source Reconciliation | Original: **ACTIVE**, the same Monday–Friday evening times. After Midnight companion: **ACTIVE**, the same Tuesday–Saturday after-midnight times. | `gpt-6-astra` / ultra on both |
+| Trader Representative | Original: **ACTIVE**, Monday–Friday 03:55, then 04:05 and hourly through a final 17:05 check. The 17:05 check audits the closed session; it does not start trading after 17:00. | `gpt-6-sol` / ultra |
+
+The Friday 21:00 operating window includes Saturday 00:00–00:40. There is no Sunday evening handoff or reconciliation window; Friday's work prepares Monday. The final overnight *launch* is 00:40, so an already running turn can finish after 01:00 without another scheduled wake. Pacific means `America/Los_Angeles`, following PST/PDT. The native task records store recurrence rules without an embedded `TZID`; their next-run readback on October 10 showed **Monday, October 12 at 21:00 PDT** for both original night tasks, **Tuesday, October 13 at 00:00 PDT** for both companions, and **Monday, October 12 at 03:55 PDT** for Trader Representative. These are scheduled times, not proof of a completed run.
+
+Priority Source Reconciliation now performs its ordinary once-per-operating-evening review at the first eligible 21:00 wake, or the next wake in that same window if 21:00 is missed. The after-midnight definition uses the prior evening's date and does not repeat that review. The dated `readiness-risk` exception belongs to the active **Atlas Gameplan Stats** 03:00 checkpoint; `missed-confirmation` belongs to the active **Atlas Ducketz Display and Readiness** 03:35 checkpoint. Their native prompts and memories were updated with those ownership and deduplication rules.
+
+The Trader Representative prompt now carries Jeremy's direct authorization for a guarded automatic start and for diagnosis, full repair, and restart when safe. It requires an installed, reviewed trader-specific launcher, exact readiness and order-state reconciliation, one worker, and respect for an explicit operator hold. The safe launcher is still **staged for offline review, not installed**: its current dependency closure includes uncommitted readiness and runtime-lock work, and the disabled historical Windows stock-session task still has an unsuitable action. The representative must report that blocker rather than launch a raw worker. No trader or broker was started for this revision.
+
 ## 1. Installed layers
 
 Atlas has **13 Ducketz-related Codex scheduled definitions: five active and eight paused**. Twelve are standalone local-project cron tasks; the thirteenth is a paused follow-up scheduled inside an existing chat. The twelve cron tasks target the local Ducketz project. Windows Task Scheduler has **two enabled deterministic support tasks** and **one disabled historical stock-session task**. Windows tasks are separate from Codex model prompts.
