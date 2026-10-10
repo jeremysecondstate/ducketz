@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T20:05:30.078578Z",
+  "id": "20261010T200530Z-c496e7e5001e4d24ada95c58681a00ac",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas documented active Pacific overnight and Trader Representative task schedules, companion definitions, notification ownership, and the trader startup installation gate."
+}

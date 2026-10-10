@@ -1,0 +1,31 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261010T195943Z-b46ebc24cb0346dcbbb7d86cad6c5690",
+  "change_id": "20261010T195943Z-b46ebc24cb0346dcbbb7d86cad6c5690",
+  "files": [
+    "docs/development/atlas-scheduled-tasks.md"
+  ],
+  "limitations": [
+    "Native readback verifies saved settings and next-run times, not actual future completion.",
+    "Trader automatic start remains blocked on reviewed dependency installation and the disabled Windows task action.",
+    "Scout must configure and verify its own native tasks."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/blob/main/docs/development/atlas-scheduled-tasks.md",
+    "https://github.com/jeremysecondstate/atlas-scout/blob/main/system-details/atlas/scheduled-tasks.md"
+  ],
+  "main_sha": "4826eed87b2e283724e2a02f761e4561727a7248",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Documentation only. Atlas native task schedules and prompts were updated separately; trader auto-start source is not installed.",
+  "scope": "shared",
+  "source_sha": "5cc0184e825868306d68365a9afa9e00cb36f5d0",
+  "summary": "Atlas documented active Pacific overnight and Trader Representative task schedules, companion definitions, notification ownership, and the trader startup installation gate.",
+  "tests": [
+    {
+      "check": "Offline cross-PC task suite, 30 passed",
+      "completed_at_utc": "2026-10-10T20:00:49.418302Z",
+      "output_sha256": "6850976bd42cf7530a4861bdf4ef204d87ef1680636b03ea185514b6d4fa512f",
+      "started_at_utc": "2026-10-10T20:00:48.531501Z"
+    }
+  ]
+}
