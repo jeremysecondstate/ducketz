@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T08:53:29.238442Z",
+  "id": "20261010T085329Z-bb7fa6697dfd4d47a0357ab4977e9ab6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the audited canonical peer-install grant transition; Scout applicability and production recovery remain independently unverified."
+}
