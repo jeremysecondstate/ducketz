@@ -183,12 +183,14 @@ final response when auditing delivery.
 
 Scheduled wakes must not archive their own chat or any other chat, call
 `set_thread_archived`, or emit raw archive directives. Self-archival interrupts
-the active turn before its final response. Checking that an older chat completed
-and then archiving it is also unsafe: the user can resume it between those two
-operations. Keep automatic cleanup disabled until a separately reviewed native
-operation can atomically reject active or resumed turns. Do not add a cleanup
-schedule or change native databases to bypass this boundary. Completed quiet
-chats may remain visible for manual archival.
+the active turn before its final response. Jeremy's separately authorized
+Windows cleanup waits at least one hour after successful native completion.
+It selects only the allowlisted five-minute chats and uses a tested, separate
+native CLI instance whose writer lock rejects active threads. A read followed
+by a shared-daemon archive is not this protection. Keep cleanup disabled unless
+its local binary guard, eligibility checks and private binding are verified;
+never edit native databases. See [completed scheduled chat cleanup](codex-chat-cleanup.md)
+for installation and the retained manual-restoration receipts.
 
 This supersedes earlier archive-before-final guidance on both PCs. Apply it to
 every affected native prompt and current memory block, preserving historical
