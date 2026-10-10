@@ -59,6 +59,27 @@ def test_no_pending_orders_never_contacts_broker(ledger):
     assert capture_order_evidence(Forbidden(), ledger, account_fingerprint=ACCOUNT, as_of=OBSERVED) == ()
 
 
+def test_broker_rejection_description_is_retained_privately_without_rewriting_older_evidence(ledger):
+    import json
+    import sqlite3
+    reservation = submitted(ledger)
+    raw = raw_order(status="REJECTED", filled=0)
+    original = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    ledger.reconcile(portfolio("reject", "2026-09-08T11:00:31Z"), order_evidence=(original,))
+    with sqlite3.connect(ledger.path) as db:
+        saved = db.execute("SELECT payload FROM evidence WHERE id=?", (original.evidence_id,)).fetchone()[0]
+    assert "broker_status_description" not in json.loads(saved)
+    raw["statusDescription"] = "Synthetic broker rejection detail"
+    newer = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at="2026-09-08T11:00:32Z")
+    assert newer.broker_status_description == raw["statusDescription"]
+    ledger.reconcile(portfolio("reason", "2026-09-08T11:00:33Z"), order_evidence=(newer,))
+    with sqlite3.connect(ledger.path) as db:
+        assert db.execute("SELECT payload FROM evidence WHERE id=?", (original.evidence_id,)).fetchone()[0] == saved
+        actual = json.loads(db.execute("SELECT payload FROM evidence WHERE id=?", (newer.evidence_id,)).fetchone()[0])
+    assert actual["broker_status_description"] == raw["statusDescription"]
+    assert newer.evidence_id != original.evidence_id
+
+
 def test_complete_fill_evidence_reconciles_without_inventing_inventory(ledger):
     reservation = submitted(ledger)
     session = FakeHistory([raw_order()])

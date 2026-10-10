@@ -94,12 +94,15 @@ def _same_rows(first, second):
     return sorted(map(canonical_sha256, first)) == sorted(map(canonical_sha256, second))
 
 
-def _fresh(portfolio, clock, cutover_date):
+def _fresh(portfolio, clock, cutover_date, *, require_before_opening=True):
     now, observed = _aware(clock()), _aware(portfolio.observed_at)
-    opening = datetime.combine(date.fromisoformat(cutover_date), datetime.min.time(),
-                               ZoneInfo("America/Los_Angeles")).replace(hour=4).astimezone(timezone.utc)
-    if not 0 <= (now - observed).total_seconds() <= 60 or now >= opening:
-        raise ValueError("Union portfolio is future/stale or the cutover opening deadline passed")
+    if not 0 <= (now - observed).total_seconds() <= 60:
+        raise ValueError("Union portfolio is future/stale")
+    if require_before_opening:
+        opening = datetime.combine(date.fromisoformat(cutover_date), datetime.min.time(),
+                                   ZoneInfo("America/Los_Angeles")).replace(hour=4).astimezone(timezone.utc)
+        if now >= opening:
+            raise ValueError("The cutover opening deadline passed")
     return now
 
 
@@ -132,9 +135,29 @@ def _portfolio(portfolio, broker, symbols, account, expected_portfolio_sha256, e
             raise ValueError("Portfolio must preserve observed holdings/prices and zero execution budgets")
 
 
-def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha256,
+def _preserved_native_rows(before, after):
+    for table in before:
+        if table not in {"allocations", "snapshots", "evidence", "blocks"} and not _same_rows(before[table], after[table]):
+            raise ValueError("Native accounting rows changed during transition: " + table)
+    for table in ("allocations", "snapshots", "evidence"):
+        old = {row["id"]: row for row in before[table]}
+        new = {row["id"]: row for row in after[table]}
+        for identity, row in old.items():
+            changed = new.get(identity)
+            if changed != row and not (table == "allocations" and row["status"] == "ACTIVE"
+                    and changed == {**row, "status": "CLOSED"}):
+                raise ValueError("Original native identity/evidence changed: " + table)
+        allowed = 0 if table == "allocations" else 1
+        if len(new) - len(old) != allowed:
+            raise ValueError("Unexpected new native rows: " + table)
+    if after["blocks"]:
+        raise ValueError("Union transition has persistent blocks")
+
+
+def _reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha256,
         expected_participants, expected_account_fingerprint, portfolio, expected_portfolio_sha256,
-        broker_snapshot, expected_broker_snapshot_sha256, destination_directory, clock=None):
+        broker_snapshot, expected_broker_snapshot_sha256, destination_directory, clock=None,
+        require_before_opening):
     """Publish verified union readiness in a NEW directory; activate nothing.
 
     The caller pins a fresh native PortfolioState captured with order identities,
@@ -169,7 +192,9 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
     if not isinstance(cutover, str) or date.fromisoformat(cutover).isoformat() != cutover:
         raise ValueError("An explicit exact migration cutover action date is required")
     _portfolio(portfolio, broker_snapshot, symbols, account, expected_portfolio_sha256, expected_broker_snapshot_sha256)
-    _fresh(portfolio, clock, cutover)
+    def fresh():
+        return _fresh(portfolio, clock, cutover, require_before_opening=require_before_opening)
+    reconciled_at = fresh()
     database_raw = _pinned(candidate / "holdings.sqlite3", manifest["database_sha256"], database=True)
     sources, archives = manifest.get("sources"), manifest.get("source_archives")
     if (not isinstance(sources, list) or not isinstance(archives, list) or len(sources) != 2 or len(archives) != 2
@@ -220,7 +245,7 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
     checks = []
     (stage / "producer-checks").mkdir()
     for producer, raw in archive_bytes.items():
-        _fresh(portfolio, clock, cutover)
+        fresh()
         path = stage / "producer-checks" / (producer + ".sqlite3")
         path.write_bytes(raw)
         evidence = replace(portfolio, snapshot_id=canonical_sha256([portfolio.snapshot_id, producer]),
@@ -245,27 +270,12 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
             raise ValueError("Migration blocks changed before native transition")
         db.execute("DELETE FROM blocks WHERE reason=?", (migration._BLOCK,))
         db.commit()
-    _fresh(portfolio, clock, cutover)
+    fresh()
     result = HorizonLedger(database, account).reconcile(portfolio)
     if not result.ready:
         raise ValueError("Union native reconciliation did not become ready: " + ",".join(result.reasons))
     after = _tables(database)
-    for table in before:
-        if table not in {"allocations", "snapshots", "evidence", "blocks"} and not _same_rows(before[table], after[table]):
-            raise ValueError("Native accounting rows changed during transition: " + table)
-    for table in ("allocations", "snapshots", "evidence"):
-        old = {row["id"]: row for row in before[table]}
-        new = {row["id"]: row for row in after[table]}
-        for identity, row in old.items():
-            changed = new.get(identity)
-            if changed != row and not (table == "allocations" and row["status"] == "ACTIVE"
-                    and changed == {**row, "status": "CLOSED"}):
-                raise ValueError("Original native identity/evidence changed: " + table)
-        allowed = 0 if table == "allocations" else 1
-        if len(new) - len(old) != allowed:
-            raise ValueError("Unexpected new native rows: " + table)
-    if after["blocks"]:
-        raise ValueError("Union transition has persistent blocks")
+    _preserved_native_rows(before, after)
     order_proof = {key: asdict(broker_snapshot)[key] for key in ("observed_at", "source_fingerprint",
         "broker_identity_fingerprint", "working_order_count", "broker_working_orders", "pending_buy_shares", "pending_sell_shares")}
     report = {"schema_version": VERSION, "status": "UNION_RECONCILIATION_VERIFIED",
@@ -276,6 +286,9 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
         "only_exact_migration_blocks_released": True, "original_native_ids_preserved": True,
         "runtime_activation": False, "orders_placed": 0, "broker_calls": 0,
         "activation_remaining": ["Peer execution fence and reviewed installed-source evidence", "Reviewed live-ledger installation and local cutover receipt"]}
+    if not require_before_opening:
+        report.update(reconciliation_mode="MANUAL_STARTUP", reconciled_at=reconciled_at.isoformat(),
+                      activation_remaining=["Native union installation and local readiness receipt"])
     (stage / "portfolio-evidence.json").write_bytes(_encoded(asdict(portfolio)))
     (stage / "broker-snapshot.json").write_bytes(_encoded(asdict(broker_snapshot)))
     (stage / "broker-order-evidence.json").write_bytes(_encoded(order_proof))
@@ -289,7 +302,7 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
                "runtime_activation": False}
     (stage / "receipt.json").write_bytes(_encoded(receipt))
     def final_guard(location):
-        _fresh(portfolio, clock, cutover)
+        fresh()
         _pinned(candidate / "manifest.json", expected_manifest_sha256)
         _pinned(candidate / "holdings.sqlite3", manifest["database_sha256"], database=True)
         for source, archive in zip(sorted(sources, key=lambda v:v["producer"]), sorted(archives, key=lambda v:v["producer"])):
@@ -300,6 +313,8 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
             _pinned(location / relative, pin)
         _pinned(location / "manifest.json", receipt["manifest_sha256"])
         _pinned(location / "receipt.json", _sha(_encoded(receipt)))
+        if {p.relative_to(location).as_posix() for p in location.rglob("*") if p.is_file()} != set(outputs) | {"manifest.json", "receipt.json"}:
+            raise ValueError("Reconciliation output inventory changed")
     final_guard(stage)
     if destination.exists():
         raise ValueError("Destination appeared before publication")
@@ -312,4 +327,171 @@ def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha2
     return {**receipt, "destination_directory": str(destination), "report": report}
 
 
-__all__ = ["reconcile_migration_candidate"]
+def reconcile_migration_candidate(*, candidate_directory, expected_manifest_sha256,
+        expected_participants, expected_account_fingerprint, portfolio, expected_portfolio_sha256,
+        broker_snapshot, expected_broker_snapshot_sha256, destination_directory, clock=None):
+    """Preserve the original dated reconciliation contract for existing callers."""
+    return _reconcile_migration_candidate(candidate_directory=candidate_directory,
+        expected_manifest_sha256=expected_manifest_sha256, expected_participants=expected_participants,
+        expected_account_fingerprint=expected_account_fingerprint, portfolio=portfolio,
+        expected_portfolio_sha256=expected_portfolio_sha256, broker_snapshot=broker_snapshot,
+        expected_broker_snapshot_sha256=expected_broker_snapshot_sha256,
+        destination_directory=destination_directory, clock=clock, require_before_opening=True)
+
+
+def reconcile_startup_candidate(*, candidate_directory, expected_manifest_sha256,
+        expected_participants, expected_account_fingerprint, portfolio, expected_portfolio_sha256,
+        broker_snapshot, expected_broker_snapshot_sha256, destination_directory, clock=None):
+    """Verify fresh native ownership for manual startup at any time of day.
+
+    The saved migration date and all accounting checks remain unchanged. The
+    caller controls session eligibility; 04:00 readiness is a target, not an
+    expiry of otherwise fresh ownership evidence. This function starts nothing.
+    """
+    return _reconcile_migration_candidate(candidate_directory=candidate_directory,
+        expected_manifest_sha256=expected_manifest_sha256, expected_participants=expected_participants,
+        expected_account_fingerprint=expected_account_fingerprint, portfolio=portfolio,
+        expected_portfolio_sha256=expected_portfolio_sha256, broker_snapshot=broker_snapshot,
+        expected_broker_snapshot_sha256=expected_broker_snapshot_sha256,
+        destination_directory=destination_directory, clock=clock, require_before_opening=False)
+
+
+def reconcile_startup_continuation(*, previous_directory, expected_manifest_sha256,
+        expected_participants, expected_account_fingerprint, portfolio, expected_portfolio_sha256,
+        broker_snapshot, expected_broker_snapshot_sha256, destination_directory, clock=None):
+    """Extend an already verified union with one fresh native reconciliation.
+
+    The caller must prove, under native locks, that live rows equal this prior
+    union and use those exact rows as the installation transaction's preimage.
+    Starting from the previous union preserves its new accounting identities;
+    rebuilding the original migration would discard that committed history.
+    This function only creates a new private candidate and starts nothing.
+    """
+    clock = clock or (lambda: datetime.now(timezone.utc))
+    previous, destination = migration._plain(previous_directory), migration._plain(destination_directory)
+    if (not previous.is_dir() or destination.exists() or not destination.parent.is_dir()
+            or previous == destination or previous in destination.parents or destination in previous.parents):
+        raise ValueError("A separate new destination under an existing parent is required")
+    account = _hash(expected_account_fingerprint)
+    if (not isinstance(expected_participants, dict) or set(expected_participants) != {"pc-original", "pc-new"}
+            or any(not isinstance(values, (list, tuple)) or not values
+                   or any(not isinstance(v, str) for v in values) or len(set(values)) != len(values)
+                   for values in expected_participants.values())):
+        raise ValueError("Both explicit unique producer partitions are required")
+    partitions = {producer: sorted(validated_symbols(values)) for producer, values in expected_participants.items()}
+    symbols = set(partitions["pc-original"]) | set(partitions["pc-new"])
+    if len(symbols) != sum(map(len, partitions.values())):
+        raise ValueError("Producer symbol partitions overlap")
+    manifest_raw = _pinned(previous / "manifest.json", expected_manifest_sha256)
+    manifest = _json(manifest_raw)
+    outputs = manifest.get("output_files")
+    if (manifest.get("schema_version") != VERSION or not isinstance(outputs, dict)
+            or not {"holdings.sqlite3", "report.json", "portfolio-evidence.json", "broker-snapshot.json", "broker-order-evidence.json"} <= outputs.keys()):
+        raise ValueError("Previous reconciliation manifest is incomplete")
+    prior_pins = {}
+    for relative, checksum in outputs.items():
+        path = Path(relative)
+        if (not isinstance(relative, str) or path.is_absolute() or path.drive or ":" in relative or ".." in path.parts
+                or not path.parts or path.as_posix() != relative or path.parts[0] in {"manifest.json", "receipt.json"}):
+            raise ValueError("Previous reconciliation contains an invalid output path")
+        selected = previous / path
+        _pinned(selected, checksum)
+        prior_pins[relative] = checksum
+    if {p.relative_to(previous).as_posix() for p in previous.rglob("*") if p.is_file()} != set(outputs) | {"manifest.json", "receipt.json"}:
+        raise ValueError("Previous reconciliation output inventory changed")
+    receipt_raw = migration._plain(previous / "receipt.json").read_bytes()
+    receipt = _json(receipt_raw)
+    if receipt != {"schema_version": VERSION, "status": "UNION_RECONCILIATION_VERIFIED",
+                   "manifest_sha256": expected_manifest_sha256, "orders_placed": 0, "runtime_activation": False}:
+        raise ValueError("Previous reconciliation receipt is not complete")
+    report = _json(_pinned(previous / "report.json", outputs["report.json"]))
+    if (report.get("schema_version") != VERSION or report.get("status") != "UNION_RECONCILIATION_VERIFIED"
+            or report.get("account_fingerprint") != account or report.get("participants") != partitions
+            or report.get("database_sha256") != outputs["holdings.sqlite3"]
+            or report.get("migration_manifest_sha256") != manifest.get("migration_manifest_sha256")
+            or report.get("original_native_ids_preserved") is not True or report.get("runtime_activation") is not False
+            or report.get("orders_placed") != 0 or report.get("broker_calls") != 0
+            or report.get("union_result", {}).get("ready") is not True):
+        raise ValueError("Previous reconciliation account or result differs")
+    cutover = report.get("cutover_action_date")
+    if not isinstance(cutover, str) or date.fromisoformat(cutover).isoformat() != cutover:
+        raise ValueError("Previous reconciliation omitted its original migration date")
+    _portfolio(portfolio, broker_snapshot, symbols, account, expected_portfolio_sha256, expected_broker_snapshot_sha256)
+    def fresh():
+        return _fresh(portfolio, clock, cutover, require_before_opening=False)
+    reconciled_at = fresh()
+    database_raw = _pinned(previous / "holdings.sqlite3", outputs["holdings.sqlite3"], database=True)
+    before = _tables(previous / "holdings.sqlite3")
+    if {row["key"]: row["value"] for row in before["metadata"]} != {
+            "account": account, "version": migration.LEDGER_VERSION,
+            "account_gameplan_migration": "REQUIRES_REVIEWED_ACTIVATION"}:
+        raise ValueError("Previous native union account or metadata differs")
+    with closing(sqlite3.connect((previous / "holdings.sqlite3").as_uri() + "?mode=ro", uri=True)) as db:
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA query_only=ON")
+        db.execute("PRAGMA trusted_schema=OFF")
+        db.execute("BEGIN")
+        migration._audit_rows(before, HorizonLedger._snapshot(db), account, sorted(symbols), _aware(portfolio.observed_at))
+    if (before["blocks"] or any(row["status"] in migration._OPEN for row in before["reservations"])
+            or not before["snapshots"] or before["snapshots"][-1]["ready"] != 1):
+        raise ValueError("Previous native union is not a complete unblocked baseline")
+    stage = destination.parent / ("." + destination.name + ".building-" + uuid.uuid4().hex)
+    stage.mkdir()
+    for name, raw in (("previous-manifest.json", manifest_raw), ("previous-receipt.json", receipt_raw),
+                      ("previous-report.json", _pinned(previous / "report.json", outputs["report.json"])),
+                      ("previous-holdings.sqlite3", database_raw)):
+        (stage / name).write_bytes(raw)
+    database = stage / "holdings.sqlite3"
+    database.write_bytes(database_raw)
+    fresh()
+    result = HorizonLedger(database, account).reconcile(portfolio)
+    if not result.ready:
+        raise ValueError("Union native continuation did not become ready: " + ",".join(result.reasons))
+    after = _tables(database)
+    _preserved_native_rows(before, after)
+    if after["snapshots"][:-1] != before["snapshots"]:
+        raise ValueError("Previous native snapshot chronology changed")
+    order_proof = {key: asdict(broker_snapshot)[key] for key in ("observed_at", "source_fingerprint",
+        "broker_identity_fingerprint", "working_order_count", "broker_working_orders", "pending_buy_shares", "pending_sell_shares")}
+    report = {**report, "reconciliation_mode": "MANUAL_STARTUP_CONTINUATION", "reconciled_at": reconciled_at.isoformat(),
+              "previous_reconciliation_manifest_sha256": expected_manifest_sha256,
+              "portfolio_sha256": expected_portfolio_sha256, "broker_snapshot_sha256": expected_broker_snapshot_sha256,
+              "union_result": asdict(result), "database_sha256": _sha(database.read_bytes()),
+              "activation_remaining": ["Native union installation and local readiness receipt"]}
+    for name, value in (("portfolio-evidence.json", asdict(portfolio)), ("broker-snapshot.json", asdict(broker_snapshot)),
+                        ("broker-order-evidence.json", order_proof), ("report.json", report)):
+        (stage / name).write_bytes(_encoded(value))
+    new_outputs = {p.relative_to(stage).as_posix(): _sha(p.read_bytes()) for p in stage.rglob("*") if p.is_file()}
+    new_manifest = {"schema_version": VERSION, "migration_manifest_sha256": manifest["migration_manifest_sha256"],
+                    "output_files": new_outputs}
+    (stage / "manifest.json").write_bytes(_encoded(new_manifest))
+    new_receipt = {**receipt, "manifest_sha256": _sha((stage / "manifest.json").read_bytes())}
+    (stage / "receipt.json").write_bytes(_encoded(new_receipt))
+    def final_guard(location):
+        fresh()
+        _pinned(previous / "manifest.json", expected_manifest_sha256)
+        _pinned(previous / "receipt.json", _sha(receipt_raw))
+        if {p.relative_to(previous).as_posix() for p in previous.rglob("*") if p.is_file()} != set(outputs) | {"manifest.json", "receipt.json"}:
+            raise ValueError("Previous reconciliation output inventory changed")
+        for relative, checksum in prior_pins.items():
+            _pinned(previous / relative, checksum)
+        _portfolio(portfolio, broker_snapshot, symbols, account, expected_portfolio_sha256, expected_broker_snapshot_sha256)
+        for relative, checksum in new_outputs.items():
+            _pinned(location / relative, checksum)
+        _pinned(location / "manifest.json", new_receipt["manifest_sha256"])
+        _pinned(location / "receipt.json", _sha(_encoded(new_receipt)))
+        if {p.relative_to(location).as_posix() for p in location.rglob("*") if p.is_file()} != set(new_outputs) | {"manifest.json", "receipt.json"}:
+            raise ValueError("Reconciliation output inventory changed")
+    final_guard(stage)
+    if destination.exists():
+        raise ValueError("Destination appeared before publication")
+    stage.rename(destination)
+    try:
+        final_guard(destination)
+    except BaseException:
+        (destination / "receipt.json").write_bytes(_encoded({**new_receipt, "status": "FAILED_POST_PUBLICATION_GUARD"}))
+        raise
+    return {**new_receipt, "destination_directory": str(destination), "report": report}
+
+
+__all__ = ["reconcile_migration_candidate", "reconcile_startup_candidate", "reconcile_startup_continuation"]

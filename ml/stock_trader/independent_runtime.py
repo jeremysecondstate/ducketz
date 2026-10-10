@@ -7,8 +7,10 @@ import sqlite3
 import time
 from contextlib import closing
 from dataclasses import replace
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable
+from collections.abc import Mapping
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -43,6 +45,73 @@ from ml.stock_direction_policy import stock_direction
 LEDGER_RELATIVE_PATH = Path("state/independent-stock-trader/holdings.sqlite3")
 CLOSE_EXIT_LEAD_SECONDS = 60
 MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS = 5.
+
+
+def _defer_opposing_limit_orders(decisions, portfolio):
+    """Keep independent ownership while avoiding opposing same-price orders.
+
+    Use the complete current account observation already captured by this
+    cycle, including manual orders. Earlier eligible decisions in this batch
+    also occupy their side/price until a later broker observation reconciles
+    them. A deferred intention acquires no execution or inventory reservation.
+    """
+    working = []
+    unavailable = False
+    try:
+        rows = portfolio.broker_working_orders
+        if (not isinstance(rows, (tuple, list)) or type(portfolio.working_order_count) is not int
+                or portfolio.working_order_count != len(rows)):
+            raise ValueError("Complete working order identities are unavailable")
+        identities = set()
+        for row in rows:
+            if not isinstance(row, Mapping) or row.get("status") != "CURRENT":
+                raise ValueError("Current working order evidence required")
+            identity = row.get("order_id")
+            if type(identity) not in (str, int) or not str(identity).strip() or str(identity) in identities:
+                raise ValueError("Exact working order identities required")
+            identities.add(str(identity))
+            # Options are not the same equity. Their existing exposure and
+            # strategy checks remain responsible for their own restrictions.
+            if row.get("asset_type") == "OPTION":
+                continue
+            if (row.get("asset_type") not in {"EQUITY", "ETF", "STOCK"}
+                    or row.get("instruction") not in {"BUY", "SELL"}
+                    or not isinstance(row.get("symbol"), str) or not row["symbol"].strip()):
+                raise ValueError("Equity order side and symbol required")
+            remaining, price = Decimal(str(row.get("remaining_quantity"))), Decimal(str(row.get("limit_price")))
+            if (not remaining.is_finite() or remaining <= 0 or remaining != remaining.to_integral_value()
+                    or not price.is_finite() or price <= 0):
+                raise ValueError("Current remaining shares and limit price required")
+            working.append({"source": "BROKER_WORKING_ORDER", "order_id": str(identity),
+                "symbol": row["symbol"].upper(), "side": row["instruction"], "price": price})
+    except (ValueError, TypeError, InvalidOperation):
+        unavailable = True
+    output, deferred = [], []
+    for decision in decisions:
+        if decision.quantity <= 0:
+            output.append(decision)
+            continue
+        price = Decimal(str(decision.order_payload["price"]))
+        conflicts = [row for row in working if row["symbol"] == decision.symbol
+            and row["side"] != decision.action and row["price"] == price]
+        if unavailable or conflicts:
+            code = "WORKING_ORDER_EVIDENCE_UNAVAILABLE" if unavailable else "OPPOSING_SAME_PRICE_WORKING_ORDER"
+            reason = ("Complete current equity working-order evidence is required before submitting."
+                      if unavailable else "An opposing same-equity limit order already uses this price; await normal reconciliation.")
+            deferred.append({"decision_id": decision.decision_id, "symbol": decision.symbol,
+                "horizon": decision.prediction.get("primary_horizon"), "direction": decision.action,
+                "reason_code": code, "observed_at": portfolio.observed_at,
+                "conflicts": [{key: value for key, value in row.items() if key != "price"} for row in conflicts]})
+            output.append(replace(decision, action="NO_TRADE", quantity=0,
+                hypothetical_quantity=max(decision.hypothetical_quantity or 0, decision.quantity), order_payload=None,
+                decision_reason_code=code, decision_reason=reason, order_style_reason_code="NO_ORDER_" + code,
+                order_style_reason=reason))
+        else:
+            output.append(decision)
+            working.append({"source": "EARLIER_BATCH_DECISION", "decision_id": decision.decision_id,
+                "symbol": decision.symbol, "side": decision.action, "price": price})
+    return tuple(output), {"status": "EVIDENCE_UNAVAILABLE" if unavailable else "CURRENT",
+        "observed_at": portfolio.observed_at, "deferred": deferred}
 
 
 def _wait_for_current_quote_timestamps(portfolio, *, clock, sleep, deadline):
@@ -243,6 +312,8 @@ def run_independent_stock_trader_once(
     activation = read_gameplan_stock_activation_intent(root)
     sources = ()
     broker_state_capture = None
+    rejected_catchup = []
+    deferred_orders = []
     metadata = {"mode": "INDEPENDENT_STOCK_HORIZONS", "allocation_weights": {"1h": 1, "4h": 2, "1d": 3, "1w": 4},
                 "session_managed": session_managed, "sizing_policy": sizing_policy}
     entry_allowed = entries and (not execute or session_managed)
@@ -250,6 +321,18 @@ def run_independent_stock_trader_once(
         metadata["entry_management_status"] = "ENTRY_REQUIRES_SESSION_MANAGER"
 
     def finish(status, *, decisions=(), error=None, submitted=0, duplicates=0, publication=None):
+        if rejected_catchup and error is None and status in {
+                "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS"}:
+            status = ("ORDERS_SUBMITTED_WITH_REJECTION_REVIEW_REQUIRED" if submitted
+                      else "CATCHUP_BROKER_REJECTION_REVIEW_REQUIRED")
+            error = "Confirmed broker rejection blocks automatic retries of the affected Gameplan intention; review its saved order evidence."
+        if deferred_orders and error is None and status in {
+                "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS"}:
+            unavailable = metadata["self_trade_prevention"]["status"] == "EVIDENCE_UNAVAILABLE"
+            status = ("WORKING_ORDER_EVIDENCE_UNAVAILABLE" if unavailable else
+                      "ORDERS_SUBMITTED_WITH_SELF_TRADE_CONFLICT" if submitted else "SELF_TRADE_CONFLICT_DEFERRED")
+            error = ("Complete current working-order identities are unavailable; deferred intentions remain unsubmitted."
+                     if unavailable else "Opposing same-price orders defer affected intentions until normal reconciliation clears the conflict.")
         output = publication or publish_decision_run(
             root, decisions, decided_at=utc(clock()), activation=activation,
             policy=active_policy, execution_requested=execute, source_files=sources,
@@ -393,6 +476,8 @@ def run_independent_stock_trader_once(
                 if symbol_options and set(symbol_options["symbols"]) != set(account_config.symbols):
                     raise ValueError("ACCEPTED_EXECUTION_UNION_DIFFERS_FROM_PRIVATE_ACCOUNT")
                 symbol_options = {"symbols": account_config.symbols, "include_order_identities": True}
+            elif sizing_policy == GAMEPLAN_SIZING_POLICY:
+                symbol_options["include_order_identities"] = True
             current_portfolio = capture_portfolio_state(broker, observed_at=utc(clock()), parallel=True, **symbol_options,
                 **({"literal_cash_only": True, "use_actual_quote_timestamps": True}
                    if sizing_policy == GAMEPLAN_SIZING_POLICY else {}))
@@ -462,9 +547,10 @@ def run_independent_stock_trader_once(
             from ml.stock_trader.catchup import catchup_signals
             accepted = read_accepted_joint_plan(root, timestamp.tz_convert("America/Los_Angeles").date().isoformat())
             qualified = catchup_signals(accepted[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations)
+                                       reservations=state.reservations, blocked=rejected_catchup)
             metadata["catchup"] = {"plan_sha256": accepted[0]["plan_sha256"],
                 "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
+                "blocked_intentions": rejected_catchup,
                 "net_quantities": {f"{s}/{h}": signal.planned_quantity * (1 if signal.calibrated_probability else -1)
                                    for (s, h), signal in qualified.items()}}
         elif any(Path(source).name == "receipt.json" and Path(source).resolve().parent.parent ==
@@ -476,10 +562,11 @@ def run_independent_stock_trader_once(
                                      for signal in signals.values()):
                 return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error="Native catch-up source changed during broker capture")
             qualified = catchup_signals(native[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations)
+                                       reservations=state.reservations, blocked=rejected_catchup)
             fallback_policy, fallback_source_binding = None, None
             metadata["catchup"] = {"plan_sha256": native[0]["plan_sha256"],
-                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1"}
+                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
+                "blocked_intentions": rejected_catchup}
         if qualified:
             try:
                 _assert_execution_deployment(root, source_gameplan_run,
@@ -573,10 +660,15 @@ def run_independent_stock_trader_once(
         if sizing_policy == GAMEPLAN_SIZING_POLICY:
             from ml.stock_trader.price_comparison import attach_price_comparisons
             decisions = attach_price_comparisons(root, decisions)
+            decisions, metadata["self_trade_prevention"] = _defer_opposing_limit_orders(decisions, portfolio)
+            deferred_orders.extend(metadata["self_trade_prevention"]["deferred"])
         publication = publish_decision_run(
             root, decisions, decided_at=timestamp, activation=activation, policy=active_policy,
             execution_requested=execute, source_files=sources, prediction_handoff=metadata,
             broker_state_capture=broker_state_capture,
+            status=("CATCHUP_BROKER_REJECTION_REVIEW_REQUIRED" if rejected_catchup and not any(d.quantity for d in decisions)
+                    else "WORKING_ORDER_EVIDENCE_UNAVAILABLE" if deferred_orders and metadata["self_trade_prevention"]["status"] == "EVIDENCE_UNAVAILABLE"
+                    else "SELF_TRADE_CONFLICT_DEFERRED" if deferred_orders else None),
         )
         if not execute:
             return finish("DRY_RUN_INDEPENDENT_STOCK_DECISIONS", decisions=decisions, publication=publication)

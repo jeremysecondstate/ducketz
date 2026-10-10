@@ -207,8 +207,13 @@ def normalize_order_evidence(raw: Mapping, reservation: ReservationState, *, acc
         "observed_at": observed, "broker_order_id": broker_id, "status": status, "order_quantity": quantity,
         "cumulative_filled_quantity": filled, "remaining_quantity": remaining,
         "fills": tuple(asdict(fill) for fill in fills), "broker_status": broker_status}
+    description = _text(raw.get("statusDescription")) or None
+    if description is not None:
+        # Private ledger evidence only; retain the actual provider explanation
+        # instead of losing it after the next reconciliation cycle.
+        payload["broker_status_description"] = description
     return OrderEvidence("schwab-order:" + _hash(payload), reservation.reservation_id, account_fingerprint,
-                         observed, broker_id, status, quantity, filled, remaining, fills, broker_status)
+                         observed, broker_id, status, quantity, filled, remaining, fills, broker_status, description)
 
 
 def capture_order_evidence(session: OrderHistorySession, ledger: HorizonLedger, *,

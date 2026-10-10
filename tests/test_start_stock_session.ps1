@@ -47,6 +47,17 @@ function Assert-Rejected {
 }
 
 Assert-Accepted 'Exact launcher/child pair with normal lock acquisition lag'
+$workerBirth = (([DateTimeOffset](New-Owners)[1].CreationDate).UtcDateTime.Ticks - ([DateTimeOffset]'1970-01-01T00:00:00Z').UtcDateTime.Ticks) / 10000000.0
+$birthText = $workerBirth.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+Assert-Accepted 'Current five-field lock binds exact worker birth' -Lock ($lockText + "owner_created_at=$birthText`n")
+$roundedBirth = ($workerBirth + 0.0000002).ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+Assert-Accepted 'Current birth accepts only submicrosecond float representation rounding' -Lock ($lockText + "owner_created_at=$roundedBirth`n")
+foreach ($birth in @('NaN','Infinity','-1','0','1,234','invalid',($workerBirth+1).ToString('R',[Globalization.CultureInfo]::InvariantCulture),($workerBirth-1).ToString('R',[Globalization.CultureInfo]::InvariantCulture))) {
+    Assert-Rejected 'Current lock invalid or different process birth' -Lock ($lockText + "owner_created_at=$birth`n")
+}
+Assert-Rejected 'Duplicate current lock birth' -Lock ($lockText + "owner_created_at=$birthText`nowner_created_at=$birthText`n")
+Assert-Rejected 'Unknown fifth field cannot replace current birth' -Lock ($lockText + "unrecognized=$birthText`n")
+Assert-Rejected 'Unknown sixth field cannot extend current lock' -Lock ($lockText + "owner_created_at=$birthText`nunrecognized=field`n")
 $owners = New-Owners
 $owners[0].CommandLine = $commandLine.Replace($pythonPath, $pythonPath.ToUpperInvariant())
 Assert-Accepted 'Windows executable path case is insensitive' -Owners $owners
