@@ -51,7 +51,7 @@ def native_catchup_plan(root: Path, *, action_date: str, source_run: Path | None
     return plan, native, (native / "receipt.json", run / "receipt.json")
 
 
-def catchup_signals(plan, *, as_of, source_fingerprint, reservations=()):
+def catchup_signals(plan, *, as_of, source_fingerprint, reservations=(), blocked=None):
     now = utc(as_of)
     local = now.tz_convert("America/Los_Angeles")
     if local.date().isoformat() != plan["action_date"] or not 4 <= local.hour < 17:
@@ -79,6 +79,23 @@ def catchup_signals(plan, *, as_of, source_fingerprint, reservations=()):
         committed = sum((1 if r.side == "BUY" else -1) * (r.filled_quantity + r.reserved_quantity) for r in own)
         residual = planned - committed
         if not residual:
+            continue
+        direction = "BUY" if residual > 0 else "SELL"
+        rejected = [r for r in own if r.status == "REJECTED" and r.side == direction
+                    and getattr(r, "broker_order_id", None)]
+        if rejected:
+            # A confirmed broker rejection is an unresolved failure, not a new
+            # economic intention. Including it in the identity below used to
+            # create an unlimited sequence of distinct, identical submissions.
+            # Local pre-POST safety stops have no broker order identity and do
+            # not trigger this guard. Genuine cancelled residuals still net.
+            latest = max(rejected, key=lambda r: (getattr(r, "last_evidence_at", None) or "", r.reservation_id))
+            if blocked is not None:
+                blocked.append({"symbol": symbol, "horizon": horizon, "direction": direction,
+                    "reason_code": "CONFIRMED_BROKER_REJECTION_REQUIRES_REVIEW",
+                    "reservation_id": latest.reservation_id,
+                    "observed_at": getattr(latest, "last_evidence_at", None),
+                    "rejected_attempts": len(rejected)})
             continue
         identity = canonical_sha256({"components": components, "planned_delta": planned,
             "reservations": [(r.reservation_id, r.status, r.filled_quantity, r.reserved_quantity) for r in own]})

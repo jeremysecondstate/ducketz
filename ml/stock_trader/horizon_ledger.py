@@ -52,6 +52,7 @@ class OrderEvidence:
     remaining_quantity: int
     fills: tuple[FillEvidence, ...] = ()
     broker_status: str | None = None
+    broker_status_description: str | None = None
 
 
 @dataclass(frozen=True)
@@ -454,7 +455,12 @@ class HorizonLedger:
         if status not in {"UNKNOWN", "WORKING", "PARTIAL", *_TERMINAL}:
             raise LedgerError("Unsupported broker order status")
         order = self._reservation(db, evidence.reservation_id)
-        if not self._save_evidence(db, evidence.evidence_id, "order", asdict(evidence)):
+        payload = asdict(evidence)
+        if evidence.broker_status_description is None:
+            # Keep old normalized evidence byte-identical when no new broker
+            # detail is present; never manufacture or backfill a reason.
+            payload.pop("broker_status_description")
+        if not self._save_evidence(db, evidence.evidence_id, "order", payload):
             return
         broker_id = _name(evidence.broker_order_id)
         if order.broker_order_id and order.broker_order_id != broker_id:

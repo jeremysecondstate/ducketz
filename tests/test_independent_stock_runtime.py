@@ -105,7 +105,7 @@ def environment(tmp_path, monkeypatch):
     monkeypatch.setattr(runtime, "SchwabSession", lambda: pytest.fail("A real broker session must never be constructed in tests"))
     monkeypatch.setattr("ml.stock_trader.horizon_broker.capture_order_evidence", lambda broker, ledger, **kwargs: ())
 
-    def capture(broker, *, observed_at, parallel):
+    def capture(broker, *, observed_at, parallel, include_order_identities=False):
         env.captures += 1
         broker.calls.append("capture")
         result = PortfolioState(
@@ -113,6 +113,7 @@ def environment(tmp_path, monkeypatch):
             {symbol: env.held[symbol] * 100 for symbol in SYMBOLS}, {}, dict(env.pending_sell), 0,
             {symbol: QuoteState(symbol, 100., 100., 100., 100., 1000., env.now.isoformat()) for symbol in SYMBOLS},
             "portfolio-" + env.now.isoformat(), BROKER_ID,
+            broker_working_orders=() if include_order_identities else None,
         )
         if env.after_capture:
             env.after_capture()
