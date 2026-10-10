@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T08:27:13.192792Z",
+  "id": "20261010T082713Z-30e75788430f4762a3af6aaea87eedf3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Supplement supervision source intake with reviewed base, explicit operations and tested dependency fingerprints; retain the same Completion-Record and source SHA."
+}
