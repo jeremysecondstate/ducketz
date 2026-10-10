@@ -268,23 +268,10 @@ def _installed_binding(config, native):
     return result
 
 
-def _peer_grant_review(review, actor, retained=None):
-    """Validate reviewed local evidence; metadata never supplies new authority."""
-    roles = {"local_human_instruction", "local_installation_receipt"}
+def _grant_evidence(review, roles, retained=None, *, json_objects=False):
+    """Authenticate actual reviewed local records without inferring authority."""
     if not isinstance(review, dict) or set(review) != roles | {"approved_grant"}:
         raise ValueError("Exact local peer-grant review and evidence required")
-    grant = review["approved_grant"]
-    fields = {"authorized", "peer", "granted_on", "authority_source", "scope", "repeat_human_approval_required",
-              "guidance", "completion_record", "boundaries"}
-    scope = ["reviewed peer source implementation", "local system and helper installation",
-             "local configuration and native bindings", "scheduled-task registration"]
-    if (not isinstance(grant, dict) or set(grant) != fields or actor not in {"Atlas", "Scout"}
-            or grant["authorized"] is not True or grant["repeat_human_approval_required"] is not False
-            or grant["peer"] != {"Atlas": "Scout", "Scout": "Atlas"}[actor]
-            or grant["granted_on"] != "2026-10-09" or grant["scope"] != scope
-            or any(not isinstance(grant[key], str) or not grant[key].strip()
-                   for key in ("authority_source", "guidance", "completion_record", "boundaries"))):
-        raise ValueError("Peer-grant object exceeds the reviewed standing installation scope")
     if retained is not None and (not isinstance(retained, dict) or set(retained) != roles):
         raise ValueError("Exact retained local peer-grant evidence required")
     for role in roles:
@@ -302,9 +289,47 @@ def _peer_grant_review(review, actor, retained=None):
         if (saved["sha256"] != evidence["sha256"] or path.is_symlink() or not path.is_file()
                 or path.stat().st_size == 0 or file_checksum(path) != evidence["sha256"]):
             raise ValueError("Local peer-grant evidence missing or changed")
+        if json_objects and not isinstance(_read(path), dict):
+            raise ValueError("Actual local adoption and installation JSON objects required")
 
 
-def _coordination_documents(before_profile, after_profile, before_active, after_active, peer_grant_review=None):
+def _peer_grant_review(review, actor, retained=None):
+    """Validate reviewed local evidence; metadata never supplies new authority."""
+    _grant_evidence(review, {"local_human_instruction", "local_installation_receipt"}, retained)
+    grant = review["approved_grant"]
+    fields = {"authorized", "peer", "granted_on", "authority_source", "scope", "repeat_human_approval_required",
+              "guidance", "completion_record", "boundaries"}
+    scope = ["reviewed peer source implementation", "local system and helper installation",
+             "local configuration and native bindings", "scheduled-task registration"]
+    if (not isinstance(grant, dict) or set(grant) != fields or actor not in {"Atlas", "Scout"}
+            or grant["authorized"] is not True or grant["repeat_human_approval_required"] is not False
+            or grant["peer"] != {"Atlas": "Scout", "Scout": "Atlas"}[actor]
+            or grant["granted_on"] != "2026-10-09" or grant["scope"] != scope
+            or any(not isinstance(grant[key], str) or not grant[key].strip()
+                   for key in ("authority_source", "guidance", "completion_record", "boundaries"))):
+        raise ValueError("Peer-grant object exceeds the reviewed standing installation scope")
+
+
+def _scout_handoff_review(review, actor, retained=None):
+    """Recognize only Scout's evidenced October 9 additive four-string record.
+
+    The standing direct human instruction supplies authority. These actual local
+    receipts evidence its reviewed adoption; do not invent a historical message
+    file or treat a peer notice as a new grant.
+    """
+    _grant_evidence(review, {"local_adoption_receipt", "local_installation_record"}, retained, json_objects=True)
+    expected = {
+        "authority": "Jeremy's direct local instruction to Scout on 2026-10-09",
+        "boundaries": "Preserve private export rules, Atlas live execution, Jeremy trader controls, and separate runtime deployment",
+        "scope": "Reviewed Atlas handoffs: Scout source, helpers, configuration, native bindings and task registration",
+        "source_commit": "6d7795b3bd2df8a324f7bd95adb352750edc71d4",
+    }
+    if actor != "Scout" or _bytes(review["approved_grant"]) != _bytes(expected):
+        raise ValueError("Scout handoff record differs from the exact reviewed standing grant")
+
+
+def _coordination_documents(before_profile, after_profile, before_active, after_active, peer_grant_review=None,
+                            scout_handoff_review=None):
     """Explicit administrative metadata changes, never operating authority."""
     permitted = {"coordination_notification_policy"}
     if peer_grant_review is not None:
@@ -313,6 +338,15 @@ def _coordination_documents(before_profile, after_profile, before_active, after_
                 or _bytes(after_profile[field]) != _bytes(peer_grant_review["approved_grant"])):
             raise ValueError("Peer-grant transition must add the exact reviewed absent-before object")
         permitted.add(field)
+    if scout_handoff_review is not None:
+        before_roles, after_roles = before_profile.get("operating_roles"), after_profile.get("operating_roles")
+        field = "peer_handoff_adoption"
+        if (not isinstance(before_roles, dict) or not isinstance(after_roles, dict)
+                or field in before_roles or field not in after_roles
+                or _bytes(after_roles[field]) != _bytes(scout_handoff_review["approved_grant"])):
+            raise ValueError("Scout handoff must add the exact absent-before record to existing operating roles")
+        # Project out this one evidenced addition, not its operating parent.
+        after_profile = {**after_profile, "operating_roles": {key: value for key, value in after_roles.items() if key != field}}
     if (_bytes({key: value for key, value in before_profile.items() if key not in permitted})
             != _bytes({key: value for key, value in after_profile.items() if key not in permitted})
             or before_profile.get("coordination_notification_policy", "git_and_drive") not in {"git_and_drive", "github_only"}
@@ -367,21 +401,27 @@ def _verify_coordination_spec(spec):
         if path.is_symlink() or file_checksum(path) != binding[field]:
             raise ValueError("Retained coordination document differs from its exact binding")
         docs[name] = _read(path)
-    review = spec.get("peer_grant_review")
-    if review is not None:
-        if "immutable_inputs" in spec and "retained_grant_evidence" not in spec:
-            raise ValueError("Sealed peer-grant proof lacks retained local evidence")
-        actor = before["config"]["actor"]
-        if docs["before_profile"].get("actor") != actor:
-            raise ValueError("Peer-grant local actor differs from frozen binding")
-        _peer_grant_review(review, actor, spec.get("retained_grant_evidence"))
-    elif "retained_grant_evidence" in spec:
-        raise ValueError("Retained peer-grant evidence lacks its reviewed object")
-    return _coordination_documents(**docs, peer_grant_review=review)
+    if spec.get("peer_grant_review") is not None and spec.get("scout_handoff_review") is not None:
+        raise ValueError("Only one reviewed administrative grant addition is supported")
+    for field, retained, validator in (("peer_grant_review", "retained_grant_evidence", _peer_grant_review),
+                                        ("scout_handoff_review", "retained_scout_handoff_evidence", _scout_handoff_review)):
+        review = spec.get(field)
+        if review is not None:
+            if "immutable_inputs" in spec and retained not in spec:
+                raise ValueError("Sealed peer-grant proof lacks retained local evidence")
+            actor = before["config"]["actor"]
+            if docs["before_profile"].get("actor") != actor:
+                raise ValueError("Peer-grant local actor differs from frozen binding")
+            validator(review, actor, spec.get(retained))
+        elif retained in spec:
+            raise ValueError("Retained peer-grant evidence lacks its reviewed object")
+    return _coordination_documents(**docs, peer_grant_review=spec.get("peer_grant_review"),
+                                   scout_handoff_review=spec.get("scout_handoff_review"))
 
 
 def coordination_transition(config, *, action_date, owner, repair_id, reason, completion_record,
                             before_profile, before_active, target_source, target_files, peer_grant_review=None,
+                            scout_handoff_review=None,
                             reviewed=False, now=None):
     """Append proven administrative drift only; install no source or operating data.
 
@@ -391,12 +431,18 @@ def coordination_transition(config, *, action_date, owner, repair_id, reason, co
     claim the subsequent source repair without rewriting the original anchor.
     A grant addition needs the exact approved object plus locally reviewed human
     instruction and installation-receipt files, each with its actual SHA-256.
+    Scout's evidenced nested record instead uses its actual reviewed adoption
+    receipt and installation record; no historical human-message file is assumed.
     """
     if not reviewed or not owner or not reason or not completion_record or not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", repair_id):
         raise ValueError("Reviewed owner, completion identity and rationale required")
     native = _native(config)
+    if peer_grant_review is not None and scout_handoff_review is not None:
+        raise ValueError("Only one reviewed administrative grant addition is supported")
     if peer_grant_review is not None:
         _peer_grant_review(peer_grant_review, config["actor"])
+    if scout_handoff_review is not None:
+        _scout_handoff_review(scout_handoff_review, config["actor"])
     session = _session(config, action_date)
     directory = session / "source-repairs" / repair_id
     with _locks(config, native):
@@ -431,6 +477,7 @@ def coordination_transition(config, *, action_date, owner, repair_id, reason, co
             saved = _read(directory / "spec.json")
             if (saved.get("owner") != owner or saved.get("completion_record") != completion_record
                     or _bytes(saved.get("peer_grant_review")) != _bytes(peer_grant_review)
+                    or _bytes(saved.get("scout_handoff_review")) != _bytes(scout_handoff_review)
                     or saved.get("reason") != reason or file_checksum(Path(before_profile)) != original["profile_sha256"]
                     or file_checksum(Path(before_active)) != original["coordination_active_sha256"]):
                 raise ValueError("Coordination transition retry identity changed")
@@ -440,6 +487,7 @@ def coordination_transition(config, *, action_date, owner, repair_id, reason, co
             spec = _read(spec_path)
             if (spec.get("owner") != owner or spec.get("reason") != reason or spec.get("completion_record") != completion_record
                     or _bytes(spec.get("peer_grant_review")) != _bytes(peer_grant_review)
+                    or _bytes(spec.get("scout_handoff_review")) != _bytes(scout_handoff_review)
                     or spec["before_binding"] != original or spec["after_binding"] != current
                     or spec["expected_files"] != inventory or spec["after_source"] != source
                     or spec["claim"]["preparation_sha256"] != file_checksum(prep_path)
@@ -462,6 +510,8 @@ def coordination_transition(config, *, action_date, owner, repair_id, reason, co
                     "expected_files": inventory, "documents": {name: str(path) for name, path in inputs.items()}}
             if peer_grant_review is not None:
                 spec["peer_grant_review"] = peer_grant_review
+            if scout_handoff_review is not None:
+                spec["scout_handoff_review"] = scout_handoff_review
             # Validate everything before creating even a private evidence directory.
             release_files = _verify_coordination_spec(spec)
             preserved = _protected(config, native, action_date, prep_path, preparation)
@@ -470,17 +520,22 @@ def coordination_transition(config, *, action_date, owner, repair_id, reason, co
                 target = directory / "documents" / (name + ".json")
                 _atomic(target, path.read_bytes(), immutable=True)
                 docs[name] = str(target)
-            if peer_grant_review is not None:
+            for field, retained_field, roles in (
+                    ("peer_grant_review", "retained_grant_evidence", ("local_human_instruction", "local_installation_receipt")),
+                    ("scout_handoff_review", "retained_scout_handoff_evidence", ("local_adoption_receipt", "local_installation_record"))):
+                review = spec.get(field)
+                if review is None:
+                    continue
                 retained = {}
-                for role in ("local_human_instruction", "local_installation_receipt"):
-                    evidence = peer_grant_review[role]
+                for role in roles:
+                    evidence = review[role]
                     target = directory / "grant-evidence" / role
                     raw = Path(evidence["path"]).read_bytes()
                     if sha256(raw).hexdigest() != evidence["sha256"]:
                         raise ValueError("Local peer-grant evidence changed during retention")
                     _atomic(target, raw, immutable=True)
                     retained[role] = {"path": str(target), "sha256": evidence["sha256"]}
-                spec["retained_grant_evidence"] = retained
+                spec[retained_field] = retained
             mutable = _mutable_exchange_pointers(session) | {str(Path(config[key]).resolve())
                                                            for key in ("local_profile", "coordination_active")}
             immutable = {name: digest for name, digest in preserved.items() if name not in mutable
@@ -490,8 +545,8 @@ def coordination_transition(config, *, action_date, owner, repair_id, reason, co
                 immutable.update(entry["output"].get("files", {}))
             immutable.update({name: file_checksum(Path(name)) for name in docs.values()})
             immutable.update(release_files)
-            if peer_grant_review is not None:
-                immutable.update({item["path"]: item["sha256"] for item in retained.values()})
+            for field in ("retained_grant_evidence", "retained_scout_handoff_evidence"):
+                immutable.update({item["path"]: item["sha256"] for item in spec.get(field, {}).values()})
             backups = {}
             for name, digest in preserved.items():
                 if name in _mutable_exchange_pointers(session) or Path(name).name in {"state.json", "status.json", "failure.json", "run.json"}:
