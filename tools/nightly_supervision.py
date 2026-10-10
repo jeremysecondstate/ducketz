@@ -23,7 +23,8 @@ from ml import nightly_workflow as workflow
 from ml import nightly_repair_registry as registry
 from ml.artifacts import file_checksum, utc_timestamp
 
-VERSION = "nightly-supervision-v1"
+VERSION = "nightly-supervision-v2"
+READABLE_VERSIONS = {"nightly-supervision-v1", VERSION}
 
 
 def _digest(value):
@@ -35,6 +36,18 @@ def _read(path):
     if path.is_symlink():
         raise ValueError("Supervision evidence cannot be a symbolic link")
     return workflow._json(path)
+
+
+def _ledger_snapshot(path):
+    if path.is_symlink():
+        raise ValueError("Supervision evidence cannot be a symbolic link")
+    if not path.exists():
+        return None, None
+    raw = path.read_bytes()
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError("Expected a supervision ledger JSON object")
+    return value, sha256(raw).hexdigest()
 
 
 def _time(value):
@@ -90,6 +103,22 @@ def _completed(native, exchange_config, action, review):
     return _completed_result(exchange_config, native, action, review, common)
 
 
+def _current_display(native, action, review):
+    """Current readiness also requires the default UI to select verified dates."""
+    from app.ui.gameplan_data import load_gameplan
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    root = Path(native["datastore"])
+    plan, stats = load_gameplan(root), load_gameplan_stats(root)
+    dated_plan, dated_stats = load_gameplan(root, action), load_gameplan_stats(root, review)
+    if (plan.session != action or stats.session != review
+            or plan.run_directory != dated_plan.run_directory
+            or stats.run_directory != dated_stats.run_directory):
+        raise ValueError("Default UI does not select the exact intended-date combined Gameplan and Stats")
+    # Empty, honestly verified no-history Stats are a valid completed review.
+    return {"action_date": plan.session, "review_session": stats.session,
+            "plan_run": str(plan.run_directory), "stats_run": str(stats.run_directory)}
+
+
 def _repair_phase(native, exchange_config, state, owner):
     """Locate partial transactions without repairing or releasing any claim."""
     domain, action, repair_id = (owner[key] for key in ("domain", "action_date", "repair_id"))
@@ -140,10 +169,7 @@ def _partial_exchange_claim(config, action):
     return pending_claim(config, action) is not None
 
 
-def _liveness(attestation, result, now, current_thread, *, recorded=False):
-    """Validate an explicit agent attestation, not cryptographic native proof."""
-    if attestation is None:
-        return None
+def _owner_identity(attestation, result):
     for key in ("actor", "action_date", "incident_id", "automation_id"):
         expected = result[key]
         if attestation.get(key) != expected:
@@ -153,6 +179,13 @@ def _liveness(attestation, result, now, current_thread, *, recorded=False):
     if not all(isinstance(attestation.get(key), str) and attestation[key].strip()
                for key in ("thread_id", "turn_id")):
         raise ValueError("Owner liveness needs exact native thread and turn identities")
+
+
+def _liveness(attestation, result, now, current_thread, *, recorded=False):
+    """Validate an explicit agent attestation, not cryptographic native proof."""
+    if attestation is None:
+        return None
+    _owner_identity(attestation, result)
     observed = _time(attestation.get("observed_at"))
     if not 0 <= (now - observed).total_seconds() <= 300:
         raise ValueError("Owner liveness attestation is future or stale")
@@ -173,8 +206,46 @@ def _liveness(attestation, result, now, current_thread, *, recorded=False):
     return {**attestation, "evidence_kind": "owner_liveness_attestation", "retained_from_ledger": recorded}
 
 
+def _terminal_owner(observation, last_known, result, now):
+    """A fresh terminal turn and nonrunning chat permit retained-owner review."""
+    _owner_identity(observation, result)
+    if last_known is None or any(observation[key] != last_known[key] for key in ("thread_id", "turn_id")):
+        raise ValueError("Native terminal observation differs from the retained owner turn")
+    observed = _time(observation.get("observed_at"))
+    if not 0 <= (now - observed).total_seconds() <= 300 or observed < _time(last_known["observed_at"]):
+        raise ValueError("Native terminal observation is future, stale or precedes the owner attestation")
+    proof = observation.get("native_observation", {})
+    if (observation.get("provenance") != "native_read_thread" or proof.get("tool") != "read_thread"
+            or any(proof.get(key) != observation[key] for key in ("thread_id", "turn_id", "automation_id"))
+            or proof.get("turn_status") not in {"completed", "failed", "interrupted"}
+            or proof.get("thread_status") not in {"idle", "completed", "failed", "interrupted"}
+            or _time(proof.get("observed_at")) != observed
+            or not isinstance(observation.get("readback_reference"), str)
+            or not observation["readback_reference"].strip()):
+        raise ValueError("Actual terminal retained turn and nonrunning native chat evidence required")
+    return observation
+
+
+def _applied_continuation(native, exchange_config, state, failure, result, now):
+    """An applied patch can fail again; surface the real continuation gate."""
+    if result["domain"] == "preparation":
+        from ml.nightly_dispatch import retry_disposition
+        disposition = retry_disposition(native, state, now)
+        gate = {"reason": disposition} if disposition else None
+        failure = state.get("failure")
+    else:
+        from ml.nightly_exchange_repair import dispatch_guard
+        gate = dispatch_guard(exchange_config, result["action_date"], now=now)
+    result.update(continuation_guard=gate, failure=failure)
+    if gate:
+        backoff = gate["reason"] in {"RETRY_BACKOFF", "TRANSIENT_RETRY_COOLDOWN"}
+        result.update(next_action="WAIT_BACKOFF" if backoff else "REPAIR_REQUIRED",
+                      reason=gate["reason"], repair_disposition=("WAIT_RETAINED_RETRY" if backoff else
+                          "SAME_OWNER_REPAIR_OR_RESTORATION_REQUIRED"))
+
+
 def inspect(native, exchange_config, *, owner, action_date=None, now=None,
-            owner_liveness_attestation=None, current_thread=None):
+            owner_liveness_attestation=None, terminal_owner_observation=None, current_thread=None):
     """Return a next action; all operating mutations remain with native owners."""
     now = utc_timestamp(now)
     if not isinstance(owner, str) or not owner.strip() or native["actor"] != exchange_config["actor"]:
@@ -217,6 +288,8 @@ def inspect(native, exchange_config, *, owner, action_date=None, now=None,
             phase, rank, evidence = _repair_phase(native, exchange_config, state, retained)
             result.update(phase=phase, phase_rank=rank, phase_evidence=evidence,
                           next_action="CONTINUE_SAME_OWNER", reason="Resume the retained transaction before routine intake")
+            if phase == "REPAIR_APPLIED":
+                _applied_continuation(native, exchange_config, state, failure, result, now)
         elif state.get("repair_claim") or ((session / "repair-claim.json").exists() and
                                            _partial_exchange_claim(exchange_config, action)):
             result.update(next_action="RECONCILE_PARTIAL_CLAIM", reason="Preserve partial claim evidence; do not acquire a replacement")
@@ -239,8 +312,9 @@ def inspect(native, exchange_config, *, owner, action_date=None, now=None,
                     or verified.get("review_session") != review or verified.get("actor") != native["actor"]
                     or any(verified.get(key) is not True for key in ("joint_ready", "ui_ready", "peer_verified"))):
                 raise ValueError("Fresh intended-date combined Gameplan/Stats verification is incomplete")
+            display = _current_display(native, action, review)
             result.update(next_action="COMPLETE", overall_complete=True, phase="FINAL_VERIFIED", phase_rank=4,
-                          final_verification={"observed_at": now.isoformat(), "result": verified},
+                          final_verification={"observed_at": now.isoformat(), "result": verified, "default_display": display},
                           reason="Exact dated combined publications and receipts freshly verified")
         elif failure:
             from ml.nightly_exchange_repair import dispatch_guard
@@ -257,31 +331,51 @@ def inspect(native, exchange_config, *, owner, action_date=None, now=None,
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
         result.update(next_action="CONTINUE_SAME_OWNER" if retained else "REPAIR_REQUIRED",
                       reason="Saved evidence verification failed", verification_error=f"{type(error).__name__}: {error}")
+    ledger_path = Path(native["state_root"]) / "supervision" / (action + ".json")
+    saved, ledger_digest = _ledger_snapshot(ledger_path)
+    saved = saved or {}
+    result["ledger_precondition_sha256"] = ledger_digest
+    if saved and (saved.get("schema_version") not in READABLE_VERSIONS or saved.get("actor") != result["actor"]
+                  or saved.get("action_date") != action):
+        raise ValueError("Saved supervision ledger identity differs")
+    inherited = saved.get("last_known_owner_attestation") or saved.get("owner_liveness_attestation")
+    last_known = None
+    if inherited and all(inherited.get(key) == result[key] for key in
+                         ("actor", "action_date", "incident_id", "automation_id")):
+        age = (now - _time(inherited.get("observed_at"))).total_seconds()
+        if age < 0:
+            raise ValueError("Saved owner liveness observation is in the future")
+        if inherited.get("repair_id") == (retained or {}).get("repair_id"):
+            # Validate provenance at its actual observation time, but retain the
+            # identity after freshness expires so a successor can inspect it.
+            last_known = _liveness(inherited, result, _time(inherited["observed_at"]), None, recorded=True)
     inherited_attestation = False
     if owner_liveness_attestation is None:
-        ledger_path = Path(native["state_root"]) / "supervision" / (action + ".json")
-        saved = _read(ledger_path) if ledger_path.exists() else {}
-        if saved and (saved.get("schema_version") != VERSION or saved.get("actor") != result["actor"]
-                      or saved.get("action_date") != action):
-            raise ValueError("Saved supervision ledger identity differs")
-        inherited = saved.get("owner_liveness_attestation")
-        if inherited and all(inherited.get(key) == result[key] for key in
-                             ("actor", "action_date", "incident_id", "automation_id")):
-            age = (now - _time(inherited.get("observed_at"))).total_seconds()
-            if age < 0:
-                raise ValueError("Saved owner liveness observation is in the future")
-            if age <= 300 and inherited.get("repair_id") == (retained or {}).get("repair_id"):
-                # Keep its honest original provenance. A retained current-chat
-                # attestation is not a new native read_thread observation.
-                owner_liveness_attestation = inherited
-                inherited_attestation = True
+        if last_known and (now - _time(last_known["observed_at"])).total_seconds() <= 300:
+            owner_liveness_attestation = last_known
+            inherited_attestation = True
     attestation = _liveness(owner_liveness_attestation, result, now, current_thread, recorded=inherited_attestation)
+    if attestation is not None:
+        last_known = attestation
+    if terminal_owner_observation is None:
+        previous_terminal = saved.get("terminal_owner_observation")
+        if (previous_terminal and last_known and all(previous_terminal.get(key) == last_known.get(key)
+                for key in ("actor", "action_date", "incident_id", "automation_id", "repair_id", "thread_id", "turn_id"))
+                and 0 <= (now - _time(previous_terminal.get("observed_at"))).total_seconds() <= 300):
+            terminal_owner_observation = previous_terminal
+    if terminal_owner_observation is not None:
+        terminal_owner_observation = _terminal_owner(terminal_owner_observation, last_known, result, now)
+        attestation = None
+    result["last_known_owner_attestation"] = last_known
+    result["terminal_owner_observation"] = terminal_owner_observation
     result["owner_liveness_attestation"] = attestation
-    if attestation and result["next_action"] in {"CONTINUE_SAME_OWNER", "REPAIR_REQUIRED", "RECONCILE_PARTIAL_CLAIM"}:
-        same_turn = attestation["thread_id"] == current_thread
-        if not same_turn:
+    if result["next_action"] in {"CONTINUE_SAME_OWNER", "REPAIR_REQUIRED", "RECONCILE_PARTIAL_CLAIM"}:
+        if attestation and attestation["thread_id"] != current_thread:
             result.update(resume_action=result["next_action"], next_action="WAIT_FOR_LIVE_OWNER",
                           reason="Fresh explicit native-owner attestation; retain the same owner and transaction")
+        elif last_known and last_known["thread_id"] != current_thread and terminal_owner_observation is None:
+            result.update(resume_action=result["next_action"], next_action="INSPECT_RETAINED_OWNER",
+                          reason="Inspect the retained native thread and turn; expired liveness is not proof the writer exited")
     return result
 
 
@@ -289,6 +383,8 @@ def record(native, result, *, wake_id):
     """Idempotent bounded continuity only; no domain claim or timer is created."""
     if not isinstance(wake_id, str) or re.fullmatch(r"[A-Za-z0-9_-]{8,160}", wake_id) is None:
         raise ValueError("Stable native wake/turn identity required")
+    if result.get("schema_version") != VERSION:
+        raise ValueError("Record requires a current-version supervision inspection")
     action = result["action_date"]
     if date.fromisoformat(action).isoformat() != action or result["actor"] != native["actor"]:
         raise ValueError("Ledger actor or date differs")
@@ -296,11 +392,16 @@ def record(native, result, *, wake_id):
     root.mkdir(parents=True, exist_ok=True)
     path = root / (action + ".json")
     with FileLock(str(root / "ledger.lock"), timeout=0):
-        previous = _read(path) if path.exists() else None
+        previous, current_digest = _ledger_snapshot(path)
         now = _time(result["observed_at"])
-        if previous and (previous.get("schema_version") != VERSION or previous.get("actor") != result["actor"]
+        if previous and (previous.get("schema_version") not in READABLE_VERSIONS or previous.get("actor") != result["actor"]
                          or previous.get("action_date") != action or now < _time(previous["observed_at"])):
             raise ValueError("Ledger identity changed or observation moved backwards")
+        if current_digest != result.get("ledger_precondition_sha256"):
+            if (previous and previous["last_wake_id"] == wake_id
+                    and all(previous.get(key) == value for key, value in result.items())):
+                return {"ledger": str(path), "ledger_sha256": current_digest, **previous}
+            raise ValueError("Supervision ledger changed after inspection; inspect again before recording")
         progressed = False
         if previous:
             old_steps, new_steps = previous["completed_steps"], result["completed_steps"]
@@ -319,7 +420,8 @@ def record(native, result, *, wake_id):
                      (previous["unchanged_wakes"] if previous else 0) + int(changed_wake)),
                  "progressed": progressed}
         workflow._write(path, value)
-    return {"ledger": str(path), "ledger_sha256": file_checksum(path), **value}
+        written_digest = file_checksum(path)
+    return {"ledger": str(path), "ledger_sha256": written_digest, **value}
 
 
 def main(argv=None):
@@ -329,6 +431,7 @@ def main(argv=None):
     parser.add_argument("--owner", required=True)
     parser.add_argument("--action-date")
     parser.add_argument("--owner-liveness-attestation", type=Path)
+    parser.add_argument("--terminal-owner-observation", type=Path)
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--inspect", action="store_true")
     modes.add_argument("--record", action="store_true")
@@ -348,6 +451,7 @@ def main(argv=None):
             raise ValueError("Exchange references another workflow configuration")
         result = inspect(native, exchange_config, owner=args.owner, action_date=args.action_date,
                          owner_liveness_attestation=_read(args.owner_liveness_attestation) if args.owner_liveness_attestation else None,
+                          terminal_owner_observation=_read(args.terminal_owner_observation) if args.terminal_owner_observation else None,
                          current_thread=os.environ.get("CODEX_THREAD_ID"))
         if args.record:
             result = record(native, result, wake_id=args.wake_id)

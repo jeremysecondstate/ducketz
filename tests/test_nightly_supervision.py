@@ -10,6 +10,7 @@ from ml import nightly_workflow as workflow
 from tools import nightly_supervision as supervisor
 from tests.test_nightly_exchange_repair import env, write, DAY, NOW, claimed, prepared, applied
 from tests.test_nightly_stage_repair import env as preparation_env, prepare as prepare_stage, apply as apply_stage
+from tests.test_nightly_exchange import exchange, source_inputs, synthesized, wake, DAY as EXCHANGE_DAY, NOW as EXCHANGE_NOW
 
 OWNER = "scout-priority-source-reconciliation"
 
@@ -136,6 +137,7 @@ def test_fresh_actual_completed_reader_is_called_with_exact_date(env, monkeypatc
         calls.append((config, native, action, review))
         return {**common, "status": "COMPLETE", "joint_ready": True, "ui_ready": True, "peer_verified": True}
     monkeypatch.setattr(nightly_exchange, "_completed_result", completed)
+    monkeypatch.setattr(supervisor, "_current_display", lambda *args: {"fixture": "verified default display"})
     result = inspect(env)
     assert calls == [(env["config"], env["native"], DAY, "2026-10-08")]
     assert result["overall_complete"] is True
@@ -156,8 +158,10 @@ def test_current_native_turn_attestation_keeps_same_worker_actionable(env):
     assert "native_observation" not in other["owner_liveness_attestation"]
     expired = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
                                  now="2026-10-09T21:05:01Z", current_thread="later-thread")
-    assert expired["next_action"] == "CONTINUE_SAME_OWNER"
+    assert expired["next_action"] == "INSPECT_RETAINED_OWNER"
     assert expired["repository_owner"] == result["repository_owner"]
+    assert expired["last_known_owner_attestation"]["thread_id"] == "native-thread"
+    assert expired["owner_liveness_attestation"] is None
 
 
 def test_explicit_read_thread_attestation_waits_for_other_active_turn(env):
@@ -191,6 +195,7 @@ def test_same_wake_does_not_accumulate_unchanged_counts_or_fake_progress(env):
     again = supervisor.record(env["native"], result, wake_id="same-wake-id")
     assert again["unchanged_wakes"] == first["unchanged_wakes"] == 1
     assert again["last_progress_at"] == first["last_progress_at"]
+    result = inspect(env)
     result.update(observed_at="2026-10-09T21:01:00Z", failure={"fingerprint": "new error"})
     result["phase_evidence"][str(env["budget"])] = "new snapshot observation"
     third = supervisor.record(env["native"], result, wake_id="next-wake-id")
@@ -316,4 +321,219 @@ def test_resolved_exchange_claim_does_not_block_fresh_final_verification(env, mo
     monkeypatch.setattr(supervisor, "_completed", lambda *args: {
         "actor": "Scout", "action_date": DAY, "review_session": "2026-10-08", "status": "COMPLETE",
         "joint_ready": True, "ui_ready": True, "peer_verified": True})
+    monkeypatch.setattr(supervisor, "_current_display", lambda *args: {"fixture": "verified default display"})
     assert inspect(env)["next_action"] == "COMPLETE"
+
+
+def retain_owner(e):
+    claimed(e)
+    initial = inspect(e)
+    current = inspect(e, owner_liveness_attestation=attestation(initial), current_thread="native-thread")
+    supervisor.record(e["native"], current, wake_id="original-native-turn")
+    return current
+
+
+def terminal_observation(result, **changes):
+    value = {**attestation(result), "provenance": "native_read_thread", "observed_at": "2026-10-09T21:06:00Z",
+             "readback_reference": "private-native-response.json"}
+    value["native_observation"] = {"tool": "read_thread", "thread_status": "idle", "turn_status": "completed",
+        **{key: value[key] for key in ("thread_id", "turn_id", "automation_id", "observed_at")}}
+    return {**value, **changes}
+
+
+def test_expired_owner_ids_survive_multiple_cron_wakes_until_native_status_is_read(env):
+    original = retain_owner(env)
+    for minute in (6, 12):
+        result = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+            now=f"2026-10-09T21:{minute:02d}:00Z", current_thread=f"successor-{minute}")
+        assert result["next_action"] == "INSPECT_RETAINED_OWNER"
+        assert result["resume_action"] == "CONTINUE_SAME_OWNER"
+        assert result["owner_liveness_attestation"] is None
+        assert result["repository_owner"] == original["repository_owner"]
+        saved = supervisor.record(env["native"], result, wake_id=f"successor-turn-{minute}")
+        last = repair._read(Path(saved["ledger"]))["last_known_owner_attestation"]
+        assert (last["thread_id"], last["turn_id"]) == ("native-thread", "native-turn")
+        assert last["observed_at"] == NOW
+
+
+def test_v1_ledger_migrates_without_losing_stale_owner_or_unchanged_wake_history(env):
+    retain_owner(env)
+    path = env["work"] / "supervision" / (DAY + ".json")
+    legacy = repair._read(path)
+    legacy["schema_version"] = "nightly-supervision-v1"
+    legacy.pop("last_known_owner_attestation")
+    legacy.pop("terminal_owner_observation")
+    write(path, legacy)
+    result = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+        now="2026-10-09T21:06:00Z", current_thread="later-cron-thread")
+    assert result["next_action"] == "INSPECT_RETAINED_OWNER"
+    saved = supervisor.record(env["native"], result, wake_id="later-cron-turn")
+    assert saved["schema_version"] == "nightly-supervision-v2"
+    assert saved["first_seen_at"] == legacy["first_seen_at"]
+    assert saved["last_progress_at"] == legacy["last_progress_at"]
+    assert saved["unchanged_wakes"] == legacy["unchanged_wakes"] + 1
+    assert saved["last_known_owner_attestation"]["thread_id"] == "native-thread"
+
+
+def test_overlapping_cron_inspection_cannot_overwrite_newly_recorded_owner_evidence(env):
+    claimed(env)
+    result = inspect(env)
+    owner_result = inspect(env, owner_liveness_attestation=attestation(result), current_thread="native-thread")
+    # A second chat inspects later, before the first chat has recorded its owner.
+    stale = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+        now="2026-10-09T21:01:00Z", current_thread="overlapping-cron-thread")
+    saved = supervisor.record(env["native"], owner_result, wake_id="original-native-turn")
+    path = Path(saved["ledger"])
+    original = path.read_bytes()
+    with pytest.raises(ValueError, match="changed after inspection"):
+        supervisor.record(env["native"], stale, wake_id="overlapping-cron-turn")
+    assert path.read_bytes() == original
+    fresh = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+        now="2026-10-09T21:01:00Z", current_thread="overlapping-cron-thread")
+    assert fresh["next_action"] == "WAIT_FOR_LIVE_OWNER"
+    recorded = supervisor.record(env["native"], fresh, wake_id="overlapping-cron-turn")
+    assert recorded["last_known_owner_attestation"]["thread_id"] == "native-thread"
+
+
+def test_native_terminal_turn_allows_same_owner_continuation_without_releasing_claim(env):
+    original = retain_owner(env)
+    observed = terminal_observation(original)
+    result = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+        now=observed["observed_at"], current_thread="successor-thread", terminal_owner_observation=observed)
+    assert result["next_action"] == "CONTINUE_SAME_OWNER"
+    assert result["owner_liveness_attestation"] is None
+    assert result["terminal_owner_observation"] == observed
+    assert result["last_known_owner_attestation"]["thread_id"] == "native-thread"
+    assert repair.registry.read(env["work"]) == original["repository_owner"]
+    supervisor.record(env["native"], result, wake_id="successor-turn")
+    again = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+        now="2026-10-09T21:07:00Z", current_thread="successor-thread")
+    assert again["next_action"] == "CONTINUE_SAME_OWNER"
+    stale = supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+        now="2026-10-09T21:12:00Z", current_thread="later-thread")
+    assert stale["next_action"] == "INSPECT_RETAINED_OWNER"
+
+
+@pytest.mark.parametrize("change", [
+    {"thread_id": "wrong-thread"}, {"turn_id": "wrong-turn"}, {"incident_id": "wrong-incident"},
+    {"repair_id": "wrong-repair"}, {"provenance": "current_chat"}, {"observed_at": NOW},
+    {"observed_at": "2026-10-09T21:06:01Z"}, {"readback_reference": ""},
+    {"native_observation": {"tool": "read_thread", "thread_status": "idle"}},
+])
+def test_terminal_owner_proof_rejects_wrong_stale_future_or_incomplete_identity(env, change):
+    original = retain_owner(env)
+    with pytest.raises(ValueError):
+        supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+            now="2026-10-09T21:06:00Z", current_thread="successor-thread",
+            terminal_owner_observation=terminal_observation(original, **change))
+
+
+@pytest.mark.parametrize("thread_status,turn_status", [("running", "completed"), ("idle", "running"),
+                                                      ("idle", "unknown"), ("unknown", "completed")])
+def test_idle_chat_or_old_completed_turn_with_new_running_chat_never_allows_continuation(env, thread_status, turn_status):
+    original = retain_owner(env)
+    proof = terminal_observation(original)
+    proof["native_observation"].update(thread_status=thread_status, turn_status=turn_status)
+    with pytest.raises(ValueError, match="terminal retained turn"):
+        supervisor.inspect(env["native"], env["config"], owner=OWNER, action_date=DAY,
+            now=proof["observed_at"], current_thread="successor-thread", terminal_owner_observation=proof)
+
+
+def test_new_exchange_failure_after_applied_is_repair_work_for_the_retained_owner(env):
+    spec = prepared(env)
+    applied(env, spec)
+    owner = repair.registry.read(env["work"])
+    failure = repair.record_failure(env["config"], DAY, ValueError("second deterministic defect"), now=NOW)
+    write(env["status"], {**repair._read(env["status"]), "failure_epoch": 2})
+    result = inspect(env)
+    assert result["phase"] == "REPAIR_APPLIED" and result["next_action"] == "REPAIR_REQUIRED"
+    assert result["failure"] == failure
+    assert result["continuation_guard"] == repair.dispatch_guard(env["config"], DAY, now=NOW)
+    assert result["repair_disposition"] == "SAME_OWNER_REPAIR_OR_RESTORATION_REQUIRED"
+    assert result["repository_owner"] == owner and not result["overall_complete"]
+    next_claim = claimed(env, "second-exchange-repair", supersede_applied=True)
+    assert repair.registry.read(env["work"])["owner"] == owner["owner"]
+    assert repair._read(next_claim)["supersedes_applied_repair"] == owner["repair_id"]
+
+
+def test_applied_exchange_transient_retry_preserves_actual_backoff(env):
+    applied(env, prepared(env))
+    failure = repair.record_failure(env["config"], DAY, OSError("brief unavailable mount"), now=NOW)
+    result = inspect(env)
+    assert result["next_action"] == "WAIT_BACKOFF"
+    assert result["failure"] == failure
+    assert result["repair_disposition"] == "WAIT_RETAINED_RETRY"
+
+
+def test_new_preparation_failure_after_applied_uses_supported_same_owner_chain(preparation_env, tmp_path):
+    from ml import nightly_stage_repair
+    from tests.test_nightly_stage_repair import new_failed_attempt
+    e = preparation_env
+    e["config"]["automatic_recovery"] = {"enabled": True, "authorization": "fixture local human", "max_attempts": 3}
+    apply_stage(e, prepare_stage(e))
+    old = nightly_stage_repair.registry.read(e["config"]["state_root"])
+    state = new_failed_attempt(e)
+    state["failure"]["kind"] = "SOURCE_DEFECT"
+    workflow._write(e["state_path"], state)
+    result = supervisor.inspect(e["config"], {"actor": "Scout", "state_root": str(tmp_path / "exchange")},
+        owner=OWNER, action_date=DAY, now=NOW)
+    assert result["next_action"] == "REPAIR_REQUIRED" and result["phase"] == "REPAIR_APPLIED"
+    assert result["failure"] == state["failure"] and result["repository_owner"] == old
+    assert result["repair_disposition"] == "SAME_OWNER_REPAIR_OR_RESTORATION_REQUIRED"
+    continued = nightly_stage_repair.claim(e["config"], action_date=DAY, repair_id="second-stage-repair",
+        owner=old["owner"], now=NOW)
+    assert continued["repository_claim"]["owner"] == old["owner"]
+    assert continued["repository_claim"]["repair_id"] == "second-stage-repair"
+
+
+def completed_observation(exchange, monkeypatch, actor):
+    native = exchange[1][actor]
+    monkeypatch.setattr(supervisor.workflow, "status", lambda *args, **kwargs: {
+        "status": "LOCAL_COMPLETE_PEER_SETUP_PENDING", "action_date": EXCHANGE_DAY,
+        "source_session": "2026-09-08", "steps": {}})
+    return supervisor.inspect(native, exchange[0][actor], owner=actor + "-priority-source-reconciliation",
+        action_date=EXCHANGE_DAY, now=EXCHANGE_NOW)
+
+
+@pytest.mark.parametrize("actor", ["atlas", "scout"])
+def test_dated_exchange_completion_does_not_hide_broken_default_stats(exchange, monkeypatch, actor):
+    synthesized(exchange)
+    wake(exchange, "atlas")
+    wake(exchange, "scout")
+    native = exchange[1][actor]
+    path = Path(native["datastore"]) / "ml/gameplan-actuals-review-latest/run.json"
+    pointer = repair._read(path)
+    pointer["current"]["run_path"] = "ml/gameplan-actuals-review-runs/missing-default-run"
+    write(path, pointer)
+    assert supervisor._completed(native, exchange[0][actor], EXCHANGE_DAY, "2026-09-08")["ui_ready"]
+    result = completed_observation(exchange, monkeypatch, actor)
+    assert result["next_action"] == "REPAIR_REQUIRED" and not result["overall_complete"]
+    assert "GameplanStatsError" in result["verification_error"]
+
+
+@pytest.mark.parametrize("no_history", [False, True])
+def test_real_combined_completion_requires_default_display_but_accepts_no_history_stats(exchange, monkeypatch, tmp_path, no_history):
+    if no_history:
+        from ml.artifacts import file_checksum
+        from tests.test_gameplan_stats_handoff import baseline_package
+        for actor in ("atlas", "scout"):
+            output = exchange[2][actor]["steps"]["local_handoff"]["output"]
+            old = output["stats_package"]
+            path, _ = baseline_package(tmp_path, actor.title(), exchange[0][actor]["owners"][actor],
+                session="2026-09-08", reviewed_at=EXCHANGE_NOW)
+            output["stats_package"] = str(path)
+            output["files"].pop(old)
+            output["files"][str(path)] = file_checksum(path)
+    synthesized(exchange)
+    wake(exchange, "atlas")
+    wake(exchange, "scout")
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    for actor in ("atlas", "scout"):
+        result = completed_observation(exchange, monkeypatch, actor)
+        assert result["next_action"] == "COMPLETE" and result["overall_complete"]
+        assert result["final_verification"]["default_display"]["action_date"] == EXCHANGE_DAY
+        stats = load_gameplan_stats(Path(exchange[1][actor]["datastore"]))
+        assert stats.metrics().total == (0 if no_history else 2)
+        if no_history:
+            assert stats.metrics().accuracy is None
+            assert repair._read(stats.run_directory / "report.json")["missing_history_owners"] == ["Atlas", "Scout"]
