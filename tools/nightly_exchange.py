@@ -458,8 +458,13 @@ def _ownership_observations(config, action, review, inputs, clock):
 
 def _check_ownership_binding(config, action):
     frozen = Path(config["state_root"]) / "sessions" / action / "binding.json"
-    if _object(_read(frozen)) != _binding(config):
-        raise ValueError("Ownership source or operating bindings changed")
+    current = _binding(config)
+    if _object(_read(frozen)) != current:
+        if not (frozen.parent / "repair-transitions.json").is_file():
+            raise ValueError("Ownership source or operating bindings changed")
+        from ml.nightly_exchange_repair import effective_binding
+        effective_binding(config, action, current_binding=current)
+    return current
 
 
 def _respond_ownership(config, native, action, review, inputs, clock, *, responder_deadline=None):
@@ -512,10 +517,22 @@ def _ensure_ownership_responder(config, action, review, inputs, now):
             return
         session = state_root / "sessions" / action
         path = session / "ownership-responder.json"
-        record = _object(_read(path)) if path.exists() else None
-        binding = _binding(config)
+        record_bytes = _read(path) if path.exists() else None
+        record = _object(record_bytes) if record_bytes is not None else None
+        if record is not None:
+            start, deadline = pd.Timestamp(record.get("started_at")), pd.Timestamp(record.get("deadline_at"))
+            if (pd.isna(start) or pd.isna(deadline) or start.tzinfo is None or deadline.tzinfo is None
+                    or not 0 < (deadline - start).total_seconds() <= 360
+                    or record.get("action_date") != action or record.get("review_session") != review):
+                raise ValueError("Invalid saved ownership responder deadline")
+        binding = _check_ownership_binding(config, action)
         if record is not None and record["binding"] != binding:
-            raise ValueError("Ownership responder source or configuration changed")
+            if pd.Timestamp(record["deadline_at"]) > now or record["inputs"] != inputs:
+                raise ValueError("Ownership responder source or configuration changed")
+            from ml.nightly_exchange_repair import effective_binding
+            effective_binding(config, action, current_binding=binding, historical_binding=record["binding"])
+            _write(session / "ownership-responder-history" / (_sha(record_bytes) + ".json"), record_bytes)
+            record = None
         if record is None or pd.Timestamp(record["deadline_at"]) <= now:
             record = {"action_date": action, "review_session": review, "inputs": inputs, "binding": binding,
                       "started_at": now.isoformat(), "deadline_at": (now + pd.Timedelta(seconds=360)).isoformat()}
@@ -560,7 +577,11 @@ def _serve_ownership(config, *, now=None):
             if record["inputs"] != inputs:
                 raise ValueError("Ownership responder preparations changed")
             while clock() < deadline:
-                if _binding(config) != record["binding"] or _context(clock()) != (action, review):
+                try:
+                    current_binding = _check_ownership_binding(config, action)
+                except (OSError, ValueError) as error:
+                    raise ValueError("Ownership responder source, bindings or session changed") from error
+                if current_binding != record["binding"] or _context(clock()) != (action, review):
                     raise ValueError("Ownership responder source, bindings or session changed")
                 if (_folder(config, action, "scout", "joint") / "selection.json").exists():
                     break
