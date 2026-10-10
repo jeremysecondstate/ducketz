@@ -183,7 +183,11 @@ def _validate_package(package: Mapping) -> None:
     if any(counts[s] != 24 for s in symbols):
         raise ValueError("Forecast cardinality differs from the frozen universe")
     from ml.stock_trader.independent_signals import _validated_independent_forecasts
-    normalized = _validated_independent_forecasts(pd.DataFrame(rows), action_date=day, symbols=symbols)
+    late_published = package.get("late_publication_at")
+    if late_published is not None and _time(late_published, "late publication") > created:
+        raise ValueError("Late forecast publication postdates its package")
+    normalized = _validated_independent_forecasts(pd.DataFrame(rows), action_date=day, symbols=symbols,
+        late_publication_at=late_published)
     from ml.stock_trader.gameplan_execution import _validated_instructions
     _validated_instructions(normalized)
     prior_session = normalized.loc[normalized["route"].eq("1h@gap"), "target_window_start"].iloc[0].tz_convert("America/Los_Angeles").date().isoformat()
@@ -274,7 +278,7 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
                         action_date: str, frozen_symbols: Sequence[str], created_at: str,
                         source_hashes: Mapping, forecasts: Sequence[Mapping], price_path: Mapping,
                         cross_horizon_fallback_policy: Mapping | None = None,
-                        source_reference: Mapping | None = None) -> dict:
+                        source_reference: Mapping | None = None, late_publication_at: str | None = None) -> dict:
     """Seal already verified native inputs; this does not authenticate a producer."""
     package = deepcopy({"schema_version": PACKAGE_SCHEMA, "owner_id": owner_id,
         "run_id": run_id, "source_revision": source_revision, "action_date": action_date,
@@ -283,6 +287,8 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
         "holding_policy": SIGNAL_DRIVEN_HOLDING_POLICY, "cross_horizon_fallback_policy": cross_horizon_fallback_policy,
         "frozen_symbols": list(frozen_symbols), "created_at": created_at,
         "source_hashes": dict(source_hashes), "forecasts": [_forecast_json(row) for row in forecasts], "price_path": dict(price_path)})
+    if late_publication_at is not None:
+        package["late_publication_at"] = late_publication_at
     package["content_sha256"] = {"forecasts": content_sha256(package["forecasts"]),
                                  "price_path": content_sha256(package["price_path"])}
     package["package_sha256"] = content_sha256(package)
@@ -517,6 +523,11 @@ def publish_owner_package(root: Path, package: Mapping) -> Path:
     if len(data) > MAXIMUM_JSON_BYTES:
         raise ValueError("Owner package exceeds its JSON size bound")
     path = _ordinary_path(Path(root) / f"{package['package_sha256']}.json", root, missing_leaf=True)
+    if path.exists():
+        _ordinary_path(path, root)
+        if path.read_bytes() != data:
+            raise ValueError("Existing owner package differs from its immutable bytes")
+        return path
     with path.open("xb") as output:
         output.write(data)
         output.flush()

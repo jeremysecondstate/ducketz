@@ -293,7 +293,7 @@ def publication_case(tmp_path, monkeypatch):
     pd.DataFrame({"id": frame.id + ":OPTION", "symbol": "AAPL", "plan_status": "NO_TRADE_STOCK_ONLY",
                   "legs_json": None, "candidate_key": None, "strategy_source_run": None}).to_parquet(source / "option-strategy-intents.parquet", index=False)
     monkeypatch.setattr(nightly_gameplan, "read_gameplan_run", lambda *a: SimpleNamespace(run_directory=source,
-                        manifest={"configuration": config}, receipt={"action_date": "2026-09-09"}))
+                        manifest={"configuration": config}, receipt=json.loads((source / "receipt.json").read_text())))
     monkeypatch.setattr(independent_signals, "_validated_independent_forecasts", lambda frame, **kw: frame)
     monkeypatch.setattr(independent_signals, "verified_promoted_model_groups", lambda p: frozenset({"1h", "4h", "1d", "1w"}))
     calls = []
@@ -639,6 +639,100 @@ def test_explicit_late_preparation_preserves_source_and_original_deadline(public
     assert report['effective_deadline_at'] == '2026-09-09T12:00:00+00:00'
     assert report['orders_placed'] == 0 and report['broker_orders_enabled'] is False
     assert report['deadline_exception']['authorization']['orders_authorized'] is False
+
+
+def _late_source(case):
+    import json
+    from ml.nightly_gameplan import read_gameplan_run
+    publication = read_gameplan_run(case.root, case.source)
+    publication.manifest['configuration'].update(publication_mode='LATE_RECOVERY', late_action_date='2026-09-09', action_date='2026-09-09')
+    receipt = {**publication.receipt, 'published_at': '2026-09-09T15:30:00Z'}
+    (case.source / 'receipt.json').write_text(json.dumps(receipt))
+
+
+def test_recovered_trade_plan_keeps_deadlines_and_forecasts(publication_case):
+    import json
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    _late_source(c)
+    before = {p.name: file_checksum(p) for p in c.source.iterdir()}
+    run = publish_trade_plan(c.root, gameplan_run=c.source, deadline='2026-09-09T19:00Z',
+        late_action_date='2026-09-09', snapshot_loader=lambda *a, **kw: c.state,
+        price_loader=c.prices, clock=lambda: pd.Timestamp('2026-09-09T16:00Z'))
+    verify_manifest(run)
+    report = json.loads((run / 'report.json').read_text())
+    assert report['deadline_at'] == '2026-09-09T11:00:00+00:00'
+    assert report['effective_deadline_at'] == '2026-09-09T19:00:00+00:00'
+    assert report['observed_at'] == '2026-09-09T16:00:00+00:00'
+    assert report['publication_mode'] == 'LATE_RECOVERY'
+    assert report['orders_placed'] == 0 and report['broker_orders_enabled'] is False
+    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
+
+
+def test_repaired_late_tail_publishes_with_separate_source_bound_continuation(publication_case):
+    import json
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_trade_planning import publish_trade_plan
+    from ml.preparation_deadline import RECOVERY_VERSION
+    from tests.test_preparation_deadline import exception_record
+    c = publication_case
+    _late_source(c)
+    path, record = exception_record(c.root, c.source, session='2026-09-09')
+    record.update(schema_version=RECOVERY_VERSION, original_session_deadline_at=record['original_deadline_at'],
+                  original_deadline_at='2026-09-09T19:00Z', approved_at='2026-09-09T19:01Z', expires_at='2026-09-09T21:00Z')
+    path.write_text(json.dumps(record))
+    before = {p.name: file_checksum(p) for p in c.source.iterdir()}
+    run = publish_trade_plan(c.root, gameplan_run=c.source, deadline='2026-09-09T19:00Z',
+        late_action_date='2026-09-09', deadline_exception=path, snapshot_loader=lambda *a, **kw: c.state,
+        price_loader=c.prices, clock=lambda: pd.Timestamp('2026-09-09T19:20Z'))
+    verify_manifest(run)
+    report = json.loads((run/'report.json').read_text())
+    assert report['deadline_at'] == '2026-09-09T11:00:00+00:00'
+    assert report['effective_deadline_at'] == '2026-09-09T21:00:00+00:00'
+    assert report['deadline_exception']['authorization']['original_deadline_at'] == '2026-09-09T19:00Z'
+    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
+
+
+@pytest.mark.parametrize('damage', ['normal_source', 'wrong_date', 'missing_deadline', 'expired',
+    'before_open', 'after_close', 'refresh', 'exception', 'missing_flag'])
+def test_recovery_deadline_cannot_bypass_source_or_time_guards(publication_case, damage):
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    if damage != 'normal_source':
+        _late_source(c)
+    extra = dict(late_action_date='2026-09-09', deadline='2026-09-09T19:00Z')
+    now = '2026-09-09T16:00Z'
+    if damage == 'wrong_date': extra['late_action_date'] = '2026-09-10'
+    if damage == 'missing_deadline': extra['deadline'] = None
+    if damage == 'expired': now = '2026-09-09T19:00Z'
+    if damage == 'before_open': now = '2026-09-09T10:59Z'
+    if damage == 'after_close': extra['deadline'] = '2026-09-10T00:01Z'
+    if damage == 'refresh': extra['refresh_plan'] = c.source
+    if damage == 'exception': extra['deadline_exception'] = c.source / 'exception.json'
+    if damage == 'missing_flag': del extra['late_action_date']
+    def forbidden(*a, **kw):
+        pytest.fail('Invalid recovery must fail before account or price capture')
+    with pytest.raises(ValueError, match='[Dd]eadline|recovery'):
+        publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=forbidden,
+            price_loader=forbidden, clock=lambda: pd.Timestamp(now), **extra)
+
+
+def test_recovery_expiring_during_trade_publication_keeps_old_pointer(publication_case):
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    _late_source(c)
+    pointer = c.root / 'ml/gameplan-trade-plan-latest/run.json'
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text('previous-plan')
+    ticks = iter([pd.Timestamp('2026-09-09T18:59Z'), pd.Timestamp('2026-09-09T19:00Z')])
+    def clock():
+        return next(ticks, pd.Timestamp('2026-09-09T19:00Z'))
+    with pytest.raises(RuntimeError, match='Trade planning failed'):
+        publish_trade_plan(c.root, gameplan_run=c.source, deadline='2026-09-09T19:00Z',
+            late_action_date='2026-09-09', snapshot_loader=lambda *a, **kw: c.state,
+            price_loader=c.prices, clock=clock)
+    assert pointer.read_text() == 'previous-plan'
 
 
 def test_cli_accepts_explicit_datastore_from_overnight_runtime(tmp_path, monkeypatch):
