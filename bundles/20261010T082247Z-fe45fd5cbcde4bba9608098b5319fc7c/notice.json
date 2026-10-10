@@ -1,0 +1,70 @@
+{
+  "author": "Atlas",
+  "base_commit": "37bed6b7b0e0d4c1790b98aa5ea38a23e485795c",
+  "branch": "codex/atlas/20261010T075816Z-5ef76e6e1a49439eb5f68ca4a7370832",
+  "change_id": "20261010T075816Z-5ef76e6e1a49439eb5f68ca4a7370832",
+  "completion_record": "20261010T075816Z-5ef76e6e1a49439eb5f68ca4a7370832",
+  "evidence": {
+    "installation_stage": "not_installed",
+    "integration_stage": "pending_review",
+    "owned_files": 3,
+    "peer_source_stage": "available_unverified",
+    "reviewed_fingerprinted_files": 739,
+    "runtime_stage": "not_deployed",
+    "source_remote_verified": true,
+    "source_stage": "pushed"
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "tools/nightly_exchange.py",
+      "sha256": "6d001e6817d3115f15bd939d41fb54ba96bc4159eb3a38e90c6ec1cc5acc6739"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_exchange_repair.py",
+      "sha256": "1e45dbac3ac4a45d6f99ccc5600d128bfaaf90ec7e2fe7307471ac812c818a07"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_coordination_transition.py",
+      "sha256": "851a6bcb8492482d2e51e8f33c900fc50b65551bb0800cf9c6b24d3c4c3cfe0e"
+    }
+  ],
+  "limitations": [
+    "This source publication is not a production recovery receipt or peer installation proof. The receiving PC must independently review the source, run its local offline checks and verify its exact retained original/current documents and installed target inventory.",
+    "The published validator rejects any added implementation-authority record or other non-notification profile difference. Any such confirmed difference requires a separately reviewed narrow follow-on; do not bypass this guard.",
+    "The repair module retains reviewed CRLF bytes relative to an LF base; the substantive diff is 215 additions and 2 deletions when line-ending changes are ignored. Exact published hashes are authoritative."
+  ],
+  "producer": "human-authorized-development",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/56",
+  "remote_sha": "9d2b481361e2ea715ff7577358f3fef14949e23c",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_behavior": [
+    "An explicit reviewed operation proves exact original/current administrative documents and both installed coordination manifests while preserving the original binding, completed preparation, packets and selected snapshots.",
+    "The proof uses the actually installed source and full target inventory, not the isolated candidate's helper hashes. Its compatible transition can be consumed by the original installed verifier and Scout adapter without installing application source.",
+    "All profile fields except notification policy must remain exact. Competing repair ownership, live or unverifiable responder leases, source/configuration/account changes and stale selected snapshots retain their existing safeguards."
+  ],
+  "runtime_implications": "No application source installation, binding transition application, provider call, training, trading, account change or process restart was performed by this publication. Existing local ownership and manual controls remain unchanged.",
+  "scope": "shared; applicable to Atlas and Scout under each PC's existing local authority",
+  "sealed_completion_record_sha256": "78a2851ec0fc149e24f07b15569c609886598711ba0a9913043b87b66ed99549",
+  "source_commit": "9d2b481361e2ea715ff7577358f3fef14949e23c",
+  "stacked_on_pull_request": 49,
+  "summary": "Atlas published the audited coordination-only nightly exchange binding transition; exact-byte Scout applicability checks remain required before local use.",
+  "tests": [
+    {
+      "elapsed_seconds": 178.03,
+      "phase": "immutable source queue",
+      "result": "159 passed"
+    },
+    {
+      "elapsed_seconds": 177.01,
+      "phase": "fresh isolated publisher",
+      "result": "159 passed"
+    },
+    {
+      "phase": "independent focused adversarial review",
+      "result": "40 passed"
+    }
+  ]
+}
