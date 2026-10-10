@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T09:40:27.211977Z",
+  "id": "20261010T094027Z-4bc8eb065a904b2d8c576fb521de4858",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the exact Scout nested handoff-grant transition; ordinary local resume still requires review and execution on Scout."
+}
