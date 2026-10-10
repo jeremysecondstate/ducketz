@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T08:58:22.192813Z",
+  "id": "20261010T085822Z-dc6c5bba52ed415db6b8a5a6e347ef83",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published retained-owner repair continuity and current combined Gameplan/Stats readiness verification."
+}
