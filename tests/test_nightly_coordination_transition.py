@@ -3,6 +3,7 @@ from pathlib import Path
 from copy import deepcopy
 from hashlib import sha256
 import subprocess
+import sys
 import types
 
 import pandas as pd
@@ -13,6 +14,7 @@ from ml import nightly_exchange_repair as repair
 from ml.artifacts import file_checksum
 from tools import nightly_exchange as exchange
 from tests.test_nightly_exchange_repair import env, write, DAY, NOW, claimed, prepared, applied
+from tests.test_nightly_synthesis import specification as source_inputs
 
 
 def release(root, commit, previous=None):
@@ -697,6 +699,88 @@ def test_exact_installed_scout_verifier_rejects_retained_proof_tampering(scout_i
         with pytest.raises(ValueError, match="changed"):
             verifier.verify_transition(e["config"], e["state"], repair._read(e["original_binding"]))
     assert not (e["session"] / "repair-claim.json").exists()
+
+
+def test_old_scout_run_once_resumes_real_synthesis_without_ownership_migration(tmp_path, monkeypatch, source_inputs):
+    # Use the real synthetic plan/Stats packages' date, never production packets.
+    from tests import test_nightly_exchange_repair as fixtures
+    from ml import nightly_synthesis
+    from app.ui.gameplan_data import load_gameplan
+    from app.ui.gameplan_stats_data import load_gameplan_stats
+    day, now, review = source_inputs["action_date"], source_inputs["as_of"], source_inputs["review_session"]
+    monkeypatch.setattr(fixtures, "DAY", day)
+    monkeypatch.setattr(fixtures, "NOW", now)
+    monkeypatch.setattr(sys.modules[__name__], "DAY", day)
+    monkeypatch.setattr(sys.modules[__name__], "NOW", now)
+    e = env.__wrapped__(tmp_path, monkeypatch)
+    e["config"]["local_profile"] = str(e["repo"] / "scratch/cross-pc/local-profile.json")
+    e = administrative.__wrapped__(e, tmp_path, monkeypatch)
+    e = add_scout_handoff(e)
+    # Bind the synthetic operating configuration before freezing its originals.
+    e["config"].update(exchange_root=str(tmp_path / "CODEXSTORE/ducketz-nightly-exchange/v1"),
+        account_scope_sha256=source_inputs["account_scope_sha256"],
+        owners={actor: value["symbols"] for actor, value in source_inputs["owners"].items()})
+    for path in (e["before_paths"]["before_profile"], Path(e["config"]["local_profile"])):
+        write(path, {**repair._read(path), "symbols": source_inputs["owners"]["scout"]["symbols"]})
+    e, old_repair, old_exchange, hashes = scout_installed_consumers.__wrapped__(e, monkeypatch)
+    e["state"]["source_session"] = review
+    output = e["state"]["steps"]["local_handoff"]["output"]
+    output.update(package=source_inputs["owners"]["scout"]["plan_package"]["path"],
+                  stats_package=source_inputs["owners"]["scout"]["stats_package"]["path"])
+    output["files"] = {output[key]: file_checksum(Path(output[key])) for key in ("package", "stats_package")}
+    write(e["prep"], e["state"])
+    # Select real fixture preparation and snapshot packets without calling a
+    # capture helper, provider or native ownership ledger.
+    peer = {**e["config"], "actor": "Atlas", "state_root": str(tmp_path / "atlas-exchange")}
+    owner = source_inputs["owners"]["atlas"]
+    old_exchange._publish(peer, day, review, "preparation", {
+        "plan.json": Path(owner["plan_package"]["path"]), "stats.json": Path(owner["stats_package"]["path"])})
+    owner = source_inputs["owners"]["scout"]
+    old_exchange._publish(e["config"], day, review, "preparation", {
+        "plan.json": Path(owner["plan_package"]["path"]), "stats.json": Path(owner["stats_package"]["path"])})
+    preparations = {actor: old_exchange._receive(e["config"], day, review, actor, "preparation") for actor in ("atlas", "scout")}
+    inputs = {actor + "_preparation": value["digest"] for actor, value in preparations.items()}
+    snapshot = old_exchange._publish(peer, day, review, "snapshot", {
+        "snapshot.json": Path(source_inputs["snapshot"]["path"])}, inputs)
+    # An existing valid frozen selection replaces the deliberately minimal
+    # repair fixture's placeholder before any administrative proof is created.
+    spec = {**source_inputs, "datastore_root": str(e["data"]), "state_root": str(e["session"] / "synthesis"),
+            "local_actor": "scout", "snapshot": old_exchange._bind(snapshot["files"]["snapshot.json"])}
+    write(e["selection"], {"spec": spec, "inputs": {**inputs, "snapshot": snapshot["digest"]}})
+    original = {path: path.read_bytes() for path in (e["original_binding"], e["prep"], e["selection"], e["budget"], e["partial"])}
+    monkeypatch.setattr(old_exchange.workflow, "load_config", lambda _: e["native"])
+    monkeypatch.setattr(old_exchange.workflow, "verify_installation", lambda _: None)
+    monkeypatch.setattr(old_exchange, "monotonic", lambda: 0)
+    monkeypatch.setattr(nightly_synthesis, "__file__", str(e["repo"] / "ml/nightly_synthesis.py"))
+    # Delayed imports must consume the actual old repair helper, including its
+    # saved failure gate; importing the candidate verifier would hide drift.
+    monkeypatch.setitem(sys.modules, "ml.nightly_exchange_repair", old_repair)
+    with FileLock(str(e["exchange"] / "exchange.lock"), timeout=0):
+        old_repair.record_failure(e["config"], day, ValueError("Immutable local exchange input changed"), now=now)
+    failure = (e["session"] / "failure.json").read_bytes()
+    assert old_exchange.run_once(e["config"], now=now)["reason"] == "REPAIR_REQUIRED"
+    transition(e)
+    with pytest.raises(ValueError, match="Ownership source or operating bindings changed"):
+        old_exchange._check_ownership_binding(e["config"], day)
+    def forbidden(*args, **kwargs):
+        pytest.fail("Ordinary Scout synthesis must not require ownership migration or account capture")
+    for name in ("_ensure_ownership_responder", "_ownership_observations", "_respond_ownership", "_check_ownership_binding"):
+        monkeypatch.setattr(old_exchange, name, forbidden)
+    from tools import nightly_account_snapshot, nightly_ownership
+    monkeypatch.setattr(nightly_account_snapshot, "capture_snapshot", forbidden)
+    monkeypatch.setattr(nightly_ownership, "capture_ownership", forbidden)
+    result = old_exchange.run_once(e["config"], now=now)
+    assert result["status"] == "PENDING" and result["reason"] == "ACCEPTED_ATLAS"
+    assert result["orders_placed"] == 0 and result["execution_authorized"] is False
+    assert set(load_gameplan(e["data"]).symbols) == {"AAPL", "ABCL"}
+    assert set(load_gameplan_stats(e["data"]).symbols) == {"AAPL", "ABCL"}
+    assert (e["session"] / "failure.json").read_bytes() == failure
+    assert all(path.read_bytes() == raw for path, raw in original.items())
+    assert repair._inventory(e["repo"]) == e["reviewed_target_files"]
+    assert all(file_checksum(e["repo"] / name) == digest for name, digest in hashes.items())
+    assert old_repair.registry.read(e["work"]) is None
+    assert not (e["session"] / "repair-claim.json").exists()
+    assert len(repair._transition_entries(e["session"])) == 1
 
 
 @pytest.mark.parametrize("with_grant", [False, True])

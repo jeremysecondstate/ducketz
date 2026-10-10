@@ -232,6 +232,61 @@ A source-free external-dependency restoration uses `risk: external_dependency`
 and an empty change map, with recorded verification evidence. It does not invent
 a source change or refresh the budget.
 
+#### Administrative proof does not require an ownership migration
+
+When completed preparation predates reviewed coordination metadata, the isolated
+`coordination_transition` API can retain an append-only proof without installing
+application source. Its exact original profile and active-pointer bytes must
+match the frozen binding. A later pointer is not a substitute; any recovered
+original must reproduce the pinned SHA-256 exactly. The receiving owner also
+reviews the actual complete installed Python inventory and the required local
+grant records. A Git HEAD or aggregate inventory digest alone is insufficient.
+Retain the existing administrative request, owner and `repair_id` across retries.
+
+Load the reviewed helper in a separate process and call its direct API with the
+configuration already validated by the actual application. Its isolated CLI
+loader is unsuitable for another checkout because adapter `__file__` participates
+in repository and binding checks. After applying the proof, end that process.
+In a fresh process, restore the actual application's normal imports and verify
+the transition and saved-failure dispatch gate before its ordinary `run_once`.
+Preserve the original preparation, bindings, failure history, selections, account
+snapshot and receipts. Do not clear the failure or create a source claim merely
+to make the wake run. A new proof advances the repair epoch; it does not claim
+successful synthesis or peer acceptance.
+
+The exact old `37bed6b` Scout adapter's ordinary `run_once` route performs Scout
+synthesis without invoking `_check_ownership_binding`, ownership capture or the
+ownership responder. The separate old ownership comparison can reject changed
+bindings even while this ordinary route is valid. A manual invocation of that
+comparison therefore does not establish that Scout synthesis is blocked. Do not
+introduce an ownership migration, adapter installation or extra ceremony as a
+prerequisite for the ordinary research/synthesis route. Atlas execution and its
+existing controls remain separate.
+
+The regression uses the five exact old consumer blobs, synthetic owner plan and
+Stats packets, the actual saved-failure gate and real synthesis/UI publication.
+It deliberately fails if ordinary Scout synthesis calls ownership or account
+capture, and reaches `PENDING` / `ACCEPTED_ATLAS` after the administrative proof
+with unchanged application source and frozen originals. Its native configuration
+and completed-preparation validation use fixture seams; it is not a replay of
+the receiving PC's full installed inventory. Waiting for Atlas acceptance is not
+bilateral readiness. Each PC must still verify its actual local applicability
+and the existing reciprocal publication/acceptance evidence.
+
+If an explicitly used ownership responder or another actual consumer encounters
+a separately verified failure, record that real outcome and use the existing
+owned repair route. The old responder comparison and expired-lease handling have
+different requirements from ordinary Scout synthesis. The published adapter's
+transition-aware checks require the matching newer repair helper, so an adapter
+alone is not a supported update. The reviewed current helper's `prepare` semantics
+also preserve the original four protocol-pointer bytes in claim evidence while
+allowing their live cursors to advance; the old helper would freeze those cursors.
+Any such source repair requires its own exact local candidate, passing checks,
+guarded claim/prepare/apply and fresh application-process verification. Keep the
+administrative transaction unchanged and use a distinct stable source-repair ID;
+its existing `source-repairs/<repair_id>/spec.json` cannot be reused. This optional
+consumer correction is not evidence that it is needed for ordinary synthesis.
+
 Transient failures have three attempts per verified repair epoch with a
 five-minute cooldown. Deterministic failures and exhausted or unavailable
 dependencies retain their original diagnostics and require the owned repair
