@@ -122,6 +122,8 @@ def _locks(config, native):
                 with exclusive_runtime_lock(Path(native["datastore"]) / ".ducketz-overnight-runtime.lock",
                                             process_name="Reviewed exchange source repair"):
                     with ExitStack() as direct_runs:
+                        for name in ("ownership-launch.lock", "ownership-responder.lock"):
+                            direct_runs.enter_context(FileLock(str(Path(config["state_root"]) / name), timeout=0))
                         for status in sorted((Path(config["state_root"]) / "sessions").glob("*/status.json")):
                             if _read(status).get("status") == "COMPLETE":
                                 continue
@@ -254,6 +256,214 @@ def original_binding(config, action_date, *, current_binding=None):
     return _binding(config) if current_binding is None else current_binding
 
 
+def _installed_binding(config, native):
+    """Inspect the target application, even when this repair runs in isolation."""
+    result = {"config": config, "workflow_config_sha256": file_checksum(Path(config["workflow_config"])),
+              "profile_sha256": file_checksum(Path(config["local_profile"])),
+              "coordination_active_sha256": file_checksum(Path(config["coordination_active"])),
+              "adapter_sources": {name: file_checksum(Path(native["repository"]) / "tools" / name)
+                                  for name in ("nightly_exchange.py", "nightly_account_snapshot.py", "nightly_ownership.py")}}
+    if config["actor"] == "Atlas":
+        result["account_config_sha256"] = file_checksum(Path(config["account_config"]))
+    return result
+
+
+def _coordination_documents(before_profile, after_profile, before_active, after_active):
+    """An explicit notification-channel migration, never operating authority."""
+    if ({key: value for key, value in before_profile.items() if key != "coordination_notification_policy"}
+            != {key: value for key, value in after_profile.items() if key != "coordination_notification_policy"}
+            or before_profile.get("coordination_notification_policy", "git_and_drive") not in {"git_and_drive", "github_only"}
+            or after_profile.get("coordination_notification_policy") != "github_only"):
+        raise ValueError("Coordination transition changes non-administrative profile fields")
+    fields = {"commit", "contract_version", "manifest_sha256", "release_root", "previous"}
+    release_files = {}
+    for active in (before_active, after_active):
+        if set(active) != fields or active["contract_version"] != before_profile.get("contract_version"):
+            raise ValueError("Coordination installation identity differs")
+        release = Path(active["release_root"])
+        if not release.is_absolute() or str(release).startswith(("\\\\", "//")) or release.is_symlink():
+            raise ValueError("Absolute local immutable coordination release required")
+        manifest_path = release / "installation.json"
+        if manifest_path.is_symlink() or file_checksum(manifest_path) != active["manifest_sha256"]:
+            raise ValueError("Coordination installation manifest changed")
+        manifest = _read(manifest_path)
+        release_files[str(manifest_path.resolve())] = active["manifest_sha256"]
+        if manifest.get("commit") != active["commit"] or not isinstance(manifest.get("files"), dict) or not 0 < len(manifest["files"]) <= 500:
+            raise ValueError("Coordination installation manifest identity differs")
+        for name, digest in manifest["files"].items():
+            relative = Path(name)
+            path = release / relative
+            if (relative.is_absolute() or ".." in relative.parts or path.is_symlink()
+                    or not path.resolve().is_relative_to(release.resolve()) or file_checksum(path) != digest):
+                raise ValueError("Coordination installation file changed")
+            release_files[str(path.resolve())] = digest
+    if before_active != after_active:
+        previous = after_active.get("previous")
+        for _ in range(16):
+            if previous == before_active:
+                break
+            if not isinstance(previous, dict):
+                raise ValueError("Coordination installation lacks the exact prior pointer")
+            previous = previous.get("previous")
+        else:
+            raise ValueError("Coordination installation ancestry is too deep")
+    return release_files
+
+
+def _verify_coordination_spec(spec):
+    before, after = spec["before_binding"], spec["after_binding"]
+    permitted = {"profile_sha256", "coordination_active_sha256"}
+    if ({key: value for key, value in before.items() if key not in permitted}
+            != {key: value for key, value in after.items() if key not in permitted}
+            or before == after or spec["before_source"] != spec["after_source"]):
+        raise ValueError("Coordination transition changes operating bindings or source")
+    docs = {}
+    for name, binding, field in (("before_profile", before, "profile_sha256"), ("after_profile", after, "profile_sha256"),
+                                 ("before_active", before, "coordination_active_sha256"), ("after_active", after, "coordination_active_sha256")):
+        path = Path(spec["documents"][name])
+        if path.is_symlink() or file_checksum(path) != binding[field]:
+            raise ValueError("Retained coordination document differs from its exact binding")
+        docs[name] = _read(path)
+    return _coordination_documents(**docs)
+
+
+def coordination_transition(config, *, action_date, owner, repair_id, reason, completion_record,
+                            before_profile, before_active, target_source, target_files, reviewed=False, now=None):
+    """Append proven administrative drift only; install no source or operating data.
+
+    Run the reviewed helper in isolation before ordinary source repair. Its target
+    inventory is the application's repository, never this candidate's __file__.
+    The compatible transition permits the existing installed repair helper to
+    claim the subsequent source repair without rewriting the original anchor.
+    """
+    if not reviewed or not owner or not reason or not completion_record or not re.fullmatch(r"[A-Za-z0-9_-]{8,100}", repair_id):
+        raise ValueError("Reviewed owner, completion identity and rationale required")
+    native = _native(config)
+    session = _session(config, action_date)
+    directory = session / "source-repairs" / repair_id
+    with _locks(config, native):
+        if registry.read(native["state_root"]) is not None or (session / "repair-claim.json").exists():
+            raise ValueError("An existing repair owner prevents coordination transition")
+        _quiescent(native)
+        prep_path, preparation = _preparation(config, native, action_date)
+        status = _read(session / "status.json")
+        if status.get("status") not in {"PENDING", "FAILED"} or status.get("actor") != config["actor"] or status.get("action_date") != action_date:
+            raise ValueError("Only this unfinished exchange can receive coordination transition")
+        lease = session / "ownership-responder.json"
+        if lease.exists():
+            record = _read(lease)
+            start, end = pd.Timestamp(record.get("started_at")), pd.Timestamp(record.get("deadline_at"))
+            if (pd.isna(start) or pd.isna(end) or start.tzinfo is None or end.tzinfo is None
+                    or not 0 < (end - start).total_seconds() <= 360
+                    or record.get("action_date") != action_date or record.get("review_session") != preparation["source_session"]):
+                raise ValueError("An unverifiable ownership responder prevents coordination transition")
+            if end > utc_timestamp(now):
+                raise ValueError("An unexpired ownership responder prevents coordination transition")
+        current = _installed_binding(config, native)
+        original = _read(session / "binding.json")
+        source = workflow.source_identity(Path(native["repository"]))
+        inventory = _inventory(Path(native["repository"]))
+        if (source != preparation["source_identity"] or source != target_source or inventory != target_files):
+            raise ValueError("Coordination transition cannot accept application source drift")
+        entries = _transition_entries(session)
+        if entries:
+            if len(entries) != 1 or entries[0]["repair_id"] != repair_id:
+                raise ValueError("Coordination transition requires the original unrepaired session")
+            verify_transition(config, preparation, original, current_binding=current)
+            saved = _read(directory / "spec.json")
+            if (saved.get("owner") != owner or saved.get("completion_record") != completion_record
+                    or saved.get("reason") != reason or file_checksum(Path(before_profile)) != original["profile_sha256"]
+                    or file_checksum(Path(before_active)) != original["coordination_active_sha256"]):
+                raise ValueError("Coordination transition retry identity changed")
+            return {"status": "COORDINATION_TRANSITION_ALREADY_APPLIED", **entries[0]}
+        spec_path = directory / "spec.json"
+        if spec_path.exists():
+            spec = _read(spec_path)
+            if (spec.get("owner") != owner or spec.get("reason") != reason or spec.get("completion_record") != completion_record
+                    or spec["before_binding"] != original or spec["after_binding"] != current
+                    or spec["expected_files"] != inventory or spec["after_source"] != source
+                    or spec["claim"]["preparation_sha256"] != file_checksum(prep_path)
+                    or file_checksum(Path(before_profile)) != original["profile_sha256"]
+                    or file_checksum(Path(before_active)) != original["coordination_active_sha256"]):
+                raise ValueError("Interrupted coordination transition evidence changed")
+        else:
+            inputs = {"before_profile": Path(before_profile), "before_active": Path(before_active),
+                      "after_profile": Path(config["local_profile"]), "after_active": Path(config["coordination_active"])}
+            for name, path in inputs.items():
+                if not path.is_absolute() or str(path).startswith(("\\\\", "//")) or path.is_symlink() or not path.is_file():
+                    raise ValueError("Actual retained absolute regular coordination documents required")
+                expected = (original if name.startswith("before") else current)["profile_sha256" if name.endswith("profile") else "coordination_active_sha256"]
+                if file_checksum(path) != expected:
+                    raise ValueError("Retained coordination document differs from its exact binding")
+            spec = {"schema_version": "nightly-coordination-transition-v1", "kind": "coordination_only",
+                    "owner": owner, "reason": reason, "completion_record": completion_record,
+                    "observed_at": utc_timestamp(now).isoformat(), "claim": {"preparation_sha256": file_checksum(prep_path)},
+                    "before_source": source, "after_source": source, "before_binding": original, "after_binding": current,
+                    "expected_files": inventory, "documents": {name: str(path) for name, path in inputs.items()}}
+            # Validate everything before creating even a private evidence directory.
+            release_files = _verify_coordination_spec(spec)
+            preserved = _protected(config, native, action_date, prep_path, preparation)
+            docs = {}
+            for name, path in inputs.items():
+                target = directory / "documents" / (name + ".json")
+                _atomic(target, path.read_bytes(), immutable=True)
+                docs[name] = str(target)
+            mutable = _mutable_exchange_pointers(session) | {str(Path(config[key]).resolve())
+                                                           for key in ("local_profile", "coordination_active")}
+            immutable = {name: digest for name, digest in preserved.items() if name not in mutable
+                         and Path(name).name not in {"state.json", "status.json", "failure.json", "run.json"}}
+            immutable[str(prep_path.resolve())] = file_checksum(prep_path)
+            for entry in preparation["steps"].values():
+                immutable.update(entry["output"].get("files", {}))
+            immutable.update({name: file_checksum(Path(name)) for name in docs.values()})
+            immutable.update(release_files)
+            backups = {}
+            for name, digest in preserved.items():
+                if name in _mutable_exchange_pointers(session) or Path(name).name in {"state.json", "status.json", "failure.json", "run.json"}:
+                    target = directory / "preserved" / str(len(backups))
+                    raw = Path(name).read_bytes()
+                    if sha256(raw).hexdigest() != digest:
+                        raise ValueError("Original exchange evidence changed during coordination transition")
+                    _atomic(target, raw, immutable=True)
+                    backups[name] = {"path": str(target), "sha256": digest}
+                    immutable[str(target)] = digest
+            spec.update(documents=docs, immutable_inputs=immutable, preserved_inputs=preserved, preserved_documents=backups)
+            _check_hashes(preserved)
+            _atomic(spec_path, _bytes(spec), immutable=True)
+        _verify_coordination_spec(spec)
+        _check_hashes(spec["immutable_inputs"])
+        if _installed_binding(config, native) != current or _inventory(Path(native["repository"])) != inventory:
+            raise ValueError("Target application changed during coordination transition")
+        entry = {"repair_id": repair_id, "spec_path": str(spec_path), "spec_sha256": file_checksum(spec_path),
+                 "kind": "coordination_only", "owner": owner, "completion_record": completion_record,
+                 "applied_at": spec["observed_at"], "before_source": source, "after_source": source,
+                 "before_binding": original, "after_binding": current}
+        _atomic(directory / "applied.json", _bytes(entry), immutable=True)
+        _atomic(session / "repair-transitions.json", _bytes([entry]))
+        return {"status": "COORDINATION_TRANSITION_APPLIED", **entry}
+
+
+def effective_binding(config, action_date, *, current_binding=None, historical_binding=None):
+    """Authenticate current and (for an expired lease) exact prior binding bytes."""
+    native = _native(config)
+    _, preparation = _preparation(config, native, action_date)
+    current = _binding(config) if current_binding is None else current_binding
+    original = original_binding(config, action_date, current_binding=current)
+    verify_transition(config, preparation, original, current_binding=current)
+    if historical_binding is not None:
+        known = [original] + [entry["after_binding"] for entry in _transition_entries(_session(config, action_date))]
+        if historical_binding not in known:
+            raise ValueError("Ownership lease has no authenticated historical binding")
+    return current
+
+
+def _mutable_exchange_pointers(session):
+    # Each original is retained in protected failure evidence; these protocol
+    # cursors may advance normally. Selected specs/cache/receipts stay immutable.
+    return {str((session / name).resolve()) for name in ("ownership-request.json", "ownership-responder.json",
+                                                       "ownership-responder-result.json", "snapshot-publication.json")}
+
+
 def verify_transition(config, preparation, original_binding, *, current_binding=None):
     """Validate an append-only source path; never rebind historical preparation."""
     native = _native(config)
@@ -271,6 +481,8 @@ def verify_transition(config, preparation, original_binding, *, current_binding=
             raise ValueError("Repair transition identity changed")
         seen.add(entry["repair_id"])
         spec = _read(spec_path)
+        if spec.get("kind") == "coordination_only":
+            _verify_coordination_spec(spec)
         applied = _read(directory / "applied.json")
         if (applied != entry or spec["claim"]["preparation_sha256"] != file_checksum(
                 Path(native["state_root"]) / "runs" / preparation["action_date"] / "state.json")
@@ -475,8 +687,9 @@ def prepare(config, *, claim_path, owner, candidate, changes, completion_record,
                 if item["after"] is None:
                     raise ValueError("The exchange entrypoint cannot be deleted")
                 after_binding["adapter_sources"]["nightly_exchange.py"] = item["after"]
+        mutable = _mutable_exchange_pointers(_session(config, saved["action_date"]))
         immutable_inputs = {name: digest for name, digest in saved["protected"].items()
-                            if Path(name).name not in {"state.json", "status.json", "failure.json", "run.json"}}
+                            if name not in mutable and Path(name).name not in {"state.json", "status.json", "failure.json", "run.json"}}
         # Completed prep is immutable even though partial adoption state is not.
         immutable_inputs[str((Path(native["state_root"]) / "runs" / saved["action_date"] / "state.json").resolve())] = saved["preparation_sha256"]
         registry.bind_completion(native["state_root"], _guard(saved), completion_record)
@@ -693,7 +906,7 @@ def main(argv=None):
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--request", type=Path, required=True)
     parser.add_argument("--reviewed", action="store_true")
-    parser.add_argument("operation", choices=("claim", "prepare", "apply"))
+    parser.add_argument("operation", choices=("claim", "prepare", "apply", "coordination_transition"))
     args = parser.parse_args(argv)
     from tools.nightly_exchange import load_config
     config = load_config(args.config)
