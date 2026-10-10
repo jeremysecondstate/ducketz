@@ -1,0 +1,39 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261010T081024Z-54ca4805beff493e9ad1391ee171f8ba",
+  "change_id": "20261010T081024Z-54ca4805beff493e9ad1391ee171f8ba",
+  "commit_sha": "e0fdf50454c130bf8caf3fecb607cb98292bac52",
+  "details": [
+    "Stacked on PR49; no main integration or production readiness claimed",
+    "Existing Priority owner records retained repair progress before daily gates; Joint inspects only and owns exact dated final display verification",
+    "Astra Ultra applies to the existing Priority and Joint supervisors and substantive repair worker under direct human instruction",
+    "Install exact helper privately outside the frozen application tree using actual installed domain imports; each PC separately verifies local paths and preservation"
+  ],
+  "file_sha256": {
+    "docs/development/nightly-supervision.md": "700c1b5739ceefacef5dc00916ae52f67dee7e0183e7f901605c396144b747d2",
+    "tests/test_nightly_supervision.py": "51f8259ddfe3f75ba8b0ee20033c6f1f3f74e55775d44098e388f0718baac8b7",
+    "tools/nightly_supervision.py": "a5fe9d554c8a885d3b25e18d4e1dd6715961523616297d33e38f41f2e499c7dd"
+  },
+  "files": [
+    "tools/nightly_supervision.py",
+    "tests/test_nightly_supervision.py",
+    "docs/development/nightly-supervision.md"
+  ],
+  "limitations": [
+    "Offline synthetic fixtures and read-only saved-evidence logic; no production recovery, peer installation or runtime readiness claimed",
+    "Owner liveness is an explicitly attributed bounded agent attestation, not cryptographic native-lock proof",
+    "Pinned queue and publisher verifier run with PYTHONSAFEPATH=1 so its sibling coordination requests module cannot shadow third-party requests; candidate import binding and network prohibition remain active."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/57",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Separately install the exact reviewed helper into an ignored private release and bind existing native tasks; no application-tree replacement, new schedule, model daemon or trader change. Existing domain guards and fixed deadlines remain authoritative.",
+  "scope": "shared",
+  "summary": "Atlas published durable nightly supervision continuity for both PCs; overall completion requires freshly verified intended-date combined Gameplan and Stats receipts.",
+  "tests": {
+    "completed_at_utc": "2026-10-10T08:12:41.546813Z",
+    "environment": "PYTHONSAFEPATH=1; pinned verifier blocks network and checks exact candidate imports",
+    "output_sha256": "0e0b78b0d7be1d2a8e9d9e2fee220775972441ebdd9424aeb00b4147ee13b360",
+    "result": "286 passed",
+    "started_at_utc": "2026-10-10T08:11:54.955376Z"
+  }
+}

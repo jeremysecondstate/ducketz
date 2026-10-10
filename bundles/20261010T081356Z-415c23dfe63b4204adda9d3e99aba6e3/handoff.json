@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T08:13:56.930431Z",
+  "id": "20261010T081356Z-415c23dfe63b4204adda9d3e99aba6e3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published durable nightly supervision continuity for both PCs; overall completion requires freshly verified intended-date combined Gameplan and Stats receipts."
+}
