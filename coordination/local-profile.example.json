@@ -3,6 +3,7 @@
   "repository": "jeremysecondstate/ducketz",
   "actor": "Scout",
   "machine": "pc-new",
+  "coordination_notification_policy": "github_only",
   "branch_prefix": "codex/scout/",
   "checkout": "REPLACE_WITH_EXISTING_LOCAL_CHECKOUT",
   "symbols": ["EXAMPLE_A", "EXAMPLE_B"],

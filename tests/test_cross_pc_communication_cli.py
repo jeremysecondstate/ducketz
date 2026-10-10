@@ -62,8 +62,11 @@ def metadata(b, raw, file_id="synthetic-own-file"):
             "parents": [b["parent_id"]], "driveId": b["drive_id"], "size": str(len(raw))}
 
 
-def test_drive_cli_bootstrap_and_update_recovery_preserve_one_identity(local):
+@pytest.mark.parametrize("policy", [None, "git_and_drive"])
+def test_drive_cli_bootstrap_and_update_recovery_preserve_one_identity(local, policy):
     profile, private, save, invoke = local
+    if policy is not None:
+        profile["coordination_notification_policy"] = policy
     b = binding()
     profile["drive_own_binding"] = str(save("own-binding.json", b))
     spec = save("signal-spec.json", {"git_head": "c" * 40, "notices": [signal_notice()]})
@@ -97,6 +100,61 @@ def test_drive_cli_bootstrap_and_update_recovery_preserve_one_identity(local):
     assert invoke("drive-reconcile", "--metadata", m, "--raw", new_path)["stage"] == "published"
     assert original_path.read_bytes() == original
     assert not Path(profile["state_path"]).exists()
+
+
+@pytest.mark.parametrize("action,args", [
+    ("drive-prepare", ["--spec", "unused", "--reviewed"]), ("drive-plan", []),
+    ("drive-begin-write", []), ("drive-bind-created", ["--metadata", "unused"]),
+    ("drive-reconcile", ["--metadata", "unused", "--raw", "unused"]),
+    ("drive-inspect", ["--metadata", "unused", "--raw", "unused", "--previous", "unused"]),
+])
+def test_github_only_drive_routes_preserve_history_without_reading_inputs(local, monkeypatch, action, args):
+    profile, private, save, invoke = local
+    profile["coordination_notification_policy"] = "github_only"
+    profile["drive_own_binding"] = "missing-own-binding"
+    profile["drive_peer_binding"] = "missing-peer-binding"
+    save("private/drive-signal/state.json", {"pending": {"stage": "write_pending", "attempts": 1}})
+    save("private/drive-signal/bytes/frozen.json", {"retained": "exact historical bytes"})
+    save("private/request-state.json", {"pending": "independent request"})
+    save("private/incoming-source-receipts.json", {"pending": "independent source review"})
+    before = {str(path.relative_to(private)): path.read_bytes() for path in private.rglob("*") if path.is_file()}
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Retired Drive input/state must not be read")
+
+    monkeypatch.setattr(cli, "_local_bytes", forbidden)
+    monkeypatch.setattr(cli, "_drive_binding", forbidden)
+    monkeypatch.setattr(cli, "_drive_root", forbidden)
+    result = invoke(action, "--binding", "missing-explicit-binding", *args)
+    assert result == {"status": "DISABLED_BY_POLICY", "action": action,
+                      "coordination_notification_policy": "github_only",
+                      "drive_operation_performed": False, "drive_delivery": "not_attempted",
+                      "historical_state_preserved": True}
+    assert before == {str(path.relative_to(private)): path.read_bytes() for path in private.rglob("*") if path.is_file()}
+
+
+@pytest.mark.parametrize("policy", [None, "", "github", True, [], {}])
+@pytest.mark.parametrize("action", ["plan", "drive-plan", "request-plan"])
+def test_invalid_notification_policy_rejects_before_any_state_mutation(local, policy, action):
+    profile, private, _, invoke = local
+    profile["coordination_notification_policy"] = policy
+    with pytest.raises(ValueError, match="coordination_notification_policy"):
+        invoke(action)
+    assert not private.exists()
+
+
+@pytest.mark.parametrize("policy", [None, "git_and_drive", "github_only"])
+def test_plan_reports_effective_policy_without_inventing_signal_delivery(local, policy):
+    profile, private, _, invoke = local
+    profile["ready_root"] = str(private / "ready")
+    if policy is not None:
+        profile["coordination_notification_policy"] = policy
+    result = invoke("plan")
+    assert result["coordination_notification_policy"] == (policy or "git_and_drive")
+    assert result["drive_signal_required"] == (policy != "github_only")
+    assert result["source"] is None and result["delivery"] is None
+    assert not (private / "drive-signal").exists()
+    assert ("coordination_notification_policy" in profile) == (policy is not None)
 
 
 @pytest.mark.parametrize("action,args", [
@@ -187,8 +245,10 @@ def notice_spec(envelope):
             "runtime_implications": "No runtime change", "coordination": envelope}
 
 
-def test_request_cli_register_prepare_enqueue_sync_aliases_and_independent_delivery(local):
+@pytest.mark.parametrize("policy", ["git_and_drive", "github_only"])
+def test_request_cli_register_prepare_enqueue_sync_aliases_and_independent_delivery(local, policy):
     profile, _, save, invoke = local
+    profile["coordination_notification_policy"] = policy
     request = save("incoming-envelope.json", request_envelope())
     registered = invoke("request-register", "--notice-id", "validated-peer-notice", "--digest", "a" * 64, "--spec", request)
     assert registered["stage"] == "pending"
@@ -210,6 +270,33 @@ def test_request_cli_register_prepare_enqueue_sync_aliases_and_independent_deliv
     assert delivered["reply"]["peer_handling"] == "unverified"
     assert invoke("request-plan")["request"] is None
     assert invoke("request-status")["messages"]["request-1"]["stage"] == "reply_delivered"
+
+
+def test_github_only_notice_delivery_keeps_frozen_drive_transaction(local, monkeypatch):
+    profile, private, save, invoke = local
+    profile["coordination_notification_policy"] = "github_only"
+    profile["transport_cache"] = str(private / "transport.git")
+    historical = save("private/drive-signal/state.json", {"pending": {"stage": "write_pending"}})
+    original = historical.read_bytes()
+    queued = invoke("notice", "--spec", save("notice.json", notice_spec(request_envelope(outgoing=True))), "--reviewed")
+    calls = []
+
+    class LocalTransportFixture:
+        def prepare(self, directory, **kwargs):
+            calls.append(("prepare", str(directory)))
+            return {"fixture": "immutable prepared Git transaction"}
+
+        def publish_prepared(self, transaction):
+            calls.append(("publish", transaction))
+            return {"transport": "github-git-v2", "commit_sha": "b" * 40}
+
+    monkeypatch.setattr(notices, "transport", lambda profile: LocalTransportFixture())
+    delivered = invoke("deliver", "--id", queued["id"])
+    assert delivered["stage"] == "published"
+    assert delivered["delivery"]["transport"] == "github-git-v2"
+    assert invoke("deliver", "--id", queued["id"]) == delivered
+    assert [call[0] for call in calls] == ["prepare", "publish"]
+    assert historical.read_bytes() == original
 
 
 def test_request_cli_tracks_immutable_notice_then_attaches_response_without_ack(local):

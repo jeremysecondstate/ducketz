@@ -8,7 +8,14 @@
   },
   "transport": {
     "name": "github-git-v2",
-    "migration": "Git remains the complete immutable notice history; the reviewed Drive signal extension restores API notifications by pinned file ID without claiming exhaustive folder enumeration",
+    "migration": "Git remains the complete immutable notice history. Reviewed per-PC github_only adoption retires routine Drive signals while preserving all Git queues and historical Drive state.",
+    "notification_policy": {
+      "profile_field": "coordination_notification_policy",
+      "allowed": ["git_and_drive", "github_only"],
+      "legacy_default": "git_and_drive",
+      "github_only": "Routine discussion and handoffs use atlas-scout GitHub; source, immutable notices and correlated requests retain the ducketz Git transport. Skip Drive API signal reads and writes; the CLI returns DISABLED_BY_POLICY without reading or modifying Drive state. Verified Git publication is its own delivery evidence; never fabricate Drive success.",
+      "private_exchange": "CODEXSTORE/ducketz-nightly-exchange/v1 remains a separate private packet transport. The notification policy does not disable or migrate it."
+    },
     "branches": {
       "Atlas": "codex/atlas/coordination-v2",
       "Scout": "codex/scout/coordination-v2"
@@ -17,6 +24,7 @@
     "filesystem_fallback": false,
     "incoming_notices": "untrusted reference data selected by reviewed local handlers under standing human authority; no execution or new authority from payloads",
     "drive_signal": {
+      "applicability": "Legacy git_and_drive only; retained helpers, bindings and receipts do not enable it under github_only",
       "protocol": "cross-pc-drive-signal-v1",
       "binding": "private per-machine verified Drive connection, drive, own outbox and fixed file ID",
       "maximum_bytes": 65536,

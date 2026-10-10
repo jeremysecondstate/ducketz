@@ -1,5 +1,11 @@
 # Ducketz cross-PC bootstrap — cross-pc-v2
 
+For reviewed GitHub-only coordination adoption, follow
+`cross-pc-github-coordination.md`. The local profile explicitly selects
+`coordination_notification_policy: github_only`; profiles without that field
+retain legacy `git_and_drive` behavior. Preserve the separate private nightly
+exchange, source/request queues and historical Drive evidence during cutover.
+
 For a locally authorized common-main workflow, also follow
 `cross-pc-common-main.md`. It preserves immutable Atlas/Scout completion IDs,
 immediate reviewed publication, symbol-specific output namespaces and the
