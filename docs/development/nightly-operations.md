@@ -175,11 +175,26 @@ private, and preserve original claims and outcomes.
 
 Keep a compact current memory block and small per-task cursor. Historical
 memory is retained but is not reread or appended on every unchanged wake.
-For no new actionable delta, record `outcome=unchanged`, then call the native
-`set_thread_archived` tool with `archived: true` and no thread ID to archive only
-that scheduled run. A scheduler-required inbox directive does not replace the
-archive call. Report new meaningful failure, correction, recovery and completion
-once; a repeated dependency condition is not a new alert.
+For no new actionable delta, finish the bounded checks, save the cursor and
+`outcome=unchanged` with `meaningful_change=false`, then complete the turn normally
+with a brief final response and any required inbox directive. A saved outcome is
+not proof that the native turn completed; verify an actual completed turn and
+final response when auditing delivery.
+
+Scheduled wakes must not archive their own chat or any other chat, call
+`set_thread_archived`, or emit raw archive directives. Self-archival interrupts
+the active turn before its final response. Checking that an older chat completed
+and then archiving it is also unsafe: the user can resume it between those two
+operations. Keep automatic cleanup disabled until a separately reviewed native
+operation can atomically reject active or resumed turns. Do not add a cleanup
+schedule or change native databases to bypass this boundary. Completed quiet
+chats may remain visible for manual archival.
+
+This supersedes earlier archive-before-final guidance on both PCs. Apply it to
+every affected native prompt and current memory block, preserving historical
+bytes, task identities, schedules, model/effort, notification settings and
+operating authority. Report new meaningful failure, correction, recovery and
+completion once; a repeated dependency condition is not a new alert.
 
 ## Private handover and execution boundaries
 
