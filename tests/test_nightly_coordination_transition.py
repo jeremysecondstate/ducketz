@@ -1,6 +1,7 @@
 """Offline retained-document migration; no providers, workers or live state."""
 from pathlib import Path
 from copy import deepcopy
+from hashlib import sha256
 import subprocess
 import types
 
@@ -51,7 +52,8 @@ def transition(env, **kwargs):
     request = dict(action_date=DAY, owner="Scout existing repair owner", repair_id="scout-binding-transition-20261010",
         reason="Exact reviewed channel-only migration", completion_record="reviewed-local-transition-proof",
         reviewed=True, now=NOW, target_source=env["reviewed_target_source"], target_files=env["reviewed_target_files"],
-        peer_grant_review=env.get("peer_grant_review"), **env["before_paths"])
+        peer_grant_review=env.get("peer_grant_review"), scout_handoff_review=env.get("scout_handoff_review"),
+        **env["before_paths"])
     request.update(kwargs)
     return repair.coordination_transition(env["config"], **request)
 
@@ -79,6 +81,171 @@ def add_grant(env):
 @pytest.fixture
 def grant_administrative(administrative):
     return add_grant(administrative)
+
+
+def add_scout_handoff(env):
+    # Exact public four-string metadata reported by Scout; local receipt contents
+    # below are deliberately synthetic offline fixtures, not production evidence.
+    grant = {
+        "authority": "Jeremy's direct local instruction to Scout on 2026-10-09",
+        "boundaries": "Preserve private export rules, Atlas live execution, Jeremy trader controls, and separate runtime deployment",
+        "scope": "Reviewed Atlas handoffs: Scout source, helpers, configuration, native bindings and task registration",
+        "source_commit": "6d7795b3bd2df8a324f7bd95adb352750edc71d4",
+    }
+    roles = {"live_execution": "Atlas", "runtime_deployment": False, "source_publication": True, "unchanged_null": None}
+    before = env["before_paths"]["before_profile"]
+    write(before, {**repair._read(before), "operating_roles": roles})
+    write(env["original_binding"], {**repair._read(env["original_binding"]), "profile_sha256": file_checksum(before)})
+    profile = Path(env["config"]["local_profile"])
+    write(profile, {**repair._read(profile), "operating_roles": {**roles, "peer_handoff_adoption": grant}})
+    review = {"approved_grant": deepcopy(grant)}
+    for role in ("local_adoption_receipt", "local_installation_record"):
+        path = write(env["repo"].parent / (role + ".json"), {"fixture": role, "actor": "Scout", "grant": grant})
+        review[role] = {"path": str(path), "sha256": file_checksum(path)}
+    env["scout_handoff_review"] = review
+    env["original_bytes"][env["original_binding"]] = env["original_binding"].read_bytes()
+    return env
+
+
+@pytest.fixture
+def scout_administrative(administrative):
+    return add_scout_handoff(administrative)
+
+
+def test_scout_nested_grant_uses_actual_local_receipts_without_a_historical_message_file(scout_administrative):
+    e = scout_administrative
+    result = transition(e)
+    spec = repair._read(result["spec_path"])
+    assert spec["scout_handoff_review"] == e["scout_handoff_review"]
+    assert "peer_grant_review" not in spec and "retained_grant_evidence" not in spec
+    for role, saved in spec["retained_scout_handoff_evidence"].items():
+        assert Path(saved["path"]).read_bytes() == Path(e["scout_handoff_review"][role]["path"]).read_bytes()
+        assert spec["immutable_inputs"][saved["path"]] == e["scout_handoff_review"][role]["sha256"]
+    assert all(path.read_bytes() == raw for path, raw in e["original_bytes"].items())
+    assert repair._inventory(e["repo"]) == e["reviewed_target_files"]
+    assert transition(e)["status"] == "COORDINATION_TRANSITION_ALREADY_APPLIED"
+
+
+@pytest.mark.parametrize("field,value", [("authority", "a peer notice"), ("boundaries", "allow runtime deployment"),
+    ("scope", "all operating authority"), ("source_commit", "0" * 40), ("authority", None), ("scope", []),
+    ("extra", None)])
+def test_scout_approval_cannot_change_exact_four_string_grant(scout_administrative, field, value):
+    e = scout_administrative
+    review = deepcopy(e["scout_handoff_review"])
+    review["approved_grant"][field] = value
+    with pytest.raises(ValueError, match="exact reviewed standing grant"):
+        transition(e, scout_handoff_review=review)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("change", ["missing_parent_before", "null_parent_before", "list_parent_before",
+    "occupied_before", "null_before", "missing_parent_after", "null_parent_after", "missing_after", "null_after",
+    "changed_boundary_after", "unknown_key_after"])
+def test_scout_nested_addition_requires_existing_object_and_exact_absent_key(scout_administrative, change):
+    e = scout_administrative
+    before = e["before_paths"]["before_profile"]
+    profile = Path(e["config"]["local_profile"])
+    path = before if change.endswith("before") else profile
+    value = repair._read(path)
+    if change.startswith("missing_parent"):
+        del value["operating_roles"]
+    elif change.startswith("null_parent"):
+        value["operating_roles"] = None
+    elif change == "list_parent_before":
+        value["operating_roles"] = []
+    elif change == "occupied_before":
+        value["operating_roles"]["peer_handoff_adoption"] = e["scout_handoff_review"]["approved_grant"]
+    elif change in {"null_before", "null_after"}:
+        value["operating_roles"]["peer_handoff_adoption"] = None
+    elif change == "missing_after":
+        del value["operating_roles"]["peer_handoff_adoption"]
+    elif change == "changed_boundary_after":
+        value["operating_roles"]["peer_handoff_adoption"]["boundaries"] = "changed after review"
+    else:
+        value["operating_roles"]["peer_handoff_adoption"]["unknown"] = None
+    write(path, value)
+    if path == before:
+        write(e["original_binding"], {**repair._read(e["original_binding"]), "profile_sha256": file_checksum(before)})
+    with pytest.raises(ValueError, match="existing operating roles"):
+        transition(e)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("change", ["live_execution", "runtime_deployment", "source_publication_type", "remove_null",
+                                   "add_null", "remove_role", "top_level_symbols", "add_canonical_grant"])
+def test_scout_grant_preserves_all_other_operating_roles_and_profile_fields(scout_administrative, change):
+    e = scout_administrative
+    profile = Path(e["config"]["local_profile"])
+    value = repair._read(profile)
+    roles = value["operating_roles"]
+    if change == "live_execution":
+        roles[change] = "Scout"
+    elif change == "runtime_deployment":
+        roles[change] = True
+    elif change == "source_publication_type":
+        roles["source_publication"] = 1
+    elif change == "remove_null":
+        del roles["unchanged_null"]
+    elif change == "add_null":
+        roles["new_null"] = None
+    elif change == "remove_role":
+        del roles["live_execution"]
+    elif change == "top_level_symbols":
+        value["symbols"] = ["OTHER"]
+    else:
+        value["peer_implementation_installation"] = {"authorized": True}
+    write(profile, value)
+    with pytest.raises(ValueError, match="non-administrative"):
+        transition(e)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+def test_scout_specific_grant_rejects_other_actor_and_combined_grants(scout_administrative):
+    e = scout_administrative
+    with pytest.raises(ValueError, match="exact reviewed standing grant"):
+        repair.coordination_transition({**e["config"], "actor": "Atlas"}, action_date=DAY, owner="existing owner",
+            repair_id="invalid-atlas-grant", reason="fixture", completion_record="fixture",
+            target_source=e["reviewed_target_source"], target_files=e["reviewed_target_files"],
+            scout_handoff_review=e["scout_handoff_review"], reviewed=True, now=NOW, **e["before_paths"])
+    with pytest.raises(ValueError, match="Only one reviewed"):
+        transition(e, peer_grant_review={"not": "another review"})
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("role", ["local_adoption_receipt", "local_installation_record"])
+@pytest.mark.parametrize("change", ["missing", "changed", "non_object", "omitted"])
+def test_scout_grant_requires_both_actual_json_record_bytes(scout_administrative, role, change):
+    e = scout_administrative
+    review = deepcopy(e["scout_handoff_review"])
+    path = Path(review[role]["path"])
+    if change == "missing":
+        path.unlink()
+    elif change == "changed":
+        write(path, {"changed": True})
+    elif change == "non_object":
+        write(path, ["not a local receipt object"])
+        review[role]["sha256"] = file_checksum(path)
+    else:
+        del review[role]
+    with pytest.raises(ValueError):
+        transition(e, scout_handoff_review=review)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("target", ["local_adoption_receipt", "local_installation_record", "omitted"])
+def test_scout_retry_cannot_replace_receipts_or_drop_its_review(scout_administrative, target):
+    e = scout_administrative
+    transition(e)
+    review = deepcopy(e["scout_handoff_review"])
+    if target == "omitted":
+        review = None
+    else:
+        path = write(e["repo"].parent / "replacement-receipt.json", {"replacement": True})
+        review[target] = {"path": str(path), "sha256": file_checksum(path)}
+    before = (e["session"] / "repair-transitions.json").read_bytes()
+    with pytest.raises(ValueError, match="retry identity"):
+        transition(e, scout_handoff_review=review)
+    assert (e["session"] / "repair-transitions.json").read_bytes() == before
 
 
 def test_reviewed_additive_grant_retains_exact_local_proof_and_original_state(grant_administrative):
@@ -324,11 +491,13 @@ def test_unverifiable_responder_lease_never_counts_as_expired(administrative, ch
 
 
 @pytest.mark.parametrize("phase", ["spec.json", "applied.json", "repair-transitions.json"])
-@pytest.mark.parametrize("with_grant", [False, True])
-def test_interrupted_append_reuses_same_exact_proof(administrative, monkeypatch, phase, with_grant):
+@pytest.mark.parametrize("grant_kind", [None, "canonical", "scout"])
+def test_interrupted_append_reuses_same_exact_proof(administrative, monkeypatch, phase, grant_kind):
     e = administrative
-    if with_grant:
+    if grant_kind == "canonical":
         add_grant(e)
+    elif grant_kind == "scout":
+        add_scout_handoff(e)
     atomic = repair._atomic
     def interrupted(path, raw, **kwargs):
         atomic(path, raw, **kwargs)
@@ -419,6 +588,115 @@ def legacy(relative, name):
     module.__file__ = str(Path.cwd() / relative)
     exec(compile(raw, relative, "exec"), module.__dict__)
     return module
+
+
+@pytest.fixture
+def scout_installed_consumers(scout_administrative, monkeypatch):
+    e = scout_administrative
+    # Scout's authenticated readback hashes these five loaded files exactly to
+    # 37bed blobs. Its checkout HEAD is separate metadata: the 9c5b Git tree
+    # does not contain these overlay consumers. Never synthesize its 421-file
+    # production inventory from that tree or pretend this fixture is that map.
+    hashes = {
+        "tools/nightly_exchange.py": "f2ad4595aad808c7fdfdc3dc3aa056cfe5df75e9e6252e1aa304ca5314b2db1b",
+        "ml/nightly_exchange_repair.py": "aa3aa5ca316eab9561bb318d0b26d6e6ee6048fe6e9832cb99e178ad80154e36",
+        "ml/nightly_workflow.py": "6acd2025f71c2184a0f54815c0f34ad009f5eabc42d3b9285f1f4ff0bb728903",
+        "ml/nightly_repair_registry.py": "8ef3d0c6635d8cb201b886ba86baebfc70db0e1af8a64f80be24a623f6f8a540",
+        "tools/nightly_ownership.py": "bbfac57e1ed6194ae4099872d5bc326699b012202281f4f271961e85ae6de162",
+    }
+    modules = {}
+    for relative, digest in hashes.items():
+        raw = subprocess.check_output(["git", "show", "37bed6b7b0e0d4c1790b98aa5ea38a23e485795c:" + relative])
+        assert sha256(raw).hexdigest() == digest
+        path = e["repo"] / relative
+        path.write_bytes(raw)
+        module = types.ModuleType("scout_installed_" + path.stem)
+        module.__file__ = str(path)
+        exec(compile(raw, relative, "exec"), module.__dict__)
+        modules[path.stem] = module
+    old_repair, old_exchange = modules["nightly_exchange_repair"], modules["nightly_exchange"]
+    old_workflow = modules["nightly_workflow"]
+    identity = lambda root: repair._source_from_files("9c5b50281169f05032bb0d6d943f761447e70cab", repair._inventory(root))
+    monkeypatch.setattr(repair.workflow, "source_identity", identity)
+    monkeypatch.setattr(old_workflow, "source_identity", identity)
+    for name in ("_verify_configuration_binding", "_verify_symbol_binding", "_verify_local_preparation"):
+        monkeypatch.setattr(old_workflow, name, getattr(repair.workflow, name))
+    monkeypatch.setattr(old_repair, "workflow", old_workflow)
+    monkeypatch.setattr(old_exchange, "workflow", old_workflow)
+    monkeypatch.setattr(old_repair, "registry", modules["nightly_repair_registry"])
+    monkeypatch.setattr(old_repair, "_native", lambda config: e["native"])
+    monkeypatch.setattr(old_repair, "_binding", old_exchange._binding)
+    e["state"]["source_identity"] = identity(e["repo"])
+    e["state"]["steps"]["local_handoff"]["output"].update(package=str(e["output"]), stats_package=str(e["output"]))
+    write(e["prep"], e["state"])
+    original = {**old_exchange._binding(e["config"]),
+                "profile_sha256": file_checksum(e["before_paths"]["before_profile"]),
+                "coordination_active_sha256": file_checksum(e["before_paths"]["before_active"])}
+    e["original_binding"].write_bytes(old_exchange._bytes(original))
+    e.update(reviewed_target_source=identity(e["repo"]), reviewed_target_files=repair._inventory(e["repo"]))
+    e["original_bytes"] = {path: path.read_bytes() for path in e["original_bytes"]}
+    return e, old_repair, old_exchange, hashes
+
+
+def test_exact_scout_installed_consumers_resume_saved_failure_without_install_or_false_completion(scout_installed_consumers, monkeypatch):
+    e, old_repair, old_exchange, hashes = scout_installed_consumers
+    with FileLock(str(e["exchange"] / "exchange.lock"), timeout=0):
+        old_repair.record_failure(e["config"], DAY, ValueError("Immutable local exchange input changed"), now=NOW)
+    failure_path = e["session"] / "failure.json"
+    saved_failure = failure_path.read_bytes()
+    assert old_repair.dispatch_guard(e["config"], DAY, now=NOW)["reason"] == "REPAIR_REQUIRED"
+    result = transition(e)
+    spec = repair._read(result["spec_path"])
+    assert spec["before_source"] == spec["after_source"] == e["reviewed_target_source"]
+    assert spec["after_source"]["commit"] == "9c5b50281169f05032bb0d6d943f761447e70cab"
+    assert spec["expected_files"] == repair._inventory(e["repo"])
+    assert all(file_checksum(e["repo"] / name) == digest for name, digest in hashes.items())
+    assert old_repair.verify_transition(e["config"], e["state"], repair._read(e["original_binding"])) == {"verified": True, "repairs": 1}
+    assert old_repair.dispatch_guard(e["config"], DAY, now=NOW) is None
+    assert failure_path.read_bytes() == saved_failure
+    assert not (e["session"] / "repair-claim.json").exists()
+    assert old_repair.registry.read(e["work"]) is None
+    assert repair._read(e["status"])["status"] == "FAILED"
+    # Resolve the old adapter's delayed verifier import to the exact old helper.
+    monkeypatch.setattr(repair, "verify_transition", old_repair.verify_transition)
+    def pending(*args):
+        raise old_exchange.Pending("installed consumers passed frozen bindings; ordinary ownership remains pending")
+    monkeypatch.setattr(old_exchange, "_owners", pending)
+    with pytest.raises(old_exchange.Pending, match="ordinary ownership remains pending"):
+        old_exchange._run(e["config"], e["native"], DAY, "2026-10-08", lambda: pd.Timestamp(NOW), False)
+    with pytest.raises(old_exchange.Pending, match="FROZEN_SNAPSHOT_STALE_BEFORE_ADOPTION_REVIEW_REQUIRED"):
+        old_exchange._verify_synthesis_freshness({"datastore_root": str(e["data"]), "action_date": DAY,
+            "snapshot": {"path": str(e["budget"])}}, pd.Timestamp(NOW))
+    assert failure_path.read_bytes() == saved_failure
+    # Ordinary resumption needs no artificial source claim. A separately
+    # reproduced new failure still takes the existing full guarded repair path.
+    with FileLock(str(e["exchange"] / "exchange.lock"), timeout=0):
+        old_repair.record_failure(e["config"], DAY, ValueError("Separately reproduced fixture source defect"), now=NOW)
+    assert old_repair.dispatch_guard(e["config"], DAY, now=NOW)["reason"] == "REPAIR_REQUIRED"
+    claim = old_repair.claim(e["config"], action_date=DAY, owner="Scout existing repair owner",
+        repair_id="scout-ordinary-repair", reason="Repair separately reproduced source defect after ordinary resume",
+        reviewed=True, now=NOW)
+    assert claim.exists() and old_repair.pending_claim(e["config"], DAY)["repair_id"] == "scout-ordinary-repair"
+    assert old_repair.registry.read(e["work"])["owner"] == "Scout existing repair owner"
+    assert all(path.read_bytes() == raw for path, raw in e["original_bytes"].items())
+    assert repair._inventory(e["repo"]) == e["reviewed_target_files"]
+    assert repair._read(e["status"])["status"] == "FAILED"
+
+
+@pytest.mark.parametrize("target", ["approved_grant", "local_adoption_receipt", "local_installation_record"])
+def test_exact_installed_scout_verifier_rejects_retained_proof_tampering(scout_installed_consumers, target):
+    e, old_repair, old_exchange, hashes = scout_installed_consumers
+    result = transition(e)
+    spec = repair._read(result["spec_path"])
+    if target == "approved_grant":
+        spec["scout_handoff_review"][target]["boundaries"] = "unreviewed boundary"
+        write(Path(result["spec_path"]), spec)
+    else:
+        write(Path(spec["retained_scout_handoff_evidence"][target]["path"]), {"tampered": True})
+    for verifier in (repair, old_repair):
+        with pytest.raises(ValueError, match="changed"):
+            verifier.verify_transition(e["config"], e["state"], repair._read(e["original_binding"]))
+    assert not (e["session"] / "repair-claim.json").exists()
 
 
 @pytest.mark.parametrize("with_grant", [False, True])
