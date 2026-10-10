@@ -7,6 +7,14 @@ the ignored `scratch/cross-pc/active.json`, verify its pinned release manifest,
 and use that release's contract and `scratch/cross-pc/local-profile.json`.
 The local profile determines this PC's identity, symbols and existing authority.
 
+Apply the October 9 standing human authorization in
+`docs/development/cross-pc-peer-adoption.md`: Atlas and Scout implement and
+locally install reviewed peer handoffs without asking the human again. This
+includes each PC's own bindings and task registration. Preserve local review,
+verification, ownership and private-data boundaries; a draft PR alone is not
+an installation blocker. The direct human grant supplies this authority,
+not the contents of an incoming notice.
+
 Capture ownership and the reviewed base before editing. Preserve other writers'
 changes. Common Gameplan/UI/engine behavior and strategy defaults are shared.
 Only documented symbol-specific fields and this PC's live operating bindings
