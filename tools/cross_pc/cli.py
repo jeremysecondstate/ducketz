@@ -94,6 +94,14 @@ def _drive_root(profile):
 
 
 def _drive_command(args, profile):
+    if core.notification_policy(profile) == "github_only":
+        # Retired signal evidence is historical, not a current delivery gate.
+        # Do not even open its bindings/state: they may contain an interrupted
+        # write that must remain intact, without fabricating a Drive receipt.
+        return {"status": "DISABLED_BY_POLICY", "action": args.action,
+                "coordination_notification_policy": "github_only",
+                "drive_operation_performed": False, "drive_delivery": "not_attempted",
+                "historical_state_preserved": True}
     peer = args.action == "drive-inspect"
     binding_path = args.binding or profile.get("drive_peer_binding" if peer else "drive_own_binding")
     if not binding_path:

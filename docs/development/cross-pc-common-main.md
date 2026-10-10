@@ -81,9 +81,10 @@ establish that arbitrary output is suitable for publication.
 
 Keep the existing monitors, their separate locks, state and bounded work limits.
 Observe `main` and both source branch prefixes, recording exact author, parent,
-commit, changed paths and scope. Use Git for full immutable notice history and
-the existing pinned Drive API signals for notifications. Keep requests, source
-intake, delivery receipts and interrupted transactions intact.
+commit, changed paths and scope. Use Git for full immutable notice history.
+Follow the local profile's notification policy and `cross-pc-github-coordination.md`:
+`github_only` skips Drive API signals; `git_and_drive` retains legacy signals.
+Keep requests, source intake, delivery receipts and interrupted transactions intact.
 
 Under the native Git lock, fetch normally with recursion disabled. Preserve
 before/after evidence for HEAD, branch, index, tracked and untracked state,

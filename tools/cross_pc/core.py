@@ -213,6 +213,14 @@ def fingerprints(root, paths):
     return {p: digest(safe_path(root, p).read_bytes()) if safe_path(root, p).is_file() else None for p in paths}
 
 
+def notification_policy(profile):
+    """Return the explicit local policy without mutating retained profile bytes."""
+    policy = profile.get("coordination_notification_policy", "git_and_drive")
+    if not isinstance(policy, str) or policy not in {"github_only", "git_and_drive"}:
+        raise ValueError("Invalid coordination_notification_policy")
+    return policy
+
+
 def validate_profile(profile):
     if profile.get("contract_version") != VERSION or profile.get("repository") != "jeremysecondstate/ducketz":
         raise ValueError("profile contract/repository mismatch")
@@ -223,6 +231,7 @@ def validate_profile(profile):
         raise ValueError("profile branch ownership mismatch")
     if not isinstance(profile.get("symbols"), list) or not isinstance(profile.get("authorized_producers"), list):
         raise ValueError("profile symbols/producers missing")
+    notification_policy(profile)
     return profile
 
 
@@ -485,7 +494,11 @@ def plan(profile):
                               if value["source_stage"] not in {"pushed", "superseded"}], receipts["source_cursor"])
         delivery = choose_fair([key for key, value in receipts["notices"].items()
                                 if value.get("stage") != "published"], receipts["delivery_cursor"])
-        result = {"contract_version": VERSION, "source": source, "delivery": delivery, "limits": {"source": 1, "observations": 10}}
+        policy = notification_policy(profile)
+        result = {"contract_version": VERSION, "source": source, "delivery": delivery,
+                  "coordination_notification_policy": policy,
+                  "drive_signal_required": policy == "git_and_drive",
+                  "limits": {"source": 1, "observations": 10}}
         if source:
             receipts["source_cursor"] = source
             try:

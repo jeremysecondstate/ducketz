@@ -74,6 +74,25 @@ def test_heartbeat_keeps_chat_continuity_exact_and_inherited_model():
     assert tasks.verify_adoption(saved, after_update(saved, update), update)["verified"]
 
 
+def test_local_notification_policy_overrides_preserved_routing_without_changing_task_settings():
+    saved = native()
+    saved["prompt"] += "Historical routing: always read and update the Drive signal.\n"
+    unchanged = copy.deepcopy(saved)
+    update = tasks.build_update(saved, purpose("source_courier"), **BINDING)
+    prompt = update["prompt"]
+    assert prompt.startswith(saved["prompt"] + "\n\n")
+    assert "coordination_notification_policy" in prompt
+    assert "github_only uses GitHub and requires no Drive signal" in prompt
+    assert "git_and_drive (the legacy default when absent)" in prompt
+    assert "make no Drive API or drive-* calls" in prompt
+    assert "supersedes older notification-routing instructions" in prompt
+    assert "without claiming Drive delivery" in prompt
+    assert "does not change the separate private financial exchange" in prompt
+    assert "Preserve request and incoming-source work independently" in prompt
+    assert saved == unchanged
+    assert tasks.verify_adoption(saved, after_update(saved, update), update)["verified"]
+
+
 def test_suffix_replacement_is_idempotent_and_preserves_trailing_whitespace():
     saved = native()
     task = purpose("overnight_gameplan")

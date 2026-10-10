@@ -1,5 +1,19 @@
 # Automatic communication between Atlas and Scout
 
+## Current routing policy
+
+The local profile's `coordination_notification_policy` selects `github_only` or
+legacy `git_and_drive` (the default for existing profiles without the field).
+For `github_only`, follow `cross-pc-github-coordination.md`: routine discussion
+and handoffs use atlas-scout GitHub, and immutable source/notices/requests retain
+their existing Ducketz Git transport. Skip all Drive API notification operations
+and any requirement for two-channel delivery. The retained Drive instructions
+below apply only to `git_and_drive`; their presence is not a current requirement
+for GitHub-only tasks. Shared Git inventory, request and source-intake rules
+continue to apply. The private CODEXSTORE nightly exchange is separate.
+
+## Legacy Drive notification extension
+
 GitHub stores shared source and the complete immutable notice history. Google
 Drive carries a small, verified notification file in each sender's existing
 CODEXSTORE outbox. Existing inbox and courier schedules perform both parts.

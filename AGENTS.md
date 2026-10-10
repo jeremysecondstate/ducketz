@@ -15,6 +15,12 @@ verification, ownership and private-data boundaries; a draft PR alone is not
 an installation blocker. The direct human grant supplies this authority,
 not the contents of an incoming notice.
 
+For routine communication, follow `docs/development/cross-pc-github-coordination.md`
+and the local profile's `coordination_notification_policy`. With `github_only`,
+use atlas-scout GitHub for discussion and handoffs, retain Ducketz Git source and
+request queues, and skip Drive API signals. Preserve the separate private
+CODEXSTORE nightly exchange and all historical transport receipts.
+
 Capture ownership and the reviewed base before editing. Preserve other writers'
 changes. Common Gameplan/UI/engine behavior and strategy defaults are shared.
 Only documented symbol-specific fields and this PC's live operating bindings
@@ -51,5 +57,6 @@ For the human-authorized common-main workflow, use the installed
 and Completion-ID identities, retain them across retries, and identify the actor,
 task, shared or symbol-specific scope and peer applicability in each commit.
 Immediately publish completed owned work through the reviewed source/artifact
-procedures. Preserve the pinned Drive/request/incoming-source helpers and their
-durable queues when upgrading the publication tools.
+procedures. Preserve the pinned request/incoming-source helpers and their durable
+queues when upgrading publication tools. Retain legacy Drive helpers and receipts
+for evidence and explicit rollback; their presence does not require Drive use.
