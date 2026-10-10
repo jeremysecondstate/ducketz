@@ -1,5 +1,6 @@
 """Offline retained-document migration; no providers, workers or live state."""
 from pathlib import Path
+from copy import deepcopy
 import subprocess
 import types
 
@@ -50,9 +51,184 @@ def transition(env, **kwargs):
     request = dict(action_date=DAY, owner="Scout existing repair owner", repair_id="scout-binding-transition-20261010",
         reason="Exact reviewed channel-only migration", completion_record="reviewed-local-transition-proof",
         reviewed=True, now=NOW, target_source=env["reviewed_target_source"], target_files=env["reviewed_target_files"],
-        **env["before_paths"])
+        peer_grant_review=env.get("peer_grant_review"), **env["before_paths"])
     request.update(kwargs)
     return repair.coordination_transition(env["config"], **request)
+
+
+def add_grant(env):
+    # A synthetic offline fixture of the known schema, not Scout's actual grant
+    # or evidence that its pending production transition is applicable.
+    grant = {"authorized": True, "peer": "Atlas", "granted_on": "2026-10-09",
+             "authority_source": "Fixture direct local human instruction; never a peer notice.",
+             "scope": ["reviewed peer source implementation", "local system and helper installation",
+                       "local configuration and native bindings", "scheduled-task registration"],
+             "repeat_human_approval_required": False, "guidance": "docs/development/cross-pc-peer-adoption.md",
+             "completion_record": "fixture-local-grant-installation-record",
+             "boundaries": "Preserve private export rules, manual trader controls and runtime ownership."}
+    review = {"approved_grant": deepcopy(grant)}
+    for role in ("local_human_instruction", "local_installation_receipt"):
+        path = write(env["repo"].parent / (role + ".json"), {"fixture": role, "actor": "Scout", "grant": grant})
+        review[role] = {"path": str(path), "sha256": file_checksum(path)}
+    profile = Path(env["config"]["local_profile"])
+    write(profile, {**repair._read(profile), "peer_implementation_installation": grant})
+    env["peer_grant_review"] = review
+    return env
+
+
+@pytest.fixture
+def grant_administrative(administrative):
+    return add_grant(administrative)
+
+
+def test_reviewed_additive_grant_retains_exact_local_proof_and_original_state(grant_administrative):
+    e = grant_administrative
+    result = transition(e)
+    spec = repair._read(result["spec_path"])
+    assert spec["peer_grant_review"] == e["peer_grant_review"]
+    for role, saved in spec["retained_grant_evidence"].items():
+        assert saved["sha256"] == e["peer_grant_review"][role]["sha256"]
+        assert Path(saved["path"]).read_bytes() == Path(e["peer_grant_review"][role]["path"]).read_bytes()
+        assert spec["immutable_inputs"][saved["path"]] == saved["sha256"]
+    assert all(path.read_bytes() == raw for path, raw in e["original_bytes"].items())
+    assert repair._inventory(e["repo"]) == e["reviewed_target_files"]
+    assert transition(e)["status"] == "COORDINATION_TRANSITION_ALREADY_APPLIED"
+    assert repair.verify_transition(e["config"], e["state"], repair._read(e["original_binding"]))["repairs"] == 1
+
+
+@pytest.mark.parametrize("field,value", [("authorized", False), ("authorized", 1), ("peer", "Scout"),
+    ("repeat_human_approval_required", True), ("repeat_human_approval_required", 0),
+    ("granted_on", "2026-10-10"), ("scope", ["runtime deployment"]),
+    ("runtime_deployment", True), ("private_export", True), ("boundaries", None), ("authority_source", " ")])
+def test_approved_grant_cannot_expand_fixed_schema_or_scope(grant_administrative, field, value):
+    e = grant_administrative
+    review = deepcopy(e["peer_grant_review"])
+    review["approved_grant"][field] = value
+    profile = Path(e["config"]["local_profile"])
+    write(profile, {**repair._read(profile), "peer_implementation_installation": review["approved_grant"]})
+    with pytest.raises(ValueError, match="standing installation scope"):
+        transition(e, peer_grant_review=review)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("field", ["authority_source", "boundaries", "guidance", "completion_record", "scope"])
+def test_added_grant_must_match_entire_approved_object(grant_administrative, field):
+    e = grant_administrative
+    profile = Path(e["config"]["local_profile"])
+    current = repair._read(profile)
+    current["peer_implementation_installation"][field] = "unreviewed change"
+    write(profile, current)
+    with pytest.raises(ValueError, match="exact reviewed"):
+        transition(e)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("change", ["null_before", "old_before", "null_after", "removed_after", "missing_key", "unknown_key"])
+def test_grant_key_presence_is_exact_and_additive(grant_administrative, change):
+    e = grant_administrative
+    profile = Path(e["config"]["local_profile"])
+    current = repair._read(profile)
+    if change.endswith("before"):
+        old = e["before_paths"]["before_profile"]
+        write(old, {**repair._read(old), "peer_implementation_installation": None if change == "null_before" else {"authorized": False}})
+        write(e["original_binding"], {**repair._read(e["original_binding"]), "profile_sha256": file_checksum(old)})
+    elif change == "null_after":
+        current["peer_implementation_installation"] = None
+    elif change == "removed_after":
+        del current["peer_implementation_installation"]
+    elif change == "missing_key":
+        del current["peer_implementation_installation"]["guidance"]
+    else:
+        current["peer_implementation_installation"]["unknown"] = None
+    write(profile, current)
+    with pytest.raises(ValueError, match="exact reviewed"):
+        transition(e)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("change", ["add_null", "remove_null", "remove_existing", "boolean_type", "roles", "producers"])
+def test_grant_does_not_exclude_any_other_profile_fields(grant_administrative, change):
+    e = grant_administrative
+    profile = Path(e["config"]["local_profile"])
+    current = repair._read(profile)
+    if change == "add_null":
+        current["unknown"] = None
+    elif change == "remove_null":
+        old = e["before_paths"]["before_profile"]
+        write(old, {**repair._read(old), "unknown": None})
+        write(e["original_binding"], {**repair._read(e["original_binding"]), "profile_sha256": file_checksum(old)})
+    elif change == "remove_existing":
+        del current["symbols"]
+    elif change == "boolean_type":
+        current["private_export"] = 1
+    elif change == "roles":
+        current["operating_roles"] = {"runtime_deployment": True}
+    else:
+        current["authorized_producers"] = ["new-producer"]
+    write(profile, current)
+    with pytest.raises(ValueError, match="non-administrative"):
+        transition(e)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("role", ["local_human_instruction", "local_installation_receipt"])
+@pytest.mark.parametrize("change", ["missing", "empty", "changed", "digest", "relative", "omitted"])
+def test_grant_requires_both_exact_local_evidence_files(grant_administrative, role, change):
+    e = grant_administrative
+    review = deepcopy(e["peer_grant_review"])
+    path = Path(review[role]["path"])
+    if change == "missing":
+        path.unlink()
+    elif change == "empty":
+        path.write_bytes(b"")
+        review[role]["sha256"] = file_checksum(path)
+    elif change == "changed":
+        path.write_text("changed after review")
+    elif change == "digest":
+        review[role]["sha256"] = "a" * 64
+    elif change == "relative":
+        review[role]["path"] = path.name
+    else:
+        del review[role]
+    with pytest.raises(ValueError, match="peer-grant"):
+        transition(e, peer_grant_review=review)
+    assert not (e["session"] / "source-repairs").exists()
+
+
+@pytest.mark.parametrize("target", ["approved_grant", "local_human_instruction", "local_installation_receipt", "omitted"])
+def test_completed_grant_retry_cannot_replace_review_or_evidence(grant_administrative, target):
+    e = grant_administrative
+    transition(e)
+    review = deepcopy(e["peer_grant_review"])
+    if target == "approved_grant":
+        review[target]["authority_source"] = "Another local instruction"
+    elif target == "omitted":
+        review = None
+    else:
+        path = write(e["repo"].parent / "different-local-evidence.json", {"fixture": "different"})
+        review[target] = {"path": str(path), "sha256": file_checksum(path)}
+    before = (e["session"] / "repair-transitions.json").read_bytes()
+    with pytest.raises(ValueError, match="retry identity"):
+        transition(e, peer_grant_review=review)
+    assert (e["session"] / "repair-transitions.json").read_bytes() == before
+
+
+@pytest.mark.parametrize("target", ["approved_grant", "local_human_instruction", "local_installation_receipt"])
+def test_grant_proof_tampering_is_rejected_by_current_and_installed_verifiers(grant_administrative, monkeypatch, target):
+    e = grant_administrative
+    result = transition(e)
+    spec = repair._read(result["spec_path"])
+    old_repair = legacy("ml/nightly_exchange_repair.py", "exact_base_grant_verifier")
+    monkeypatch.setattr(old_repair, "_native", lambda config: e["native"])
+    monkeypatch.setattr(old_repair, "_binding", lambda config: repair._installed_binding(config, e["native"]))
+    if target == "approved_grant":
+        spec["peer_grant_review"][target]["completion_record"] = "changed-review"
+        write(Path(result["spec_path"]), spec)
+    else:
+        Path(spec["retained_grant_evidence"][target]["path"]).write_text("changed retained local evidence")
+    for verifier in (repair, old_repair):
+        with pytest.raises(ValueError, match="changed"):
+            verifier.verify_transition(e["config"], e["state"], repair._read(e["original_binding"]))
 
 
 def test_exact_documents_append_compatible_transition_without_rebinding_or_source_install(administrative):
@@ -148,8 +324,11 @@ def test_unverifiable_responder_lease_never_counts_as_expired(administrative, ch
 
 
 @pytest.mark.parametrize("phase", ["spec.json", "applied.json", "repair-transitions.json"])
-def test_interrupted_append_reuses_same_exact_proof(administrative, monkeypatch, phase):
+@pytest.mark.parametrize("with_grant", [False, True])
+def test_interrupted_append_reuses_same_exact_proof(administrative, monkeypatch, phase, with_grant):
     e = administrative
+    if with_grant:
+        add_grant(e)
     atomic = repair._atomic
     def interrupted(path, raw, **kwargs):
         atomic(path, raw, **kwargs)
@@ -242,8 +421,11 @@ def legacy(relative, name):
     return module
 
 
-def test_unmodified_installed_verifier_and_adapter_accept_audited_admin_transition(administrative, monkeypatch):
+@pytest.mark.parametrize("with_grant", [False, True])
+def test_unmodified_installed_verifier_and_adapter_accept_audited_admin_transition(administrative, monkeypatch, with_grant):
     e = administrative
+    if with_grant:
+        add_grant(e)
     output = e["state"]["steps"]["local_handoff"]["output"]
     output.update(package=str(e["output"]), stats_package=str(e["output"]))
     write(e["prep"], e["state"])
