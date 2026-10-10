@@ -4,6 +4,11 @@ Local preparation is only the first part of a completed overnight Gameplan.
 The intended action date is complete only when the existing exchange verifier
 freshly verifies the combined accepted plan, the completed-session Stats, their
 exact dated receipts, and `joint_ready`, `ui_ready`, and `peer_verified`.
+The default Gameplan and Stats readers must also select those same verified
+publications. Dated historical receipts alone cannot establish current display
+readiness when the default selection is missing, broken, or on another date.
+Verified no-history Stats remain valid; completion does not require invented
+forecast rows or scores.
 `LOCAL_COMPLETE_PEER_SETUP_PENDING`, a repair claim, an applied patch, a launched
 worker, or a sent peer request does not establish overall completion.
 
@@ -83,6 +88,11 @@ passing checks, and actual installed dependency review in a local manifest:
 scratch/nightly-operations/supervision/releases/<published-source-sha>/nightly_supervision.py
 ```
 
+An exact reviewed copy of this usage guide may be installed alongside the
+script in that ignored version directory. Pin the guide's file hash in the
+local manifest and native prompt so its observation schemas are available
+without adding or changing application source.
+
 Verify that manifest and the helper's exact SHA-256 before every native use.
 Keep the original application source, profile, active coordination release,
 exchange selections, and repair inventory unchanged. Run the private absolute
@@ -113,6 +123,21 @@ to write only `state_root/supervision/<action-date>.json`. Preserve the same wak
 ID through retries and observations in that native turn. The same wake does not
 increment the unchanged-wake counter twice. Writes are locked and atomic, and
 timestamps cannot move backwards. Joint never uses `--record`.
+Each inspection includes the exact raw-ledger `ledger_precondition_sha256`.
+Recording compares it under the existing ledger lock, so an overlapping cron
+chat cannot erase owner evidence written since its inspection. A stale write
+must inspect again; an identical same-wake replay remains idempotent. The
+returned ledger checksum is captured while the write lock is still held.
+
+This revision writes `nightly-supervision-v2` ledgers and can read existing v1
+ledgers without resetting their history. The first v2 record retains any v1
+owner attestation, including an expired one, as last-known native identity.
+The original v1 helper rejects a v2 ledger, so an overlapping old native wake
+cannot replace it with the older shape and erase the retained IDs. Install by
+read-only inspection first, update the existing native prompt bindings, and
+reconcile any older running wake before relying on its completion. An old
+helper's unsupported-schema error is a helper-version handoff, not a new
+domain failure or a reason to reset the ledger.
 
 The default date comes from the application's completed-session calendar.
 `--action-date YYYY-MM-DD` explicitly inspects a validated exchange session using
@@ -127,6 +152,7 @@ its original deadline.
 | `next_action` | Existing owner's next step |
 | --- | --- |
 | `CONTINUE_SAME_OWNER` | Resume the retained claim/prepare/apply transaction. At `REPAIR_APPLIED`, invoke the ordinary matching domain continuation and verify it. |
+| `INSPECT_RETAINED_OWNER` | Use actual native `read_thread` to inspect `last_known_owner_attestation.thread_id` and its exact `turn_id`. An expired observation is not proof the writer exited. Preserve the current claim, candidate ownership and locks. |
 | `RECONCILE_PARTIAL_CLAIM` | Inspect the preserved partial claim; use the same helper/identities to recover it, never replace or delete it. |
 | `REPAIR_REQUIRED` | Diagnose the saved failure and pursue its authorized domain repair or real dependency restoration. |
 | `WAIT_FOR_LIVE_OWNER` | Leave that owner active; use its exact thread/turn identity for the next native status observation. |
@@ -135,7 +161,7 @@ its original deadline.
 | `WAIT_BACKOFF` / `WAIT_KICKOFF` | Retain the recorded timing and retry budget; use the existing next wake. |
 | `DISPATCH_PREPARATION` | Use the ordinary prerequisite-aware dispatcher; it owns all deadline, source, and responsibility gates. |
 | `ADVANCE_EXCHANGE` / `RESUME_EXCHANGE` | Joint uses the existing guarded exchange entrypoint and preserves selections and completed local preparation. |
-| `COMPLETE` | The actual `_completed_result` just verified exact dated combined Gameplan/Stats and receipt bytes. Save the meaningful completion once. |
+| `COMPLETE` | The actual `_completed_result` just verified exact dated combined Gameplan/Stats and receipt bytes, and the default UI readers selected those publications. Save the meaningful completion once. |
 
 The result includes actor, action/review dates, incident ID, original/effective
 deadline, retained repository owner, phase and evidence hashes, next action,
@@ -146,6 +172,20 @@ Progress requires newly verified completed steps, a forward verified repair
 phase in the same transaction, or fresh final completion. Claim identity alone
 never proves owner liveness. An exception during evidence verification is a
 repair need, never completion.
+
+At `REPAIR_APPLIED`, read `continuation_guard`, `failure`, and
+`repair_disposition` before deciding to resume. The supervisor calls the existing
+domain's retry/dispatch guard even while a repository repair owner is retained.
+`WAIT_RETAINED_RETRY` preserves the real transient cooldown.
+`SAME_OWNER_REPAIR_OR_RESTORATION_REQUIRED` means the resumed work needs another
+repair or an actual dependency restoration; repeating the old apply or blocked
+dispatch is not progress. The current `repository_owner` and repair ID remain
+unchanged. Diagnose the new failed attempt, then use the existing same-owner
+preparation continuation or exchange `supersede_applied=true` procedure with an
+explicit new stable repair ID only when that helper verifies a genuinely new
+failure. Preserve original ancestry, frozen deadlines and the three-repair
+limit. The observer grants no takeover or retry reset and never fabricates a
+replacement claim.
 
 ## Explicit owner liveness attestation
 
@@ -183,9 +223,60 @@ provenance, naive/invalid times, future observations, and explicit observations
 older than five minutes. Priority's ledger retains the original provenance.
 A later observer can wait on that bounded retained attestation; it is not
 relabeled as a new native tool observation. The owning current chat remains
-actionable. An expired retained attestation stops suppressing continuation,
-but never authorizes claim takeover, concurrent edits, a retry budget reset,
-or a deadline extension.
+actionable. After expiry, its original IDs and observation remain in
+`last_known_owner_attestation` across subsequent cron wakes, while
+`owner_liveness_attestation` becomes null. A successor receives
+`INSPECT_RETAINED_OWNER` and the underlying `resume_action`; it must inspect the
+actual retained native thread and turn before continuation. Expiry never
+authorizes claim takeover, concurrent edits, a retry budget reset, or a
+deadline extension.
+
+If the native owner is still running, provide a fresh liveness attestation and
+leave its work active. If native `read_thread` proves that the exact retained
+turn is terminal and the chat is not currently running another turn, save the
+actual readback privately and pass `--terminal-owner-observation ABS_PRIVATE_JSON`:
+
+```json
+{
+  "actor": "Scout",
+  "action_date": "2026-10-12",
+  "incident_id": "<exact-inspect-result>",
+  "automation_id": "<existing-Scout-Priority-automation-id>",
+  "repair_id": "<exact-retained-repair-id-or-null>",
+  "thread_id": "<exact-last-known-thread-id>",
+  "turn_id": "<exact-last-known-turn-id>",
+  "observed_at": "<actual-zoned-observation-time>",
+  "provenance": "native_read_thread",
+  "readback_reference": "<absolute-private-saved-native-response>",
+  "native_observation": {
+    "tool": "read_thread",
+    "thread_id": "<same-thread-id>",
+    "turn_id": "<same-turn-id>",
+    "automation_id": "<same-automation-id>",
+    "observed_at": "<same-actual-zoned-observation-time>",
+    "thread_status": "idle",
+    "turn_status": "completed"
+  }
+}
+```
+
+Use JSON null for an absent repair ID. Normalize only an unambiguous actual
+native result: `turn_status` must be completed, failed, or interrupted, and
+`thread_status` must be idle, completed, failed, or interrupted. An idle chat
+alone is insufficient; a terminal old turn with a currently running chat is
+also insufficient. Unknown evidence remains pending. The observation must be
+fresh within five minutes, no earlier than the retained owner attestation,
+and match the exact actor/date/incident/automation/repair/thread/turn identity.
+This is explicit agent evidence backed by the saved native response, not a
+cryptographic writer lock. It permits review and continuation under the same
+owner only after the independent claim, candidate and lock checks pass. It
+does not release a claim or create a new repair identity. A recorded terminal
+observation can be reused while fresh; after it expires, inspect native status
+again using the preserved last-known IDs.
+Read the actual `thread.status.type` for the chat status and the retained
+entry in `turns` for that exact turn's status. Page older turns when necessary;
+do not substitute the newest turn's status for the retained turn. Normalize
+only a known native value into the documented fields.
 
 Keep private financial packets in their existing CODEXSTORE protocol and use
 GitHub for sanitized coordination. No success claim may waive frozen packet,
