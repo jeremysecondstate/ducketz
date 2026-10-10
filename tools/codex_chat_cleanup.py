@@ -268,13 +268,22 @@ def _candidates(config, cursor):
     if cursor is not None and (not isinstance(cursor, dict) or set(cursor) != {"created_at", "thread_id"} or type(cursor["created_at"]) is not int or not _uuid(cursor["thread_id"])):
         raise CleanupError("Malformed cleanup cursor")
     with _databases(config) as db:
+        # CLI archival changes native thread state independently of the app's
+        # automation inbox row. Exclude that retained archive history before the
+        # scan limit, using another explicitly read-only SQLite attachment.
+        state_uri = (Path(config["codex_home"]) / DB_PATHS["state"]).resolve().as_uri() + "?mode=ro"
+        db["app"].execute("ATTACH DATABASE ? AS cleanup_state", (state_uri,))
         placeholders = ",".join("?" for _ in config["automation_ids"])
-        query = f"SELECT thread_id,created_at FROM automation_runs WHERE automation_id IN ({placeholders}) AND status='PENDING_REVIEW'"
+        query = f"""SELECT r.thread_id,r.created_at FROM automation_runs AS r
+            JOIN cleanup_state.threads AS t ON t.id=r.thread_id
+            WHERE r.automation_id IN ({placeholders}) AND r.status='PENDING_REVIEW'
+              AND r.read_at IS NULL AND t.archived=0 AND t.thread_source='automation'
+              AND t.has_user_event=0 AND t.is_pinned=0 AND t.thread_section_id IS NULL"""
         args = list(config["automation_ids"])
         if cursor:
-            query += " AND (created_at>? OR (created_at=? AND thread_id>?))"
+            query += " AND (r.created_at>? OR (r.created_at=? AND r.thread_id>?))"
             args.extend((cursor["created_at"], cursor["created_at"], cursor["thread_id"]))
-        query += " ORDER BY created_at,thread_id LIMIT ?"
+        query += " ORDER BY r.created_at,r.thread_id LIMIT ?"
         args.append(SCAN_LIMIT)
         return [dict(row) for row in db["app"].execute(query, args)]
 
@@ -361,6 +370,13 @@ def _run(config: dict, apply: bool, now: float, runner) -> dict:
             receipt = {**attempt, "status": "unknown", "error": f"{type(error).__name__}: {error}"}
             result["status"] = "FAILED"
         _record(root, receipt)
+    else:
+        # A short, fully consumed query reaches the end of this bounded snapshot.
+        # Begin another cycle next wake so previously young chats are revisited
+        # even when new five-minute runs keep arriving beyond the old cursor.
+        # A break at the attempt cap must retain the last processed cursor.
+        if len(rows) < SCAN_LIMIT:
+            cursor = None
     if apply:
         _write(state_path, {"version": VERSION, "cursor": cursor})
         _write(root / "last.json", result)

@@ -186,14 +186,19 @@ def test_ambiguous_or_failed_attempt_is_not_blindly_retried(native, kind):
     assert cleanup.run_once(native.config, apply=True, now=NOW + 60, runner=never_run)["status"] == "FAILED"
 
 
-def test_interrupted_attempt_reconciles_archived_native_state(native):
+def test_interrupted_already_archived_attempt_is_preserved_without_retry_or_invented_confirmation(native):
     candidate = cleanup.inspect_candidate(native.config, THREAD, NOW)
     root = Path(native.config["state_dir"])
     root.mkdir()
     cleanup._record(root, {**candidate, "version": cleanup.VERSION, "attempt_id": uuid.uuid4().hex, "status": "attempting"})
     native.sql("state", "UPDATE threads SET archived=1,archived_at=?", (NOW,))
-    cleanup.run_once(native.config, apply=True, now=NOW + 60, runner=never_run)
-    assert cleanup._receipt(root, THREAD)["status"] == "archived"
+    result = cleanup.run_once(native.config, apply=True, now=NOW + 60, runner=never_run)
+    # Archived native history is outside candidate scanning. The interrupted
+    # local attempt stays unresolved until separate audit; it is never replayed.
+    assert result["considered"] == 0
+    assert cleanup._receipt(root, THREAD)["status"] == "attempting"
+    native.sql("state", "UPDATE threads SET archived=0,archived_at=NULL")
+    assert cleanup.run_once(native.config, apply=True, now=NOW + 120, runner=never_run)["status"] == "FAILED"
 
 
 @pytest.mark.parametrize("target", ["native", "helper", "schema", "state", "receipt"])
@@ -221,6 +226,84 @@ def test_cursor_wraps_and_does_not_starve_candidate(native):
     cleanup._write(root / "state.json", {"version": cleanup.VERSION, "cursor": {"created_at": NOW * 1000, "thread_id": THREAD}})
     result = cleanup.run_once(native.config, apply=True, now=NOW, runner=archive_runner(native, []))
     assert result["archived"] == [THREAD]
+
+
+def add_completed_run(native, thread_id, completed):
+    """Another natural cron run arriving while earlier runs wait to age."""
+    native.sql("app", "INSERT INTO automation_runs VALUES(?,?,?,?,NULL)", (thread_id, AUTOMATION, "PENDING_REVIEW", (completed - 60) * 1000))
+    native.sql("state", "INSERT INTO threads VALUES(?,?,0,0,NULL,0,NULL,?)", (thread_id, "automation", completed * 1000))
+    native.sql("history", "INSERT INTO thread_turns VALUES(?,?,?,NULL,?,?,?,?)", (thread_id, "turn-one", "completed", completed - 60, completed, "user-one", "final-one"))
+    first = {"type": "userMessage", "id": "user-one", "content": [{"type": "text", "text": f"Automation: Example\nAutomation ID: {AUTOMATION}\n\nDo work."}]}
+    native.sql("history", "INSERT INTO thread_items VALUES(?,?,?,?,?)", (thread_id, "turn-one", "user-one", json.dumps(first), "userMessage"))
+    native.sql("history", "INSERT INTO thread_items VALUES(?,?,?,?,?)", (thread_id, "turn-one", "final-one", json.dumps(native.final), "agentMessage"))
+
+
+def test_continuous_five_minute_arrivals_do_not_strand_a_younger_chat(native):
+    # The first run initially has no one-hour-old completion; a new row arrives
+    # before every later wake, so an empty-query-only wrap would never revisit it.
+    native.sql("history", "UPDATE thread_turns SET started_at=?,completed_at=?", (NOW - 60, NOW))
+    native.sql("app", "UPDATE automation_runs SET created_at=?", ((NOW - 60) * 1000,))
+    calls = []
+    runner = archive_runner(native, calls)
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=runner)["archived"] == []
+    for wake in range(1, 13):
+        timestamp = NOW + wake * 300
+        add_completed_run(native, str(uuid.UUID(int=100 + wake)), timestamp)
+        result = cleanup.run_once(native.config, apply=True, now=timestamp, runner=runner)
+        assert result["archived"] == ([THREAD] if wake == 12 else [])
+    assert [command[-1] for command, _ in calls] == [THREAD]
+
+
+def test_attempt_cap_keeps_remaining_candidates_before_starting_next_cycle(native):
+    second = str(uuid.UUID(int=201))
+    third = str(uuid.UUID(int=202))
+    add_completed_run(native, second, NOW - 3599)
+    add_completed_run(native, third, NOW - 3598)
+    native.config["max_per_run"] = 1
+    calls = []
+    runner = archive_runner(native, calls)
+    state = Path(native.config["state_dir"]) / "state.json"
+    for expected in (THREAD, second, third):
+        result = cleanup.run_once(native.config, apply=True, now=NOW + 10, runner=runner)
+        assert result["archived"] == [expected]
+        cursor = json.loads(state.read_text())["cursor"]
+        assert cursor == (None if expected == third else {"created_at": (NOW - (3600 if expected == THREAD else 3599) - 60) * 1000, "thread_id": expected})
+    assert [command[-1] for command, _ in calls] == [THREAD, second, third]
+    assert cleanup.run_once(native.config, apply=True, now=NOW + 20, runner=never_run)["archived"] == []
+
+
+def test_full_scan_batch_retains_cursor_until_bounded_tail_is_consumed(native, monkeypatch):
+    monkeypatch.setattr(cleanup, "SCAN_LIMIT", 2)
+    native.sql("history", "UPDATE thread_turns SET started_at=?,completed_at=?", (NOW - 60, NOW))
+    native.sql("app", "UPDATE automation_runs SET created_at=?", ((NOW - 60) * 1000,))
+    second = str(uuid.UUID(int=301))
+    third = str(uuid.UUID(int=302))
+    add_completed_run(native, second, NOW + 1)
+    add_completed_run(native, third, NOW + 2)
+    first = cleanup.run_once(native.config, apply=True, now=NOW + 5, runner=never_run)
+    state = Path(native.config["state_dir"]) / "state.json"
+    assert first["considered"] == 2
+    assert json.loads(state.read_text())["cursor"]["thread_id"] == second
+    tail = cleanup.run_once(native.config, apply=True, now=NOW + 10, runner=never_run)
+    assert tail["considered"] == 1
+    assert json.loads(state.read_text())["cursor"] is None
+
+
+def test_archived_pending_review_prefix_cannot_consume_scan_limit(native):
+    # Native CLI archive need not update the desktop automation inbox status.
+    # More than a scan window of such old rows must not hide the current chat.
+    ids = [str(uuid.UUID(int=1000 + i)) for i in range(cleanup.SCAN_LIMIT + 1)]
+    with sqlite3.connect(native.paths["app"]) as db:
+        db.executemany("INSERT INTO automation_runs VALUES(?,?,?,?,NULL)",
+                       [(thread_id, AUTOMATION, "PENDING_REVIEW", (NOW - 10000 - i) * 1000) for i, thread_id in enumerate(ids)])
+    with sqlite3.connect(native.paths["state"]) as db:
+        db.executemany("INSERT INTO threads VALUES(?,?,0,0,NULL,1,?,?)",
+                       [(thread_id, "automation", NOW - 5000, (NOW - 5000) * 1000) for thread_id in ids])
+    calls = []
+    result = cleanup.run_once(native.config, apply=True, now=NOW, runner=archive_runner(native, calls))
+    assert result["considered"] == 1
+    assert result["archived"] == [THREAD]
+    assert [command[-1] for command, _ in calls] == [THREAD]
 
 
 def test_private_config_rejects_short_delay_and_unknown_fields(native, tmp_path):
