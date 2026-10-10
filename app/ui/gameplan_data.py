@@ -277,9 +277,12 @@ def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
     from ml.joint_capital_adoption import accepted_sessions, read_accepted_joint_plan
     joint_dates = accepted_sessions(root)
     current_local = _latest(root)
-    latest_joint = read_accepted_joint_plan(root, joint_dates[0]) if joint_dates else None
-    account_pointer = _account_pointer(root, accepted_joint=bool(latest_joint and (
-        not current_local or joint_dates[0] >= current_local["action_date"])))
+    if joint_dates:
+        read_accepted_joint_plan(root, joint_dates[0])
+    # Enumerating history does not select a plan for the active account. A
+    # missing current publication must not hide accepted historical sessions.
+    # Present but damaged account pointers still fail verification below.
+    account_pointer = _account_pointer(root, allow_missing=True)
     sessions = set(joint_dates)
     if account_pointer is not None:
         try:
@@ -586,16 +589,19 @@ def _account_hash(value: object) -> str:
     return value
 
 
-def _account_pointer(root: Path, *, accepted_joint: bool = False) -> dict | None:
+def _account_pointer(root: Path, *, accepted_joint: bool = False,
+                     allow_missing: bool = False, pending_session: str | None = None) -> dict | None:
     path = root / "ml/account-gameplan-latest/run.json"
     if not path.exists():
         from ml.account_gameplan.config import load_account_config
         try:
             config = load_account_config(root)
-            if config is not None and config.activation["status"] == "ACTIVE" and not accepted_joint:
-                raise GameplanError("The shared account Gameplan is not available yet.")
         except (OSError, ValueError, TypeError, KeyError) as exc:
             raise GameplanError(f"Could not verify the shared account configuration: {exc}") from exc
+        if config is not None and config.activation["status"] == "ACTIVE" and not (accepted_joint or allow_missing):
+            selected = f" for {pending_session}" if pending_session else ""
+            raise GameplanError(f"The shared account Gameplan is not available yet{selected}; awaiting the accepted combined plan. "
+                                "Choose a saved session to view history.")
         return None
     try:
         pointer = _json(path)
@@ -740,7 +746,8 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
             combined_date = requested or (combined_dates[0] if combined_dates else None)
             accepted = read_accepted_joint_plan(root, combined_date) if combined_date else None
             joint_selected = bool(accepted and (requested or not current or combined_date >= current["action_date"]))
-            account_pointer = _account_pointer(root, accepted_joint=joint_selected)
+            account_pointer = _account_pointer(root, accepted_joint=joint_selected,
+                pending_session=requested or (current["action_date"] if current else None))
             # A damaged account publication still fails closed. Once verified, its
             # old session cannot shadow a newer local or accepted joint publication.
             account = _load_account_view(root, account_pointer) if account_pointer is not None else None

@@ -8,6 +8,18 @@ from app.ui.gameplan_stats_data import GameplanStatsError, load_gameplan_stats, 
 from gameplan_stats_fixture import forecast, write_review
 
 
+def test_empty_preopen_coverage_is_preserved_without_hiding_prior_results(tmp_path):
+    write_review(tmp_path)
+    write_review(tmp_path, [], session="2026-09-14", coverage_status="NO_SAVED_INDEPENDENT_GAMEPLAN")
+    current = load_gameplan_stats(tmp_path)
+    assert current.session == "2026-09-14"
+    assert current.coverage_status == "NO_SAVED_INDEPENDENT_GAMEPLAN"
+    assert current.outcomes == () and current.metrics().total == 0
+    assert review_sessions(tmp_path) == ("2026-09-14", "2026-09-11")
+    historical = load_gameplan_stats(tmp_path, "2026-09-11")
+    assert historical.coverage_status is None and historical.metrics().total == 7
+
+
 def test_separate_direction_probability_and_incomplete_populations(tmp_path):
     write_review(tmp_path)
     review = load_gameplan_stats(tmp_path)

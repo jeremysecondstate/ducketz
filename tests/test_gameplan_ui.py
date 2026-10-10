@@ -217,6 +217,38 @@ def test_history_selection_stays_pinned_until_latest_plan_is_requested(tab, tmp_
     assert tab.plan.session == "2026-09-14"
 
 
+def test_pending_joint_keeps_history_selectable_without_showing_local_plan(tab, tmp_path, monkeypatch):
+    from test_account_gameplan_config import write_config
+    from test_nightly_gameplan_ui_coexistence import joint
+    write_config(tmp_path, status="ACTIVE")
+    accepted = joint(tmp_path, monkeypatch, "2026-10-09")
+    write_plan(tmp_path, session="2026-10-12")
+
+    tab.refresh()
+    finish_refresh(tab)
+    assert tab.plan is None and not tab.visible_rows
+    assert tab.session.get() == "2026-10-12"
+    assert "2026-10-09" in tab.date_box.cget("values")
+    assert "2026-10-12" in tab.status.get() and "awaiting the accepted combined plan" in tab.status.get()
+    assert "disabled" in tab.report_button.state()
+
+    tab.session.set("2026-10-09")
+    tab._date_changed()
+    finish_refresh(tab)
+    assert tab.plan.run_directory == accepted
+    assert tab.plan.session == "2026-10-09"
+    assert "disabled" not in tab.report_button.state()
+    tab.refresh()
+    finish_refresh(tab)
+    assert tab.plan.run_directory == accepted
+
+    tab.follow_latest()
+    finish_refresh(tab)
+    assert tab.plan is None and not tab.visible_rows
+    assert tab.session.get() == "2026-10-12"
+    assert "2026-10-09" in tab.date_box.cget("values")
+
+
 def test_stale_background_result_cannot_replace_newer_choice(tab, tmp_path):
     latest = tab.plan
     write_plan(tmp_path, session="2026-09-11", latest=False)
