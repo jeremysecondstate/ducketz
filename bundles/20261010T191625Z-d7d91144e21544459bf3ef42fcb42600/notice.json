@@ -1,0 +1,30 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261010T191357Z-6425ce8fcbc1411381a06559eeed882b",
+  "change_id": "20261010T191357Z-6425ce8fcbc1411381a06559eeed882b",
+  "files": [
+    "docs/development/atlas-scheduled-tasks.md"
+  ],
+  "limitations": [
+    "This is an October 10 saved-schedule and Windows readback; no production workflow was launched or task setting changed.",
+    "Jeremy supplied the weekend-pause reason and Monday reopening plan; actual resumption requires a fresh readback."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/blob/main/docs/development/atlas-scheduled-tasks.md",
+    "https://github.com/jeremysecondstate/atlas-scout/blob/main/system-details/atlas/scheduled-tasks.md"
+  ],
+  "main_sha": "aeb8e52a8b98aa447f0b722da5eacc5526d66b64",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Documentation only. No schedule, source runtime, worker, or trader control changes.",
+  "scope": "shared",
+  "source_sha": "1b720548548b35b69ddb5099228a41b995bf8d37",
+  "summary": "Atlas documented its current Ducketz scheduled tasks for the shared Codex-Ducketz reference",
+  "tests": [
+    {
+      "check": "Offline cross-PC task suite, 30 passed",
+      "completed_at_utc": "2026-10-10T19:15:07.570246Z",
+      "output_sha256": "aaf0315395c589517a0a715d2dc8e20bd987a58b161035e9114ed0ffebbbd0cb",
+      "started_at_utc": "2026-10-10T19:15:06.630812Z"
+    }
+  ]
+}

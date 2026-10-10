@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-10T19:16:25.147557Z",
+  "id": "20261010T191625Z-d7d91144e21544459bf3ef42fcb42600",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas documented its current Ducketz scheduled tasks for the shared Codex-Ducketz reference"
+}
