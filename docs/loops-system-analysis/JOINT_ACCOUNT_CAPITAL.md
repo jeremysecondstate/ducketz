@@ -1,5 +1,12 @@
 # Joint Gameplan preparation and one stock executor
 
+**October 11, 2026 section review:** retain the shared composition, exact source,
+one-account projection, ownership and execution-separation contracts below.
+Current inspected operation scores Stats before review/training; Scout synthesizes
+and Atlas verifies the frozen handoff. The historical phased integration/readiness
+instructions below are not a new installation claim or permission to migrate
+ledgers. See [Current system](CURRENT_SYSTEM.md) and [the review](RELEVANCE_REVIEW.md).
+
 ## Operating design
 
 The selected design uses two independent forecast producers and one stock
@@ -12,7 +19,11 @@ and ownership reconciliation.
 This source implements the offline forecast handoff and combined capital
 projection. It does not activate a trader, change a watchlist, move ownership,
 grant a peer authority, or install an execution binding. Runtime integration and
-the one-time ownership handoff are separate prerequisites for live adoption.
+local ownership readiness are separate prerequisites. Where a peer actually
+executed, preserve and reconcile that history before takeover. The current
+sole-executor first-use path supports an explicit `peer_history_expected=false`
+declaration; it does not invent a peer-history dependency or waive local account,
+source, reservation and operator checks.
 
 ## Why the combined projection is needed
 
@@ -133,8 +144,10 @@ Before live activation, require all of the following evidence:
    and a forecast-only role enforced on the other installation.
 2. Both selected packages match the same next-session date and their frozen
    universes; joint coverage is complete and the selected source policy agrees.
-3. The ownership handoff is reviewed and reconciled to current broker evidence,
-   including outstanding and uncertain submissions.
+3. Existing ownership is reviewed and reconciled to current broker evidence,
+   including outstanding and uncertain submissions. A peer handoff is required
+   when that peer executed; an explicitly verified sole-executor first-use path
+   preserves its no-peer-history declaration instead of manufacturing a ledger.
 4. Native preflight validates the same composite source that the executor will
    consume, and one combined batch applies account limits once.
 5. The human manually starts only the designated executor. Installation and

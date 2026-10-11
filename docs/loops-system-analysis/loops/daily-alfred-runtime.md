@@ -1,9 +1,8 @@
 # Daily ALFRED runtime
 
-> **Current deployment (2026-09-04):** the independent ALFRED supervisor is
-> stopped. Existing verified vintage artifacts remain available to the nightly
-> model stages, while Loop A obtains bounded current FRED context. Recurrence
-> details below are legacy capability.
+Reviewed on October 11, 2026 against the Atlas working checkout at `90704d21801f60426493bd6cc650a7fac38d4f61` plus separately inventoried working changes. Source contracts, historical observations and local schedules are different evidence. See [the relevance review](../RELEVANCE_REVIEW.md) for scope and limitations; Scout must establish its own installed state.
+
+ALFRED vintage identity, availability and readiness remain shared causal contracts. Current FRED collection does not refresh ALFRED vintages. The daily supervisor and UTC wake below are retained capability; source presence or a historical successful receipt does not establish current readiness, entitlement or a running refresh owner.
 
 ## Identity
 
@@ -11,9 +10,9 @@
 - Logical aliases or numbering: startup owner 3; FRED/ALFRED daily owner
 - Runtime entry point: `python -m datafetching.fred_alfred_runtime`
 - Owning package: `datafetching`
-- Classification: Independent production loop
-- Scheduling mechanism: run immediately, then schedule the next configured UTC-hour boundary; successful import at most once per UTC date
-- Cadence and phase: daily, production `--utc-hour 7`
+- Classification: retained independent supervisor capability and shared component contract
+- Retained supervisor scheduling mechanism: run immediately, then schedule the next configured UTC-hour boundary; successful import at most once per UTC date
+- Retained supervisor cadence and phase: daily, production `--utc-hour 7`
 - Lock or single-writer mechanism: `.ducketz-fred-alfred-import.lock` through stale-owner-aware exclusive lock
 - Primary code evidence: **Confirmed.** `datafetching/fred_alfred_runtime.py:47`, `datafetching/fred_alfred_runtime.py:127`, `datafetching/fred_alfred_runtime.py:150`, `datafetching/fred_alfred_runtime.py:156`
 
@@ -73,7 +72,7 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 - **Directional Loop B:** consumes only readiness-authorized vintage/context evidence for daily/weekly macros. `ml/rolling_materialization.py:740`
 - **Active Pricing:** live construction requires a strictly prior FRED/ALFRED rate observation; its rate loader reads ALFRED release context, and the owned worker uses the same causal FEDFUNDS evidence for residual materialization. Provider/FMP rate substitution is disabled live. `ml/option_pricing/causal.py:264`, `ml/option_pricing/causal.py:450`, `ml/option_pricing/rates.py:369`, `ml/option_pricing_loop_native_worker.py:54`
 
-### Timing and control relationships
+### Retained supervisor timing and control relationships
 
 **Confirmed:** the daily update is independent of quarter-hour phases. A future Loop B run may use the new readiness only if it was published no later than Loop B’s causal cutoff. `datafetching/fred_alfred_readiness.py:334`
 
@@ -131,11 +130,11 @@ hidden owners, even though its work was at most once per UTC date. The retained
 launcher/guardian command is unbuffered, uses an explicit working directory and
 redirected monitor-visible logs, and requires one launcher/worker pair whose
 worker owns `.ducketz-fred-alfred-import.lock`. Existing valid ownership is not
-duplicated. Current normal scheduling does not launch this supervisor.
+duplicated. The September 4 transition stopped this supervisor; that event does not establish a current registration on either PC.
 `docs/datafetch-ml/start_all_loops.ps1:18`,
 `ml/system_guardian.py:81`
 
-Hourly monitoring verifies process/lock/log state and the current daily
+The retained monitor implementation verifies process/lock/log state and the current daily
 pointer. Daily and weekly layers additionally verify full vintage/importer
 lineage, minimum coverage, and lookahead guards; a freshness failure is not
 silenced by a live process. `ml/system_monitor.py:164`
@@ -143,7 +142,7 @@ silenced by a live process. `ml/system_monitor.py:164`
 **Observed 2026-08-19 22:45:36 UTC:** exactly one ALFRED launcher/worker pair,
 its matching worker lock, active primary logs, and its current publication
 contract passed. The current checksum-valid daily receipt was
-`ml/fred-alfred-runtime/20260819T070003.938741Z/receipt.json`. The 22:59:29 UTC
+`<dated immutable run retained in the original report>`. The 22:59:29 UTC
 read-only follow-up verified the same daily authority. These timestamped facts
 do not guarantee the next provider update or future API entitlement.
 

@@ -1,9 +1,8 @@
 # Active Pricing / logical Loop 3
 
-> **Current deployment (2026-09-04):** the recurring Active Pricing supervisor
-> is stopped. Its verified artifacts and pricing components remain inputs to the
-> bounded overnight pipeline where compatible; recurrence details below are
-> retained legacy documentation.
+Reviewed on October 11, 2026 against the Atlas working checkout at `90704d21801f60426493bd6cc650a7fac38d4f61` plus separately inventoried working changes. Source contracts, historical observations and local schedules are different evidence. See [the relevance review](../RELEVANCE_REVIEW.md) for scope and limitations; Scout must establish its own installed state.
+
+Pricing retains the causal six-input valuation contract, baseline/residual distinction and verified readers. The former recurring supervisor schedule below is historical. Existing artifacts can still feed shared consumers when eligible; source presence does not establish a fresh residual model, accepted Pricing generation or currently running worker. Atlas stock-only preparation does not start this recurring supervisor.
 
 ## Identity
 
@@ -11,9 +10,9 @@
 - Logical aliases or numbering: logical Loop 3; startup owner 4
 - Runtime entry point: `python -m ml.option_pricing_runtime`
 - Owning package: `ml.option_pricing`
-- Classification: Independent production loop
-- Scheduling mechanism: recurring quarter-hour supervisor plus an asynchronously launched, one-shot local model worker
-- Cadence and phase: every 15 minutes at UTC phase +1 minute; the target is the calendar-owned eligible quarter-hour
+- Classification: retained independent supervisor capability and shared component contract
+- Retained supervisor scheduling mechanism: recurring quarter-hour supervisor plus an asynchronously launched, one-shot local model worker
+- Retained supervisor cadence and phase: every 15 minutes at UTC phase +1 minute; the target is the calendar-owned eligible quarter-hour
 - Lock or single-writer mechanism: `.ducketz-option-pricing-runtime.lock`; the owned worker separately uses `.ducketz-loop-native-bsgp-worker.lock`
 - Primary code evidence: **Confirmed.** `ml/option_pricing_runtime.py:1481`, `ml/option_pricing_runtime.py:1502`, `ml/option_pricing_runtime.py:1561`, `ml/option_pricing_runtime.py:1565`, `ml/option_pricing_loop_native_worker.py:36`
 
@@ -28,8 +27,10 @@
 **Startup/bootstrap boundary:** Pricing is a computation and publication owner,
 not a Databento history owner. On an empty datastore it waits for verified Loop
 A, rates, and option evidence. The included Standard-plan OPRA bootstrap and
-Options-owned continuation create that historical evidence; Pricing reads only
+Loop A-owned bounded history continuation create that historical evidence; Pricing reads only
 receipt-verified partitions and never initiates or expands a provider request.
+
+The completed-session Strategy branch can separately use a promoted OPRA execution-evidence model without claiming live BSGP authority; see [Strategy runtime](strategy-runtime.md#completed-session-opra-alternative).
 
 ## Inputs
 
@@ -86,11 +87,11 @@ receipt-verified partitions and never initiates or expands a provider request.
 
 - **Confirmed:** Options Capture waits for or records this target outcome as a sequencing proof, but can still commit causally clocked OPRA or capture pending Schwab evidence if it is absent. `datafetching/pricing_barrier.py:77`, `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:452`
 - **Confirmed:** Directional Loop B consumes compact verified `opx__` surface features. `ml/rolling_materialization.py:663`
-- **Confirmed:** Strategy's active catalog reads the target sidecar and verified history, maps ready residual rows to `BSGP` and complete fallback rows to `BLACK_SCHOLES`, then attaches exact leg values before scoring; unavailable coverage retains only separately typed Scenario Coverage. `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py`
+- **Confirmed:** Strategy's active catalog reads the target sidecar and verified history, maps ready residual rows to `BSGP` and complete fallback rows to `BLACK_SCHOLES`, then attaches exact leg values before scoring; unavailable coverage retains separately typed Scenario Coverage unless Strategy independently qualifies its completed-session OPRA execution-model alternative. `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py`
 
-### Timing and control relationships
+### Retained supervisor timing and control relationships
 
-**Confirmed:** intended order is Loop A +00:20, Pricing +1 minute, B +5, Options +6, Strategy +10. Pricing waits only for Loop A; its separate target outcome gives Options causal barrier credit. The worker and research tail are deliberately off the target-authority critical path. `docs/datafetch-ml/current_start_command:50`, `docs/datafetch-ml/current_start_command:94`, `ml/option_pricing_runtime.py:360`, `ml/option_pricing_loop_native_worker.py:141`
+**Historical supervisor phasing:** intended order was Loop A +00:20, Pricing +1 minute, B +5, Options +6, Strategy +10. Pricing waits only for Loop A; its separate target outcome gives Options causal barrier credit. The worker and research tail are deliberately off the target-authority critical path. `docs/datafetch-ml/current_start_command:50`, `docs/datafetch-ml/current_start_command:94`, `ml/option_pricing_runtime.py:360`, `ml/option_pricing_loop_native_worker.py:141`
 
 ## Prediction contribution
 

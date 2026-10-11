@@ -2,9 +2,10 @@
 
 The operator approved this future-session change on September 30, 2026, with a
 50% shared daily ceiling and execution beginning with a newly prepared October
-1 or later Gameplan. Today's running worker and September 30 publications keep
-their existing behavior. The schedule remains 21:05 Pacific, with the usual
-next-session 04:00 preparation deadline and 04:01 first entry.
+1 or later Gameplan. The September 30 running worker and publications retained their existing
+behavior at that event. The then-described 21:05 schedule is historical.
+[Current system](CURRENT_SYSTEM.md) separates today's task observations from this
+shared versioned policy; it does not expand the approved cap or deploy a worker.
 
 ## Ownership and precedence
 
@@ -97,7 +98,7 @@ from one favorable or unfavorable session.
 The read-only session observation command is:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ml.stock_trader.fallback_review --datastore-root C:\DATASTORE --action-date YYYY-MM-DD --output-dir C:\dev\ducketz\artifacts\analysis\fallback-session-reviews\YYYYMMDDTHHMMSSZ
+.\.venv\Scripts\python.exe -m ml.stock_trader.fallback_review --datastore-root <datastore> --action-date YYYY-MM-DD --output-dir <checkout>\artifacts\analysis\fallback-session-reviews\YYYYMMDDTHHMMSSZ
 ```
 
 Use a fresh output directory for each observation; existing outputs are never

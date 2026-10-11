@@ -1,13 +1,8 @@
 # Options Strategy paper-trading automation
 
-> **Current deployment (2026-09-04):**
-> `loops-options-strategy-paper-tracking` is paused to avoid overlapping the
-> single overnight gameplan/evaluation owner. This file is a retained legacy
-> contract and does not authorize a scheduled run.
+**October 11, 2026 review:** retain the shared implemented contract below. The historical scheduler windows do not establish a current owner on either PC. Atlas native readback found the legacy overnight and weekly-review tasks paused and the split Stats-first preparation owners active. These stock workflows do not replace named Loop C or authorize it. See [the relevance review](RELEVANCE_REVIEW.md).
 
-This file is the durable contract for the `loops-options-strategy-paper-tracking`
-standalone task in Codex Scheduled. Each wake starts in a fresh task and must
-read this file completely before running the one bounded tracking command.
+This retained paper-ledger contract is still useful for exact Strategy selection, lifecycle and attribution. Its former standalone schedule and Saturday consumer are historical; a paused task does not retire `ml.loop_c.paper_ledger`. The module is separate from the stock Gameplan evaluator and does not itself select candidates or create broker orders.
 
 ## Purpose and attribution
 
@@ -38,7 +33,7 @@ Those component routes are not independently paper-traded by Loop C.
 
 ## Selection and immutable entry
 
-Loop C owns systematic selection during eligible open-session hourly wakes. It
+A separately authorized Loop C observer owns systematic selection during eligible open-session invocations; the CLI has no internal hourly scheduler. It
 may select only a receipt-verified candidate from the exact current Strategy
 publication after the approved deterministic probability, sequence support,
 expected-return, uncertainty, risk, portfolio, broker-reconciliation, and halt
@@ -76,13 +71,13 @@ direct operator approval, an earlier exit buffer, assignment/exercise handling,
 buying-power controls, and broker reconciliation. This task cannot provide any
 of those authorities.
 
-## Daily schedule and command
+## Historical daily schedule and retained command
 
-Run at 00:17 America/Los_Angeles on Tuesday through Saturday. This follows the
+The former standalone task was scheduled at 00:17 America/Los_Angeles on Tuesday through Saturday. This follows the
 prior market day's 23:42 `evaluate-strategy-outcomes` stage and gives Friday's
 outcomes a final Saturday snapshot before the 09:00 weekly review.
 
-From `C:\dev\ducketz`, run exactly once:
+For a separately authorized paper-ledger invocation, the retained command is:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.loop_c.paper_ledger `
@@ -97,8 +92,8 @@ receipt-verified Loop C, Strategy, and Strategy-outcome artifacts. It does not
 contact Schwab or any other broker.
 
 The command publishes an immutable run under
-`C:\DATASTORE\ml\loop-c-paper-ledger-runs` and advances the checksum-bound
-pointer at `C:\DATASTORE\ml\loop-c-paper-ledger-latest\run.json`. Each ledger
+`<datastore>\ml\loop-c-paper-ledger-runs` and advances the checksum-bound
+pointer at `<datastore>\ml\loop-c-paper-ledger-latest\run.json`. Each ledger
 records open targets, mature receipt-matched outcomes, evidence still pending,
 counterfactual net P/L after the Strategy evaluator's fees and spread policy,
 counts by horizon/symbol/strategy family, independent decision clusters, open
@@ -110,10 +105,11 @@ error and any existing pointer, make no broker/model/risk/authority change, and
 report the first invalid or missing receipt. Never rewrite or repair a pointer
 by hand.
 
-## Saturday consumption
+## Historical Saturday consumption and current attribution contract
 
-The Saturday `loop-c-weekly-operator-review` task runs this tracker once before
-the weekly review. The weekly report then includes the current ledger summary
+The former Saturday Loop C operator-review task ran this tracker before
+its weekly review. The current Gameplan weekly-review contract is a different
+workflow and does not imply a current Loop C consumer. The weekly report then includes the current ledger summary
 while independently rebuilding the week's Loop C counterfactuals from exact
 source receipts. A daily ledger is continuity and observability evidence, not a
 substitute for the weekly receipt verification.
