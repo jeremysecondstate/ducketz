@@ -1,5 +1,37 @@
 # Loop A
 
+## Atlas current-state revision: October 11, 2026
+
+Atlas's verified native DATASTORE CATCH-UP schedule is **Monday-Friday 21:05
+America/Los_Angeles**. It supervises one dated workflow; the separate Windows
+dispatcher also advances eligible work from completed prerequisite receipts.
+The prior daily monolithic schedule below is historical. See the
+[Atlas alignment report](../../development/atlas-loop-schedule-alignment-2026-10-11.md)
+for current checkpoints, after-midnight continuity, source scope and evidence.
+
+Loop A's core cycle is narrower than the datastore responsibility. In the
+installed source, `datafetching.orchestrate` acquires the datastore-cycle lock,
+fetches provider data and builds calculated features, then publishes the current
+`COMPLETE` or `FAILED` core generation. OPRA maintenance and its catalog refresh
+follow that boundary; Atlas's configured archive path then adds the separate
+`stock_target_history` stage. A successful core generation alone does not prove
+the whole catch-up responsibility completed. Stats and model review follow
+catch-up as separate responsibilities, before directional Loop B.
+
+The OPRA attempt gate uses UTC date/hour and in-process attempt memory. Its
+00:00 UTC threshold is 17:00 PDT or 16:00 PST; it is neither a DST-aware 17:00
+Pacific scheduler nor a durable global once-per-day receipt. Pacific kickoff
+and exchange-session selection belong to the outer workflow. Friday preparation
+targets the next exchange session, normally Monday, with its original 04:00
+Pacific deadline and completed receipts preserved.
+
+This October 11 publication replaces historical machine paths, symbol names
+and private receipt/generation/PID identifiers with portable descriptions. The
+original private evidence is retained locally; observation dates, counts,
+behavior and conclusions remain.
+
+## Preserved deployment and capability reference
+
 > **Current deployment (2026-09-08):** Loop A is a bounded first stage of
 > `ml.overnight_runtime`, scheduled daily at 21:05 America/Los_Angeles, with
 > native weekend/holiday no-ops and required provider coverage checks.
@@ -26,14 +58,14 @@
 **Startup/bootstrap boundary:** Loop A's operational equity dataset is
 `EQUS.MINI`, whose Historical endpoint is current during the session and whose
 Live endpoint is entitled. Each native schema overlaps from its own latest
-stored operational timestamp under `C:\DATASTORE\stocks`. The separate
+stored operational timestamp under `<datastore>/stocks`. The separate
 eight-year `XNAS.ITCH` tree under
-`C:\DATASTORE\market-data\databento\us-equities` remains cold provider
+`<datastore>/market-data/databento/us-equities` remains cold provider
 provenance. `materialize_equity_archive_baseline` is used only when archive and
 operational dataset identities match; otherwise the recurring path explicitly
 skips that bridge instead of timestamp-merging venue-specific XNAS rows with
 consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
-`C:\DATASTORE\catalog\migrations`. `datafetching/databento_archive.py:213`,
+`<datastore>/catalog/migrations`. `datafetching/databento_archive.py:213`,
 `datafetching/databento_fetch.py:544`,
 `datafetching/equity_dataset_migration.py`
 
@@ -173,21 +205,19 @@ command drift alone does not authorize a second owner or an improvised restart.
 
 **Observed 2026-08-19 22:45:36 UTC:** one Loop A pair, its live worker lock,
 primary logs, and exact six-symbol readiness for target
-`2026-08-19T20:00:00Z` passed. The checksum-valid receipt is
-`loop-a/bar-readiness/1787169600000000000/receipt.json`. The monitor correctly
-reported an active later `WRITING` generation while retaining
-`20260819T223020.010102Z-pid5516` as `last_complete_generation`; that generation
+`2026-08-19T20:00:00Z` passed. The retained exact-target readiness receipt passed checksum verification.
+The monitor correctly reported an active later `WRITING` generation while retaining
+the preceding verified generation as `last_complete_generation`; that generation
 finished at 22:35:52 UTC with zero failures and all six symbols. Active cycle
 state is liveness evidence, not permission to substitute it for completed
 authority.
 
-The observed raw one-minute files for AAPL, AMZN, GOOG, MU, NVDA, and SNDK each
+The observed raw one-minute files for the six configured symbols each
 contained only `provider_dataset=EQUS.MINI` and
 `source_schema=ohlcv-1m`. Schwab remained quote/chain/broker evidence, not
 canonical operational OHLCV, and the cold `XNAS.ITCH` archive remained
 separate. At 22:59:29 UTC the read-only monitor had verified a newer complete
-Loop A generation, `20260819T224520.001083Z-pid5516`, with the same zero-failure
-contract.
+Loop A generation with the same zero-failure contract.
 
 
 ## Evidence index
