@@ -1,0 +1,36 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261011T201255Z-b09472a95dd34c6c89ecbc5c73295cfa",
+  "change_id": "20261011T201255Z-b09472a95dd34c6c89ecbc5c73295cfa",
+  "files": [
+    "docs/development/atlas-scheduled-tasks.md",
+    "docs/loops-system-analysis/loops/loop-a.md",
+    "docs/loops-system-analysis/loops/directional-loop-b.md",
+    "docs/development/atlas-loop-schedule-alignment-2026-10-11.md",
+    "tests/check_markdown_documents.py"
+  ],
+  "limitations": [
+    "Future native DST execution and production completion were not tested.",
+    "Cleanup exact-five-minute eligibility and companion allowlist gaps remain; no archival policy was broadened.",
+    "Documentation PRs are published; main integration, peer review and runtime deployment are separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/63",
+    "https://github.com/jeremysecondstate/atlas-scout/pull/16",
+    "https://github.com/jeremysecondstate/atlas-scout/blob/6af1eadd7dfa81daad445a6722c0c4ee967d7c78/system-details/atlas/loop-schedule-alignment-2026-10-11.md"
+  ],
+  "main_sha": "4826eed87b2e283724e2a02f761e4561727a7248",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Documentation only; no provider, broker, training, prediction, synthesis, cleanup, restart, deployment or trader operation.",
+  "scope": "shared",
+  "source_sha": "8d436828c8a273f70ea91ad951d0d09f66268986",
+  "summary": "Atlas independently verified installed weekday and overnight schedules, reconciled Loop A/B responsibility documentation, and recorded the cleanup eligibility gap. Native settings already matched and were preserved.",
+  "tests": [
+    {
+      "check": "Offline Markdown hygiene for all four reviewed documents",
+      "completed_at_utc": "2026-10-11T20:13:18.759614Z",
+      "output_sha256": "d429a918497232af6838c3698a1fc80901eb4a5e14a2d4bc065ff106ad92bcea",
+      "started_at_utc": "2026-10-11T20:13:18.314076Z"
+    }
+  ]
+}

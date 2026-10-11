@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-11T20:15:12.953637Z",
+  "id": "20261011T201512Z-2ba2d28cf0444ddc837ab3bd7edc096d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independently verified installed weekday and overnight schedules, reconciled Loop A/B responsibility documentation, and recorded the cleanup eligibility gap. Native settings already matched and were preserved."
+}
