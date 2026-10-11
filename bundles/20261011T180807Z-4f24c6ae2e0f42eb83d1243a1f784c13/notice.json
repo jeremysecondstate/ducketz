@@ -1,0 +1,218 @@
+{
+  "archive": "Redundant mind map replaced by tracked redirect; immutable Git blob plus ARCHIVE_RECOVERY.json reconstructs exact originals without private scratch access.",
+  "audit_id": "20261011T175003Z-atlas-doc-review-52f43236",
+  "author": "Atlas",
+  "branch": "codex/atlas/20261011T180611Z-12acae0712464d548cb4bff34982f301",
+  "change_id": "20261011T180611Z-12acae0712464d548cb4bff34982f301",
+  "commit_sha": "2c3daae113aa2482d7bfb0383ffc964955624926",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/ARCHIVE_RECOVERY.json"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/CURRENT_SYSTEM.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/DATASTORE_HYGIENE.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/HOURLY_AUTOMATION.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/HOURLY_TRADER_LOOP_C_HANDOFF_PROMPT.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/LOOPS_SYSTEM_MIND_MAP.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/LOOP_C_RISK_CALCULUS.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/LOOP_C_ROLLOUT_PLAN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/LOOP_INVENTORY.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/LOOP_MAP.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/LOOP_RELATIONSHIPS.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/MONITORING.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/OPRA_HISTORY_MAINTENANCE_AUTOMATION.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/OPTIONS_STRATEGY_ML_UPGRADE.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/OPTIONS_STRATEGY_PAPER_AUTOMATION.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/POOLED_SEQUENCE_LOOP_C.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/PREDICTION_CONTRIBUTION_MATRIX.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/README.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/RELEVANCE_REVIEW.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/RESEARCH_SYMBOL_ONBOARDING.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/STOCK_TRADER_AUTOMATION.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/STOCK_TRADER_RUNTIME.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/SYMBOL_ONBOARDING.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/SYSTEM_FUNCTIONALITY.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/WEEKLY_REVIEW_AUTOMATION.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/active-pricing-loop-3.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/cme-l2-runtime.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/daily-alfred-runtime.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/directional-loop-b.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/loop-a.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/options-capture-loop-4.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/loops-system-analysis/loops/strategy-runtime.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/check_loops_documentation.py"
+    }
+  ],
+  "limitations": [
+    "Documentation checks only; no application tests, providers, brokers, training, workflow replay or runtime deployment.",
+    "Atlas observations do not establish Scout installation; peer evidence retains original dates and revisions.",
+    "Historical detailed independent UI review is unavailable; retained addendum accounts for current reader dependencies.",
+    "Several inspected application sources are working-tree additions absent from the publication base; exact evidence is privately retained and published revisions are cited."
+  ],
+  "local_adoption": "Atlas documentation-only exact bytes applied; operating source and controls unchanged",
+  "peer_applicability": "Reuse the complete disposition trail and recover original blobs; independently verify Scout schedules, installed source and outcomes. No prior published relevance pass was found in bounded searches.",
+  "publication": "own branch pushed and remote SHA verified; draft PR62; main not integrated",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/62",
+  "remote_sha": "2c3daae113aa2482d7bfb0383ffc964955624926",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No application, schedule, binding, control or worker changes. Shared documentation applies to both PCs with machine-specific observations labeled. Main integration and peer adoption are separate.",
+  "scope": "shared",
+  "summary": "Atlas completed the Loops documentation relevance audit, refreshed shared guides and preserved recoverable historical material.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-11T18:06:40.027237Z",
+      "name": "offline documentation, link/anchor and archive reconstruction",
+      "output_sha256": "b342b2def3bf91ffaa3721389c568dad80165675726f58ff92d10c4015a6155f",
+      "result": "PASS: 35 refreshed Markdown files; 222 local links/anchors; 40 original dispositions; exact archive reconstruction"
+    }
+  ]
+}

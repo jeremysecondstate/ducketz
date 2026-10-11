@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-11T18:08:07.392907Z",
+  "id": "20261011T180807Z-4f24c6ae2e0f42eb83d1243a1f784c13",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed the Loops documentation relevance audit, refreshed shared guides and preserved recoverable historical material."
+}
