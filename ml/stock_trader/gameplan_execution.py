@@ -22,6 +22,9 @@ class GameplanDeploymentUnavailable(ValueError):
 def _assert_execution_deployment(root, publication, *, action_date):
     from ml.gameplan_deployment import assert_execution_gameplan
     try:
+        from ml.joint_capital_adoption import assert_accepted_execution
+        if assert_accepted_execution(root, getattr(publication, "run_directory", publication), action_date=action_date):
+            return
         assert_execution_gameplan(root, publication, action_date=action_date)
     except (OSError, ValueError, RuntimeError) as exc:
         raise GameplanDeploymentUnavailable(str(exc)) from exc
@@ -29,6 +32,15 @@ def _assert_execution_deployment(root, publication, *, action_date):
 
 def execution_frame(root: Path, *, action_date: str):
     root = Path(root).resolve()
+    from ml.joint_capital_adoption import read_accepted_joint_plan
+    combined = read_accepted_joint_plan(root, action_date)
+    if combined:
+        plan, _, run = combined
+        _assert_execution_deployment(root, run, action_date=action_date)
+        frame = pd.DataFrame(plan["forecasts"])
+        for name in ("target_window_start", "target_window_end"):
+            frame[name] = pd.to_datetime(frame[name], utc=True, errors="raise")
+        return frame.loc[frame.execution_eligible.eq(True)].copy(), run
     pointer = json.loads((root / "ml/nightly-gameplan-latest/run.json").read_text(encoding="utf-8"))
     run = (root / pointer["current"]["run_path"]).resolve()
     if run.parent != (root / "ml/nightly-gameplan-runs").resolve():
@@ -98,7 +110,19 @@ def _validated_instructions(frame):
 def load_execution_signals(root: Path, *, as_of):
     now = utc(as_of)
     local = now.tz_convert("America/Los_Angeles")
+    from ml.joint_capital_adoption import read_accepted_joint_plan
+    selected = read_accepted_joint_plan(root, local.date().isoformat())
+    if selected:
+        plan, _, run = selected
+        _assert_execution_deployment(root, run, action_date=local.date().isoformat())
+        from ml.stock_trader.catchup import catchup_signals
+        return catchup_signals(plan, as_of=now, source_fingerprint=run.name), (run / "accepted-plan.json", run / "joint-plan.json")
     frame, run = execution_frame(root, action_date=local.date().isoformat())
+    from ml.stock_trader.catchup import catchup_signals, native_catchup_plan
+    native = native_catchup_plan(root, action_date=local.date().isoformat(), source_run=run)
+    if native:
+        plan, _, sources = native
+        return catchup_signals(plan, as_of=now, source_fingerprint=run.name), sources
     start = local.floor("h").tz_convert("UTC")
     if not 4 <= local.hour < 17:
         return {}, ()

@@ -152,6 +152,7 @@ def run_nightly_gameplan_once(
     stock_price_source: str = CANONICAL_STOCK_PRICE_SOURCE,
     probability_target_contract: str | None = None,
     archive_history: bool = False,
+    model_feedback: Path | None = None,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -174,6 +175,13 @@ def run_nightly_gameplan_once(
     probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
+    feedback = None
+    if model_feedback is not None:
+        if not independent_stock_horizons:
+            raise ValueError("Model feedback requires independent stock horizons")
+        from ml.gameplan_model_feedback import load_feedback_review
+        feedback = load_feedback_review(root, model_feedback, as_of=created,
+                                        probability_target=probability_target)
     loop_b = read_current_publication(root)
     strategy = None if stock_only else read_current_strategy_publication(root)
     samples_path = loop_b.run_directory / "samples.parquet"
@@ -348,7 +356,25 @@ def run_nightly_gameplan_once(
     model_output_names: list[str] = []
     training_cohort_names: list[str] = []
     champion_input_files: list[Path] = []
+    feedback_results: dict[str, object] = {}
+    feedback_context = None if feedback is None else {
+        "review_sha256": feedback["checksum_sha256"], "stats": feedback["stats"],
+        "loop_b_manifest_sha256": file_checksum(loop_b.run_directory / "manifest.json"),
+        "samples_sha256": file_checksum(samples_path),
+    }
     for group in MODEL_GROUPS:
+        champion = None
+        incumbent_specification = None
+        if feedback is not None:
+            from ml.gameplan_champions import latest_promoted_champion, retain_champion
+            champion = latest_promoted_champion(root, group=group, action_date=action_date,
+                symbols=symbols, price_source=stock_price_source, before=created,
+                source_selection_contract=selection_version, probability_target=probability_target,
+                allow_prior_sessions=True)
+            if champion is not None:
+                accepted_feedback = champion["report"].get("model_feedback") or {}
+                incumbent_specification = accepted_feedback.get("selected_specification", accepted_feedback.get("selected_candidate"))
+                champion_input_files.extend(champion["files"])
         if independent_stock_horizons:
             cohort_name = f"training-cohort-{group}.parquet"
             groups[group].to_parquet(run / cohort_name, index=False)
@@ -360,18 +386,31 @@ def run_nightly_gameplan_once(
             group=group,
             model_directory=run / "models" / group,
             trained_at=created,
+            **({"feedback_candidates": feedback["proposal"]["groups"][group]["candidates"],
+                "feedback_context": feedback_context,
+                "incumbent_specification": incumbent_specification} if feedback is not None else {}),
         )
+        challenger_feedback = trained["report"].get("model_feedback")
         if independent_stock_horizons and trained["report"]["promotion_gate"]["status"] != "PROMOTED":
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
-            champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                symbols=symbols, price_source=stock_price_source, before=created,
-                source_selection_contract=selection_version,
-                probability_target=probability_target)
+            if feedback is None:
+                champion = latest_promoted_champion(root, group=group, action_date=action_date,
+                    symbols=symbols, price_source=stock_price_source, before=created,
+                    source_selection_contract=selection_version, probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
                     current=current[group], run=run, group=group, frozen_at=created)
                 model_output_names.extend(retained_outputs)
                 champion_input_files.extend(champion["files"])
+        if feedback is not None:
+            feedback_results[group] = {
+                "review": feedback["proposal"]["groups"][group],
+                "candidate_evaluation": challenger_feedback,
+                "accepted_family": trained["report"]["selected_family"],
+                "accepted_model": trained["report"]["model_file"],
+                "promotion_status": trained["report"]["promotion_gate"]["status"],
+                "deployment": trained["report"].get("deployment"),
+            }
         forecast_frames.append(trained["forecasts"])
         model_reports[group] = trained["report"]
         model_output_names.append(
@@ -520,7 +559,25 @@ def run_nightly_gameplan_once(
         *model_output_names,
         *training_cohort_names,
         *archive_outputs,
+        *(("model-feedback-results.json",) if feedback is not None else ()),
     )
+    feedback_inputs = ()
+    if feedback is not None:
+        # Reject mutation or a newer Stats publication after a long fit. A new
+        # review is needed, rather than attributing these models to changed bytes.
+        verified_feedback = load_feedback_review(root, model_feedback, probability_target=probability_target)
+        if verified_feedback["checksum_sha256"] != feedback["checksum_sha256"]:
+            raise RuntimeError("Model review changed during training")
+        if (file_checksum(samples_path) != feedback_context["samples_sha256"]
+                or file_checksum(loop_b.run_directory / "manifest.json") != feedback_context["loop_b_manifest_sha256"]):
+            raise RuntimeError("Reviewed training inputs changed during fitting")
+        stats_run = root / feedback["stats"]["run_path"]
+        feedback_inputs = (Path(model_feedback), Path(model_feedback).parent / "diagnostics.json",
+                           *(stats_run / name for name in ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")))
+        _write_json_atomic(run / "model-feedback-results.json", {
+            "schema_version": "nightly-gameplan-model-feedback-results-v1", "input_binding": feedback_context,
+            "groups": feedback_results, "assessment_used_for_candidate_selection": False,
+            "orders_placed": 0, "broker_orders_enabled": False})
     write_manifest(
         run,
         run_timestamp=created,
@@ -534,6 +591,7 @@ def run_nightly_gameplan_once(
             *minute_bar_files,
             *archive_files,
             *champion_input_files,
+            *feedback_inputs,
             evaluation.run_directory / "receipt.json",
             evaluation.run_directory / "evaluations.parquet",
         ),
@@ -1245,6 +1303,9 @@ def _fit_group_model(
     group: str,
     model_directory: Path,
     trained_at: pd.Timestamp,
+    feedback_candidates: list[dict] | None = None,
+    feedback_context: Mapping[str, object] | None = None,
+    incumbent_specification: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     selection_contract = source_selection_contract(current)
     if source_selection_contract(samples) != selection_contract:
@@ -1314,6 +1375,25 @@ def _fit_group_model(
                               label=f"gameplan/{group}/logistic-c{regularization_c:g}-selection")
             candidates.append((name, None, logistic.predict_proba(selection_matrix)[:, 1]))
             logistic_candidates[name] = regularization_c
+    feedback_specs = {}
+    accepted_specs = {}
+    if incumbent_specification is not None:
+        from ml.gameplan_model_feedback import validate_candidates
+        specification = validate_candidates([incumbent_specification])[0]
+        name = f"accepted-{specification['family']}"
+        incumbent = _feedback_estimator(specification, admitted, categorical)
+        fit_with_progress(incumbent, train_matrix, target_train, label=f"gameplan/{group}/{name}-selection")
+        candidates.append((name, None, incumbent.predict_proba(selection_matrix)[:, 1]))
+        accepted_specs[name] = specification
+    if feedback_candidates is not None:
+        from ml.gameplan_model_feedback import validate_candidates
+        for index, specification in enumerate(validate_candidates(feedback_candidates), 1):
+            name = f"feedback-{specification['family']}-{index}"
+            challenger = _feedback_estimator(specification, admitted, categorical)
+            fit_with_progress(challenger, train_matrix, target_train,
+                              label=f"gameplan/{group}/{name}-selection")
+            candidates.append((name, None, challenger.predict_proba(selection_matrix)[:, 1]))
+            feedback_specs[name] = specification
     shrinkage = {name: (name, 1.0) for name, _, _ in candidates}
     shrinkage_policy = (WEEKLY_PROBABILITY_SHRINKAGE_POLICY
                         if independent_selection and group == "1w" and probability_target == RAW_DIRECTION_TARGET else None)
@@ -1333,7 +1413,9 @@ def _fit_group_model(
     }
     selected_name, selected_weight, _ = min(
         candidates,
-        key=lambda candidate: (selection_metrics[candidate[0]]["log_loss"], shrinkage[candidate[0]][1] != 1.0),
+        key=lambda candidate: (selection_metrics[candidate[0]]["log_loss"],
+                               shrinkage[candidate[0]][0] in feedback_specs,
+                               shrinkage[candidate[0]][1] != 1.0),
     )
     selected_base_name, selected_shrinkage_weight = shrinkage[selected_name]
 
@@ -1354,7 +1436,11 @@ def _fit_group_model(
         if selected_logistic_c is not None and selected_logistic_c != 1.0:
             final_logistic.set_params(classifier__C=selected_logistic_c)
         fit_with_progress(final_logistic, fit_matrix, fit_target, label=f"gameplan/{group}/logistic-final")
-    if selected_base_name in logistic_candidates:
+    selected_specification = {**accepted_specs, **feedback_specs}.get(selected_base_name)
+    if selected_specification is not None:
+        estimator = _feedback_estimator(selected_specification, admitted, categorical)
+        fit_with_progress(estimator, fit_matrix, fit_target, label=f"gameplan/{group}/{selected_base_name}-final")
+    elif selected_base_name in logistic_candidates:
         estimator: object = final_logistic
     elif selected_weight <= 0.0:
         estimator = final_tree
@@ -1428,6 +1514,23 @@ def _fit_group_model(
         int(partitions["assessment"]["decision_timestamp"].nunique()),
         policy_version=DIRECTIONAL_PROMOTION_POLICY if independent_selection else STRICT_PROMOTION_POLICY)
     gate_checks = gate["checks"]
+    feedback_report = None
+    if feedback_candidates is not None:
+        default_metrics = {name: metrics for name, metrics in selection_metrics.items()
+                           if shrinkage[name][0] not in feedback_specs}
+        feedback_report = {
+            "input_binding": dict(feedback_context or {}), "candidates": feedback_specs,
+            "candidate_selection_metrics": {name: metrics for name, metrics in selection_metrics.items()
+                                            if shrinkage[name][0] in feedback_specs},
+            "best_default_selection_log_loss": min(value["log_loss"] for value in default_metrics.values()),
+            "selected_family": selected_name,
+            "selected_candidate": feedback_specs.get(selected_base_name),
+            "selected_specification": selected_specification,
+            "accepted_specification_baseline": incumbent_specification,
+            "candidate_improved_development": selected_base_name in feedback_specs,
+            "assessment_used_for_selection": False,
+            "promotion_status": gate["status"],
+        }
     if not all(gate_checks.values()):
         print(json.dumps({
             "training_event": "FIT_WARNING", "fit": f"gameplan/{group}/assessment",
@@ -1466,6 +1569,7 @@ def _fit_group_model(
             "selected_logistic_regularization_c": logistic_candidates.get(selected_base_name),
             **shrinkage_metadata,
             "selection_metrics": selection_metrics,
+            **({"model_feedback": feedback_report} if feedback_report is not None else {}),
             "directional_promotion_policy": gate["policy_version"],
             "logistic_regularization_policy": logistic_regularization_policy(group, probability_target=probability_target) if independent_selection else None,
             "development_selection_policy": development_selection_policy(probability_target) if independent_selection else None,
@@ -1557,6 +1661,7 @@ def _fit_group_model(
         "target_calendar_feature_names": list(STOCK_CALENDAR_FEATURE_NAMES) if independent_selection else [],
         "calibration_selection": calibration_selection,
         "selection_metrics": selection_metrics,
+        **({"model_feedback": feedback_report} if feedback_report is not None else {}),
         "calibration_method": getattr(calibrator, "method", "none"),
         "calibration_diagnostics": calibration_diagnostics,
         "target_boundary_quality": target_quality,
@@ -1711,6 +1816,13 @@ def _chronological_partitions(
             )
         partitions[name] = partition.reset_index(drop=True)
     return partitions
+
+
+def _feedback_estimator(specification, numeric, categorical):
+    estimator = _estimator(specification["family"], numeric, categorical)
+    parameters = {f"classifier__{key}": tuple(value) if key == "hidden_layer_sizes" else value
+                  for key, value in specification["parameters"].items()}
+    return estimator.set_params(**parameters)
 
 
 def _estimator(
@@ -2573,6 +2685,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="pc",
     )
     parser.add_argument("--once", action="store_true", help="Compatibility flag")
+    parser.add_argument("--model-feedback", type=Path,
+                        help="Completed Stats-bound model review; adds bounded candidates to chronological selection")
     parser.add_argument("--archive-history", action="store_true",
                         help="Use verified historical XNAS feature rows; preserves price and model quality gates")
     parser.add_argument(
@@ -2599,6 +2713,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                       independent_stock_horizons=args.independent_stock_horizons,
                                       stock_price_source=args.stock_price_source,
                                       archive_history=args.archive_history,
+                                      model_feedback=args.model_feedback,
                                       probability_target_contract=args.probability_target_contract)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")

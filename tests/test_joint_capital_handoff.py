@@ -130,8 +130,7 @@ def test_export_retains_frozen_forecasts_and_excludes_account_model_and_raw_samp
     assert package["source_hashes"]["forecasts_sha256"] == digest(saved.game / "forecasts.parquet")
     assert {p: p.read_bytes() for p in before} == before
     assert not (saved.root / "ml/nightly-gameplan-latest").exists()
-    with pytest.raises(FileExistsError):
-        export(saved)
+    assert export(saved) == path
 
 
 @pytest.mark.parametrize("name", ["manifest.json", "receipt.json", "forecasts.parquet"])

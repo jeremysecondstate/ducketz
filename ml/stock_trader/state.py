@@ -39,10 +39,13 @@ def capture_portfolio_state(
     parallel: bool = True,
     literal_cash_only: bool = False,
     use_actual_quote_timestamps: bool = False,
+    symbols: tuple[str, ...] = STOCK_TRADER_SYMBOLS,
 ) -> PortfolioState:
     """Capture one coherent pre-decision input set without serial symbol reads."""
 
     timestamp = utc(observed_at)
+    if not symbols or len(set(symbols)) != len(symbols):
+        raise ValueError("The execution symbol universe must be explicit and unique")
     broker_identity_fingerprint: str | None = None
     prepare = getattr(session, "prepare_read_snapshot", None)
     if callable(prepare):
@@ -60,7 +63,7 @@ def capture_portfolio_state(
             quotes_future = pool.submit(
                 _read_schwab_component,
                 "equity_quotes",
-                lambda: session.get_equity_quotes(STOCK_TRADER_SYMBOLS),
+                lambda: session.get_equity_quotes(symbols),
             )
             payloads: dict[str, Any] = {}
             failures: list[Exception] = []
@@ -90,7 +93,7 @@ def capture_portfolio_state(
         account_payload = _read_schwab_component("account", session.get_account)
         orders_payload = _read_schwab_component("open_orders", session.get_open_orders)
         quotes_payload = _read_schwab_component(
-            "equity_quotes", lambda: session.get_equity_quotes(STOCK_TRADER_SYMBOLS)
+            "equity_quotes", lambda: session.get_equity_quotes(symbols)
         )
     if broker_identity_fingerprint is not None:
         verify = getattr(session, "verify_read_snapshot", None)
@@ -125,8 +128,8 @@ def capture_portfolio_state(
         account, working, account_payload,
         reserved_cash=reserved_cash, literal_cash_only=literal_cash_only,
     )
-    held_shares = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
-    symbol_exposure = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
+    held_shares = {symbol: 0.0 for symbol in symbols}
+    symbol_exposure = {symbol: 0.0 for symbol in symbols}
     gross_exposure = 0.0
     daily_pnl = 0.0
     raw_items = positions.get("items")
@@ -151,7 +154,7 @@ def capture_portfolio_state(
     if not isinstance(quotes_payload, Mapping):
         raise ValueError("Schwab quote response is not an object")
     quotes: dict[str, QuoteState] = {}
-    for symbol in STOCK_TRADER_SYMBOLS:
+    for symbol in symbols:
         raw_quote = quotes_payload.get(symbol)
         if not isinstance(raw_quote, Mapping):
             continue

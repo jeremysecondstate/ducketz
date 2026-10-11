@@ -108,6 +108,12 @@ def _claim_entry_slot(root: Path, timestamp) -> bool:
 
 def _loaded_gameplan_run(root: Path, signals, sources, *, execution_ready_plan: bool) -> Path | None:
     """Retain the loaded source identity; never infer it from a newer pointer."""
+    combined = {Path(source).resolve().parent for source in sources
+                if Path(source).name == "accepted-plan.json" and Path(source).resolve().parent.parent == (root / "ml/joint-gameplan-runs").resolve()}
+    if combined:
+        if len(combined) != 1:
+            raise ValueError("Loaded instructions refer to multiple accepted combined plans")
+        return next(iter(combined))
     run_root = (root / "ml/nightly-gameplan-runs").resolve()
     runs = {Path(source).resolve().parent for source in sources
             if Path(source).name == "receipt.json" and Path(source).resolve().parent.parent == run_root}
@@ -130,6 +136,10 @@ def _loaded_fallback_policy(root, run, action_date):
     """Bind the verified future policy to this exact immutable receipt."""
     from ml.artifacts import file_checksum
     from ml.stock_trader.cross_horizon_fallback import read_gameplan_fallback_policy
+    if run is not None and Path(run).resolve().parent == (Path(root) / "ml/joint-gameplan-runs").resolve():
+        # Combined instructions already contain the bounded synthesized donor
+        # quantities. The catch-up adapter attributes these to that donor.
+        return None, None
     policy = read_gameplan_fallback_policy(run, action_date)
     if policy is None:
         return None, None
@@ -236,7 +246,7 @@ def run_independent_stock_trader_once(
                         root, resume_quote_run, resume_quote_symbol, as_of=timestamp)
                 else:
                     signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
-                if signals:
+                if signals or sources:
                     source_gameplan_run = _loaded_gameplan_run(root, signals, sources,
                         execution_ready_plan=sizing_policy == GAMEPLAN_SIZING_POLICY and not resume_quote_run)
                     _assert_execution_deployment(root, source_gameplan_run,
@@ -308,6 +318,9 @@ def run_independent_stock_trader_once(
             if now >= read_deadline or not stock_execution_window(now).executable:
                 raise ValueError("BROKER_READ_EXECUTION_WINDOW_CLOSED")
             identity = broker.stable_account_fingerprint()
+            from ml.joint_capital_adoption import assert_accepted_execution
+            assert_accepted_execution(root, source_gameplan_run,
+                action_date=now.tz_convert("America/Los_Angeles").date().isoformat(), account_scope_sha256=identity)
             if stable_identity is not None and identity != stable_identity:
                 raise ValueError("STOCK_ACCOUNT_CHANGED_DURING_CAPTURE")
             stable_identity = identity
@@ -317,7 +330,10 @@ def run_independent_stock_trader_once(
             # portfolio. No reconciliation or broker write belongs in this loop.
             current_evidence = capture_order_evidence(broker, ledger, account_fingerprint=stable_identity,
                 as_of=utc(clock()), observation_clock=clock)
-            current_portfolio = capture_portfolio_state(broker, observed_at=utc(clock()), parallel=True,
+            from ml.stock_trader.contracts import execution_symbols
+            symbol_options = ({"symbols": execution_symbols(root, now.tz_convert("America/Los_Angeles").date().isoformat())}
+                              if source_gameplan_run is not None and (source_gameplan_run / "accepted-plan.json").is_file() else {})
+            current_portfolio = capture_portfolio_state(broker, observed_at=utc(clock()), parallel=True, **symbol_options,
                 **({"literal_cash_only": True, "use_actual_quote_timestamps": True}
                    if sizing_policy == GAMEPLAN_SIZING_POLICY else {}))
             if sizing_policy == GAMEPLAN_SIZING_POLICY:
@@ -381,6 +397,29 @@ def run_independent_stock_trader_once(
         if not window.executable:
             return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=window.reason)
         state = ledger.snapshot()
+        if source_gameplan_run is not None and (source_gameplan_run / "accepted-plan.json").is_file():
+            from ml.joint_capital_adoption import read_accepted_joint_plan
+            from ml.stock_trader.catchup import catchup_signals
+            accepted = read_accepted_joint_plan(root, timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+            qualified = catchup_signals(accepted[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
+                                       reservations=state.reservations)
+            metadata["catchup"] = {"plan_sha256": accepted[0]["plan_sha256"],
+                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
+                "net_quantities": {f"{s}/{h}": signal.planned_quantity * (1 if signal.calibrated_probability else -1)
+                                   for (s, h), signal in qualified.items()}}
+        elif any(Path(source).name == "receipt.json" and Path(source).resolve().parent.parent ==
+                 (root / "ml/gameplan-trade-plan-runs").resolve() for source in sources):
+            from ml.stock_trader.catchup import native_catchup_plan, catchup_signals
+            native = native_catchup_plan(root, action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat(),
+                                        source_run=source_gameplan_run)
+            if native is None or any(not signal.prediction_id.startswith("catchup:" + native[0]["plan_sha256"] + ":")
+                                     for signal in signals.values()):
+                return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error="Native catch-up source changed during broker capture")
+            qualified = catchup_signals(native[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
+                                       reservations=state.reservations)
+            fallback_policy, fallback_source_binding = None, None
+            metadata["catchup"] = {"plan_sha256": native[0]["plan_sha256"],
+                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1"}
         if qualified:
             try:
                 _assert_execution_deployment(root, source_gameplan_run,
@@ -653,7 +692,8 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
             continue
         allocation = allocations[reservation.allocation_id]
         from ml.stock_trader.quote_recovery import recovered_entry_deadline
-        deadline = (min(utc(reservation.target_start or allocation.target_start) + pd.Timedelta(hours=1),
+        deadline = (utc(reservation.target_end or allocation.target_end) if reservation.forecast_id.startswith("catchup:") else
+                    min(utc(reservation.target_start or allocation.target_start) + pd.Timedelta(hours=1),
                         utc(reservation.target_end or allocation.target_end))
                     if gameplan_entries else recovered_entry_deadline(root, allocation,
                         _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date)))
@@ -705,7 +745,15 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
                         action_date = utc(decision.prediction["target_window_start"]).tz_convert("America/Los_Angeles").date().isoformat()
                         try:
-                            current_fallback, current_binding = _loaded_fallback_policy(root, source_gameplan_run, action_date)
+                            if decision.prediction.get("catchup_components"):
+                                current_fallback, current_binding = None, None
+                                if not (source_gameplan_run / "accepted-plan.json").is_file():
+                                    from ml.stock_trader.catchup import native_catchup_plan
+                                    native = native_catchup_plan(root, action_date=action_date, source_run=source_gameplan_run)
+                                    if native is None or not decision.prediction["prediction_id"].startswith("catchup:" + native[0]["plan_sha256"] + ":"):
+                                        raise ValueError("Native catch-up source changed before submission")
+                            else:
+                                current_fallback, current_binding = _loaded_fallback_policy(root, source_gameplan_run, action_date)
                         except (OSError, ValueError, RuntimeError) as exc:
                             raise _SubmissionStopped("CROSS_HORIZON_FALLBACK_SOURCE_UNAVAILABLE: " + str(exc)) from exc
                         if current_fallback != decision.prediction.get("cross_horizon_fallback_policy"):
@@ -717,6 +765,10 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     raise _SubmissionStopped(reason)
                 if broker.stable_account_fingerprint() != stable_identity:
                     raise _SubmissionStopped("STOCK_INVENTORY_ACCOUNT_CHANGED")
+                from ml.joint_capital_adoption import assert_accepted_execution
+                assert_accepted_execution(root, source_gameplan_run,
+                    action_date=utc(clock()).tz_convert("America/Los_Angeles").date().isoformat(),
+                    account_scope_sha256=stable_identity)
                 broker.verify_read_snapshot(decision.portfolio["broker_identity_fingerprint"])
                 age = (utc(clock()) - utc(decision.portfolio["observed_at"])).total_seconds()
                 if not 0 <= age <= ledger.maximum_evidence_age_seconds:

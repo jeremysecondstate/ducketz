@@ -241,6 +241,8 @@ def build_gameplan_direction_trade_decisions(
     for key, signal in signals.items():
         if key != (signal.symbol, signal.primary_horizon) or signal.primary_horizon not in FIXED_HORIZON_WEIGHTS:
             raise ValueError("Gameplan signal key differs from its stock/horizon")
+        if signal.planned_quantity is not None and (type(signal.planned_quantity) is not int or signal.planned_quantity <= 0):
+            raise ValueError("Accepted-plan quantity must be positive whole shares")
     timestamp = utc(decided_at)
     fallback_sell_plans = dict(fallback_sell_plans or {})
     if fallback_policy is not None:
@@ -312,6 +314,8 @@ def build_gameplan_direction_trade_decisions(
                     single_cap = _shares(_money(portfolio.account_equity) * _money(active_policy.maximum_single_order_equity_fraction),
                         max(price, _money(portfolio.quotes[signal.symbol].ask)))
                     hypothetical = min(sell_capacity, single_cap)
+                    if signal.planned_quantity is not None:
+                        hypothetical = min(hypothetical, signal.planned_quantity)
                     quantity = min(hypothetical, sell_remaining.get(signal.symbol, 0))
                     if not quantity:
                         code = "NO_AUTHORIZED_SELL_SHARES"
@@ -328,6 +332,8 @@ def build_gameplan_direction_trade_decisions(
                     # even when the operator's limit is the lower midpoint.
                     valuation = max(price, _money(portfolio.quotes[signal.symbol].ask))
                     hypothetical = _shares(ceiling, valuation)
+                    if signal.planned_quantity is not None:
+                        hypothetical = min(hypothetical, signal.planned_quantity)
                     quantity = min(hypothetical, _shares(available, price),
                                    _shares(symbol_remaining.get(signal.symbol, _ZERO), valuation))
                     if not quantity or quantity * price < _money(active_policy.minimum_order_notional):
