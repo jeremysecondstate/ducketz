@@ -1,47 +1,69 @@
 # Prediction-contribution matrix
 
-`Direct` identifies a publisher of the stated authority. `Indirect` identifies
-implemented causal input. This table describes mechanics, not guaranteed
-predictive lift or profit.
+Reviewed October 11, 2026. `Direct` identifies the publisher of an authority;
+`Indirect` identifies an implemented causal input. This describes source
+relationships, not measured predictive lift, configured schedules or profit.
+See [current system](CURRENT_SYSTEM.md) for per-PC responsibilities and the
+distinction between installed source, saved outcomes and runtime observations.
 
-| Overnight stage/input | Directional path | Options Strategy path | Direct output |
-|---|---|---|---|
-| Loop A close fetch | Indirect | Indirect | Completed-session equity/features; three production OPRA cursors per symbol |
-| CME/ALFRED/option feature artifacts | Indirect | Indirect through Loop B | Causal cross-asset, macro, `opt__`, and `opx__` context |
-| Directional Loop B | Direct | Indirect | Current samples/features and directional probabilities |
-| OPRA `definition` | None | Indirect | Point-in-time contract identity |
-| OPRA `cbbo-1m` | None | Indirect | Exact historical entry/exit BBO economics and completed-session planning evidence |
-| OPRA `ohlcv-1h` | None | Indirect | Historical option-surface context and execution cross-checks |
-| Strategy-profit training | None | Indirect model authority | Promoted HGB/MLP `1h`, `4h`, `1d`, and `1w` profitable-outcome models |
-| Strategy generation | None | Direct | Exact candidate, legs, score, expected return, and lineage |
-| Nightly gameplan | Direct frozen path | Direct frozen intent | 24 forecasts plus 24 options intents per symbol for one action date |
-| Daytime gameplan reader | None | None | Advisory/paper decision receipt; no prediction mutation |
+| Component or input | Stock-direction contribution | Options Strategy contribution | Output and boundary |
+| --- | --- | --- | --- |
+| Loop A acquisition | Indirect | Indirect | Completed-session provider evidence, causal features and three production OPRA cursors per configured research parent |
+| CME, ALFRED and option features | Indirect when admitted by the consumer | Indirect through Loop B | Causal cross-asset, macro, `opt__` and `opx__` context; a feature family is not a promise of coverage or lift |
+| Directional Loop B | Direct Loop B authority; causal sample input to independent Gameplan fitting | Indirect | Verified samples, features and compatible prediction artifacts; Gameplan does not simply copy these probabilities |
+| Stock-target history | Indirect | None directly | Declared observed price evidence, including maintained XNAS archive mode; provider identities remain separate |
+| Completed-session Stats | Feedback evidence | No automatic options promotion | Mature original forecast/outcome comparisons; immature, unavailable and no-history cases remain explicit |
+| Structured model review | Proposed bounded development specifications | No automatic Strategy authority | Exact Stats-bound proposal; numerical selection, calibration and assessment decide promotion separately |
+| Independent stock Gameplan | Direct frozen forecast authority | Stock-only placeholders in this mode | Four independent fitted target groups and 24 forecast rows per researched symbol; 24 non-executable `NO_TRADE_STOCK_ONLY` option rows |
+| OPRA definition / minute CBBO / hourly bars | Readiness and admitted feature lineage | Indirect | Point-in-time contract identity, historical quote economics and surface evidence |
+| Strategy-profit training (broader options scope) | None directly | Indirect model authority | Separate profitable-outcome models; qualified status is not an execution instruction |
+| Strategy generation (broader options scope) | None directly | Direct candidate authority | Exact candidate, legs, score, expected return and lineage |
+| Local and combined planning | No new forecast model | No new options order authority | Frozen producer packages and conditional quantities; Scout synthesis and Atlas exact adoption remain separate from trading |
+| Named Loop C observer | Separate sequence-shadow input; not the stock executor | Observe-only candidate/risk assessment | Research proposal, no-trade, review or halt evidence; paper outcomes are counterfactual |
+| UI, paper reader and stock executor | Consumers of accepted evidence | Consumers within their separate scopes | No prediction mutation; only the separately authorized stock adapter has a stock-order path |
 
-## Directional chain
+## Normal stock preparation and feedback
 
-1. Loop A completes provider/session data.
-2. Loop B materializes causally available samples and features.
-3. The nightly gameplan fits four separate route groups with histogram-gradient
-   and MLP challengers.
-4. The immutable publication freezes fourteen hourly, four 4-hour, five daily,
-   and one direct weekly forecast per symbol.
+The current responsibility workflow orders completed-session data, Stats, bounded
+model review, numerical stock preparation, local Gameplan and verified exports.
+The retained native modules and onboarding helper have their own saved stage
+lists; a current coordinator does not retroactively rewrite an older run.
 
-## Options Strategy chain
+Independent Gameplan fitting uses causal samples and its own target/model groups,
+with supported tree, neural, blend and logistic development candidates. A review
+proposal is neither a fit nor a promotion. The immutable 24-row stock contract is:
 
-1. Loop A advances all configured parents across the three production OPRA schemas.
-2. Strategy-profit training joins Loop B context with exact historical
-   `cbbo-1m` candidate outcomes; `1h` requires exact CBBO, while older
-   `4h`/`1d`/`1w` targets may use a separately labeled conservative hourly
-   fallback calibrated on overlapping CBBO.
-3. Separate four-horizon HGB/MLP authorities estimate exact-candidate profitable
-   outcome probability; Scenario Coverage remains explicitly heuristic where a
-   compatible fitted score is unavailable.
-4. Strategy generates exact candidate legs from the latest completed-session
-   evidence.
-5. The gameplan freezes one intent per route. Planning quote age is allowed to
-   reflect a closed market; future execution still requires a fresh same-leg
-   quote and may only execute or skip.
+- Thirteen executable forward-hour windows and one non-entry opening-gap row.
+- Four four-hour targets; the last spans the overnight closure into the next
+  supported session.
+- Five daily rows: the first executable and four outlook rows.
+- One direct five-session weekly target.
 
-The production-history maintainer is Loop A-owned acquisition, not an additional
-prediction process. Research-only OPRA schemas are not counted as current
-contributors.
+Each horizon retains its own identities and inventory ownership. Target endpoints
+do not universally require a sale under the later signal-driven holding policy.
+Stats compares the original declared windows and source; planning estimates are
+not replacements for missing observed target prices or evidence of broker fills.
+
+## Retained broader Options Strategy chain
+
+This implemented research path is distinct from the inspected stock-only normal
+preparation. A paused recurring supervisor does not remove its modules or shared
+contracts, and this document does not activate it.
+
+1. Loop A maintains the three production OPRA schemas for the configured parents.
+2. Strategy-profit training joins Loop B context with historical `cbbo-1m`
+   candidate outcomes. `1h` requires exact CBBO; older `4h`, `1d` and `1w` targets
+   may use separately labeled conservative hourly fallback evidence.
+3. Separate four-horizon models estimate exact-candidate profitable outcomes.
+   Scenario Coverage remains heuristic where no compatible fitted score exists.
+4. Strategy freezes exact legs from completed-session evidence. The broader
+   Gameplan path can freeze one options intent per route; stock-only preparation
+   instead emits non-executable placeholders and still checks OPRA cursors.
+5. A future authorized options executor would need a current quote/session check
+   for the same frozen legs and could execute or skip only. Neither a Strategy
+   score nor a Loop C proposal supplies that authorization.
+
+Production-history maintenance is acquisition, not another prediction process.
+Retained research OPRA schemas have no blanket production freshness promise.
+The [per-loop reports](LOOP_INVENTORY.md) preserve implementation detail and dated
+history; [the review](RELEVANCE_REVIEW.md) records the supporting source revisions.

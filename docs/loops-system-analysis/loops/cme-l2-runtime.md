@@ -1,8 +1,8 @@
 # CME/L2 runtime
 
-> **Current deployment (2026-09-04):** the high-frequency CME supervisor is
-> stopped. Bounded CME acquisition is invoked inline by the overnight Loop A
-> close stage; recurrence details below are legacy capability.
+Reviewed on October 11, 2026 against the Atlas working checkout at `90704d21801f60426493bd6cc650a7fac38d4f61` plus separately inventoried working changes. Source contracts, historical observations and local schedules are different evidence. See [the relevance review](../RELEVANCE_REVIEW.md) for scope and limitations; Scout must establish its own installed state.
+
+CME event history and causal hourly context remain relevant. Current bounded acquisition persists uncapped inline events before context materialization; see [CME inline history](cme-inline-history.md). The independent sub-minute supervisor, current-L2 recovery and old cadence below are retained capabilities. Those capabilities are separate from observed local registration and provider availability.
 
 ## Identity
 
@@ -10,9 +10,9 @@
 - Logical aliases or numbering: startup owner 1; independent CME/L2 owner
 - Runtime entry point: `python -m datafetching.cme_runtime`
 - Owning package: `datafetching`
-- Classification: Independent production loop
-- Scheduling mechanism: one supervisor computes the next due slot per schema
-- Cadence and phase: `mbp-10` every 5 seconds at +0 seconds; `bbo-1m` every 15 seconds at +2 seconds; `ohlcv-1m` every 60 seconds at +1 second
+- Classification: retained independent supervisor capability and shared component contract
+- Retained supervisor scheduling mechanism: one supervisor computes the next due slot per schema
+- Retained supervisor cadence and phase: `mbp-10` every 5 seconds at +0 seconds; `bbo-1m` every 15 seconds at +2 seconds; `ohlcv-1m` every 60 seconds at +1 second
 - Lock or single-writer mechanism: `.ducketz-cme-writer.lock` via the stale-owner-aware exclusive runtime lock
 - Primary code evidence: **Confirmed.** `datafetching/cme_runtime.py:40`, `datafetching/cme_runtime.py:104`, `datafetching/cme_runtime.py:434`, `datafetching/cme_history.py:288`
 
@@ -77,9 +77,9 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
 
 **Confirmed:** Directional Loop B directly reads the hourly context and joins the `cme__` family by causal availability/freshness. Strategy receives the same values only indirectly because Loop B copies context into its samples/candidates. `ml/rolling_materialization.py:796`, `ml/rolling_materialization.py:846`, `ml/datasets/families.py:517`, `ml/strategy_selection/model.py:132`
 
-### Timing and control relationships
+### Retained supervisor timing and control relationships
 
-**Confirmed:** CME runs independently at sub-minute schema phases. There is no readiness barrier between it and Loop A or Loop B; Loop B consumes the latest causally eligible context at its own cutoff. `datafetching/cme_runtime.py:40`, `datafetching/cme_runtime.py:45`, `ml/rolling_materialization.py:796`
+**Retained supervisor capability:** CME can run independently at sub-minute schema phases. The bounded overnight path instead invokes inline acquisition. There is no readiness barrier between it and Loop A or Loop B; Loop B consumes the latest causally eligible context at its own cutoff. `datafetching/cme_runtime.py:40`, `datafetching/cme_runtime.py:45`, `ml/rolling_materialization.py:796`
 
 ## Prediction contribution
 
@@ -140,10 +140,10 @@ normal operation invokes bounded CME work inside the overnight Loop A stage.
 **Observed 2026-08-19 22:45:36 UTC:** the hourly monitor found one CME
 launcher/worker pair, matching live lock, and active primary logs. The current
 immutable L2 authority
-`pools/cme/snapshots/l2/databento/5m/1787145000000000000` passed its manifest,
+`pools/cme/snapshots/l2/databento/5m/<dated-target>` passed its manifest,
 receipt, and output checksum contract. Its 18 observed rows were exclusively
 `GLBX.MDP3` BBO/MBP evidence, all `FRESH`, with complete configured stream
-coverage. `GCZ6` was the gold contract observed in that publication; dated
+coverage. A dated gold contract was observed in that publication; dated
 contract symbols are runtime selection evidence, not evergreen architecture.
 The 22:59:29 UTC read-only follow-up verified the same current authority and
 continued owner health.

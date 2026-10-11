@@ -1,215 +1,61 @@
 # System functionality
 
-Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from this PC's configured production watchlist and validate historical publications against their own saved universes. The durable list is `datafetching/watchlist.local.txt` when present, otherwise the shared `datafetching/watchlist.txt`; see [Running Ducketz on two PCs](../multiple-pcs.md) for override precedence and setup.
+This is a capability guide. [Current system](CURRENT_SYSTEM.md) separates the
+October 11 Atlas observations from portable contracts and historical operation.
 
-## System-wide operating model
+## Data and prediction authority
 
-The current scheduled design is a single sequential overnight owner. The older
-eight recurring modules remain reusable implementation stages, but they no
-longer run continuously or coordinate a live day through independent timer
-phases.
+Loop A owns bounded acquisition and readiness, preserving EQUS operational bars,
+XNAS archive/target history, Schwab evidence, OPRA partitions, CME and ALFRED as
+distinct source families. Similar timestamps do not justify a cross-provider
+merge. OPRA's production definition, minute-CBBO and hourly-bar schemas retain
+separate partitions, receipts and exclusive completion cursors. Required inputs
+depend on the saved run scope; a stock-only run omits optional Strategy stages.
 
-```text
-21:05 PT daily (native weekend/holiday no-op)
-  Loop A close fetch + OPRA append
-    -> Loop B features/directional authority
-      -> XNAS stock target history
-        -> cumulative saved-Gameplan evaluation
-          -> four stock target groups + immutable next-session gameplan
-            -> independent stock enrichment training
+Loop B materializes causal features, samples and compatible directional evidence.
+The nightly route models are separate target groups. The immutable stock grid
+retains thirteen forward hourly rows plus one non-entry opening-gap row, four
+four-hour, five daily and one direct weekly row per saved symbol: 24 rows per symbol, independent of today's watchlist. Weekly output
+is not the average of daily probabilities. Calibration, assessment, publication
+and sizing qualification have distinct saved results.
 
-04:00–17:00 PT
-  verified gameplan -> clock-rotating Duckets forecast display
-                    -> exact-once, stock-only hourly execution
-                    -> optional advisory/paper decisions
+The options Strategy path models exact candidate outcomes, with contract/leg
+identity and compatible quote evidence. Historical CBBO and explicitly labeled
+fallback economics are planning/training evidence, not executable live quotes.
+Stock-only placeholder intents must not be reported as promoted options models.
 
-next 17:00 PT
-  completed day -> revisit every saved forecast -> successor Gameplan
-```
+## Publication and consumers
 
-The Scheduled owner reads progress/errors at least once a minute, repairs
-verified failures, and resumes failed stages. A 30-minute Operations Watch adopts
-abandoned work using a renewable supervision claim. Healthy training can run
-until 04:00 Pacific on the next exchange session. Saturday reviews saved
-Gameplans from September 4 and retains longer forecasts until they mature.
+Stats-first preparation scores prior original forecasts before bounded model
+review and training. It preserves missing-history status, pending horizons and
+the original source of each score. Scout's combined synthesis and Atlas's verified
+handoff are separate from each local numerical publication.
 
-The exact command, schedule, artifacts, and failure rules are defined in
-`NIGHTLY_GAMEPLAN.md`.
+Gameplan, trade-plan, Stats, model-review and joint-readiness outputs each have
+their own identity and verification. A single latest Gameplan pointer is not
+the sole authority for the whole current system. Readers verify their selected
+publication and its provenance; historical display remains a supported use.
 
-## Ingestion and canonical storage
+The advisory/paper reader is broker-free. Stock execution uses current broker
+state and quotes, exact source/ownership checks, reservations and human controls.
+Independent horizon ownership replaces the old hourly/four-hour veto model.
+Options order authority is not implied by a frozen intent or shared plan.
 
-Loop A's overnight close cycle is the provider/data owner. It updates data for
-this PC's configured production universe and retains the existing source boundaries:
+## Useful detailed contracts
 
-- Databento `EQUS.MINI` is canonical operational equity OHLCV under `stocks`.
-- Schwab equity history remains a secondary provider record.
-- Databento `XNAS.ITCH` remains cold provider provenance. It is not blindly
-  timestamp-merged into `EQUS.MINI` because audited overlapping bars were not
-  exact duplicates.
-- Native EQUS bars supersede same-timestamp 1-minute-derived rows; genuine
-  derived gaps remain.
-- OPRA raw DBN, normalized Parquet, manifest, and receipt are one partition's
-  lineage, not four independent copies.
+- [Nightly Gameplan](NIGHTLY_GAMEPLAN.md): immutable forecast, review and recovery boundaries.
+- [Prediction contribution matrix](PREDICTION_CONTRIBUTION_MATRIX.md): which components contribute data, models and publications.
+- [Joint capital](JOINT_ACCOUNT_CAPITAL.md): one account projection, original source identities and execution separation.
+- [Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md): horizon policies, ownership and catch-up.
+- [Loop C risk](LOOP_C_RISK_CALCULUS.md): independent options observer and gated research-proposal sizing.
+- [Datastore hygiene](DATASTORE_HYGIENE.md): retained lineage and dated cleanup evidence.
 
-Production OPRA history is exactly `definition`, `cbbo-1m`, and `ohlcv-1h` for
-all configured parent symbols. Loop A performs a provider estimate/preflight, bounded
-incremental fetch, atomic partition publication, and cursor advance before
-model work. Its `completed_through` value is exclusive.
+## Historical September publication
 
-Other OPRA schemas remain research history. They are not described as current
-and do not block production gameplan publication.
-
-## Completed-session versus execution freshness
-
-Two clocks are intentionally separate:
-
-| Context | Required freshness |
-|---|---|
-| Overnight training/planning | Complete newest finished market session |
-| Future live execution | Current tradable quote for the exact frozen legs |
-
-When markets are closed, the newest legitimate option quote can be hours old.
-That is the desired final observation for overnight fitting and planning. The
-system must not reject it merely because wall-clock time continued after the
-close.
-
-At execution time, hours-old evidence is not sufficient. The only authorized
-future behavior is to revalidate the exact preselected legs and execute or skip.
-Contract substitution, strategy switching, and intraday re-optimization would
-mutate the plan and are prohibited.
-
-## Directional forecasts
-
-The gameplan freezes 24 rows per symbol:
-
-- fourteen `1h` anchors from 04:00 through 17:00 PT;
-- four `4h` anchors at 04:00, 08:00, 12:00, and 16:00 PT;
-- five `1d` forecasts for D+1 through D+5;
-- one direct `1w` forecast spanning five eligible sessions.
-
-This is 24 rows per configured symbol (24 × the saved symbol count; 264 for eleven). Historical intraday labels use exact
-one-minute stock bars. Daily labels use the explicit daily components. The
-weekly label is trained directly rather than fabricated as the mean of the five
-daily probabilities.
-
-Intraday route labels name forecast endpoints. The lightweight reader therefore
-uses the next frozen endpoint rather than consuming the current-hour route after
-its target window has matured: the 05:00 action wake reads `1h@06:00`, the 08:00
-wake also reads `4h@12:00`, and the 16:00 wake reads `1h@17:00`. The 04:00 wake
-additionally records the precomputed opening-gap checkpoints. No new forward
-intraday route begins at the 17:00 close.
-
-The v2 artifact stores this mapping explicitly as `action_anchor_local` beside
-the existing `forecast_anchor_local`, and the reader verifies the expected route
-set before writing a decision receipt.
-
-Each group fits both histogram-gradient boosting and an MLP neural network. A
-later chronological selection cohort chooses the baseline, neural model, or a
-fixed blend. Calibration and assessment are separate, and boundary overlap is
-purged. Model status remains explicit if assessment does not pass.
-
-## Options Strategy predictions
-
-Options Strategy prediction is not a stock-direction alias. It has its own
-profitable-outcome model and exact candidate/leg identity.
-
-The overnight Strategy-profit stage now covers `1h`, `4h`, `1d`, and `1w` and:
-
-1. reads the current Loop B samples and causal features;
-2. verifies every required production OPRA cursor;
-3. constructs historical candidate outcomes from nearest causal OPRA
-   `cbbo-1m` entry and exit snapshots; `1h` requires exact CBBO, while older
-   `4h`/`1d`/`1w` targets may use explicitly labeled conservative hourly
-   fallback evidence where the shorter CBBO archive does not reach;
-4. trains histogram-gradient and MLP challengers with purged chronological
-   train/selection/calibration/assessment boundaries;
-5. promotes only receipt-compatible horizons that pass the declared offline
-   gate;
-6. generates exact candidates for the next action date; and
-7. freezes one options intent beside every forecast route.
-
-Completed-session quotes are valid planning evidence. The gameplan records
-whether a fitted candidate exists and freezes its exact stock/option legs,
-source Strategy generation, candidate key, model score, and quote lineage.
-
-Equity options do not inherit extended-hours tradability merely because their
-underlying stocks trade from 04:00 to 17:00 PT. The forecast grid remains intact,
-but an option intent outside an executable option session stays non-executable
-until a valid same-leg quote/session gate can pass.
-
-## Publication and immutability
-
-The only final authority is the checksum-verified pointer:
-
-`C:\DATASTORE\ml\nightly-gameplan-latest\run.json`
-
-The selected immutable generation contains forecasts, options intents, prior
-directional evaluations, four model reports/artifacts, a human-readable
-gameplan, manifest, and receipt. Publication is atomic and prohibited after
-04:00 for the target action date.
-
-The next close-cycle evaluates matured directional rows from the prior
-generation in one pass. Because the source plan never changes intraday, forecast
-evaluation remains reproducible. Options intents are not reported as realized
-P/L without exact-leg revalidation/execution evidence; a future unexecuted
-mark-to-market evaluation must be explicitly labeled counterfactual.
-
-## Daytime behavior and order authority
-
-The Duckets `Rolling Forecasts` tab reads the immutable gameplan directly. It
-shows the active frozen `1h` and `4h` target windows, D+1 in the ordinary daily
-card, and all five daily components plus the direct weekly prediction in the
-remaining-week card. It refreshes on the next wall-clock hour plus five seconds,
-so hourly and four-hour changes require no data fetch or model rerun. Each
-displayed route includes the matching frozen options intent, Strategy name and
-profit probability when available, pricing lineage, and explicit `NO_TRADE` or
-same-leg-revalidation reason.
-
-`ml.gameplan_executor` remains the broker-free paper reader.
-`ml.gameplan_stock_trader` is the active stock-only adapter. It validates the
-same pointer/action date and hands the current forward 1-hour signal plus
-promoted longer-horizon context to the established Schwab risk engine. It
-requires both stock activation controls and `--execute`, revalidates current
-broker state and quotes, and enforces exact-once submission. At a 1h/4h
-overlap, opposite actionable directions veto a new entry; agreement never
-creates more than one shared-risk order per symbol.
-
-Options activation remains outside this deployment. The stock adapter cannot
-construct or submit an option order.
-
-## Scheduling and failure behavior
-
-- `Loops Overnight Gameplan` wakes at 21:05 America/Los_Angeles daily. The native
-  XNYS calendar skips fresh weekend/holiday work. The full close fetch begins
-  after XNAS.ITCH's normal 21:00 Pacific Historical release; actual required
-  coverage is still verified before dependent work proceeds.
-- `Loops Operations Watch` runs at :00 and :30, and may start missing fresh
-  overnight work only after 21:15 PT. Existing unfinished work uses the verified
-  resume path and keeps completed stages and its original deadline.
-- The old hourly monitor/adaptive trainer is retired.
-- The standalone OPRA maintainer and overlapping paper/adaptation schedules are
-  paused.
-- All legacy daytime trader schedules remain paused. The gameplan hourly stock
-  owner and its 13:05 transition wake are active.
-- The Saturday read-only operator review remains independent.
-
-Each nightly stage runs once, sequentially. Failure preserves the prior final
-pointer and records the failed stage. No automatic retry, process-stack restart,
-historical deletion, broker mutation, or guessed pointer repair is authorized.
-
-## Observed September 4 publication
-
-The first new-architecture gameplan froze at 03:59:44 PT and published its
-atomic pointer at 04:00:09 PT. It contains the required 144 directional rows and
-144 options-intent rows for all six symbols. Directional `1h`, `4h`, and `1d`
-groups passed their assessment gates; the weekly direction group remained
-research-only. Strategy-profit `1h`, `1d`, and `1w` passed independently; the
-65-window `4h` profit model failed its assessment and remained research-only.
-
-The underlying Strategy authority contains 3,840 fitted candidates, all using
-valid OPRA BBO legs timestamped `2026-09-03T20:00:00Z`. The final plan contains
-no entry instruction: every options intent records an explicit `NO_TRADE`
-reason, and the receipt records zero orders. The nine-second first-run timing
-miss is not normalized away; the inference loader was narrowed to the last
-eligible completed-session snapshots and a final pre-pointer 04:00 check was
-added for subsequent runs.
+The September 4 first-publication timings, assessment results, all-NO_TRADE
+options outcome and nine-second publication-boundary miss remain in the
+[original audit](audits/2026-09-04/AUDIT.md) and
+[supervision update](audits/2026-09-04/SUPERVISION_UPDATE.md). Those events were
+not rerun or re-dated by this review. Older versions of this guide's monolithic
+schedule and stock-veto narrative are recoverable through the review's immutable
+source reference.

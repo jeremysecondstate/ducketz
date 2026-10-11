@@ -1,20 +1,23 @@
-# Scheduled overnight operations
+# Overnight automation: retained entry point
 
-The automation ID `loops-hourly-operations` belongs to `Loops Overnight Gameplan`,
-which wakes daily at 21:05 America/Los_Angeles and starts the entire Loop A close
-fetch and downstream workflow on completed exchange sessions. Native calendar
-checks skip fresh weekend/holiday work. This follows XNAS.ITCH's normal 21:00
-Pacific Historical release; actual required coverage is still checked. Follow
-[NIGHTLY_GAMEPLAN.md](NIGHTLY_GAMEPLAN.md) for the complete start, active
-supervision, repair, stop, recovery, resume, and verification procedure.
-The Scheduled task stays with the run and reads errors as they appear.
-`Loops Operations Watch` checks for abandoned or failed work every 30 minutes.
-It may start missing fresh overnight work only after 21:15 Pacific. Existing
-unfinished attempts retain completed stages and their original deadline on resume.
-Healthy training can continue until 04:00 on the next exchange session.
+The filename is historical. This document described overnight operation after
+the original hourly guardian was retired; it must not be classified by its name.
 
-The hourly daytime stock task consumes the saved Gameplan; it does not train
-or create a new plan. See [STOCK_TRADER_AUTOMATION.md](STOCK_TRADER_AUTOMATION.md).
-Saturday's [review](WEEKLY_REVIEW_AUTOMATION.md) evaluates Gameplans starting
-September 4 and retains longer forecasts until they mature. No paper-ledger
-refresh belongs to this workflow.
+For current responsibilities, read [Current system](CURRENT_SYSTEM.md) and the
+[nightly contract](NIGHTLY_GAMEPLAN.md). Atlas's October 11 native readback found
+LOG paused and separate catch-up, Stats/model/Gameplan, display and handoff
+tasks configured. Scout's bindings require its own observation. Current source
+prepares Stats before model review and numerical training.
+
+## Retained historical reference
+
+The earlier LOG command, 21:05 daily schedule, post-training actuals tail and
+old watch cadence describe a prior operating arrangement. Original exact text
+is recoverable at the [reviewed source revision](https://github.com/jeremysecondstate/ducketz/blob/90704d21801f60426493bd6cc650a7fac38d4f61/docs/loops-system-analysis/HOURLY_AUTOMATION.md).
+The [September supervision audit](audits/2026-09-04/SUPERVISION_UPDATE.md)
+preserves the corresponding event evidence.
+
+Reusable `ml.overnight_runtime` stages, saved run formats and diagnostic modules
+remain relevant. Pausing LOG does not retire them or authorize restarting its
+old recurring supervisors. Scheduling, numerical implementation, installed
+source and successful outcomes must be verified separately.

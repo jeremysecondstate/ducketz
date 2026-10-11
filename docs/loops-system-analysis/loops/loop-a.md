@@ -1,9 +1,8 @@
 # Loop A
 
-> **Current deployment (2026-09-08):** Loop A is a bounded first stage of
-> `ml.overnight_runtime`, scheduled daily at 21:05 America/Los_Angeles, with
-> native weekend/holiday no-ops and required provider coverage checks.
-> Recurrence details below describe retained legacy capability.
+Reviewed on October 11, 2026 against the Atlas working checkout at `90704d21801f60426493bd6cc650a7fac38d4f61` plus separately inventoried working changes. Source contracts, historical observations and local schedules are different evidence. See [the relevance review](../RELEVANCE_REVIEW.md) for scope and limitations; Scout must establish its own installed state.
+
+Loop A remains the bounded acquisition stage. Atlas now uses the split Stats-first preparation chain: datastore catch-up, Stats, model review, training/planning, local Gameplan, display verification and handoff. The native outer schedule is machine-owned; the earlier 21:05 monolithic start is historical. The callable overnight stage still requests inline CME and Options work and bounded production OPRA maintenance. Stock-only mode skips the later Strategy model/candidate stages, not this acquisition contract.
 
 ## Identity
 
@@ -13,7 +12,7 @@
 - Owning package: `datafetching`
 - Classification: bounded overnight stage; legacy independent loop retained
 - Scheduling mechanism: invoked once by `ml.overnight_runtime`
-- Cadence and phase: daily 21:05 America/Los_Angeles; fresh work only for a completed exchange session
+- Cadence and phase: selected by the installed preparation owner; fresh work requires an eligible completed exchange session
 - Lock or single-writer mechanism: `.ducketz-orchestration.lock` plus `.ducketz-loop-a-cycle.lock` OS lock shared with Directional Loop B
 - Primary code evidence: **Confirmed.** `datafetching/orchestrate.py:38`, `datafetching/orchestrate.py:169`, `datafetching/orchestrate.py:172`, `datafetching/orchestrate.py:243`, `datafetching/loop_a_cycle.py:199`
 
@@ -21,21 +20,23 @@
 
 **Confirmed:** Loop A is the equity/provider and calculated-feature owner. It ingests the configured watchlist across Databento, FMP, current FRED, Schwab, and SEC; runs bounded inline CME/Options work; builds feature products; and publishes a complete-cycle boundary for Directional Loop B. In the same post-close stage it advances the exact OPRA strategy-history dependencies `ohlcv-1h`, `cbbo-1m`, and `definition`. `ml/overnight_runtime.py`, `datafetching/orchestrate.py`
 
-**Confirmed non-ownership:** in production it does not own CME/L2, prospective option-chain capture, ALFRED-vintage history, option-pricing inference, directional fitting/scoring, or Strategy inference/training. Inline CME/Options modes are compatibility paths and default to `external`; the OPRA history subprocess is acquisition only and has no prediction or live-snapshot authority. `datafetching/orchestrate.py`, `datafetching/options_runtime.py`
+**Non-ownership:** the bounded overnight invocation explicitly selects inline CME and Options acquisition. The standalone recurring command retains external-owner modes. Loop A does not own the separate high-frequency CME/L2 or prospective Options supervisors, ALFRED-vintage history, option-pricing inference, directional fitting/scoring, or Strategy inference/training. Its OPRA history subprocess is acquisition only and has no prediction or live-snapshot authority. `datafetching/orchestrate.py`, `datafetching/options_runtime.py`
 
-**Startup/bootstrap boundary:** Loop A's operational equity dataset is
+**Acquisition/bootstrap boundary:** the operational provider lane described here uses
 `EQUS.MINI`, whose Historical endpoint is current during the session and whose
 Live endpoint is entitled. Each native schema overlaps from its own latest
-stored operational timestamp under `C:\DATASTORE\stocks`. The separate
+stored operational timestamp under `<datastore>\stocks`. The separate
 eight-year `XNAS.ITCH` tree under
-`C:\DATASTORE\market-data\databento\us-equities` remains cold provider
+`<datastore>\market-data\databento\us-equities` remains cold provider
 provenance. `materialize_equity_archive_baseline` is used only when archive and
 operational dataset identities match; otherwise the recurring path explicitly
 skips that bridge instead of timestamp-merging venue-specific XNAS rows with
 consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
-`C:\DATASTORE\catalog\migrations`. `datafetching/databento_archive.py:213`,
+`<datastore>\catalog\migrations`. `datafetching/databento_archive.py:213`,
 `datafetching/databento_fetch.py:544`,
 `datafetching/equity_dataset_migration.py`
+
+Atlas's separate independent-stock preparation can select the verified XNAS archive feature path. That does not merge XNAS rows into the EQUS operational provider store or replace this acquisition contract. See [independent stock horizons](../INDEPENDENT_STOCK_HORIZONS.md).
 
 ## Inputs
 
@@ -61,7 +62,7 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 6. **Confirmed:** after derived-bar generation, remove only 1h/1d derived timestamps already supplied by native EQUS and retain any derived-only gaps. Then run fundamental calculations when FMP is configured, technicals, and cross-domain signals for each symbol. A nonzero stage exit increments failure count. `datafetching/databento_fetch.py`, `datafetching/bar_consolidation.py`, `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429`
 7. **Confirmed:** publish terminal `COMPLETE` only when failure count is zero; otherwise `FAILED`. `.ducketz-loop-a-complete.json` remains the last successful generation. `datafetching/loop_a_cycle.py:118`, `datafetching/loop_a_cycle.py:127`
 8. **Confirmed:** after the 17:00 PT close-cycle publication, run at most one daily OPRA history subprocess for `ohlcv-1h`, `cbbo-1m`, and `definition`. It uses valid cursors only, provider byte/cost preflight, and bounded advance, then runs an audit-only catalog refresh. A nonzero history or catalog result fails the bounded overnight stage. `datafetching/orchestrate.py`, `datafetching/options_history.py`, `datafetching/datastore_hygiene.py`
-9. **Confirmed:** wait for the next boundary, then pause 20 seconds. `datafetching/orchestrate.py`
+9. **Legacy recurring supervisor only:** wait for the next boundary, then pause 20 seconds. The bounded `--once` stage returns instead. `datafetching/orchestrate.py`
 
 The one-shot provider/fundamental/technical/signal CLIs are owned stages, not independent production loops. `tests/test_loop_a_orchestration.py:19`
 
@@ -82,7 +83,7 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 
 ### Upstream
 
-**Confirmed:** no production loop supplies a direct Loop A input. Its upstreams are external providers and its own prior canonical state. CME and Options are independent despite compatibility switches.
+**Confirmed:** external providers and prior canonical state supply acquisition inputs. Inline CME and Options work belongs to the bounded invocation; their separately callable recurring supervisors retain independent locks and publication contracts.
 
 ### Downstream
 
@@ -164,7 +165,7 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 
 ## Runtime and datastore observation
 
-**Confirmed deployment contract:** the checked-in launcher and guardian use the
+**Historical recurring deployment contract:** the checked-in launcher and guardian use the
 closed canonical command, hidden window, explicit work directory, redirected
 logs, and one launcher/worker pair whose worker owns
 `.ducketz-orchestration.lock`. Existing valid ownership is audited and retained;
@@ -174,19 +175,19 @@ command drift alone does not authorize a second owner or an improvised restart.
 **Observed 2026-08-19 22:45:36 UTC:** one Loop A pair, its live worker lock,
 primary logs, and exact six-symbol readiness for target
 `2026-08-19T20:00:00Z` passed. The checksum-valid receipt is
-`loop-a/bar-readiness/1787169600000000000/receipt.json`. The monitor correctly
+`loop-a/bar-readiness/<dated-target>/receipt.json`. The monitor correctly
 reported an active later `WRITING` generation while retaining
-`20260819T223020.010102Z-pid5516` as `last_complete_generation`; that generation
+`<dated completed generation>` as `last_complete_generation`; that generation
 finished at 22:35:52 UTC with zero failures and all six symbols. Active cycle
 state is liveness evidence, not permission to substitute it for completed
 authority.
 
-The observed raw one-minute files for AAPL, AMZN, GOOG, MU, NVDA, and SNDK each
+The observed raw one-minute files for the six then-configured equities each
 contained only `provider_dataset=EQUS.MINI` and
 `source_schema=ohlcv-1m`. Schwab remained quote/chain/broker evidence, not
 canonical operational OHLCV, and the cold `XNAS.ITCH` archive remained
 separate. At 22:59:29 UTC the read-only monitor had verified a newer complete
-Loop A generation, `20260819T224520.001083Z-pid5516`, with the same zero-failure
+Loop A generation, `<dated completed generation>`, with the same zero-failure
 contract.
 
 

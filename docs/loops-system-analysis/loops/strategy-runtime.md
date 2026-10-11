@@ -1,8 +1,8 @@
 # Strategy runtime
 
-> **Current deployment (2026-09-04):** Strategy runs once after the new
-> four-horizon profit authority inside `ml.overnight_runtime`. The former
-> 15-minute supervisor is stopped; recurrence text below is legacy.
+Reviewed on October 11, 2026 against the Atlas working checkout at `90704d21801f60426493bd6cc650a7fac38d4f61` plus separately inventoried working changes. Source contracts, historical observations and local schedules are different evidence. See [the relevance review](../RELEVANCE_REVIEW.md) for scope and limitations; Scout must establish its own installed state.
+
+Strategy remains the shared options-candidate authority, with calibrated profit probability distinct from directional probability and Scenario Coverage. Atlas's currently configured stock-only preparation omits Strategy-profit training and candidate generation; the modules and their shared consumers remain relevant. The optional overnight options path can invoke them after Loop B and compatible profit-model training. A paused recurrence is not retirement of these contracts.
 
 ## Identity
 
@@ -10,9 +10,9 @@
 - Logical aliases or numbering: Strategy; startup owner 7
 - Runtime entry point: `python -m ml.strategy_runtime`
 - Owning package: `ml.strategy_selection`
-- Classification: bounded overnight candidate-generation stage
+- Classification: optional bounded options candidate-generation stage; retained recurring capability
 - Scheduling mechanism: invoked after Loop B and Strategy-profit training
-- Cadence and phase: once per overnight run
+- Cadence and phase: once per eligible options-enabled overnight run; omitted by stock-only preparation
 - Lock or single-writer mechanism: `.ducketz-strategy-runtime.lock`
 - Primary code evidence: **Confirmed.** `ml/strategy_runtime.py:63`, `ml/strategy_runtime.py:331`, `ml/strategy_runtime.py:429`, `ml/strategy_publication.py:41`
 
@@ -23,8 +23,8 @@
 **Confirmed non-ownership:** it does not publish directional forecasts, option chains or option fair-value authority; it consumes them. It publishes predictions/ranks only, and the candidate contract does not authorize automated actions or orders. `ml/strategy_runtime.py:71`, `ml/strategy_publication.py:159`
 
 **Startup/bootstrap boundary:** Strategy is a reader/computation owner and has
-no Databento bootstrap path. It requires verified Loop B, Pricing, and option
-evidence, preserves each upstream pointer/receipt and causal cutoff, and cannot
+no Databento bootstrap path. It requires verified Loop B and option evidence, plus either eligible Pricing
+or the explicit completed-session OPRA model path described below. It preserves each upstream pointer/receipt and causal cutoff, and cannot
 promote an empty archive, configured provider, or unverified partition into
 strategy authority. Canonical OPRA replay and the content-addressed Strategy
 OPRA cache is both an offline historical-evidence accelerator and the exact
@@ -39,9 +39,13 @@ next-session same-leg quote revalidation.
 | Current Loop B authority | Directional Loop B | verified `ml/latest/run.json`, run receipt/manifest, `samples.parquet`, `predictions.parquet` | complete current pointer record with manifest/receipt checksums; symbol/horizon/decision/target/action clocks; `LIVE` calibrated direction probability; Loop B causal cutoff/config/symbol scope | current pointer and receipt must verify; Strategy captures that exact record, reads only configured symbols and actual LIVE rows, and embeds the immutable source in its manifest and receipt | Required | **Confirmed.** `ml/strategy_runtime.py:63`, `ml/strategy_runtime.py:235`, `ml/strategy_publication.py:41` |
 | Exact option chain history | Options Capture prospective receipts; bounded canonical OPRA materialization/cache | verified point-in-time prospective OPRA snapshots with verified Schwab snapshots as fallback; canonical historical replay and the receipt/checksum-bound Strategy OPRA cache | target/availability; contract symbol, call/put, strike, expiration, multiplier, bid/ask, provider, and quote age | the overnight planner selects the newest completed-session snapshot known before the future target, bounds its real age to 18 hours, and prefers OPRA when providers describe the same market instant; ordinary causal entry selection remains unchanged outside this explicit planning mode | Required per planned route; never order authority | **Confirmed.** `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`, `ml/strategy_selection/opra_cache.py` |
 | Stock quote-liquidity history | Loop A | Schwab `quote-liquidity` Parquets | bid/ask, `available_at`, quote quality/policy/schema for stock legs and risk | entry/exit quote must lie within route cutoff; malformed schema/policy/duplicate natural keys fail validation | Conditional on strategy construction/stock legs | **Confirmed.** `ml/strategy_selection/chain.py:151`, `ml/strategy_selection/chain.py:258`, `ml/strategy_selection/chain.py:391` |
-| Pricing evidence catalog | Active Pricing | verified target sidecars and current/historical contract predictions/surfaces | per-leg BSGP or Black–Scholes fair value/intervals, availability, generation age/support/shrinkage; candidate edge, conservative edge, coverage, uncertainty; `Active`, `Black-Scholes fallback`, `Delayed`, `Unavailable` | exact symbol/target/contract/call-put/expiry/strike/multiplier and causal clock matching; target sidecar status `BSGP_SHADOW_READY` maps to `BSGP`, complete residual fallback maps to `BLACK_SCHOLES`; live scoring rejects offline replay | Required for fitted model; separate Scenario Coverage otherwise | **Confirmed.** `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py` |
-| Historical candidate outcomes | Derived by this loop from Loop B plus exact entry/exit evidence | append-only `ml/strategy-outcomes/<horizon>/<content-sha256>/` artifacts plus a bounded in-process cache | realized net profit after observed leg BBO cash flows/fees, return on risk, binary `profitable` = strictly positive; direction context at the historical decision | only complete Loop B labels and exact causal entry/exit receipts; optional upper bound excludes lockbox starts; training admits only complete quality-passing Pricing coverage; manifest/receipt/checksums verify reuse | Required to fit/reuse; optional for Scenario Coverage publication | **Confirmed.** `ml/strategy_selection/runtime.py`, `ml/strategy_selection/outcome_store.py` |
+| Pricing evidence catalog | Active Pricing | verified target sidecars and current/historical contract predictions/surfaces | per-leg BSGP or Black–Scholes fair value/intervals, availability, generation age/support/shrinkage; candidate edge, conservative edge, coverage, uncertainty; `Active`, `Black-Scholes fallback`, `Delayed`, `Unavailable` | exact symbol/target/contract/call-put/expiry/strike/multiplier and causal clock matching; target sidecar status `BSGP_SHADOW_READY` maps to `BSGP`, complete residual fallback maps to `BLACK_SCHOLES`; live scoring rejects offline replay | Required for ordinary Pricing-backed fitted scoring; explicit completed-session OPRA alternative below; otherwise Scenario Coverage | **Confirmed.** `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py` |
+| Historical candidate outcomes | Derived by this loop from Loop B plus exact entry/exit evidence | append-only `ml/strategy-outcomes/<horizon>/<content-sha256>/` artifacts plus a bounded in-process cache | realized net profit after observed leg BBO cash flows/fees, return on risk, binary `profitable` = strictly positive; direction context at the historical decision | only complete Loop B labels and exact causal entry/exit receipts; optional upper bound excludes lockbox starts; ordinary Pricing-backed fitting admits complete quality-passing Pricing coverage; the promoted OPRA slow-model path has its separate outcome evidence; manifest/receipt/checksums verify reuse | Required to fit/reuse; optional for Scenario Coverage publication | **Confirmed.** `ml/strategy_selection/runtime.py`, `ml/strategy_selection/outcome_store.py` |
 | Prior compatible Strategy model | Strategy-profit training owner | `ml/strategy-profit-training-latest/run.json` and `ml/strategy-models/<horizon>/market-state-strategy-outcome/<generation>/` | independently promoted `1h`/`4h`/`1d`/`1w` histogram-gradient baseline, MLP challenger/optional blend, expected-return regressor, Platt calibrator; exact features, cohort fingerprint, policy/partitions/evaluation; OPRA history freshness proof | neural influence requires lower log loss on a purged chronological selection cohort; promoted training refuses stale production OPRA cursors; reuse requires exact fingerprint/configuration; assessment is never used for selection or calibration; one rejected horizon cannot promote itself or suppress a different horizon that passed | Required per horizon for calibrated model scoring; optional for Scenario Coverage | **Confirmed.** `ml/strategy_profit_training_runtime.py`, `ml/strategy_selection/slow_model.py`, `ml/strategy_selection/model.py` |
+
+### Completed-session OPRA alternative
+
+The fitted-score contract also includes `OPRA_EXECUTION_CALIBRATED_MODEL`: for explicit completed-session planning, active pricing mode and verified Databento OPRA entry evidence, a compatible promoted slow model can score eligible execution-evidence candidates even when a BSGP/Black–Scholes attachment is absent. The row remains delayed planning evidence and requires next-session same-leg quote revalidation. This branch is implemented in `ml/strategy_selection/runtime.py:438–474`; it must not be collapsed into either live Pricing authority or heuristic Scenario Coverage.
 
 ## Processing and decisions
 
@@ -50,7 +54,7 @@ next-session same-leg quote revalidation.
 3. **Confirmed:** for each horizon, reconstruct candidate outcomes from the earliest causal provider-neutral entry BBO and eligible exit BBO, attach Pricing before scoring, keep the target `profitable` binary, and persist the result under its immutable evidence hash. For future-route construction in the explicit overnight mode, select the newest completed-session BBO, prefer OPRA at a shared snapshot time, recompute its age at the planning cutoff, and require later same-leg revalidation. Ordinary/live causal entry selection and live Pricing attachment still forbid an offline replay from masquerading as a live receipt. `ml/strategy_selection/runtime.py`, `ml/strategy_selection/chain.py`, `ml/strategy_selection/outcome_store.py`
 4. **Confirmed:** Strategy-profit training uses exact nearest-boundary OPRA `cbbo-1m` entry/exit snapshots and causal one-minute underlying references wherever available. `1h` requires exact CBBO; older `4h`/`1d`/`1w` targets may use separately labeled conservative `ohlcv-1h` modeling calibrated on overlapping CBBO. It covers all four horizons, and target geometry is part of intraday candidate identity. Each horizon uses purged chronological train, selection, calibration, and assessment cohorts. Histogram-gradient, MLP, and fixed blends compete on selection log loss; the chosen family is refit, Platt-calibrated separately, and assessed only after fitting. `ml/strategy_profit_training_runtime.py`, `ml/strategy_profit_training.py`, `ml/strategy_selection/contracts.py`, `ml/strategy_selection/model.py`
 5. **Confirmed:** for each canonical LIVE forecast, select one exact entry chain before target start, construct policy-allowed spread candidates, attach Loop B context and exact Pricing evidence, infer market state using calibrated `probability_up`, and compute a non-probabilistic local scenario-grid coverage. `ml/strategy_selection/runtime.py`, `ml/strategy_selection/market_state.py`
-6. **Confirmed:** when a fitted calibrated model and eligible active Pricing exist, output calibrated profitable-outcome probability and bounded expected return/profit. Ineligible/no-model rows keep all probability fields null and retain only `scenario_coverage_score`; mixing is reranked deterministically by authority tier. `ml/strategy_selection/runtime.py`, `ml/strategy_selection/model.py`
+6. **Confirmed:** when a fitted calibrated model and eligible active Pricing or the explicit completed-session OPRA execution-evidence alternative exist, output calibrated profitable-outcome probability and bounded expected return/profit. Ineligible/no-model rows keep all probability fields null and retain only `scenario_coverage_score`; mixing is reranked deterministically by authority tier. `ml/strategy_selection/runtime.py`, `ml/strategy_selection/model.py`
 7. **Confirmed:** validate probability bounds, score-basis/pricing-source coherence, one decision per route, unique candidate keys and complete ranks; then write candidate/audit/report/model files, exact source lineage, receipt and atomic current pointer. `ml/strategy_runtime.py:146`, `ml/strategy_runtime.py:163`, `ml/strategy_runtime.py:221`, `ml/strategy_runtime.py:256`, `ml/strategy_publication.py:41`
 8. **Confirmed:** the overnight owner skips work only when the Strategy source record exactly equals the current Loop B pointer and the pricing mode, prospective heads, promoted profit-model pointer, and runtime policy are unchanged. Historical outcomes are content-addressed, receipt-verified and reusable across restarts; the in-process LRU is only a faster front cache. `ml/strategy_runtime.py`, `ml/strategy_selection/runtime.py`, `ml/strategy_selection/outcome_store.py`
 
@@ -58,7 +62,7 @@ next-session same-leg quote revalidation.
 
 | Output | Consumer(s) | Physical path or interface | Key output values and meanings | Publication/authority rules | Evidence |
 |---|---|---|---|---|---|
-| Strategy candidate predictions/ranks | UI/read-only consumers | `ml/strategy-runs/<generation>/strategy-candidates.parquet` | strategy/legs/risk/capital/Greeks/liquidity; direction probability; fitted raw/calibrated probability or null; separate Scenario Coverage; expected net profit/return; Pricing status/source/reason/quality; score basis and rank | fitted score equals calibrated probability, requires full exact-leg quality-passing Pricing and matches its source; heuristic rows have null probability fields; one decision per route and unique ranks | **Confirmed.** `ml/parquet_contracts.py`, `ml/strategy_runtime.py` |
+| Strategy candidate predictions/ranks | UI/read-only consumers | `ml/strategy-runs/<generation>/strategy-candidates.parquet` | strategy/legs/risk/capital/Greeks/liquidity; direction probability; fitted raw/calibrated probability or null; separate Scenario Coverage; expected net profit/return; Pricing status/source/reason/quality; score basis and rank | fitted score equals calibrated probability and requires eligible exact-leg Pricing or the explicit promoted completed-session OPRA execution-model path, with its source retained; heuristic rows have null probability fields; one decision per route and unique ranks | **Confirmed.** `ml/parquet_contracts.py`, `ml/strategy_runtime.py` |
 | Construction audit | UI/research | `strategy-audit.parquet` | strategy family/name, approval/authorization/construction status, candidate count and reason | schema-bound and receipt-covered; failed routes are explicit rather than silently absent | **Confirmed.** `ml/parquet_contracts.py:327`, `ml/strategy_runtime.py:153` |
 | Model/evidence reports and copied artifacts | later Strategy runs/research | `strategy-model-reports.json` and `model-artifacts/` | trained/reused counts, chronological offline evaluation, Pricing coverage/status, source generation mapping and candidate contract | copies only model artifacts referenced by this run; manifest checksums bind outputs/inputs | **Confirmed.** `ml/strategy_runtime.py:176`, `ml/strategy_runtime.py:181`, `ml/strategy_runtime.py:217` |
 | Strategy publication authority | UI/readers | `ml/strategy-latest/run.json` plus run `publication.json` | current immutable path/timestamps, manifest/receipt checksums, exact source Loop B record and candidate contract | receipt validates manifest and exact source Loop B record; atomic pointer must match receipt and contract exactly | **Confirmed.** `ml/strategy_publication.py:37`, `ml/strategy_publication.py:41`, `ml/strategy_publication.py:86` |
@@ -69,16 +73,16 @@ next-session same-leg quote revalidation.
 
 - **Confirmed:** Loop B is mandatory and supplies the authoritative route/sample/probability context. `ml/strategy_runtime.py:71`, `ml/strategy_runtime.py:125`
 - **Confirmed:** Options Capture prospective receipts remain live authority. The bounded overnight path may additionally consume the checksum-bound canonical OPRA cache as completed-session planning evidence, with its age recomputed at the run cutoff. That evidence is not an executable live receipt. `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`
-- **Confirmed:** Active Pricing supplies the implemented Black–Scholes-plus-residual sidecar and verified historical catalog before fitted probability scoring. Ready residual rows are labeled `BSGP`, baseline/fallback rows `BLACK_SCHOLES`, and absent/ineligible coverage retains only non-probabilistic Scenario Coverage. `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py`
+- **Confirmed:** Active Pricing supplies the implemented Black–Scholes-plus-residual sidecar and verified historical catalog before fitted probability scoring. Ready residual rows are labeled `BSGP`, baseline/fallback rows `BLACK_SCHOLES`, and absent/ineligible coverage retains non-probabilistic Scenario Coverage unless the explicit completed-session OPRA execution-model alternative qualifies. `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py`
 - **Confirmed:** Loop A stock quote-liquidity is a shared-artifact data input, without a direct readiness barrier. `ml/strategy_selection/chain.py:151`, `ml/strategy_runtime.py:209`
 
 ### Downstream
 
-**Confirmed:** no other production loop consumes Strategy outputs. The located consumers are read-only UI/data access. `app/ui/options_strategy_data.py:628`
+**Implemented consumers:** the Options Strategy UI reads the publication; the options-enabled `ml.nightly_gameplan` path freezes candidate intents; `ml.loop_c.runtime` reads accepted Strategy candidates for independently controlled observe-only research. These source relationships do not establish a current scheduled run or grant broker authority. Atlas's stock-only path omits Strategy-derived candidate/leg intents and emits non-executable `NO_TRADE_STOCK_ONLY` placeholders. `app/ui/options_strategy_data.py`, `ml/nightly_gameplan.py`, `ml/loop_c/runtime.py:54`
 
 ### Timing and control relationships
 
-**Confirmed:** Strategy’s +10 phase follows Loop B and Options at +6, but it does not wait on a named Options barrier; it reads the current verified Loop B and evidence available by its own creation clock. Its unchanged-work test uses the Loop B pointer, pricing mode, and both prospective provider heads. `ml/strategy_runtime.py`
+**Legacy recurring capability:** Strategy’s +10 phase follows Loop B and Options at +6, but it does not wait on a named Options barrier; it reads the current verified Loop B and evidence available by its own creation clock. Its unchanged-work test uses the Loop B pointer, pricing mode, and both prospective provider heads. `ml/strategy_runtime.py`
 
 ## Prediction contribution
 
@@ -98,7 +102,7 @@ next-session same-leg quote revalidation.
 - Missing/corrupt Loop B authority or absent source samples/predictions fails the
   cycle. Missing entry/exit chain or stock evidence is route-audited and skips
   affected constructions/outcomes rather than synthesizing them.
-- Missing full active Pricing coverage or a compatible fitted model keeps an
+- Missing both eligible Pricing/OPRA execution evidence, or a compatible fitted model, keeps an
   explicit `SCENARIO_COVERAGE_HEURISTIC` value. It leaves raw, calibrated, and
   decision probabilities null and the UI marks the row research-only.
 - Profit-model promotion is per horizon. A rejected horizon stays in the
@@ -136,9 +140,9 @@ next-session same-leg quote revalidation.
   on the next Loop B, pricing-mode, or prospective-receipt change.
 - The manifest checksums every `selection.source_files` input, and the summarized
   `option_snapshot_receipts` lineage covers both prospective provider trees.
-- No downstream production loop consumes Strategy output; the located consumer
-  is the read-only Options Strategy UI. Current candidate coverage and empirical
-  performance remain datastore facts.
+- Strategy has UI, options-enabled Gameplan and named Loop C consumers. Current
+  candidate coverage, scheduled use and empirical performance remain separate
+  datastore and machine-observation facts.
 
 ## Historical OPRA and model-maturity evidence
 
@@ -170,7 +174,7 @@ can advance after a replay, so these measurements do not claim that a prior
 replay fingerprint equals the forever-current archive.
 
 **Observed model maturity at 2026-08-19 22:40 UTC:** immutable Strategy run
-`ml/strategy-runs/20260819T224000.073641Z` passed manifest, publication, and
+`<dated immutable run retained in the original report>` passed manifest, publication, and
 source-lineage checksum verification. It contained 4,800 candidates and 1,440
 audit rows. All candidates were `SCENARIO_COVERAGE_HEURISTIC`; all nine route
 reports were `MODEL_NOT_FIT`; and zero models were trained or reused. This is
@@ -182,17 +186,17 @@ was not copied into any probability field.
 
 **Observed 2026-08-19 22:45:36 UTC:** one Strategy launcher/worker pair, its
 worker-owned singleton lock, primary logs, immutable publication, and Options
-Strategy UI contract passed. Run `ml/strategy-runs/20260819T224000.073641Z`
-was bound to exact current Loop B run `ml/runs/20260819T223552.337574Z`, including
+Strategy UI contract passed. Run `<dated immutable run retained in the original report>`
+was bound to exact current Loop B run `<dated immutable run retained in the original report>`, including
 matching source manifest and receipt checksums. The earlier lineage warning was
 fully resolved. At 22:59:29 UTC the read-only monitor verified newer Strategy
-run `ml/strategy-runs/20260819T225500.058671Z` bound to newer current Loop B run
-`ml/runs/20260819T225107.106040Z`; exact lineage remained healthy. Run paths are
+run `<dated immutable run retained in the original report>` bound to newer current Loop B run
+`<dated immutable run retained in the original report>`; exact lineage remained healthy. Run paths are
 timestamped evidence, not fixed authority names.
 
 **Observed 2026-09-04 10:59:31 UTC:** run
-`ml/strategy-runs/20260904T105214.742761Z` published 3,840 candidates and 1,200
-audit rows for the six-symbol overnight plan. All 3,840 candidates used
+`<dated immutable run retained in the original report>` published 3,840 candidates and 1,200
+audit rows for the then-configured overnight plan. All 3,840 candidates used
 `OPRA_EXECUTION_CALIBRATED_MODEL`, all option-leg timestamps were exactly
 `2026-09-03T20:00:00Z`, all option BBO validity flags passed, and all candidate
 net deltas were finite. The published horizons were `1h`, `1d`, `1w`, and the
