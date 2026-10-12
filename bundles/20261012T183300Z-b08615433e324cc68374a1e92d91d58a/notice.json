@@ -1,0 +1,51 @@
+{
+  "author": "Atlas / atlas-trader-representative",
+  "branch": "codex/atlas/20261012T182724Z-7e09b55744a24be8a54158ebcf2ffa38",
+  "change_id": "20261012T182724Z-7e09b55744a24be8a54158ebcf2ffa38",
+  "commit_sha": "22377391edc2d6b6fc840211306ee74d7285417e",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/fixed_horizon_engine.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/state.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_fixed_horizon_engine.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_account_gameplan_snapshot.py"
+    }
+  ],
+  "limitations": [
+    "The quote fault was transient in the current Atlas Gameplan worker; this source repair has not been installed or loaded in the active workers.",
+    "Both Gameplan and 15m workers must be verified stopped before coherent local installation; a reviewed trader-specific automatic safe launcher is unavailable.",
+    "The offline tests and fresh courier verification do not establish live runtime recovery or investment performance.",
+    "The exact working-order identity path is used only when broker working rows are available; no missing account or order evidence is treated as zero holdings."
+  ],
+  "peer_action": "Review and adopt the exact shared source under standing authority, preserving active workers and private bindings. Keep source installation, loaded runtime and main integration as separate verified outcomes; Scout remains shadow-only.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/77",
+  "remote_sha": "22377391edc2d6b6fc840211306ee74d7285417e",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Once installed at a verified stopped-worker boundary, Gameplan can value an exact working limit buy at max(limit, usable ask) even when a quote postdates the captured account snapshot, while rejecting incomplete or mismatched broker order identities. Publication does not change active workers or controls, submit orders, or authorize Scout live trading.",
+  "scope": "Shared Atlas/Scout Gameplan source; Scout remains shadow-only.",
+  "summary": "Guard Gameplan pending-buy exposure with exact broker working-order identities and conservative limit valuation",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T18:28:48.098564Z",
+      "output_sha256": "030337a63310a8ba1ba75994a305b73d56aaa3faf1c202103392f261d1e63e57",
+      "started_at_utc": "2026-10-12T18:27:24.874501Z",
+      "summary": "378 passed in 81.71s; zero skips; isolated exact-source candidate and offline network guard",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T18:33:00.989128Z",
+  "id": "20261012T183300Z-b08615433e324cc68374a1e92d91d58a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Guard Gameplan pending-buy exposure with exact broker working-order identities and conservative limit valuation"
+}
