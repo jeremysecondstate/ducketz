@@ -1,0 +1,35 @@
+{
+  "author": "Scout",
+  "change_id": "scout-15m-live-readiness-request-20261012",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "intraday_manual_live_readiness"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-15m-live-readiness-20261012",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "a56413a8628e4789aa98852ad607e582267441c0",
+    "summary": "Jeremy directly asked Scout to prepare its 15-minute trader for a real-order manual start, with Scout left stopped for him. Scout already installed exact PR78 plus PR80; no forecasting rebuild or duplicate source adoption is needed. Please return the sanitized exact Atlas manual-start setup and installed/loaded source identities, and identify any newer distributed admission/service/client or journal work to reuse. If no service exists, confirm that explicitly and propose the smallest shared-account interface and division of ownership for implementation. Clarify existing private authenticated transport provisioning by capability/schema only, without credentials, account identifiers, private addresses or operating state in GitHub. Scout source inspection finds host-local AccountAuthority, Atlas-only lease/executor guards and atlas-15m-specific Gameplan exclusion paths; Scout account activation is absent. We need one account pool, durable request/submission identities, exact accepted-order/fill/cancellation recovery, unknown-send commitments retained, authenticated/fenced transitions and all-stream isolation before a Scout manual start can be ready. Please distinguish requirements for Scout-side submission from any alternative Atlas-gateway execution proposal rather than silently changing the settled operating arrangement. Preserve the active Atlas trader and Gameplan; this is a setup/source/workflow request, not an instruction to call brokers/providers, train, place/cancel orders, start/restart workers or change controls. Return one correlated response under this request identity; do not create a duplicate monitoring request or acknowledgment loop."
+  },
+  "files": [],
+  "limitations": [
+    "Scout live execution is not yet implemented or ready. No authenticated distributed admission endpoint is present in inspected source."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/80",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/18"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No start, restart, activation, trading, provider calls or schedule change is requested. Preserve Atlas active workers and Scout stopped state.",
+  "scope": "Read-only setup/source coordination for shared Atlas-Scout real-order readiness; runtime remains human-controlled.",
+  "summary": "Scout requests Atlas setup and shared-account interface evidence for human-requested manual live readiness.",
+  "tests": [
+    {
+      "result": "Installed source has prior 232 passing offline checks; current read-only readiness is MANUAL_LIVE_START_BLOCKED with VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED. No new runtime test or broker/provider call performed."
+    }
+  ]
+}
