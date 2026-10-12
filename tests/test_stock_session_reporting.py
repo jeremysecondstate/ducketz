@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from ml.stock_trader import independent_session as worker
-from ml.stock_trader.session_reporting import session_cycle_report
+from ml.stock_trader.session_reporting import format_session_cycle_report, session_cycle_report
 
 
 def _cycle(**overrides):
@@ -73,7 +73,12 @@ def test_actual_errors_remain_visible_without_reassuring_monitoring_message(fail
     assert report["session_status"] == "DEGRADED"
     assert report["session_failed_cycles"] == report["session_consecutive_failures"] == 1
     assert report["session_orders_submitted"] == 12
-    assert "message" not in report
+    line = format_session_cycle_report(report)
+    assert report["activity"] == "ATTENTION"
+    assert cycle["status"] in line
+    assert "monitoring" not in line.lower()
+    if cycle["error"]:
+        assert cycle["error"] in line
 
 
 def test_no_capture_cycle_does_not_claim_session_recovery():
@@ -83,7 +88,10 @@ def test_no_capture_cycle_does_not_claim_session_recovery():
     assert report["broker_capture_status"] is None
     assert report["session_status"] == "DEGRADED"
     assert report["session_consecutive_failures"] == 1
-    assert "message" not in report
+    line = format_session_cycle_report(report)
+    assert report["activity"] == "ATTENTION"
+    assert "NO_DIRECTIONAL_STOCK_ENTRY_SIGNAL" in line
+    assert "monitoring" not in line.lower()
 
 
 def test_pacific_timestamp_tracks_standard_time_and_omits_absent_error_fields():
@@ -91,6 +99,80 @@ def test_pacific_timestamp_tracks_standard_time_and_omits_absent_error_fields():
     assert report["timestamp_pacific"] == "2026-12-01T04:06:00-08:00"
     assert "error" not in report
     assert "stopped_after_error" not in report
+
+
+def test_normal_idle_line_distinguishes_no_new_submissions_from_working_orders():
+    report = _report(_cycle())
+    original = deepcopy(report)
+    line = format_session_cycle_report(report)
+    assert "No new orders this cycle" in line
+    assert "monitoring" in line.lower()
+    assert "Open orders may still fill" in line
+    assert "submitted cycle=0 session=12" in line
+    assert "broker=CURRENT" in line
+    assert "NO_ORDERS_SUBMITTED" not in line
+    assert not line.startswith("{") and len(line.splitlines()) == 1
+    assert report == original
+
+
+@pytest.mark.parametrize("as_of,pacific", [
+    ("2026-10-12T11:06:00Z", "[04:06:00 PDT]"),
+    ("2026-12-01T12:06:00Z", "[04:06:00 PST]"),
+])
+def test_activity_line_uses_local_pacific_time_through_daylight_saving(as_of, pacific):
+    assert format_session_cycle_report(_report(_cycle(), as_of=as_of)).startswith(pacific)
+
+
+@pytest.mark.parametrize("cycle,activity,meaning", [
+    (_cycle(status="ORDERS_SUBMITTED", submitted_orders=2), "ORDERS SUBMITTED", "fills are not confirmed"),
+    (_cycle(status="ENTRY_CANCELLATION_AWAITING_RECONCILIATION"), "CANCELLATION PENDING",
+     "Waiting for broker cancellation confirmation"),
+    (_cycle(status="NO_ORDERS_SUBMITTED_RETRY_EXHAUSTED"), "MONITORING",
+     "unfilled remainder abandoned"),
+    (_cycle(status="TRADER_INACTIVE", activation_active=False), "INACTIVE", "inactive"),
+    (_cycle(status="DRY_RUN_INDEPENDENT_STOCK_DECISIONS", execution_requested=False), "DRY RUN", "dry run"),
+])
+def test_activity_line_explains_order_and_operating_states(cycle, activity, meaning):
+    report = _report(cycle)
+    assert report["activity"] == activity
+    line = format_session_cycle_report(report)
+    assert meaning.lower() in line.lower()
+    assert f"submitted cycle={cycle['submitted_orders']} session=12" in line
+    assert len(line.splitlines()) == 1
+    if activity in {"INACTIVE", "DRY RUN", "CANCELLATION PENDING"}:
+        assert "continues monitoring" not in line
+    if activity == "CANCELLATION PENDING":
+        assert "orders cancelled" not in line.lower()
+
+
+def test_partial_submission_failure_retains_counts_exact_status_and_single_line_error():
+    cycle = _cycle(status="SUBMISSION_STOPPED_AFTER_ERROR", submitted_orders=2,
+                   stopped_after_error=True, error="ReadTimeout\r\nresponse lost\tplease reconcile")
+    report = _report(cycle, failures=1, consecutive=1)
+    line = format_session_cycle_report(report)
+    assert report["error"] == cycle["error"]  # Sanitizing display must preserve evidence.
+    assert "ATTENTION" in line and "SUBMISSION_STOPPED_AFTER_ERROR" in line
+    assert "submitted cycle=2 session=12" in line
+    assert "ReadTimeout response lost please reconcile" in line
+    assert "stopped" in line.lower()
+    assert "monitoring" not in line.lower()
+    assert len(line.splitlines()) == 1 and "\t" not in line
+
+
+@pytest.mark.parametrize("capture", [None, {"status": "UNAVAILABLE"}])
+def test_idle_status_with_unresolved_failure_never_claims_healthy_monitoring(capture):
+    report = _report(_cycle(broker_state_capture=capture), failures=2, consecutive=2)
+    line = format_session_cycle_report(report)
+    assert report["session_status"] == "DEGRADED"
+    assert report["activity"] == "ATTENTION"
+    assert "NO_ORDERS_SUBMITTED" in line and "monitoring" not in line.lower()
+
+
+def test_unrecognized_status_is_visible_without_inventing_recovery():
+    line = format_session_cycle_report(_report(_cycle(status="FUTURE_OPERATIONAL_STATUS")))
+    assert "FUTURE_OPERATIONAL_STATUS" in line
+    assert "WAITING" in line
+    assert "monitoring" not in line.lower()
 
 
 class Clock:
@@ -133,22 +215,24 @@ def test_session_reports_cumulative_orders_and_retains_full_saved_cycle(tmp_path
 
     result = worker.run_independent_stock_session(
         tmp_path, execute=False, clock=clock, sleep=sleep, runner=runner,
-        reporter=lambda message: emitted.append(json.loads(message)),
+        reporter=emitted.append,
     )
-    assert emitted[0]["status"] == "SESSION_STARTED"
-    reports = emitted[1:]
-    assert len(reports) == len(payloads) == len(saved)
-    assert [report["orders_submitted_this_cycle"] for report in reports] == [12, 0, 0, 0]
-    assert [report["session_orders_submitted"] for report in reports] == [12, 12, 12, 12]
-    assert [report["session_cycles"] for report in reports] == [1, 2, 3, 4]
-    assert [report["session_failed_cycles"] for report in reports] == [0, 1, 1, 1]
-    assert [report["session_consecutive_failures"] for report in reports] == [0, 1, 1, 0]
-    assert [report["session_status"] for report in reports] == ["RUNNING", "DEGRADED", "DEGRADED", "RUNNING"]
-    assert [report["status"] for report in reports] == [payload["status"] for payload in payloads]
-    assert all("message" not in report for report in reports[:-1])
-    assert reports[-1]["message"] == "No new orders this cycle; session continues monitoring."
+    assert json.loads(emitted[0])["status"] == "SESSION_STARTED"
+    lines = emitted[1:]
+    assert len(lines) == len(payloads) == len(saved)
+    assert all(not line.startswith("{") and len(line.splitlines()) == 1 for line in lines)
+    assert "submitted cycle=12 session=12" in lines[0]
+    assert "fills are not confirmed" in lines[0]
+    assert all("submitted cycle=0 session=12" in line for line in lines[1:])
+    assert "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE" in lines[1] and "ReadTimeout" in lines[1]
+    assert "ATTENTION" in lines[1] and "ATTENTION" in lines[2]
+    assert "monitoring" not in lines[1].lower() and "monitoring" not in lines[2].lower()
+    assert "No new orders this cycle; session continues monitoring." in lines[-1]
+    assert [status["calls"] for status in saved] == [1, 2, 3, 4]
+    assert [status["failed_cycles"] for status in saved] == [0, 1, 1, 1]
+    assert [status["consecutive_failures"] for status in saved] == [0, 1, 1, 0]
     assert [status["last_cycle"] for status in saved] == payloads
-    assert [status["status"] for status in saved] == [report["session_status"] for report in reports]
+    assert [status["status"] for status in saved] == ["RUNNING", "DEGRADED", "DEGRADED", "RUNNING"]
     final = json.loads(status_path.read_text())
     assert final["last_cycle"] == payloads[-1]
     assert final["orders_submitted"] == result["orders_submitted"] == 12
