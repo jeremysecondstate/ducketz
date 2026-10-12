@@ -1,0 +1,82 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T134258Z-625f7ebac7c94d07bb310d921a53a0a0",
+  "change_id": "20261012T134258Z-625f7ebac7c94d07bb310d921a53a0a0",
+  "commit_sha": "8235e6fbd5a6f086f0ac7feeaa6c24089ee07e2a",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Check-15m-Readiness.cmd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-live-readiness.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-scout-update-prompt.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/technical_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_technical_sizing.py"
+    }
+  ],
+  "human_clarifications": [
+    "Reuse one existing Schwab cancellation/status mechanism for Gameplan and 15m, with stream-specific order selection and reasons; retain exact identities, intervening fills and unfilled commitments until terminal confirmation."
+  ],
+  "limitations": [
+    "Technical sizing requires explicit per-symbol indicator/score parameters, positive BUY/SELL reference sizes and rounding edge policies; no production recipe is selected.",
+    "The sizing engine is not yet automatically invoked by ShadowRunner or persisted as a live intention; adjusted quantity stays null pending actual shared capacity integration.",
+    "Live broker/manual-worker integration, shared Gameplan/15m reservations, shared cancellation selectors and unknown-identity recovery remain incomplete.",
+    "Installed Atlas account authority is separate source work not included in this forecasting branch base; readiness tolerates its absence and never constructs an authority or ledger.",
+    "Readiness always reports manual live start not implemented; saved evidence does not prove provider availability, broker reconciliation, loaded workers or predictive performance.",
+    "Scout continues research/shadow; final targets, longer-allocation policy, contention, repricing and incomplete-ensemble eligibility remain explicit open decisions."
+  ],
+  "parent_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/72",
+  "peer_action": "Review and adopt the exact nine-path preparation under standing authority, preserving Scout shadow operation and private bindings. No live cancellation or submission adapter is implemented here. Use the published Scout prompt, retain the monitoring request identity, and report installation separately from loaded runtime. Coordinate shared authority/ledger ownership before live integration.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/73",
+  "remote_sha": "8235e6fbd5a6f086f0ac7feeaa6c24089ee07e2a",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local development source and a read-only diagnostic only. No live broker action, provider request, new training run, live ledger/schema migration, worker start/restart, schedule/binding change or source main integration.",
+  "scope": "Shared Atlas and Scout preparation; preserve all current operating bindings.",
+  "summary": "Prepare causal intraday sizing and read-only live-readiness diagnostics",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T13:44:11.875291Z",
+      "output_sha256": "9ae117b32f60353abee8f5a2e0ff36a0a20d8358cfc0785281f406945c897826",
+      "started_at_utc": "2026-10-12T13:43:52.662274Z",
+      "summary": "317 passed, 18 warnings in 17.70s; zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

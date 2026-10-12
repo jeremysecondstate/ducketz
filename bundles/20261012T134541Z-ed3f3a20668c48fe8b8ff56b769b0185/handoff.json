@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T13:45:41.550407Z",
+  "id": "20261012T134541Z-ed3f3a20668c48fe8b8ff56b769b0185",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Prepare causal intraday sizing and read-only live-readiness diagnostics"
+}
