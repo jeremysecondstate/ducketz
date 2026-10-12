@@ -54,7 +54,10 @@ _OUTCOME_REQUIRED = {"forecast_id", "revision_id", "status", "target_not_down", 
 _CYCLE_REQUIRED = {"cycle_id", "pc", "reference_at", "mode", "started_at", "status"}
 _CYCLE_OPTIONAL = {"completed_at", "candle_close", "scheduled_acquisition", "training_cutoff", "full_retrain",
                    "compute_persist_seconds", "acquisition_seconds", "total_cycle_seconds", "successful_symbols",
-                   "failed_symbols", "process_cpu_seconds", "exceeds_15m", "overrun_seconds", "failed_symbol_names"}
+                   "failed_symbols", "process_cpu_seconds", "exceeds_15m", "overrun_seconds", "failed_symbol_names",
+                   "measurement_scope", "cumulative_attempt_seconds", "wall_elapsed_seconds",
+                   "wall_exceeds_15m", "wall_overrun_seconds"}
+_CYCLE_MEASUREMENT_SCOPES = {"cumulative_attempt_work", "wall_elapsed_with_cumulative_attempt_work_v1"}
 
 
 def _canonical(value):
@@ -304,7 +307,10 @@ def validate_packet(packet, *, expected_peer=None, as_of=None):
             if (not isinstance(values, list) or len(values) > 256
                     or any(not isinstance(v, str) or not re.fullmatch(r"[A-Z][A-Z0-9.-]{0,15}", v) for v in values)):
                 raise ContractError("Invalid monitoring failure symbol list")
-        for key in ("full_retrain", "exceeds_15m"):
+        if "measurement_scope" in cycle and (not isinstance(cycle["measurement_scope"], str)
+                or cycle["measurement_scope"] not in _CYCLE_MEASUREMENT_SCOPES):
+            raise ContractError("Unknown monitoring cycle measurement scope")
+        for key in ("full_retrain", "exceeds_15m", "wall_exceeds_15m"):
             if key in cycle and type(cycle[key]) is not bool:
                 raise ContractError("Invalid monitoring boolean marker")
     return packet

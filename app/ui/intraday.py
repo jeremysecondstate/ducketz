@@ -385,6 +385,7 @@ class IntradayTab:
                     "failures", "finished_at", "completed_at", "workload", "successful_symbols", "failed_symbols",
                     "total_cycle_seconds", "compute_cycle_seconds", "compute_persist_seconds", "acquisition_seconds",
                     "process_cpu_seconds", "exceeds_15m", "overrun_seconds", "measurement_scope",
+                    "cumulative_attempt_seconds", "wall_elapsed_seconds", "wall_exceeds_15m", "wall_overrun_seconds",
                     "attempt_count", "latest_attempt")
             values = {key: row[key] for key in keys if key in row}
             return json.dumps(values, ensure_ascii=False, sort_keys=True) if values else "No cycle timing evidence saved"

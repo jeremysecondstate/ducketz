@@ -27,6 +27,123 @@ def run(env, *, execute=True):
         runtime_clock=lambda: env.now, session_managed=True, sizing_policy=GAMEPLAN_SIZING_POLICY)
 
 
+def test_pending_buy_quote_received_during_capture_uses_verified_readiness(environment, monkeypatch):
+    from ml.stock_trader.contracts import StockTraderPolicy, canonical_sha256
+    from ml.stock_trader.fixed_horizon_engine import _joint_budgets
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    env.signals = {("AAPL", "1h"): env.signals["AAPL", "1h"]}
+    request_started = env.now
+    originals = []
+    original_capture = runtime.capture_portfolio_state
+    def capture(*args, **kwargs):
+        value = original_capture(*args, **kwargs)
+        value = replace(value, pending_buy_shares={"AMZN": 1.}, working_order_count=1,
+            quotes={symbol: replace(quote, observed_at=(request_started+pd.Timedelta(milliseconds=500)).isoformat())
+                    if symbol == "AMZN" else quote for symbol, quote in value.quotes.items()},
+            broker_working_orders=({"order_id":"other-stream-pending-buy", "instruction":"BUY",
+                "asset_type":"EQUITY", "symbol":"AMZN", "remaining_quantity":1,
+                "filled_quantity":0, "limit_price":100., "reserved_cash":100., "status":"CURRENT"},))
+        originals.append(value)
+        env.now += pd.Timedelta(seconds=1)
+        return value
+    original_verify = env.broker.verify_read_snapshot
+    def verify(identity):
+        original_verify(identity)
+        env.now += pd.Timedelta(milliseconds=250)
+    monkeypatch.setattr(runtime, "capture_portfolio_state", capture)
+    monkeypatch.setattr(env.broker, "verify_read_snapshot", verify)
+    result = run(env)
+    assert result.status == "ORDERS_SUBMITTED" and result.submitted_orders == 1, result.error
+    original, = originals
+    with pytest.raises(ValueError, match="Pending buy exposure"):
+        _joint_budgets(original, StockTraderPolicy())  # The actual pre-fix failure.
+    recorded = _decisions(result)
+    ready = recorded["prediction_handoff"]["portfolio_information_readiness"]
+    assert ready["request_started_at"] == ready["original_observed_at"] == request_started.isoformat()
+    assert ready["validated_at"] == (request_started+pd.Timedelta(milliseconds=1250)).isoformat()
+    assert ready["original_capture_age_seconds"] == 1.25
+    assert ready["original_source_fingerprint"] == original.source_fingerprint
+    assert ready["quote_timestamps_retained"] is True and ready["quote_timestamp_wait_status"] == "NOT_NEEDED"
+    assert original.observed_at == request_started.isoformat()
+    assert original.quotes["AMZN"].observed_at == (request_started+pd.Timedelta(milliseconds=500)).isoformat()
+    ledger = HorizonLedger(env.root/runtime.LEDGER_RELATIVE_PATH, ACCOUNT)
+    with ledger._transaction() as db:
+        import json
+        native = json.loads(db.execute("SELECT payload FROM snapshots ORDER BY rowid LIMIT 1").fetchone()[0])
+    assert native["observed_at"] == ready["validated_at"]
+    assert native["source_fingerprint"] == canonical_sha256(ready)
+    assert env.broker.calls.index("verify_snapshot") < env.broker.calls.index("post")
+
+
+@pytest.mark.parametrize("damage,error", [("future", "CAPTURE_IN_FUTURE"),
+    ("stale", "CAPTURE_TOO_OLD"), ("ages_during_identity", "CAPTURE_TOO_OLD"),
+    ("identity_change", "ACCOUNT_CHANGED_DURING_CAPTURE")])
+def test_readiness_keeps_original_capture_age_and_identity_guards(environment, monkeypatch, damage, error):
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    env.signals = {("AAPL", "1h"): env.signals["AAPL", "1h"]}
+    original_capture = runtime.capture_portfolio_state
+    def capture(*args, **kwargs):
+        value = original_capture(*args, **kwargs)
+        offset = 1 if damage == "future" else -61 if damage == "stale" else -59 if damage == "ages_during_identity" else 0
+        return replace(value, observed_at=(env.now+pd.Timedelta(seconds=offset)).isoformat())
+    monkeypatch.setattr(runtime, "capture_portfolio_state", capture)
+    if damage == "ages_during_identity":
+        original_verify = env.broker.verify_read_snapshot
+        def verify(identity):
+            original_verify(identity)
+            env.now += pd.Timedelta(seconds=2)
+        monkeypatch.setattr(env.broker, "verify_read_snapshot", verify)
+    if damage == "identity_change":
+        checks = []
+        def identity():
+            checks.append(True)
+            return ACCOUNT if len(checks) == 1 else "c"*64
+        monkeypatch.setattr(env.broker, "stable_account_fingerprint", identity)
+    result = run(env)
+    assert result.status == "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE" and error in result.error
+    assert env.broker.submissions == []
+    assert "portfolio_information_readiness" not in _decisions(result)["prediction_handoff"]
+    ledger = HorizonLedger(env.root/runtime.LEDGER_RELATIVE_PATH, ACCOUNT)
+    with ledger._transaction() as db:
+        assert db.execute("SELECT count(*) FROM snapshots").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("damage", ["future", "stale", "missing", "crossed"])
+def test_readiness_never_relabels_invalid_or_unavailable_entry_quotes(environment, monkeypatch, damage):
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    env.signals = {("AAPL", "1h"): env.signals["AAPL", "1h"]}
+    original_capture = runtime.capture_portfolio_state
+    originals = []
+    def capture(*args, **kwargs):
+        value = original_capture(*args, **kwargs)
+        quotes = dict(value.quotes)
+        if damage == "missing":
+            quotes.pop("AAPL")
+        elif damage == "future":
+            quotes["AAPL"] = replace(quotes["AAPL"], observed_at=(env.now+pd.Timedelta(seconds=20)).isoformat())
+        elif damage == "stale":
+            quotes["AAPL"] = replace(quotes["AAPL"], observed_at=(env.now-pd.Timedelta(seconds=61)).isoformat())
+        else:
+            quotes["AAPL"] = replace(quotes["AAPL"], bid=101., ask=100.)
+        value = replace(value, quotes=quotes)
+        originals.append(value)
+        return value
+    monkeypatch.setattr(runtime, "capture_portfolio_state", capture)
+    result = runtime.run_independent_stock_trader_once(env.root, execute=True, session=env.broker,
+        runtime_clock=lambda:env.now, session_managed=True, sizing_policy=GAMEPLAN_SIZING_POLICY,
+        broker_state_retry_max_seconds=0, broker_state_retry_sleep=lambda seconds:pytest.fail("No clock waiver"))
+    assert result.submitted_orders == 0 and env.broker.submissions == []
+    recorded = _decisions(result)
+    decision, = recorded["decisions"]
+    assert decision["decision_reason_code"] == ("CURRENT_QUOTE_TOO_OLD" if damage == "stale" else "USABLE_QUOTE_UNAVAILABLE")
+    original, = originals
+    assert decision["quote"] == ({} if damage == "missing" else vars(original.quotes["AAPL"]))
+    assert recorded["prediction_handoff"]["portfolio_information_readiness"]["validated_at"] == env.now.isoformat()
+
+
 def test_quote_that_ages_out_before_submission_is_not_disguised_by_fresh_account_capture(environment, monkeypatch):
     env = environment
     prepare(env, monkeypatch, probability=.7)

@@ -495,7 +495,8 @@ def run_independent_stock_trader_once(
                 symbol_options = {"symbols": account_config.symbols, "include_order_identities": True}
             elif sizing_policy == GAMEPLAN_SIZING_POLICY:
                 symbol_options["include_order_identities"] = True
-            current_portfolio = capture_portfolio_state(broker, observed_at=utc(clock()), parallel=True, **symbol_options,
+            request_started = utc(clock())
+            current_portfolio = capture_portfolio_state(broker, observed_at=request_started, parallel=True, **symbol_options,
                 **({"literal_cash_only": True, "use_actual_quote_timestamps": True}
                    if sizing_policy == GAMEPLAN_SIZING_POLICY else {}))
             if sizing_policy == GAMEPLAN_SIZING_POLICY:
@@ -506,8 +507,29 @@ def run_independent_stock_trader_once(
             if stable_identity != broker.stable_account_fingerprint():
                 raise ValueError("STOCK_ACCOUNT_CHANGED_DURING_CAPTURE")
             broker.verify_read_snapshot(current_portfolio.broker_identity_fingerprint)
-            if (utc(clock()) - utc(current_portfolio.observed_at)).total_seconds() > ledger.maximum_evidence_age_seconds:
+            validated_at = utc(clock())
+            original_observed_at = utc(current_portfolio.observed_at)
+            capture_age = (validated_at - original_observed_at).total_seconds()
+            if capture_age < 0 or validated_at < request_started:
+                raise ValueError("BROKER_PORTFOLIO_CAPTURE_IN_FUTURE")
+            if capture_age > ledger.maximum_evidence_age_seconds:
                 raise ValueError("BROKER_PORTFOLIO_CAPTURE_TOO_OLD")
+            if sizing_policy == GAMEPLAN_SIZING_POLICY:
+                # The state API names request start, while actual quote times
+                # can fall later within that read. Declare information readiness
+                # only after capture, clock waiting and account identity checks.
+                # Retain the original age bound and evidence, without advancing
+                # any quote timestamp, decision deadline or target.
+                readiness = {"schema_version": "gameplan-portfolio-information-readiness-v1",
+                    "request_started_at": request_started.isoformat(),
+                    "original_observed_at": original_observed_at.isoformat(),
+                    "validated_at": validated_at.isoformat(), "original_capture_age_seconds": capture_age,
+                    "original_source_fingerprint": current_portfolio.source_fingerprint,
+                    "quote_timestamps_retained": True,
+                    "quote_timestamp_wait_status": metadata["quote_timestamp_wait"]["status"]}
+                current_portfolio = replace(current_portfolio, observed_at=validated_at.isoformat(),
+                    source_fingerprint=canonical_sha256(readiness))
+                metadata["portfolio_information_readiness"] = readiness
             evidence = current_evidence
             return current_portfolio
 

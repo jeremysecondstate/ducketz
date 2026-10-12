@@ -34,7 +34,8 @@ GAMEPLAN_HEARTBEAT_AGE_SECONDS = 120
 PUBLIC_SOURCES = (
     "ml/intraday/readiness.py", "ml/intraday/runtime.py", "ml/intraday/store.py",
     "ml/intraday/execution_policy.py", "ml/intraday/technical_sizing.py",
-    "ml/account_gameplan/authority.py", "ml/stock_trader/horizon_ledger.py",
+    "ml/account_gameplan/authority.py", "ml/account_gameplan/execution.py",
+    "ml/stock_trader/horizon_ledger.py", "ml/stock_trader/horizon_broker.py",
     "ml/stock_trader/independent_runtime.py", "ml/intraday/cancellation.py",
     "ml/intraday/runtime_compatibility.py", "ml/intraday/account_execution.py",
     "ml/intraday/live_session.py", "ml/intraday/starter_sizing.py",

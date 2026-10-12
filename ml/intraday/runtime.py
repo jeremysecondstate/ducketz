@@ -141,6 +141,14 @@ def regime_measurements(snapshot):
             "definition":"trailing20_observed_steps_efficiency_and_choppiness_v1"}
 
 
+def recorded_symbol_failures(store, cycle_id):
+    """Latest immutable failure events also survive a missing cycle summary."""
+    with store.connect() as db:
+        rows=db.execute("SELECT symbol,payload FROM events WHERE cycle_id=? AND kind='symbol_failure' ORDER BY id",
+                        (cycle_id,)).fetchall()
+    return {symbol:json.loads(payload) for symbol,payload in rows}
+
+
 class ShadowRunner:
     def __init__(self, *, store, pc, symbols, config=None, artifact_root=None, clock=utcnow,
                  trainer=None, dataset_builder=None, stopped=lambda: False):
@@ -157,7 +165,8 @@ class ShadowRunner:
         self.stopped = stopped
 
     def run_cycle(self, histories, *, reference_at, mode="shadow", cutoff=None, experiment="primary",
-                  acquisition=None, intent_by_symbol=None, on_published=None):
+                  acquisition=None, intent_by_symbol=None, on_published=None, retry_symbols=None,
+                  allow_execution=True):
         """Publish each complete symbol independently. Failure/restart never reissues.
 
         A research invocation uses explicit worker count, no deadline cancellation,
@@ -191,6 +200,9 @@ class ShadowRunner:
         saved = self.store.begin_cycle(cycle_id,initial)
         existing = {symbol: self.store.forecast(cycle_id, symbol) for symbol in self.symbols}
         reused = {symbol: forecast for symbol, forecast in existing.items() if forecast is not None}
+        selected = set(self.symbols if retry_symbols is None else retry_symbols)
+        if not selected <= set(self.symbols):
+            raise ContractError("Recovery changed the configured symbol scope")
         if saved.get("status") == "completed":
             if len(reused) != len(self.symbols):
                 raise ContractError("Completed cycle is missing immutable forecasts")
@@ -204,18 +216,31 @@ class ShadowRunner:
         training_cutoff = instant(saved["training_cutoff"])
         start_perf = time.perf_counter()
         before = resource_snapshot()
-        results, failures = {}, {}
+        results = {symbol: forecast for symbol, forecast in reused.items() if symbol not in selected}
+        prior_failures={**saved.get("failures", {}), **recorded_symbol_failures(self.store, cycle_id)}
+        failures = {symbol: error for symbol, error in prior_failures.items()
+                    if symbol not in selected and symbol not in reused}
         with ThreadPoolExecutor(max_workers=self.config.symbol_workers,thread_name_prefix="intraday-research") as pool:
             futures = {pool.submit(self._symbol, cycle_id, symbol, lambda s=symbol: histories.get(s), reference,
-                        training_cutoff, mode, (intent_by_symbol or {}).get(symbol), on_published, start_perf): symbol for symbol in self.symbols}
+                        training_cutoff, mode, (intent_by_symbol or {}).get(symbol), on_published, start_perf,
+                        allow_execution): symbol for symbol in self.symbols if symbol in selected}
             for future in as_completed(futures):
                 symbol = futures[future]
                 try:
                     results[symbol] = future.result()
                 except Exception as exc:
+                    from .data import AcquisitionPending
                     error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat()}
+                    if isinstance(exc, AcquisitionPending):
+                        error.update(retryable=True, reason=exc.reason,
+                                     retry_after_seconds=exc.retry_after_seconds,
+                                     retry_at=(instant(error["recorded_at"])+timedelta(seconds=exc.retry_after_seconds)).isoformat())
                     failures[symbol] = error
                     self.store.event(cycle_id,"symbol_failure",error,symbol=symbol)
+                    # A crash between futures must not turn a known permanent
+                    # model failure into an automatic data-prerequisite retry.
+                    self.store.update_cycle(cycle_id,{"failures":dict(failures),
+                        "pending_recovery_symbols":[s for s,e in failures.items() if e.get("retryable")]})
         elapsed = time.perf_counter()-start_perf
         after = resource_snapshot()
         end = instant(self.clock())
@@ -227,20 +252,29 @@ class ShadowRunner:
                        failed_symbols=list(failures),resources_before=before,resources_after=after,
                        process_cpu_seconds=after["process_cpu_seconds"]-before["process_cpu_seconds"])
         self.store.event(cycle_id,"cycle_attempt_measured",attempt)
-        cumulative_total = total_seconds + float(saved.get("total_cycle_seconds",0))
-        summary = dict(status="completed" if not failures else "partial_failure",completed_at=end.isoformat(),
+        cumulative_total = total_seconds + float(saved.get("cumulative_attempt_seconds",
+            saved.get("compute_persist_seconds",0)+saved.get("acquisition_seconds",0)))
+        wall_seconds=max(0.0,(end-instant(saved["started_at"])).total_seconds())
+        total_cycle_seconds=wall_seconds if mode in {"live","shadow"} else cumulative_total
+        summary = dict(status="completed" if not failures and len(results)==len(self.symbols) else "partial_failure",completed_at=end.isoformat(),
                        compute_persist_seconds=elapsed+float(saved.get("compute_persist_seconds",0)),
                        acquisition_seconds=acquisition_seconds+float(saved.get("acquisition_seconds",0)),
-                       total_cycle_seconds=cumulative_total,successful_symbols=len(results),failed_symbols=len(failures),
+                       total_cycle_seconds=total_cycle_seconds,cumulative_attempt_seconds=cumulative_total,
+                       successful_symbols=len(results),failed_symbols=len(failures),
                        symbols_published=list(results),failures=failures,resources_before=before,resources_after=after,
+                       pending_recovery_symbols=[s for s,e in failures.items() if e.get("retryable")],
                        process_cpu_seconds=attempt["process_cpu_seconds"]+float(saved.get("process_cpu_seconds",0)),
-                       measurement_scope="cumulative_attempt_work",attempt_count=int(saved.get("attempt_count",0))+1,
+                       measurement_scope="wall_elapsed_with_cumulative_attempt_work_v1" if mode in {"live","shadow"}
+                           else "cumulative_attempt_work",attempt_count=int(saved.get("attempt_count",0))+1,
+                       wall_elapsed_seconds=wall_seconds,wall_exceeds_15m=wall_seconds>=900,
+                       wall_overrun_seconds=max(0,wall_seconds-900),
                        latest_attempt=attempt,resources_initial=saved.get("resources_initial",before),
-                       exceeds_15m=cumulative_total>=900,overrun_seconds=max(0,cumulative_total-900))
+                       exceeds_15m=total_cycle_seconds>=900,overrun_seconds=max(0,total_cycle_seconds-900))
         self.store.update_cycle(cycle_id,summary)
         return {"cycle_id":cycle_id,**summary,"forecasts":results}
 
-    def _symbol(self,cycle_id,symbol,history,reference,cutoff,mode,intent,on_published,cycle_started_perf):
+    def _symbol(self,cycle_id,symbol,history,reference,cutoff,mode,intent,on_published,cycle_started_perf,
+                allow_execution=True):
         if self.stopped():
             raise InterruptedError("Manual stop before symbol work; no model or forecast substituted")
         existing=self.store.forecast(cycle_id,symbol)
@@ -330,6 +364,8 @@ class ShadowRunner:
                  "inference_seconds":fitted["inference_seconds"],"symbol_seconds_before_persistence":measured,
                  "training_started_at":training_start.isoformat(),"training_completed_at":finished.isoformat(),
                  "issue_after_target":issued>=reference+3*STEP,"dataset_manifest":snapshot["manifest"],
+                 "execution_blocked_reason":"recovered_older_cycle" if not allow_execution else
+                     "issue_after_target" if issued>=reference+3*STEP else None,
                  "synthetic_policy":self.config.synthetic_policy,"features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
         persistence_start=time.perf_counter()
@@ -400,24 +436,30 @@ class LiveHistories:
         self.sleep=sleep
         self.bounded=bounded
         self.cycle_id=None
+        for symbol in tuple(histories):
+            self._refresh_symbol(symbol)
+
+    def _refresh_symbol(self, symbol):
         from .data import History, synthetic_continuity_verified
-        for symbol,history in tuple(histories.items()):
-            if history.manifest.get("source_dataset")!=provider.dataset:
+        histories = self.histories
+        for symbol,history in ((symbol, histories[symbol]),):
+            if history.manifest.get("source_dataset")!=self.provider.dataset:
                 raise ContractError("Existing provider binding differs from selected single historical source")
-            saved=store.observed_candles(symbol)
+            saved=self.store.observed_candles(symbol)
+            saved=[c for c in saved if instant(c["available_at"]) <= instant(self.clock())]
             invalid=[c for c in saved if not synthetic_continuity_verified(c)]
             saved=[c for c in saved if synthetic_continuity_verified(c)]
             original=_frame(history)
             excluded=[index for index,row in original.loc[original.synthetic.eq(True)].iterrows()
                       if not synthetic_continuity_verified(_jsonable(row.to_dict()))]
             if invalid or excluded:
-                store.event("live-history-provenance-audit","unverified_synthetic_excluded",
+                self.store.event("live-history-provenance-audit","unverified_synthetic_excluded",
                     {"saved_candle_hashes":[digest(c) for c in invalid],
                      "history_rows_excluded":len(excluded),"immutable_originals_retained":True},symbol=symbol)
                 original=original.drop(index=excluded).copy()
                 histories[symbol]=history=History(original,history.manifest)
             if saved:
-                if any(c.get("source_dataset")!=provider.dataset for c in saved):
+                if any(c.get("source_dataset")!=self.provider.dataset for c in saved):
                     raise ContractError("Stored observed candles have another source dataset")
                 addition=pd.DataFrame(saved)
                 for column in ("opened_at","available_at"):
@@ -430,21 +472,52 @@ class LiveHistories:
         self.cycle_id=cycle_id
 
     def get(self,symbol):
-        from .data import History,equity_sessions,recover_databento_candle,recover_databento_candle_step
+        from .data import AcquisitionPending
+        while True:
+            try:
+                return self._get_step(symbol)
+            except AcquisitionPending as exc:
+                if self.bounded:
+                    raise
+                self.sleep(min(4.0, exc.retry_after_seconds))
+
+    def _get_step(self,symbol):
+        from .data import (History,equity_sessions,recover_databento_candle_step,
+                           resolve_minute_candle,AcquisitionPending)
+        self._refresh_symbol(symbol)
         history=self.histories[symbol]
         frame=_frame(history)
         sessions=equity_sessions(self.reference,self.reference+STEP)
         session=next((s for s in sessions if s.contains(self.reference)),None)
         if session is None:
             raise ContractError("Requested interval is outside a genuine eligible session")
-        before=frame.loc[pd.to_datetime(frame.opened_at,utc=True)<pd.Timestamp(self.reference)]
-        previous=_jsonable(before.iloc[-1].to_dict()) if len(before) else None
+        requested = self.reference
+        while True:
+            before=frame.loc[pd.to_datetime(frame.opened_at,utc=True).lt(pd.Timestamp(requested))
+                             & pd.to_datetime(frame.available_at,utc=True).le(pd.Timestamp(instant(self.clock())))]
+            previous=_jsonable(before.iloc[-1].to_dict()) if len(before) else None
+            adjacent = (previous is not None and instant(previous["opened_at"])+STEP == requested
+                        and previous.get("session_id") == session.session_id
+                        and previous.get("source_dataset") == self.provider.dataset
+                        and previous.get("source_id") == f"databento:{self.provider.dataset}:ohlcv-1m")
+            slot=dict(symbol=symbol,source_id=f"databento:{self.provider.dataset}:ohlcv-1m",
+                      interval_open=requested.isoformat(),interval_close=(requested+STEP).isoformat())
+            attempts=self.journal.responses(**slot)
+            # Only confirmed leading omissions require an external close. Walk
+            # their missing same-session predecessors using existing evidence;
+            # this call still performs at most one bounded acquisition step.
+            probe=resolve_minute_candle(attempts,session=session,previous=None) if attempts and not adjacent else {}
+            if (probe.get("reason") == "no_prior_known_price" and session.contains(requested-STEP)):
+                requested -= STEP
+                continue
+            break
         begin=instant(self.clock());tick=time.perf_counter()
-        kwargs=dict(symbol=symbol,opened_at=self.reference,journal=self.journal,session=session,
+        kwargs=dict(symbol=symbol,opened_at=requested,journal=self.journal,session=session,
                     previous=previous,clock=self.clock)
-        result=(recover_databento_candle_step(self.provider,**kwargs) if self.bounded else
-                recover_databento_candle(self.provider,**kwargs,sleep=self.sleep))
+        result=recover_databento_candle_step(self.provider,**kwargs)
         if result.get("candle") is None:
+            if result.get("status") == "retry":
+                raise AcquisitionPending(result.get("reason", "retry"), result.get("retry_after_seconds", 4))
             raise ContractError("Exact reference unavailable: "+str(result.get("reason",result.get("status"))))
         candle=result["candle"]
         self.store.record_candle(candle)
@@ -457,7 +530,10 @@ class LiveHistories:
         self.histories[symbol]=updated
         self.store.event(self.cycle_id,"acquisition_completed",{"request_started_at":begin.isoformat(),
             "validated_data_ready":instant(self.clock()).isoformat(),"first_confirmed_availability":candle["available_at"],
-            "seconds":time.perf_counter()-tick,"status":result["status"],"reference_at":self.reference.isoformat()},symbol=symbol)
+            "seconds":time.perf_counter()-tick,"status":result["status"],"reference_at":requested.isoformat(),
+            "requested_reference_at":self.reference.isoformat()},symbol=symbol)
+        if requested != self.reference:
+            raise AcquisitionPending("verified_predecessor_recovered", 4)
         return updated
 
 

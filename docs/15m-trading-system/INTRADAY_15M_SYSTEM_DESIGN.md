@@ -597,6 +597,26 @@ Preserve source, interval, coverage,
 request/retry evidence and the prior price reference. No fills across closed
 sessions or nonexistent overnight targets are permitted.
 
+An unavailable adjacent predecessor is a recoverable data prerequisite, not
+permission to invent a price. The live runner retains the affected reference
+for another bounded acquisition pass, refreshes verified same-source saved
+observations, and requests the exact interval again. A predecessor learned
+later cannot make an earlier response causally complete: confirmation must be
+observed after that prerequisite is available. When covered repeated omissions
+prove that a leading minute requires an absent predecessor, bounded recovery
+may acquire that predecessor from the same source within the same session;
+it cannot cross the session boundary or invent continuity. Provider waiting rules still
+apply. A pending older reference does not prevent a newly eligible quarter-hour
+reference from being attempted. Already issued symbol forecasts are reused
+unchanged; recovered symbols retain their original reference and target and
+receive their actual later issue times. Late forecasts remain scoreable but
+cannot authorize orders after their fixed target. Once a newer quarter-hour
+reference is being processed, recovery of an older reference is scoring-only
+even if that older forecast's target is still in the future.
+Current shadow/live cycle totals and 15m overrun flags include elapsed waits
+between passes; cumulative attempt work and individual stages are recorded
+separately, with an explicit measurement-scope version.
+
 For a 15m candle derived from 1m bars, each missing constituent requires its own
 confirmed no-trade evidence. Aggregate the resulting fifteen constituents with
 first OPEN, maximum HIGH, minimum LOW, final CLOSE and summed VOLUME. Mark an
@@ -653,9 +673,19 @@ never authorizes another POST.
 provider/broker. `Start-15m-Trader.cmd` is the explicit human manual launch
 command; it may place real orders when its runtime gates pass. Neither command
 creates a schedule, enables Scout or restarts Gameplan. No manual live launch,
-real order or new live workload timing was performed for this source change.
+real order or trader restart is performed by source publication. Subsequent
+human-started Atlas sessions have separate measured evidence in the live record.
 The [live preparation record](../development/intraday-live-readiness.md)
 documents commands, gates, shared accounting, cancellation and exact recovery
 limitations. The
 [Scout update prompt](../development/intraday-scout-update-prompt.md) carries the
 reviewed source adoption and outstanding monitoring receipt instructions.
+
+Shared Gameplan account snapshots distinguish request start from validated
+information readiness. Actual quote timestamps can fall between those times.
+The adapter preserves the original snapshot time, source fingerprint and quote
+times, checks original capture age and account identity, then uses actual
+validation time for the ready snapshot. Missing, crossed, stale or genuinely
+future quotes still fail their existing checks. Loaded runtime compatibility
+must prove this code in the human-started Gameplan before 15m admission; an
+installed file alone is not that proof.

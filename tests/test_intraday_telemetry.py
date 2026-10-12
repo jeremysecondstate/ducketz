@@ -94,6 +94,58 @@ def test_export_projection_preserves_models_scores_and_excludes_private_fields(t
         assert secret not in exported
 
 
+def test_cycle_timing_projection_keeps_mixed_scopes_and_legacy_unspecified(tmp_path):
+    store, forecast = source_store(tmp_path / "source.sqlite3")
+    timings = {
+        "wall-cycle": dict(measurement_scope="wall_elapsed_with_cumulative_attempt_work_v1",
+            total_cycle_seconds=930.0, cumulative_attempt_seconds=14.0, wall_elapsed_seconds=930.0,
+            wall_exceeds_15m=True, wall_overrun_seconds=30.0),
+        "replay-cycle": dict(measurement_scope="cumulative_attempt_work", total_cycle_seconds=6.0,
+            cumulative_attempt_seconds=6.0, wall_elapsed_seconds=930.0,
+            wall_exceeds_15m=True, wall_overrun_seconds=30.0),
+    }
+    for identity, fields in timings.items():
+        store.begin_cycle(identity, dict(pc="Atlas", reference_at="2026-10-12T17:15:00Z",
+            mode="historical_replay" if identity == "replay-cycle" else "live",
+            started_at="2026-10-12T17:30:30Z", status="running"))
+        store.update_cycle(identity, dict(status="completed", completed_at="2026-10-12T17:46:00Z", **fields))
+    packet = export_packet(store.path, producer_pc="Atlas", source_version="timing-release", produced_at=PRODUCED)
+    projected = {row["cycle_id"]: row for row in packet["payload"]["cycles"]}
+    legacy = projected[forecast["cycle_id"]]
+    assert legacy["total_cycle_seconds"] == 34.0
+    assert not any(key in legacy for key in next(iter(timings.values())) if key != "total_cycle_seconds")
+    for identity, fields in timings.items():
+        assert {key: projected[identity][key] for key in fields} == fields
+    path = write_packet(packet, tmp_path / "packet.json")
+    receipt = import_packet(path, tmp_path / "receipts", expected_peer="Atlas", local_pc="Scout", received_at=RECEIVED)
+    loaded = load_receipt(receipt["receipt_path"], expected_peer="Atlas", local_pc="Scout", as_of=RECEIVED)
+    assert loaded["receipt"]["packet"]["payload"]["cycles"] == packet["payload"]["cycles"]
+
+
+@pytest.mark.parametrize("field,value", [
+    ("measurement_scope", None), ("measurement_scope", "unknown"), ("measurement_scope", []),
+    ("wall_exceeds_15m", 1), ("wall_exceeds_15m", "false"),
+    *[(field, value) for field in ("cumulative_attempt_seconds", "wall_elapsed_seconds", "wall_overrun_seconds")
+      for value in (-1, True, "1e999", "NaN")],
+])
+def test_cycle_timing_optional_fields_reject_invalid_values(tmp_path, field, value):
+    _, packet, _, _ = packet_file(tmp_path)
+    packet["payload"]["cycles"][0][field] = value
+    with pytest.raises(ContractError):
+        validate_packet(resign(packet))
+
+
+@pytest.mark.parametrize("value", [0, "0", "0.25", 12.5])
+def test_cycle_timing_optional_fields_accept_finite_nonnegative_values_without_inventing_scope(tmp_path, value):
+    _, packet, _, _ = packet_file(tmp_path)
+    row = packet["payload"]["cycles"][0]
+    for field in ("cumulative_attempt_seconds", "wall_elapsed_seconds", "wall_overrun_seconds"):
+        row[field] = value
+    row["wall_exceeds_15m"] = False
+    assert validate_packet(resign(packet))["payload"]["cycles"][0] == row
+    assert "measurement_scope" not in row
+
+
 def test_live_projection_preserves_original_forecast_and_actual_outcome_without_execution_data(tmp_path):
     store, issued = source_store(tmp_path/"atlas-live.sqlite3",mode="live",source_dataset="EQUS.MINI")
     packet = export_packet(store.path,producer_pc="Atlas",source_version="test-live-release",produced_at=PRODUCED)

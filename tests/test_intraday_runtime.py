@@ -218,6 +218,104 @@ def test_model_failures_are_durable_without_fake_forecast_or_stale_fallback(tmp_
     assert resumed["latest_attempt"]["retrained_symbols"]==["IONQ"]
 
 
+def test_three_pending_symbols_resume_full_models_without_reissuing_ready_forecast(tmp_path):
+    from ml.intraday.data import AcquisitionPending
+    now=[REF+timedelta(minutes=16)]
+    fits=[]
+    symbols=("AAPL","CROX","PATH","TWST")
+    pending={"CROX","PATH","TWST"}
+    class Incoming:
+        def get(self,symbol):
+            if symbol in pending:
+                raise AcquisitionPending("unverified_prior_price_continuity",4)
+            return history(symbol)
+    def train(*args,run_id,**kwargs):
+        fits.append(run_id)
+        return trained(*args,**kwargs)
+    r=ShadowRunner(store=ShadowStore(tmp_path/"resume.sqlite3"),pc="Atlas",symbols=symbols,
+        config=ResearchConfig(symbol_workers=1),dataset_builder=dataset,trainer=train,clock=lambda:now[0])
+    first=r.run_cycle(Incoming(),reference_at=REF,mode="live",experiment="manual")
+    frozen=json.dumps(first["forecasts"]["AAPL"],sort_keys=True)
+    assert set(first["pending_recovery_symbols"])=={"CROX","PATH","TWST"} and len(fits)==1
+    assert all(error["retryable"] for error in first["failures"].values())
+    now[0]+=timedelta(minutes=20)
+    pending.clear()
+    result=r.run_cycle(Incoming(),reference_at=REF,mode="live",experiment="manual",
+                       retry_symbols=("CROX","PATH","TWST"))
+    assert result["status"]=="completed" and result["attempt_count"]==2 and len(fits)==4
+    assert json.dumps(result["forecasts"]["AAPL"],sort_keys=True)==frozen
+    for symbol in ("CROX","PATH","TWST"):
+        forecast=result["forecasts"][symbol]
+        assert forecast["configured_count"]==forecast["successful_count"]==10
+        assert forecast["issued_at"]==now[0].isoformat() and forecast["target_close"]==(REF+3*timedelta(minutes=15)).isoformat()
+    assert not result["pending_recovery_symbols"]
+    assert result["wall_elapsed_seconds"]==1200 and result["wall_exceeds_15m"]
+    assert result["wall_overrun_seconds"]==300 and result["exceeds_15m"]
+    assert result["total_cycle_seconds"]==1200 and result["overrun_seconds"]==300
+    assert result["cumulative_attempt_seconds"]<900 and result["measurement_scope"]=="wall_elapsed_with_cumulative_attempt_work_v1"
+
+
+def test_selective_data_recovery_does_not_automatically_retry_model_failure(tmp_path):
+    from ml.intraday.data import AcquisitionPending
+    fits=[]
+    def train(*args,run_id,**kwargs):
+        fits.append(run_id)
+        if "IONQ" in run_id:
+            return {"outputs":[],"successful_count":0}
+        return trained(*args,**kwargs)
+    r=runner(tmp_path,trainer=train)
+    class Pending:
+        def get(self,symbol):
+            if symbol=="AAPL": raise AcquisitionPending("unavailable_coverage",4)
+            return history(symbol)
+    first=r.run_cycle(Pending(),reference_at=REF,mode="live")
+    assert first["pending_recovery_symbols"]==["AAPL"]
+    # Simulate a crash after durable failure events and before their cycle map.
+    r.store.update_cycle(first["cycle_id"],{"status":"running","failures":{}})
+    result=r.run_cycle({s:history(s) for s in r.symbols},reference_at=REF,mode="live",retry_symbols=["AAPL"])
+    assert len(fits)==2 and result["failed_symbols"]==1 and result["failures"]["IONQ"]==first["failures"]["IONQ"]
+    assert result["status"]=="partial_failure" and r.store.forecast(first["cycle_id"],"IONQ") is None
+    assert not result["pending_recovery_symbols"]
+
+
+@pytest.mark.parametrize("external_prior", [True,False])
+def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_per_pass(tmp_path,monkeypatch,external_prior):
+    from ml.intraday import data,runtime
+    from tests.test_intraday_data import candles,_bounded_attempt
+    reference=pd.Timestamp("2026-05-11T14:00:00Z")
+    now=[pd.Timestamp("2026-05-11T15:00:00Z")]
+    frame=candles(1)
+    frame["source_id"]="databento:EQUS.MINI:ohlcv-1m"
+    store=ShadowStore(tmp_path/"late.sqlite3")
+    journal=data.AcquisitionJournal(tmp_path/"acquisition.sqlite3")
+    reads=[]
+    provider=SimpleNamespace(dataset="EQUS.MINI")
+    def fetch(provider,**kwargs):
+        reads.append(pd.Timestamp(kwargs["opened_at"]))
+        return _bounded_attempt(provider,**kwargs,empty=pd.Timestamp(kwargs["opened_at"])==reference)
+    monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
+    live=runtime.LiveHistories(histories={"AAPL":data.History(frame,{"source_dataset":"EQUS.MINI"})},
+        provider=provider,store=store,journal=journal,reference_at=reference,clock=lambda:now[0],bounded=True)
+    with pytest.raises(data.AcquisitionPending): live.get("AAPL")
+    if external_prior:
+        prior=candles(1,start=(reference-timedelta(minutes=15)).isoformat()).iloc[0].to_dict()
+        prior.update(source_id="databento:EQUS.MINI:ohlcv-1m",available_at=now[0]+timedelta(seconds=2),
+                     open=77.0,high=78.0,low=76.0,close=77.0)
+        store.record_candle(runtime._jsonable(prior))
+    now[0]+=timedelta(seconds=4)
+    if not external_prior:
+        with pytest.raises(data.AcquisitionPending): live.get("AAPL")
+        now[0]+=timedelta(seconds=4)
+        with pytest.raises(data.AcquisitionPending,match="verified_predecessor_recovered"): live.get("AAPL")
+        now[0]+=timedelta(seconds=4)
+    result=live.get("AAPL")
+    current=result.frame.loc[result.frame.opened_at.eq(reference)].iloc[0]
+    assert current.available_at==now[0] and current.synthetic and data.synthetic_continuity_verified(current.to_dict())
+    assert reads==([reference,reference] if external_prior else [reference,reference,reference-timedelta(minutes=15),reference])
+    if external_prior: assert current.open==77.0
+    assert frame.opened_at.iloc[0]==reference-timedelta(minutes=30)  # Original history stays intact.
+
+
 def test_every_quarter_fresh_fits_and_explicit_replay_is_separate(tmp_path):
     calls=[]
     def train(*args,**kwargs):
@@ -245,7 +343,8 @@ def test_failed_cycle_retains_snapshot_after_restart_and_acquisition_in_total(tm
             raise AssertionError("Validated frozen inputs must not require another provider request")
     result=r.run_cycle(AlreadyAcquired(),reference_at=REF,acquisition={"seconds":2})
     assert result["successful_symbols"]==2
-    assert result["total_cycle_seconds"]>=2
+    assert result["cumulative_attempt_seconds"]>=2 and result["acquisition_seconds"]==2
+    assert result["total_cycle_seconds"]==result["wall_elapsed_seconds"]
 
 
 def test_shadow_modules_have_no_order_client_dependency():
