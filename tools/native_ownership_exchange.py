@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 from contextlib import ExitStack
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import hashlib
 import json
@@ -25,6 +26,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.config import load_account_config, verify_cutover
 from ml.account_gameplan.migration import consolidate_ownership_ledgers, pin_ledger_files
 from ml.account_gameplan.migration import _plain
+from ml.stock_trader.state import validated_symbols
 from tools.native_ownership_export import export_ownership, read_export, _private_scan, _installed_private_values, _group
 
 VERSION = "native-ownership-exchange-v1"
@@ -34,6 +36,7 @@ ACTORS = {"Atlas": "pc-original", "Scout": "pc-new"}
 FIELDS = {"schema_version", "actor", "local_profile", "coordination_active", "datastore_root",
           "exchange_root", "state_root", "operation_id", "cutover_action_date",
           "private_native_ledger_exchange_authorized"}
+SCOUT_SELECTOR = "nightly_exchange_config"
 RECOVERY_VERSION = "native-ownership-pre-export-source-review-v1"
 RECOVERY_SOURCES = ("tools/native_ownership_export.py", "tools/native_ownership_exchange.py")
 RECOVERY_FILES = RECOVERY_SOURCES + ("tests/test_native_ownership_export.py", "tests/test_native_ownership_exchange.py")
@@ -136,9 +139,54 @@ def _repository():
     return Path(__file__).resolve().parents[1]
 
 
-def _reviewed_paths():
+def _producer_mode(config):
+    return SCOUT_SELECTOR in config and config.get("actor") == "Scout"
+
+
+def _reviewed_paths(config=None):
     folder = _repository() / "scratch/nightly-workflow"
+    if config is not None and SCOUT_SELECTOR in config:
+        if not _producer_mode(config):
+            raise ValueError("Explicit nightly configuration selection is Scout producer-only")
+        selected = _absolute(config[SCOUT_SELECTOR])
+        shared = _json(_read(selected, 128 * 1024))
+        return {"workflow": _absolute(shared.get("workflow_config")), "exchange": selected}
     return {"workflow": folder / "config.json", "exchange": folder / "exchange-config.json"}
+
+
+@dataclass(frozen=True)
+class ProducerContext:
+    """Read-only native-export identity; intentionally has no activation state."""
+    machine_id: str
+    account_fingerprint: str
+    participants: dict[str, tuple[str, ...]]
+    fingerprint: str
+
+
+def _producer_context(config, *, profile=None, shared=None):
+    if not _producer_mode(config):
+        raise ValueError("Scout producer configuration selector required")
+    profile = profile if profile is not None else _json(_read(_absolute(config["local_profile"]), 128 * 1024))
+    shared = shared if shared is not None else _json(_read(_reviewed_paths(config)["exchange"], 128 * 1024))
+    owners = shared.get("owners")
+    if (profile.get("actor") != "Scout" or profile.get("machine") != "pc-new"
+            or _absolute(profile.get("checkout")) != _repository() or shared.get("actor") != "Scout"
+            or not isinstance(profile.get("symbols"), list) or len(profile["symbols"]) != 11
+            or not isinstance(owners, dict) or set(owners) != {"atlas", "scout"}
+            or not re.fullmatch(r"[a-f0-9]{64}", str(shared.get("account_scope_sha256")))):
+        raise ValueError("Scout producer identity differs from reviewed profile and account scope")
+    participants = {}
+    for actor, machine in ACTORS.items():
+        values = owners[actor.lower()]
+        if not isinstance(values, list) or len(values) != 11:
+            raise ValueError("Scout producer requires exact eleven-symbol owner partitions")
+        participants[machine] = tuple(sorted(validated_symbols(values)))
+    if (set(participants["pc-original"]) & set(participants["pc-new"])
+            or set(validated_symbols(profile.get("symbols", []))) != set(participants["pc-new"])):
+        raise ValueError("Scout producer partitions differ from reviewed profile")
+    identity = {"schema_version": "native-ownership-producer-context-v1", "machine_id": "pc-new",
+                "account_fingerprint": shared["account_scope_sha256"], "participants": participants}
+    return ProducerContext("pc-new", shared["account_scope_sha256"], participants, _sha(_bytes(identity)))
 
 
 def _verify_installation(active_path):
@@ -153,7 +201,7 @@ def _verify_installation(active_path):
 
 def load_config(path):
     config = _json(_read(path, 128 * 1024))
-    if (set(config) != FIELDS or config["schema_version"] != VERSION or config["actor"] not in ACTORS
+    if (set(config) not in (FIELDS, FIELDS | {SCOUT_SELECTOR}) or config["schema_version"] != VERSION or config["actor"] not in ACTORS
             or config["private_native_ledger_exchange_authorized"] is not True):
         raise ValueError("Native accounting exchange requires its own explicit local authorization")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{7,95}", str(config["operation_id"])):
@@ -176,18 +224,22 @@ def load_config(path):
         raise ValueError("Native accounting exchange differs from this machine's private profile")
     if not state.is_relative_to(repository / "scratch"):
         raise ValueError("Native accounting local staging must remain inside this checkout's ignored scratch")
-    reviewed = {name: _json(_read(source, 128 * 1024)) for name, source in _reviewed_paths().items()}
+    reviewed_paths = _reviewed_paths(config)
+    reviewed = {name: _json(_read(source, 128 * 1024)) for name, source in reviewed_paths.items()}
     workflow, shared = reviewed["workflow"], reviewed["exchange"]
     if (workflow.get("actor") != config["actor"] or shared.get("actor") != config["actor"]
             or _absolute(workflow.get("repository")) != repository
             or _absolute(workflow.get("datastore")) != paths["datastore_root"]
             or _absolute(shared.get("exchange_root")) != exchange
-            or _absolute(shared.get("workflow_config")) != _reviewed_paths()["workflow"]
+            or _absolute(shared.get("workflow_config")) != reviewed_paths["workflow"]
             or shared.get("private_exchange_authorized") is not True
             or any(_absolute(saved.get(key)) != paths[key] for saved in (workflow, shared)
                    for key in ("local_profile", "coordination_active"))):
         raise ValueError("Native accounting roots differ from the existing reviewed nightly bindings")
     _verify_installation(paths["coordination_active"])
+    if _producer_mode(config):
+        _producer_context(config, profile=profile, shared=shared)
+        return config
     account = load_account_config(paths["datastore_root"])
     if account is None or account.machine_id != ACTORS[config["actor"]]:
         raise ValueError("Native accounting account belongs to another machine")
@@ -212,7 +264,8 @@ def _private_values(config):
 
 def _binding_inputs(config):
     return {"profile": Path(config["local_profile"]), "active": Path(config["coordination_active"]),
-            "private_environment": _repository() / ".env", **_reviewed_paths(),
+            "private_environment": _repository() / ".env", **_reviewed_paths(config),
+            **({"ml/stock_trader/state.py": _repository() / "ml/stock_trader/state.py"} if _producer_mode(config) else {}),
             **{name: _repository() / name for name in (
                 "tools/native_ownership_exchange.py", "tools/native_ownership_export.py",
                 "ml/account_gameplan/migration.py", "ml/account_gameplan/config.py",
@@ -224,8 +277,9 @@ def _binding_inputs(config):
 def _capture_binding(config, config_path=None):
     root = _absolute(config["datastore_root"])
     account_path = root / "state/account-gameplan/config.json"
-    account_bytes = _read(account_path)
-    account = load_account_config(root)
+    producer = _producer_mode(config)
+    account_bytes = _read(account_path) if account_path.exists() or not producer else None
+    account = _producer_context(config) if producer else load_account_config(root)
     if account is None or account.machine_id != ACTORS[config["actor"]]:
         raise ValueError("Native account configuration missing")
     inputs = _binding_inputs(config)
@@ -236,13 +290,19 @@ def _capture_binding(config, config_path=None):
     frozen = {name: _sha(_read(path)) for name, path in inputs.items()}
 
     def unchanged():
-        if _read(account_path) != account_bytes or any(
+        observed_account = _read(account_path) if account_path.exists() or not producer else None
+        if observed_account != account_bytes or any(
                 _sha(_read(path)) != frozen[name] for name, path in inputs.items()):
             raise ValueError("Frozen native accounting bindings changed during this operation")
+        if producer and (_producer_context(config) != account
+                or {name: path for name, path in inputs.items() if name != "operation_config"} != _binding_inputs(config)):
+            raise ValueError("Frozen Scout producer paths or identity changed during this operation")
 
     unchanged()
-    return account, account_bytes, {"config": config, "account_binding_sha256": account.fingerprint,
-                                   "frozen_inputs_sha256": frozen}, unchanged
+    binding = {"config": config, "account_binding_sha256": account.fingerprint, "frozen_inputs_sha256": frozen}
+    if producer:
+        binding["account_config_file_sha256"] = _sha(account_bytes) if account_bytes is not None else None
+    return account, account_bytes, binding, unchanged
 
 
 def _source_transition(before, after, review):
@@ -404,6 +464,8 @@ def _recover_pre_export_source_locked(config, review_path, *, config_path=None, 
     """Explicit local review only: no export, broker read, activation or status rewrite."""
     clock = clock or (lambda: datetime.now(timezone.utc))
     config = deepcopy(config)
+    if _producer_mode(config):
+        raise ValueError("Legacy account-config source recovery is unavailable for Scout producer context; preserve existing receipts")
     review_path = _absolute(str(review_path))
     if not review_path.is_relative_to(_repository() / "scratch"):
         raise ValueError("Pre-export source review must remain in ignored local scratch")
@@ -703,7 +765,7 @@ def run(config, *, clock=None, config_path=None):
                     raise ValueError("Reviewed source binding evidence changed during operation")
 
             unchanged()
-            if account.activation["status"] == "ACTIVE":
+            if not _producer_mode(config) and account.activation["status"] == "ACTIVE":
                 verify_cutover(root, account)
                 unchanged()
                 result.update(status="ACTIVE_CUTOVER_RECEIPT_VERIFIED")
@@ -719,7 +781,10 @@ def run(config, *, clock=None, config_path=None):
                     for name in ("independent-stock-session.lock", "stock-trader-hourly.lock"):
                         stack.enter_context(exclusive_runtime_lock(root / "locks" / name,
                                                                   process_name="native-ownership-export"))
-                    stack.enter_context(FileLock(str(root / "state/account-gameplan/preparation.lock"), timeout=0))
+                    preparation_lock = root / "state/account-gameplan/preparation.lock"
+                    if _producer_mode(config):
+                        preparation_lock.parent.mkdir(parents=True, exist_ok=True)
+                    stack.enter_context(FileLock(str(preparation_lock), timeout=0))
                     unchanged()
                     if not exported.exists():
                         revisions = [path for path in watched if path.parent.name == "source-revisions"]

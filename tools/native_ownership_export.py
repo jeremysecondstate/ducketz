@@ -23,12 +23,48 @@ import uuid
 from ml.account_gameplan import migration
 from ml.stock_trader.contracts import canonical_sha256, utc
 from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
-from ml.stock_trader.horizon_ledger import HorizonLedger
+from ml.stock_trader.horizon_ledger import LEDGER_VERSION
 
 VERSION = "private-native-ownership-export-v1"
 MAX_BYTES = 512 * 1024 * 1024
 MAX_ROWS = 1_000_000
 MAX_JSON_BYTES = 256 * 1024
+# Public v1 storage layout from da38b540, before timeout/runtime additions.
+# Older receivers rebuild these exact bytes; never derive transport schema
+# from the evolving runtime constructor or drop pages from a newer layout.
+_V1_SCHEMA = """
+                CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS allocations (
+                    id TEXT PRIMARY KEY, account TEXT NOT NULL, symbol TEXT NOT NULL,
+                    horizon TEXT NOT NULL, forecast TEXT NOT NULL, start TEXT NOT NULL,
+                    end TEXT NOT NULL, status TEXT NOT NULL,
+                    UNIQUE(account,symbol,horizon,forecast));
+                CREATE UNIQUE INDEX IF NOT EXISTS one_active_horizon
+                    ON allocations(account,symbol,horizon) WHERE status='ACTIVE';
+                CREATE TABLE IF NOT EXISTS reservations (
+                    id TEXT PRIMARY KEY, allocation TEXT NOT NULL REFERENCES allocations(id),
+                    side TEXT NOT NULL, quantity INTEGER NOT NULL, price TEXT NOT NULL,
+                    filled INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL,
+                    broker_order TEXT, idempotency_key TEXT NOT NULL UNIQUE,
+                    batch TEXT NOT NULL, request TEXT NOT NULL, last_evidence_at TEXT);
+                CREATE UNIQUE INDEX IF NOT EXISTS unique_broker_order
+                    ON reservations(broker_order) WHERE broker_order IS NOT NULL;
+                CREATE TABLE IF NOT EXISTS fills (
+                    id TEXT PRIMARY KEY, reservation TEXT NOT NULL REFERENCES reservations(id),
+                    quantity INTEGER NOT NULL, price TEXT NOT NULL, executed_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS evidence (
+                    id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS snapshots (
+                    id TEXT PRIMARY KEY, observed_at TEXT NOT NULL, payload TEXT NOT NULL,
+                    ready INTEGER NOT NULL, reasons TEXT NOT NULL, owned TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS blocks (symbol TEXT PRIMARY KEY, reason TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS cancellations (
+                    reservation TEXT PRIMARY KEY REFERENCES reservations(id), requested_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS fallback_days (
+                    account TEXT NOT NULL, action_date TEXT NOT NULL, baseline_id TEXT NOT NULL UNIQUE,
+                    snapshot_id TEXT NOT NULL REFERENCES snapshots(id), source_fingerprint TEXT NOT NULL,
+                    policy TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(account,action_date));
+            """
 _HORIZONS = {"1h", "4h", "1d", "1w"}
 _PORTFOLIO = set("snapshot_id account_fingerprint observed_at held_shares prices symbol_budgets source_fingerprint".split())
 _REQUESTS = {
@@ -321,7 +357,19 @@ def _copy_source(source, directory, pins):
 
 
 def _build(path, tables, account):
-    HorizonLedger(path, account)  # This path is a NEW private staging database.
+    # Preserve the original v1 constructor's transactions and schema order so
+    # old receivers produce byte-identical storage during independent rebuild.
+    _hash(account)
+    with closing(sqlite3.connect(path, timeout=30, isolation_level=None)) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("PRAGMA synchronous=EXTRA")
+        db.execute("BEGIN IMMEDIATE")
+        for statement in _V1_SCHEMA.split(";"):
+            if statement.strip():
+                db.execute(statement)
+        db.execute("INSERT OR IGNORE INTO metadata VALUES ('account', ?)", (account,))
+        db.execute("INSERT OR IGNORE INTO metadata VALUES ('version', ?)", (LEDGER_VERSION,))
+        db.commit()
     with closing(sqlite3.connect(path)) as db:
         db.execute("PRAGMA foreign_keys=ON")
         for name, columns in _OPTIONAL_SCHEMA.items():
@@ -333,6 +381,12 @@ def _build(path, tables, account):
             columns = migration._COLUMNS[name].split()
             db.executemany(f"INSERT INTO {name} ({','.join(columns)}) VALUES ({','.join('?' for _ in columns)})",
                            [tuple(row[c] for c in columns) for row in tables[name]])
+        present = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if present != set(migration._COLUMNS):
+            raise ValueError("Rebuilt export must have the exact v1 native schema")
+        for name, columns in migration._COLUMNS.items():
+            if [row[1] for row in db.execute(f"PRAGMA table_info({name})")] != columns.split():
+                raise ValueError("Rebuilt v1 native columns differ: " + name)
         db.commit()
         if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok" or db.execute("PRAGMA foreign_key_check").fetchall():
             raise ValueError("Rebuilt native database integrity failed")

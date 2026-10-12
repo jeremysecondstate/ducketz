@@ -14,6 +14,7 @@ from ml.account_gameplan import migration
 from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence, OrderEvidence, FillEvidence
 from ml.stock_trader.cross_horizon_fallback import policy_for_action_date
 from tools import native_ownership_export as exporter
+from test_account_gameplan_migration import EXTENSIONS, add_extensions
 
 
 ACCOUNT = "a" * 64
@@ -273,3 +274,57 @@ def test_private_scanner_executes_verified_package_initializer_before_relative_i
             exporter._installed_private_values(env)
     assert len(calls) == 1
     assert not any(name.startswith("_native_export_scanner_") for name in sys.modules)
+
+
+def test_export_has_exact_legacy_v1_storage_bytes_and_no_runtime_extension_tables(tmp_path):
+    ledger = source(tmp_path)
+    add_extensions(ledger.path)
+    pins = migration.pin_ledger_files(ledger.path)
+    packet = tmp_path / "packet"
+    result = exporter.export_ownership(**arguments(ledger), output_directory=packet, backup_directory=tmp_path / "backup")
+    exported = packet / "holdings.sqlite3"
+    with sqlite3.connect(exported) as db:
+        assert {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} == set(migration._COLUMNS)
+    assert migration.pin_ledger_files(ledger.path) == pins
+    # Pinned to the old da38 constructor's literal public DDL. Reproduce its
+    # original two-transaction build independently of the new _build function.
+    assert hashlib.sha256(exporter._V1_SCHEMA.encode()).hexdigest() == "748bfcb72d2cf1f975f34def68bc9e47449527e4821decc5c312429b2f37eef2"
+    record = migration._read_source({"producer": "pc-original", "path": str(exported), "symbols": ["COST"],
+        "pins": migration.pin_ledger_files(exported)}, ACCOUNT, NOW)
+    legacy = tmp_path / "legacy-receiver.sqlite3"
+    with sqlite3.connect(legacy, timeout=30, isolation_level=None) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("PRAGMA synchronous=EXTRA")
+        db.execute("BEGIN IMMEDIATE")
+        for statement in exporter._V1_SCHEMA.split(";"):
+            if statement.strip():
+                db.execute(statement)
+        db.execute("INSERT OR IGNORE INTO metadata VALUES ('account', ?)", (ACCOUNT,))
+        db.execute("INSERT OR IGNORE INTO metadata VALUES ('version', ?)", (exporter.LEDGER_VERSION,))
+        db.commit()
+    with sqlite3.connect(legacy) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("CREATE TABLE inventory_assignments (id TEXT PRIMARY KEY, allocation TEXT NOT NULL REFERENCES allocations(id), snapshot_id TEXT NOT NULL REFERENCES snapshots(id), quantity INTEGER NOT NULL, observed_at TEXT NOT NULL)")
+        db.execute("CREATE TABLE inventory_assignment_releases (id TEXT PRIMARY KEY, assignment TEXT NOT NULL REFERENCES inventory_assignments(id), reservation TEXT NOT NULL REFERENCES reservations(id), snapshot_id TEXT NOT NULL REFERENCES snapshots(id), quantity INTEGER NOT NULL, observed_at TEXT NOT NULL)")
+        db.execute("DELETE FROM metadata")
+        for name in ("metadata", "allocations", "snapshots", "reservations", "fills", "evidence", "blocks", "cancellations", "fallback_days", "inventory_assignments", "inventory_assignment_releases"):
+            columns = migration._COLUMNS[name].split()
+            db.executemany(f"INSERT INTO {name} ({','.join(columns)}) VALUES ({','.join('?' for _ in columns)})",
+                [tuple(row[column] for column in columns) for row in record["tables"][name]])
+    assert legacy.read_bytes() == exported.read_bytes()
+    assert exporter.read_export(packet, expected_producer="pc-original", expected_symbols=["COST"],
+        expected_account_fingerprint=ACCOUNT, expected_manifest_sha256=result["manifest_sha256"], forbidden_values=())["source_pins"] == pins
+
+
+@pytest.mark.parametrize("name", EXTENSIONS)
+def test_export_refuses_populated_runtime_extensions_without_touching_originals(tmp_path, name):
+    ledger = source(tmp_path)
+    add_extensions(ledger.path)
+    columns = EXTENSIONS[name].split()
+    with sqlite3.connect(ledger.path) as db:
+        db.execute(f"INSERT INTO {name} VALUES ({','.join('?' for _ in columns)})", ("retained-state",) * len(columns))
+    before = exporter._group(ledger.path)
+    with pytest.raises(ValueError, match="extension history requires separate reviewed migration"):
+        exporter.export_ownership(**arguments(ledger), output_directory=tmp_path / "packet", backup_directory=tmp_path / "backup")
+    assert exporter._group(ledger.path) == before
+    assert not (tmp_path / "packet").exists()
