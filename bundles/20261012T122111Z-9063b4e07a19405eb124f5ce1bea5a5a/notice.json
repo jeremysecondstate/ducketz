@@ -1,0 +1,82 @@
+{
+  "author": "Scout",
+  "branch": "main",
+  "change_id": "20261012T121438Z-scout-intraday-monitoring-68f7bd718786",
+  "commit_sha": "5943357e10ab08b76dfd4fafefa7a751727bf3d7",
+  "existing_monitoring_request": {
+    "request_id": "scout-intraday-monitoring-20261012",
+    "source_commit": "c3c8faf7f65a79d84f7b0fe4fca055b21577a400",
+    "state": "awaiting_actual_Atlas_packet"
+  },
+  "files": [
+    {
+      "operation": "add",
+      "path": "artifacts/pc-new/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/monitoring.json",
+      "sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-new/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/workload.json",
+      "sha256": "29780eb4b795556053db4ed1fa18a0647602ba602657e3154b6c5bf183d78320"
+    },
+    {
+      "operation": "add",
+      "path": "artifacts/pc-new/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/artifact-manifest.json",
+      "sha256": "fac22bae91b6dbc47869c4b076756c6493de172265fc5e1421bfcf9a1b8df95d"
+    }
+  ],
+  "limitations": [
+    "Historical replay and EQUS.MINI shadow remain separate sources; packet is an immutable snapshot, not a live heartbeat.",
+    "RR current compatible history lacks mature labels; full eleven-symbol success applies to XNAS.ITCH replay only.",
+    "Ten initial shadow targets are confirmed synthetic no-trade outcomes, not observed-trade outcomes.",
+    "Selected measurements do not establish predictive performance, peak resource demand or active Gameplan contention.",
+    "Atlas must locally review/adopt PR69 source-aware reader before accepting new provenance fields; actual Atlas packet and peer receipt remain pending.",
+    "Source PR69 remains unmerged. Only reviewed Scout artifacts were published to main."
+  ],
+  "packet": {
+    "forecasts": 31,
+    "packet_id": "ba81b05621578ed9261e6d8f74a1d4fd90a00bbb605e931e2e3fb5ad41d9bfb6",
+    "produced_at": "2026-10-12T12:14:38.492529+00:00",
+    "producer_pc": "Scout",
+    "whole_file_sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695"
+  },
+  "peer_applicability": "After own review, Atlas may verify and import the exact Scout packet using expected_peer Scout and local_pc Atlas. Keep original producer time and first receipt. Provide real Atlas packet publication evidence through the existing request, without extra training, provider calls or worker restart.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout runs an independent low-priority research shadow process that freshly retrains ten enabled models every eligible quarter hour with all compatible available history. No live orders or production worker restart; existing Gameplan bindings preserved.",
+  "scope": "symbol-specific",
+  "source_commit": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+  "summary": "Scout published reviewed intraday research workload and an authentic monitoring snapshot.",
+  "symbols": [
+    "ABCL",
+    "DBX",
+    "DOCU",
+    "GLOB",
+    "MRNA",
+    "OUST",
+    "PDYN",
+    "PYPL",
+    "QBTS",
+    "RR",
+    "SDGR"
+  ],
+  "tests": {
+    "actual_XNAS_replay": {
+      "forecasts": 33,
+      "fresh_successful_fits": 330,
+      "missing": 3,
+      "scored": 30
+    },
+    "exact_byte_and_private_value_scans": "passed",
+    "initial_EQUS_shadow": {
+      "confirmed_synthetic_targets": 10,
+      "forecasts": 10,
+      "fresh_successful_fits": 100
+    },
+    "offline_source_passed": 187,
+    "output_sha256": "ce79de1167b51c4805dba0391c749c9d4e06e0e23b565fa8ab10dc1a1a881218",
+    "packet_schema": "passed",
+    "remote_sha_readback": "verified",
+    "skipped": 0,
+    "warnings": 18
+  }
+}

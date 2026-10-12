@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T12:21:11.409530Z",
+  "id": "20261012T122111Z-9063b4e07a19405eb124f5ce1bea5a5a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published reviewed intraday research workload and an authentic monitoring snapshot."
+}
