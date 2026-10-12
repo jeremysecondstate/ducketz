@@ -1,0 +1,25 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261012T122420Z-15d1429006344de3998c6f6bde956e2d",
+  "change_id": "20261012T122420Z-15d1429006344de3998c6f6bde956e2d",
+  "files": [
+    "ml/stock_trader/session_reporting.py",
+    "ml/stock_trader/independent_session.py",
+    "tests/test_stock_session_reporting.py"
+  ],
+  "limitations": [
+    "Offline synthetic reporting and session checks; no live broker/provider verification.",
+    "Per-cycle console output becomes human-readable text; structured consumers should read the unchanged saved session-status JSON."
+  ],
+  "main_sha": "1f53d2a17bcd7afecded4eb933140cf73f61feac",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Three reviewed reporting paths installed locally, preserving pre-existing local session changes. Human manually restarted Atlas; saved runtime output confirms the updated formatter loaded. No agent-initiated restart, broker call or activation-control change. Scout installation remains separately verifiable.",
+  "scope": "shared",
+  "source_sha": "5b4d0e5501cee8c749c9453a4bd15890e9ee2f5d",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/71",
+  "summary": "Atlas completed shared human-readable trader cycle reporting with distinct monitoring, submissions, cancellation pending and attention labels.",
+  "tests": {
+    "evidence": "Sealed completion binds all 83 source/dependency fingerprints and exact isolated check times and output hashes.",
+    "result": "68 offline reporting/session tests passed in source, isolated publication, main candidate and installed Atlas checkout."
+  }
+}

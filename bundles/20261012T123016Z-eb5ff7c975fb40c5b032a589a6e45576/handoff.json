@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T12:30:16.245497Z",
+  "id": "20261012T123016Z-eb5ff7c975fb40c5b032a589a6e45576",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed shared human-readable trader cycle reporting with distinct monitoring, submissions, cancellation pending and attention labels."
+}
