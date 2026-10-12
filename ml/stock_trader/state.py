@@ -214,7 +214,7 @@ def capture_portfolio_state(
                 raise ValueError("Working order identity is missing, duplicate or incomplete")
             identities.add(str(identity))
             broker_working_orders.append({key: item.get(key) for key in (
-                "order_id", "instruction", "asset_type", "symbol", "underlying_symbol",
+                "order_id", "order_status", "order_type", "instruction", "asset_type", "symbol", "underlying_symbol",
                 "remaining_quantity", "filled_quantity", "limit_price", "reserved_cash", "status")})
         broker_working_orders = tuple(broker_working_orders)
     fingerprint_payload = {

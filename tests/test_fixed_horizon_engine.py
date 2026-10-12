@@ -69,6 +69,22 @@ def notional(decisions):
     return sum((item.quantity * Decimal(str(item.limit_price)) for item in decisions), Decimal(0))
 
 
+def working_buy(*, symbol="COST", remaining=8, filled=2, limit="100", order_id="broker-buy-1"):
+    return {"order_id": order_id, "order_status": "WORKING", "order_type": "LIMIT",
+        "instruction": "BUY", "asset_type": "EQUITY", "symbol": symbol,
+        "remaining_quantity": remaining, "filled_quantity": filled, "limit_price": limit,
+        "reserved_cash": 800., "status": "CURRENT"}
+
+
+def pending_with_post_capture_quote(*, ask=100., row=None):
+    signals, state = inputs()
+    quote = QuoteState("COST", 100., ask, ask, ask, 1000., "2026-09-08T11:01:01Z")
+    return signals, replace(state, gross_exposure=129000., pending_buy_shares={"COST": 8.},
+        working_order_count=1, broker_identity_fingerprint="bound-broker-account",
+        broker_working_orders=(working_buy() if row is None else row,),
+        quotes={**state.quotes, "COST": quote})
+
+
 def test_four_horizon_weights_share_the_existing_symbol_budget_without_fake_model_heads():
     signals, state = inputs()
     decisions = build(signals, state)
@@ -122,6 +138,103 @@ def test_pending_buy_value_reduces_gross_headroom_for_every_symbol():
     decisions = build(signals, state)
     assert notional(orders(decisions, "BUY")) == Decimal(200)
     assert Decimal(129000) + Decimal(800) + notional(orders(decisions, "BUY")) <= Decimal(130000)
+
+
+def test_post_capture_quote_uses_exact_partially_filled_working_limit_buy():
+    signals, state = pending_with_post_capture_quote()
+    decisions = build(signals, state)
+    assert notional(orders(decisions, "BUY")) == Decimal(200)
+    assert [item.to_dict() for item in build(signals, state)] == [item.to_dict() for item in decisions]
+
+
+def test_working_limit_buy_uses_higher_valid_ask_and_limit_without_quote():
+    signals, state = pending_with_post_capture_quote(ask=105.)
+    assert notional(orders(build(signals, state), "BUY")) == Decimal(100)
+    without_quote = replace(state, quotes={"AAPL": state.quotes["AAPL"]})
+    assert notional(orders(build(signals, without_quote), "BUY")) == Decimal(200)
+    malformed_quote = replace(state, quotes={**state.quotes,
+        "COST": replace(state.quotes["COST"], ask=float("nan"))})
+    assert notional(orders(build(signals, malformed_quote), "BUY")) == Decimal(200)
+
+
+def test_multiple_unique_working_limits_reconcile_exact_remaining_shares():
+    signals, state = pending_with_post_capture_quote(ask=105.)
+    rows = (working_buy(remaining=3, order_id="first"),
+        working_buy(remaining=5, limit="110", order_id="second"))
+    state = replace(state, broker_working_orders=rows, working_order_count=2)
+    decisions = build(signals, state)
+    assert notional(orders(decisions, "BUY")) == Decimal(100)
+    assert Decimal(129000) + Decimal(3 * 105 + 5 * 110) + notional(orders(decisions, "BUY")) <= Decimal(130000)
+
+
+def test_current_quote_below_working_buy_limit_does_not_breach_gross_cap():
+    signals, state = pending_with_post_capture_quote(row=working_buy(limit="110"))
+    state = replace(state, quotes={**state.quotes,
+        "COST": replace(state.quotes["COST"], observed_at=NOW)})
+    decisions = build(signals, state)
+    assert notional(orders(decisions, "BUY")) == Decimal(100)
+    assert Decimal(129000) + Decimal(8 * 110) + notional(orders(decisions, "BUY")) <= Decimal(130000)
+
+
+def test_current_quote_does_not_override_incomplete_present_order_identities():
+    signals, state = pending_with_post_capture_quote(row={**working_buy(), "order_type": "STOP_LIMIT"})
+    state = replace(state, quotes={**state.quotes,
+        "COST": replace(state.quotes["COST"], observed_at=NOW)})
+    decisions = build(signals, state)
+    assert not orders(decisions, "BUY")
+    assert {item.decision_reason_code for item in decisions} == {"JOINT_PORTFOLIO_BUDGET_INVALID"}
+
+
+def test_current_quote_does_not_hide_outside_universe_broker_buy():
+    signals, state = pending_with_post_capture_quote()
+    state = replace(state, quotes={**state.quotes,
+        "COST": replace(state.quotes["COST"], observed_at=NOW)},
+        broker_working_orders=(working_buy(),
+            working_buy(symbol="OTHER", remaining=1, order_id="outside-universe")),
+        working_order_count=2)
+    decisions = build(signals, state)
+    assert not orders(decisions, "BUY")
+    assert {item.decision_reason_code for item in decisions} == {"JOINT_PORTFOLIO_BUDGET_INVALID"}
+
+
+@pytest.mark.parametrize("changes", [
+    {"order_id": ""}, {"order_status": "QUEUED"}, {"order_type": "STOP_LIMIT"},
+    {"instruction": "SELL"}, {"symbol": "AAPL"}, {"remaining_quantity": 7},
+    {"remaining_quantity": 8.5}, {"remaining_quantity": 0},
+    {"filled_quantity": -1}, {"limit_price": 0}, {"limit_price": float("nan")},
+    {"status": "INCOMPLETE"},
+])
+def test_unusable_quote_fallback_rejects_malformed_or_mismatched_order(changes):
+    signals, state = pending_with_post_capture_quote(row={**working_buy(), **changes})
+    decisions = build(signals, state)
+    assert not orders(decisions, "BUY")
+    assert {item.decision_reason_code for item in decisions} == {"JOINT_PORTFOLIO_BUDGET_INVALID"}
+
+
+def test_unusable_quote_fallback_requires_complete_unique_account_inventory():
+    signals, state = pending_with_post_capture_quote()
+    cases = (
+        replace(state, broker_working_orders=None),
+        replace(state, working_order_count=2),
+        replace(state, broker_identity_fingerprint=None),
+        replace(state, broker_working_orders=(working_buy(), working_buy()), working_order_count=2),
+        replace(state, broker_working_orders=(working_buy(),
+            working_buy(symbol="OTHER", remaining=1, order_id="outside-universe")), working_order_count=2),
+        replace(state, pending_buy_shares={"COST": 9.}),
+    )
+    for invalid in cases:
+        decisions = build(signals, invalid)
+        assert not orders(decisions, "BUY")
+        assert {item.decision_reason_code for item in decisions} == {"JOINT_PORTFOLIO_BUDGET_INVALID"}
+
+
+def test_verified_pending_buy_does_not_refresh_a_future_new_buy_quote():
+    signals, state = pending_with_post_capture_quote()
+    future_aapl = replace(state.quotes["AAPL"], observed_at="2026-09-08T11:01:02Z")
+    state = replace(state, quotes={**state.quotes, "AAPL": future_aapl})
+    decisions = build(signals, state)
+    assert not orders(decisions, "BUY")
+    assert {item.decision_reason_code for item in decisions} == {"USABLE_QUOTE_UNAVAILABLE"}
 
 
 def test_joint_symbol_ceiling_includes_manual_and_pending_shares_without_adopting_them():

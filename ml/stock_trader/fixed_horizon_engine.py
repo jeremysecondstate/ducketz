@@ -58,7 +58,8 @@ def _policy_metadata(policy: StockTraderPolicy) -> dict:
             "sizing_basis": "deterministic_budget_from_qualified_stock_forecast",
             "model_name": None, "model_version": None, "model_fingerprint": None,
             "risk_policy_version": policy.policy_version, "risk_policy_fingerprint": policy.fingerprint,
-            "ranking_policy": _RANKING_POLICY, "pending_buy_gross_valuation": "current_rounded_ask"}
+            "ranking_policy": _RANKING_POLICY,
+            "pending_buy_gross_valuation": "current_rounded_ask_or_verified_working_limit_max_valid_ask"}
 
 
 def _entry_decision(signal, sizing, portfolio, activation, policy, timestamp, *, quantity, code, reason, time_in_force):
@@ -111,21 +112,88 @@ def _exit_result(decision, policy, *, quantity, code=None, reason=None, time_in_
         policy_version=FIXED_HORIZON_BUDGET_POLICY_VERSION, policy_fingerprint=fingerprint)
 
 
+def _pending_quote_ask(portfolio, symbol):
+    """A valid ask can only increase the reserve for an existing limit buy."""
+    quote = portfolio.quotes.get(symbol)
+    if quote is None or quote.symbol != symbol:
+        return None, False
+    try:
+        bid, ask = _money(quote.bid), _money(quote.ask)
+        observed = utc(quote.observed_at)
+        captured = utc(portfolio.observed_at)
+    except (TypeError, ValueError):
+        return None, False
+    return (ask, observed <= captured) if 0 < bid <= ask else (None, False)
+
+
+def _verified_working_buy_values(portfolio, tick):
+    """Value exact current broker buys independently of quote capture order."""
+    rows = portfolio.broker_working_orders
+    if (not isinstance(rows, (tuple, list)) or type(portfolio.working_order_count) is not int
+            or portfolio.working_order_count != len(rows)
+            or not isinstance(portfolio.broker_identity_fingerprint, str)
+            or not portfolio.broker_identity_fingerprint.strip()):
+        raise ValueError("Pending buy exposure has no complete broker order evidence")
+    identities, quantities, values = set(), {}, {}
+    for row in rows:
+        if not isinstance(row, Mapping) or row.get("status") != "CURRENT":
+            raise ValueError("Pending buy exposure has no complete broker order evidence")
+        identity = row.get("order_id")
+        if (type(identity) not in (str, int) or not str(identity).strip()
+                or str(identity) in identities):
+            raise ValueError("Pending buy exposure has no unique broker order identity")
+        identities.add(str(identity))
+        if row.get("asset_type") == "OPTION":
+            continue
+        symbol, side = row.get("symbol"), row.get("instruction")
+        if (row.get("asset_type") not in {"EQUITY", "ETF", "STOCK"}
+                or not isinstance(symbol, str) or not symbol or symbol != symbol.strip().upper()
+                or side not in {"BUY", "SELL"}):
+            raise ValueError("Pending buy exposure has an ambiguous stock order")
+        remaining, filled, limit = (_money(row.get(key)) for key in
+            ("remaining_quantity", "filled_quantity", "limit_price"))
+        if (remaining <= 0 or remaining != remaining.to_integral_value()
+                or filled != filled.to_integral_value() or limit <= 0):
+            raise ValueError("Pending buy exposure has an unbounded stock order")
+        if side == "BUY":
+            if row.get("order_status") != "WORKING" or row.get("order_type") != "LIMIT":
+                raise ValueError("Pending buy exposure requires a working limit buy")
+            quantities[symbol] = quantities.get(symbol, Decimal(0)) + remaining
+            ask, _ = _pending_quote_ask(portfolio, symbol)
+            price = max(limit, ask) if ask is not None else limit
+            values[symbol] = values.get(symbol, Decimal(0)) + remaining * price.quantize(tick, rounding=ROUND_CEILING)
+    # An account-wide buy absent from this map cannot be included in gross
+    # exposure here, even if its cash reserve is already reflected elsewhere.
+    if any(symbol not in portfolio.pending_buy_shares for symbol in quantities):
+        raise ValueError("Pending buy shares omit an account-wide broker buy")
+    for symbol, shares in portfolio.pending_buy_shares.items():
+        if _money(shares) != quantities.get(symbol, Decimal(0)):
+            raise ValueError("Pending buy shares differ from exact broker working orders")
+    return values
+
+
 def _joint_budgets(portfolio, policy):
     equity = _money(portfolio.account_equity)
     cash = max(Decimal(0), _money(portfolio.available_cash, allow_negative=True)) * _money(policy.maximum_cash_utilization_fraction)
     gross = equity * _money(policy.maximum_gross_equity_fraction) - _money(portfolio.gross_exposure)
     tick = Decimal(1).scaleb(-policy.price_decimals)
     pending_values = {}
-    for symbol, shares in portfolio.pending_buy_shares.items():
-        shares = _money(shares)
+    pending_shares = {symbol: _money(shares) for symbol, shares in portfolio.pending_buy_shares.items()}
+    verified_working_values = (_verified_working_buy_values(portfolio, tick)
+        if any(pending_shares.values()) and portfolio.broker_working_orders is not None else None)
+    for symbol, shares in pending_shares.items():
         if shares:
-            quote = portfolio.quotes.get(symbol)
-            if (quote is None or quote.symbol != symbol
-                    or not 0 < _money(quote.bid) <= _money(quote.ask)
-                    or utc(quote.observed_at) > utc(portfolio.observed_at)):
-                raise ValueError("Pending buy exposure has no usable current quote")
-            pending_values[symbol] = shares * _money(quote.ask).quantize(tick, rounding=ROUND_CEILING)
+            if verified_working_values is not None:
+                if symbol not in verified_working_values:
+                    raise ValueError("Pending buy exposure has no exact working limit buy")
+                pending_values[symbol] = verified_working_values[symbol]
+            else:
+                # Direct non-identity planning retains its original quote gate.
+                # Account execution requires the full broker inventory elsewhere.
+                ask, current = _pending_quote_ask(portfolio, symbol)
+                if not current:
+                    raise ValueError("Pending buy exposure has no usable current quote")
+                pending_values[symbol] = shares * ask.quantize(tick, rounding=ROUND_CEILING)
     gross -= sum(pending_values.values(), Decimal(0))
     symbols = {symbol: max(Decimal(0), equity * _money(policy.maximum_symbol_equity_fraction)
         - _money(portfolio.symbol_exposure.get(symbol, 0)) - pending_values.get(symbol, Decimal(0)))
