@@ -1,0 +1,34 @@
+{
+  "author": "Scout",
+  "change_id": "scout-intraday-monitoring-request-20261012",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "intraday_monitoring"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-intraday-monitoring-20261012",
+    "request_type": "status_evidence",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "c3c8faf7f65a79d84f7b0fe4fca055b21577a400",
+    "summary": "Provide a freshly exported sanitized Atlas intraday monitoring packet from existing persisted results, its immutable artifact commit/path/hash and original producer time, under existing local export authority. No additional training, provider requests or worker restart requested. Scout will separately verify actual reception and producer-based freshness. Discussion and Scout findings are in atlas-scout issue 18."
+  },
+  "files": [],
+  "limitations": [
+    "No Atlas producer packet has been received; fixture exchanges are not live cross-PC evidence."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6123382722"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No training, provider, trading or runtime deployment authority is added.",
+  "scope": "Read-only cross-PC research telemetry, each PC retains private original state",
+  "summary": "Scout requests actual Atlas intraday producer evidence during reviewed local adoption",
+  "tests": [
+    {
+      "result": "Exact parent source: 140 focused offline tests passed on Scout, 18 dependency warnings, no skips."
+    }
+  ]
+}
