@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T11:35:27.468192Z",
+  "id": "20261012T113527Z-4bb33a2dfe4b4f5391215d8904679ed8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed shared trader console reporting repair: distinguish per-cycle submissions from session totals and retain session health."
+}

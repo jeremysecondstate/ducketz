@@ -1,0 +1,26 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261012T112844Z-e149d963ea984e5db5e516b0fb969923",
+  "change_id": "20261012T112844Z-e149d963ea984e5db5e516b0fb969923",
+  "files": [
+    "ml/stock_trader/independent_session.py",
+    "ml/stock_trader/session_reporting.py",
+    "tests/test_stock_session_reporting.py"
+  ],
+  "limitations": [
+    "Offline mocked verification; no live broker calls or restart.",
+    "Runtime output remains from loaded code until next manual start."
+  ],
+  "main_sha": "93ca54f84047a582b4a02799cbbbac79e66a1f6c",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reporting only; polling, execution gates and full saved last_cycle remain unchanged. Narrow reporting hunks installed locally while preserving existing local source changes. Scout applicability is shared reporting behavior; Scout installation remains separately verifiable.",
+  "scope": "shared",
+  "source_sha": "eb3250dfee02788e6d9367a4e02ddbd6e791523e",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/commit/93ca54f84047a582b4a02799cbbbac79e66a1f6c",
+  "summary": "Atlas completed shared trader console reporting repair: distinguish per-cycle submissions from session totals and retain session health.",
+  "tests": {
+    "command": "python -B -m pytest tests/test_stock_session_reporting.py tests/test_independent_stock_session.py -q -p no:cacheprovider",
+    "evidence": "Sealed completion record binds all 83 source and test dependencies and fresh isolated check timestamps/hashes.",
+    "result": "56 passed in isolated source and main integration; 7 local reporting checks passed"
+  }
+}
