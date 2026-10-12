@@ -313,6 +313,31 @@ metadata check. That advertised envelope is not locally acquired compatible
 history, no-trade proof for an unqueried interval, or a measured publication
 offset. No additional historical price download or spending was performed.
 
+After the human launched Gameplan, a separate pre-session run at 03:47:31–03:48:13
+Pacific fully fitted all 110 models and published eleven forecasts in 41.722
+seconds (0.033 cached-history acquisition and 41.689 compute/persistence), with
+no failures or provider requests. It used 38.969 process CPU seconds and ended
+at approximately 404 MB RSS. Current as-of evaluation then had 86 forecasts,
+51 scored observed outcomes and 35 missing exact targets; prior records remain
+unchanged. This adds timing evidence, not an accuracy or calibration claim.
+
+The Gameplan worker reported `SLEEPING_UNTIL_OPEN` for 04:00 Pacific. Separate
+process observations bracketed this run; a later 55-second passive observation
+showed both processes still present with zero additional CPU seconds. That
+passive observation began after fitting finished and does not establish
+simultaneous CPU contention. The run exposed a telemetry defect: its stored
+worker count was zero because the counter recognized only older entry points.
+The counter now recognizes the actual `ml.gameplan_stock_trader` module and
+retains the two legacy module identities, while rejecting module-like text in
+unrelated script or `-c` arguments. The original measurement is retained with
+this correction; worker presence does not imply an active trading session.
+
+Gameplan readiness has operational priority. The separate 15-minute shadow
+runner can start independently at a later eligible quarter hour once its
+required data is verified; Gameplan startup is not its prerequisite. No further
+training load was started while prioritizing the human's live session startup.
+Active-session contention and live provider-availability timing remain unmeasured.
+
 The installed environment used scikit-learn 1.9.0, NumPy 2.5.1, pandas 3.0.3,
 XGBoost 3.3.0 and psutil 7.2.2. The import path also requires joblib,
 threadpoolctl, exchange_calendars and filelock; optional provider mode reuses

@@ -159,3 +159,41 @@ def test_final_1645_edge_preserves_inputs_without_invented_forecast(tmp_path):
     for symbol in r.symbols:
         _,snapshot=r.store.inputs(result["cycle_id"],symbol)
         assert snapshot["next_session_target"] is None and snapshot["candles"]
+
+
+def test_resource_snapshot_counts_real_module_workers_without_exposing_arguments(monkeypatch):
+    import ml.intraday.runtime as runtime
+    private_argument="private-account-state-must-not-appear"
+    workers=[
+        ("python.exe",["python.exe","-m","ml.gameplan_stock_trader","--state",private_argument]),
+        ("python.exe",["python.exe","-B","-u","-m","ml.stock_trader.independent_session"]),
+        ("pythonw.exe",["pythonw.exe","-W","ignore","-X","dev","-m","ml.stock_trader.independent_runtime"]),
+        ("python.exe",["python.exe","-m","other.module","--label","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","-m","other.module","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","-c","print('ml.gameplan_stock_trader')"]),
+        ("python.exe",["python.exe","-c","pass","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","-cpass","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","-mother.module","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","script.py","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","--","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","-m","ml.gameplan_stock_trader_extra"]),
+        ("python.exe",["python.exe","-W","-m","ml.gameplan_stock_trader"]),
+        ("python.exe",["python.exe","-m"]),
+        ("python.exe",[]),
+        ("other.exe",["other.exe","-m","ml.gameplan_stock_trader"]),
+    ]
+    monkeypatch.setattr(runtime.psutil,"process_iter",lambda fields: iter(
+        [SimpleNamespace(info={"name":name,"cmdline":command}) for name,command in workers]))
+    monkeypatch.setattr(runtime.psutil,"Process",lambda:SimpleNamespace(
+        cpu_times=lambda:SimpleNamespace(user=2,system=3),memory_info=lambda:SimpleNamespace(rss=100)))
+    monkeypatch.setattr(runtime.psutil,"virtual_memory",lambda:SimpleNamespace(available=1000))
+    monkeypatch.setattr(runtime.psutil,"cpu_percent",lambda interval:0)
+    snapshot=runtime.resource_snapshot()
+    assert snapshot["gameplan_worker_processes_observed"]==3
+    assert snapshot["process_count"]==len(workers)
+    assert snapshot["process_cpu_seconds"]==5
+    assert snapshot["process_rss_bytes"]==100
+    assert set(snapshot)=={"process_rss_bytes","process_cpu_seconds","system_available_memory_bytes",
+                           "system_cpu_percent","python_process_count","process_count","gameplan_worker_processes_observed"}
+    assert private_argument not in str(snapshot)
+    assert "cmdline" not in snapshot and "active_session" not in snapshot
