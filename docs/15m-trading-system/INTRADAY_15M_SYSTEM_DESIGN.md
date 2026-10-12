@@ -12,8 +12,13 @@ clarifications. Development, local training, historical evaluation, shadow
 forecasts, automatic scoring and the read-only development UI are authorized.
 Use existing authorized data and read-only provider connections. New access,
 subscriptions, credentials or expanded spending require separate authorization.
-Live orders, enabling Scout trading, starting trading sessions, changing live
-schedules, and restarting/deploying production workers are not authorized.
+The later October 12 instruction expands development toward a manual Atlas
+15m live-trader launcher: the human intends to start it after the execution
+implementation is complete, observe it on Atlas, and then start Scout. Scout
+may continue research/shadow runs in the meantime. The current implementation
+remains forecasting/shadow plus offline execution fixtures; it is not a working
+live launcher. This development does not start live sessions, enable Scout
+trading, change live schedules, or restart/deploy production workers.
 
 Current account execution bindings describe Atlas as the sole executor. Scout
 has not been enabled to trade by saving this design. Current source and saved
@@ -105,13 +110,25 @@ symbol-specific function, not a new sizing neural network. Learned sizing can
 be explored later.
 
 Starting inputs are momentum and its changes; RSI level and slope; distance
-from VWAP/moving averages; ATR relative to price; relative volume and its
-changes; prediction probability; existing holdings and recent executed
-quantities; and causal rates of change and acceleration of these measurements.
+from VWAP, EMAs and SMAs; Bollinger Bands and oscillators; ATR relative to price;
+relative volume and its changes; prediction probability; existing holdings and
+recent executed quantities; and causal rates of change and acceleration of
+these measurements. The October 12 clarification confirms this technical-
+indicator calculus, evaluated independently for each symbol using its own data,
+holdings and execution history. A shared implementation may have versioned
+per-symbol indicator periods, normalization and score parameters. It must not
+apply one computed score or share quantity to the whole symbol list.
 
 The starting formula is:
 
 `15m quantity = normal hourly size for that symbol * sizing score`
+
+Sizing and trading opportunities occur **every 15 minutes**, alongside full
+ensemble retraining. "Normal hourly size" in the earlier design is a reference
+scale for quantity, not an hourly trading schedule, a requirement to wait for
+Gameplan, or an hourly aggregate cap. The technical-indicator calculus and
+per-symbol sizing framework are settled; the following implementation details
+are not yet selected.
 
 The intended raw quantity is below that symbol's normal hourly quantity. The
 hourly reference must not become zero merely because no hourly order is due.
@@ -120,7 +137,8 @@ Round the resulting raw quantity to the **nearest whole share**.
 Still unresolved:
 
 - The normal hourly reference for BUY versus SELL.
-- Exact score range and mapping from inputs to the score.
+- Versioned per-symbol indicator-to-score mappings, normalization, periods and
+  BUY/SELL treatment, including the exact score range.
 - Half-share tie behavior.
 - How to handle nearest rounding producing equality with hourly size,
   particularly when the hourly reference is one share.
@@ -283,10 +301,26 @@ release quantities. Confirmed cancellation releases only the unfilled portion.
 An increased BUY limit needs its additional cost accounted for before submission.
 
 Refresh and reprice the unfilled remainder according to an explicit policy
-still to be specified. Its cadence, price updates, cancellation/replacement
-mechanics, and behavior when a new prediction arrives remain open. Whether a
-new prediction creates another independently reserved order or revises the
-old remainder has not been settled.
+still to be specified. Its cadence and price updates remain open.
+
+**Settled October 12:** a new 15m forecast replaces the preceding unfilled
+intention for that symbol and 15m stream **after confirming cancellation/status**.
+Save the new forecast and intention while reconciliation is pending. Do not
+add a second independently reserved working order for the new forecast while
+the preceding commitment is unresolved. Retrieve authoritative old-order status
+and record intervening fills; a cancellation acknowledgment alone is insufficient.
+Unknown submissions retain their identities and commitments throughout recovery.
+An unsent reservation also requires a confirmed release before reserving or
+submitting the new intention. This rule does not cancel Gameplan orders or
+another symbol's orders.
+
+Completed fills and the old forecast/intention remain in the audit history.
+Repricing the same intention pursues only its unfilled remainder. A new forecast
+has a newly evaluated symbol-specific intention using current holdings, recent
+executions and available capacity; do not copy the old quantity or automatically
+subtract old fills from a newly computed quantity. Exact submission/repricing
+mechanics and sizing parameters still need implementation. Replacement also
+obeys the submission cutoff below.
 
 For temporary provider/API failures, try, sleep a few seconds, and retry
 indefinitely without an arbitrary retry-count ceiling. Respect provider-required
@@ -314,17 +348,28 @@ Broker mechanics references:
 
 ## 8. Last trade and next-session opening
 
-The last intraday trade is at **16:45 Pacific**, replacing the earlier 17:00
-proposal. Save the final fetched information and use it to prepare a prediction
-for an immediate trade at the next eligible session's 04:00 opening.
+**Settled October 12: 16:45 Pacific is a strict submission cutoff.** New orders,
+including replacement submissions, must be submitted before 16:45:00
+America/Los_Angeles on the eligible session date. At or after that boundary,
+no new submission is allowed. Check actual time immediately before eventual
+submission; a fetch, fit, quote or cancellation that began earlier does not
+reserve permission to submit later. Account for Pacific daylight-saving time.
+
+The cutoff limits submission, not the recording of forecasts or reconciliation
+of orders already accepted. Continue recording status and actual fills after
+the cutoff. A mandatory cancellation of all resting orders at 16:45 has not
+been selected. A fetch beginning at/after 16:45 followed by retraining cannot
+produce a timely new order.
+
+Save the final fetched information and use it to prepare a prediction for an
+immediate trade at the next eligible session's 04:00 opening.
 
 Still unresolved:
 
-- Whether 16:45 names the final cycle or a strict submission cutoff. A fetch
-  starting after 16:45 followed by training cannot submit exactly at 16:45.
 - Exact reference price and target for that next-open prediction.
 - Computation/refresh timing relative to nightly preparation.
-- Whether the final 16:45 intraday forecast still targets 17:15.
+- The final eligible intraday reference/target and whether an after-cutoff
+  research-only cycle has a genuine observable target.
 - Availability of genuine target observations after the ordinary session ends.
 
 Do not silently apply a two-candle intraday model to the overnight gap, substitute
@@ -388,8 +433,8 @@ This new tab supplements the previously discussed integrations:
 | Stats | Saved outcomes, correct pending/missing distinctions, quarter-hour filters/grid |
 
 Use filters for PC, symbol, session and shadow versus historical replay. Define
-today, last 20/50/100 scored predictions, seven-day and cumulative windows and
-their denominators. Show balanced accuracy, Brier score, log loss, calibration,
+today, last 20/50/100 issued forecasts, seven-day and cumulative windows with
+explicit scored denominators. Show balanced accuracy, Brier score, log loss, calibration,
 disagreement, model-error correlations, latency and retrospective regime
 diagnostics. Realized movement regimes are retrospective; live features remain
 causal. Remote receipt age and producer timestamps must be visible independently
@@ -434,12 +479,14 @@ or other legacy restrictions into 15m without an explicit design review.
 
 1. Model composition/parameters and useful history depth, refined with actual
    timing. Full retraining every 15 minutes remains the initial benchmark.
-2. BUY/SELL hourly reference sizes, score mapping, and nearest-rounding details.
+2. BUY/SELL reference-size bindings, per-symbol technical-indicator score
+   parameters, and nearest-rounding details; the sizing cadence is 15 minutes.
 3. Longer-allocation quantity rules, daily ceilings, multi-allocation sales,
    and pacing with the new 15m opportunities.
 4. Atomic reservation interface, communication/recovery protocol, and contention
    priority among the three streams.
-5. Exact refresh/reprice/replacement policy and interaction with new predictions.
+5. Exact refresh/reprice cadence and implementation of cancellation/replacement;
+   new forecasts supersede prior unfilled intentions only after reconciliation.
 6. Final-session and next-open targets and genuine observation availability.
 7. Live remote-data delivery, worker/resource scheduling, cycle overruns and
    incomplete-ensemble execution eligibility. Explicit research settings do
@@ -506,3 +553,11 @@ the current modules, focused checks, actual data coverage and measured runs.
 Its research settings are explicit experiments. Older mock sizing, book and
 execution fixtures demonstrate mechanics only and do not settle production
 policy, establish trained-model performance, or prove current tests pass.
+
+The additional `ml/intraday/execution_policy.py` module is a pure offline
+decision layer for the strict cutoff and confirmed prior-intention reconciliation.
+It neither submits/cancels orders nor connects the offline book to the live
+shared authority. Its ready state means only that these particular checks have
+passed. The complete broker path, shared Gameplan/15m reservations, selected
+symbol-specific score recipes and remaining execution policies are still needed
+before a manual live launcher can be presented as ready.

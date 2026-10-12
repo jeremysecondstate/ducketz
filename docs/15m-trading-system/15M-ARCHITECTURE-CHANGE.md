@@ -4,6 +4,16 @@ I want to extend my existing Schwab/Ducketz trading system with a continuously r
 
 Read `INTRADAY_15M_SYSTEM_DESIGN.md` and inspect the actual repository before modifying anything. Preserve the existing architecture and its settled decisions. Do not build a separate replacement system.
 
+The [consolidated design](INTRADAY_15M_SYSTEM_DESIGN.md) includes the later
+October 12 decisions: per-symbol publication, inclusion of confirmed synthetic
+no-trade outcomes with separate breakdowns, all compatible history for the first
+timed benchmark, per-symbol technical-indicator sizing every 15 minutes,
+replacement of prior unfilled intentions only after cancellation/status is
+confirmed, and a strict 16:45 Pacific submission cutoff. These clarifications
+govern the proposal below. Development now also targets a human-started Atlas
+live launcher, followed by Scout after Atlas observation; current forecasting
+and offline execution code does not establish live-launch readiness.
+
 ## 1. Objective
 
 Both Atlas and Scout should run the same configurable forecasting architecture on separate PCs, using their respective 11-symbol universes and local DATASTOREs.
@@ -81,7 +91,7 @@ Tree models may use tabular causal technical features. Neural networks may use h
 
 Train models independently, record their versions and training cutoffs, and preserve deterministic configurations where possible.
 
-Support configurable historical lookbacks, beginning with five years where usable history exists, and allow shorter rolling-window experiments.
+Support configurable and as deep as time will allow us (we must keep timing TIGHT) historical lookbacks, this could be anywhere between 1 and five years where usable history exists. And allow shorter rolling-window experiments.
 
 ## 4. Implement Equal-Weight Consensus
 
@@ -103,7 +113,13 @@ Optionally add calibrated-probability averaging, performance weighting, and stac
 
 Build reliable scheduling, training, inference, and storage around each new validated 15-minute candle.
 
-Use the actual historical data already available in the repository, including Parquet if that is the current format. Update data incrementally rather than re-fetching the entire price history every cycle.
+Use the actual historical data already available in the DATASTORE. Anchor
+acquisition to each quarter-hour boundary plus a configurable provider
+publication offset. A 30-second candidate means 10:00:30, 10:15:30, 10:30:30 and
+10:45:30, not an interval of 15 minutes 30 seconds. Measure the useful offset;
+elapsed time alone does not establish that the expected completed data is
+available. Validate the exact interval and retain persistent retry evidence.
+Update price history incrementally; model fitting remains full retraining.
 
 Use chronological validation, causal preprocessing, properly matured target labels, and leakage-safe rolling feature windows.
 
@@ -226,11 +242,23 @@ Do not place SQLite authority databases on a shared network drive or assume exis
 
 Use read-only telemetry for dashboard updates, separate from eventual order coordination.
 
-The reference design records unresolved decisions about sizing, allocation ceilings, working orders, end-of-session predictions, and next-session targets. Do not invent answers to those decisions or silently add trading vetoes.
+The sizing framework is a transparent technical-indicator calculus evaluated
+for each symbol on each 15-minute cycle: EMAs, SMAs, RSI, Bollinger Bands,
+oscillators and other causal inputs feed that symbol's score and quantity.
+The earlier normal-hourly-size reference is a quantity scale, not a change to
+hourly trading. Exact score recipes and reference bindings remain open, along
+with allocation ceilings, repricing details, final intraday/next-session targets
+and the distributed reservation protocol. The new-forecast replacement rule
+and strict submission cutoff are settled as recorded above. Do not silently
+choose the remaining production parameters or add trading vetoes.
 
 ## 10. Safety and Implementation Phases
 
-This request authorizes development, historical testing, shadow-mode predictions, scoring, and a read-only UI. It does not authorize placing live orders, altering trading authority, starting trading sessions, changing live schedules, or deploying live execution.
+The original proposal authorizes development, historical testing, shadow-mode
+predictions, scoring and a read-only UI. The later human instruction extends
+development toward the manual Atlas live execution path. It does not turn the
+shadow runner into a live trader or start sessions, enable Scout execution,
+change live schedules, or restart/deploy production workers.
 
 Use already-authorized read-only historical/market-data access where permitted. Seek approval before initiating new live provider access or modifying credentials.
 
@@ -244,7 +272,11 @@ Implement in stages:
 
 **Phase 4:** Backtest and shadow-test performance, benchmark retraining schedules, and document what remains before any future trading integration.
 
-Include tests for target equality, label maturity, lookahead leakage, missing/duplicate candles, DST, the unresolved 16:45 edge, model failures, immutable forecasts, crash recovery, and absence of broker-order side effects.
+Include tests for target equality, label maturity, lookahead leakage,
+missing/duplicate candles, DST and the strict 16:45 submission cutoff,
+new-intention reconciliation, model failures, immutable forecasts, crash
+recovery and absence of broker-order side effects. Final-session/next-open
+prediction targets remain separate unresolved contracts.
 
 ## 11. Expected Deliverables
 
