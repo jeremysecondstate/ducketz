@@ -1,0 +1,79 @@
+{
+  "actor": "Scout",
+  "completed_at_utc": "2026-10-12T12:19:40.514787Z",
+  "completion_id": "20261012T121438Z-scout-intraday-monitoring-68f7bd718786",
+  "details": [
+    "Logical task: intraday-scout-adoption; actor Scout/pc-new; completed monitoring snapshot and workload evidence for Scout symbols. Peer applicability: Atlas monitoring reader and hardware comparison; no transfer of live symbol bindings.",
+    "Run identity: 20261012T121438Z-scout-intraday-monitoring-68f7bd718786. Retain this Completion-ID across publication retries.",
+    "Reviewed evidence manifest SHA-256: a5e7293c39a4f8d8f1098209bc1545e442ae6fe4c92311f455bf0ada0a044dbc.",
+    "Reviewed source 67c4da0f8e0c119fc4fd8892970c279a173145e0 passed 187 offline checks with zero skips. Three XNAS.ITCH research cycles performed 330 fresh successful model fits and persisted 33 forecasts: 30 scored, three missing exact targets.",
+    "EQUS.MINI initial shadow completed 100 fresh fits; RR lacks mature compatible labels. Ten initial targets received confirmed synthetic no-trade outcomes. Ongoing manual shadow loop is separate from this immutable snapshot.",
+    "Privacy review approved symbols, forecast probabilities, reference/target prices, model identity hashes, counts, source identities and timing only. Excludes raw history/features, fitted model bytes, account/orders, quantities, private paths, native IDs, memory and credentials.",
+    "Limitations: selected engineering measurements do not establish predictive quality, peak demand or long-run throughput. Actual Atlas packet and peer receipt remain pending. Source PR69 is unmerged; this publication changes only the Scout artifact namespace. No live orders or production worker restart."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-new/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/monitoring.json",
+      "expected_sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/monitoring.json",
+      "published_sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695",
+      "published_size": 243357,
+      "sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695",
+      "size": 243357,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-new/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/workload.json",
+      "expected_sha256": "29780eb4b795556053db4ed1fa18a0647602ba602657e3154b6c5bf183d78320",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/workload.json",
+      "published_sha256": "29780eb4b795556053db4ed1fa18a0647602ba602657e3154b6c5bf183d78320",
+      "published_size": 7530,
+      "sha256": "29780eb4b795556053db4ed1fa18a0647602ba602657e3154b6c5bf183d78320",
+      "size": 7530,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-new",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/monitoring.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "29780eb4b795556053db4ed1fa18a0647602ba602657e3154b6c5bf183d78320",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T121438Z-scout-intraday-monitoring-68f7bd718786/workload.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "9c5b50281169f05032bb0d6d943f761447e70cab",
+  "summary": "Scout publishes completed 15-minute research monitoring evidence",
+  "symbols": [
+    "ABCL",
+    "DBX",
+    "DOCU",
+    "GLOB",
+    "MRNA",
+    "OUST",
+    "PDYN",
+    "PYPL",
+    "QBTS",
+    "RR",
+    "SDGR"
+  ]
+}
