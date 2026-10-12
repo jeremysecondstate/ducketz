@@ -84,9 +84,19 @@ def resource_snapshot():
     gameplan_workers=0
     for worker in psutil.process_iter(["name","cmdline"]):
         try:
-            command=" ".join(worker.info.get("cmdline") or [])
-            if "python" in (worker.info.get("name") or "").lower() and any(
-                marker in command for marker in ("ml.stock_trader.independent_session","ml.stock_trader.independent_runtime")):
+            command=worker.info.get("cmdline") or []
+            module=None
+            argument=1 # cmdline[0] is the Python executable.
+            while argument<len(command):
+                option=command[argument]
+                if option=="-m":
+                    module=command[argument+1] if argument+1<len(command) else None
+                    break
+                if option.startswith(("-c","-m")) or option in {"--","-","-h","--help","-V","--version"} or not option.startswith("-"):
+                    break # Module-like text in script/-c arguments is not a worker.
+                argument+=2 if option in {"-W","-X"} else 1
+            if "python" in (worker.info.get("name") or "").lower() and module in {
+                "ml.gameplan_stock_trader","ml.stock_trader.independent_session","ml.stock_trader.independent_runtime"}:
                 gameplan_workers+=1
         except (psutil.AccessDenied,psutil.NoSuchProcess):
             continue
