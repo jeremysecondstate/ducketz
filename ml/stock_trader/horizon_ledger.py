@@ -5,6 +5,10 @@ cash and exposure limits. A reservation is not a fill. Per-order fill evidence
 creates purchased inventory. The opt-in Gameplan direction policy may explicitly
 attribute observed existing stock to a sale; unsold terminal quantities return
 to the unallocated pool. All account identities are one-way fingerprints.
+
+The explicit 15m path is separate from Gameplan's horizon eligibility and caps.
+It attributes one account-wide sale's exact fills across actual lots, without
+creating fills or invoking brokers. Shared authority admits actual capacity.
 """
 from __future__ import annotations
 
@@ -383,14 +387,17 @@ class HorizonLedger:
     @classmethod
     def _snapshot(cls, db) -> LedgerSnapshot:
         reservations = tuple(cls._reservation(db, row[0]) for row in db.execute("SELECT id FROM reservations ORDER BY id"))
+        sliced, debits, pending = cls._intraday_share_accounting(db, reservations)
         allocations = []
         for row in db.execute("SELECT * FROM allocations ORDER BY symbol,horizon,start,id"):
             orders = tuple(r for r in reservations if r.allocation_id == row["id"])
-            held = cls._assigned_shares(db, row["id"]) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1) for r in orders)
+            held = (cls._assigned_shares(db, row["id"]) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1)
+                    for r in orders if r.reservation_id not in sliced) - debits.get(row["id"], 0))
             allocations.append(AllocationState(row["id"], row["account"], row["symbol"], row["horizon"],
                 row["forecast"], row["start"], row["end"], row["status"], held,
                 sum(r.reserved_quantity for r in orders if r.side == "BUY"),
-                sum(r.reserved_quantity for r in orders if r.side == "SELL")))
+                sum(r.reserved_quantity for r in orders if r.side == "SELL" and r.reservation_id not in sliced)
+                + pending.get(row["id"], 0)))
         return LedgerSnapshot(tuple(allocations), reservations,
             tuple((row[0], row[1]) for row in db.execute("SELECT symbol,reason FROM blocks ORDER BY symbol")))
 
@@ -405,6 +412,284 @@ class HorizonLedger:
 
     def pending_reservations(self) -> tuple[ReservationState, ...]:
         return tuple(r for r in self.snapshot().reservations if r.status in _OPEN)
+
+    @staticmethod
+    def _stream(db, kind, identity):
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_streams'").fetchone():
+            return "gameplan"
+        row = db.execute("SELECT stream FROM intraday_streams WHERE kind=? AND id=?",(kind,identity)).fetchone()
+        return row[0] if row else "gameplan"
+
+    def reservation_stream(self, reservation_id: str) -> str:
+        """Identify policy ownership without changing legacy record payloads."""
+        with self._transaction() as db:
+            self._reservation(db,reservation_id)
+            return self._stream(db,"reservation",reservation_id)
+
+    def allocation_stream(self, allocation_id: str) -> str:
+        with self._transaction() as db:
+            if not db.execute("SELECT 1 FROM allocations WHERE id=?",(allocation_id,)).fetchone():
+                raise LedgerError("UNKNOWN_ALLOCATION")
+            return self._stream(db,"allocation",allocation_id)
+
+    def intraday_attempts(self, *, symbol: str, forecast_id: str) -> tuple[ReservationState, ...]:
+        """Return durable insertion order, independent of hashes or clock ties.
+
+        Attempts retain independent idempotency identities. Public legacy
+        snapshot ordering and record serialization remain unchanged.
+        """
+        with self._transaction() as db:
+            output=[]
+            for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
+                                  (self.account_fingerprint,_name(symbol).upper())):
+                request=json.loads(row["request"])
+                if request.get("stream")=="atlas-15m" and request.get("forecast")==_name(forecast_id):
+                    output.append(self._reservation(db,row["id"]))
+            return tuple(output)
+
+    @staticmethod
+    def _intraday_schema(db):
+        for sql in (
+            "CREATE TABLE IF NOT EXISTS intraday_streams(kind TEXT NOT NULL,id TEXT NOT NULL,stream TEXT NOT NULL,proof TEXT NOT NULL,PRIMARY KEY(kind,id))",
+            "CREATE TABLE IF NOT EXISTS intraday_sell_slices(reservation TEXT NOT NULL REFERENCES reservations(id),allocation TEXT NOT NULL REFERENCES allocations(id),quantity INTEGER NOT NULL CHECK(quantity>0),ordinal INTEGER NOT NULL,PRIMARY KEY(reservation,ordinal))",
+            "CREATE TABLE IF NOT EXISTS intraday_fill_attribution(fill TEXT NOT NULL REFERENCES fills(id),allocation TEXT NOT NULL REFERENCES allocations(id),slice_ordinal INTEGER NOT NULL,quantity INTEGER NOT NULL CHECK(quantity>0),PRIMARY KEY(fill,slice_ordinal))",
+        ):
+            db.execute(sql)
+        db.execute("INSERT OR IGNORE INTO metadata VALUES('intraday_accounting_version','account-shares-attribution-v1')")
+
+    @classmethod
+    def _intraday_share_accounting(cls, db, reservations):
+        """Charge exact filled/unfilled SELL slices once to their real owners."""
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_sell_slices'").fetchone():
+            return set(),{},{}
+        by_id = {r.reservation_id:r for r in reservations}
+        filled = {(row[0],row[1]):row[2] for row in db.execute("""SELECT f.reservation,a.slice_ordinal,SUM(a.quantity)
+            FROM intraday_fill_attribution a JOIN fills f ON f.id=a.fill GROUP BY f.reservation,a.slice_ordinal""")}
+        sliced, debits, pending = set(),{},{}
+        for row in db.execute("SELECT reservation,allocation,quantity,ordinal FROM intraday_sell_slices"):
+            order = by_id[row[0]]
+            charged = filled.get((row[0],row[3]),0)
+            if order.side!="SELL" or not 0<=charged<=row[2]:
+                raise LedgerError("INTRADAY_ATTRIBUTION_DOES_NOT_BALANCE")
+            sliced.add(row[0])
+            debits[row[1]] = debits.get(row[1],0)+charged
+            if order.status in _OPEN:
+                pending[row[1]] = pending.get(row[1],0)+row[2]-charged
+        for identity in sliced:
+            if sum(q for (r,_),q in filled.items() if r==identity)!=by_id[identity].filled_quantity:
+                raise LedgerError("INTRADAY_ATTRIBUTION_DOES_NOT_BALANCE")
+        return sliced,debits,pending
+
+    @classmethod
+    def _attribute_intraday_fills(cls, db, reservation_id):
+        """Append per-fill ownership evidence; previous attributions never move."""
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_sell_slices'").fetchone():
+            return
+        slices = db.execute("SELECT allocation,quantity,ordinal FROM intraday_sell_slices WHERE reservation=? ORDER BY ordinal",(reservation_id,)).fetchall()
+        if not slices:
+            return
+        used = {row[0]:row[1] for row in db.execute("""SELECT a.slice_ordinal,SUM(a.quantity)
+            FROM intraday_fill_attribution a JOIN fills f ON f.id=a.fill WHERE f.reservation=? GROUP BY a.slice_ordinal""",(reservation_id,))}
+        for fill in db.execute("SELECT id,quantity FROM fills WHERE reservation=? ORDER BY executed_at,id",(reservation_id,)).fetchall():
+            old = db.execute("SELECT COALESCE(SUM(quantity),0) FROM intraday_fill_attribution WHERE fill=?",(fill[0],)).fetchone()[0]
+            if old:
+                if old!=fill[1]:
+                    raise LedgerError("INTRADAY_ATTRIBUTION_DOES_NOT_BALANCE")
+                continue
+            remaining = fill[1]
+            for allocation,quantity,ordinal in slices:
+                take = min(remaining,quantity-used.get(ordinal,0))
+                if take>0:
+                    db.execute("INSERT INTO intraday_fill_attribution VALUES(?,?,?,?)",(fill[0],allocation,ordinal,take))
+                    used[ordinal] = used.get(ordinal,0)+take
+                    remaining -= take
+                if not remaining:
+                    break
+            if remaining:
+                raise LedgerError("INTRADAY_FILL_EXCEEDS_RESERVED_SLICES")
+
+    def intraday_sell_attribution(self, reservation_id: str):
+        """Audit planned owner slices and actual fill debits, never broker fills."""
+        with self._transaction() as db:
+            self._reservation(db,reservation_id)
+            if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_sell_slices'").fetchone():
+                return {"slices":[],"fills":[]}
+            return {"slices":[dict(row) for row in db.execute("SELECT allocation,quantity,ordinal FROM intraday_sell_slices WHERE reservation=? ORDER BY ordinal",(reservation_id,))],
+                    "fills":[dict(row) for row in db.execute("""SELECT a.fill,a.allocation,a.slice_ordinal,a.quantity FROM intraday_fill_attribution a
+                        JOIN fills f ON f.id=a.fill WHERE f.reservation=? ORDER BY a.fill,a.allocation""",(reservation_id,))]}
+
+    def reserve_stream_cancellation(self, reservation_id: str, *, stream: str, reason: str, as_of: str, evidence_id: str) -> bool:
+        """Persist one shared cancellation request after the stream chose why.
+
+        The caller owns timing/supersession eligibility and broker guards. This
+        never invokes a broker or releases capacity, including after DELETE.
+        """
+        if stream!="atlas-15m" or reason not in {"new-forecast","repricing","manual-stop"}:
+            raise LedgerError("UNREVIEWED_STREAM_CANCELLATION_POLICY")
+        now = _utc(as_of)
+        with self._transaction() as db:
+            order = self._reservation(db,reservation_id)
+            if self._stream(db,"reservation",reservation_id)!=stream:
+                raise LedgerError("CANCELLATION_STREAM_MISMATCH")
+            if order.cancel_requested_at is not None:
+                return False
+            if order.status not in {"SUBMITTED","WORKING","PARTIAL"} or not order.broker_order_id or not order.reserved_quantity:
+                raise LedgerError("CANCELLATION_REQUIRES_KNOWN_WORKING_ORDER")
+            if order.last_evidence_at and now<order.last_evidence_at:
+                raise LedgerError("STALE_CANCELLATION_REQUEST")
+            self._save_evidence(db,evidence_id,"stream-cancellation-reservation",{
+                "reservation_id":reservation_id,"broker_order_id":order.broker_order_id,
+                "requested_at":now,"stream":stream,"reason":reason})
+            db.execute("INSERT INTO cancellations VALUES(?,?)",(reservation_id,now))
+            return True
+
+    def _require_intraday_snapshot(self, db, snapshot_id, now):
+        row = db.execute("SELECT * FROM snapshots ORDER BY observed_at DESC LIMIT 1").fetchone()
+        if not row or row["id"]!=snapshot_id:
+            raise LedgerError("CURRENT_RECONCILED_PORTFOLIO_REQUIRED")
+        age = (datetime.fromisoformat(now)-datetime.fromisoformat(row["observed_at"])).total_seconds()
+        if not 0<=age<=self.maximum_evidence_age_seconds:
+            raise LedgerError("STALE_OR_FUTURE_PORTFOLIO_EVIDENCE")
+        # Exact pending commitments remain unavailable; their existence is not
+        # an independent horizon funding gate. Actual inventory discrepancies
+        # and stale status evidence still require reconciliation.
+        ignored = (":UNRECONCILED_RESERVED:",":UNRECONCILED_SUBMITTED:",":UNRECONCILED_UNKNOWN:")
+        if any(not any(flag in reason for flag in ignored) for reason in json.loads(row["reasons"])):
+            raise LedgerError("CURRENT_RECONCILED_PORTFOLIO_REQUIRED")
+        if db.execute("SELECT 1 FROM blocks LIMIT 1").fetchone():
+            raise LedgerError("PERSISTENT_INVENTORY_DISCREPANCY")
+        return json.loads(row["payload"])
+
+    def reserve_intraday(self, *, symbol: str, forecast_id: str, side: str, quantity: int, limit_price,
+                         snapshot_id: str, idempotency_key: str, batch_id: str, as_of: str,
+                         reference_at: str, target_close_at: str, forecast_sha256: str,
+                         forecast_snapshot_sha256: str, local_symbols: Sequence[str], pending_sell_shares=0,
+                         broker_pending_sell_orders: Mapping[str, int] | None = None,
+                         retry_of_reservation_id: str | None = None) -> ReservationState:
+        """Record 15m commitment/fills without Gameplan horizon funding rules.
+
+        The shared authority admits cash and exact account shares. A SELL can
+        debit every actual lot plus observed unallocated inventory. Slice order
+        is a stable accounting identity order, never a donor eligibility policy.
+        A fresh forecast is independently sized; filled purchases never reenter.
+        """
+        symbol,forecast_id = _name(symbol).upper(),_name(forecast_id)
+        if (side not in {"BUY","SELL"} or symbol not in local_symbols or len(local_symbols)!=len(set(local_symbols))
+                or any(not isinstance(s,str) or not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}",s) for s in local_symbols)):
+            raise LedgerError("INTRADAY_SYMBOL_OR_SIDE_OUTSIDE_LOCAL_SCOPE")
+        for value in (forecast_sha256,forecast_snapshot_sha256):
+            if not re.fullmatch(r"[a-f0-9]{64}",str(value)):
+                raise LedgerError("IMMUTABLE_INTRADAY_PROOF_REQUIRED")
+        if forecast_id!=forecast_sha256:
+            raise LedgerError("IMMUTABLE_INTRADAY_FORECAST_HASH_REQUIRED")
+        reference,target,now = _utc(reference_at),_utc(target_close_at),_utc(as_of)
+        parsed = datetime.fromisoformat(reference)
+        if parsed.minute%15 or parsed.second or parsed.microsecond or datetime.fromisoformat(target)!=parsed+timedelta(minutes=45):
+            raise LedgerError("EXACT_INTRADAY_TARGET_REQUIRED")
+        quantity,price = _quantity(quantity,positive=True),str(_number(limit_price,positive=True))
+        external_pending = _quantity(pending_sell_shares)
+        exact_pending = None
+        if broker_pending_sell_orders is not None:
+            exact_pending = {_name(k):_quantity(v,positive=True) for k,v in broker_pending_sell_orders.items()}
+            if len(exact_pending)!=len(broker_pending_sell_orders) or sum(exact_pending.values())!=external_pending:
+                raise LedgerError("EXACT_BROKER_PENDING_SELL_QUANTITIES_REQUIRED")
+        key,batch = _name(idempotency_key),_name(batch_id)
+        request = {"kind":"intraday-account-intention","stream":"atlas-15m","symbol":symbol,"horizon":"15m",
+                   "forecast":forecast_id,"side":side,"quantity":quantity,"price":price,"snapshot":snapshot_id,
+                   "batch":batch,"start":reference,"end":target,"forecast_sha256":forecast_sha256,
+                   "forecast_snapshot_sha256":forecast_snapshot_sha256,"local_symbols":sorted(local_symbols),
+                   "pending_sell_shares":external_pending,"broker_pending_sell_orders":exact_pending}
+        if retry_of_reservation_id is not None:
+            request["retry_of_reservation_id"] = _name(retry_of_reservation_id)
+        with self._transaction() as db:
+            existing = self._idempotent(db,key,request)
+            if existing is not None:
+                return existing
+            if not parsed+timedelta(minutes=15)<=datetime.fromisoformat(now)<datetime.fromisoformat(target):
+                raise LedgerError("INTRADAY_FORECAST_NOT_CURRENT")
+            portfolio = self._require_intraday_snapshot(db,snapshot_id,now)
+            if retry_of_reservation_id is not None:
+                self._intraday_retry_parent(db,request)
+            elif self._forecast_reserved(db,self.account_fingerprint,symbol,"15m",forecast_id):
+                raise LedgerError("FORECAST_ALREADY_RESERVED_NO_REENTRY")
+            state = self._snapshot(db)
+            active = next((a for a in state.allocations if a.symbol==symbol and a.horizon=="15m" and a.status=="ACTIVE"),None)
+            if active and self._stream(db,"allocation",active.allocation_id)!="atlas-15m":
+                raise LedgerError("INTRADAY_ALLOCATION_STREAM_MISMATCH")
+            allocation_id = active.allocation_id if active else _identity([self.account_fingerprint,symbol,"15m",forecast_id])
+            if not active:
+                previous_allocation = db.execute("SELECT * FROM allocations WHERE id=?",(allocation_id,)).fetchone()
+                if previous_allocation is not None and retry_of_reservation_id is not None:
+                    if previous_allocation["status"]!="CLOSED" or self._stream(db,"allocation",allocation_id)!="atlas-15m":
+                        raise LedgerError("INTRADAY_RETRY_ALLOCATION_UNVERIFIED")
+                    db.execute("UPDATE allocations SET status='ACTIVE' WHERE id=?",(allocation_id,))
+                else:
+                    db.execute("INSERT INTO allocations VALUES(?,?,?,?,?,?,?,'ACTIVE')",
+                        (allocation_id,self.account_fingerprint,symbol,"15m",forecast_id,reference,target))
+            self._intraday_schema(db)
+            proof = {"forecast_sha256":forecast_sha256,"forecast_snapshot_sha256":forecast_snapshot_sha256,
+                     "reference_at":reference,"target_close_at":target,"forecast_id":forecast_id}
+            db.execute("INSERT OR IGNORE INTO intraday_streams VALUES('allocation',?,'atlas-15m',?)",(allocation_id,_encoded(proof)))
+            reservation = self._insert_reservation(db,allocation_id,side,quantity,price,key,batch,request)
+            db.execute("INSERT INTO intraday_streams VALUES('reservation',?,'atlas-15m',?)",(reservation.reservation_id,_encoded(proof)))
+            if side=="SELL":
+                held = int(_number(portfolio["held_shares"].get(symbol,0)))
+                local_orders = [r for r in state.reservations if r.symbol==symbol and r.side=="SELL" and r.reserved_quantity]
+                local_pending = sum(r.reserved_quantity for r in local_orders)
+                represented = 0
+                if exact_pending is not None:
+                    for local in local_orders:
+                        if local.broker_order_id in exact_pending:
+                            if exact_pending[local.broker_order_id]!=local.reserved_quantity:
+                                raise LedgerError("BROKER_RESERVATION_DOES_NOT_MATCH_LOCAL_ORDER")
+                            represented += local.reserved_quantity
+                unmatched_broker_pending = external_pending-represented
+                if quantity>max(0,held-local_pending-unmatched_broker_pending):
+                    raise LedgerError("INTRADAY_SELL_EXCEEDS_ACCOUNT_ELIGIBLE_SHARES")
+                remaining,ordinal = quantity,0
+                for owner in sorted((a for a in state.allocations if a.symbol==symbol),key=lambda a:a.allocation_id):
+                    take = min(remaining,max(0,owner.filled_shares-owner.reserved_sell_shares))
+                    if take:
+                        db.execute("INSERT INTO intraday_sell_slices VALUES(?,?,?,?)",(reservation.reservation_id,owner.allocation_id,take,ordinal))
+                        remaining -= take; ordinal += 1
+                    if not remaining:
+                        break
+                if remaining:
+                    owned = sum(a.filled_shares for a in state.allocations if a.symbol==symbol)
+                    free = held-owned-unmatched_broker_pending
+                    if remaining>free:
+                        raise LedgerError("INTRADAY_SHARE_ACCOUNTING_DOES_NOT_BALANCE")
+                    db.execute("CREATE TABLE IF NOT EXISTS inventory_assignments(id TEXT PRIMARY KEY,allocation TEXT NOT NULL REFERENCES allocations(id),snapshot_id TEXT NOT NULL REFERENCES snapshots(id),quantity INTEGER NOT NULL,observed_at TEXT NOT NULL)")
+                    assignment_id = _identity(["gameplan-observed-opening-stock",key])
+                    db.execute("INSERT INTO inventory_assignments VALUES(?,?,?,?,?)",(assignment_id,allocation_id,snapshot_id,remaining,now))
+                    self._save_evidence(db,assignment_id,"intraday-observed-account-stock-assignment",{
+                        "allocation_id":allocation_id,"snapshot_id":snapshot_id,"quantity":remaining,"observed_at":now,
+                        "reason":"Observed unallocated stock attributed for account-wide 15m sale; not a BUY or fill"})
+                    db.execute("INSERT INTO intraday_sell_slices VALUES(?,?,?,?)",(reservation.reservation_id,allocation_id,remaining,ordinal))
+            self._save_evidence(db,"intraday-proof:"+reservation.reservation_id,"intraday-forecast-binding",proof)
+            return reservation
+
+    @classmethod
+    def _intraday_retry_parent(cls, db, request):
+        """No new attempt can replace a possible broker submission or a fill."""
+        previous = cls._reservation(db,request["retry_of_reservation_id"])
+        original = json.loads(db.execute("SELECT request FROM reservations WHERE id=?",(previous.reservation_id,)).fetchone()[0])
+        fields = ("kind","stream","symbol","horizon","forecast","side","start","end",
+                  "forecast_sha256","forecast_snapshot_sha256","local_symbols")
+        if any(original.get(k)!=request[k] for k in fields) or cls._stream(db,"reservation",previous.reservation_id)!="atlas-15m":
+            raise LedgerError("INTRADAY_RETRY_PREDECESSOR_SCOPE_MISMATCH")
+        predecessors = []
+        account = db.execute("SELECT account FROM allocations WHERE id=?",(previous.allocation_id,)).fetchone()[0]
+        for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
+                              (account,request["symbol"])):
+            candidate = json.loads(row["request"])
+            if candidate.get("stream")=="atlas-15m" and candidate.get("forecast")==request["forecast"]:
+                predecessors.append(cls._reservation(db,row["id"]))
+        if (not predecessors or predecessors[-1].reservation_id!=previous.reservation_id
+                or any(order.status!="REJECTED" or order.broker_order_id is not None or order.filled_quantity
+                       or order.submitted_at is not None for order in predecessors)):
+            raise LedgerError("INTRADAY_RETRY_REQUIRES_LATEST_PROVEN_UNSUBMITTED_ATTEMPT")
+        return previous
 
     def history(self) -> tuple[AuditRecord, ...]:
         """Read immutable evidence records; payloads never contain raw account IDs."""
@@ -421,6 +706,8 @@ class HorizonLedger:
         now = _utc(as_of)
         with self._transaction() as db:
             order = self._reservation(db, reservation_id)
+            if self._stream(db,"reservation",reservation_id)=="atlas-15m":
+                raise LedgerError("CANCELLATION_STREAM_MISMATCH")
             if order.cancel_requested_at is not None:
                 return False
             if order.side != "BUY" or order.status not in {"SUBMITTED", "WORKING", "PARTIAL"} or not order.broker_order_id:
@@ -447,6 +734,8 @@ class HorizonLedger:
         now = _utc(as_of)
         with self._transaction() as db:
             order = self._reservation(db, reservation_id)
+            if self._stream(db,"reservation",reservation_id)=="atlas-15m":
+                raise LedgerError("CANCELLATION_STREAM_MISMATCH")
             self._account(db.execute("SELECT account FROM allocations WHERE id=?", (order.allocation_id,)).fetchone()[0])
             if order.cancel_requested_at is not None:
                 return False
@@ -523,13 +812,16 @@ class HorizonLedger:
 
     @classmethod
     def _close_empty_allocations(cls, db) -> None:
-        for row in db.execute("SELECT id FROM allocations WHERE status='ACTIVE'").fetchall():
-            orders = db.execute("SELECT side,filled,status FROM reservations WHERE allocation=?", (row[0],)).fetchall()
-            owned = cls._assigned_shares(db, row[0]) + sum(r["filled"] * (1 if r["side"] == "BUY" else -1) for r in orders)
-            if owned < 0:
+        state = cls._snapshot(db)
+        for allocation in state.allocations:
+            if allocation.status != "ACTIVE":
+                continue
+            orders = tuple(r for r in state.reservations if r.allocation_id == allocation.allocation_id)
+            if allocation.filled_shares < 0:
                 raise LedgerError("HORIZON_INVENTORY_WOULD_BECOME_NEGATIVE")
-            if orders and owned == 0 and all(r["status"] in _TERMINAL for r in orders):
-                db.execute("UPDATE allocations SET status='CLOSED' WHERE id=?", (row[0],))
+            if (orders and allocation.filled_shares == 0 and allocation.reserved_sell_shares == 0
+                    and all(r.status in _TERMINAL for r in orders)):
+                db.execute("UPDATE allocations SET status='CLOSED' WHERE id=?", (allocation.allocation_id,))
 
     def mark_submission(self, reservation_id: str, *, status: str, observed_at: str,
                         evidence_id: str, broker_order_id: str | None = None) -> ReservationState:
@@ -619,6 +911,7 @@ class HorizonLedger:
             db.execute("INSERT OR IGNORE INTO fills VALUES (?,?,?,?,?)", fill)
         db.execute("UPDATE reservations SET status=?,broker_order=?,filled=?,last_evidence_at=? WHERE id=?",
                    (status, broker_id, filled, observed, order.reservation_id))
+        self._attribute_intraday_fills(db, order.reservation_id)
         self._release_unfilled_assignment(db, order.reservation_id, observed)
 
     def reconcile(self, portfolio: PortfolioEvidence, *, order_evidence: Sequence[OrderEvidence] = ()) -> ReconciliationResult:
@@ -1054,6 +1347,8 @@ class HorizonLedger:
                 reasons.append(str(exc))
             plans = []
             for allocation in self._snapshot(db).allocations:
+                if self._stream(db,"allocation",allocation.allocation_id)=="atlas-15m":
+                    continue
                 if allocation.status != "ACTIVE" or not self._exit_due(allocation.target_end, now, exit_lead_seconds):
                     continue
                 blocked = list(reasons)
@@ -1079,6 +1374,8 @@ class HorizonLedger:
                 return existing
             self._require_snapshot(db, snapshot_id, now, batch_id=batch)
             allocation = next((a for a in self._snapshot(db).allocations if a.allocation_id == allocation_id), None)
+            if self._stream(db,"allocation",allocation_id)=="atlas-15m":
+                raise LedgerError("INTRADAY_HAS_NO_SCHEDULED_LIQUIDATION")
             if allocation is None or allocation.status != "ACTIVE":
                 raise LedgerError("NO_ACTIVE_HORIZON_ALLOCATION")
             if not self._exit_due(allocation.target_end, now, exit_lead_seconds):

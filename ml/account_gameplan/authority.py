@@ -5,6 +5,10 @@ putting independent copies (or this SQLite file on a network share) on two PCs
 does not provide distributed coordination. Native horizon ownership remains
 authoritative. Requests must identify its real reservation and allocation.
 
+The dedicated Atlas 15m path uses actual available cash and eligible account
+shares, with all outstanding commitments retained. Native lots attribute fills;
+their Gameplan horizon labels do not gate 15m capacity or sizing.
+
 Snapshot budgets come from the existing engine, net of observed broker orders.
 Only explicit matching broker IDs overlap local commitments. Filled buys remain
 charged until a newer coherent balance snapshot accounts for them; filled sales
@@ -28,6 +32,7 @@ from zoneinfo import ZoneInfo
 
 
 VERSION = "single-host-account-authority-v1"
+SUBMISSION_RECEIPT_VERSION = "account-exact-submission-receipt-v1"
 OPEN = frozenset({"RESERVED", "SUBMITTING", "SUBMITTED", "UNKNOWN", "WORKING", "PARTIAL"})
 TERMINAL = frozenset({"FILLED", "CANCELLED", "REJECTED", "NOT_SUBMITTED"})
 HORIZONS = frozenset({"1h", "4h", "1d", "1w"})
@@ -109,6 +114,61 @@ class ReservationRequest:
     exposure_price: str | float
     native_reservation_id: str
     native_allocation_id: str
+
+
+@dataclass(frozen=True)
+class IntradayCapacitySnapshot:
+    """Actual account capacity, independent of any daily Gameplan budget.
+
+    Cash is the broker's available cash (already net of its identified working
+    orders). Exact local commitments not represented there are additionally
+    charged, including fills not yet accounted for by a newer balance.
+    """
+    snapshot_id: str
+    account_fingerprint: str
+    action_date: str
+    observed_at: str
+    cash_available: str | float
+    held_shares: Mapping[str, int]
+    broker_pending: tuple[BrokerReservation, ...] = ()
+    accounted_fills: Mapping[str, int] = field(default_factory=dict)
+    evidence_fingerprint: str = ""
+    identity_before: str = ""
+    identity_after: str = ""
+    complete: bool = False
+
+
+@dataclass(frozen=True)
+class IntradayReservationRequest:
+    """A distinct 15m intention bound to its immutable forecasting evidence.
+
+    The local adapter verifies the persisted forecast bytes. This authority
+    retains their hashes and exact target, and admits actual cash/shares only.
+    It does not select direction, sizing, forecast eligibility or sessions.
+    """
+    idempotency_key: str
+    snapshot_id: str
+    account_fingerprint: str
+    action_date: str
+    participant_id: str
+    symbol: str
+    forecast_id: str
+    side: str
+    quantity: int
+    limit_price: str | float
+    exposure_price: str | float
+    native_reservation_id: str
+    native_allocation_id: str
+    forecast_sha256: str
+    forecast_snapshot_sha256: str
+    issued_at: str
+    reference_at: str
+    target_close_at: str
+    target_version: str
+    local_symbols: tuple[str, ...]
+    stream: str = "atlas-15m"
+    horizon: str = "15m"
+    retry_of_native_reservation_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -218,6 +278,7 @@ class AccountAuthority:
                 "CREATE TABLE IF NOT EXISTS reservations(id TEXT PRIMARY KEY,key TEXT UNIQUE NOT NULL,native_id TEXT UNIQUE NOT NULL,forecast_key TEXT UNIQUE NOT NULL,request TEXT NOT NULL,status TEXT NOT NULL,filled INTEGER NOT NULL,broker_id TEXT UNIQUE,created TEXT NOT NULL,last_evidence TEXT)",
                 "CREATE TABLE IF NOT EXISTS order_evidence(id TEXT PRIMARY KEY,payload TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS fills(reservation TEXT NOT NULL,fill_id TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(reservation,fill_id))",
+                "CREATE TABLE IF NOT EXISTS submission_receipts(reservation TEXT PRIMARY KEY,broker_id TEXT,receipt_id TEXT UNIQUE NOT NULL,received_at TEXT NOT NULL,payload TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS events(sequence INTEGER PRIMARY KEY AUTOINCREMENT,observed TEXT NOT NULL,kind TEXT NOT NULL,payload TEXT NOT NULL)",
             ):
                 db.execute(statement)
@@ -293,6 +354,10 @@ class AccountAuthority:
                           holder, (now+timedelta(seconds=self._ttl(ttl_seconds))).isoformat())
             db.execute("INSERT OR REPLACE INTO lease VALUES(1,?,?,?,?)", (lease.token,lease.epoch,holder,lease.expires_at))
             self._event(db,now,"lease-acquired",{"epoch":lease.epoch,"holder":holder})
+            # An earlier sender may have received an exact ID after its lease
+            # expired. Promote that immutable evidence only under this new fence.
+            current, owner = self._lease(db,lease.token)
+            self._recover_submission_receipts(db,current,owner["epoch"])
             return lease
 
     def renew_lease(self, token: str, *, ttl_seconds=60) -> Lease:
@@ -467,6 +532,206 @@ class AccountAuthority:
                 shares[symbol] -= live+unaccounted-(represented["remaining_quantity"] if represented else 0)
         return cash,gross,symbols,shares
 
+    def _intraday_snapshot(self, db, now, snapshot_id):
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_capacity_snapshots'").fetchone():
+            raise AuthorityError("INTRADAY_CAPACITY_SNAPSHOT_REQUIRED")
+        row = db.execute("SELECT * FROM intraday_capacity_snapshots ORDER BY observed DESC LIMIT 1").fetchone()
+        if not row or row["id"] != snapshot_id:
+            raise AuthorityError("LATEST_INTRADAY_CAPACITY_SNAPSHOT_REQUIRED")
+        if not 0 <= (now-_time(row["observed"])).total_seconds() <= 60:
+            raise AuthorityError("INTRADAY_CAPACITY_SNAPSHOT_STALE_OR_FUTURE")
+        return json.loads(row["payload"])
+
+    def publish_intraday_snapshot(self, token: str, snapshot: IntradayCapacitySnapshot):
+        """Publish coherent actual capacity without requiring a Gameplan plan.
+
+        This adds a separate evidence table, not another account authority or
+        an earmarked stream pool. Every common reservation is counted below.
+        """
+        payload = asdict(snapshot)
+        with self._transaction() as db:
+            now, _ = self._lease(db,token)
+            _name(snapshot.snapshot_id)
+            account = self.binding["account_fingerprint"]
+            if (snapshot.account_fingerprint != account or snapshot.identity_before != account
+                    or snapshot.identity_after != account or snapshot.complete is not True):
+                raise AuthorityError("COMPLETE_COHERENT_ACCOUNT_SNAPSHOT_REQUIRED")
+            if snapshot.action_date != now.astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat():
+                raise AuthorityError("ACTION_DATE_NOT_CURRENT")
+            _hash(snapshot.evidence_fingerprint)
+            observed = _time(snapshot.observed_at)
+            if not 0 <= (now-observed).total_seconds() <= 60:
+                raise AuthorityError("ACCOUNT_SNAPSHOT_STALE_OR_FUTURE")
+            payload["observed_at"] = observed.isoformat()
+            payload["cash_available"] = _amount(snapshot.cash_available)
+            if set(snapshot.held_shares) != self.symbols:
+                raise AuthorityError("COMPLETE_ACCOUNT_SYMBOL_UNION_REQUIRED")
+            payload["held_shares"] = {s:_quantity(q) for s,q in snapshot.held_shares.items()}
+            pending, ids = [], set()
+            orders = {row["broker_id"]:row for row in db.execute("SELECT * FROM reservations WHERE broker_id IS NOT NULL")}
+            for original in snapshot.broker_pending:
+                item = asdict(original)
+                _name(item["broker_order_id"]); _symbol(item["symbol"])
+                if item["broker_order_id"] in ids or item["side"] not in {"BUY","SELL"}:
+                    raise AuthorityError("AMBIGUOUS_BROKER_RESERVATIONS")
+                ids.add(item["broker_order_id"])
+                _quantity(item["remaining_quantity"],positive=True)
+                _quantity(item["cumulative_filled_quantity"])
+                for key in ("cash_reserved","exposure_reserved"):
+                    item[key] = _amount(item[key])
+                if item["side"] == "SELL" and any(_money(item[k]) for k in ("cash_reserved","exposure_reserved")):
+                    raise AuthorityError("SALE_PROCEEDS_ARE_NOT_CAPACITY")
+                row = orders.get(item["broker_order_id"])
+                if row:
+                    request = json.loads(row["request"])
+                    if (row["status"] not in OPEN or item["symbol"]!=request["symbol"]
+                            or item["side"]!=request["side"] or item["cumulative_filled_quantity"]!=row["filled"]
+                            or item["remaining_quantity"]!=request["quantity"]-row["filled"]):
+                        raise AuthorityError("BROKER_RESERVATION_DOES_NOT_MATCH_LOCAL_ORDER")
+                pending.append(item)
+            payload["broker_pending"] = sorted(pending,key=lambda p:p["broker_order_id"])
+            payload["accounted_fills"] = {str(k):_quantity(v) for k,v in snapshot.accounted_fills.items()}
+            for broker_id,filled in payload["accounted_fills"].items():
+                row = orders.get(broker_id)
+                if not row or filled!=row["filled"] or (filled and (not row["last_evidence"] or observed<=_time(row["last_evidence"]))):
+                    raise AuthorityError("FILL_NOT_PROVEN_IN_NEWER_ACCOUNT_SNAPSHOT")
+            reconciled = db.execute("SELECT MAX(last_evidence) FROM reservations").fetchone()[0]
+            if reconciled and observed <= _time(reconciled):
+                raise AuthorityError("ACCOUNT_SNAPSHOT_MUST_FOLLOW_ORDER_RECONCILIATION")
+            db.execute("CREATE TABLE IF NOT EXISTS intraday_capacity_snapshots(id TEXT PRIMARY KEY,observed TEXT NOT NULL,payload TEXT NOT NULL)")
+            prior = db.execute("SELECT payload FROM intraday_capacity_snapshots WHERE id=?",(snapshot.snapshot_id,)).fetchone()
+            if prior:
+                if prior[0] != _json(payload):
+                    raise AuthorityError("SNAPSHOT_ID_REUSED_WITH_DIFFERENT_EVIDENCE")
+                return
+            latest = db.execute("SELECT MAX(observed) FROM intraday_capacity_snapshots").fetchone()[0]
+            if latest and observed <= _time(latest):
+                raise AuthorityError("ACCOUNT_SNAPSHOT_MUST_ADVANCE")
+            db.execute("INSERT INTO intraday_capacity_snapshots VALUES(?,?,?)",(snapshot.snapshot_id,observed.isoformat(),_json(payload)))
+            self._event(db,now,"intraday-capacity-snapshot",{"snapshot_id":snapshot.snapshot_id,"fingerprint":_sha(payload)})
+
+    def _intraday_remaining(self, db, snapshot):
+        # _remaining's commitment accounting is shared, but its engine budgets
+        # are not. Populate only neutral values to reuse exact overlap/fill math.
+        neutral = {**snapshot,"cash_budget":snapshot["cash_available"],"gross_budget":"0",
+                   "symbol_budgets":{s:"0" for s in self.symbols}}
+        cash, _, _, shares = self._remaining(db,neutral)
+        return cash,shares
+
+    def available_intraday_capacity(self, token: str, snapshot_id: str):
+        """Return available capacity; callers still persist zero-sized intent."""
+        with self._transaction() as db:
+            now, _ = self._lease(db,token)
+            snapshot = self._intraday_snapshot(db,now,snapshot_id)
+            cash,shares = self._intraday_remaining(db,snapshot)
+            return {"cash_available":_amount(max(ZERO,cash)),
+                    "eligible_shares":{s:max(0,q) for s,q in shares.items()}}
+
+    def reserve_intraday(self, token: str, request: IntradayReservationRequest) -> Reservation:
+        """Admit an already sized 15m order against the one actual account pool.
+
+        No Gameplan allocation, weighted cap, reserve fraction, equity exposure
+        cap or due instruction is a 15m funding gate. Unknown commitments keep
+        their complete quantities; they are never guessed away or resubmitted.
+        """
+        payload = asdict(request)
+        if request.retry_of_native_reservation_id is None:
+            payload.pop("retry_of_native_reservation_id")
+        else:
+            _name(request.retry_of_native_reservation_id)
+        for name in ("idempotency_key","snapshot_id","participant_id","forecast_id","native_reservation_id","native_allocation_id"):
+            _name(payload[name])
+        _symbol(request.symbol)
+        _hash(request.account_fingerprint); _hash(request.forecast_sha256); _hash(request.forecast_snapshot_sha256)
+        if request.forecast_id!=request.forecast_sha256:
+            raise AuthorityError("IMMUTABLE_INTRADAY_FORECAST_HASH_REQUIRED")
+        if (request.account_fingerprint!=self.binding["account_fingerprint"] or request.stream!="atlas-15m" or request.horizon!="15m"
+                or request.participant_id!=self.binding["coordinator_id"] or request.side not in {"BUY","SELL"}
+                or len(request.local_symbols)!=len(set(request.local_symbols))
+                or set(request.local_symbols)!=set(self.binding["participants"].get(request.participant_id,()))
+                or request.symbol not in request.local_symbols):
+            raise AuthorityError("REQUEST_OUTSIDE_REVIEWED_INTRADAY_SCOPE")
+        _quantity(request.quantity,positive=True)
+        reference, issued, target = (_time(request.reference_at),_time(request.issued_at),_time(request.target_close_at))
+        if (request.target_version!="intraday-15m-open-to-third-close-not-down-v1"
+                or reference.minute%15 or reference.second or reference.microsecond
+                or target!=reference+timedelta(minutes=45) or issued<reference+timedelta(minutes=15)):
+            raise AuthorityError("EXACT_INTRADAY_TARGET_REQUIRED")
+        payload.update(reference_at=reference.isoformat(),issued_at=issued.isoformat(),target_close_at=target.isoformat())
+        payload["local_symbols"] = sorted(request.local_symbols)
+        for name in ("limit_price","exposure_price"):
+            amount = _money(payload[name],positive=True)
+            if amount != amount.quantize(Decimal(".01")):
+                raise AuthorityError("CENT_ROUNDED_ORDER_PRICE_REQUIRED")
+            payload[name] = _amount(amount)
+        if _money(payload["exposure_price"])<_money(payload["limit_price"]):
+            raise AuthorityError("EXPOSURE_PRICE_MUST_COVER_LIMIT_PRICE")
+        with self._transaction() as db:
+            now, _ = self._lease(db,token)
+            prior = db.execute("SELECT * FROM reservations WHERE key=?",(request.idempotency_key,)).fetchone()
+            if prior:
+                if prior["request"]!=_json(payload):
+                    raise AuthorityError("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST")
+                return self._reservation(prior)
+            if (request.action_date!=now.astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat()
+                    or reference.astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat()!=request.action_date
+                    or not issued<=now<target):
+                raise AuthorityError("INTRADAY_FORECAST_NOT_CURRENT")
+            snapshot = self._intraday_snapshot(db,now,request.snapshot_id)
+            if request.action_date!=snapshot["action_date"]:
+                raise AuthorityError("RESERVATION_SOURCE_BINDING_MISMATCH")
+            cash,shares = self._intraday_remaining(db,snapshot)
+            prior_attempt = self._intraday_retry_parent(db,payload) if request.retry_of_native_reservation_id is not None else None
+            if request.side=="BUY" and request.quantity*_money(payload["limit_price"])>cash:
+                raise AuthorityError("ACCOUNT_AVAILABLE_CASH_EXHAUSTED")
+            if request.side=="SELL" and request.quantity>shares[request.symbol]:
+                raise AuthorityError("ACCOUNT_SELL_INVENTORY_EXHAUSTED")
+            identity = _sha([self.binding["account_fingerprint"],request.idempotency_key])
+            forecast_key = _sha([request.action_date,request.participant_id,request.symbol,"15m",request.forecast_id])
+            if prior_attempt is not None:
+                forecast_key = _sha([forecast_key,"proven-never-submitted-retry",prior_attempt["id"]])
+            try:
+                db.execute("INSERT INTO reservations VALUES(?,?,?,?,?,'RESERVED',0,NULL,?,NULL)",
+                    (identity,request.idempotency_key,request.native_reservation_id,forecast_key,_json(payload),now.isoformat()))
+            except sqlite3.IntegrityError as exc:
+                raise AuthorityError("FORECAST_OR_NATIVE_RESERVATION_ALREADY_REGISTERED") from exc
+            self._event(db,now,"intraday-reserved",{"reservation_id":identity,"request":payload})
+            return self._reservation(self._row(db,identity))
+
+    @staticmethod
+    def _intraday_retry_parent(db, request):
+        """Only the latest proven no-POST predecessor admits a fresh attempt.
+
+        Native validates its own REJECTED/no-ID/no-fill record separately under
+        the same caller lock. Authority proves its matching NOT_SUBMITTED record.
+        Price, clipped quantity and capacity snapshot may change; forecasting
+        evidence and direction do not. Every preceding attempt remains stored.
+        """
+        native_id = request["retry_of_native_reservation_id"]
+        prior = db.execute("SELECT * FROM reservations WHERE native_id=?",(native_id,)).fetchone()
+        identity_fields = ("account_fingerprint","action_date","participant_id","symbol","forecast_id","side","stream","horizon",
+                           "forecast_sha256","forecast_snapshot_sha256","issued_at","reference_at","target_close_at","target_version","local_symbols")
+        if prior is None or any(json.loads(prior["request"]).get(k)!=request[k] for k in identity_fields):
+            raise AuthorityError("INTRADAY_RETRY_PREDECESSOR_SCOPE_MISMATCH")
+        predecessors = []
+        for row in db.execute("SELECT * FROM reservations ORDER BY rowid"):
+            original = json.loads(row["request"])
+            if (original.get("stream")==request["stream"] and original.get("participant_id")==request["participant_id"]
+                    and original.get("symbol")==request["symbol"] and original.get("forecast_id")==request["forecast_id"]):
+                predecessors.append(row)
+        if (not predecessors or predecessors[-1]["id"]!=prior["id"]
+                or any(row["status"]!="NOT_SUBMITTED" or row["broker_id"] is not None or row["filled"]
+                       for row in predecessors)):
+            raise AuthorityError("INTRADAY_RETRY_REQUIRES_LATEST_PROVEN_UNSUBMITTED_ATTEMPT")
+        return prior
+
+    def _submission_snapshot(self, db, now, request):
+        if request.get("stream")=="atlas-15m":
+            if not _time(request["issued_at"])<=now<_time(request["target_close_at"]):
+                raise AuthorityError("INTRADAY_FORECAST_NOT_CURRENT")
+            return self._intraday_snapshot(db,now,request["snapshot_id"])
+        return self._snapshot(db,now,request["snapshot_id"])
+
     def reserve(self, token: str, request: ReservationRequest) -> Reservation:
         payload = asdict(request)
         for name in ("idempotency_key","snapshot_id","generation","participant_id","forecast_id","native_reservation_id","native_allocation_id"):
@@ -529,41 +794,188 @@ class AccountAuthority:
             self._event(db,now,"not-submitted",{"reservation_id":reservation_id})
             return self._reservation(self._row(db,reservation_id))
 
+    @staticmethod
+    def _submission_receipt_value(row):
+        if row is None:
+            return None
+        try:
+            value = json.loads(row["payload"])
+            fields = {"version","reservation_id","account_fingerprint","request_sha256",
+                      "broker_order_id","outcome","gate_used","no_send_error_type",
+                      "submission_epoch","submission_holder_id","submission_started_at",
+                      "gate_epoch","gate_holder_id","gate_at","received_at"}
+            if (not isinstance(value,dict) or set(value)!=fields
+                    or value["version"]!=SUBMISSION_RECEIPT_VERSION
+                    or _sha(value)!=row["receipt_id"] or value["reservation_id"]!=row["reservation"]
+                    or value["broker_order_id"]!=row["broker_id"] or value["received_at"]!=row["received_at"]):
+                raise AuthorityError("IMMUTABLE_SUBMISSION_RECEIPT_CHANGED")
+            _name(value["reservation_id"]); _name(value["submission_holder_id"])
+            _hash(value["account_fingerprint"]); _hash(value["request_sha256"])
+            _quantity(value["submission_epoch"],positive=True)
+            start, received = _time(value["submission_started_at"]),_time(value["received_at"])
+            if start > received:
+                raise AuthorityError("SUBMISSION_RECEIPT_TIME_ORDER_INVALID")
+            if value["outcome"]=="ACCEPTED":
+                if (value["gate_used"] is not True or value["no_send_error_type"] is not None
+                        or not isinstance(value["broker_order_id"],str)
+                        or not re.fullmatch(r"[0-9]+",value["broker_order_id"])):
+                    raise AuthorityError("SUBMISSION_RECEIPT_OUTCOME_INVALID")
+                _name(value["gate_holder_id"]); _quantity(value["gate_epoch"],positive=True)
+                if (value["gate_epoch"]!=value["submission_epoch"]
+                        or value["gate_holder_id"]!=value["submission_holder_id"]
+                        or not start<=_time(value["gate_at"])<=received):
+                    raise AuthorityError("SUBMISSION_RECEIPT_TIME_OR_GATE_INVALID")
+            elif value["outcome"]=="NOT_SUBMITTED":
+                if (value["gate_used"] is not False or value["broker_order_id"] is not None
+                        or value["no_send_error_type"]!="SubmissionNotStarted"
+                        or any(value[field] is not None for field in ("gate_epoch","gate_holder_id","gate_at"))):
+                    raise AuthorityError("SUBMISSION_RECEIPT_OUTCOME_INVALID")
+            else:
+                raise AuthorityError("SUBMISSION_RECEIPT_OUTCOME_INVALID")
+            return value
+        except (KeyError,TypeError,json.JSONDecodeError) as exc:
+            raise AuthorityError("IMMUTABLE_SUBMISSION_RECEIPT_CHANGED") from exc
+
+    def submission_receipt(self, reservation_id: str):
+        """Read exact callback evidence; this does not promote order status."""
+        _name(reservation_id)
+        with self._transaction() as db:
+            return self._submission_receipt_value(db.execute(
+                "SELECT * FROM submission_receipts WHERE reservation=?",(reservation_id,)).fetchone())
+
+    def _record_submission_receipt(self, reservation_id, broker_id, gate, *, submission, outcome="ACCEPTED"):
+        """Append trusted returned identity without renewing an expired sender.
+
+        Accepted identity requires submit's successfully invoked final gate.
+        Audited no-send evidence is allowed only before that gate was used.
+        This transaction changes no lease, reservation, capacity or fill state.
+        A known response must survive a later fenced-projection failure.
+        """
+        with self._transaction() as db:
+            row = self._row(db,reservation_id)
+            received = _time(self.clock())
+            if (_sha(json.loads(row["request"]))!=submission["request_sha256"]
+                    or _time(row["created"])>_time(submission["submission_started_at"])
+                    or received<_time(submission["submission_started_at"])):
+                raise AuthorityError("SUBMISSION_RECEIPT_SCOPE_OR_TIME_MISMATCH")
+            gate = gate or {"gate_epoch":None,"gate_holder_id":None,"gate_at":None}
+            value = {"version":SUBMISSION_RECEIPT_VERSION,"reservation_id":reservation_id,
+                     "account_fingerprint":self.binding["account_fingerprint"],"broker_order_id":broker_id,
+                     "outcome":outcome,"gate_used":outcome=="ACCEPTED",
+                     "no_send_error_type":"SubmissionNotStarted" if outcome=="NOT_SUBMITTED" else None,
+                     "received_at":received.isoformat(),**submission,**gate}
+            probe = dict(reservation=reservation_id,broker_id=broker_id,receipt_id=_sha(value),
+                         received_at=value["received_at"],payload=_json(value))
+            self._submission_receipt_value(probe)
+            old = self._submission_receipt_value(db.execute(
+                "SELECT * FROM submission_receipts WHERE reservation=?",(reservation_id,)).fetchone())
+            if old is not None:
+                if any(old[field]!=value[field] for field in value if field!="received_at"):
+                    raise AuthorityError("IMMUTABLE_SUBMISSION_RECEIPT_CHANGED")
+                return old
+            try:
+                db.execute("INSERT INTO submission_receipts VALUES(?,?,?,?,?)",
+                    (reservation_id,broker_id,_sha(value),value["received_at"],_json(value)))
+            except sqlite3.IntegrityError as exc:
+                raise AuthorityError("BROKER_ORDER_ID_ALREADY_RECEIVED") from exc
+            self._event(db,received,"submission-receipt-recorded",{
+                "reservation_id":reservation_id,"receipt_id":_sha(value),"broker_order_id":broker_id,
+                "outcome":outcome})
+            return value
+
+    def _recover_submission_receipts(self, db, now, epoch):
+        """Caller must hold the current fence inside this same transaction."""
+        recovered = []
+        for raw in db.execute("SELECT * FROM submission_receipts ORDER BY rowid").fetchall():
+            receipt = self._submission_receipt_value(raw)
+            row = self._row(db,receipt["reservation_id"])
+            if (receipt["account_fingerprint"]!=self.binding["account_fingerprint"]
+                    or receipt["request_sha256"]!=_sha(json.loads(row["request"]))
+                    or receipt["submission_epoch"]>epoch or _time(receipt["received_at"])>now
+                    or _time(row["created"])>_time(receipt["submission_started_at"])):
+                raise AuthorityError("SUBMISSION_RECEIPT_SCOPE_OR_TIME_MISMATCH")
+            if receipt["outcome"]=="NOT_SUBMITTED":
+                if row["broker_id"] is not None or row["filled"]:
+                    raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
+                if row["status"]=="NOT_SUBMITTED":
+                    continue
+                if row["status"] not in {"SUBMITTING","UNKNOWN"}:
+                    raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
+                db.execute("UPDATE reservations SET status='NOT_SUBMITTED' WHERE id=?",(row["id"],))
+                self._event(db,now,"not-submitted",{"reservation_id":row["id"],
+                                                     "submission_receipt_id":raw["receipt_id"]})
+                recovered.append(self._reservation(self._row(db,row["id"])))
+                continue
+            if row["broker_id"] is not None:
+                if row["broker_id"]!=receipt["broker_order_id"]:
+                    raise AuthorityError("SUBMISSION_RECEIPT_BROKER_ID_CONFLICT")
+                continue  # Complete status/fill evidence is never downgraded.
+            if row["status"] not in {"SUBMITTING","UNKNOWN"} or row["filled"]:
+                raise AuthorityError("SUBMISSION_RECEIPT_STATE_CONFLICT")
+            try:
+                db.execute("UPDATE reservations SET status='SUBMITTED',broker_id=? WHERE id=?",
+                           (receipt["broker_order_id"],row["id"]))
+            except sqlite3.IntegrityError as exc:
+                raise AuthorityError("BROKER_ORDER_ID_ALREADY_BOUND") from exc
+            self._event(db,now,"submitted",{"reservation_id":row["id"],
+                "broker_order_id":receipt["broker_order_id"],"submission_receipt_id":raw["receipt_id"]})
+            recovered.append(self._reservation(self._row(db,row["id"])))
+        return recovered
+
+    def recover_submission_receipts(self, token: str) -> list[Reservation]:
+        """Promote exact response/no-send evidence under a fence; never POST."""
+        with self._transaction() as db:
+            now, owner = self._lease(db,token)
+            return self._recover_submission_receipts(db,now,owner["epoch"])
+
     def submit(self, token: str, reservation_id: str, callback: Callable[[Callable[[], None]], str]) -> Reservation:
         """Durably fence a single submission; callback must invoke its final gate.
 
         An audited pre-gate stop is NOT_SUBMITTED. Other exceptions or a missing
         reliable ID remain UNKNOWN. A crash leaves
-        SUBMITTING. Neither state can be resubmitted or released by guessing.
+        SUBMITTING. Exact returned IDs are journaled before fenced projection,
+        even if the lease expires in flight. Audited pre-gate no-send evidence
+        is also journaled before fenced release. Neither uncertain state can be
+        resubmitted or released by guessing.
         """
         with self._transaction() as db:
-            now, _ = self._lease(db,token)
+            now, owner = self._lease(db,token)
             row = self._row(db,reservation_id)
             if row["status"]!="RESERVED":
                 return self._reservation(row)
-            if db.execute("SELECT 1 FROM reservations WHERE status IN ('SUBMITTING','UNKNOWN') AND id!=? LIMIT 1",
+            request = json.loads(row["request"])
+            if request.get("stream")!="atlas-15m" and db.execute("SELECT 1 FROM reservations WHERE status IN ('SUBMITTING','UNKNOWN') AND id!=? LIMIT 1",
                           (reservation_id,)).fetchone():
                 raise AuthorityError("UNCERTAIN_SUBMISSION_REQUIRES_RECONCILIATION")
-            self._snapshot(db,now,json.loads(row["request"])["snapshot_id"])
+            self._submission_snapshot(db,now,request)
             db.execute("UPDATE reservations SET status='SUBMITTING' WHERE id=?", (reservation_id,))
             self._event(db,now,"submitting",{"reservation_id":reservation_id})
+            submission = {"request_sha256":_sha(request),"submission_epoch":owner["epoch"],
+                          "submission_holder_id":owner["holder"],"submission_started_at":now.isoformat()}
         gate_called = False
+        gate_evidence = None
 
         def before_send():
-            nonlocal gate_called
+            nonlocal gate_called, gate_evidence
             with self._transaction() as db:
-                now, _ = self._lease(db,token)
+                now, owner = self._lease(db,token)
                 row = self._row(db,reservation_id)
                 if row["status"]!="SUBMITTING" or gate_called:
                     raise AuthorityError("SUBMISSION_GATE_ALREADY_USED_OR_STATE_CHANGED")
-                self._snapshot(db,now,json.loads(row["request"])["snapshot_id"])
+                self._submission_snapshot(db,now,json.loads(row["request"]))
+                gate_evidence = {"request_sha256":_sha(json.loads(row["request"])),
+                    "gate_epoch":owner["epoch"],"gate_holder_id":owner["holder"],"gate_at":now.isoformat()}
                 gate_called = True
 
         try:
             broker_id = callback(before_send)
             if not gate_called or not isinstance(broker_id,str) or not re.fullmatch(r"[0-9]+",broker_id):
                 raise AuthorityError("EXACT_BROKER_ORDER_ID_AND_FINAL_GATE_REQUIRED")
+            self._record_submission_receipt(reservation_id,broker_id,gate_evidence,submission=submission)
         except BaseException as exc:
+            if isinstance(exc,SubmissionNotStarted) and not gate_called:
+                self._record_submission_receipt(reservation_id,None,None,
+                    submission=submission,outcome="NOT_SUBMITTED")
             # Do not let an expired owner mutate authority state. SUBMITTING is
             # equally conservative if it cannot mark UNKNOWN under its lease.
             definitely_unsubmitted = False
@@ -579,17 +991,8 @@ class AccountAuthority:
             if isinstance(exc, SubmissionNotStarted) and not definitely_unsubmitted:
                 raise AuthorityError("SUBMISSION_OUTCOME_REQUIRES_RECONCILIATION") from exc
             raise
-        with self._transaction() as db:
-            now, _ = self._lease(db,token)
-            row = self._row(db,reservation_id)
-            if row["status"]!="SUBMITTING":
-                raise AuthorityError("SUBMISSION_STATE_CHANGED")
-            try:
-                db.execute("UPDATE reservations SET status='SUBMITTED',broker_id=? WHERE id=?", (broker_id,reservation_id))
-            except sqlite3.IntegrityError as exc:
-                raise AuthorityError("BROKER_ORDER_ID_ALREADY_BOUND") from exc
-            self._event(db,now,"submitted",{"reservation_id":reservation_id,"broker_order_id":broker_id})
-            return self._reservation(self._row(db,reservation_id))
+        self.recover_submission_receipts(token)
+        return self.reservation(reservation_id)
 
     def reconcile(self, token: str, evidence: OrderEvidence) -> Reservation:
         """Apply complete cumulative evidence for an already exact-bound ID.
