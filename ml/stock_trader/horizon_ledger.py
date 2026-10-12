@@ -91,6 +91,10 @@ class ReservationState:
     fallback_policy_version: str | None = None
     fallback_action_date: str | None = None
     fallback_baseline_id: str | None = None
+    submitted_at: str | None = None
+    timeout_requested_at: str | None = None
+    retry_parent_id: str | None = None
+    retry_requested_quantity: int | None = None
 
     @property
     def reserved_quantity(self) -> int:
@@ -226,6 +230,14 @@ class HorizonLedger:
                 CREATE TABLE IF NOT EXISTS blocks (symbol TEXT PRIMARY KEY, reason TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS cancellations (
                     reservation TEXT PRIMARY KEY REFERENCES reservations(id), requested_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS order_submission_times (
+                    reservation TEXT PRIMARY KEY REFERENCES reservations(id), submitted_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS order_timeouts (
+                    reservation TEXT PRIMARY KEY REFERENCES reservations(id), requested_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS order_timeout_retries (
+                    child TEXT PRIMARY KEY REFERENCES reservations(id),
+                    parent TEXT NOT NULL REFERENCES reservations(id), linked_at TEXT NOT NULL,
+                    requested_quantity INTEGER NOT NULL);
                 CREATE TABLE IF NOT EXISTS fallback_days (
                     account TEXT NOT NULL, action_date TEXT NOT NULL, baseline_id TEXT NOT NULL UNIQUE,
                     snapshot_id TEXT NOT NULL REFERENCES snapshots(id), source_fingerprint TEXT NOT NULL,
@@ -273,18 +285,36 @@ class HorizonLedger:
 
     @staticmethod
     def _reservation(db, reservation_id: str) -> ReservationState:
-        row = db.execute("""SELECT r.*,a.symbol,a.horizon,a.forecast,c.requested_at FROM reservations r
+        row = db.execute("""SELECT r.*,a.symbol,a.horizon,a.forecast,c.requested_at,
+            s.submitted_at,t.requested_at AS timeout_requested_at,retry.parent AS retry_parent_id,
+            retry.requested_quantity AS retry_requested_quantity FROM reservations r
             JOIN allocations a ON a.id=r.allocation
-            LEFT JOIN cancellations c ON c.reservation=r.id WHERE r.id=?""", (reservation_id,)).fetchone()
+            LEFT JOIN cancellations c ON c.reservation=r.id
+            LEFT JOIN order_submission_times s ON s.reservation=r.id
+            LEFT JOIN order_timeouts t ON t.reservation=r.id
+            LEFT JOIN order_timeout_retries retry ON retry.child=r.id WHERE r.id=?""", (reservation_id,)).fetchone()
         if row is None:
             raise LedgerError("UNKNOWN_RESERVATION")
         request = json.loads(row["request"])
+        submitted_at = row["submitted_at"]
+        if submitted_at is None:
+            # Older ledgers already retain the first attempted broker submission
+            # in immutable evidence. Never substitute a scheduled start or a
+            # later refreshed broker observation when that evidence is missing.
+            evidence = db.execute("""SELECT payload FROM evidence WHERE kind='submission'
+                AND json_extract(payload,'$.reservation_id')=?
+                AND json_extract(payload,'$.status') IN ('SUBMITTED','UNKNOWN')
+                ORDER BY rowid LIMIT 1""", (reservation_id,)).fetchone()
+            if evidence is not None:
+                submitted_at = _utc(json.loads(evidence["payload"])["observed_at"])
+                db.execute("INSERT INTO order_submission_times VALUES (?,?)", (reservation_id, submitted_at))
         return ReservationState(row["id"], row["allocation"], row["symbol"], row["horizon"],
             request.get("forecast", row["forecast"]), row["side"], row["quantity"], row["price"], row["filled"],
             row["status"], row["broker_order"], row["idempotency_key"], row["batch"], row["last_evidence_at"], row["requested_at"],
             request.get("start"), request.get("end"), request.get("trigger_horizon"),
             request.get("trigger_forecast"), row["forecast"], request.get("fallback_policy_version"),
-            request.get("action_date"), request.get("baseline_id"))
+            request.get("action_date"), request.get("baseline_id"), submitted_at,
+            row["timeout_requested_at"], row["retry_parent_id"], row["retry_requested_quantity"])
 
     @staticmethod
     def _forecast_reserved(db, account, symbol, horizon, forecast):
@@ -408,6 +438,89 @@ class HorizonLedger:
             db.execute("INSERT INTO cancellations VALUES (?,?)", (reservation_id, now))
             return True
 
+    def reserve_order_timeout(self, reservation_id: str, *, as_of: str, evidence_id: str) -> bool:
+        """Reserve one five-minute cancellation without releasing any inventory.
+
+        Both owned buy and sell limits remain reserved until exact terminal
+        broker evidence arrives, including after an ambiguous cancellation call.
+        """
+        now = _utc(as_of)
+        with self._transaction() as db:
+            order = self._reservation(db, reservation_id)
+            self._account(db.execute("SELECT account FROM allocations WHERE id=?", (order.allocation_id,)).fetchone()[0])
+            if order.cancel_requested_at is not None:
+                return False
+            if (order.side not in {"BUY", "SELL"} or order.status not in {"WORKING", "PARTIAL"}
+                    or not order.broker_order_id or order.reserved_quantity <= 0):
+                raise LedgerError("TIMEOUT_REQUIRES_KNOWN_WORKING_ORDER")
+            if order.submitted_at is None:
+                raise LedgerError("TIMEOUT_SUBMISSION_TIME_UNAVAILABLE")
+            if datetime.fromisoformat(now) < datetime.fromisoformat(order.submitted_at) + timedelta(seconds=300):
+                raise LedgerError("ORDER_TIMEOUT_NOT_DUE")
+            self._save_evidence(db, evidence_id, "order-timeout-reservation", {
+                "reservation_id": reservation_id, "broker_order_id": order.broker_order_id,
+                "submitted_at": order.submitted_at, "requested_at": now,
+                "reason": "UNFILLED_ORDER_FIVE_MINUTE_TIMEOUT"})
+            db.execute("INSERT INTO cancellations VALUES (?,?)", (reservation_id, now))
+            db.execute("INSERT INTO order_timeouts VALUES (?,?)", (reservation_id, now))
+            return True
+
+    def bind_timeout_retry(self, child_reservation_id: str, parent_reservation_id: str, *,
+                           requested_quantity: int, as_of: str, evidence_id: str) -> ReservationState:
+        """Bind one refreshed attempt before broker submission, atomically.
+
+        Proven pre-POST rejections do not consume the broker retry. Any reserved,
+        unknown, submitted or terminal broker attempt does. Raw links remain in
+        snapshots so callers can reconstruct accounting without the new child.
+        The requested quantity is the net economic retry before cash/price
+        sizing; recording it avoids abandoning quantities already offset by a
+        newer opposite instruction.
+        """
+        now = _utc(as_of)
+        if type(requested_quantity) is not int or requested_quantity <= 0:
+            raise LedgerError("TIMEOUT_RETRY_REQUESTED_QUANTITY_INVALID")
+        with self._transaction() as db:
+            child = self._reservation(db, child_reservation_id)
+            parent = self._reservation(db, parent_reservation_id)
+            for order in (child, parent):
+                self._account(db.execute("SELECT account FROM allocations WHERE id=?", (order.allocation_id,)).fetchone()[0])
+            if child.retry_parent_id is not None:
+                if child.retry_parent_id != parent_reservation_id:
+                    raise LedgerError("TIMEOUT_RETRY_PARENT_CHANGED")
+                if child.retry_requested_quantity != requested_quantity:
+                    raise LedgerError("TIMEOUT_RETRY_REQUESTED_QUANTITY_CHANGED")
+                return child
+            if (child.status != "RESERVED" or child.broker_order_id or child.submitted_at
+                    or child_reservation_id == parent_reservation_id):
+                raise LedgerError("TIMEOUT_RETRY_REQUIRES_UNSUBMITTED_CHILD")
+            if (parent.status != "CANCELLED" or parent.timeout_requested_at is None
+                    or parent.retry_parent_id is not None):
+                raise LedgerError("TIMEOUT_RETRY_REQUIRES_CANCELLED_INITIAL_ORDER")
+            if (child.symbol, child.horizon, child.side) != (parent.symbol, parent.horizon, parent.side):
+                raise LedgerError("TIMEOUT_RETRY_INTENTION_MISMATCH")
+            # Catch-up IDs change as fills/reservations change, but the accepted
+            # plan, symbol and inventory horizon prefix must remain identical.
+            parent_parts, child_parts = parent.forecast_id.split(":"), child.forecast_id.split(":")
+            if (len(parent_parts) != 5 or len(child_parts) != 5 or parent_parts[0] != "catchup"
+                    or not re.fullmatch(r"[a-f0-9]{64}", parent_parts[1])
+                    or parent_parts[2:4] != [parent.symbol, parent.horizon]
+                    or parent_parts[:4] != child_parts[:4]):
+                raise LedgerError("TIMEOUT_RETRY_PLAN_FAMILY_MISMATCH")
+            if (not 0 < child.quantity <= requested_quantity <= parent.quantity - parent.filled_quantity
+                    or not parent.last_evidence_at or datetime.fromisoformat(now) < datetime.fromisoformat(parent.last_evidence_at)):
+                raise LedgerError("TIMEOUT_RETRY_EXCEEDS_CONFIRMED_REMAINDER")
+            for row in db.execute("SELECT child FROM order_timeout_retries WHERE parent=?", (parent_reservation_id,)):
+                previous = self._reservation(db, row["child"])
+                if not (previous.status == "REJECTED" and previous.broker_order_id is None
+                        and previous.submitted_at is None and previous.filled_quantity == 0):
+                    raise LedgerError("TIMEOUT_RETRY_ALREADY_RESERVED")
+            self._save_evidence(db, evidence_id, "order-timeout-retry", {
+                "child_reservation_id": child_reservation_id, "parent_reservation_id": parent_reservation_id,
+                "linked_at": now, "requested_quantity": requested_quantity})
+            db.execute("INSERT INTO order_timeout_retries VALUES (?,?,?,?)",
+                       (child_reservation_id, parent_reservation_id, now, requested_quantity))
+            return self._reservation(db, child_reservation_id)
+
     @classmethod
     def _close_empty_allocations(cls, db) -> None:
         for row in db.execute("SELECT id FROM allocations WHERE status='ACTIVE'").fetchall():
@@ -445,6 +558,8 @@ class HorizonLedger:
                 raise LedgerError("UNKNOWN_SUBMISSION_REQUIRES_BROKER_RECONCILIATION")
             db.execute("UPDATE reservations SET status=?,broker_order=?,last_evidence_at=? WHERE id=?",
                        (status, broker_order_id, observed, reservation_id))
+            if status in {"SUBMITTED", "UNKNOWN"}:
+                db.execute("INSERT OR IGNORE INTO order_submission_times VALUES (?,?)", (reservation_id, observed))
             self._release_unfilled_assignment(db, reservation_id, observed)
             self._close_empty_allocations(db)
             return self._reservation(db, reservation_id)

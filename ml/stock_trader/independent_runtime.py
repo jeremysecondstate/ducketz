@@ -313,6 +313,7 @@ def run_independent_stock_trader_once(
     sources = ()
     broker_state_capture = None
     rejected_catchup = []
+    abandoned_catchup = []
     deferred_orders = []
     metadata = {"mode": "INDEPENDENT_STOCK_HORIZONS", "allocation_weights": {"1h": 1, "4h": 2, "1d": 3, "1w": 4},
                 "session_managed": session_managed, "sizing_policy": sizing_policy}
@@ -333,6 +334,8 @@ def run_independent_stock_trader_once(
                       "ORDERS_SUBMITTED_WITH_SELF_TRADE_CONFLICT" if submitted else "SELF_TRADE_CONFLICT_DEFERRED")
             error = ("Complete current working-order identities are unavailable; deferred intentions remain unsubmitted."
                      if unavailable else "Opposing same-price orders defer affected intentions until normal reconciliation clears the conflict.")
+        if abandoned_catchup and error is None and status == "NO_ORDERS_SUBMITTED":
+            status = "NO_ORDERS_SUBMITTED_RETRY_EXHAUSTED"
         output = publication or publish_decision_run(
             root, decisions, decided_at=utc(clock()), activation=activation,
             policy=active_policy, execution_requested=execute, source_files=sources,
@@ -547,10 +550,12 @@ def run_independent_stock_trader_once(
             from ml.stock_trader.catchup import catchup_signals
             accepted = read_accepted_joint_plan(root, timestamp.tz_convert("America/Los_Angeles").date().isoformat())
             qualified = catchup_signals(accepted[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations, blocked=rejected_catchup)
+                                       reservations=state.reservations, blocked=rejected_catchup,
+                                       abandoned=abandoned_catchup)
             metadata["catchup"] = {"plan_sha256": accepted[0]["plan_sha256"],
                 "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
                 "blocked_intentions": rejected_catchup,
+                "abandoned_intentions": abandoned_catchup,
                 "net_quantities": {f"{s}/{h}": signal.planned_quantity * (1 if signal.calibrated_probability else -1)
                                    for (s, h), signal in qualified.items()}}
         elif any(Path(source).name == "receipt.json" and Path(source).resolve().parent.parent ==
@@ -562,11 +567,12 @@ def run_independent_stock_trader_once(
                                      for signal in signals.values()):
                 return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error="Native catch-up source changed during broker capture")
             qualified = catchup_signals(native[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations, blocked=rejected_catchup)
+                                       reservations=state.reservations, blocked=rejected_catchup,
+                                       abandoned=abandoned_catchup)
             fallback_policy, fallback_source_binding = None, None
             metadata["catchup"] = {"plan_sha256": native[0]["plan_sha256"],
                 "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
-                "blocked_intentions": rejected_catchup}
+                "blocked_intentions": rejected_catchup, "abandoned_intentions": abandoned_catchup}
         if qualified:
             try:
                 _assert_execution_deployment(root, source_gameplan_run,
@@ -857,12 +863,15 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
     requested = 0
     allocations = {a.allocation_id: a for a in state.allocations}
     for reservation in state.reservations:
-        if (reservation.side != "BUY" or reservation.status not in {"WORKING", "PARTIAL"}
+        managed_timeout = gameplan_entries and reservation.forecast_id.startswith("catchup:")
+        if ((not managed_timeout and reservation.side != "BUY") or reservation.status not in {"WORKING", "PARTIAL"}
                 or not reservation.broker_order_id or reservation.cancel_requested_at is not None):
             continue
         allocation = allocations[reservation.allocation_id]
         from ml.stock_trader.quote_recovery import recovered_entry_deadline
-        deadline = (utc(reservation.target_end or allocation.target_end) if reservation.forecast_id.startswith("catchup:") else
+        if managed_timeout and reservation.submitted_at is None:
+            return requested, "Tracked Gameplan order submission time is unavailable; timeout requires immutable submission evidence."
+        deadline = (utc(reservation.submitted_at) + pd.Timedelta(minutes=5) if managed_timeout else
                     min(utc(reservation.target_start or allocation.target_start) + pd.Timedelta(hours=1),
                         utc(reservation.target_end or allocation.target_end))
                     if gameplan_entries else recovered_entry_deadline(root, allocation,
@@ -886,8 +895,9 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
                     raise _SubmissionStopped("BROKER_PORTFOLIO_TOO_OLD_FOR_CANCELLATION")
 
             gate()
-            if ledger.reserve_cancellation(reservation.reservation_id, as_of=utc(clock()).isoformat(),
-                                           evidence_id=reservation.reservation_id + ":cancel"):
+            reserve_cancel = ledger.reserve_order_timeout if managed_timeout else ledger.reserve_cancellation
+            if reserve_cancel(reservation.reservation_id, as_of=utc(clock()).isoformat(),
+                              evidence_id=reservation.reservation_id + (":timeout" if managed_timeout else ":cancel")):
                 broker.cancel_prepared_order(reservation.broker_order_id, context, before_delete=gate)
                 requested += 1
         except Exception as exc:
@@ -1008,6 +1018,12 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     target_end=decision.prediction["target_window_end"], **common,
                     **({"allow_accumulation": True} if decision.policy_version == GAMEPLAN_SIZING_POLICY else {}),
                 )
+            retry_parent = decision.prediction.get("timeout_retry_parent_id")
+            if retry_parent is not None:
+                reservation = ledger.bind_timeout_retry(
+                    reservation.reservation_id, retry_parent, as_of=utc(clock()).isoformat(),
+                    requested_quantity=decision.prediction.get("timeout_retry_quantity"),
+                    evidence_id=decision.decision_id + ":timeout-retry")
             if account_context is not None:
                 account_reservation = account_context.reserve(decision, reservation)
             final_gate()
