@@ -149,6 +149,8 @@ class PredictionSignal:
     enrichment_feature_values: Mapping[str, float] = field(default_factory=dict)
     planned_quantity: int | None = None
     catchup_components: tuple[str, ...] = ()
+    timeout_retry_parent_id: str | None = None
+    timeout_retry_quantity: int | None = None
 
     @property
     def suggested_action(self) -> str:
