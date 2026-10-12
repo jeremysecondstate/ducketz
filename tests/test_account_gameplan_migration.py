@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import asdict
 import hashlib
 import json
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -241,3 +242,86 @@ def test_wal_without_existing_shm_is_refused_before_open(tmp_path):
     with open(sources[0]["path"]+'-wal','xb') as handle: handle.write(b'incomplete')
     with pytest.raises(ValueError,match="shared-memory"):
         migration.pin_ledger_files(sources[0]["path"])
+
+
+EXTENSIONS = {
+    "order_submission_times": "reservation submitted_at",
+    "order_timeouts": "reservation requested_at",
+    "order_timeout_retries": "child parent linked_at requested_quantity",
+    "intraday_streams": "kind id stream proof",
+    "intraday_sell_slices": "reservation allocation quantity ordinal",
+    "intraday_fill_attribution": "fill allocation slice_ordinal quantity",
+}
+
+
+def add_extensions(path):
+    with sqlite3.connect(path) as db:
+        for name, columns in EXTENSIONS.items():
+            db.execute(f"CREATE TABLE IF NOT EXISTS {name} ({','.join(c + ' TEXT' for c in columns.split())})")
+
+
+def test_empty_known_runtime_extensions_preserve_v1_rows_and_original_archives(tmp_path):
+    sources, _ = setup(tmp_path)
+    for spec in sources:
+        add_extensions(spec["path"])
+        spec["pins"] = migration.pin_ledger_files(spec["path"])
+    result = run(tmp_path, sources)
+    assert result["status"] == "REQUIRES_REVIEWED_ACTIVATION"
+    assert set(result["row_counts"]) == set(migration._COLUMNS)
+    for spec, archive in zip(sources, result["source_archives"]):
+        assert migration.pin_ledger_files(spec["path"]) == spec["pins"]
+        with sqlite3.connect(tmp_path / "candidate" / archive["path"]) as db:
+            assert all(db.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0] == 0 for name in EXTENSIONS)
+
+
+@pytest.mark.parametrize("name", EXTENSIONS)
+def test_nonempty_runtime_extension_is_never_discarded_during_migration(tmp_path, name):
+    sources, _ = setup(tmp_path)
+    spec = sources[0]
+    add_extensions(spec["path"])
+    columns = EXTENSIONS[name].split()
+    mutate(spec, f"INSERT INTO {name} VALUES ({','.join('?' for _ in columns)})", ("retained-state",) * len(columns))
+    pins = dict(spec["pins"])
+    with pytest.raises(ValueError, match="extension history requires separate reviewed migration"):
+        run(tmp_path, sources)
+    assert migration.pin_ledger_files(spec["path"]) == pins
+    assert not (tmp_path / "candidate").exists()
+
+
+@pytest.mark.parametrize("kind", ["columns", "unknown", "view", "trigger", "intraday_metadata"])
+def test_extension_compatibility_keeps_unknown_schema_and_metadata_fenced(tmp_path, kind):
+    sources, _ = setup(tmp_path)
+    spec = sources[0]
+    if kind == "columns":
+        mutate(spec, "ALTER TABLE order_timeouts ADD COLUMN unreviewed TEXT")
+    elif kind == "unknown":
+        mutate(spec, "CREATE TABLE other_stream_state (private_state TEXT)")
+    elif kind == "view":
+        mutate(spec, "CREATE VIEW unreviewed AS SELECT * FROM metadata")
+    elif kind == "trigger":
+        mutate(spec, "CREATE TRIGGER unreviewed AFTER INSERT ON evidence BEGIN SELECT 1; END")
+    else:
+        add_extensions(spec["path"])
+        mutate(spec, "INSERT INTO metadata VALUES ('intraday_accounting_version','account-shares-attribution-v1')")
+    pins = dict(spec["pins"])
+    with pytest.raises(ValueError):
+        run(tmp_path, sources)
+    assert migration.pin_ledger_files(spec["path"]) == pins
+    assert not (tmp_path / "candidate").exists()
+
+
+def test_legacy_snapshot_submission_backfill_stays_in_disposable_memory(tmp_path):
+    sources, _ = setup(tmp_path)
+    spec = sources[0]
+    with sqlite3.connect(spec["path"]) as db:
+        reservation = db.execute("SELECT id FROM reservations").fetchone()[0]
+        db.execute("INSERT INTO evidence VALUES ('legacy-submit','submission',?)", (json.dumps({
+            "reservation_id": reservation, "status": "SUBMITTED", "observed_at": START}),))
+        for name in ("order_submission_times", "order_timeouts", "order_timeout_retries"):
+            db.execute(f"DROP TABLE {name}")
+    spec["pins"] = migration.pin_ledger_files(spec["path"])
+    result = migration._read_source(spec, ACCOUNT, migration.utc(OBSERVED))
+    assert result["state"].reservations[0].submitted_at == START
+    assert migration.pin_ledger_files(spec["path"]) == spec["pins"]
+    with sqlite3.connect(Path(spec["path"]).as_uri() + "?mode=ro", uri=True) as db:
+        assert not db.execute("SELECT 1 FROM sqlite_master WHERE name='order_submission_times'").fetchone()

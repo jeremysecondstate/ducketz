@@ -35,6 +35,22 @@ _COLUMNS = {
     "inventory_assignment_releases": "id assignment reservation snapshot_id quantity observed_at",
 }
 _OPTIONAL = {"fallback_days", "inventory_assignments", "inventory_assignment_releases"}
+# These additive runtime tables are outside the v1 ownership transport. Empty,
+# exactly shaped tables add no history; any rows require a separately reviewed
+# migration protocol, even if the corresponding orders are already terminal.
+_EMPTY_EXTENSIONS = {
+    "order_submission_times": "reservation submitted_at",
+    "order_timeouts": "reservation requested_at",
+    "order_timeout_retries": "child parent linked_at requested_quantity",
+    "intraday_streams": "kind id stream proof",
+    "intraday_sell_slices": "reservation allocation quantity ordinal",
+    "intraday_fill_attribution": "fill allocation slice_ordinal quantity",
+}
+_SNAPSHOT_EXTENSIONS = {
+    "order_submission_times": "reservation TEXT PRIMARY KEY, submitted_at TEXT NOT NULL",
+    "order_timeouts": "reservation TEXT PRIMARY KEY, requested_at TEXT NOT NULL",
+    "order_timeout_retries": "child TEXT PRIMARY KEY, parent TEXT NOT NULL, linked_at TEXT NOT NULL, requested_quantity INTEGER NOT NULL",
+}
 _BLOCK = "ACCOUNT_GAMEPLAN_MIGRATION_REQUIRES_REVIEWED_ACTIVATION_AND_UNION_RECONCILIATION"
 _OPEN = {"RESERVED", "SUBMITTED", "UNKNOWN", "WORKING", "PARTIAL"}
 
@@ -87,9 +103,14 @@ def _read_source(source, account, observed):
         db.execute("BEGIN")
         schema = db.execute("SELECT type,name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'").fetchall()
         names = {row["name"] for row in schema if row["type"] == "table"}
-        if (names - _COLUMNS.keys() or set(_COLUMNS) - _OPTIONAL - names
+        if (names - _COLUMNS.keys() - _EMPTY_EXTENSIONS.keys() or set(_COLUMNS) - _OPTIONAL - names
                 or any(row["type"] in {"view", "trigger"} for row in schema)):
             raise ValueError("Unsupported native source ledger schema")
+        for table in names & _EMPTY_EXTENSIONS.keys():
+            if [row["name"] for row in db.execute(f"PRAGMA table_info({table})")] != _EMPTY_EXTENSIONS[table].split():
+                raise ValueError("Native extension columns differ: " + table)
+            if db.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone() is not None:
+                raise ValueError("Native extension history requires separate reviewed migration: " + table)
         tables = {}
         for table in _COLUMNS:
             if table not in names:
@@ -105,12 +126,28 @@ def _read_source(source, account, observed):
             raise ValueError("Source ledger account, version or metadata is unsupported")
         if tables["blocks"] or any(row["status"] in _OPEN for row in tables["reservations"]):
             raise ValueError("Source has blocks or pending/unknown reservations")
-        state = HorizonLedger._snapshot(db)  # Query-only native accounting; no constructor on sources.
+        state = _ownership_snapshot(db)  # Native compatibility/backfill stays in disposable memory.
         _audit_rows(tables, state, account, symbols, observed)
         _check_pins(path, source["pins"])
     _check_pins(path, source["pins"])
     return {"producer": source["producer"], "path": str(path), "symbols": list(symbols),
             "pins": dict(source["pins"]), "tables": tables, "state": state}
+
+
+def _ownership_snapshot(source):
+    """Audit legacy rows without creating/backfilling runtime tables on sources.
+
+    The current native reader joins additive timeout tables and can derive a
+    first-submission timestamp from retained evidence. Both operations happen
+    only in this disposable copy. The validated transport rows remain exact.
+    """
+    with closing(sqlite3.connect(":memory:")) as audit:
+        source.backup(audit)
+        audit.row_factory = sqlite3.Row
+        audit.execute("PRAGMA trusted_schema=OFF")
+        for table, columns in _SNAPSHOT_EXTENSIONS.items():
+            audit.execute(f"CREATE TABLE IF NOT EXISTS {table} ({columns})")
+        return HorizonLedger._snapshot(audit)
 
 
 def _audit_rows(tables, state, account, symbols, observed):
