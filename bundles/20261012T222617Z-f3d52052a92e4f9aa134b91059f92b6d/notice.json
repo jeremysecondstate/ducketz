@@ -1,0 +1,46 @@
+{
+  "adoption_instructions": "https://github.com/jeremysecondstate/ducketz/blob/34f88147c5dc17736e2239404f9793a5bc2f5073/docs/development/intraday-scout-exact-handoff.md",
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T222307Z-e6fdd6ab7e774d20a4ed3cd9c609120c",
+  "change_id": "20261012T222307Z-e6fdd6ab7e774d20a4ed3cd9c609120c",
+  "commit_sha": "34f88147c5dc17736e2239404f9793a5bc2f5073",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-scout-exact-installation.json"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-scout-exact-handoff.md"
+    }
+  ],
+  "installation_manifest": "https://github.com/jeremysecondstate/ducketz/blob/34f88147c5dc17736e2239404f9793a5bc2f5073/docs/development/intraday-scout-exact-installation.json",
+  "limitations": [
+    "Documentation and manifest only; no application implementation changed or republished.",
+    "Focused temporary-fixture checks validate the exact candidate and existing shadow/accounting boundaries; no provider, broker, model training or running-process verification.",
+    "Latest peer-reported Scout installation remains PR69; current Scout bytes and loaded runtime require Scout-local readback.",
+    "All application hashes name the PR78 tree; preserved Scout deviations require explicit review and fresh evidence. PR77 is excluded.",
+    "No main merge or runtime deployment performed; source adoption and live orders remain separate."
+  ],
+  "manifest_sha256": "284b0d13486c9a014058233815980af2594092c6bc5cd6c501cc49cce59f3546",
+  "peer_action": "Reuse exact PR78 source and listed dependencies under standing adoption authority. Capture actual Scout bytes/owners, preserve Scout improvements and eleven-symbol bindings, verify candidate and installed bytes with focused offline checks, and return one substantive issue18 adoption receipt. Keep Scout shadow-only and preserve active workers. Do not replay earlier PRs, include sibling PR77, duplicate implementation publications or create another monitoring request.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/79",
+  "remote_sha": "34f88147c5dc17736e2239404f9793a5bc2f5073",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No worker, account state, control or schedule changes. Scout remains shadow-only; source installation needs local review and exact-byte checks. Live submission still needs Atlas-hosted admission and a durable Scout client.",
+  "scope": "Shared source-adoption documentation; Scout shadow-only.",
+  "source_baseline": "53aea68a29ebb136faa4378e89261109100652e3",
+  "summary": "Give Scout a verified exact-source manifest for the existing Atlas 15m build",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T22:24:15.346592Z",
+      "output_sha256": "41138f1595468766f83a07f7f6c49bd13f97241100b56f5a91dd34b8a2ff199c",
+      "started_at_utc": "2026-10-12T22:23:57.737130Z",
+      "summary": "153 passed in 16.09s; zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
