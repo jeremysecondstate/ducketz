@@ -32,6 +32,7 @@ bindings. No launcher, schedule or production entrypoint is added.
 | `sizing.py` | Transparent hourly-reference multiplication and nearest whole shares; explicit reference/score versions, tie rule and rounded-equality handling. |
 | `book.py` | Host-local offline account book with atomic reservations, exact identities, allocation ownership, fill attribution, account/exposure headrooms and durable history. |
 | `execution.py` | Explicit mock venue seam, contemporaneous quotes, ask-BUY/bid-SELL proposal, unknown-submission recovery, status retries and cancellation reconciliation. |
+| `execution_policy.py` | Pure offline decisions for the strict Pacific submission cutoff and reconciliation before a new forecast replaces an unfilled intention; no broker or book mutation. |
 | `prototype.py` | Original explicit fixture runner, local binding checks, frozen sizing explanation and mock instruction mechanics. It is not the trained ensemble runner. |
 | `data.py` | Exact targets, causal features and matured labels, single-source local history, anchored acquisition, persistent interval recovery and evidence-backed no-trade constituents. |
 | `models.py` | Fresh independent fits, real probability interfaces, model/source/data/configuration versions, immutable local fitted artifacts and per-model failure/timing records. |
@@ -44,7 +45,7 @@ bindings. No launcher, schedule or production entrypoint is added.
 Run the focused offline checks using the project's Python environment:
 
 ```text
-python -B -m pytest tests/test_intraday_prediction.py tests/test_intraday_book.py tests/test_intraday_execution.py tests/test_intraday_data.py tests/test_intraday_models.py tests/test_intraday_store.py tests/test_intraday_runtime.py tests/test_intraday_evaluation.py tests/test_intraday_telemetry.py tests/test_intraday_ui.py -q -p no:cacheprovider
+python -B -m pytest tests/test_intraday_prediction.py tests/test_intraday_book.py tests/test_intraday_execution.py tests/test_intraday_execution_policy.py tests/test_intraday_data.py tests/test_intraday_models.py tests/test_intraday_store.py tests/test_intraday_runtime.py tests/test_intraday_evaluation.py tests/test_intraday_telemetry.py tests/test_intraday_ui.py -q -p no:cacheprovider
 ```
 
 Tests use temporary databases, explicit model/score/venue fixtures and injected
@@ -80,8 +81,9 @@ observations are excluded from final metrics.
 The legacy fixture requires a caller-supplied eligible session. The new data
 adapter uses the installed XNAS exchange calendar, holiday exclusions, standard
 04:00–20:00 Eastern extended sessions and regular-session-only short days. This
-ingestion envelope does not settle the trading cutoff. It leaves the special 04:00
-next-open and final 16:45 prediction contracts unresolved. Final fetched
+ingestion envelope does not define order eligibility. The later October 12
+decision sets a strict 16:45 Pacific submission cutoff; the special 04:00
+next-open and final intraday prediction contracts remain unresolved. Final fetched
 information can be saved immutably through `save_final_information`, with no
 fabricated target or overnight inference. This preserves the future immediate
 04:00 prediction requirement without substituting an intraday gap model.
@@ -97,11 +99,24 @@ Holdings, recent executed quantities and volume baseline carry availability
 times; future inputs are rejected. Sizing also receives the preserved forecast
 probability and must use its original candle inputs.
 
+The human reaffirmed that sizing is a per-symbol technical-indicator calculus,
+including EMAs, SMAs, RSI, Bollinger Bands and oscillators. Each symbol uses its
+own causal inputs and sizing result, with versioned per-symbol parameters where
+needed. The existing fixture input seam implements the subset listed above;
+it is not yet the complete indicator collection or a production score recipe.
+No shared constant fixture score or Loop C options-sizing formula is selected
+for the live 15m path.
+The legacy fixture candle type lacks the new data adapter's synthetic/no-trade
+provenance, so it must not be used to hide filled intervals as observed candles.
+The trained ensemble's feature vector is also separate from the sizing recipe.
+
 ## Policy seams retained explicitly
 
 The sizing caller supplies a positive normal hourly reference even when no
 hourly order is due, and a versioned score in `[0, 1)`. Raw quantities therefore
-remain below hourly size. A non-tie rounds to the nearest share. Half-share
+remain below hourly size. This reference is only a quantity scale; the design
+calls for sizing and intentions every 15 minutes, alongside the implemented full
+ensemble retraining. A non-tie rounds to the nearest share. Half-share
 ties require an explicit `half_even` or `half_up` fixture rule. If rounding
 equals hourly size, explicit `rounded_equality="allow"` is available for an
 offline fixture; omission reports the unresolved policy. Neither option is
@@ -170,17 +185,41 @@ Cancellation acknowledgment does not free capacity. Complete old-order status
 and intervening fills must establish cancellation before a caller explicitly
 requests a replacement. Only its permitted unfilled remainder may be reserved;
 an increased BUY price must fit remaining account/exposure capacity. The
-prototype does not automatically select repricing cadence, cancel/resubmit
-timing or interaction with a new prediction. An unsent persisted reservation
+prototype does not automatically select repricing cadence or cancel/resubmit
+timing. An unsent persisted reservation
 needing repricing stays reserved and reports that unresolved policy.
+
+The October 12 new-forecast rule is now settled: replace the preceding unfilled
+intention for the same 15m stream and symbol only after confirming old-order
+cancellation/status and applying intervening fills. An unknown send or still-
+working order retains its commitment. Keep the new forecast and intention while
+waiting; do not fabricate a fill or delete the old intention. A new forecast's
+quantity is recalculated by the symbol's sizing logic, not copied from the old
+remainder. Same-forecast repricing still pursues only the remaining quantity.
+
+`execution_policy.py` checks these states and the strict submission boundary
+without making requests or mutating records. At or after 16:45:00 Pacific on
+the eligible session date it prohibits a new submission, including replacements;
+wrong-date checks prevent an old intention from becoming eligible the next day.
+It still identifies old orders requiring reconciliation after the cutoff.
+Ready means ready for the other execution checks, not permission to trade.
+The eventual adapter must check actual time immediately before submission.
+This helper is not wired to a broker, the mock executor or live Gameplan, and
+does not settle market-open eligibility or force resting-order cancellation at
+16:45. Offline tests cover both Pacific UTC offsets, the exact boundary,
+unresolved status/cancellation, intervening fills and stream/symbol isolation.
 
 ## Research configuration, evidence and remaining work
 
-Before automatic trading quantities, resolve BUY/SELL hourly reference sizes,
-score mapping, half-share ties and rounded equality. Also retain model/parameter
-comparisons, 15m donor-sale restrictions, contention policy, automatic
-repricing/new-prediction behavior and session-end/next-open
-targets as explicit open decisions.
+Before automatic trading quantities, bind the BUY/SELL reference sizes and
+versioned per-symbol technical-indicator score recipes, half-share ties and
+rounded equality. The calculus framework and 15m cadence are already settled.
+Also retain model/parameter comparisons, 15m donor-sale restrictions, contention
+policy, repricing cadence and session-end/next-open targets as explicit open
+decisions. The user intends a manual Atlas live launcher first, observation on
+Atlas, then Scout live rollout. That execution integration is still incomplete:
+the offline book is not the live shared purchasing authority, and no live
+launcher is provided by the current research command.
 
 October 12 authorizes development, training, historical evaluation, read-only
 existing provider access, shadow forecasting/scoring and development UI. Full
