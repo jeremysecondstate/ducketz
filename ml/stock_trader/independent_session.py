@@ -21,7 +21,7 @@ from ml.stock_trader.independent_runtime import LEDGER_RELATIVE_PATH, _has_inven
 from ml.stock_trader.independent_signals import _validated_independent_forecasts
 from ml.stock_trader.model import enrichment_signal_readiness, load_current_enrichment_model
 from ml.stock_trader.session import stock_execution_window
-from ml.stock_trader.session_reporting import session_cycle_report
+from ml.stock_trader.session_reporting import format_session_cycle_report, session_cycle_report
 from ml.stock_trader.market_features import read_frozen_market_feature_values
 from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
 from ml.stock_trader.publication import _write_json_atomic
@@ -311,11 +311,11 @@ def run_independent_stock_session(
                     # A no-signal cycle can return before reading the broker.
                     # It is normal, but cannot resolve a prior broker failure.
                     consecutive_failures = 0
-                reporter(json.dumps(session_cycle_report(
+                reporter(format_session_cycle_report(session_cycle_report(
                     last_cycle, as_of=now, session_orders_submitted=submitted,
                     session_cycles=calls, session_failed_cycles=failed_cycles,
                     session_consecutive_failures=consecutive_failures,
-                ), sort_keys=True))
+                )))
             publish_status("DEGRADED" if consecutive_failures else "RUNNING")
             # No new entries during the extra ownership/reconciliation checks.
             # Frequent checks around boundaries let exits settle before HH:01.
