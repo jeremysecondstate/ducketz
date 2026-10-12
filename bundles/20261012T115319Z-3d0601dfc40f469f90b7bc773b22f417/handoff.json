@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T11:53:19.226738Z",
+  "id": "20261012T115319Z-3d0601dfc40f469f90b7bc773b22f417",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed reviewed intraday research source and published the tested source-aware archive and monitoring follow-up."
+}

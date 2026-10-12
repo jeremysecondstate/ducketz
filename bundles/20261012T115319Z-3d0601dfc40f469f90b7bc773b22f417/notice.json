@@ -1,0 +1,112 @@
+{
+  "author": "Scout",
+  "base_commit": "c3c8faf7f65a79d84f7b0fe4fca055b21577a400",
+  "branch": "codex/scout/20261012T113948Z-8f3449b0966a466fb48507193607e811",
+  "change_id": "20261012T113948Z-8f3449b0966a466fb48507193607e811",
+  "commit_sha": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+  "dependency_fingerprints": {
+    "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app/ui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app/ui/theme.py": "bd3088d5d7bebf6dd0dacb369ec2f9e13a95faf58132368c4348aba10a893f54",
+    "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ml/intraday/__init__.py": "afe5a9eb949a3194b5a5a710978fbf6486a5535bc405b3c438dba3c349520b5a",
+    "ml/intraday/book.py": "5760b3def4a99793eb75c9b60137ddc935cd205cd9a29f92d7b62979dcbcfe9b",
+    "ml/intraday/evaluation.py": "ecbbb2cc264df847760603b536cae9657aa2ea46fce475cedeef0e1646f39adf",
+    "ml/intraday/execution.py": "ad5e3b1288ab119d263e5343b0f3c6ad1a86bd65fe03f4e4cc5d2d396db54fb1",
+    "ml/intraday/models.py": "73b2c33d808e1ba936f49deb48db259548af9829d1056fc26df1b402c34bb888",
+    "ml/intraday/prediction.py": "e97f1be93ff90989986c2f8407bac09bbf7d6f49c94f2096e8541ffa5e5a8372",
+    "ml/intraday/prototype.py": "0e9fceb95fbe4c82718bb44211a32b197f2201a0231607a3618484210d0e3ea5",
+    "ml/intraday/sizing.py": "eb3339d26cecee3eaa6fdb99b165a19267fde14456e9a2763b551f8fb8d75ecd",
+    "ml/intraday/store.py": "6082ec609e6971451ac339ffe40acc69df76b767caca5c9acef88f0bde641904",
+    "tests/conftest.py": "ab02a15961c8039f65d3e73bd574dc4fa644be818628f8aef7109910c899aa0d",
+    "tests/test_intraday_book.py": "3aabde2e2ebcfbc0c28ccf3d193449c2e53552fd5f011ad9e8dfda1d045f2770",
+    "tests/test_intraday_evaluation.py": "79ad1687768c78ba73dbf994ccfd1ed0cfb829290d453dab6032fcaf6f968e39",
+    "tests/test_intraday_execution.py": "f0f8fc37b77c1d743f2c15452d903d625d478796f5c70a3c36228d5a19634167",
+    "tests/test_intraday_models.py": "48e907cc1e1c383fa1776ec16c654dfcfaafccf324274a2cd28eee19155b15f7",
+    "tests/test_intraday_prediction.py": "7ee473fb0fa8e6fda44c6ac89652ed6bcd510672a709b048993e5ea06bc2677c",
+    "tests/test_intraday_store.py": "757e4c9b73003e375280cf733ee006e64f9f92f5f1cf856464cf26daff2aef5b"
+  },
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/intraday.py",
+      "sha256": "b1b446720f2cb5d7314c44c1cb575f7e149eed8e9e28150c7055767f107a50cd"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/intraday_data.py",
+      "sha256": "e3deb1008093ff71cbdd41be22b10007cf9120028419ca5032e520ce779999a3"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/data.py",
+      "sha256": "170d51f65fabf781932ffb5753944f2e93a9279a1abf793e4fe56a7a1447485e"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/runtime.py",
+      "sha256": "abae3027bb0bb669945db5b621cac4a065e85073462d3d2a4d70ecbd322d4221"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/telemetry.py",
+      "sha256": "9bdfddbffbe8e84faf539eb8fee38472f370076de4f72e797d4be90f16d4ecba"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_data.py",
+      "sha256": "0885c3fe0a90023135c39d8d399d2ccafdd498ff08774fa65e209a2d6a216d5e"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_runtime.py",
+      "sha256": "f8a529e4b2a0bd8f9f86be746f45179f6855262ec9472f3acb2586ced56f8a78"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_telemetry.py",
+      "sha256": "05eafcb48ca72dbafb3413b0f4d486f82324e9bed1a5d8720c4472b5e82ff2f0"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_ui.py",
+      "sha256": "99757036428c9652d654413e6de9b62c8e98434c2c5836c3a4bfec510910482a"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-scout-adoption.md",
+      "sha256": "77ddf740f291d55b3db4f06fd16e2756a30e7fef4ec50c49dba34244bc517026"
+    }
+  ],
+  "limitations": [
+    "Historical availability remains assumed; venue-only archive data is not consolidated history.",
+    "Private raw history, fitted models, detailed run evidence and operating bindings are excluded.",
+    "Older strict monitoring readers must adopt the source-aware update before admitting new provenance fields.",
+    "Continuous correction discovery, failed-cycle retry policy, session edges and live execution remain unresolved.",
+    "Draft PR69 is stacked on PR68; application-source main integration and Atlas adoption have not been performed by Scout.",
+    "Actual two-host telemetry receipt remains pending under the existing scout-intraday-monitoring-20261012 request; do not duplicate it."
+  ],
+  "local_installation": {
+    "actor": "Scout",
+    "machine": "pc-new",
+    "non_owned_files_preserved": 3537,
+    "private_bindings_preserved": true,
+    "source_version": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+    "verified_files": 29
+  },
+  "peer_applicability": "Shared implementation applies to Atlas and Scout with each PC own symbols. Atlas needs the source-aware reader before admitting the forthcoming Scout packet; legacy Atlas packets remain readable on Scout.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/69",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed local research source adoption only; no live orders, live schedule changes or production worker restart. Existing Gameplan remains separate.",
+  "scope": "shared",
+  "summary": "Scout installed reviewed intraday research source and published the tested source-aware archive and monitoring follow-up.",
+  "tests": {
+    "completed_at_utc": "2026-10-12T11:41:58.506879Z",
+    "offline": true,
+    "output_sha256": "ce79de1167b51c4805dba0391c749c9d4e06e0e23b565fa8ab10dc1a1a881218",
+    "passed": 187,
+    "skipped": 0,
+    "started_at_utc": "2026-10-12T11:41:41.035783Z",
+    "warnings": 18
+  }
+}
