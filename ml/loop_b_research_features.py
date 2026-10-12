@@ -1,7 +1,8 @@
 """Pure, research-only native OHLCV features; never registered for production.
 
-Input timestamps identify native hourly interval opens or daily UTC-midnight
-session labels.  This module does not read data, write artifacts, fit models,
+Input timestamps identify native hourly interval opens or native UTC-day opens.
+Native daily aggregates are not regular-session candles. This module does not
+read data, write artifacts, fit models,
 fill omitted bars, or publish anything.  Its fixed specification is deliberately
 small; changing a window requires a new experiment and semantic version.
 """
@@ -19,7 +20,7 @@ from ml.contracts import (
     FeatureSpec,
 )
 
-SEMANTIC_VERSION = "native-ohlcv-research-v1"
+SEMANTIC_VERSION = "native-ohlcv-research-v2"
 RANGE_LOOKBACK = 20
 RANGE_MIN_PERIODS = 10
 PATH_LOOKBACK = 10
@@ -47,8 +48,8 @@ def _feature_spec(name: str) -> FeatureSpec:
         source_timeframe="native-hourly-or-daily-explicit-experiment-choice",
         source_grain="completed-native-bar",
         required_calculation_versions=(SEMANTIC_VERSION,),
-        availability_rule="official-bar-end-plus-five-minutes-no-later-than-decision",
-        availability_rule_version="native-ohlcv-exchange-end-v1",
+        availability_rule="native-hour-or-utc-day-end-plus-five-minutes-no-later-than-decision",
+        availability_rule_version="native-ohlcv-interval-end-v2",
         processing_delay_seconds=300,
         freshness_by_horizon=tuple(
             (horizon, "exact-source-bar-declared-in-research-membership")
@@ -76,16 +77,23 @@ def semantic_contract() -> dict[str, object]:
         "range_minimum_native_comparators": RANGE_MIN_PERIODS,
         "path_lookback_returns": PATH_LOOKBACK,
         "processing_delay_seconds": int(PROCESSING_DELAY.total_seconds()),
-        "availability": "hourly interval end or official daily session close, plus 5 minutes",
+        "availability": "hourly interval end or native daily UTC-midnight start plus 24 hours, plus 5 minutes",
         "session_policy": (
             "Hourly range: same New York clock slot, session composition and regular-session "
             "duration among the previous 20 scheduled sessions; full 04:00-20:00 hours on "
-            "normal sessions, only wholly regular hours on shortened sessions. Daily range: "
-            "same regular-session duration among previous 20 scheduled sessions. No fallback."
+            "normal sessions, only wholly regular hours on shortened sessions. Native daily "
+            "range: UTC-date aggregates whose labels are scheduled XNYS session dates, "
+            "compared with the same scheduled regular-session duration, UTC opening minute "
+            "and previous-calendar-date session presence among the previous 20 scheduled "
+            "sessions. These conservative keys distinguish DST/extended-session composition. "
+            "Daily input includes all native UTC-day trades, not just regular-session trades. "
+            "No fallback."
         ),
         "path_policy": (
             "Hourly: 11 consecutive scheduled whole hours entirely within regular trading "
-            "(normally starts 10:00-15:00 New York); daily: 11 consecutive XNYS sessions. "
+            "(normally starts 10:00-15:00 New York); daily: 11 consecutive native UTC-day "
+            "bars whose labels are XNYS session dates. Daily holiday/weekend-label bars are "
+            "excluded even if they contain a preceding session's extended-hours tail. "
             "Overnight and scheduled closures are skipped; missing native scheduled bars are "
             "not skipped. Returns across adjacent sessions include their overnight move."
         ),
@@ -93,6 +101,13 @@ def semantic_contract() -> dict[str, object]:
             "Explicit is_native=true only. Derived, carried-price and unknown-provenance "
             "bars never contribute. Native zero-range/zero-volume bars are not assumed carried."
         ),
+        "price_scale_policy": (
+            "Dimensionless and invariant to uniform positive price rescaling. No corporate-"
+            "action adjustment is inferred; raw native split jumps remain in returns and "
+            "must be disclosed as an experiment limitation. Uniform rescaling invariance "
+            "is not split adjustment."
+        ),
+        "provider_timing_reference": "https://databento.com/docs/schemas-and-data-formats/ohlcv",
         "missing_policy": (
             "Nonpositive/invalid prices, negative or nonfinite volume, incomplete/unavailable "
             "bars, insufficient warm-up, stale/missing scheduled constituents or zero "
@@ -130,8 +145,9 @@ def calculate_research_ohlcv_features(
 
     ``is_native`` must explicitly identify provenance, with true, false or null
     booleans. Optional ``bar_complete`` likewise must be boolean. Null is never
-    treated as affirmative evidence. Provided bar ends must match the exchange
-    contract. ``as_of`` only masks bars unavailable at that instant; it cannot
+    treated as affirmative evidence. Provided bar ends must match the native
+    interval contract, including UTC day end for daily bars. ``as_of`` only masks
+    bars unavailable at that instant; it cannot
     change earlier results. Consumers must additionally match the exact source
     bar and enforce ``available_at <= decision_timestamp``.
     """
@@ -163,7 +179,7 @@ def calculate_research_ohlcv_features(
         supplied = pd.to_datetime(frame["bar_end_timestamp"], utc=True, errors="raise")
         mismatch = supplied.notna() & timing["bar_end_timestamp"].notna() & supplied.ne(timing["bar_end_timestamp"])
         if mismatch.any():
-            raise ValueError("Provided bar ends conflict with the native exchange timing contract.")
+            raise ValueError("Provided bar ends conflict with the native interval timing contract.")
     result = timing.copy()
     result.insert(0, "symbol", str(symbol).strip().upper())
     result.insert(1, "bar_timestamp", frame["timestamp"])
@@ -219,6 +235,8 @@ def _schedule(timestamps: pd.Series, timeframe: str) -> pd.DataFrame:
     calendar = xcals.get_calendar(EXCHANGE_CALENDAR, start=labels.min() - pd.Timedelta(days=40), end=labels.max() + pd.Timedelta(days=7))
     sessions = calendar.schedule.loc[labels.min():labels.max(), ["open", "close"]].copy()
     sessions["duration"] = (sessions["close"] - sessions["open"]).dt.total_seconds() / 60
+    sessions["utc_open_minute"] = sessions["open"].dt.hour * 60 + sessions["open"].dt.minute
+    sessions["previous_date_has_session"] = (sessions.index - pd.Timedelta(days=1)).isin(calendar.sessions)
     sessions["session_number"] = np.arange(len(sessions))
     return sessions
 
@@ -229,10 +247,13 @@ def _timing(timestamps: pd.Series, timeframe: str, schedule: pd.DataFrame) -> pd
     rows = schedule.reindex(pd.DatetimeIndex(labels)).reset_index(drop=True)
     if timeframe == "1d":
         aligned = timestamps.eq(timestamps.dt.normalize())
-        end = rows["close"]
+        end = timestamps + pd.Timedelta(days=1)
         eligible = aligned & rows["open"].notna()
-        slot_key = pd.Series("DAILY", index=timestamps.index)
-        session_type = pd.Series("REGULAR_DAILY", index=timestamps.index)
+        slot_key = (
+            "UTC_DAILY:" + rows["utc_open_minute"].astype(str)
+            + ":" + rows["previous_date_has_session"].astype(str)
+        )
+        session_type = pd.Series("NATIVE_UTC_DAILY", index=timestamps.index)
     else:
         end = timestamps + pd.Timedelta(hours=1)
         whole_hour = local.dt.minute.eq(0) & local.dt.second.eq(0) & local.dt.microsecond.eq(0) & local.dt.nanosecond.eq(0)

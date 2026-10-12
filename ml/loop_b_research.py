@@ -23,7 +23,7 @@ from sklearn.linear_model import LogisticRegression
 from ml.preprocessing import SemanticFeatureTransformer
 
 
-VERSION = "loop-b-private-research-v1"
+VERSION = "loop-b-private-research-v2"
 IDENTITY_COLUMNS = ("sample_id", "symbol", "decision_at", "target_start", "target_end", "y")
 TIME_COLUMNS = ("decision_at", "target_start", "target_end")
 
@@ -90,7 +90,7 @@ def validate_cohort(frame: pd.DataFrame, *, excluded_ids: Iterable[str], develop
     if (result.decision_at > result.target_start).any() or (result.target_start > result.target_end).any():
         raise ValueError("expected decision_at <= target_start <= target_end")
     cutoff = _utc(development_end)
-    if (result.target_end > cutoff).any():
+    if (result.target_end >= cutoff).any():
         raise ValueError("cohort target outcomes extend beyond frozen development boundary")
     if "label_available_at" in result and (result.label_available_at >= cutoff).any():
         raise ValueError("cohort label availability reaches frozen protected boundary")
@@ -138,6 +138,7 @@ class PurgedFold:
     train_ids: tuple[str, ...]
     validation_ids: tuple[str, ...]
     purged_ids: tuple[str, ...]
+    validation_purged_ids: tuple[str, ...]
     validation_decision_start: str
     train_target_end: str
     train_label_available_at: str
@@ -170,6 +171,7 @@ def make_purged_folds(frame: pd.DataFrame, config: ResearchConfig) -> list[Purge
     folds: list[PurgedFold] = []
     for i, indices in enumerate(chunks):
         validation_groups = grouped.loc[grouped.index.floor("D").isin(dates[indices])]
+        nominal_validation_groups = validation_groups.index
         if i + 1 < len(chunks):
             next_decision = grouped.loc[grouped.index.floor("D").isin(dates[chunks[i + 1]])].decision_at.min()
             validation_groups = validation_groups.loc[validation_groups.target_end < next_decision]
@@ -183,9 +185,11 @@ def make_purged_folds(frame: pd.DataFrame, config: ResearchConfig) -> list[Purge
         train = frame.loc[frame.target_start.isin(train_groups.index)]
         validation = frame.loc[frame.target_start.isin(validation_groups.index)]
         purged = frame.loc[frame.target_start.isin(possible_train.index.difference(train_groups.index))]
+        validation_purged = frame.loc[frame.target_start.isin(nominal_validation_groups.difference(validation_groups.index))]
         folds.append(PurgedFold(
             name=f"fold-{i + 1}", train_ids=tuple(train.sample_id),
             validation_ids=tuple(validation.sample_id), purged_ids=tuple(purged.sample_id),
+            validation_purged_ids=tuple(validation_purged.sample_id),
             validation_decision_start=boundary.isoformat(), train_target_end=train.target_end.max().isoformat(),
             train_label_available_at=train_groups.label_available_at.max().isoformat(),
         ))
@@ -461,9 +465,19 @@ def run_experiment(
         "variants": variants, "protected_exclusions": ids_receipt(exclusions),
         "transform_versions": dict(transform_versions or {column: "identity-v1" for column in columns}),
         "eligible_membership": ids_receipt(cohort.sample_id),
-        "folds": [{**asdict(fold), "train_receipt": ids_receipt(fold.train_ids), "validation_receipt": ids_receipt(fold.validation_ids)} for fold in folds],
+        "folds": [{**asdict(fold), "train_receipt": ids_receipt(fold.train_ids),
+                   "validation_receipt": ids_receipt(fold.validation_ids),
+                   "train_purge_receipt": ids_receipt(fold.purged_ids),
+                   "validation_purge_receipt": ids_receipt(fold.validation_purged_ids)} for fold in folds],
         "primary_metric": "equal-target-cluster mean logloss; smaller is better",
-        "acceptance_rule": "At least 3 valid folds; >=2/3 improving folds; >=0.005 absolute logloss improvement; strict majority of symbols improve; at least 40 OOS target dates; no aggregate Brier deterioration; paired observed-day block bootstrap one-sided upper bound <0 after Bonferroni correction over all 36 predeclared comparisons. Retain means further research only.",
+        "acceptance_rule": (
+            f"At least 3 valid folds; improving fold fraction >= {config.min_improving_fold_fraction:.8g}; "
+            f"absolute logloss improvement >= {config.min_absolute_logloss_improvement:.8g}; "
+            f"strict majority of symbols improve; at least {config.min_uncertainty_days} OOS target dates; "
+            "no aggregate Brier deterioration; paired observed-day block bootstrap one-sided upper bound <0 "
+            f"after Bonferroni correction over all {config.total_comparisons} predeclared comparisons. "
+            "Retain means further research only."
+        ),
         "probability_calibration": "none fitted; raw logistic probabilities evaluated with weighted reliability bins",
         "training": "C=1 unweighted-class logistic; each target cluster total weight 1; training-fold-only admission, median, quantile clipping and scaling",
         "missing_indicators": "none; deliberately fixed for all matched research variants",
@@ -515,6 +529,12 @@ def run_experiment(
     summary: dict[str, Any] = {"version": VERSION, "specification_sha256": spec_hash, "cohort_sha256": cohort_digest,
                                "folds": len(folds), "attempts": attempts, "results": {}, "comparisons": {},
                                "status": "completed" if folds else "insufficient_history"}
+    if not folds or output.empty:
+        reason = "insufficient temporal support for a purged fold" if not folds else "no matched attempts succeeded"
+        summary["comparisons"] = {variant: {"disposition": "inconclusive", "reason": reason}
+                                  for variant in variants if variant != "baseline"}
+        if folds:
+            summary["status"] = "failed_attempts"
     if not output.empty:
         store.write_bytes("predictions.csv", output.to_csv(index=False, float_format="%.17g").encode("utf-8"))
         for variant, rows in output.groupby("variant", sort=False):

@@ -97,6 +97,11 @@ def test_outcome_overlap_trimmed_between_validation_folds():
         later = lookup.loc[list(right.validation_ids)]
         assert earlier.target_end.max() < later.decision_at.min()
     assert len(folds) == 3
+    assert folds[0].validation_purged_ids
+    assert not set(folds[0].validation_purged_ids) & set(folds[0].validation_ids)
+    omitted = lookup.loc[list(folds[0].validation_purged_ids)]
+    next_validation = lookup.loc[list(folds[1].validation_ids)]
+    assert (omitted.target_end >= next_validation.decision_at.min()).all()
 
 
 def test_insufficient_dates_are_not_rescued_by_pooled_rows():
@@ -255,3 +260,22 @@ def test_future_target_feature_is_rejected_before_fitting(tmp_path):
     args["families"] = {"activity": ["future_return"]}
     with pytest.raises(ValueError, match="prohibited"):
         run_experiment(data, store=store(tmp_path), **args)
+
+
+def test_frozen_boundary_is_exclusive_even_without_label_delay():
+    data = cohort().drop(columns="label_available_at")
+    with pytest.raises(ValueError, match="boundary"):
+        validate_cohort(data, excluded_ids=[], development_end=data.target_end.max())
+
+
+def test_insufficient_history_records_each_predeclared_disposition(tmp_path):
+    args = run_args(tmp_path)
+    args["config"] = ResearchConfig(bootstrap_repetitions=100, total_comparisons=4)
+    private = store(tmp_path)
+    results = run_experiment(cohort(days=10), store=private, **args)
+    assert results["status"] == "insufficient_history"
+    assert results["attempts"] == []
+    assert set(results["comparisons"]) == {"activity", "path", "interaction", "all"}
+    assert all(value["disposition"] == "inconclusive" for value in results["comparisons"].values())
+    specification = json.loads((private.root / "specification.json").read_text())
+    assert "all 4 predeclared comparisons" in specification["acceptance_rule"]

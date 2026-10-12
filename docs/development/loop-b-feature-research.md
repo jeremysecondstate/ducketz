@@ -9,7 +9,7 @@ canonical predictions, task registration or publication helpers. Candidate
 
 ## Fixed feature definitions
 
-The semantic version is `native-ohlcv-research-v1`. All four values are
+The semantic version is `native-ohlcv-research-v2`. All four values are
 dimensionless and apply to hourly or daily native bars. Daily measurements may
 support daily and weekly target routes; the saved target definition determines
 the experiment, not a horizon's display name.
@@ -37,9 +37,11 @@ calculation. Uniform price rebasing is invariant; an unadjusted split within a
 window is not. Do not infer corporate actions using future price observations.
 
 Hourly timestamps denote interval starts. A value becomes available one hour
-after that timestamp plus five minutes. Daily timestamps are UTC-midnight
-session-date labels, available at the official XNYS session close plus five
-minutes. Supplied bar-end timestamps are checked against this policy. The
+after that timestamp plus five minutes. Native daily timestamps identify full
+UTC-date aggregates, available at the next UTC midnight plus five minutes,
+including on exchange early-close days. Databento describes these as UTC daily
+bars in its [OHLCV schema documentation](https://databento.com/docs/schemas-and-data-formats/ohlcv).
+They are not regular-session aggregates. Supplied bar-end timestamps are checked against this policy. The
 caller must join the exact source bar and require `available_at <= decision_at`;
 there is no stale as-of carry. Inputs with invalid OHLC ordering, nonpositive
 prices, nonfinite values or negative volume are ineligible. A native zero-volume
@@ -50,10 +52,15 @@ and DST. Hourly activity comparators match New York clock slot, session
 composition (including the hour crossing the regular open), and regular-session
 duration. Normal sessions support whole-hour slots from 04:00 through 19:00
 Eastern. Short sessions conservatively use only hours wholly within the regular
-session. Daily comparators match regular-session duration. Both use only earlier
+session. Native UTC daily comparators match regular-session duration, the UTC
+opening time and whether the previous calendar date had an exchange session.
+This keeps DST cutoff changes and possible previous-session tails distinct.
+Weekend/holiday UTC dates themselves are ineligible; no rows are manufactured.
+Both use only earlier
 sessions and never fall back to another slot or session type. Early-close
 activity is usually missing because ten comparable short sessions do not occur
-within the last twenty sessions.
+within the last twenty sessions. Monday/post-holiday native daily activity can
+also lack ten comparable observations; there is no fallback to ordinary weekdays.
 
 Hourly path windows require eleven consecutive scheduled full regular hours
 (normally starts 10:00 through 15:00 Eastern); daily paths require eleven
@@ -83,6 +90,17 @@ Freeze new exact research IDs. For shared feature selection across routes,
 consider overlaps with other routes' protected outcomes; a common earlier
 protected-period boundary can be necessary even when a row is training for its
 own route. Never move the frozen boundary to reclaim protected rows.
+
+Inspect the actual source interval before reusing saved feature or target timing.
+A native UTC daily OHLCV record is incomplete at that day's exchange close.
+If a saved sample assumes otherwise, do not compare its contemporaneous values
+as causally available. A separately declared research design can use an exact
+prior completed source vector, retaining the saved numerical target while
+conservatively widening its physical outcome/label bounds for purging. Record
+the donor identity, original and physical target clocks, and the changed input
+age. Such a design is not a reproduction of production performance. Split
+adjustment also requires reviewed evidence: uniform price-rescaling invariance
+does not make an unadjusted split jump safe.
 
 ## Bounded matched comparison
 
@@ -138,6 +156,12 @@ results stay in that directory. Inputs and source bytes are rechecked afterward;
 changes invalidate the experiment. Failed attempts remain visible. A changed
 design requires a new frozen run and an explicit explanation, not overwriting
 the old evidence.
+
+Harness v2 makes the protected development boundary exclusive even when no
+separate label clock is supplied, records both training and validation purge
+identities with hashes, and returns an inconclusive disposition for each
+predeclared candidate when temporal support is insufficient. Its saved
+acceptance text reflects the actual frozen configuration.
 
 Keep adapters containing machine paths, sample selections, raw inputs, models,
 predictions, reports and detailed experiment evidence private. Only this reusable

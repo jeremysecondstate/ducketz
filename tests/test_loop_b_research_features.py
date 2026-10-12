@@ -99,7 +99,9 @@ def test_daily_warmup_formulas_and_direction_are_exact() -> None:
     result = _calculate(bars)
     assert result.loc[:9, list(FEATURE_COLUMNS)].isna().all().all()
     row = result.iloc[10]
-    assert row[FEATURE_COLUMNS[0]] == pytest.approx(0, abs=1e-12)
+    # The first 11 session dates need not include ten comparable UTC-day
+    # aggregates: previous-session tails and DST have distinct activity keys.
+    assert pd.isna(row[FEATURE_COLUMNS[0]])
     assert row[FEATURE_COLUMNS[1]] == pytest.approx(np.square(np.minimum(returns, 0)).sum() / np.square(returns).sum())
     assert row[FEATURE_COLUMNS[2]] == pytest.approx(np.square(returns).sum() / np.abs(returns).sum() ** 2)
     assert row[FEATURE_COLUMNS[3]] == pytest.approx(returns.sum() * abs(np.sign(returns).mean()))
@@ -199,7 +201,8 @@ def test_holiday_early_close_and_dst_are_exchange_aware() -> None:
     assert holiday_row[list(FEATURE_COLUMNS)].isna().all()
     daily = _calculate(_bars("2026-10-05", "2026-11-30"))
     shortened = daily.loc[daily["session_date"].eq("2026-11-27")].iloc[0]
-    assert shortened["available_at"] == pd.Timestamp("2026-11-27T18:05Z")
+    assert shortened["available_at"] == pd.Timestamp("2026-11-28T00:05Z")
+    assert shortened["session_type"] == "NATIVE_UTC_DAILY"
     assert shortened["range_comparator_count"] == 0
     assert pd.isna(shortened[FEATURE_COLUMNS[0]])
 
@@ -229,13 +232,13 @@ def test_validation_is_fail_closed_and_source_frames_are_not_modified() -> None:
     with pytest.raises(ValueError, match="unique timestamps"):
         _calculate(pd.concat([bars, bars.iloc[:1]]))
     bad = bars.copy()
-    bad["bar_end_timestamp"] = bad["timestamp"] + pd.Timedelta(days=1)
+    bad["bar_end_timestamp"] = bad["timestamp"] + pd.Timedelta(hours=20)
     with pytest.raises(ValueError, match="bar ends conflict"):
         _calculate(bad)
     assert len(_calculate(bars.iloc[:0])) == 0
 
 
-def test_split_scale_invariance_and_input_order_invariance() -> None:
+def test_uniform_price_scale_invariance_and_input_order_invariance() -> None:
     bars = _bars()
     scaled = bars.copy()
     scaled[["open", "high", "low", "close"]] *= 7
@@ -251,3 +254,45 @@ def test_bar_timestamp_alias_is_exact_and_daily_labels_must_be_midnight() -> Non
     row = _calculate(bars).loc[20]
     assert not row["session_eligible"]
     assert row[list(FEATURE_COLUMNS)].isna().all()
+
+
+def test_native_daily_is_unavailable_at_regular_close_and_ends_at_utc_midnight() -> None:
+    bars = _bars()
+    full = _calculate(bars)
+    index = 30
+    stamp = bars.loc[index, "timestamp"]
+    assert full.loc[index, "bar_end_timestamp"] == stamp + pd.Timedelta(days=1)
+    assert full.loc[index, "available_at"] == stamp + pd.Timedelta(days=1, minutes=5)
+    at_close = _calculate(bars, as_of=stamp + pd.Timedelta(hours=21, minutes=5))
+    assert not at_close.loc[index, "native_input_eligible"]
+    assert at_close.loc[index, list(FEATURE_COLUMNS)].isna().all()
+    at_end = _calculate(bars, as_of=stamp + pd.Timedelta(days=1, minutes=5))
+    assert at_end.loc[index, "native_input_eligible"]
+    pdt.assert_series_equal(at_end.loc[index], full.loc[index])
+    explicit = bars.assign(bar_end_timestamp=bars["timestamp"] + pd.Timedelta(days=1))
+    pdt.assert_frame_equal(_calculate(explicit), full)
+    explicit["bar_end_timestamp"] = bars["timestamp"] + pd.Timedelta(hours=21)
+    with pytest.raises(ValueError, match="bar ends conflict"):
+        _calculate(explicit)
+
+
+def test_daily_activity_uses_prior_comparable_utc_session_composition() -> None:
+    bars = _bars("2026-09-01", "2026-11-30")
+    # Values stay equal after normalizing prices, so an admitted comparison is 0.
+    result = _calculate(bars).set_index("session_date")
+    friday = result.loc["2026-10-30"]
+    assert friday["range_comparator_count"] >= 10
+    assert friday[FEATURE_COLUMNS[0]] == pytest.approx(0, abs=1e-12)
+    # DST changes the UTC cutoff relative to the exchange session.
+    after_dst = result.loc["2026-11-03"]
+    assert after_dst["range_comparator_count"] == 0
+    assert pd.isna(after_dst[FEATURE_COLUMNS[0]])
+    # Mondays have no prior-calendar-date session and never borrow ordinary
+    # Tuesday-Friday comparators, which can include a preceding session tail.
+    monday = result.loc["2026-10-26"]
+    assert monday["range_comparator_count"] < 10
+    assert pd.isna(monday[FEATURE_COLUMNS[0]])
+    contract = semantic_contract()
+    assert contract["semantic_version"] == "native-ohlcv-research-v2"
+    assert "UTC-date aggregates" in contract["session_policy"]
+    assert "split jumps remain" in contract["price_scale_policy"]
