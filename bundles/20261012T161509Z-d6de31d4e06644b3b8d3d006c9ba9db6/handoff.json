@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T16:15:09.028991Z",
+  "id": "20261012T161509Z-d6de31d4e06644b3b8d3d006c9ba9db6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Implement manual Atlas 15m execution with independent sizing, actual capacity and exact order recovery"
+}

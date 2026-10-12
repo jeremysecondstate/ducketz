@@ -1,0 +1,334 @@
+{
+  "adopted_intraday_source": "8235e6fbd5a6f086f0ac7feeaa6c24089ee07e2a",
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T160403Z-45b006781e4a4c3da7c94b3c4ecc7b51",
+  "change_id": "20261012T160403Z-45b006781e4a4c3da7c94b3c4ecc7b51",
+  "commit_sha": "233c46b8254191b0cce0580385f158f77e155f98",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Check-15m-Readiness.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Start-15m-Trader.cmd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/ducket_bucket.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-live-readiness.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-scout-adoption.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-scout-update-prompt.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/__init__.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/cancellation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/capacity.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/evaluation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prediction.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prototype.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/runtime_compatibility.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/starter_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/technical_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/telemetry.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_account_authority.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_cancellation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_capacity.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_evaluation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_intentions.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_native_ledger.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_prediction.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_runtime_compatibility.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_starter_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_technical_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_telemetry.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_ui.py"
+    }
+  ],
+  "limitations": [
+    "This completion supplies source and offline evidence. No real provider/broker requests, new training benchmark, order, live-ledger migration, worker restart or schedule change was performed for it.",
+    "Manual startup requires fresh real account/provider checks and compatible loaded Gameplan runtime or verified absence. Installed source does not update an already-running worker.",
+    "Unknown submissions without an exact broker order ID retain commitment and need exact identity evidence; they are never guessed or blindly repeated.",
+    "Exact accepted receipts are promoted under a fresh account lease and repaired into native15m state before capture. The older Gameplan bridge still captures its own native evidence before authority acquisition; automatic native repair of its own unknown-ID case remains separate work.",
+    "Existing legacy synthetic observations without adjacent same-session proof are retained for audit and excluded from new live inputs; old forecasts and scored outcomes are not rewritten.",
+    "Thirty seconds remains a configurable publication-offset candidate. Existing historical timing samples do not establish active-Gameplan workload latency or predictive performance.",
+    "Scout remains shadow-only. Distributed account authority, contention priority, the next-session 04:00 target and overnight behavior remain unresolved; no autostart is added.",
+    "Accepted live limits remain working until fill, broker terminal evidence or a newer eligible forecast. Manual stop disables new requests and waits for active computation; it does not fabricate cancellation of resting orders.",
+    "Source main integration, peer installation and loaded runtime deployment are separate stages.",
+    "Pinned offline queue/candidate verification uses PYTHONSAFEPATH=1 to prevent its sibling coordination requests.py from shadowing third-party requests; network prohibition and exact import binding remain active."
+  ],
+  "parent_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/70",
+  "peer_action": "Review/adopt exact shared source under standing authority, preserve Scout shadow-only operation and local bindings, audit legacy synthetic evidence, and retain the existing monitoring receipt request. Source installation does not update loaded workers. Do not enable Scout trading or restart production workers.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/74",
+  "remote_sha": "233c46b8254191b0cce0580385f158f77e155f98",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "On later explicit manual Atlas launch only: existing authorized provider reads, all-ten-model fresh training, durable live forecasts and intentions, actual account/native commitment writes, exact cancellation and real LIMIT submissions under live gates. This completion itself changes source only; Gameplan and Scout processes remain untouched.",
+  "scope": "Shared Atlas/Scout source; Atlas manual execution only; Scout shadow-only.",
+  "summary": "Implement manual Atlas 15m execution with independent sizing, actual capacity and exact order recovery",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T16:08:22.692643Z",
+      "output_sha256": "5243e2ee40593e1ef49cb3d52b1927a0d586fa6e9a30109919f636df65be3997",
+      "started_at_utc": "2026-10-12T16:06:49.659370Z",
+      "summary": "1002 passed, 18 warnings in 91.41s (0:01:31); zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
