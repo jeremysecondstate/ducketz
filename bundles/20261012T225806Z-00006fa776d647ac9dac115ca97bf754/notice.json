@@ -1,0 +1,115 @@
+{
+  "author": "Scout",
+  "base_commit": "53aea68a29ebb136faa4378e89261109100652e3",
+  "branch": "codex/scout/20261012T225221Z-afffb55c4ad14957ac2cdccf876969bf",
+  "change_id": "20261012T225221Z-afffb55c4ad14957ac2cdccf876969bf",
+  "commit_sha": "a56413a8628e4789aa98852ad607e582267441c0",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/migration.py",
+      "sha256": "dfd6d62d722dc28720dc6bb0f8e376be98dea0e9927c1c9c420cda09aa75436c"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/native_ownership_export.py",
+      "sha256": "1d8a45b7e7cd273e1ed6f337db72210cf8fb84cc28d81b17d2ae49613fc94cea"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_account_gameplan_migration.py",
+      "sha256": "dcfd9a67e48c5a5a092846bca6c83ac6bf771f88a73b1b43261ee52e3270d1a2"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_native_ownership_export.py",
+      "sha256": "93a8113e31ff57a063dfa13bdde0b13cd79690b8584c61e266b21c81c0e91b9c"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/native_ownership_exchange.py",
+      "sha256": "60f24c2240742c338a030ca9915637199d3d4d8977d69ccd7aed2ee40932ea44"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_native_ownership_exchange.py",
+      "sha256": "363f5429430260cd4cfea6e4d36884589d3f0ad5f84b5d21ad0b236afd475cb5"
+    }
+  ],
+  "inherited_source": {
+    "pr78_completion": "20261012T185820Z-3e62123b644c4b839dc6f127e1c1a3a5",
+    "pr79_handoff_commit": "34f88147c5dc17736e2239404f9793a5bc2f5073",
+    "retained_native_helper_commit": "da38b540eb343776c0a02ea9677f713d05640ffc",
+    "retained_native_helper_completion": "20261008T124456Z-7c241ae9babf45ff83a4f807fcc92eb6"
+  },
+  "limitations": [
+    "Offline fixtures verify transport rebuilding and rejection boundaries; they do not establish live execution readiness or production packet publication.",
+    "Populated timeout or intraday extension history remains rejected for separate reviewed migration; this repair does not authorize discarding extension records.",
+    "The source branch depends on exact PR 78; main integration is not included in this publication.",
+    "Unrelated retained documentation belongs to its existing completion and is excluded from this source completion.",
+    "Research watch remains human-stopped; preview loaded code was not reloaded. Source installation does not establish loaded-runtime verification.",
+    "Scout remains shadow-only. Atlas-hosted admission, durable Scout submission journaling and exact fill/cancellation recovery with complete stream fencing remain unresolved for one shared pool.",
+    "PR77 is excluded. Main integration and Atlas installation of this repair were not performed.",
+    "The two preserved local documentation files remain under their original Scout owner and are not republished by this completion."
+  ],
+  "local_installation": {
+    "head_index_preserved": true,
+    "installation_manifest_sha256": "254ef1534d8d1d80b35d466581973639844972767707fd58cee8f962bf0cfcf9",
+    "installed_paths": 390,
+    "main_integrated": false,
+    "private_bindings_preserved": 34,
+    "research_watch": "human_stopped_and_left_stopped",
+    "runtime_deployed": false,
+    "scout_live_readiness": "shadow_only",
+    "status": "SOURCE_INSTALLED_AND_OFFLINE_VERIFIED"
+  },
+  "monitoring": {
+    "artifact_commit": "61ec8dbc4171ba31a2884e5644eb94d62944d4e6",
+    "artifact_path": "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/monitoring.json",
+    "duplicate_preserved": true,
+    "forecasts": 22,
+    "modes": [
+      "historical_replay"
+    ],
+    "packet_id": "3f8eefbc85d930fc98365ed890edc5754b88037f469a397ab837cb35a975c1cd",
+    "packet_sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849",
+    "produced_at": "2026-10-12T12:37:14.667931+00:00",
+    "receipt_sha256": "4bf7243af52bda4e7ce443be01301abc555530505d02bec7bec9adf49ba9828a",
+    "received_at": "2026-10-12T22:37:44.138734+00:00",
+    "request_id": "scout-intraday-monitoring-20261012",
+    "status": "historical_only"
+  },
+  "peer_applicability": "Shared repair applies to both PCs after local review; preserve each PC own symbols, authority and private operating originals.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/80",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires guarded local source installation and separate loaded-runtime verification. No provider calls, training, orders, account activation, schedule changes or worker restart are authorized by this source publication.",
+  "scope": "shared",
+  "summary": "Scout installed reviewed PR78 plus the published native-ownership compatibility repair and verified the actual Atlas historical telemetry receipt.",
+  "tests": {
+    "complete_combined_suite": {
+      "output_sha256": "36c86f5c4730afd2d24c9faed546d13ed680bf1b1fe6700ff735edb9b59df77f",
+      "passed": 310,
+      "skipped": 0
+    },
+    "completion_queue": {
+      "output_sha256": "ac9c0a832cda96b2a04c436e1ba2cfe110900eb825b9b05bc278ca5ac7944e6e",
+      "passed": 232,
+      "skipped": 0
+    },
+    "installed_checkout": {
+      "completed_at_utc": "2026-10-12T22:56:36.997141+00:00",
+      "exit_code": 0,
+      "manifest_sha256": "254ef1534d8d1d80b35d466581973639844972767707fd58cee8f962bf0cfcf9",
+      "output_sha256": "8114e34af7efc72f7004b5b85002560103ba705c6339ba20517b2157100410ff",
+      "passed": 232,
+      "skipped": 0,
+      "started_at_utc": "2026-10-12T22:55:42.276283+00:00",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    "publication_candidate": {
+      "output_sha256": "9ca479302b92c3df9d91deb33a325ead760f9b9ceba9d69b5e84d5afebb0a13b",
+      "passed": 232,
+      "skipped": 0
+    }
+  }
+}
