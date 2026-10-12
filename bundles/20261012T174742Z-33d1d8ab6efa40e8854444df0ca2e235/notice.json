@@ -1,0 +1,93 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T174021Z-ec7f5124acb34eef807fbca5cb7245c4",
+  "change_id": "20261012T174021Z-ec7f5124acb34eef807fbca5cb7245c4",
+  "commit_sha": "878fa8b91bc7811aa3f3e01c08f5c9e8f1c02189",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-live-readiness.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/account_gameplan/execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime_compatibility.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/horizon_broker.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_account_gameplan_authority.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_account_gameplan_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_runtime_compatibility.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_stock_horizon_broker.py"
+    }
+  ],
+  "limitations": [
+    "One bounded, human-authorized, read-only existing-account order-history request verified the original timestamp during live debugging. No agent order, cancellation, trader restart or control change occurred. Raw account/order evidence remains local.",
+    "All automated verification uses offline temporary fixtures with network access prohibited; it does not establish actual runtime recovery or investment performance.",
+    "The live 15m worker is still running old code until a human manual stop and later restart. Both affected execution workers must be verified absent before local installation; do not replace their imported source underneath them.",
+    "Prior whole-second normalized fill records alone do not establish original wire precision. Ordinary broker recovery must supply fresh original timestamp provenance; no database rewrite or inferred backfill is permitted.",
+    "Main integration remains dependent on the reviewed PR75/PR74/PR70 source lineage. Never overwrite conflicting dependencies.",
+    "Pinned offline verifier uses PYTHONSAFEPATH=1 to avoid sibling requests.py shadowing; network and exact import checks remain active."
+  ],
+  "peer_action": "Review/adopt coherent shared source under standing authority while preserving active workers, private bindings and Scout shadow operation. Source installation and loaded runtime remain separate. Do not enable Scout live trading or restart production workers.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/76",
+  "remote_sha": "878fa8b91bc7811aa3f3e01c08f5c9e8f1c02189",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "After coherent human manual reload, fresh exact broker evidence can reconcile same-second fills without changing any original fill. Affected source remains uninstalled while execution workers are active. Publication does not restart workers, change controls, cancel resting orders or authorize Scout live trading.",
+  "scope": "Shared Atlas/Scout; Scout remains shadow-only.",
+  "summary": "Reconcile exact broker fills with recorded whole-second timestamp precision",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T17:43:42.335283Z",
+      "output_sha256": "be662a1fd9ca3af77fd2af5da30358029e296fb9542374873553fdca6ecd9614",
+      "started_at_utc": "2026-10-12T17:42:22.311276Z",
+      "summary": "414 passed in 78.40s (0:01:18); zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

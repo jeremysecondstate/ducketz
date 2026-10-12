@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T17:47:42.553653Z",
+  "id": "20261012T174742Z-33d1d8ab6efa40e8854444df0ca2e235",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reconcile exact broker fills with recorded whole-second timestamp precision"
+}
