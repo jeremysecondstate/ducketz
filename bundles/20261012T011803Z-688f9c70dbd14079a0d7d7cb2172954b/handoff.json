@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T01:18:03.832142Z",
+  "id": "20261012T011803Z-688f9c70dbd14079a0d7d7cb2172954b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas reviewed and reused Scout Loop B research; native daily timing corrected in draft PR 65"
+}

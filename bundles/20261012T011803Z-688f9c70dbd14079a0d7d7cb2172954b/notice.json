@@ -1,0 +1,35 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T011445Z-688ae07049f849c585129f29e48a9e1c",
+  "change_id": "20261012T011445Z-688ae07049f849c585129f29e48a9e1c",
+  "commit_sha": "92d7fb55367c882a87b28a147abc8cfb893eb58d",
+  "details": [
+    "Native Databento ohlcv-1d covers UTC dates; semantic v2 uses next UTC midnight plus five minutes instead of regular-session close. Daily comparison keys distinguish UTC/session composition.",
+    "Exclusive protection boundary and explicit train/validation purge receipts improve frozen research integrity; no-fold comparisons are explicitly inconclusive.",
+    "Atlas owns these narrow reviewed refinements over Scout's candidate. Each PC independently verifies provenance and protected periods before any separately authorized experiment."
+  ],
+  "files": [
+    "ml/loop_b_research.py",
+    "ml/loop_b_research_features.py",
+    "tests/test_loop_b_research.py",
+    "tests/test_loop_b_research_features.py",
+    "docs/development/loop-b-feature-research.md"
+  ],
+  "limitations": [
+    "Historical model-directory identity is not a pinned model-manifest receipt; reconciled membership is not original saved fit IDs.",
+    "Corporate-action provenance, delayed source timing and temporal uncertainty require independent local review.",
+    "No private report or detailed experiment results exported."
+  ],
+  "predecessor": "Scout PR 64 reviewed candidate 6b14d260e4c778c6f5c1146755907a0c82408faa; implementation and tests reused, no peer branch mutation.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/65",
+  "remote_sha": "92d7fb55367c882a87b28a147abc8cfb893eb58d",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No production registry/default/target/task/canonical-state changes. Not merged, promoted, or runtime-deployed. The current human request authorizes research and source PR publication only.",
+  "scope": "shared research-only source; per-PC private datasets and outcomes excluded",
+  "summary": "Atlas reviewed and reused Scout Loop B research; native daily timing corrected in draft PR 65",
+  "tests": {
+    "evidence": "Installed immutable queue and isolated verification bind complete source/dependency hashes and actual timestamps; exact remote SHA readback succeeded.",
+    "result": "35 passed, 1 skipped in queue and fresh isolated candidate checks",
+    "skip": "Windows symlink privilege unavailable"
+  }
+}
