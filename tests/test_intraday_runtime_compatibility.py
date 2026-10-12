@@ -105,6 +105,30 @@ def test_old_loaded_account_authority_cannot_pass_updated_disk(monkeypatch):
     assert result["reason_codes"]==["LOADED_GAMEPLAN_CODE_DIFFERS_FROM_REVIEWED_SOURCE"]
 
 
+@pytest.mark.parametrize("component", ["timestamp_validator", "broker_fill_parser", "gameplan_evidence_bridge"])
+def test_loaded_fill_time_logic_must_match_reviewed_source(monkeypatch, component):
+    from ml.stock_trader import horizon_broker, horizon_ledger
+    status, lock, process = inputs()
+    if component == "timestamp_validator":
+        from ml.account_gameplan import authority
+        legacy_validator = lambda *a, **k: (None, frozenset())
+        # A coherent old loaded helper in all adapters still cannot use newer disk code as proof.
+        monkeypatch.setattr(horizon_ledger, "validate_fill_time_provenance", legacy_validator)
+        monkeypatch.setattr(horizon_broker, "validate_fill_time_provenance", legacy_validator)
+        monkeypatch.setattr(authority, "validate_fill_time_provenance", legacy_validator)
+    elif component == "broker_fill_parser":
+        monkeypatch.setattr(horizon_broker, "_fills", lambda *a, **k: ())
+    else:
+        from ml.account_gameplan.execution import AccountExecutionContext
+        monkeypatch.setattr(AccountExecutionContext, "_reconcile", lambda *a, **k: None)
+    status["last_cycle"]["intraday_runtime_compatibility"] = compatibility.emit_loaded_attestation(
+        vars(runtime), HorizonLedger, observed_at=instant(NOW)-timedelta(seconds=2),
+        session_managed=True, pid=PID, process_created_at=BIRTH)
+    result = verify(status, lock, process)
+    assert not result["ready"]
+    assert result["reason_codes"] == ["LOADED_GAMEPLAN_CODE_DIFFERS_FROM_REVIEWED_SOURCE"]
+
+
 @pytest.mark.parametrize("change,reason", [
     ("missing_proof","LOADED_GAMEPLAN_COMPATIBILITY_PROOF_REQUIRED"),
     ("proof_pid","LOADED_PROOF_SESSION_OR_TIME_MISMATCH"),

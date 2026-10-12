@@ -57,6 +57,7 @@ class OrderEvidence:
     fills: tuple[FillEvidence, ...] = ()
     broker_status: str | None = None
     broker_status_description: str | None = None
+    fill_time_provenance: Mapping[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -161,6 +162,45 @@ def _utc(value: object) -> str:
     if parsed.tzinfo is None:
         raise LedgerError("Evidence timestamps must include a timezone")
     return parsed.astimezone(timezone.utc).isoformat()
+
+
+def validate_fill_time_provenance(provenance, fills):
+    """Validate original wire timestamps without changing immutable fill cores.
+
+    Only explicit whole-second wire strings identify a represented second.
+    A normalized zero microsecond value cannot establish that precision: the
+    original ``.000`` string is still fractional. Missing metadata keeps the
+    strict legacy timestamp interpretation.
+    """
+    if provenance is None:
+        return None, frozenset()
+    if (not isinstance(provenance, Mapping) or set(provenance) != {"version", "fills"}
+            or provenance["version"] != "schwab-execution-time-v1"
+            or not isinstance(provenance["fills"], Mapping)):
+        raise LedgerError("FILL_TIME_PROVENANCE_INVALID")
+    identities = [fill.fill_id for fill in fills]
+    if (any(not isinstance(identity, str) or not identity for identity in identities)
+            or len(set(identities)) != len(identities)
+            or set(provenance["fills"]) != set(identities)):
+        raise LedgerError("FILL_TIME_PROVENANCE_INVALID")
+    validated, whole_seconds = {}, set()
+    for fill in fills:
+        item = provenance["fills"][fill.fill_id]
+        if (not isinstance(item, Mapping) or set(item) != {"raw_timestamp", "source_field"}
+                or not isinstance(item["source_field"], str)
+                or item["source_field"] not in {"execution_leg.time", "execution_leg.executionTime",
+                    "activity.executionTime", "activity.time"}):
+            raise LedgerError("FILL_TIME_PROVENANCE_INVALID")
+        raw = item["raw_timestamp"]
+        if (not isinstance(raw, str) or re.fullmatch(
+                r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.,]\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})", raw) is None):
+            raise LedgerError("FILL_TIME_PROVENANCE_INVALID")
+        if _utc(raw) != _utc(fill.executed_at):
+            raise LedgerError("FILL_TIME_PROVENANCE_DOES_NOT_MATCH_FILL")
+        validated[fill.fill_id] = {"raw_timestamp": raw, "source_field": item["source_field"]}
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})", raw):
+            whole_seconds.add(fill.fill_id)
+    return {"version": "schwab-execution-time-v1", "fills": validated}, frozenset(whole_seconds)
 
 
 def _number(value: object, *, positive: bool = False) -> Decimal:
@@ -863,6 +903,11 @@ class HorizonLedger:
             raise LedgerError("Unsupported broker order status")
         order = self._reservation(db, evidence.reservation_id)
         payload = asdict(evidence)
+        provenance, _ = validate_fill_time_provenance(evidence.fill_time_provenance, evidence.fills)
+        if provenance is None:
+            payload.pop("fill_time_provenance")
+        else:
+            payload["fill_time_provenance"] = provenance
         if evidence.broker_status_description is None:
             # Keep old normalized evidence byte-identical when no new broker
             # detail is present; never manufacture or backfill a reason.

@@ -190,7 +190,8 @@ class IntradayAccountExecutor:
             self.authority.reconcile(self.lease.token, OrderEvidence(observed.evidence_id, record["reservation_id"],
                 observed.account_fingerprint, observed.broker_order_id, observed.observed_at, observed.status,
                 observed.order_quantity, observed.cumulative_filled_quantity, observed.remaining_quantity,
-                tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True))
+                tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True,
+                fill_time_provenance=observed.fill_time_provenance))
         if not reconciliation.ready:
             raise ContractError("Native account reconciliation: " + ",".join(reconciliation.reasons))
         accounted = {r["broker_order_id"]:r["filled_quantity"] for r in self.authority.read_state()["reservations"]

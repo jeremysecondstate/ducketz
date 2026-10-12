@@ -299,3 +299,50 @@ def test_external_pending_buy_is_account_wide_and_conservatively_valued():
     row, = execution._broker_pending(portfolio)
     assert row.symbol == "OTHER" and Decimal(row.exposure_reserved) == Decimal("20.02")
 
+
+def test_gameplan_propagates_original_fill_precision_and_recovers_native_terminal_lag(account_env):
+    from ml.stock_trader.horizon_broker import normalize_order_evidence
+    from test_stock_horizon_broker import precision_order
+
+    env = account_env
+    env.now += pd.Timedelta(microseconds=28_841)
+    assert run(env).submitted_orders == 2
+    ledger = native(env)
+    authority_store = authority.AccountAuthority(env.root / execution.AUTHORITY_PATH, execution._binding(env.config))
+    with authority_store._transaction() as db:
+        created = {json.loads(row[0])["native_reservation_id"]: row[1]
+                   for row in db.execute("SELECT request,created FROM reservations")}
+    env.now += pd.Timedelta(seconds=2)
+    old, fresh = [], []
+    for reservation in ledger.snapshot().reservations:
+        when = pd.Timestamp(created[reservation.reservation_id])
+        assert when.microsecond > 0
+        raw = precision_order(reservation, when.floor("s").strftime("%Y-%m-%dT%H:%M:%S+0000"))
+        observed = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=env.now.isoformat())
+        old.append(replace(observed, fill_time_provenance=None))
+        fresh.append(observed)
+        env.held[reservation.symbol] = reservation.quantity
+    assert ledger.reconcile(PortfolioEvidence("native-fills-before-authority", ACCOUNT, env.now.isoformat(), env.held,
+        dict.fromkeys(SYMBOLS, 100.), dict.fromkeys(SYMBOLS, 15_000.), "offline-lag-fixture"), order_evidence=tuple(old)).ready
+    assert all(row.status == "FILLED" for row in ledger.snapshot().reservations)
+    assert all(row["status"] == "SUBMITTED" for row in state(env)["reservations"])
+    with ledger._transaction() as db:
+        prior_fills = [tuple(row) for row in db.execute("SELECT id,reservation,quantity,price,executed_at FROM fills ORDER BY id")]
+        prior_evidence = {row.evidence_id: db.execute("SELECT payload FROM evidence WHERE id=?", (row.evidence_id,)).fetchone()[0]
+                          for row in old}
+    env.now += pd.Timedelta(seconds=1)
+    env.order_evidence = tuple(replace(row, evidence_id=row.evidence_id + "-fresh", observed_at=env.now.isoformat()) for row in fresh)
+    result = run(env)
+    assert result.error is None and result.submitted_orders == 0, result.error
+    assert len(env.broker.submissions) == 2 and not env.broker.cancellations
+    assert all(row["status"] == "FILLED" for row in state(env)["reservations"])
+    with ledger._transaction() as db:
+        assert [tuple(row) for row in db.execute("SELECT id,reservation,quantity,price,executed_at FROM fills ORDER BY id")] == prior_fills
+        assert all(db.execute("SELECT payload FROM evidence WHERE id=?", (key,)).fetchone()[0] == value
+                   for key, value in prior_evidence.items())
+    with authority_store._transaction() as db:
+        recorded = [json.loads(row[0]) for row in db.execute("SELECT payload FROM order_evidence")]
+        assert len(recorded) == 2 and all(row["fill_time_provenance"] for row in recorded)
+    env.now += pd.Timedelta(seconds=1)
+    assert run(env).submitted_orders == 0 and len(env.broker.submissions) == 2
+

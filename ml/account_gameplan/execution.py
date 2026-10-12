@@ -144,7 +144,8 @@ class AccountExecutionContext:
             self.authority.reconcile(self.lease.token,OrderEvidence(
                 observed.evidence_id,record["reservation_id"],observed.account_fingerprint,observed.broker_order_id,
                 observed.observed_at,observed.status,observed.order_quantity,observed.cumulative_filled_quantity,
-                observed.remaining_quantity,tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills),complete=True))
+                observed.remaining_quantity,tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills),
+                complete=True,fill_time_provenance=observed.fill_time_provenance))
 
     def _snapshot(self, policy):
         portfolio = self.portfolio

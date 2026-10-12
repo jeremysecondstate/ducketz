@@ -262,3 +262,45 @@ retained. Only a stopped Gameplan session entrypoint is eligible for local
 installation of this repair. Active 15m-imported code, trading controls,
 schedules, ledgers and resting orders are unchanged. A later human Gameplan
 relaunch and observed lock contention are separate runtime verification steps.
+
+## Broker execution timestamp precision and observed availability
+
+The first manual run also exposed an exact-ID reconciliation boundary: an
+original broker execution timestamp had whole-second precision, while the local
+reservation used microseconds. The normalized fill appeared 28.841 milliseconds
+before that reservation. The price and observation-time checks passed. A bounded,
+read-only request through the existing authorized account connection confirmed
+the original wire timestamp; no order was submitted or cancelled by that diagnostic.
+
+The repair retains the original raw timestamp and its selected execution-leg or
+activity field in versioned `fill_time_provenance` on new order evidence. The
+original executed time, fill identity, quantity and price remain unchanged. The
+native and account ledgers append the new observation; existing evidence and the
+four-field fill records are not rewritten. Evidence without this provenance keeps
+the original strict time check. A raw fractional timestamp, including `.000`, is
+not inferred to have whole-second precision merely because normalization removes
+trailing zeros.
+
+Only a verified original whole-second timestamp can represent the interval from
+that second up to, but excluding, the next second. That interval must overlap the
+reservation's creation time. An earlier second, a timestamp after observation,
+a changed fill, mismatched identity, unbalanced quantities or a price outside the
+order limit still fails. Both the Gameplan and 15m account adapters carry the
+provenance, and loaded-code compatibility includes the new validation path. This
+is a precision rule, with no configurable clock-skew tolerance.
+
+These shared execution files require a coherent manual reload. Publish and test
+first; verify both affected workers are stopped before local installation. The
+human then starts Gameplan, waits for genuine loaded-code evidence, and starts
+15m. Resting broker orders keep their identities and are reconciled on recovery;
+a stopped process does not imply that its orders were cancelled. No live database
+patch, replacement forecast or resubmission is used to repair accounting.
+
+Observed data latency is also material: the required 10:00-10:15 Pacific interval
+was outside the provider's advertised schema coverage until approximately 10:21.
+The first saved complete response arrived at 10:21:15, 6 minutes 15 seconds after
+candle close. All eleven first-cycle outcomes subsequently scored through normal
+recovery: seven observed and four with explicitly synthetic constituents. This
+is evidence of acquisition/scoring recovery, not predictive accuracy. The next
+forecasting cycle resumed without weakening no-trade confirmation. The candidate
+30-second acquisition offset is therefore not proof that data is already ready.

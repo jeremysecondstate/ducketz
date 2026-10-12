@@ -27,10 +27,13 @@ REQUIRED_CODE = {
         "run_independent_stock_trader_once", "_cancel_expired_entries", "_exit_decisions",
         "_StreamCompatibleStockTraderRunResult.to_dict"),
     "ml/stock_trader/horizon_ledger.py": (
+        "validate_fill_time_provenance",
         "HorizonLedger._reservation", "HorizonLedger.snapshot", "HorizonLedger.due_exits",
         "HorizonLedger._snapshot", "HorizonLedger._stream", "HorizonLedger._intraday_share_accounting",
         "HorizonLedger._apply_order", "HorizonLedger._attribute_intraday_fills", "HorizonLedger._close_empty_allocations",
         "HorizonLedger.reservation_stream", "HorizonLedger.allocation_stream", "HorizonLedger.reserve_stream_cancellation"),
+    "ml/stock_trader/horizon_broker.py": (
+        "_fills", "normalize_order_evidence", "capture_order_evidence"),
     "ml/intraday/cancellation.py": (
         "reservation_stream", "allocation_stream", "gameplan_reservation", "gameplan_allocation"),
     "ml/account_gameplan/authority.py": (
@@ -40,6 +43,7 @@ REQUIRED_CODE = {
         "AccountAuthority._submission_receipt_value", "AccountAuthority.submission_receipt",
         "AccountAuthority._record_submission_receipt", "AccountAuthority._recover_submission_receipts",
         "AccountAuthority.recover_submission_receipts"),
+    "ml/account_gameplan/execution.py": ("AccountExecutionContext._reconcile",),
 }
 
 
@@ -104,6 +108,14 @@ def expected_fingerprints(repository):
 def _actual_functions(runtime_namespace, ledger_class):
     from . import cancellation
     from ml.account_gameplan.authority import AccountAuthority
+    from ml.account_gameplan.execution import AccountExecutionContext
+    from ml.stock_trader import horizon_broker
+    # Resolve the function used by the loaded native class, including its bound
+    # module globals; a fresh imported name alone cannot prove an old caller.
+    validator = ledger_class._apply_order.__globals__["validate_fill_time_provenance"]
+    if (code_fingerprint(validator) != code_fingerprint(AccountAuthority.reconcile.__globals__["validate_fill_time_provenance"])
+            or code_fingerprint(validator) != code_fingerprint(horizon_broker.normalize_order_evidence.__globals__["validate_fill_time_provenance"])):
+        raise ValueError("Loaded fill-time validators differ")
     output = {}
     for relative, names in REQUIRED_CODE.items():
         for qualified in names:
@@ -111,9 +123,13 @@ def _actual_functions(runtime_namespace, ledger_class):
             if relative.endswith("independent_runtime.py"):
                 value = runtime_namespace[parts[0]]
             elif relative.endswith("horizon_ledger.py"):
-                value = ledger_class
+                value = ledger_class if len(parts) > 1 else ledger_class._apply_order.__globals__[parts[0]]
+            elif relative.endswith("horizon_broker.py"):
+                value = getattr(horizon_broker, parts[0])
             elif relative.endswith("authority.py"):
                 value = AccountAuthority
+            elif relative.endswith("account_gameplan/execution.py"):
+                value = AccountExecutionContext
             else:
                 value = getattr(cancellation, parts[0])
             for name in parts[1:]:
