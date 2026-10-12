@@ -1,0 +1,189 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T103137Z-09d6f40a4fa14c56a8e3b83f0ad0ebd1",
+  "change_id": "20261012T103137Z-09d6f40a4fa14c56a8e3b83f0ad0ebd1",
+  "commit_sha": "e9b1b0a99624c38211d90c3c6c2f8ab00842d337",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/evaluation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_store.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_evaluation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/ducket_bucket.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_ui.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/telemetry.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_telemetry.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/__init__.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prediction.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/prototype.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_prediction.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_execution.py"
+    }
+  ],
+  "implementation": "Fully retrain all ten enabled models every fifteen minutes on all available compatible history; independently publish symbols, immutable forecasts, append-only scoring, read-only persisted-results UI. Confirmed synthetic no-trade outcomes included with separate breakdowns.",
+  "limitations": [
+    "Focused offline checks plus separately measured historical research; not trained-model performance proof.",
+    "Historical availability is assumed; live publication offset, Gameplan coexistence and actual Scout monitoring remain unverified.",
+    "Session edges, eventual resource and incomplete-ensemble handling, sizing and distributed execution policies remain open.",
+    "No multi-year local coverage or neural architecture adapters; no raw data, fitted models or private state published."
+  ],
+  "measurements": {
+    "caveat": "Selected research runs are timing evidence, not predictive-performance evidence. No running-Gameplan coexistence or live availability-offset measurement.",
+    "cold_total_seconds": 102.813,
+    "data_source": "EQUS.MINI single-source native minute history, May-October 2026; historical availability assumed",
+    "final_full_run_seconds": 39.814,
+    "fresh_fits_in_full_runs": 660,
+    "full_eleven_symbol_runs": 6,
+    "missing_targets": 35,
+    "persisted_forecasts": 75,
+    "prepared_history_total_seconds_range": [
+      38.417,
+      48.317
+    ],
+    "scored_observed": 40
+  },
+  "peer_follow_up": "Scout reviews exact source/dependencies, applies under October 9 standing local authority, verifies own existing symbol binding/dependencies/coverage, runs local research and exchanges reviewed sanitized telemetry for actual remote-freshness verification. Draft PR status is not an installation blocker. No production worker restart, trading enablement, live schedule change or raw/private artifacts authorized by this handoff.",
+  "prior_completion_record": "20261012T102624Z-57c3000b1e074c1d8bbfc8cb28779d92",
+  "prior_source_sha": "9278a89b7173e989ea206e2e60aa3c7320477469",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/67",
+  "remote_sha": "e9b1b0a99624c38211d90c3c6c2f8ab00842d337",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source and read-only tab require separately recorded local loading; no production restart, live schedule change, broker submission or main merge performed.",
+  "scope": "Shared Atlas/Scout source; each PC retains current symbol ownership, authority, local datastore, private configuration, task identities and receipts.",
+  "summary": "Atlas full-retrain intraday ensemble prototype: exact reviewed source, measured eleven-symbol workload and Scout adoption/monitoring handoff",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T10:38:12.424995Z",
+      "output_sha256": "47c9f60076a77f6d9dff0edb54b2f9080f7d630744c41a48b01fd90ed32722b4",
+      "started_at_utc": "2026-10-12T10:37:58.693965Z",
+      "summary": "139 passed, 18 dependency warnings, no skips; focused network-disabled isolated checks",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
