@@ -1,0 +1,62 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T130003Z-8036c30bb6cf403f9ead7498de787f4f",
+  "change_id": "20261012T130003Z-8036c30bb6cf403f9ead7498de787f4f",
+  "commit_sha": "16c1ab5b6b9f19f9f56f17fbea2ee69c2b755d0b",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_execution_policy.py"
+    }
+  ],
+  "human_clarifications": [
+    "Each symbol has its own causal technical-indicator sizing calculus including EMA, SMA, RSI, Bollinger Bands and oscillators; cadence remains fifteen minutes.",
+    "Replace prior unfilled intention when a new fifteen-minute forecast arrives only after confirmed cancellation/status and intervening fills.",
+    "16:45 Pacific is a strict new-submission cutoff, including replacements, not a final cycle whose orders may arrive later."
+  ],
+  "limitations": [
+    "Policy functions inspect offline snapshots only and are not connected to the mock executor or live broker path.",
+    "Per-symbol indicator score recipes, reference bindings, rounding edge policies, shared live reservation integration, donor sizing and repricing remain incomplete.",
+    "The strict submission cutoff does not define final intraday or next-session prediction targets or require cancellation of all resting orders.",
+    "Offline checks establish mechanics, not training performance, active-session resource contention or live execution readiness."
+  ],
+  "parent_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/69",
+  "peer_action": "Review and adopt the exact five-path follow-up under standing local authority, preserving Scout shadow operation, local symbols and private state. Do not enable live trading or restart production workers. The helper is offline only; sizing recipe and shared live execution integration remain incomplete.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/72",
+  "remote_sha": "16c1ab5b6b9f19f9f56f17fbea2ee69c2b755d0b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No live order, provider request, research process start, Gameplan change, production worker restart, live schedule/binding change or source main integration. Human-operated live launcher remains future integration.",
+  "scope": "Shared Atlas and Scout design and offline execution planning; current operating bindings preserved.",
+  "summary": "Record symbol-specific intraday sizing and enforce settled offline execution policies",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T13:01:34.517546Z",
+      "output_sha256": "cba94db2ed505a356b0709955114d5de9e125818df1ad18442272e3393a764d4",
+      "started_at_utc": "2026-10-12T13:01:17.949095Z",
+      "summary": "218 passed, 18 warnings in 15.07s; zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

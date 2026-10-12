@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T13:03:09.333284Z",
+  "id": "20261012T130309Z-7a3b18c219344ddca48f5c431b1a6b02",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Record symbol-specific intraday sizing and enforce settled offline execution policies"
+}
