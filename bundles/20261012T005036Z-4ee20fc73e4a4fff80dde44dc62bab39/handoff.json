@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T00:50:36.631581Z",
+  "id": "20261012T005036Z-4ee20fc73e4a4fff80dde44dc62bab39",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed a reusable isolated causal OHLCV research implementation for independent peer evaluation."
+}

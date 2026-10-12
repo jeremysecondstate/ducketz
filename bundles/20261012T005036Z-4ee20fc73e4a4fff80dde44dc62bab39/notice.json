@@ -1,0 +1,32 @@
+{
+  "author": "Scout",
+  "change_id": "20261012T004655Z-7fa7bf8271a74de9a92620b5f640fcfc",
+  "files": [
+    "ml/loop_b_research.py",
+    "ml/loop_b_research_features.py",
+    "tests/test_loop_b_research.py",
+    "tests/test_loop_b_research_features.py",
+    "docs/development/loop-b-feature-research.md"
+  ],
+  "limitations": [
+    "Only reusable source, synthetic tests and portable documentation are shared. Private datasets, models, reports and detailed experiment evidence remain local.",
+    "Approximate temporal uncertainty and historical membership provenance require local review.",
+    "Draft PR is prepared on verified current main; no main merge or runtime deployment performed."
+  ],
+  "peer_applicability": "Reuse reviewed portable implementation and tests; independently establish local data, native provenance, reference run and protected exclusions. No peer evidence or operating state is substituted.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/64",
+  "repository": "jeremysecondstate/ducketz",
+  "review_candidate_branch": "codex/scout/20261012T004655Z-7fa7bf8271a74de9a92620b5f640fcfc-main-review",
+  "review_candidate_sha": "6b14d260e4c778c6f5c1146755907a0c82408faa",
+  "runtime_implications": "Research-only quarantined features; no production registry, defaults, target definitions, tasks, canonical predictions or model promotion changed.",
+  "scope": "shared",
+  "source_branch": "codex/scout/20261012T004655Z-7fa7bf8271a74de9a92620b5f640fcfc",
+  "source_sha": "e9c491976445aa7546d849e2b06bd6b22b484619",
+  "summary": "Scout completed a reusable isolated causal OHLCV research implementation for independent peer evaluation.",
+  "tests": {
+    "command": "python -B -m pytest tests/test_loop_b_research_features.py tests/test_loop_b_research.py -q -p no:cacheprovider",
+    "result": "31 passed, 1 Windows symlink-privilege skip",
+    "review_candidate_tests_completed_utc": "2026-10-12T00:49:05.421277Z",
+    "source_isolated_completed_utc": "2026-10-12T00:47:47.674449Z"
+  }
+}
