@@ -213,11 +213,12 @@ Legacy fixtures remain available for their historical contracts; they do not
 override these later policies. Exact final-source results accompany the source
 handoff rather than being inferred from earlier test counts.
 
-No live fitting/acquisition/acceptance timing or completed real trade was
-measured for this change. Prior October 12 research timings are retained in the
+At the original manual-account implementation checkpoint, no live
+fitting/acquisition/acceptance timing or completed real trade had been measured.
+Prior October 12 research timings are retained in the
 [prototype record](intraday-15m-prototype.md#measured-atlas-research-runs-october-12-2026).
-Active-session resource contention and a useful live publication offset still
-need measurement after an authorized human launch. Realized P&L is not inferred
+Later human-started observations appear below; a useful publication offset
+still requires more measurement. Realized P&L is not inferred
 from intentions or fills without complete accounting.
 
 The final-information and next-eligible-session 04:00 reference/target and
@@ -304,3 +305,50 @@ recovery: seven observed and four with explicitly synthetic constituents. This
 is evidence of acquisition/scoring recovery, not predictive accuracy. The next
 forecasting cycle resumed without weakening no-trade confirmation. The candidate
 30-second acquisition offset is therefore not proof that data is already ready.
+
+## Ready snapshot timing and delayed predecessor recovery
+
+Following the human reloads, Gameplan recovered normally from observed shared
+lock contention. It later reported `Pending buy exposure has no usable current
+quote`, temporarily becoming degraded and blocking 15m execution through the
+existing compatibility gate. It subsequently recovered on its own. The saved
+capture contained admitted prices for all configured symbols, but not the raw
+per-quote timestamps; the exact live offending time difference is unavailable.
+
+An offline reproduction identifies a concrete timing defect: a valid pending
+BUY quote timestamp can occur during a request, later than the snapshot's
+request-start timestamp. The repaired Gameplan adapter checks original capture
+age, completes account identity verification, and records actual information
+readiness. Its audit envelope retains request start, original observed time,
+original fingerprint and validation time. Quotes retain their own timestamps.
+Existing future, stale, missing, crossed-price and identity guards remain.
+
+The restarted 15m session's first pass saved eight complete ten-model ensembles
+in 300.682 seconds. Three symbols failed before training because their reference
+needed an adjacent verified predecessor for no-trade constituents. Same-source
+predecessor observations arrived later. Strict continuity refusal was correct;
+abandoning recovery for that reference was the defect.
+
+The live recovery loop now keeps pending references, performs bounded passes,
+and refreshes causally available same-source predecessor evidence before a new
+exact-interval response. Covered repeated leading omissions may trigger a
+bounded request for an absent same-source predecessor inside the same session.
+Newly due quarter-hour work takes priority. Durable
+cycle evidence restores pending work within the same manual session, with no
+retry-count ceiling. Already issued symbols are not overwritten or retrained.
+Recovered forecasts retain their original targets and actual issue times;
+late predictions are saved and scored but remain ineligible for live orders.
+Recovery of an older quarter is also scoring-only once newer quarter-hour
+work has begun, even while the older target is still in the future.
+Shadow/live cycle totals and overrun flags count wall time including waits
+between passes; cumulative attempt work remains separately measured. A long
+provider wait cannot be presented as a cycle that met the 15m interval merely
+because fitting itself was fast.
+
+Verification uses injected offline clocks, providers and brokers. No diagnostic
+provider/broker requests, extra training runs, order actions or control changes
+were made for this repair. It is developed and reviewed in isolation while
+workers run. Both affected workers must be absent before local installation;
+the human then reloads Gameplan, obtains genuine loaded-code evidence and
+starts 15m. Publication, installation and verified runtime recovery remain
+separate facts. Scout remains shadow-only.

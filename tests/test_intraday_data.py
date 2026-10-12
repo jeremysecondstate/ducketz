@@ -980,3 +980,53 @@ def test_indefinite_wrapper_retries_exact_interval_with_responsive_sleeps(tmp_pa
         previous=None,clock=lambda:now[0].isoformat(),sleep=sleep)
     assert result["status"] == "observed" and len(calls) == 3
     assert len(set(calls)) == 1 and waits == [4,4]
+
+
+@pytest.mark.parametrize("prior", [None, "nonadjacent"])
+def test_bounded_confirmed_no_trade_missing_predecessor_remains_pending(tmp_path,monkeypatch,prior):
+    from ml.intraday import data
+    now=[pd.Timestamp("2026-05-11T15:00:00Z")]
+    calls=[]
+    def fetch(provider,**kwargs):
+        calls.append(kwargs["opened_at"])
+        return _bounded_attempt(provider,**kwargs,empty=True)
+    monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
+    previous=None if prior is None else candles(1).iloc[0].to_dict()
+    if previous is not None:
+        previous["source_id"]="databento:EQUS.MINI:ohlcv-1m"
+    kwargs=dict(symbol="AAPL",opened_at="2026-05-11T14:00:00Z",journal=AcquisitionJournal(tmp_path/"pending.sqlite3"),
+                session=bounds(),previous=previous,clock=lambda:now[0].isoformat())
+    provider=SimpleNamespace(dataset="EQUS.MINI")
+    assert data.recover_databento_candle_step(provider,**kwargs)["reason"]=="unconfirmed_no_trade_constituent"
+    now[0]+=pd.Timedelta(seconds=4)
+    result=data.recover_databento_candle_step(provider,**kwargs)
+    assert result["status"]=="retry" and result["data_status"]=="missing" and result["candle"] is None
+    assert result["reason"]==("no_prior_known_price" if prior is None else "unverified_prior_price_continuity")
+    assert result["retry_after_seconds"]==4 and len(calls)==2
+
+
+def test_later_prior_cannot_backdate_cached_response_or_bypass_exact_wait(tmp_path,monkeypatch):
+    from ml.intraday import data
+    now=[pd.Timestamp("2026-05-11T15:00:00Z")]
+    provider=SimpleNamespace(dataset="EQUS.MINI")
+    calls=[]
+    def fetch(provider,**kwargs):
+        calls.append(kwargs["attempt_id"])
+        return _bounded_attempt(provider,**kwargs,empty=True)
+    monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
+    kwargs=dict(symbol="AAPL",opened_at="2026-05-11T14:00:00Z",journal=AcquisitionJournal(tmp_path/"late-prior.sqlite3"),
+                session=bounds(),previous=None,clock=lambda:now[0].isoformat())
+    data.recover_databento_candle_step(provider,**kwargs)
+    now[0]+=pd.Timedelta(seconds=4)
+    assert data.recover_databento_candle_step(provider,**kwargs)["reason"]=="no_prior_known_price"
+    prior=candles(1,start="2026-05-11T13:45:00Z").iloc[0].to_dict()
+    prior.update(source_id="databento:EQUS.MINI:ohlcv-1m",available_at=now[0]+pd.Timedelta(seconds=1))
+    kwargs["previous"]=prior
+    now[0]+=pd.Timedelta(seconds=1)
+    assert data.recover_databento_candle_step(provider,**kwargs)["reason"]=="exact_interval_retry_wait"
+    assert len(calls)==2
+    now[0]+=pd.Timedelta(seconds=3)
+    result=data.recover_databento_candle_step(provider,**kwargs)
+    assert result["status"]=="synthetic_no_trade" and len(calls)==3
+    assert pd.Timestamp(result["candle"]["available_at"])==now[0]
+    assert result["candle"]["open"]==prior["close"]

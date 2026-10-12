@@ -339,6 +339,49 @@ def test_operations_displays_newest_received_cycle_independent_of_packet_order(t
     assert values[3] == "partial_failure"
 
 
+@pytest.mark.parametrize("source", ["local", "remote"])
+@pytest.mark.parametrize("scope", [None, "cumulative_attempt_work", "wall_elapsed_with_cumulative_attempt_work_v1"])
+def test_operations_retains_saved_timing_scope_and_work_wall_evidence(tmp_path, monkeypatch, source, scope):
+    from types import SimpleNamespace
+    from test_intraday_telemetry import source_store
+    from app.ui import intraday
+    from ml.intraday.telemetry import export_packet, import_packet, write_packet
+
+    store, issued = source_store(tmp_path / "atlas.sqlite3")
+    fields = {}
+    if scope is not None:
+        fields = dict(measurement_scope=scope, cumulative_attempt_seconds=14.0,
+            wall_elapsed_seconds=930.0, wall_exceeds_15m=True, wall_overrun_seconds=30.0,
+            total_cycle_seconds=930.0 if scope.startswith("wall_") else 14.0)
+        store.update_cycle(issued["cycle_id"], dict(completed_at="2026-10-12T17:31:00Z", **fields))
+    if source == "remote":
+        packet = export_packet(store.path, producer_pc="Atlas", source_version="timing-release",
+                               produced_at="2026-10-12T17:47:00Z")
+        packet_path = write_packet(packet, tmp_path / "packet.json")
+        receipt = import_packet(packet_path, tmp_path / "receipts", expected_peer="Atlas", local_pc="Scout",
+                                received_at="2026-10-12T17:48:00Z")
+        path = Path(receipt["receipt_path"])
+    else:
+        path = store.path
+    snapshot = load_intraday_snapshot({source: path}, now=NOW, local_pc="Scout" if source == "remote" else "Atlas")
+    assert not snapshot.warnings
+    displayed = {}
+    monkeypatch.setattr(intraday, "_replace", lambda table, rows: displayed.update({table: rows}))
+    view = SimpleNamespace(snapshot=snapshot, pc=SimpleNamespace(get=lambda: "All"),
+        source_dataset=SimpleNamespace(get=lambda: "All"), mode=SimpleNamespace(get=lambda: "shadow"),
+        operation_status=SimpleNamespace(configure=lambda **_: None), cycle_table="cycles",
+        intent_table="intents", visible_rows=())
+    intraday.IntradayTab._render_operations(view)
+    assert len(displayed["cycles"]) == 1
+    evidence = json.loads(displayed["cycles"][0][0][4])
+    if scope is None:
+        assert evidence["total_cycle_seconds"] == 34.0
+        assert not any(key in evidence for key in ("measurement_scope", "cumulative_attempt_seconds",
+            "wall_elapsed_seconds", "wall_exceeds_15m", "wall_overrun_seconds"))
+    else:
+        assert {key: evidence[key] for key in fields} == fields
+
+
 def test_tk_consensus_uses_saved_outputs_and_displays_failed_models(tmp_path):
     import tkinter as tk
     from tkinter import ttk

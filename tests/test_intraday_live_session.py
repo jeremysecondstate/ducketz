@@ -86,9 +86,104 @@ def test_forecasting_start_and_overrun_do_not_trade_a_backlog(tmp_path, monkeypa
         stopped=lambda:len(calls)==2,clock=lambda:times[min(len(calls),1)],pause=lambda n:None)
     assert [c["reference_at"] for c in calls] == [instant("2026-10-12T17:00:00Z"),instant("2026-10-12T17:45:00Z")]
     assert all(c["mode"] == "live" and c["on_published"] == queue.enqueue for c in calls)
+    assert all(c["allow_execution"] and c["retry_symbols"] is None for c in calls)
     with store.connect() as db:
         missed = json.loads(db.execute("SELECT payload FROM events WHERE kind='missed_cycle_boundaries'").fetchone()[0])
     assert missed["missed_count"] == 2
+
+
+def saved_pending_cycle(store,session,reference,*,retryable=True):
+    reference=instant(reference)
+    identity=f"{session}:{reference.isoformat()}"
+    begun=reference+STEP+timedelta(seconds=30)
+    store.begin_cycle(identity,{"pc":"Atlas","symbols":["AAPL"],"reference_at":reference.isoformat(),
+        "mode":"live","experiment":session,"configuration_hash":"fixture","started_at":begun.isoformat(),
+        "training_cutoff":begun.isoformat(),"status":"running"})
+    store.update_cycle(identity,{"status":"partial_failure","completed_at":begun.isoformat(),
+        "failures":{"AAPL":{"type":"AcquisitionPending" if retryable else "ContractError",
+            "retryable":retryable,"retry_at":begun.isoformat(),"reason":"no_prior_known_price"}}})
+    return identity
+
+
+def test_pending_reconstruction_is_same_session_due_data_only(tmp_path):
+    store=ShadowStore(tmp_path/"pending.sqlite3")
+    wanted=saved_pending_cycle(store,"manual","2026-10-12T17:00:00Z")
+    saved_pending_cycle(store,"other-human","2026-10-12T17:00:00Z")
+    saved_pending_cycle(store,"manual","2026-10-12T16:45:00Z",retryable=False)
+    assert [item[0] for item in live_session._pending_cycle_passes(store,"manual","2026-10-12T17:16:00Z")]==[wanted]
+    assert live_session._pending_cycle_passes(store,"manual","2026-10-12T17:15:29Z")==[]
+
+
+def test_crash_after_permanent_failure_event_before_summary_does_not_retry_model(tmp_path):
+    store=ShadowStore(tmp_path/"crash.sqlite3")
+    identity="crash-before-summary"
+    store.begin_cycle(identity,{"pc":"Atlas","symbols":["AAPL","IONQ"],"reference_at":"2026-10-12T17:00:00+00:00",
+        "mode":"live","experiment":"manual","configuration_hash":"fixture",
+        "started_at":"2026-10-12T17:15:30+00:00","status":"running"})
+    store.event(identity,"symbol_failure",{"type":"ContractError","message":"All enabled models failed"},symbol="IONQ")
+    pending=live_session._pending_cycle_passes(store,"manual","2026-10-12T17:16:00Z")
+    assert len(pending)==1 and pending[0][2]==["AAPL"]
+    store.event(identity,"symbol_failure",{"type":"AcquisitionPending","retryable":True,
+        "retry_at":"2026-10-12T17:17:00Z","reason":"unavailable_coverage"},symbol="AAPL")
+    assert live_session._pending_cycle_passes(store,"manual","2026-10-12T17:16:00Z")==[]
+    assert live_session._pending_cycle_passes(store,"manual","2026-10-12T17:17:00Z")[0][2]==["AAPL"]
+
+
+def test_new_quarter_first_then_bounded_old_recovery_survives_lost_cursor_and_never_enqueues(tmp_path,monkeypatch):
+    store=ShadowStore(tmp_path/"fair.sqlite3")
+    old=saved_pending_cycle(store,"manual","2026-10-12T17:00:00Z")
+    queue=live_session.ExecutionQueue(store,"manual")
+    now=[instant("2026-10-12T17:31:00Z")]
+    calls=[]
+    def run(inputs,**kwargs):
+        reference=kwargs["reference_at"]
+        calls.append((reference,kwargs["retry_symbols"],kwargs["allow_execution"]))
+        if reference==instant("2026-10-12T17:00:00Z"):
+            value=forecast(mode="live",cycle_id=old,issued_at=now[0].isoformat(),
+                           execution_blocked_reason="recovered_older_cycle")
+            issued=store.save_forecast(value)
+            kwargs["on_published"](issued)
+            store.update_cycle(old,{"status":"completed","failures":{}})
+            return {"cycle_id":old}
+        identity=saved_pending_cycle(store,"manual",reference)
+        return {"cycle_id":identity}
+    runner=SimpleNamespace(store=store,config=SimpleNamespace(publication_offset_seconds=30),run_cycle=run)
+    monkeypatch.setattr(live_session,"LiveHistories",lambda **kwargs:SimpleNamespace(bounded=kwargs["bounded"]))
+    def pause(seconds):
+        assert seconds==1
+        now[0]+=timedelta(seconds=seconds)
+        if len(calls)==2: now[0]=instant("2026-10-12T17:46:00Z")
+    live_session.forecasting_loop(runner,histories={},provider=object(),journal=object(),queue=queue,
+        stopped=lambda:len(calls)==3,clock=lambda:now[0],pause=pause)
+    assert [row[0] for row in calls]==[instant("2026-10-12T17:15:00Z"),instant("2026-10-12T17:00:00Z"),instant("2026-10-12T17:30:00Z")]
+    assert calls[1][1:]==(["AAPL"],False)
+    assert queue.due(now[0])==[] and len(store.forecasts())==1
+    with store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='forecast_execution_blocked'").fetchone()[0]==1
+        assert db.execute("SELECT COUNT(*) FROM intraday_live_queue").fetchone()[0]==0
+
+
+def test_forecaster_restarts_same_pending_reference_without_lost_memory(tmp_path,monkeypatch):
+    store=ShadowStore(tmp_path/"restart.sqlite3")
+    saved_pending_cycle(store,"manual","2026-10-12T17:00:00Z")
+    calls=[]
+    runner=SimpleNamespace(store=store,config=SimpleNamespace(publication_offset_seconds=30),
+        run_cycle=lambda inputs,**kwargs:calls.append(kwargs))
+    monkeypatch.setattr(live_session,"LiveHistories",lambda **kwargs:object())
+    live_session.forecasting_loop(runner,histories={},provider=object(),journal=object(),
+        queue=SimpleNamespace(session_id="manual",enqueue=lambda _:pytest.fail("No fabricated forecast")),
+        stopped=lambda:bool(calls),clock=lambda:"2026-10-12T17:16:00Z",pause=lambda _:None)
+    assert calls[0]["reference_at"]==instant("2026-10-12T17:00:00Z")
+    assert calls[0]["retry_symbols"]==["AAPL"] and calls[0]["allow_execution"]
+
+
+def test_forecast_with_foreign_cycle_session_cannot_enter_new_human_queue(tmp_path):
+    store=ShadowStore(tmp_path/"foreign.sqlite3")
+    identity=saved_pending_cycle(store,"old-human","2026-10-08T17:00:00Z")
+    f=store.save_forecast(forecast(mode="live",cycle_id=identity))
+    queue=live_session.ExecutionQueue(store,"new-human")
+    with pytest.raises(ContractError,match="another manual session"): queue.enqueue(f)
+    assert queue.due("2026-10-08T17:17:00Z")==[]
 
 
 def test_no_closed_or_unspecified_opening_target():

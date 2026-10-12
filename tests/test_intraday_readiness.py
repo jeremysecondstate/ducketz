@@ -461,6 +461,11 @@ def test_manual_readiness_cmd_calls_only_readiness_module_and_forwards_diagnosti
     assert not any(token in launch[0].lower() for token in ("activation", "launcher", "provider", "broker", "runtime", "train"))
 
 
+def test_public_source_inventory_includes_every_loaded_compatibility_dependency():
+    from ml.intraday.runtime_compatibility import REQUIRED_CODE
+    assert set(REQUIRED_CODE) <= set(readiness.PUBLIC_SOURCES)
+
+
 def installed_sources(local):
     repository = Path(__file__).resolve().parents[1]
     for relative in readiness.PUBLIC_SOURCES:

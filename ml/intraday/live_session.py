@@ -15,7 +15,7 @@ import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
-from .runtime import ResearchConfig, ShadowRunner, LiveHistories, local_symbols
+from .runtime import ResearchConfig, ShadowRunner, LiveHistories, local_symbols, recorded_symbol_failures
 from .store import ShadowStore, utcnow
 
 VERSION = "manual-atlas-15m-session-v1"
@@ -54,7 +54,15 @@ class ExecutionQueue:
     def enqueue(self, forecast):
         if forecast["mode"] != "live":
             raise ContractError("Only newly issued live forecasts enter manual execution")
+        if forecast.get("execution_blocked_reason") or instant(forecast["issued_at"]) >= instant(forecast["target_close"]):
+            self.store.event(forecast["cycle_id"], "forecast_execution_blocked",
+                {"forecast_id":forecast["forecast_id"], "reason":forecast.get("execution_blocked_reason") or "issue_after_target",
+                 "forecast_preserved":True}, symbol=forecast["symbol"])
+            return
         with self.store.connect() as db:
+            cycle = db.execute("SELECT payload FROM cycles WHERE id=?", (forecast["cycle_id"],)).fetchone()
+            if cycle is not None and json.loads(cycle[0]).get("experiment") != self.session_id:
+                raise ContractError("Forecast belongs to another manual session")
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT session_id,symbol,issued_at FROM intraday_live_queue WHERE forecast_id=?",
                              (forecast["forecast_id"],)).fetchone()
@@ -110,31 +118,75 @@ class ExecutionQueue:
                        (status,forecast_id,self.session_id))
 
 
+def _session_cycles(store, session_id):
+    # Recovery identity lives in the existing cycle payload, not a lost Python
+    # cursor. Never adopt another human session's pending work for execution.
+    with store.connect() as db:
+        rows = db.execute("SELECT id,payload FROM cycles ORDER BY rowid").fetchall()
+    return [(identity, value) for identity, raw in rows
+            if (value := json.loads(raw)).get("mode") == "live"
+            and value.get("pc") == "Atlas" and value.get("experiment") == session_id]
+
+
+def _pending_cycle_passes(store, session_id, now):
+    result = []
+    for identity, cycle in _session_cycles(store, session_id):
+        if cycle.get("status") == "completed":
+            continue
+        missing = [symbol for symbol in cycle["symbols"] if store.forecast(identity, symbol) is None]
+        failures = dict(cycle.get("failures", {}))
+        # The failure event is durable even if a crash preceded the cycle-map
+        # update. Latest events override that possibly older summary.
+        failures.update(recorded_symbol_failures(store, identity))
+        due = [s for s in missing if (
+            cycle.get("status") == "running" and s not in failures
+        ) or (failures.get(s, {}).get("retryable") is True
+              and instant(failures[s]["retry_at"]) <= instant(now))]
+        if due:
+            result.append((identity, cycle, due))
+    return sorted(result, key=lambda item: (
+        item[1].get("last_recovery_attempt_at", item[1].get("completed_at", item[1]["started_at"])),
+        item[1]["reference_at"]))
+
+
 def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                      clock=utcnow, pause=time.sleep):
-    """Latest completed input on start and after an overrun, on a fixed grid.
+    """New quarters first; durable acquisition retries get bounded fair passes.
 
-    Missed boundaries are logged; targets are never shifted and no old model is
-    substituted. A completed symbol publishes/enqueues before others finish.
+    Only missing data prerequisites retry automatically. Already issued model
+    outputs remain immutable, and older recovered outputs never enter execution.
+    No missed-quarter forecast or older fitted model is invented.
     """
-    last = None
+    saved = _session_cycles(runner.store, queue.session_id)
+    last = max((instant(c["reference_at"]) for _, c in saved), default=None)
     while not stopped():
-        reference = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
-        if last is not None and reference <= last:
-            pause(1); continue
-        if last is not None and reference > last + STEP:
-            runner.store.event(queue.session_id, "missed_cycle_boundaries",
-                {"previous_reference":last.isoformat(),"next_reference":reference.isoformat(),
-                 "missed_count":int((reference-last)/STEP)-1,"policy":"latest_completed_no_backlog_orders"})
-        last = reference
-        if not eligible_reference(reference):
-            runner.store.event(queue.session_id,"closed_or_unspecified_edge",
-                               {"reference_at":reference.isoformat(),"orders_submitted":0})
-            pause(1); continue
+        newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
+        retry_symbols = None
+        if last is None or newest > last:
+            reference = newest
+            if last is not None and reference > last + STEP:
+                runner.store.event(queue.session_id, "missed_cycle_boundaries",
+                    {"previous_reference":last.isoformat(),"next_reference":reference.isoformat(),
+                     "missed_count":int((reference-last)/STEP)-1,"policy":"latest_completed_no_backlog_orders"})
+            last = reference
+            if not eligible_reference(reference):
+                runner.store.event(queue.session_id,"closed_or_unspecified_edge",
+                                   {"reference_at":reference.isoformat(),"orders_submitted":0})
+                pause(1); continue
+        else:
+            pending = _pending_cycle_passes(runner.store, queue.session_id, clock())
+            if not pending:
+                pause(1); continue
+            _, cycle, retry_symbols = pending[0]
+            reference = instant(cycle["reference_at"])
         incoming = LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
-                                reference_at=reference,clock=clock,sleep=pause)
-        runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
-                         on_published=queue.enqueue,acquisition={"kind":"existing_databento_exact_interval"})
+                                reference_at=reference,clock=clock,sleep=pause,bounded=True)
+        result = runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
+                         on_published=queue.enqueue,acquisition={"kind":"existing_databento_exact_interval"},
+                         retry_symbols=retry_symbols,allow_execution=reference == newest)
+        if result and result.get("cycle_id"):
+            runner.store.update_cycle(result["cycle_id"], {"last_recovery_attempt_at":instant(clock()).isoformat()})
+        pause(1)
 
 
 def scoring_loop(store, *, histories, provider, journal, session_id, stopped,

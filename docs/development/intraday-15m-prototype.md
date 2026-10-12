@@ -458,7 +458,8 @@ Gameplan readiness has operational priority. The separate 15-minute shadow
 runner can start independently at a later eligible quarter hour once its
 required data is verified; Gameplan startup is not its prerequisite. No further
 training load was started while prioritizing the human's live session startup.
-Active-session contention and live provider-availability timing remain unmeasured.
+Those research samples did not measure active-session contention or live
+provider availability. Later human-started observations are recorded below.
 
 The installed environment used scikit-learn 1.9.0, NumPy 2.5.1, pandas 3.0.3,
 XGBoost 3.3.0 and psutil 7.2.2. The import path also requires joblib,
@@ -494,6 +495,65 @@ training cutoff, with earlier observations used only for causal feature warm-up.
 This small comparison does not select a shorter production window or replace
 the all-available-history, full-15m benchmark; timings were not collected under
 identical background load.
+
+## Human-started Atlas recovery observations, October 12, 2026
+
+The initial manual cycle freshly fitted all 110 models in 187.963 seconds;
+Gameplan subsequently exited on shared-lock contention. After the reviewed
+lock and fill-timestamp repairs and human reloads, saved evidence showed
+Gameplan waiting for that shared lock and clearing the wait normally.
+These are bounded observations, not proof of sustained operation or accuracy.
+
+The 11:02 Pacific manual start completed its first forecasting pass in 300.682
+seconds, excluding initial history loading. Eight symbols produced full
+ten-model ensembles (80 fresh fits). Three failed before training because
+their exact 10:45-11:00 reference intervals required a verified adjacent prior
+close. Their fixed targets remained 11:30. Valid predecessor observations
+arrived later, but the old live loop did not revisit those failed symbols.
+This measured duration includes acquisition waiting and partial workload;
+it is not a successful 110-fit benchmark or training-only timing.
+
+Before this repair was installed, the following two human-started session
+cycles each completed all eleven full ensembles (110 fresh fits) in 535.085
+and 287.764 seconds. Read-only saved evidence at 11:43 Pacific showed both
+Gameplan and 15m running. The first eight forecasts then had seven observed
+and one synthetic scored outcome. These samples show actual coexistence and
+scoring progress under the prior loaded source, not verification of this
+repair or predictive quality; they are not controlled performance comparisons.
+
+The recovery repair retains pending references and retries bounded acquisition
+passes with refreshed same-source saved predecessors. Confirmation learned
+later requires a new interval response; information availability is not
+backdated. Covered repeated leading omissions can also trigger bounded
+acquisition of the missing same-session predecessor from that same source.
+A newly due reference has priority over pending older passes.
+Already persisted forecasts remain immutable and are not trained or issued
+again. Recovered forecasts from older quarters are scoring-only once newer
+quarter-hour work has begun, even if their targets are still in the future.
+The fixed target and normal live eligibility checks also apply to recovered
+forecasts. Interrupted recovery uses durable cycle evidence for the
+same manual session; a new manual session does not inherit prior execution
+authority.
+
+For current shadow/live cycles, `total_cycle_seconds` and the 15m overrun flag
+now measure elapsed wall time from original cycle start, including waits
+between bounded passes. `cumulative_attempt_seconds` and the stage counters
+retain actual work measurements separately. The measurement scope is recorded
+as `wall_elapsed_with_cumulative_attempt_work_v1`; historical replay keeps its
+existing work-time measure. Earlier cycle records retain their original scope.
+The read-only UI and new telemetry packets retain the optional scope and work
+counters. Older packets without a scope remain readable, but their totals
+cannot be assumed comparable to explicitly measured wall-time totals.
+
+An independent offline reproduction also confirmed that a pending BUY quote
+received during account capture could be rejected against the earlier request
+start. The Gameplan adapter now records validated information readiness after
+identity verification while preserving original capture age and quote times.
+The original future/stale/price checks remain. Raw per-quote timestamps were
+not saved for the live failure, so its exact offending quote delta is unknown.
+See the [live preparation record](intraday-live-readiness.md) for limitations
+and the manual reload boundary. Final offline checks are bound to the exact
+published source receipt; prior test counts do not verify this repair.
 
 ## Read-only cross-PC monitoring
 

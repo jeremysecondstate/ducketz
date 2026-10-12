@@ -28,6 +28,22 @@ FEATURE_VERSION = "intraday-observed-causal-features-v1"
 SYNTHETIC_CONTINUITY_POLICY = "same-session-adjacent-prior-close-v1"
 _PROVIDER_LOCKS = {}
 _PROVIDER_LOCKS_GUARD = threading.Lock()
+
+
+class AcquisitionPending(ContractError):
+    """An exact live interval/prerequisite remains unavailable, without a cap."""
+    def __init__(self, reason, retry_after_seconds=4.0):
+        self.reason = str(reason)
+        self.retry_after_seconds = max(0.0, float(retry_after_seconds))
+        super().__init__("Exact reference unavailable: " + self.reason)
+
+
+def _recoverable_prerequisite(result):
+    if result.get("status") == "missing" and result.get("reason") in {
+            "no_prior_known_price", "unverified_prior_price_continuity"}:
+        return {**result, "status": "retry", "data_status": "missing",
+                "retry_after_seconds": max(4.0, float(result.get("retry_after_seconds", 0)))}
+    return result
 FEATURE_NAMES = (
     "return_1_observed", "return_4_observed", "return_20_observed",
     "body_return", "range_relative", "rsi14_observed", "distance_sma20_observed",
@@ -676,8 +692,9 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
         if attempts:
             last = attempts[-1].validate()
             due = utc(last.request_ended_at) + pd.Timedelta(seconds=max(4.0,last.retry_after_seconds))
-            if utc(last.request_ended_at) <= now < due:
-                resolved = resolve_minute_candle(attempts,session=session,previous=previous)
+            if (utc(last.request_ended_at) <= now < due
+                    and (previous is None or utc(previous["available_at"]) <= utc(last.request_ended_at))):
+                resolved = _recoverable_prerequisite(resolve_minute_candle(attempts,session=session,previous=previous))
                 if resolved["status"] != "retry":
                     return resolved
         provider_due = journal.provider_retry_due()
@@ -694,7 +711,7 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
         if journal.slot(**actual) != journal.slot(**slot) or attempt.source_dataset != dataset.strip():
             raise ContractError("Recovery callback changed its exact interval or source identity")
         journal.save(attempt)
-        result = resolve_minute_candle(journal.responses(**slot),session=session,previous=previous)
+        result = _recoverable_prerequisite(resolve_minute_candle(journal.responses(**slot),session=session,previous=previous))
         if result["status"] == "retry":
             current = utc(clock())
             exact_due = utc(attempt.request_ended_at) + pd.Timedelta(seconds=max(4.0,attempt.retry_after_seconds))
