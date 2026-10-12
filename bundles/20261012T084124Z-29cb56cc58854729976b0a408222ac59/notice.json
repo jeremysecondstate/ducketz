@@ -1,0 +1,37 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261012T083823Z-2372c77e7dbf45edbbd862de53d636ce",
+  "change_id": "20261012T083823Z-2372c77e7dbf45edbbd862de53d636ce-evidence-correction",
+  "completion_record": "20261012T083823Z-2372c77e7dbf45edbbd862de53d636ce",
+  "correction": "The earlier notice retained null source and test evidence fields after a local receipt parsing failure. This notice provides the exact existing passing evidence; document bytes and publication are unchanged.",
+  "files": [
+    "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md",
+    "tests/check_markdown_documents.py"
+  ],
+  "limitations": [
+    "Documentation hygiene and source inventory review only; no training, model performance, probability compatibility or runtime verification.",
+    "The separate referenced design remains independently owned documentation; this publication contains the architecture request and its offline checker.",
+    "The architecture draft and reused checker are new paths relative to the reviewed main base. Existing local draft prose is preserved."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/6ce10db336a46348ba79914d19a38ce051db958a"
+  ],
+  "local_installation": "The requested local architecture document has matching reviewed bytes. Peer installation and runtime behavior are unverified.",
+  "main_sha": "6ce10db336a46348ba79914d19a38ce051db958a",
+  "peer_applicability": "Atlas and Scout use the same proposed registry. This document update does not implement or enable any model.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Documentation only. No application implementation, fitted model export, provider access, training, schedules, trading or runtime deployment.",
+  "scope": "shared",
+  "source_sha": "331f9edd5e6ac454446ec3fd3cd0a0b23db5de3e",
+  "summary": "Atlas expanded the 15-minute architecture model registry from reviewed prior model code; documentation checks pass and the change is published on main.",
+  "supersedes_notice": "20261012T084055Z-107ae843fe2e464bad7e4953b4c4392a",
+  "tests": [
+    {
+      "check": "Offline Markdown hygiene for the architecture document",
+      "completed_at_utc": "2026-10-12T08:39:36.817981Z",
+      "exit_code": 0,
+      "output_sha256": "145a54b83954cf7cce2be39b8553e127df83ec59c1876548a9d3766aeaa309da",
+      "started_at_utc": "2026-10-12T08:39:36.147637Z"
+    }
+  ]
+}
