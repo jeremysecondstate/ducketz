@@ -1,0 +1,44 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T105359Z-8ef3be6f94d24c568aac8128d0279c5f",
+  "change_id": "20261012T105359Z-8ef3be6f94d24c568aac8128d0279c5f",
+  "commit_sha": "c3c8faf7f65a79d84f7b0fe4fca055b21577a400",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    }
+  ],
+  "limitations": [
+    "Worker-process count establishes presence, not active-session state or CPU contention.",
+    "Active-session contention, live provider offset and actual Scout adoption remain unmeasured."
+  ],
+  "measurement": "Pre-session 11-symbol 110-fit historical run: 41.722 seconds, all successful. Original zero worker count retained and documented; current entry point now recognized. Separate process/status evidence shows waiting trader, not active-session contention.",
+  "parent_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/67",
+  "peer_action": "Include this reviewed follow-up when adopting PR67 under standing local authorization; preserve local profile and private evidence. No runtime restart or trading enablement is authorized by this source handoff.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/68",
+  "remote_sha": "c3c8faf7f65a79d84f7b0fe4fca055b21577a400",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Changes research resource logging only; no live worker restart, schedule, binding, broker order or source main integration.",
+  "scope": "Shared Atlas/Scout resource telemetry; current local operating bindings preserved.",
+  "summary": "Count current Gameplan worker entry point in intraday resource telemetry",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T10:55:08.906147Z",
+      "output_sha256": "42c8b903186950f576c7068954ce47565aaf5adae7496f118ecf3c925738c8ac",
+      "summary": "140 passed, 18 existing dependency warnings, no skips"
+    }
+  ]
+}

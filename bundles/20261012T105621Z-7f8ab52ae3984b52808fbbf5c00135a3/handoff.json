@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T10:56:21.841623Z",
+  "id": "20261012T105621Z-7f8ab52ae3984b52808fbbf5c00135a3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Count current Gameplan worker entry point in intraday resource telemetry"
+}
