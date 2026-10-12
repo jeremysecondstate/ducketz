@@ -30,6 +30,8 @@ import sqlite3
 from typing import Callable, Mapping
 from zoneinfo import ZoneInfo
 
+from ml.stock_trader.horizon_ledger import LedgerError, validate_fill_time_provenance
+
 
 VERSION = "single-host-account-authority-v1"
 SUBMISSION_RECEIPT_VERSION = "account-exact-submission-receipt-v1"
@@ -202,6 +204,7 @@ class OrderEvidence:
     remaining_quantity: int
     fills: tuple[Fill, ...]
     complete: bool = False
+    fill_time_provenance: Mapping[str, object] | None = None
 
 
 def _json(value):
@@ -1001,6 +1004,14 @@ class AccountAuthority:
         recovery adapter; symbol/price/time matching is deliberately unsupported.
         """
         payload = asdict(evidence)
+        try:
+            provenance, whole_second_ids = validate_fill_time_provenance(evidence.fill_time_provenance, evidence.fills)
+        except LedgerError as exc:
+            raise AuthorityError("FILL_TIME_PROVENANCE_INVALID") from exc
+        if provenance is None:
+            payload.pop("fill_time_provenance")
+        else:
+            payload["fill_time_provenance"] = provenance
         _name(evidence.evidence_id)
         if evidence.complete is not True or evidence.account_fingerprint!=self.binding["account_fingerprint"]:
             raise AuthorityError("COMPLETE_SAME_ACCOUNT_ORDER_EVIDENCE_REQUIRED")
@@ -1052,7 +1063,11 @@ class AccountAuthority:
                 raise AuthorityError("PREVIOUS_FILL_EVIDENCE_CHANGED_OR_DISAPPEARED")
             for item in fills:
                 price = _money(item["price"])
-                if (not _time(row["created"])<=_time(item["executed_at"])<=observed
+                created, executed = _time(row["created"]), _time(item["executed_at"])
+                lower_bound_valid = created <= executed or (
+                    item["fill_id"] in whole_second_ids and executed == created.replace(microsecond=0)
+                )
+                if (not lower_bound_valid or executed > observed
                         or (request["side"]=="BUY" and price>_money(request["limit_price"]))
                         or (request["side"]=="SELL" and price<_money(request["limit_price"]))):
                     raise AuthorityError("FILL_TIME_OR_LIMIT_PRICE_INVALID")

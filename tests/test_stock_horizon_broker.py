@@ -38,6 +38,19 @@ def raw_order(*, status="FILLED", filled=10):
     }
 
 
+def precision_order(reservation, raw_timestamp):
+    """A complete exact-ID fixture, priced at its original submitted limit."""
+    raw = raw_order()
+    raw.update(orderId=reservation.broker_order_id, quantity=reservation.quantity,
+               filledQuantity=reservation.quantity, remainingQuantity=0, price=reservation.limit_price)
+    leg = raw["orderLegCollection"][0]
+    leg.update(instruction=reservation.side, quantity=reservation.quantity)
+    leg["instrument"]["symbol"] = reservation.symbol
+    raw["orderActivityCollection"][0]["executionLegs"][0].update(
+        quantity=reservation.quantity, price=reservation.limit_price, time=raw_timestamp)
+    return raw
+
+
 class FakeHistory:
     def __init__(self, orders, accounts=(ACCOUNT, ACCOUNT)):
         self.orders = orders
@@ -297,3 +310,76 @@ def test_order_capture_observation_clock_cannot_go_backwards(ledger):
     with pytest.raises(OrderHistoryError, match="CLOCK_MOVED_BACKWARDS"):
         capture_order_evidence(FakeHistory([raw_order()]), ledger, account_fingerprint=ACCOUNT, as_of=OBSERVED,
                                observation_clock=lambda: "2026-09-08T11:00:29Z")
+
+
+@pytest.mark.parametrize("raw_timestamp,normalized", [
+    ("2026-09-08T11:00:20+0000", "2026-09-08T11:00:20+00:00"),
+    ("2026-09-08T11:00:20Z", "2026-09-08T11:00:20+00:00"),
+    ("2026-09-08T11:00:20+00:00", "2026-09-08T11:00:20+00:00"),
+    ("2026-09-08T11:00:20.000+0000", "2026-09-08T11:00:20+00:00"),
+    ("2026-09-08T11:00:20.028841+0000", "2026-09-08T11:00:20.028841+00:00"),
+])
+def test_fill_wire_precision_is_preserved_without_changing_core_fields(ledger, raw_timestamp, normalized):
+    reservation = submitted(ledger)
+    raw = raw_order()
+    raw["orderActivityCollection"][0]["executionLegs"][0]["time"] = raw_timestamp
+    evidence = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    fill, = evidence.fills
+    assert fill.executed_at == normalized and fill.price == "99.99" and fill.quantity == 10
+    assert set(vars(fill)) == {"fill_id", "quantity", "price", "executed_at"}
+    assert evidence.fill_time_provenance == {"version": "schwab-execution-time-v1", "fills": {
+        fill.fill_id: {"raw_timestamp": raw_timestamp, "source_field": "execution_leg.time"}}}
+    # Refreshing a capture changes order evidence identity, never its fill identity/economics.
+    newer = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT,
+                                    observed_at="2026-09-08T11:00:31Z")
+    assert newer.fills == evidence.fills and newer.fill_time_provenance == evidence.fill_time_provenance
+    assert newer.evidence_id != evidence.evidence_id
+
+
+@pytest.mark.parametrize("source_field", ["execution_leg.time", "execution_leg.executionTime",
+                                        "activity.executionTime", "activity.time"])
+def test_fill_timestamp_provenance_identifies_the_actual_selected_wire_field(ledger, source_field):
+    raw = raw_order()
+    activity = raw["orderActivityCollection"][0]
+    leg = activity["executionLegs"][0]
+    leg.pop("time")
+    owner, field = source_field.split(".")
+    (leg if owner == "execution_leg" else activity)[field] = "2026-09-08T11:00:20+0000"
+    evidence = normalize_order_evidence(raw, submitted(ledger), account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    fill, = evidence.fills
+    assert evidence.fill_time_provenance["fills"][fill.fill_id]["source_field"] == source_field
+
+
+def test_derived_fill_identity_is_stable_across_equivalent_wire_precision_spellings(ledger):
+    reservation = submitted(ledger)
+    raw = raw_order()
+    leg = raw["orderActivityCollection"][0]["executionLegs"][0]
+    leg.pop("executionId")
+    results = []
+    for stamp in ("2026-09-08T11:00:20Z", "2026-09-08T11:00:20+0000", "2026-09-08T11:00:20.000+0000"):
+        leg["time"] = stamp
+        results.append(normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED))
+    assert results[0].fills == results[1].fills == results[2].fills
+    assert len({row.evidence_id for row in results}) == 3  # Different original wire evidence remains auditable.
+
+
+@pytest.mark.parametrize("second_field", ["time", "executionTime"])
+def test_identical_derived_fill_ordinals_keep_wire_provenance_under_reordering(ledger, second_field):
+    reservation = submitted(ledger)
+    raw = raw_order()
+    leg = raw["orderActivityCollection"][0]["executionLegs"][0]
+    leg.pop("executionId")
+    leg.update(quantity=5, time="2026-09-08T11:00:20+0000")
+    second = deepcopy(leg)
+    second.pop("time")
+    second[second_field] = "2026-09-08T11:00:20.000+0000"
+    raw["orderActivityCollection"][0]["executionLegs"].append(second)
+    one = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    raw["orderActivityCollection"][0]["executionLegs"].reverse()
+    two = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    assert len(one.fills) == 2 and len({fill.fill_id for fill in one.fills}) == 2
+    assert one.fills == two.fills
+    assert one.fill_time_provenance == two.fill_time_provenance
+    assert one.evidence_id == two.evidence_id
+    assert {entry["raw_timestamp"] for entry in one.fill_time_provenance["fills"].values()} == {
+        "2026-09-08T11:00:20+0000", "2026-09-08T11:00:20.000+0000"}

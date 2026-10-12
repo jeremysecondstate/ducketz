@@ -410,3 +410,97 @@ def test_terminal_order_cannot_reopen(env):
     clock.tick()
     with pytest.raises(AuthorityError,match="TERMINAL_ORDER"):
         authority.reconcile(token,evidence(first,clock,status="WORKING",filled=0,remaining=6,identity="reopened"))
+
+
+def _time_provenance(fill, raw_timestamp, *, source_field="execution_leg.time"):
+    return {"version": "schwab-execution-time-v1", "fills": {
+        fill.fill_id: {"raw_timestamp": raw_timestamp, "source_field": source_field}}}
+
+
+@pytest.mark.parametrize("raw_timestamp", ["2026-10-02T15:00:00+0000", "2026-10-02T15:00:00Z",
+                                          "2026-10-02T08:00:00-07:00"])
+def test_original_whole_second_fill_overlaps_fractional_reservation_creation(env, raw_timestamp):
+    authority, token, clock = env
+    clock.now += timedelta(microseconds=28_841)
+    first = submitted(authority, token, request())
+    clock.tick()
+    fill = Fill("whole-second-fill", 6, "10", "2026-10-02T15:00:00+00:00")
+    row = evidence(first, clock, fills=(fill,))
+    result = authority.reconcile(token, replace(row, fill_time_provenance=_time_provenance(fill, raw_timestamp)))
+    assert result.status == "FILLED" and result.filled_quantity == 6
+    with authority._transaction() as db:
+        import json
+        recorded = json.loads(db.execute("SELECT payload FROM fills WHERE reservation=?", (first.reservation_id,)).fetchone()[0])
+    assert recorded == {"fill_id": fill.fill_id, "quantity": 6, "price": "10", "executed_at": fill.executed_at}
+
+
+@pytest.mark.parametrize("damage", ["unannotated", "fractional_zero", "earlier_fractional", "previous_second", "future",
+    "buy_limit", "sell_limit", "wrong_version", "wrong_fill_id", "missing_fill", "extra_fill", "wrong_source",
+    "raw_mismatch", "naive_raw", "invalid_map", "extra_row_field", "source_list", "source_mapping"])
+def test_timestamp_overlap_does_not_relax_precise_time_price_or_provenance_checks(env, damage):
+    from copy import deepcopy
+    authority, token, clock = env
+    clock.now += timedelta(microseconds=28_841)
+    first = submitted(authority, token, request(side="SELL" if damage == "sell_limit" else "BUY"))
+    clock.tick()
+    fill = Fill("coarse-fill", 6, "10", "2026-10-02T15:00:00+00:00")
+    provenance = _time_provenance(fill, "2026-10-02T15:00:00+0000")
+    if damage == "unannotated": provenance = None
+    elif damage == "fractional_zero": provenance = _time_provenance(fill, "2026-10-02T15:00:00.000+0000")
+    elif damage == "earlier_fractional":
+        fill = replace(fill, executed_at="2026-10-02T15:00:00.028840+00:00")
+        provenance = _time_provenance(fill, "2026-10-02T15:00:00.028840+0000")
+    elif damage == "previous_second":
+        fill = replace(fill, executed_at="2026-10-02T14:59:59+00:00")
+        provenance = _time_provenance(fill, "2026-10-02T14:59:59+0000")
+    elif damage == "future":
+        fill = replace(fill, executed_at="2026-10-02T15:00:02+00:00")
+        provenance = _time_provenance(fill, "2026-10-02T15:00:02+0000")
+    elif damage == "buy_limit": fill = replace(fill, price="10.01")
+    elif damage == "sell_limit": fill = replace(fill, price="9.99")
+    elif damage == "wrong_version": provenance["version"] = "invented"
+    elif damage == "wrong_fill_id": provenance["fills"] = {"untracked": next(iter(provenance["fills"].values()))}
+    elif damage == "missing_fill": provenance["fills"] = {}
+    elif damage == "extra_fill": provenance["fills"]["untracked"] = deepcopy(provenance["fills"][fill.fill_id])
+    elif damage == "wrong_source": provenance["fills"][fill.fill_id]["source_field"] = "fabricated_time"
+    elif damage == "raw_mismatch": provenance["fills"][fill.fill_id]["raw_timestamp"] = "2026-10-02T15:00:01+0000"
+    elif damage == "naive_raw": provenance["fills"][fill.fill_id]["raw_timestamp"] = "2026-10-02T15:00:00"
+    elif damage == "invalid_map": provenance["fills"] = []
+    elif damage == "extra_row_field": provenance["fills"][fill.fill_id]["precision"] = "whole-second"
+    elif damage == "source_list": provenance["fills"][fill.fill_id]["source_field"] = ["execution_leg.time"]
+    elif damage == "source_mapping": provenance["fills"][fill.fill_id]["source_field"] = {"field": "execution_leg.time"}
+    with pytest.raises(AuthorityError):
+        authority.reconcile(token, replace(evidence(first, clock, fills=(fill,)), fill_time_provenance=provenance))
+    assert authority.reservation(first.reservation_id).status == "SUBMITTED"
+    with authority._transaction() as db:
+        assert db.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM order_evidence").fetchone()[0] == 0
+
+
+def test_new_provenance_appends_evidence_without_rewriting_existing_core_fills(env):
+    import json
+    authority, token, clock = env
+    first = submitted(authority, token, request())
+    clock.tick()
+    original = evidence(first, clock, status="PARTIAL", filled=2, remaining=4)
+    authority.reconcile(token, original)
+    with authority._transaction() as db:
+        old_fill = db.execute("SELECT payload FROM fills").fetchone()[0]
+        old_evidence = db.execute("SELECT payload FROM order_evidence WHERE id=?", (original.evidence_id,)).fetchone()[0]
+    assert "fill_time_provenance" not in json.loads(old_evidence)
+    clock.tick()
+    next_fill = Fill("fill-2", 4, "10", clock().isoformat())
+    provenance = _time_provenance(original.fills[0], original.fills[0].executed_at)
+    provenance["fills"].update(_time_provenance(next_fill, next_fill.executed_at)["fills"])
+    newer = replace(original, evidence_id="precision-audit", observed_at=clock().isoformat(),
+                    status="FILLED", cumulative_filled_quantity=6, remaining_quantity=0,
+                    fills=(*original.fills, next_fill), fill_time_provenance=provenance)
+    updated = authority.reconcile(token, newer)
+    assert authority.reconcile(token, newer) == updated  # Exact replay is idempotent.
+    with authority._transaction() as db:
+        assert db.execute("SELECT payload FROM fills WHERE fill_id='fill-1'").fetchone()[0] == old_fill
+        assert db.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 2
+        assert db.execute("SELECT payload FROM order_evidence WHERE id=?", (original.evidence_id,)).fetchone()[0] == old_evidence
+        assert db.execute("SELECT COUNT(*) FROM order_evidence").fetchone()[0] == 2
+    with pytest.raises(AuthorityError, match="ORDER_EVIDENCE_ID_REUSED"):
+        authority.reconcile(token, replace(newer, fill_time_provenance=None))

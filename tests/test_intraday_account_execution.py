@@ -516,3 +516,65 @@ def test_audited_no_post_after_lease_expiry_retries_under_fresh_fence(env):
     attempts=native(env).intraday_attempts(symbol="AAPL",forecast_id=forecast["forecast_id"])
     assert len(attempts)==2 and attempts[0].status=="REJECTED" and attempts[0].submitted_at is None
     assert attempts[1].broker_order_id=="1001"
+
+
+def test_old_native_filled_shared_submitted_recovers_whole_second_fill_without_reposting(env, monkeypatch):
+    from dataclasses import replace
+    import json
+    from ml.stock_trader.horizon_broker import normalize_order_evidence
+    from ml.stock_trader.horizon_ledger import PortfolioEvidence
+    from test_stock_horizon_broker import precision_order
+
+    forecast = env.forecast()
+    assert env.executor.step(forecast)["disposition"] == "submitted"
+    ledger = native(env)
+    reservation, = ledger.snapshot().reservations
+    shared = account(env)
+    with shared._transaction() as db:
+        created = db.execute("SELECT created FROM reservations").fetchone()[0]
+    assert pd.Timestamp(created).microsecond > 0  # Reproduce genuine subsecond local creation.
+    wire_time = pd.Timestamp(created).floor("s").strftime("%Y-%m-%dT%H:%M:%S+0000")
+    raw = precision_order(reservation, wire_time)
+    advance(env, 2)
+    old = replace(normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT,
+                  observed_at=env.clock()), fill_time_provenance=None)
+    env.orders[reservation.broker_order_id].update(status="FILLED", filled=reservation.quantity, fill_at=wire_time)
+    env.held[reservation.symbol] = reservation.quantity
+    env.cash = 0.
+    assert ledger.reconcile(PortfolioEvidence("native-before-shared", ACCOUNT, env.clock(), env.held,
+        dict.fromkeys(SYMBOLS, 50.), dict.fromkeys(SYMBOLS, 15_000.), "fixture-native-before-shared"),
+        order_evidence=(old,)).ready
+    assert ledger.lookup_reservation(reservation.reservation_id).status == "FILLED"
+    assert shared.read_state()["reservations"][0]["status"] == "SUBMITTED"
+    with ledger._transaction() as db:
+        old_fill_row = tuple(db.execute("SELECT id,reservation,quantity,price,executed_at FROM fills").fetchone())
+        old_evidence_bytes = db.execute("SELECT payload FROM evidence WHERE id=?", (old.evidence_id,)).fetchone()[0]
+    assert "fill_time_provenance" not in json.loads(old_evidence_bytes)
+    requested_ids = []
+
+    def fresh_capture(broker, proxy, **kwargs):
+        pending = proxy.pending_reservations()
+        requested_ids.extend(item.broker_order_id for item in pending)
+        env.now += pd.Timedelta(milliseconds=1)
+        return tuple(normalize_order_evidence(raw, item, account_fingerprint=ACCOUNT,
+                     observed_at=env.clock()) for item in pending)
+
+    monkeypatch.setattr(execution, "capture_order_evidence", fresh_capture)
+    advance(env)
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "recover_existing_intention"
+    assert requested_ids == [reservation.broker_order_id]
+    assert len(env.broker.submissions) == 1 and not env.broker.cancellations
+    assert shared.read_state()["reservations"][0]["status"] == "FILLED"
+    assert shared.read_state()["reservations"][0]["filled_quantity"] == reservation.quantity
+    with ledger._transaction() as db:
+        assert tuple(db.execute("SELECT id,reservation,quantity,price,executed_at FROM fills").fetchone()) == old_fill_row
+        assert db.execute("SELECT payload FROM evidence WHERE id=?", (old.evidence_id,)).fetchone()[0] == old_evidence_bytes
+    with shared._transaction() as db:
+        fill = json.loads(db.execute("SELECT payload FROM fills").fetchone()[0])
+        recorded = json.loads(db.execute("SELECT payload FROM order_evidence ORDER BY rowid DESC").fetchone()[0])
+    assert fill == vars(old.fills[0])
+    assert recorded["fill_time_provenance"]["fills"][fill["fill_id"]]["raw_timestamp"] == wire_time
+    advance(env)
+    env.executor.step(forecast)
+    assert len(env.broker.submissions) == 1  # A completed purchase is never restored/repeated.
