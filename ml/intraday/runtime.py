@@ -45,14 +45,31 @@ class ResearchConfig:
 
 
 def local_symbols(profile_path, watchlist_path, datastore):
-    """Read each PC's existing bindings. Never replace them with a document list."""
+    """Validate research membership without creating or activating trading state.
+
+    An installed profile and its exact local watchlist bind research on a PC
+    that has no account Gameplan configuration. If account configuration exists,
+    it must also agree; invalid or conflicting account state never falls back.
+    """
     profile = json.loads(Path(profile_path).read_text(encoding="utf-8"))
-    binding = json.loads((Path(datastore) / "state/account-gameplan/config.json").read_text(encoding="utf-8"))
     watch = tuple(x.strip() for x in Path(watchlist_path).read_text(encoding="utf-8").splitlines()
                   if x.strip() and not x.lstrip().startswith("#"))
     machine = profile["machine"]
+    symbols = tuple(profile["symbols"])
+    if (profile.get("actor") not in {"Atlas", "Scout"} or
+            {"Atlas": "pc-original", "Scout": "pc-new"}.get(profile.get("actor")) != machine or
+            not symbols or len(set(symbols)) != len(symbols) or
+            not watch or len(set(watch)) != len(watch) or set(watch) != set(symbols)):
+        raise ContractError("Local profile and watchlist research membership disagree")
+    binding_path = Path(datastore) / "state/account-gameplan/config.json"
+    if not binding_path.exists():
+        pinned_watchlist = profile.get("symbol_profile_path")
+        if not pinned_watchlist or Path(pinned_watchlist).resolve() != Path(watchlist_path).resolve():
+            raise ContractError("Research requires the installed profile's exact local watchlist")
+        return profile["actor"], symbols
+    binding = json.loads(binding_path.read_text(encoding="utf-8"))
     symbols = tuple(binding["participants"][machine])
-    if (binding["machine_id"] != machine or len(set(watch)) != len(watch) or
+    if (binding["machine_id"] != machine or len(set(symbols)) != len(symbols) or
             set(watch) != set(symbols) or set(profile["symbols"]) != set(symbols)):
         raise ContractError("Local profile, watchlist and existing ownership disagree")
     return profile["actor"], symbols
@@ -330,6 +347,16 @@ class ShadowRunner:
             candle=None
             if history is not None:
                 frame=_frame(history)
+                sources={field:forecast[field] for field in ("source_dataset","source_id") if forecast.get(field)}
+                for field,expected in sources.items():
+                    if field not in frame:
+                        frame=frame.iloc[:0]
+                        break
+                    frame=frame.loc[frame[field].eq(expected)]
+                if sources and frame.empty:
+                    # Another source's history says nothing about this forecast's
+                    # outcome availability and must not revise its saved evidence.
+                    continue
                 if forecast["mode"]=="shadow":
                     frame=frame.loc[frame.availability_kind.eq("actual")]
                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
@@ -450,6 +477,8 @@ def main(argv=None):
     parser.add_argument("--reference",required=True)
     parser.add_argument("--mode",choices=["historical_replay","shadow"],default="historical_replay")
     parser.add_argument("--lookback-days",type=int)
+    parser.add_argument("--source-dataset",choices=["EQUS.MINI","XNAS.ITCH"],default="EQUS.MINI",
+                        help="One explicit historical source; sources are never merged")
     parser.add_argument("--symbol-workers",type=int,default=1)
     parser.add_argument("--publication-offset-seconds",type=float,default=30)
     parser.add_argument("--experiment",default="primary")
@@ -457,9 +486,11 @@ def main(argv=None):
     parser.add_argument("--overrun-policy",choices=["retain_due_cycles"])
     parser.add_argument("--cycles",type=int,help="Optional bounded shadow development run")
     args=parser.parse_args(argv)
+    if args.source_dataset != "EQUS.MINI" and (args.watch or args.mode == "shadow"):
+        raise ContractError("Archive source selection is historical replay only; existing shadow provider binding stays unchanged")
     from .data import load_local_history
     pc,symbols=local_symbols(args.profile,args.watchlist,args.datastore)
-    config=ResearchConfig(lookback_days=args.lookback_days,symbol_workers=args.symbol_workers,
+    config=ResearchConfig(lookback_days=args.lookback_days,symbol_workers=args.symbol_workers,source_dataset=args.source_dataset,
                           publication_offset_seconds=args.publication_offset_seconds)
     start=time.perf_counter(); request_start=utcnow()
     histories={symbol:load_local_history(args.datastore,symbol,source_dataset=config.source_dataset) for symbol in symbols}

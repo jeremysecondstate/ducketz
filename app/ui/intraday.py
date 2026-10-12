@@ -11,7 +11,7 @@ from typing import Mapping
 from app.ui.intraday_data import (
     PACIFIC, WINDOWS, IntradaySnapshot, default_databases, error_correlations,
     filter_forecasts, forecast_metrics, latest_matrix, load_intraday_snapshot,
-    model_metrics, probability, probability_geometry, regime_metrics, timestamp,
+    model_metrics, probability, probability_geometry, regime_metrics, source_dataset_label, timestamp,
     window_rows,
 )
 from app.ui.theme import BACKGROUND, BORDER, DANGER, MUTED_TEXT, SUCCESS, SURFACE, SURFACE_ALT, TEXT, WARNING
@@ -83,6 +83,7 @@ class IntradayTab:
         self.symbol = tk.StringVar(master=root, value="All")
         self.session = tk.StringVar(master=root, value="All")
         self.reference_slot = tk.StringVar(master=root, value="All")
+        self.source_dataset = tk.StringVar(master=root, value="All")
         self.mode = tk.StringVar(master=root, value="shadow")
         self.metric_window = tk.StringVar(master=root, value="Cumulative")
         self.status = tk.StringVar(master=root, value="Read-only saved forecasts · no store loaded")
@@ -123,7 +124,13 @@ class IntradayTab:
         reference_box.pack(side="left")
         reference_box.bind("<<ComboboxSelected>>", lambda _event: self.render())
         self.boxes["reference_slot"] = reference_box
-        _label(time_controls, "Pacific quarter-hour filter · the issued target remains fixed", color=MUTED_TEXT, size=9).pack(side="left", padx=10)
+        _label(time_controls, "Source dataset", color=MUTED_TEXT).pack(side="left", padx=(16, 8))
+        source_box = ttk.Combobox(time_controls, textvariable=self.source_dataset, values=("All",), state="readonly", width=15)
+        source_box.pack(side="left")
+        source_box.bind("<<ComboboxSelected>>", lambda _event: self.render())
+        self.boxes["source_dataset"] = source_box
+        _label(time_controls, "All combines source datasets in metrics; Unrecorded keeps legacy provenance explicit.",
+               color=MUTED_TEXT, size=9).pack(side="left", padx=10)
         self.status_label = _label(self.page, color=MUTED_TEXT, size=9, textvariable=self.status,
                                    wraplength=1200, justify="left")
         self.status_label.pack(fill="x", pady=(7, 8))
@@ -140,7 +147,7 @@ class IntradayTab:
         chooser = tk.Frame(self.consensus_page, bg=SURFACE)
         chooser.pack(fill="x", padx=14, pady=(10, 4))
         _label(chooser, "Newest saved issue for", color=MUTED_TEXT).pack(side="left")
-        self.consensus_box = ttk.Combobox(chooser, textvariable=self.consensus_choice, state="readonly", width=25)
+        self.consensus_box = ttk.Combobox(chooser, textvariable=self.consensus_choice, state="readonly", width=62)
         self.consensus_box.pack(side="left", padx=10)
         self.consensus_box.bind("<<ComboboxSelected>>", lambda _event: self._render_consensus())
         self.consensus_value = _label(self.consensus_page, "No saved predictions", size=26, bold=True)
@@ -159,12 +166,12 @@ class IntradayTab:
         self.models_frame.bind("<Configure>", lambda _e: self.model_canvas.configure(scrollregion=self.model_canvas.bbox("all")))
         self.model_canvas.bind("<Configure>", lambda e: self.model_canvas.itemconfigure(self.model_window, width=e.width))
         self.matrix = _table(pages["matrix"], [
-            ("pc", "PC", 70), ("symbol", "Symbol", 75), ("probability", "Not-down", 95),
+            ("pc", "PC", 70), ("symbol", "Symbol", 75), ("source_dataset", "Source dataset", 110), ("probability", "Not-down", 95),
             ("direction", "Class", 90), ("count", "Models", 80), ("ensemble", "Ensemble", 95),
             ("outcome", "Outcome", 90), ("issue", "Issue Pacific", 170), ("target", "Target close Pacific", 170),
             ("age", "Issue age", 100), ("basis", "Availability evidence", 140), ("mode", "Mode", 140),
         ])
-        _label(pages["matrix"], "Newest issue per PC/symbol in the filters. No newer issue in 15m is a freshness observation; it does not change the saved outcome.",
+        _label(pages["matrix"], "Newest issue per PC/symbol/source dataset/mode in the filters. No newer issue in 15m is a freshness observation; it does not change the saved outcome.",
                color=MUTED_TEXT, wraplength=1200).pack(anchor="w", padx=10, pady=5)
         _label(pages["metrics"], "Windows select loaded issued forecasts: Today uses the Pacific issue date; 7 days is the preceding 168 hours; Last N includes the latest N issues. Local cumulative covers the saved store; a remote latest-snapshot receipt covers only its admitted rows, not the peer's complete history. Headline includes observed and confirmed synthetic no-trade targets with valid probabilities. Pending, missing and unscorable are excluded; observed/synthetic and equality breakdowns are separate below.",
                color=MUTED_TEXT, wraplength=1200, justify="left").pack(anchor="w", padx=10, pady=8)
@@ -209,6 +216,7 @@ class IntradayTab:
         choices = {
             "pc": ["All", *sorted({str(row.get("pc")) for row in snapshot.forecasts})],
             "symbol": ["All", *sorted({str(row.get("symbol")) for row in snapshot.forecasts})],
+            "source_dataset": ["All", *sorted({source_dataset_label(row) for row in snapshot.forecasts})],
             "session": ["All", *sorted({timestamp(row.get("issued_at")).astimezone(PACIFIC).date().isoformat()
                          for row in snapshot.forecasts if timestamp(row.get("issued_at"))}, reverse=True)],
             "reference_slot": ["All", *sorted({timestamp(row.get("reference_at")).astimezone(PACIFIC).strftime("%H:%M")
@@ -227,9 +235,11 @@ class IntradayTab:
 
     def render(self):
         self.visible_rows = filter_forecasts(self.snapshot, pc=self.pc.get(), symbol=self.symbol.get(),
-                                            session=self.session.get(), mode=self.mode.get(), reference_slot=self.reference_slot.get())
+                                            session=self.session.get(), mode=self.mode.get(), reference_slot=self.reference_slot.get(),
+                                            source_dataset=self.source_dataset.get())
         newest = latest_matrix(self.visible_rows)
-        self.consensus_rows = {f"{row.get('pc')} · {row.get('symbol')}": row for row in newest}
+        self.consensus_rows = {f"{row.get('pc')} · {row.get('symbol')} · {source_dataset_label(row)} · {row.get('mode', 'shadow')}": row
+                               for row in newest}
         self.consensus_box.configure(values=list(self.consensus_rows))
         if self.consensus_choice.get() not in self.consensus_rows:
             self.consensus_choice.set(next(iter(self.consensus_rows), ""))
@@ -244,7 +254,7 @@ class IntradayTab:
                 age_text += " · no newer issue in 15m"
             if p is not None and abs(p-.5) <= .01:
                 classification += " · ±1pp"
-            matrix.append(((row.get("pc"), row.get("symbol"), percent(p), classification,
+            matrix.append(((row.get("pc"), row.get("symbol"), source_dataset_label(row), percent(p), classification,
                             f"{row.get('successful_count', 0)}/{row.get('configured_count', 0)}", row.get("ensemble_status", "unknown"),
                             row["outcome_status"], clock(row.get("issued_at")), clock(row.get("target_close")), age_text,
                             row.get("availability_basis", "unknown"), row.get("mode", "shadow")),
@@ -303,6 +313,7 @@ class IntradayTab:
         except (TypeError, ValueError):
             reference = "unavailable"
         self.consensus_meta.configure(text=(f"{row.get('successful_count', 0)}/{row.get('configured_count', 0)} enabled models succeeded · {row.get('ensemble_status', 'unknown')} ensemble · outcome {row['outcome_status']}\n"
+            f"Source dataset {source_dataset_label(row)} · source {row.get('source_id') or 'Unrecorded'}\n"
             f"Reference OPEN {reference} at {clock(row.get('reference_at'))} · target candle opens {clock(row.get('target_open'))}, closes {clock(row.get('target_close'))}\n"
             f"Issued {clock(row.get('issued_at'))} · data through {clock(row.get('data_through'))} · information available {clock(row.get('information_available_at'))}\n"
             f"Training completed {clock(row.get('training_completed_at'))} · issued after target {bool(row.get('issue_after_target', False))}\n"
@@ -356,10 +367,16 @@ class IntradayTab:
                 line += f" Producer {source.get('producer_pc')} exported {clock(source['produced_at'])}; first received {clock(source.get('received_at'))}; telemetry {source.get('telemetry_status')} (15m freshness interval). Private remote intention/order quantities are unavailable."
             lines.append(line + " Receipt freshness is not a live PC heartbeat.")
         self.operation_status.configure(text="\n".join(lines) or "No telemetry source configured. Remote monitoring requires an explicitly supplied, received read-only store path.")
+        selected_cycles = {row.get("cycle_id") for row in self.visible_rows}
         cycles = [row for row in self.snapshot.cycles if (self.pc.get() == "All" or row.get("pc") == self.pc.get())
-                  and (self.mode.get() == "All" or row.get("mode", "shadow") == self.mode.get())]
+                  and (self.mode.get() == "All" or row.get("mode", "shadow") == self.mode.get())
+                  and (self.source_dataset.get() == "All" or row.get("id", row.get("cycle_id")) in selected_cycles)]
         latest = {}
-        for row in cycles:
+        # Local stores and peer packets return opposite cycle orders. Select by
+        # saved start time so receipt order cannot replace the newest evidence.
+        for row in sorted(cycles, key=lambda item: (
+                timestamp(item.get("started_at")) or datetime.min.replace(tzinfo=timezone.utc),
+                str(item.get("id", "")))):
             latest[(row.get("source_label"), row.get("pc"))] = row
         def evidence(row):
             keys = ("mode", "timings", "latency", "resources", "resources_before", "resources_after", "acquisition",

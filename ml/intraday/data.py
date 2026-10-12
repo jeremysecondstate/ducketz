@@ -566,9 +566,17 @@ def aggregate_minutes(minutes: pd.DataFrame, *, sessions: Sequence[SessionBounds
     """
     frame = validate_candles(minutes, duration=MINUTE)
     records, missing = [], []
+    # A multi-year archive can contain hundreds of thousands of slots. Retain
+    # the same explicit envelope test without scanning every historical session
+    # for each slot (including envelopes that cross a UTC date boundary).
+    sessions_by_day = {}
+    for session in sessions:
+        for day in pd.date_range(utc(session.opened_at).normalize(),
+                                 (utc(session.closed_at) - pd.Timedelta(nanoseconds=1)).normalize(), freq="D"):
+            sessions_by_day.setdefault(day, []).append(session)
     by_slot = {slot: group for slot, group in frame.groupby(frame.opened_at.dt.floor("15min"), sort=True)}
     for slot, group in by_slot.items():
-        session = next((s for s in sessions if s.contains(slot)), None)
+        session = next((s for s in sessions_by_day.get(slot.normalize(), ()) if s.contains(slot)), None)
         if session is None:
             continue
         expected = pd.date_range(slot, periods=15, freq="1min")
@@ -607,6 +615,148 @@ class History:
     manifest: dict
 
 
+def _archive_native_frame(path: Path, *, symbol: str, request: Mapping) -> pd.DataFrame:
+    """Decode already-saved DBN bytes locally; this constructs no API client."""
+    import databento
+    saved = databento.DBNStore.from_file(path)
+    if (saved.dataset != "XNAS.ITCH" or str(saved.schema) != "ohlcv-1m"
+            or set(saved.symbols) != {symbol}
+            or utc(saved.start) != pd.Timestamp(request["start"], tz="UTC")
+            or utc(saved.end) != pd.Timestamp(request["end"], tz="UTC")):
+        raise ContractError("Archive raw DBN identity or requested range differs")
+    return saved.to_df(price_type="float", pretty_ts=True, map_symbols=True).reset_index()
+
+
+def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
+                              availability_offset_seconds: float = 0.0) -> History:
+    """Verified venue-only XNAS history, never mixed with canonical EQUS bars.
+
+    Each immutable cold partition must retain its receipt, manifest, normalized
+    payload and native DBN. Comparing all OHLCV observations with the native
+    float-price decode establishes the unadjusted market price basis instead of
+    guessing it from a filename or adding an undocumented scaling factor.
+    """
+    if not symbol or not symbol.replace(".", "").isalnum():
+        raise ContractError("Invalid symbol")
+    if not math.isfinite(availability_offset_seconds) or availability_offset_seconds < 0:
+        raise ContractError("Historical availability assumption must have a nonnegative finite offset")
+    symbol = symbol.upper()
+    folder = Path(root).resolve() / "market-data/databento/us-equities/XNAS.ITCH/ohlcv-1m" / symbol / "windows"
+    paths = sorted(folder.glob("*/manifest.json"))
+    if not paths:
+        raise ContractError(f"No existing XNAS minute archive for {symbol}")
+    frames, files = [], []
+    columns = ["ts_event", "symbol", "open", "high", "low", "close", "volume"]
+    for manifest_path in paths:
+        receipt_path = manifest_path.with_name("receipt.json")
+        normalized_path = manifest_path.with_name("normalized.parquet")
+        raw_path = manifest_path.with_name("provider.dbn.zst")
+        pinned = (manifest_path, receipt_path, normalized_path, raw_path)
+        if not all(p.is_file() for p in pinned):
+            raise ContractError("Archive partition lacks complete native provenance")
+        before = {p: _hash_file(p) for p in pinned}
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            request, normalized, raw = manifest["request"], manifest["normalized"], manifest["raw"]
+            if (manifest["schema_version"] != "databento-cold-start-partition-v1"
+                    or receipt["schema_version"] != "databento-cold-start-receipt-v1"
+                    or request["dataset"] != "XNAS.ITCH" or request["schema"] != "ohlcv-1m"
+                    or request["symbol_scope"] != [symbol] or request["stype_in"] != "raw_symbol"
+                    or request["storage_contract"] not in {"generic", "isolated-cold-start"}
+                    or not request["request_id"] or request["request_id"] != receipt["request_id"]
+                    or normalized["path"] != normalized_path.name or raw["path"] != raw_path.name
+                    or before[manifest_path] != receipt["manifest_checksum_sha256"]
+                    or before[normalized_path] != normalized["checksum_sha256"]
+                    or before[normalized_path] != receipt["normalized_checksum_sha256"]
+                    or before[raw_path] != raw["checksum_sha256"]
+                    or before[raw_path] != receipt["raw_checksum_sha256"]
+                    or normalized_path.stat().st_size != normalized["size_bytes"]
+                    or raw_path.stat().st_size != raw["size_bytes"]):
+                raise ContractError("Archive identity, size or receipt checksum differs")
+            frame = pd.read_parquet(normalized_path)
+            if "ts_event" not in frame and frame.index.name == "ts_event":
+                frame = frame.reset_index()
+            if set(columns) - set(frame):
+                raise ContractError("Archive minute format is incompatible")
+            if (set(frame.symbol.astype(str)) != {symbol}
+                    or not isinstance(frame.ts_event.dtype, pd.DatetimeTZDtype)
+                    or any(not pd.api.types.is_float_dtype(frame[c]) for c in ("open", "high", "low", "close"))):
+                raise ContractError("Archive needs exact symbol, aware timestamps and native float prices")
+            frame = frame.loc[:, columns].reset_index(drop=True)
+            frame["ts_event"] = frame.ts_event.dt.tz_convert("UTC")
+            if (frame.empty or len(frame) != normalized["row_count"]
+                    or normalized["timestamp_column"] != "ts_event"
+                    or frame.ts_event.min() != utc(normalized["earliest_timestamp"])
+                    or frame.ts_event.max() != utc(normalized["latest_timestamp"])
+                    or frame.ts_event.lt(pd.Timestamp(request["start"], tz="UTC")).any()
+                    or frame.ts_event.ge(pd.Timestamp(request["end"], tz="UTC")).any()):
+                raise ContractError("Archive timestamp bounds or row count differ")
+            native = _archive_native_frame(raw_path, symbol=symbol, request=request)
+            # Exact comparison also rejects split-adjusted, rescaled, filtered or
+            # otherwise transformed prices even if their local hashes agree.
+            if not frame.equals(native.loc[:, columns].reset_index(drop=True)):
+                raise ContractError("Archive observations differ from unadjusted native DBN prices")
+        except (KeyError, TypeError, ValueError) as exc:
+            if isinstance(exc, ContractError):
+                raise
+            raise ContractError("Malformed archive provenance or observations") from exc
+        for path, checksum in before.items():
+            if _hash_file(path) != checksum:
+                raise ContractError("Concurrent source mutation during archive read")
+            files.append({"path": str(path), "sha256": checksum, "bytes": path.stat().st_size})
+        frame = frame.rename(columns={"ts_event": "opened_at"})
+        frame["available_at"] = frame.opened_at + MINUTE + pd.Timedelta(seconds=availability_offset_seconds)
+        frames.append(frame.assign(availability_kind="assumed_historical_close",
+            source_id="databento:XNAS.ITCH:ohlcv-1m", source_dataset="XNAS.ITCH",
+            session_id="unassigned", synthetic=False, no_trade=False, evidence_json="{}"))
+    minutes = pd.concat(frames, ignore_index=True).drop_duplicates(["opened_at", "open", "high", "low", "close", "volume"])
+    if minutes.opened_at.duplicated().any():
+        raise ContractError("Conflicting archive minute revisions require explicit selection")
+    if start is not None:
+        minutes = minutes.loc[minutes.opened_at.ge(utc(start))]
+    if end is not None:
+        minutes = minutes.loc[minutes.opened_at.lt(utc(end))]
+    if minutes.empty:
+        raise ContractError("Selected historical window has no observations")
+    # Native provider history can contain null/sentinel OHLCV observations.
+    # Raw equality and immutable provenance have already been checked above;
+    # exclude invalid observations explicitly as gaps, never as no-trade proof.
+    if minutes.opened_at.isna().any() or (minutes.opened_at != minutes.opened_at.dt.floor("min")).any():
+        raise ContractError("Archive minutes must have exact aware opening timestamps")
+    prices = minutes[["open", "high", "low", "close"]]
+    bad_price = (~np.isfinite(prices).all(axis=1)) | prices.le(0).any(axis=1)
+    bad_volume = (~np.isfinite(minutes.volume)) | minutes.volume.lt(0)
+    bad_range = (minutes.low.gt(minutes[["open", "close"]].min(axis=1))
+                 | minutes.high.lt(minutes[["open", "close"]].max(axis=1)) | minutes.high.lt(minutes.low))
+    invalid = bad_price | bad_volume | bad_range
+    excluded = [{"opened_at": row.opened_at.isoformat(),
+                 "reasons": [reason for reason, mask in (("nonfinite_or_nonpositive_price", bad_price),
+                             ("nonfinite_or_negative_volume", bad_volume), ("invalid_ohlc_range", bad_range)) if mask.loc[index]],
+                 "status": "missing_invalid_native_observation"}
+                for index, row in minutes.loc[invalid].iterrows()]
+    source_minute_rows = len(minutes)
+    minutes = minutes.loc[~invalid].copy()
+    if minutes.empty:
+        raise ContractError("Selected archive history has no valid native observations")
+    sessions = equity_sessions(minutes.opened_at.min(), minutes.opened_at.max() + MINUTE)
+    frame, aggregation = aggregate_minutes(minutes, sessions=sessions)
+    manifest = {"symbol": symbol, "source_dataset": "XNAS.ITCH", "source_schema": "ohlcv-1m",
+        "availability_kind": "assumed_historical_close", "availability_offset_seconds": availability_offset_seconds,
+        "availability_limitation": "Historical publication/receipt timestamps not recorded; no point-in-time claim",
+        "price_basis": "unadjusted_market_scale", "price_basis_evidence": "all_OHLCV_equal_native_DBN_float_decode",
+        "source_policy": "single_verified_dataset_no_fill_no_fallback", "venue_limitation": "XNAS venue-only observations, not consolidated EQUS",
+        "source_minute_rows": source_minute_rows, "invalid_native_rows_excluded": len(excluded),
+        "invalid_native_observations": excluded, "invalid_native_policy": "remain_missing_never_no_trade_or_synthetic",
+        "minute_rows": len(minutes), "first_minute_open": minutes.opened_at.min().isoformat(),
+        "last_minute_open": minutes.opened_at.max().isoformat(), "candle_rows": len(frame),
+        "first_candle_open": frame.opened_at.min().isoformat() if len(frame) else None,
+        "last_candle_open": frame.opened_at.max().isoformat() if len(frame) else None,
+        "files": files, "aggregation": aggregation}
+    frame.attrs["intraday_history"] = manifest
+    return History(frame, manifest)
+
+
 def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=None, end=None,
                        availability_offset_seconds: float = 0.0) -> History:
     """Read canonical minute files and their native raw provenance, no writes.
@@ -616,8 +766,11 @@ def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=N
     Close-plus-offset is an explicit historical assumption, never an actual
     receipt time and never a file-mtime proxy. No source mixing or gap fill.
     """
+    if source_dataset == "XNAS.ITCH":
+        return load_xnas_archive_history(root, symbol, start=start, end=end,
+                                        availability_offset_seconds=availability_offset_seconds)
     if source_dataset != "EQUS.MINI":
-        raise ContractError("This loader supports explicit canonical EQUS.MINI only; select a separate archive adapter for XNAS.ITCH")
+        raise ContractError("Select explicit EQUS.MINI canonical history or XNAS.ITCH archive history")
     if not symbol or not symbol.replace(".", "").isalnum():
         raise ContractError("Invalid symbol")
     if not math.isfinite(availability_offset_seconds) or availability_offset_seconds < 0:

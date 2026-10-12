@@ -1,5 +1,6 @@
 """Scientific input contract tests use observations, never provider access."""
 from dataclasses import replace
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -16,6 +17,172 @@ from ml.intraday.data import (
     validate_candles,
 )
 from ml.intraday.prediction import ContractError, STEP, UnresolvedPolicy
+
+
+def archive_partition(tmp_path, monkeypatch, *, frame=None, name="2026-05-11_to_2026-05-12", natives=None):
+    """Local provider-format fixtures, including independently retained native rows."""
+    from ml.intraday import data
+    directory = tmp_path/"market-data/databento/us-equities/XNAS.ITCH/ohlcv-1m/AAPL/windows"/name
+    directory.mkdir(parents=True)
+    if frame is None:
+        frame = candles(45, minutes=True).rename(columns={"opened_at": "ts_event"})
+        frame = frame[["ts_event", "symbol", "open", "high", "low", "close", "volume"]]
+    frame = frame.copy()
+    frame.to_parquet(directory/"normalized.parquet", index=False)
+    (directory/"provider.dbn.zst").write_bytes(b"independent native DBN fixture")
+    manifest = {"schema_version": "databento-cold-start-partition-v1",
+        "request": {"dataset": "XNAS.ITCH", "schema": "ohlcv-1m", "symbol_scope": ["AAPL"],
+                    "stype_in": "raw_symbol", "storage_contract": "generic", "request_id": name,
+                    "start": "2026-05-11", "end": "2026-05-12"},
+        "normalized": {"path": "normalized.parquet", "row_count": len(frame), "timestamp_column": "ts_event",
+                       "earliest_timestamp": frame.ts_event.min().isoformat(), "latest_timestamp": frame.ts_event.max().isoformat()},
+        "raw": {"path": "provider.dbn.zst"}}
+    for kind in ("raw", "normalized"):
+        path = directory/manifest[kind]["path"]
+        manifest[kind].update(checksum_sha256=hashlib.sha256(path.read_bytes()).hexdigest(), size_bytes=path.stat().st_size)
+    (directory/"manifest.json").write_text(json.dumps(manifest))
+    receipt = {"schema_version": "databento-cold-start-receipt-v1", "request_id": name,
+        "manifest_checksum_sha256": hashlib.sha256((directory/"manifest.json").read_bytes()).hexdigest(),
+        "normalized_checksum_sha256": manifest["normalized"]["checksum_sha256"],
+        "raw_checksum_sha256": manifest["raw"]["checksum_sha256"]}
+    (directory/"receipt.json").write_text(json.dumps(receipt))
+    natives = {} if natives is None else natives
+    natives[directory/"provider.dbn.zst"] = frame.copy()
+    monkeypatch.setattr(data, "_archive_native_frame", lambda path, **kwargs: natives[path].copy())
+    return directory, natives
+
+
+def test_xnas_archive_native_prices_provenance_and_missing_minutes(tmp_path, monkeypatch):
+    frame = candles(45, minutes=True).rename(columns={"opened_at": "ts_event"})
+    frame = frame[["ts_event", "symbol", "open", "high", "low", "close", "volume"]].drop(index=17)
+    archive_partition(tmp_path, monkeypatch, frame=frame)
+    history = load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+    assert len(history.frame) == 2
+    assert history.manifest["aggregation"]["incomplete_intervals"] == 1
+    assert history.manifest["price_basis_evidence"] == "all_OHLCV_equal_native_DBN_float_decode"
+    assert history.frame.source_dataset.eq("XNAS.ITCH").all()
+    assert history.frame.availability_kind.eq("assumed_historical_close").all()
+    assert not history.frame.synthetic.any()
+    assert len(history.manifest["files"]) == 4
+    # Canonical selection never silently falls back to the archive.
+    with pytest.raises(ContractError, match="No existing canonical"):
+        load_local_history(tmp_path, "AAPL")
+
+
+@pytest.mark.parametrize("filename", ["receipt.json", "manifest.json", "normalized.parquet", "provider.dbn.zst"])
+def test_xnas_archive_missing_or_changed_provenance_rejected(tmp_path, monkeypatch, filename):
+    directory, _ = archive_partition(tmp_path, monkeypatch)
+    path = directory/filename
+    if filename == "receipt.json":
+        path.unlink()
+    else:
+        path.write_bytes(path.read_bytes()+b"changed")
+    with pytest.raises(ContractError):
+        load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+
+
+def test_xnas_archive_rejects_rehashed_adjusted_prices(tmp_path, monkeypatch):
+    directory, natives = archive_partition(tmp_path, monkeypatch)
+    natives[directory/"provider.dbn.zst"]["open"] *= 2
+    with pytest.raises(ContractError, match="unadjusted native"):
+        load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+
+
+def test_xnas_archive_verified_isolated_cold_partition(tmp_path, monkeypatch):
+    directory, _ = archive_partition(tmp_path, monkeypatch)
+    mp, rp = directory/"manifest.json", directory/"receipt.json"
+    manifest, receipt = json.loads(mp.read_text()), json.loads(rp.read_text())
+    manifest["request"]["storage_contract"] = "isolated-cold-start"
+    mp.write_text(json.dumps(manifest))
+    receipt["manifest_checksum_sha256"] = hashlib.sha256(mp.read_bytes()).hexdigest()
+    rp.write_text(json.dumps(receipt))
+    assert len(load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH").frame) == 3
+
+
+@pytest.mark.parametrize("invalid", ["null_price", "bad_range", "negative_volume"])
+def test_xnas_invalid_native_row_is_gap_and_excludes_whole_interval(tmp_path, monkeypatch, invalid):
+    frame = candles(45, minutes=True).rename(columns={"opened_at": "ts_event"})
+    frame = frame[["ts_event", "symbol", "open", "high", "low", "close", "volume"]]
+    if invalid == "null_price": frame.loc[17, ["open", "high", "low", "close"]] = np.nan
+    if invalid == "bad_range": frame.loc[17, "high"] = 1.0
+    if invalid == "negative_volume": frame.loc[17, "volume"] = -1.0
+    archive_partition(tmp_path, monkeypatch, frame=frame)
+    history = load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+    assert history.manifest["source_minute_rows"] == 45
+    assert history.manifest["minute_rows"] == 44
+    assert history.manifest["invalid_native_rows_excluded"] == 1
+    assert history.manifest["invalid_native_observations"][0]["opened_at"] == frame.ts_event.iloc[17].isoformat()
+    assert history.manifest["aggregation"]["incomplete_intervals"] == 1
+    assert len(history.frame) == 2
+    assert not history.frame.opened_at.eq(frame.ts_event.iloc[15]).any()
+    assert not history.frame.synthetic.any()
+
+
+@pytest.mark.parametrize("mismatch", ["symbol", "naive", "off_minute", "dataset"])
+def test_xnas_archive_exact_identity_and_timestamps(tmp_path, monkeypatch, mismatch):
+    frame = candles(45, minutes=True).rename(columns={"opened_at": "ts_event"})
+    frame = frame[["ts_event", "symbol", "open", "high", "low", "close", "volume"]]
+    if mismatch == "symbol": frame["symbol"] = "WRONG"
+    if mismatch == "naive": frame["ts_event"] = frame.ts_event.dt.tz_localize(None)
+    if mismatch == "off_minute": frame["ts_event"] += pd.Timedelta(seconds=1)
+    directory, _ = archive_partition(tmp_path, monkeypatch, frame=frame)
+    if mismatch == "dataset":
+        mp, rp = directory/"manifest.json", directory/"receipt.json"
+        manifest, receipt = json.loads(mp.read_text()), json.loads(rp.read_text())
+        manifest["request"]["dataset"] = "EQUS.MINI"
+        mp.write_text(json.dumps(manifest))
+        receipt["manifest_checksum_sha256"] = hashlib.sha256(mp.read_bytes()).hexdigest()
+        rp.write_text(json.dumps(receipt))
+    with pytest.raises(ContractError):
+        load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_xnas_archive_duplicate_observations(tmp_path, monkeypatch, conflict):
+    first, natives = archive_partition(tmp_path, monkeypatch)
+    frame = natives[first/"provider.dbn.zst"].copy()
+    if conflict: frame["volume"] += 1
+    archive_partition(tmp_path, monkeypatch, frame=frame, name="second", natives=natives)
+    if conflict:
+        with pytest.raises(ContractError, match="Conflicting archive"):
+            load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+    else:
+        assert len(load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH").frame) == 3
+
+
+def test_xnas_archive_rejects_source_mutation_while_reading(tmp_path, monkeypatch):
+    from ml.intraday import data
+    directory, _ = archive_partition(tmp_path, monkeypatch)
+    read = pd.read_parquet
+    def changed(path):
+        result = read(path)
+        receipt = directory/"receipt.json"
+        receipt.write_text(receipt.read_text()+" ")
+        return result
+    monkeypatch.setattr(data.pd, "read_parquet", changed)
+    with pytest.raises(ContractError, match="Concurrent source mutation"):
+        load_local_history(tmp_path, "AAPL", source_dataset="XNAS.ITCH")
+
+
+@pytest.mark.parametrize("field,value", [("dataset", "EQUS.MINI"), ("schema", "ohlcv-1s"), ("symbols", ["OTHER"])])
+def test_xnas_archive_native_decoder_checks_identity(monkeypatch, field, value):
+    import sys
+    from ml.intraday.data import _archive_native_frame
+    saved = SimpleNamespace(dataset="XNAS.ITCH", schema="ohlcv-1m", symbols=["AAPL"],
+                            start=pd.Timestamp("2026-05-11", tz="UTC"), end=pd.Timestamp("2026-05-12", tz="UTC"))
+    setattr(saved, field, value)
+    # Exercise metadata admission without importing the optional network client.
+    monkeypatch.setitem(sys.modules, "databento", SimpleNamespace(DBNStore=SimpleNamespace(from_file=lambda path: saved)))
+    with pytest.raises(ContractError, match="raw DBN identity"):
+        _archive_native_frame("unused", symbol="AAPL", request={"start":"2026-05-11", "end":"2026-05-12"})
+
+
+def test_aggregation_session_index_preserves_cross_utc_midnight():
+    frame = candles(30, start="2026-05-11T23:45:00+00:00", minutes=True)
+    session = SessionBounds("2026-05-11", "2026-05-11T23:30:00+00:00", "2026-05-12T00:30:00+00:00")
+    aggregated, _ = aggregate_minutes(frame, sessions=[session])
+    assert len(aggregated) == 2
+    assert aggregated.session_id.eq("2026-05-11").all()
 
 
 def candles(count=42, *, start="2026-05-11T13:30:00+00:00", minutes=False):

@@ -179,6 +179,20 @@ def test_reference_quarter_filter_preserves_exact_forecast_targets():
     assert filter_forecasts(snapshot, reference_slot="10:15") == (next_row,)
 
 
+def test_source_dataset_filter_keeps_comparisons_and_legacy_provenance_explicit():
+    legacy = forecast("legacy")
+    eq = forecast("eq", source_dataset="EQUS.MINI", source_id="databento:EQUS.MINI:ohlcv-1m")
+    xnas = forecast("xnas", source_dataset="XNAS.ITCH", source_id="databento:XNAS.ITCH:ohlcv-1m",
+                    probability_not_down=.3)
+    snapshot = IntradaySnapshot(NOW, (legacy, eq, xnas))
+    assert len(latest_matrix(snapshot.forecasts)) == 3
+    assert filter_forecasts(snapshot, source_dataset="Unrecorded") == (legacy,)
+    assert filter_forecasts(snapshot, source_dataset="EQUS.MINI") == (eq,)
+    assert forecast_metrics(filter_forecasts(snapshot, source_dataset="EQUS.MINI"))["accuracy"] == 1
+    assert forecast_metrics(filter_forecasts(snapshot, source_dataset="XNAS.ITCH"))["accuracy"] == 0
+    assert forecast_metrics(filter_forecasts(snapshot, source_dataset="All"))["denominator"] == 3
+
+
 def test_pairwise_correlations_use_actual_overlaps_and_retrospective_bins():
     rows = [forecast(str(i), reference_open=100, outcome=dict(target_not_down=True, target_close_price=100+i),
         models=[dict(name="a", status="success", probability_not_down=.5+i*.1),
@@ -215,7 +229,7 @@ def test_broken_store_does_not_silently_look_like_empty_results(tmp_path):
 def test_verified_peer_receipt_projects_real_fields_without_private_intentions(tmp_path):
     from test_intraday_telemetry import source_store
     from ml.intraday.telemetry import export_packet, import_packet, write_packet
-    store, issued = source_store(tmp_path / "Scout" / "shadow.sqlite3", pc="Scout")
+    store, issued = source_store(tmp_path / "Scout" / "shadow.sqlite3", pc="Scout", source_dataset="XNAS.ITCH")
     packet = export_packet(store.path, producer_pc="Scout", source_version="test-release", produced_at=NOW.isoformat())
     output = write_packet(packet, tmp_path / "Scout" / "packet.json")
     received = import_packet(output, tmp_path / "Atlas" / "receipts", expected_peer="Scout", local_pc="Atlas", received_at=NOW.isoformat())
@@ -226,6 +240,8 @@ def test_verified_peer_receipt_projects_real_fields_without_private_intentions(t
     row = snapshot.forecasts[0]
     assert row["forecast_id"] == issued["forecast_id"] and row["probability_not_down"] == .72
     assert row["outcome_status"] == "scored" and row["intents"] == []
+    assert row["source_dataset"] == "XNAS.ITCH" and row["source_id"] == "databento:XNAS.ITCH:ohlcv-1m"
+    assert filter_forecasts(snapshot, source_dataset="EQUS.MINI") == ()
     assert snapshot.sources[0]["telemetry_status"] == "stale"  # A newly received old forecast stays old.
     assert snapshot.sources[0]["produced_at"] == snapshot.sources[0]["received_at"] == NOW.isoformat()
     assert path.read_bytes() == before
@@ -242,6 +258,49 @@ def test_ui_modules_have_no_broker_provider_thread_or_training_imports():
         imports += [item.name for node in ast.walk(tree) if isinstance(node, ast.Import) for item in node.names]
         assert not any(any(forbidden in item for forbidden in ("broker", "schwab", "hyperliquid", "databento", "threading", "ml."))
                        for item in imports if item != "ml.intraday.telemetry")
+
+
+@pytest.mark.parametrize("reverse_cycles", [False, True])
+def test_operations_displays_newest_received_cycle_independent_of_packet_order(tmp_path, monkeypatch, reverse_cycles):
+    from types import SimpleNamespace
+    from test_intraday_telemetry import source_store
+    from app.ui import intraday
+    from ml.intraday.telemetry import export_packet, import_packet, write_packet
+
+    store, _ = source_store(tmp_path / "atlas.sqlite3")
+    store.begin_cycle("newest-atlas-cycle", dict(pc="Atlas", reference_at="2026-10-12T17:15:00Z",
+        mode="shadow", started_at="2026-10-12T17:30:30Z", status="running"))
+    store.update_cycle("newest-atlas-cycle", dict(status="completed", completed_at="2026-10-12T17:31:00Z",
+        total_cycle_seconds=30.0, successful_symbols=1, failed_symbols=0))
+    packet = export_packet(store.path, producer_pc="Atlas", source_version="reviewed-test-source",
+                           produced_at="2026-10-12T17:47:00Z")
+    assert packet["payload"]["cycles"][0]["cycle_id"] == "newest-atlas-cycle"
+    packet_path = write_packet(packet, tmp_path / "atlas-packet.json")
+    received = import_packet(packet_path, tmp_path / "receipts", expected_peer="Atlas", local_pc="Scout",
+                             received_at="2026-10-12T17:48:00Z")
+    snapshot = load_intraday_snapshot({"Peer": Path(received["receipt_path"])}, now=NOW, local_pc="Scout")
+    assert not snapshot.warnings and len(snapshot.cycles) == 2
+    if reverse_cycles:
+        snapshot = IntradaySnapshot(snapshot.loaded_at, snapshot.forecasts, tuple(reversed(snapshot.cycles)),
+                                    snapshot.sources, snapshot.warnings)
+    displayed = {}
+    monkeypatch.setattr(intraday, "_replace", lambda table, rows: displayed.update({table: rows}))
+    view = SimpleNamespace(snapshot=snapshot, pc=SimpleNamespace(get=lambda: "All"),
+        source_dataset=SimpleNamespace(get=lambda: "All"),
+        mode=SimpleNamespace(get=lambda: "shadow"), operation_status=SimpleNamespace(configure=lambda **_: None),
+        cycle_table="cycles", intent_table="intents", visible_rows=())
+    intraday.IntradayTab._render_operations(view)
+    assert len(displayed["cycles"]) == 1
+    values, _ = displayed["cycles"][0]
+    assert values[0:2] == ("Atlas", "newest-atlas-cycle")
+    assert values[3] == "completed"
+    assert json.loads(values[4])["total_cycle_seconds"] == 30.0
+    view.source_dataset = SimpleNamespace(get=lambda: "Unrecorded")
+    view.visible_rows = snapshot.forecasts
+    intraday.IntradayTab._render_operations(view)
+    values, _ = displayed["cycles"][0]
+    assert values[1] == snapshot.forecasts[0]["cycle_id"]
+    assert values[3] == "partial_failure"
 
 
 def test_tk_consensus_uses_saved_outputs_and_displays_failed_models(tmp_path):
@@ -274,5 +333,16 @@ def test_tk_consensus_uses_saved_outputs_and_displays_failed_models(tmp_path):
         assert "no purchasing capacity" in str(tab.intent_table.item(tab.intent_table.get_children()[0], "values"))
         assert tab.model_table.item(tab.model_table.get_children()[0], "values")[4] == "100.0% / 1"
         assert not tab._auto_job
+        source_rows = tuple(forecast(dataset, source_dataset=dataset, source_id=f"databento:{dataset}:ohlcv-1m")
+                            for dataset in ("EQUS.MINI", "XNAS.ITCH"))
+        tab.set_snapshot(IntradaySnapshot(NOW, source_rows))
+        assert len(tab.consensus_rows) == 2 and len(tab.matrix.get_children()) == 2
+        assert set(tab.boxes["source_dataset"].cget("values")) == {"All", "EQUS.MINI", "XNAS.ITCH"}
+        tab.source_dataset.set("XNAS.ITCH")
+        tab.render()
+        assert len(tab.visible_rows) == 1 and tab.visible_rows[0]["source_dataset"] == "XNAS.ITCH"
+        assert "Source dataset XNAS.ITCH · source databento:XNAS.ITCH:ohlcv-1m" in tab.consensus_meta.cget("text")
+        assert tab.matrix.item(tab.matrix.get_children()[0], "values")[2] == "XNAS.ITCH"
+        assert tab.model_table.item(tab.model_table.get_children()[0], "values")[2] == "1"
     finally:
         root.destroy()
