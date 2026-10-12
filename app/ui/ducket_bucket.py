@@ -21,6 +21,7 @@ from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.rolling_forecasts import RollingForecastTab
 from app.ui.gameplan_stats import GameplanStatsTab
 from app.ui.gameplan import GameplanTab
+from app.ui.intraday import IntradayTab
 from app.ui.schwab_duckets import SchwabDucketsTab
 from app.ui.theme import (
     ACCENT,
@@ -525,6 +526,7 @@ class DucketBucketApp:
         hyper_frame = ttk.Frame(notebook)
         stats_frame = ttk.Frame(notebook)
         gameplan_frame = ttk.Frame(notebook)
+        intraday_frame = ttk.Frame(notebook)
 
         notebook.add(forecasts_frame, text="Rolling Forecasts")
         notebook.add(strategies_frame, text="Options Strategies")
@@ -533,6 +535,7 @@ class DucketBucketApp:
         notebook.add(hyper_frame, text="H.Y.P.E.R.")
         notebook.add(stats_frame, text="Gameplan Stats")
         notebook.add(gameplan_frame, text="Gameplan")
+        notebook.add(intraday_frame, text="15-Minute Duckets")
 
         RollingForecastTab(
             root=self.root,
@@ -560,6 +563,7 @@ class DucketBucketApp:
 
         GameplanStatsTab(root=self.root, parent=stats_frame)
         GameplanTab(root=self.root, parent=gameplan_frame)
+        IntradayTab(root=self.root, parent=intraday_frame)
 
 
 class DucketsTab:
