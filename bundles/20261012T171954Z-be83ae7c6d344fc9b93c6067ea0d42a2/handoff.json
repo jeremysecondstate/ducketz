@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T17:19:54.242864Z",
+  "id": "20261012T171954Z-be83ae7c6d344fc9b93c6067ea0d42a2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Keep Gameplan running while 15m holds the shared account lock"
+}

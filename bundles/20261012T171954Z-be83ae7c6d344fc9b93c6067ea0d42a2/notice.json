@@ -1,0 +1,58 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T171451Z-161b15ff6e1e49cfa7c07cae0b709bb2",
+  "change_id": "20261012T171451Z-161b15ff6e1e49cfa7c07cae0b709bb2",
+  "commit_sha": "0a51b8c2bf81ad8cbdf1863ec5ba10c44567db9a",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-live-readiness.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/stock_trader/session_reporting.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_independent_stock_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_stock_session_reporting.py"
+    }
+  ],
+  "limitations": [
+    "The human-started live session produced the incident; this repair uses offline temporary-lock and injected-runner checks with network access prohibited. No agent broker/provider call, order, cancellation, trader restart or control change is performed.",
+    "Only the stopped Gameplan session entrypoint and reviewed support/test/documentation files may be installed after verifying process absence and unchanged owned bytes. Active 15m-imported files remain unchanged.",
+    "The 187.963-second first live forecasting cycle does not establish sustained performance alongside active Gameplan because Gameplan exited on contention.",
+    "A later human Gameplan restart and observed concurrent runtime are separate verification steps; source publication and installation do not establish deployment.",
+    "Main integration remains dependent on the reviewed PR74/PR70 source lineage. Never overwrite conflicting dependencies.",
+    "Pinned offline verifier uses PYTHONSAFEPATH=1 to avoid sibling requests.py shadowing; network and exact import checks remain active."
+  ],
+  "peer_action": "Review and adopt the exact shared repair under standing authority, preserving current Scout symbols, private state and shadow-only operation. Do not restart workers or enable Scout live orders. Report installed source separately from loaded runtime.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/75",
+  "remote_sha": "0a51b8c2bf81ad8cbdf1863ec5ba10c44567db9a",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A later human-started Gameplan worker waits on genuine shared-lock contention and retries normally. This source change does not restart workers, touch trading controls, cancel orders or change the running 15m process.",
+  "scope": "Shared Atlas/Scout; Scout remains shadow-only.",
+  "summary": "Keep Gameplan running while 15m holds the shared account lock",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T17:17:45.059764Z",
+      "output_sha256": "b30ac94440681b8e1f92c4377589ee7e4df37cfb8c1dd73cd0b0ce760382ea76",
+      "started_at_utc": "2026-10-12T17:16:34.978921Z",
+      "summary": "138 passed in 68.57s (0:01:08); zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
