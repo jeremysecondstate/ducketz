@@ -1,0 +1,78 @@
+{
+  "actor": "Atlas",
+  "completed_at_utc": "2026-10-12T12:40:45.309710Z",
+  "completion_id": "20261012T123714Z-atlas-intraday-monitoring-dccec45929a3",
+  "details": [
+    "Actor Atlas; task intraday-peer-monitoring; exact reviewed research telemetry and receiving evidence for Scout.",
+    "Peer reader source locally adopted at 67c4da0f8e0c119fc4fd8892970c279a173145e0; 187 offline checks pass with private state preserved.",
+    "Atlas packet contains historical-only latest source cohorts from its actual store; producing a packet does not imply live forecasts.",
+    "Scout snapshot received and displayed stale with original producer time; reverse peer receipt remains pending.",
+    "No raw history, fitted models, database, account state, quantities, orders, private errors or machine paths exported.",
+    "Human rollout sequence: Atlas manual execution validation first, reviewed fixes shared, then Scout; this artifact enables no orders."
+  ],
+  "files": [
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/monitoring.json",
+      "expected_sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/monitoring.json",
+      "published_sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849",
+      "published_size": 174100,
+      "sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849",
+      "size": 174100,
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "destination": "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/atlas-exchange-receipt.json",
+      "expected_sha256": "cabbade7fa8f67a80e889cb5838206d4f226b1bd7703631c36cef22a49520ba4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/atlas-exchange-receipt.json",
+      "published_sha256": "cabbade7fa8f67a80e889cb5838206d4f226b1bd7703631c36cef22a49520ba4",
+      "published_size": 2802,
+      "sha256": "cabbade7fa8f67a80e889cb5838206d4f226b1bd7703631c36cef22a49520ba4",
+      "size": 2802,
+      "supersedes": null
+    }
+  ],
+  "machine": "pc-original",
+  "paths": [
+    {
+      "compression": "none",
+      "expected_sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/monitoring.json",
+      "supersedes": null
+    },
+    {
+      "compression": "none",
+      "expected_sha256": "cabbade7fa8f67a80e889cb5838206d4f226b1bd7703631c36cef22a49520ba4",
+      "operation": "add",
+      "owned": true,
+      "path": "artifacts/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/atlas-exchange-receipt.json",
+      "supersedes": null
+    }
+  ],
+  "producer": "human-authorized-development",
+  "schema": "cross-pc-public-artifacts-v1",
+  "scope": "symbol-specific",
+  "source_head": "90704d21801f60426493bd6cc650a7fac38d4f61",
+  "summary": "Atlas intraday monitoring: publish authentic packet and verified Scout receipt",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ]
+}

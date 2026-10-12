@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "producer_pc": "Atlas",
+  "peer_pc": "Scout",
+  "source_commit": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+  "completion_id": "20261012T123714Z-atlas-intraday-monitoring-dccec45929a3",
+  "verified_at_utc": "2026-10-12T12:37:14.779935+00:00",
+  "scout_artifact_commit": "5943357e10ab08b76dfd4fafefa7a751727bf3d7",
+  "scout_file_sha256": "0a7b980c9ede51dacb78b88c12229728e507b422ce9ba469aabebbe59bee0695",
+  "scout_packet_id": "ba81b05621578ed9261e6d8f74a1d4fd90a00bbb605e931e2e3fb5ad41d9bfb6",
+  "scout_produced_at": "2026-10-12T12:14:38.492529+00:00",
+  "atlas_received_at": "2026-10-12T12:37:14.556354+00:00",
+  "atlas_receipt_sha256": "6790c7bcd715b3b473bfd8dd47fa1b6dc3e4636f2ec96bef34ef27a0e1829404",
+  "duplicate_kept_first_receipt": true,
+  "scout_status_at_verification": "stale",
+  "producer_age_seconds": 1356.167863,
+  "forecast_age_seconds": 1453.088578,
+  "scout_forecast_rows": 31,
+  "atlas_packet_id": "3f8eefbc85d930fc98365ed890edc5754b88037f469a397ab837cb35a975c1cd",
+  "atlas_produced_at": "2026-10-12T12:37:14.667931+00:00",
+  "atlas_file_sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849",
+  "atlas_forecast_rows": 22,
+  "atlas_modes": [
+    "historical_replay"
+  ],
+  "saved_forecasts_unchanged": true,
+  "existing_atlas_forecast_count": 86,
+  "limitations": [
+    "Scout packet is a saved snapshot, not continuous telemetry or current worker-health proof.",
+    "Atlas export is historical-only; newly producing a packet does not create a live shadow forecast.",
+    "Scout receipt of this exact Atlas packet remains pending independent peer evidence.",
+    "Manual rollout sequence is Atlas first, fixes shared and reviewed, then Scout. Current runner remains shadow-only."
+  ],
+  "atlas_adoption": {
+    "installed_source_commit": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+    "owned_source_files": 10,
+    "unchanged_other_files": 3988,
+    "private_bindings_preserved": true,
+    "git_index_preserved": true,
+    "offline_tests_passed": 187,
+    "dependency_warnings": 18,
+    "skipped_tests": 0,
+    "verification_completed_at_utc": "2026-10-12T12:36:05.936963Z",
+    "verification_output_sha256": "c4d067133f85bfa159832ae0cdfdaed987bb2e78d3267838bf11755188291d79",
+    "broker_requests": 0,
+    "training_runs": 0,
+    "worker_restarts": 0
+  },
+  "ui_projection": {
+    "local_forecasts": 86,
+    "peer_snapshot_forecasts": 31,
+    "peer_status": "stale",
+    "atlas_packet_source_cohorts": "Eleven symbols, each with separate legacy-unrecorded and EQUS.MINI historical cohorts; 22 latest rows, no shadow forecasts.",
+    "receiving_interface": "Read-only data model verified with the actual local database and actual peer receipt; no production UI restart."
+  }
+}
