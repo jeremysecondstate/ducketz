@@ -108,7 +108,8 @@ def test_working_order_identities_are_opt_in_complete_account_wide_and_bound():
     assert bound.available_cash == plain.available_cash and bound.gross_exposure == plain.gross_exposure
     assert len(bound.broker_working_orders) == 1
     order = bound.broker_working_orders[0]
-    assert order == {"order_id": "SECRET_ORDER_NUMBER", "instruction": "BUY", "asset_type": "EQUITY",
+    assert order == {"order_id": "SECRET_ORDER_NUMBER", "order_status": "WORKING", "order_type": "LIMIT",
+        "instruction": "BUY", "asset_type": "EQUITY",
         "symbol": "IBM", "underlying_symbol": None, "remaining_quantity": 2.0,
         "filled_quantity": 1.0, "limit_price": 100.0, "reserved_cash": 200.0, "status": "CURRENT"}
     assert set(session.calls) == {"prepare", "verify", "account", "orders", "quotes"}
@@ -118,6 +119,21 @@ def test_working_order_identities_are_opt_in_complete_account_wide_and_bound():
     changed = capture_portfolio_state(session, observed_at=STAMP, parallel=False, symbols=SYMBOLS,
                                       include_order_identities=True)
     assert changed.source_fingerprint != bound.source_fingerprint
+
+
+def test_working_order_capture_preserves_status_and_type_for_limit_buy_guard():
+    session = UnionSession()
+    session.orders = [off_universe_order()]
+    working_limit = capture_portfolio_state(session, observed_at=STAMP, parallel=False,
+        symbols=SYMBOLS, include_order_identities=True)
+    session.orders[0]["status"] = "QUEUED"
+    session.orders[0]["orderType"] = "STOP_LIMIT"
+    queued_stop_limit = capture_portfolio_state(session, observed_at=STAMP, parallel=False,
+        symbols=SYMBOLS, include_order_identities=True)
+    assert queued_stop_limit.broker_working_orders[0]["status"] == "CURRENT"
+    assert queued_stop_limit.broker_working_orders[0]["order_status"] == "QUEUED"
+    assert queued_stop_limit.broker_working_orders[0]["order_type"] == "STOP_LIMIT"
+    assert queued_stop_limit.source_fingerprint != working_limit.source_fingerprint
 
 
 def test_explicit_empty_working_orders_differ_from_uncaptured_identities():
