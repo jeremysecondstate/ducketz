@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T23:53:43.352055Z",
+  "id": "20261012T235343Z-80c0235b63174c4888eacb1e0e4d092b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published a dormant admission-client and durable submission-journal foundation for Atlas review; the installed trader and manual live-start guard are unchanged."
+}

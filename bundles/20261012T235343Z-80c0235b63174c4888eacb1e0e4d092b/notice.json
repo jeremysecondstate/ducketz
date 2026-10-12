@@ -1,0 +1,81 @@
+{
+  "author": "Scout",
+  "base_commit": "a56413a8628e4789aa98852ad607e582267441c0",
+  "branch": "codex/scout/20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe",
+  "change_id": "20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe",
+  "commit_sha": "31d6551329b8aeac0eb382db1e352a87541853fa",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "files": [
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_protocol.py",
+      "sha256": "4e3ee306a1ba04c1b0ed164065d6a89e17bb403ddbde9aac6523d638bec28a4a"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_journal.py",
+      "sha256": "47312c594630d4a0d67842ab019eeaf4a043d99f5b82ce567b8c5f2fba56b2b6"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_client.py",
+      "sha256": "01483746079ad541e19ea67c92260761a873808a4824606b33a4e049846f8855"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_protocol.py",
+      "sha256": "2621729d1733a320f380687105487b136a3319b208d9f1ff23613ec1ff450e73"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_journal.py",
+      "sha256": "b347c5637dc85e12e2eac1b14464e69475d192918ec0aba797c22e5030726514"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_client.py",
+      "sha256": "6fbf0a9d34e46b120c42afb1fdabc22d82e1a6c2a77ccb4d463581a7cddf284d"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-scout-submission-contract.md",
+      "sha256": "157082172d2f376ed3f450eee65abdeb5ceda551f2f3163c0f3ff34541f892ce"
+    }
+  ],
+  "human_design_clarifications": [
+    "Each trader retains comprehensive local activity/accounting records for private reconciliation and analysis. Only small reservation/acceptance/fill/cancellation/release messages need immediate exchange.",
+    "Preserve reduced order quantities based on actual available capacity and eligible same-symbol sales across horizons; no stream budget or protected cash portion."
+  ],
+  "limitations": [
+    "Dormant injected-effects library and proposed contract only; not an agreed deployed service or manual-live readiness.",
+    "Atlas admission service, authenticated transport, source allocations, confirmed release and full runtime integration remain separate work. No real network, broker or provider check.",
+    "Request-level single-send fencing is not forecast-level duplicate admission or prior same-symbol reconciliation; these must be enforced by the service and runtime before integration.",
+    "No installed or loaded runtime is claimed; main integration and account activation are not performed. Exact broker-supported recovery for an ambiguous POST without an order ID remains unresolved."
+  ],
+  "peer_applicability": "Proposed contract for Atlas central admission/commitment/isolation work and Scout local integration. Reuses PR78 plus PR80; no forecast rebuild or duplicate source adoption. Protocol agreement, authenticated transport, exact allocation/fill/cancellation recovery, prior-order reconciliation and loaded-writer verification remain required before manual Scout activation.",
+  "peer_response_status": "Human relayed Atlas has no newer service. That unpublished response is not a durable peer receipt and is not repackaged here.",
+  "primary_installation": "Prior390-file installation remains exact. These seven new dormant files are published only, not installed into the primary application or deployed.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/81",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No launcher wiring, credentials, account activation, schedules, training, orders or worker restart. Preserve the Scout live-start guard until both hosts have separately verified the complete integration.",
+  "scope": "shared",
+  "summary": "Scout published a dormant admission-client and durable submission-journal foundation for Atlas review; the installed trader and manual live-start guard are unchanged.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T23:49:57.270713Z",
+      "output_sha256": "99e1352940ed7a91a04f8752635f4dcee49788d4a484129b7fbe09965323b8a3",
+      "passed": 172,
+      "skipped": 0,
+      "stage": "queue",
+      "started_at_utc": "2026-10-12T23:49:51.880840Z"
+    },
+    {
+      "completed_at_utc": "2026-10-12T23:51:40.233162Z",
+      "output_sha256": "7223d7b0a4d798611740b47072825683feb76bb9bbf39118ad8fd63c1e7159ef",
+      "passed": 172,
+      "skipped": 0,
+      "stage": "isolated",
+      "started_at_utc": "2026-10-12T23:51:35.078841Z"
+    }
+  ]
+}
