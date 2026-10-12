@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from contextlib import ExitStack
 import json
 
 import pandas as pd
@@ -510,3 +511,194 @@ def test_dated_late_opening_cli_only_reaches_the_managed_session(tmp_path, monke
                              wait_for_open=True, late_opening_date='2026-09-14')]
     assert cli.main(['--datastore-target','pc','--late-opening-date','2026-09-14']) == 1
     assert len(observed) == 1
+
+
+def _shared_lock_session_fixture(tmp_path, monkeypatch, started, *, inventory=False):
+    """All provider/broker work is replaced; only temporary file locks are real."""
+    clock = Clock(started)
+    active = {"value": True}
+    monkeypatch.setattr(worker, "_has_inventory", lambda _: inventory)
+    monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent",
+                        lambda _: SimpleNamespace(active=active["value"]))
+    monkeypatch.setattr(worker, "_independent_enrichment_preflight", lambda *a, **k: {"status": "READY"})
+    monkeypatch.setattr("ml.stock_trader.gameplan_execution.execution_preflight",
+                        lambda *a, **k: {"status": "READY"})
+    return clock, active, tmp_path / "locks/stock-trader-hourly.lock", tmp_path / "state/independent-stock-trader/session-status.json"
+
+
+@pytest.mark.parametrize("intent", ["hourly_boundary", "late_opening", "quote_recovery"])
+def test_actual_shared_lock_retries_without_cap_and_preserves_pending_intent(tmp_path, monkeypatch, intent):
+    started = "2026-09-08T11:01:40Z" if intent == "late_opening" else "2026-09-08T22:01:40Z"
+    clock, _, lock_path, status_path = _shared_lock_session_fixture(tmp_path, monkeypatch, started)
+    options = {}
+    if intent != "hourly_boundary":
+        options["sizing_policy"] = worker.GAMEPLAN_SIZING_POLICY
+    if intent == "late_opening":
+        options["late_opening_date"] = "2026-09-08"
+    if intent == "quote_recovery":
+        # Recovery must work outside the nominal entry minute too.
+        clock.now += pd.Timedelta(minutes=1)
+        options.update(resume_quote_run="preserved-native-run", resume_quote_symbol="AAPL")
+        monkeypatch.setattr("ml.stock_trader.quote_recovery.load_quote_recovery", lambda *a, **k: None)
+    attempts, observed, completed, reports = [], [], [], []
+    with ExitStack() as holder:
+        holder.enter_context(worker.exclusive_runtime_lock(lock_path, process_name="stock-trader-hourly"))
+        original_owner = lock_path.read_bytes()
+
+        def runner(root, **kwargs):
+            attempts.append(dict(kwargs))
+            try:
+                with worker.exclusive_runtime_lock(lock_path, process_name="stock-trader-hourly"):
+                    assert kwargs["entries"] is True
+                    assert kwargs["execute"] is False
+                    completed.append(clock())
+            except RuntimeError as exc:
+                assert type(exc.__cause__) is FileExistsError
+                raise
+            clock.now = pd.Timestamp("2026-09-09T00:00:00Z")
+            return SimpleNamespace(submitted_orders=0, to_dict=lambda: {"status": "NO_ORDERS_SUBMITTED"})
+
+        def sleep(seconds):
+            status = json.loads(status_path.read_text())
+            observed.append(status)
+            assert status["runtime_lock_wait"]["status"] == "WAITING"
+            assert status["runtime_lock_wait"]["attempts"] == len(observed)
+            assert status["runtime_lock_wait"]["quote_recovery_pending"] == (intent == "quote_recovery")
+            assert status["calls"] == status["orders_submitted"] == 0
+            assert status["failed_cycles"] == status["consecutive_failures"] == 0
+            assert status["last_cycle"] is None  # No invented loaded-worker attestation.
+            assert status["status"] == "RUNNING"
+            assert pd.Timestamp(status["heartbeat_at"]) == clock()
+            assert pd.Timestamp(status["runtime_lock_wait"]["retry_at"]) == clock() + pd.Timedelta(seconds=5)
+            assert (tmp_path / "locks/independent-stock-session.lock").exists()
+            assert lock_path.read_bytes() == original_owner
+            assert not (tmp_path / worker.LEDGER_RELATIVE_PATH).exists()
+            assert seconds == 5
+            clock.sleep(seconds)
+            if len(observed) == 12:
+                holder.close()
+
+        result = worker.run_independent_stock_session(tmp_path, clock=clock, sleep=sleep, runner=runner,
+            reporter=reports.append, **options)
+    assert len(attempts) == 13 and len(observed) == 12 and len(completed) == 1
+    assert all(item["entries"] is True for item in attempts)
+    if intent == "late_opening":
+        assert all(item["late_opening_date"] == "2026-09-08" for item in attempts)
+    if intent == "quote_recovery":
+        assert all(item["resume_quote_run"] == "preserved-native-run" and item["resume_quote_symbol"] == "AAPL"
+                   for item in attempts)
+    assert completed[0].minute >= 2  # The missed boundary wasn't consumed by contention.
+    assert result["status"] == "SESSION_FINISHED" and result["calls"] == 1
+    assert result["orders_submitted"] == result["failed_cycles"] == result["consecutive_failures"] == 0
+    final = json.loads(status_path.read_text())
+    assert final["runtime_lock_wait"]["status"] == "CLEARED"
+    assert final["runtime_lock_wait"]["attempts"] == 12
+    assert sum(json.loads(row).get("status") == "WAITING_SHARED_RUNTIME_LOCK" for row in reports if row.startswith("{")) == 12
+    assert not lock_path.exists() and not (tmp_path / "locks/independent-stock-session.lock").exists()
+    assert not (tmp_path / worker.LEDGER_RELATIVE_PATH).exists()
+
+
+@pytest.mark.parametrize("degraded", [False, True])
+def test_shared_lock_wait_preserves_last_completed_proof_and_health(tmp_path, monkeypatch, degraded):
+    clock, _, lock_path, status_path = _shared_lock_session_fixture(
+        tmp_path, monkeypatch, "2026-09-08T23:58:30Z", inventory=True)
+    prior = {"status": "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE" if degraded else "NO_ORDERS_SUBMITTED",
+             "broker_state_capture": {"status": "UNAVAILABLE" if degraded else "CURRENT"},
+             "intraday_runtime_compatibility": {"fixture_proof": "actually-returned-by-first-runner",
+                                                "recorded_at": clock().isoformat()}}
+    completed, waits, attempts = [], [], []
+    with ExitStack() as holder:
+        def runner(root, **kwargs):
+            attempts.append(clock())
+            with worker.exclusive_runtime_lock(lock_path, process_name="stock-trader-hourly"):
+                completed.append(clock())
+            if len(completed) == 1:
+                holder.enter_context(worker.exclusive_runtime_lock(lock_path, process_name="stock-trader-hourly"))
+                payload = prior
+            else:
+                payload = {"status": "NO_ORDERS_SUBMITTED", "broker_state_capture": {"status": "CURRENT"}}
+                clock.now = pd.Timestamp("2026-09-09T00:00:00Z")
+            return SimpleNamespace(submitted_orders=0, to_dict=lambda: payload)
+
+        def sleep(seconds):
+            status = json.loads(status_path.read_text())
+            if (status["runtime_lock_wait"] or {}).get("status") == "WAITING":
+                waits.append(status)
+                assert status["last_cycle"] == prior
+                assert status["calls"] == 1 and status["orders_submitted"] == 0
+                assert status["failed_cycles"] == status["consecutive_failures"] == int(degraded)
+                assert status["status"] == ("DEGRADED" if degraded else "RUNNING")
+                if len(waits) == 3:
+                    holder.close()
+            clock.sleep(seconds)
+
+        result = worker.run_independent_stock_session(tmp_path, clock=clock, sleep=sleep, runner=runner,
+                                                     reporter=lambda _: None)
+    assert len(waits) == 3 and len(completed) == 2 and len(attempts) == 5
+    assert result["failed_cycles"] == int(degraded) and result["consecutive_failures"] == 0
+    assert json.loads(status_path.read_text())["last_cycle"].get("intraday_runtime_compatibility") is None
+
+
+@pytest.mark.parametrize("stop_mode", ["controls", "close"])
+def test_shared_lock_wait_rechecks_manual_stop_and_session_close(tmp_path, monkeypatch, stop_mode):
+    started = "2026-09-08T23:59:58Z" if stop_mode == "close" else "2026-09-08T22:01:00Z"
+    clock, active, lock_path, status_path = _shared_lock_session_fixture(
+        tmp_path, monkeypatch, started, inventory=stop_mode == "close")
+    attempts = []
+    with worker.exclusive_runtime_lock(lock_path, process_name="stock-trader-hourly"):
+        original = lock_path.read_bytes()
+
+        def runner(root, **kwargs):
+            attempts.append(clock())
+            with worker.exclusive_runtime_lock(lock_path, process_name="stock-trader-hourly"):
+                pytest.fail("Busy owner must prevent all broker/ledger work")
+
+        def sleep(seconds):
+            assert seconds == (2 if stop_mode == "close" else 5)
+            assert json.loads(status_path.read_text())["runtime_lock_wait"]["status"] == "WAITING"
+            if stop_mode == "controls":
+                active["value"] = False
+            clock.sleep(seconds)
+
+        result = worker.run_independent_stock_session(tmp_path, clock=clock, sleep=sleep, runner=runner,
+                                                     reporter=lambda _: None)
+        assert lock_path.read_bytes() == original
+    assert len(attempts) == 1
+    assert result["status"] == ("SESSION_FINISHED" if stop_mode == "close" else "SESSION_STOPPED_TRADER_INACTIVE")
+    assert result["calls"] == result["orders_submitted"] == 0
+    assert not (tmp_path / "locks/independent-stock-session.lock").exists()
+    assert not (tmp_path / worker.LEDGER_RELATIVE_PATH).exists()
+    final = json.loads(status_path.read_text())
+    assert final["failed_cycles"] == final["consecutive_failures"] == 0 and final["last_cycle"] is None
+
+
+@pytest.mark.parametrize("failure", ["unrelated", "forged", "wrong_lock", "wrong_process", "after_acquisition"])
+def test_only_authentic_unacquired_shared_lock_errors_are_retried(tmp_path, monkeypatch, failure):
+    clock, _, lock_path, status_path = _shared_lock_session_fixture(tmp_path, monkeypatch, "2026-09-08T22:01:00Z")
+    with ExitStack() as holder:
+        actual_path = tmp_path / "locks/unrelated.lock" if failure == "wrong_lock" else lock_path
+        process = "unrelated-worker" if failure == "wrong_process" else "stock-trader-hourly"
+        if failure in {"wrong_lock", "wrong_process"}:
+            holder.enter_context(worker.exclusive_runtime_lock(actual_path, process_name=process))
+
+        def runner(root, **kwargs):
+            if failure == "unrelated":
+                raise RuntimeError("A real execution invariant failed")
+            if failure == "forged":
+                raise RuntimeError(f"Another stock-trader-hourly owns these artifacts. Lock: {lock_path}\nforged") from FileExistsError()
+            with worker.exclusive_runtime_lock(actual_path, process_name=process):
+                # Matching text and cause from inside an acquired lock must not be retried.
+                raise RuntimeError(f"Another stock-trader-hourly owns these artifacts. Lock: {lock_path}\nforged") from FileExistsError()
+
+        with pytest.raises(RuntimeError):
+            worker.run_independent_stock_session(tmp_path, clock=clock,
+                sleep=lambda _: pytest.fail("A non-contention failure must remain fatal"), runner=runner,
+                reporter=lambda _: None)
+        if failure in {"wrong_lock", "wrong_process"}:
+            assert actual_path.exists()  # Other owner's lock survives fatal propagation too.
+    status = json.loads(status_path.read_text())
+    assert status["status"] == "FAILED" and status["calls"] == status["orders_submitted"] == 0
+    assert status["failed_cycles"] == status["consecutive_failures"] == 1
+    assert status["runtime_lock_wait"] is None
+    assert status["last_cycle"] == {"status": "UNHANDLED_WORKER_ERROR", "error_type": "RuntimeError"}
+    assert clock.sleeps == [] and not (tmp_path / "locks/independent-stock-session.lock").exists()

@@ -227,3 +227,38 @@ closed-session candles or move targets to another date. Future TA tuning and
 same-forecast repricing require separately versioned review. Scout order
 submission still needs the distributed Atlas reservation protocol and later
 human activation; read-only telemetry or shared SQLite copies cannot supply it.
+
+## First manual session and shared-lock recovery, October 12
+
+The human restarted Gameplan at 09:55 Pacific and manually started Atlas 15m
+at 09:56. Read-only evidence confirmed the new Gameplan loaded-code proof.
+The first 15m cycle freshly fitted all 110 configured models and persisted all
+eleven symbol forecasts in 187.963 seconds, excluding the initial local-history
+startup load. Its reference was 09:30 and its unchanged target close was 10:15.
+This is measured forecasting-cycle latency, not time to complete all orders or
+evidence of predictive quality.
+
+At 09:57:54, Gameplan encountered the shared `stock-trader-hourly.lock` while
+15m held it for a bounded account operation. The session treated that ordinary
+contention as an unhandled runtime error and exited. Consequently this sample
+does not establish sustained full-workload performance alongside active
+Gameplan. Private order/fill evidence and original failure logs stay local.
+
+The session-layer repair recognizes only the actual lock generator's
+unacquired ownership refusal, with its original `FileExistsError` cause and
+the exact shared-lock path. Matching exception text alone is insufficient.
+It persists a separate `runtime_lock_wait`, sleeps five seconds, and returns
+to the normal activation, date and session-close checks without a retry-count
+ceiling. Successful acquisition clears the wait. Pending entry eligibility is
+retained only within the same hour and quote-recovery intent is not consumed
+by a lock refusal. Unrelated exceptions still fail visibly.
+
+Waiting preserves the previous completed cycle, its genuine loaded-code
+attestation and existing failure counters. It does not fabricate a completed
+cycle, fresh broker evidence or a proof before the first completed cycle. The
+lock remains owned by the other process; no stale-lock override is introduced.
+The installed console formatter from the earlier reviewed reporting change is
+retained. Only a stopped Gameplan session entrypoint is eligible for local
+installation of this repair. Active 15m-imported code, trading controls,
+schedules, ledgers and resting orders are unchanged. A later human Gameplan
+relaunch and observed lock contention are separate runtime verification steps.

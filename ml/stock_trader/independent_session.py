@@ -21,9 +21,40 @@ from ml.stock_trader.independent_runtime import LEDGER_RELATIVE_PATH, _has_inven
 from ml.stock_trader.independent_signals import _validated_independent_forecasts, late_publication_time
 from ml.stock_trader.model import enrichment_signal_readiness, load_current_enrichment_model
 from ml.stock_trader.session import stock_execution_window
+from ml.stock_trader.session_reporting import format_session_cycle_report, session_cycle_report
 from ml.stock_trader.market_features import read_frozen_market_feature_values
 from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
 from ml.stock_trader.publication import _write_json_atomic
+
+
+def _is_hourly_lock_contention(error: Exception, root: Path) -> bool:
+    """Recognize only the shared lock's unacquired, already-owned failure.
+
+    The shared lock predates a typed busy exception. Its traceback and explicit
+    cause distinguish its ownership refusal from matching error text raised by
+    another operation. Never relax ownership or handle a runtime failure after
+    that lock was acquired.
+    """
+    if type(error) is not RuntimeError or type(error.__cause__) is not FileExistsError:
+        return False
+    traceback = error.__traceback__
+    if traceback is None:
+        return False
+    while traceback.tb_next is not None:
+        traceback = traceback.tb_next
+    generator = getattr(exclusive_runtime_lock, "__wrapped__", None)
+    if generator is None or traceback.tb_frame.f_code is not generator.__code__:
+        return False
+    evidence = traceback.tb_frame.f_locals
+    target = root / "locks/stock-trader-hourly.lock"
+    detail = evidence.get("detail")
+    return (
+        evidence.get("target") == target
+        and evidence.get("process_name") == "stock-trader-hourly"
+        and evidence.get("owned_payload") is None
+        and isinstance(detail, str)
+        and error.args == (f"Another stock-trader-hourly owns these artifacts. Lock: {target}\n{detail}",)
+    )
 
 
 def _independent_forecast_preflight(root: Path, *, action_date) -> dict:
@@ -210,6 +241,8 @@ def run_independent_stock_session(
     calls = submitted = 0
     failed_cycles = consecutive_failures = 0
     last_cycle = None
+    runtime_lock_wait = None
+    deferred_entry_slot = None
     status_path = root / "state/independent-stock-trader/session-status.json"
 
     def publish_status(status):
@@ -221,7 +254,8 @@ def run_independent_stock_session(
             "late_opening_date":late_opening_date,
             "resume_quote_run": resume_quote_run, "resume_quote_symbol": resume_quote_symbol,
             "calls": calls, "orders_submitted": submitted, "failed_cycles": failed_cycles,
-            "consecutive_failures": consecutive_failures, "last_cycle": last_cycle}
+            "consecutive_failures": consecutive_failures, "last_cycle": last_cycle,
+            "runtime_lock_wait": runtime_lock_wait}
         _write_json_atomic(status_path, payload)
 
     with exclusive_runtime_lock(root / "locks/independent-stock-session.lock", process_name="independent-stock-session"):
@@ -273,6 +307,8 @@ def run_independent_stock_session(
                 raise RuntimeError("The worker clock changed exchange dates")
             entry_minute = 6 if local.hour == 13 else 1
             slot = local.floor("h").isoformat()
+            if deferred_entry_slot != slot:
+                deferred_entry_slot = None
             due_entry = (4 <= local.hour < 17 and local.minute == entry_minute and slot not in attempted)
             if sizing_policy == GAMEPLAN_SIZING_POLICY:
                 # Recheck unfinished instructions after startup/read failures.
@@ -281,29 +317,56 @@ def run_independent_stock_session(
                              and stock_execution_window(now).executable)
             late_opening = (late_opening_date == local.date().isoformat() and local.hour == 4
                             and local.minute >= 1 and slot not in attempted)
-            due_entry = due_entry or late_opening
+            due_entry = due_entry or late_opening or (
+                deferred_entry_slot == slot and stock_execution_window(now).executable
+            )
             has_inventory = _has_inventory(root / LEDGER_RELATIVE_PATH)
             # Inventory polls wait through the broker's closed transitions.
             # No capture here can resolve an earlier failure; health stays
             # degraded until a later executable cycle verifies broker state.
             recover_now = recovery_pending and stock_execution_window(now).executable
             if due_entry or recover_now or (has_inventory and stock_execution_window(now).executable):
-                if due_entry:
-                    attempted.add(slot)
                 sizing_options = {"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}
                 if late_opening_date == local.date().isoformat() and local.hour == 4:
                     sizing_options['late_opening_date'] = late_opening_date
                 if recover_now:
                     sizing_options.update(resume_quote_run=resume_quote_run, resume_quote_symbol=resume_quote_symbol)
-                    recovery_pending = False
                 try:
                     result = runner(root, execute=execute, entries=due_entry or recover_now, runtime_clock=clock, session_managed=True, **sizing_options)
                 except Exception as exc:
+                    if _is_hourly_lock_contention(exc, root):
+                        if due_entry:
+                            deferred_entry_slot = slot
+                        waited_at = utc(clock())
+                        remaining = max(0., (closing - waited_at).total_seconds())
+                        seconds = min(5., remaining)
+                        previous = runtime_lock_wait if runtime_lock_wait and runtime_lock_wait["status"] == "WAITING" else {}
+                        runtime_lock_wait = {"status": "WAITING", "process_name": "stock-trader-hourly",
+                            "attempts": previous.get("attempts", 0) + 1,
+                            "first_wait_at": previous.get("first_wait_at", waited_at.isoformat()),
+                            "last_wait_at": waited_at.isoformat(),
+                            "retry_at": (waited_at + pd.Timedelta(seconds=seconds)).isoformat(),
+                            "entry_slot": deferred_entry_slot, "quote_recovery_pending": recovery_pending}
+                        # Keep the last completed cycle and its genuine loaded
+                        # proof. Busy acquisition did no cycle or broker work.
+                        publish_status("DEGRADED" if consecutive_failures else "RUNNING")
+                        reporter(json.dumps({**runtime_lock_wait, "status": "WAITING_SHARED_RUNTIME_LOCK",
+                                             "retry_seconds": seconds}, sort_keys=True))
+                        if seconds:
+                            sleep(seconds)
+                        continue
                     last_cycle = {"status": "UNHANDLED_WORKER_ERROR", "error_type": type(exc).__name__}
                     failed_cycles += 1
                     consecutive_failures += 1
                     publish_status("FAILED")
                     raise
+                if due_entry:
+                    attempted.add(slot)
+                    deferred_entry_slot = None
+                if recover_now:
+                    recovery_pending = False
+                if runtime_lock_wait and runtime_lock_wait["status"] == "WAITING":
+                    runtime_lock_wait = {**runtime_lock_wait, "status": "CLEARED", "cleared_at": utc(clock()).isoformat()}
                 calls += 1
                 submitted += result.submitted_orders
                 last_cycle = result.to_dict()
@@ -317,7 +380,11 @@ def run_independent_stock_session(
                     # A no-signal cycle can return before reading the broker.
                     # It is normal, but cannot resolve a prior broker failure.
                     consecutive_failures = 0
-                reporter(json.dumps(last_cycle, sort_keys=True))
+                reporter(format_session_cycle_report(session_cycle_report(
+                    last_cycle, as_of=now, session_orders_submitted=submitted,
+                    session_cycles=calls, session_failed_cycles=failed_cycles,
+                    session_consecutive_failures=consecutive_failures,
+                )))
             publish_status("DEGRADED" if consecutive_failures else "RUNNING")
             # No new entries during the extra ownership/reconciliation checks.
             # Frequent checks around boundaries let exits settle before HH:01.
