@@ -314,6 +314,16 @@ An unsent reservation also requires a confirmed release before reserving or
 submitting the new intention. This rule does not cancel Gameplan orders or
 another symbol's orders.
 
+Reuse the existing Schwab cancellation and order-status machinery for both
+Gameplan and 15m. The cancellation mechanism is shared; the reason and order
+selection remain specific to each stream. A 15m new-forecast replacement must
+not apply Gameplan's expiry rules or cancel another stream's order. Persist the
+exact identity and cancellation request, reconcile authoritative status and
+intervening fills, then release only the confirmed unfilled commitment. A
+successful cancel request alone never proves cancellation. The existing live
+Gameplan cancellation selector must become stream-aware before admitting 15m
+orders to the shared live ledger; the offline 15m fixture is not that connection.
+
 Completed fills and the old forecast/intention remain in the audit history.
 Repricing the same intention pursues only its unfilled remainder. A new forecast
 has a newly evaluated symbol-specific intention using current holdings, recent
@@ -561,3 +571,20 @@ shared authority. Its ready state means only that these particular checks have
 passed. The complete broker path, shared Gameplan/15m reservations, selected
 symbol-specific score recipes and remaining execution policies are still needed
 before a manual live launcher can be presented as ready.
+
+`ml/intraday/technical_sizing.py` now implements configurable causal technical
+measurements and a transparent per-symbol BUY/SELL scoring interface. It binds
+to the forecast's original modern candle snapshot, retaining synthetic and
+availability evidence. EMA, SMA, RSI, Bollinger Bands, stochastic, momentum,
+VWAP, ATR and relative-volume parameters are explicit; no production periods,
+weights, score recipe or reference sizes are selected. It returns the desired
+quantity separately from the still-unconnected live capacity adjustment. The
+existing shadow runner does not yet automatically persist this sizing result.
+
+`Check-15m-Readiness.cmd` reads saved forecast evidence and local bindings and
+reports the missing execution integration. It does not start a trader or call a
+provider/broker. The [live preparation record](../development/intraday-live-readiness.md)
+details shared reservations, cancellation reuse, loaded-worker compatibility
+and exact-identity recovery work still required. The
+[Scout update prompt](../development/intraday-scout-update-prompt.md) carries the
+reviewed source adoption and outstanding monitoring receipt instructions.

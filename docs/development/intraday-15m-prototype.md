@@ -24,12 +24,15 @@ The package does not
 import the concurrently edited stock-trader contracts, account configuration,
 Gameplan runtime or existing reservation authority. The current Gameplan's
 combined 22-symbol nightly stream and four horizons retain their operating
-bindings. No launcher, schedule or production entrypoint is added.
+bindings. A read-only readiness command is provided; no live-trader launcher,
+schedule or production trading entrypoint is added.
 
 | Component | Implemented behavior |
 |---|---|
 | `prediction.py` | Opening-time completed candles, actual availability, immutable quarter-hour issues, exact not-down targets and append-only outcome evidence. |
 | `sizing.py` | Transparent hourly-reference multiplication and nearest whole shares; explicit reference/score versions, tie rule and rounded-equality handling. |
+| `technical_sizing.py` | Causal configurable indicators bound to the original modern forecast snapshot, per-symbol BUY/SELL score contributions and desired quantities; no selected production recipe or live capacity adjustment. |
+| `readiness.py` / `Check-15m-Readiness.cmd` | Read-only saved-forecast and local-binding inspection with explicit missing live integration; no provider/broker calls or trader start. |
 | `book.py` | Host-local offline account book with atomic reservations, exact identities, allocation ownership, fill attribution, account/exposure headrooms and durable history. |
 | `execution.py` | Explicit mock venue seam, contemporaneous quotes, ask-BUY/bid-SELL proposal, unknown-submission recovery, status retries and cancellation reconciliation. |
 | `execution_policy.py` | Pure offline decisions for the strict Pacific submission cutoff and reconciliation before a new forecast replaces an unfilled intention; no broker or book mutation. |
@@ -109,6 +112,29 @@ for the live 15m path.
 The legacy fixture candle type lacks the new data adapter's synthetic/no-trade
 provenance, so it must not be used to hide filled intervals as observed candles.
 The trained ensemble's feature vector is also separate from the sizing recipe.
+
+The additional `technical_sizing.py` engine works directly with modern candle
+records and the forecast's original snapshot/hash. It preserves source,
+synthetic/no-trade and availability evidence and rejects changed original inputs.
+Its configurable families include EMA, SMA, RSI, Bollinger Bands, stochastic,
+momentum, VWAP, ATR and relative volume, with optional first/second differences.
+The caller explicitly chooses indicator periods, session/history window policy
+and per-symbol BUY/SELL normalization, weights, bias and score bounds. Reused
+trailing math comes from the repository's pure `SharedCalculations` library;
+no other strategy's fixed settings are adopted.
+
+Each contribution and the input/policy hashes are returned with the result.
+Missing configuration, required inputs or unresolved rounding produce a null
+desired quantity and an explanatory status. A genuinely calculated zero stays
+zero. Account facts and the reference size retain their availability times.
+Capacity-adjusted quantity remains null pending actual account integration;
+the module does not manufacture a zero-capacity disposition. Automatic sizing
+inside `ShadowRunner` and persistence of the complete sizing evidence are still
+required before this becomes part of the live intention pipeline.
+
+Run `tests/test_intraday_technical_sizing.py` and
+`tests/test_intraday_readiness.py` alongside the focused checks above. Their
+numeric examples are test configurations, not proposed production recipes.
 
 ## Policy seams retained explicitly
 
@@ -196,6 +222,14 @@ working order retains its commitment. Keep the new forecast and intention while
 waiting; do not fabricate a fill or delete the old intention. A new forecast's
 quantity is recalculated by the symbol's sizing logic, not copied from the old
 remainder. Same-forecast repricing still pursues only the remaining quantity.
+
+The human also settled reuse of the existing Schwab cancellation/status
+mechanism for Gameplan and 15m, with stream-specific order selection and
+cancellation reasons. The current Gameplan selector has no 15m stream fence;
+the integration must add one before it can share live orders with 15m. The
+existing mock cancellation tests do not establish a live connection. The
+[live preparation record](intraday-live-readiness.md) identifies the reusable
+call chain and the accounting and loaded-worker compatibility work required.
 
 `execution_policy.py` checks these states and the strict submission boundary
 without making requests or mutating records. At or after 16:45:00 Pacific on
