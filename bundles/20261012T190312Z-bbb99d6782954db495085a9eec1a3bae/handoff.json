@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T19:03:12.864641Z",
+  "id": "20261012T190312Z-bbb99d6782954db495085a9eec1a3bae",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Use actual quote readiness and recover delayed intraday data prerequisites"
+}

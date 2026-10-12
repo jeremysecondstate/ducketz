@@ -1,0 +1,119 @@
+{
+  "author": "Atlas / human-authorized-development",
+  "branch": "codex/atlas/20261012T185820Z-3e62123b644c4b839dc6f127e1c1a3a5",
+  "change_id": "20261012T185820Z-3e62123b644c4b839dc6f127e1c1a3a5",
+  "commit_sha": "53aea68a29ebb136faa4378e89261109100652e3",
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/18",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-15m-prototype.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-live-readiness.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/telemetry.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_gameplan_direction_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_telemetry.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_ui.py"
+    }
+  ],
+  "limitations": [
+    "Live investigation used only saved local evidence and process identity. No agent broker/provider requests, extra training, orders, cancellations, control changes or worker restarts occurred. Private account/order data remains local.",
+    "The quote timing defect was reproduced offline. Saved live captures lack individual raw quote timestamps, so the exact offending live delta is unknown; natural Gameplan recovery does not verify the new source.",
+    "Offline verification uses temporary injected clocks/providers/brokers with network prohibited and exact import binding. It does not establish investment performance or new runtime recovery.",
+    "Both affected execution workers are running prior code during development. Verify their absence after human manual stops before local installation; then require fresh loaded Gameplan compatibility proof before human 15m start.",
+    "Pending older forecasts may be recovered for scoring after their targets but cannot authorize orders; recovery adds no execution backlog or prior-session authority.",
+    "Main integration requires the reviewed parent source lineage. Preserve concurrent changes, local symbols, bindings, private state and receipts.",
+    "Pinned verifier uses PYTHONSAFEPATH=1 to avoid sibling requests.py shadowing; exact dependency and network restrictions remain active."
+  ],
+  "peer_action": "Review coherent shared source under standing authority; preserve active workers, private bindings and Scout shadow operation. Installation and loaded runtime remain separate. Do not enable Scout live trading or restart production workers.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/78",
+  "remote_sha": "53aea68a29ebb136faa4378e89261109100652e3",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Coherent human manual reload is required after reviewed installation. Gameplan uses validated quote readiness; 15m resumes causal missing-data prerequisites without rewriting forecasts or moving targets. Publication changes no controls, schedules, orders or worker state; Scout remains shadow-only.",
+  "scope": "Shared Atlas/Scout; Scout remains shadow-only.",
+  "summary": "Use actual quote readiness and recover delayed intraday data prerequisites",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T19:02:38.983722Z",
+      "output_sha256": "c01f11af8e282c5e0de4f5fe7f99facda5d8a7462049274c97c36504954717dd",
+      "started_at_utc": "2026-10-12T19:00:52.365167Z",
+      "summary": "544 passed in 105.02s (0:01:45); zero skips",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}
