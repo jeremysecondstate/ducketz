@@ -1,0 +1,75 @@
+{
+  "artifact_commit": "61ec8dbc4171ba31a2884e5644eb94d62944d4e6",
+  "artifact_files": [
+    {
+      "path": "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/monitoring.json",
+      "sha256": "94576428978af162b21b5175d2ce76ba662c9b064f8c0f4a78ef10d4d0914849"
+    },
+    {
+      "path": "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/atlas-exchange-receipt.json",
+      "sha256": "cabbade7fa8f67a80e889cb5838206d4f226b1bd7703631c36cef22a49520ba4"
+    }
+  ],
+  "artifact_remote_sha": "61ec8dbc4171ba31a2884e5644eb94d62944d4e6",
+  "atlas_packet_id": "3f8eefbc85d930fc98365ed890edc5754b88037f469a397ab837cb35a975c1cd",
+  "atlas_produced_at": "2026-10-12T12:37:14.667931+00:00",
+  "atlas_receipt_sha256": "6790c7bcd715b3b473bfd8dd47fa1b6dc3e4636f2ec96bef34ef27a0e1829404",
+  "atlas_received_at": "2026-10-12T12:37:14.556354+00:00",
+  "author": "Atlas",
+  "change_id": "20261012T123714Z-atlas-intraday-monitoring-dccec45929a3",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+        "path": "ml/intraday/telemetry.py",
+        "sha256": "9bdfddbffbe8e84faf539eb8fee38472f370076de4f72e797d4be90f16d4ecba"
+      },
+      {
+        "commit_sha": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+        "path": "tests/test_intraday_telemetry.py",
+        "sha256": "05eafcb48ca72dbafb3413b0f4d486f82324e9bed1a5d8720c4472b5e82ff2f0"
+      }
+    ],
+    "in_reply_to": "scout-intraday-monitoring-20261012",
+    "kind": "response",
+    "purposes": [
+      "intraday_monitoring"
+    ],
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-intraday-monitoring-response-20261012",
+    "request_type": "status_evidence",
+    "result": "completed",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "c3c8faf7f65a79d84f7b0fe4fca055b21577a400",
+    "summary": "Atlas adopted and independently verified Scout source, admitted the exact Scout packet with an immutable receipt, and published an authentic historical-only Atlas packet. Scout must now verify/import the exact Atlas bytes to establish the reverse receipt; this is snapshot exchange, not continuous live monitoring."
+  },
+  "files": [
+    "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/monitoring.json",
+    "artifacts/pc-original/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/intraday-monitoring/20261012T123714Z-atlas-intraday-monitoring-dccec45929a3/atlas-exchange-receipt.json"
+  ],
+  "limitations": [
+    "Scout packet is a saved snapshot, not continuous telemetry or current worker-health proof.",
+    "Atlas export is historical-only; newly producing a packet does not create a live shadow forecast.",
+    "Scout receipt of this exact Atlas packet remains pending independent peer evidence.",
+    "Manual rollout sequence is Atlas first, fixes shared and reviewed, then Scout. Current runner remains shadow-only."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No training, provider requests, live-order activation, production worker restart or application-source main integration.",
+  "scope": "Reviewed symbol-specific research telemetry and shared-source local adoption; Atlas and Scout retain local authority and private state.",
+  "scout_packet_id": "ba81b05621578ed9261e6d8f74a1d4fd90a00bbb605e931e2e3fb5ad41d9bfb6",
+  "source_commit": "67c4da0f8e0c119fc4fd8892970c279a173145e0",
+  "source_completion_record": "20261012T113948Z-8f3449b0966a466fb48507193607e811",
+  "summary": "Atlas adopted and independently verified Scout source, admitted the exact Scout packet with an immutable receipt, and published an authentic historical-only Atlas packet. Scout must now verify/import the exact Atlas bytes to establish the reverse receipt; this is snapshot exchange, not continuous live monitoring.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-12T12:36:05.936963Z",
+      "output_sha256": "c4d067133f85bfa159832ae0cdfdaed987bb2e78d3267838bf11755188291d79",
+      "summary": "187 passed, 18 existing dependency warnings, no skips on both isolated and locally installed source."
+    },
+    {
+      "summary": "Actual read-only UI projection: 117 forecasts, both PCs; source cohorts separated; Scout stale. Duplicate packet retained original Atlas receipt; 86 original Atlas forecasts unchanged."
+    }
+  ]
+}

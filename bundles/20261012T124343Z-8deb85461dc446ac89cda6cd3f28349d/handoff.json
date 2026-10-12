@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T12:43:43.593136Z",
+  "id": "20261012T124343Z-8deb85461dc446ac89cda6cd3f28349d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas adopted and independently verified Scout source, admitted the exact Scout packet with an immutable receipt, and published an authentic historical-only Atlas packet. Scout must now verify/import the exact Atlas bytes to establish the reverse receipt; this is snapshot exchange, not continuous live monitoring."
+}
