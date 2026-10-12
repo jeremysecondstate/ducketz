@@ -1,4 +1,4 @@
-"""Compare frozen Gameplans with observed prices after successor preparation."""
+"""Compare frozen Gameplans with completed-session prices before model training."""
 from __future__ import annotations
 
 import argparse
@@ -48,6 +48,32 @@ def previous_action_date(successor_date: str) -> str:
     calendar = xcals.get_calendar("XNYS", start=pd.Timestamp(successor_date) - pd.Timedelta(days=14),
                                   end=pd.Timestamp(successor_date) + pd.Timedelta(days=7))
     return pd.Timestamp(calendar.previous_session(pd.Timestamp(successor_date))).date().isoformat()
+
+
+def completed_session_context(reviewed_at: object, action_date: str | None = None) -> dict:
+    """Identify the completed 17:00 Pacific action day, including overnight wakes."""
+    observed = _aware_timestamp(reviewed_at, "reviewed_at")
+    local_day = pd.Timestamp(observed.tz_convert(TIMEZONE).date())
+    selected = pd.Timestamp(action_date) if action_date is not None else local_day
+    if action_date is not None and (selected.tzinfo is not None or selected.date().isoformat() != action_date):
+        raise ValueError("Action date must be an ISO exchange-session date")
+    calendar = xcals.get_calendar("XNYS", start=selected - pd.Timedelta(days=31),
+                                  end=max(selected, local_day) + pd.Timedelta(days=14))
+    if action_date is not None:
+        if not calendar.is_session(selected):
+            raise ValueError("Action date must be an XNYS session")
+        session = selected
+    else:
+        session = calendar.date_to_session(selected, direction="previous")
+        if _clock(pd.Timestamp(session).date().isoformat(), 17) > observed:
+            session = calendar.previous_session(session)
+    day = pd.Timestamp(session).date().isoformat()
+    cutoff = _clock(day, 17)
+    if cutoff > observed:
+        raise ValueError("The reviewed action session has not closed")
+    successor = pd.Timestamp(calendar.next_session(session)).date().isoformat()
+    return {"action_date": day, "successor_action_date": successor,
+            "reviewed_at": observed.isoformat(), "outcomes_through": cutoff.isoformat()}
 
 
 def _number(value) -> float | None:
@@ -371,7 +397,10 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     plan_name = "Yung Gameplan (YG)" if contract == RAW_DIRECTION_TARGET else "OG Gameplan"
     lines = [f"# {plan_name} results · {report['action_date']}", "",
              ("**Preview — final results await the completed-session data fetch.** All times are Pacific."
-              if report.get("preview") else f"Tomorrow's Gameplan for **{report['successor_action_date']}** is prepared. All times are Pacific."), "",
+              if report.get("preview") else
+              "Completed-session review for model feedback. All times are Pacific."
+              if report.get("review_mode") == "completed-session-before-training" else
+              f"Tomorrow's Gameplan for **{report['successor_action_date']}** is prepared. All times are Pacific."), "",
              "The saved price estimates below are compared with actual market prices at the same clock. "
              "The ranges were planning estimates; the observations are market prices, not broker fills or trading P/L.", ""]
     if report.get("source_gameplan_run"):
@@ -453,7 +482,6 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
                            clock=utc_timestamp, price_loader=None,
                            deadline_exception: Path | None = None) -> Path:
     from ml.nightly_gameplan import read_gameplan_run
-    from ml.stock_target_prices import load_stock_target_prices
     root = Path(root).resolve()
     successor = read_gameplan_run(root, Path(gameplan_run))
     if successor.manifest["configuration"].get("target_contract_version") != "independent-stock-targets-v1":
@@ -481,15 +509,50 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
     cutoff = _clock(action_date, 17)
     if now < cutoff:
         raise ValueError("The reviewed action session has not closed")
-    original = _latest_saved_gameplan(root, action_date)
     inputs = [successor.run_directory / "receipt.json", successor_trade_plan[0] / "receipt.json"]
-    results, price_results = pd.DataFrame(), pd.DataFrame()
     report = {"schema_version": VERSION, "status": "COMPLETE", "action_date": action_date,
               "successor_action_date": successor_date, "successor_gameplan_run": successor.run_directory.relative_to(root).as_posix(),
               "reviewed_at": now.isoformat(), "outcomes_through": cutoff.isoformat(), "deadline_at": original_deadline.isoformat(),
               "effective_deadline_at":deadline_at.isoformat(), "deadline_exception":exception_evidence,
               "source_selection": "Last verified publication and matching trade plan saved before the reviewed 04:00 opening",
               "orders_placed": 0, "broker_orders_enabled": False}
+    return _publish_session_review(root, report=report, inputs=inputs, clock=clock,
+                                   price_loader=price_loader, deadline_at=deadline_at)
+
+
+def publish_completed_session_review(root: Path, *, action_date: str | None = None,
+                                     reviewed_at: object | None = None, clock=utc_timestamp,
+                                     price_loader=None, deadline: object | None = None) -> Path:
+    """Score a completed session without fitting or preparing its successor.
+
+    Only the original pre-open publication and its matching saved estimates are
+    eligible. Longer windows remain pending at this session's close. The output
+    is the same verified artifact consumed by the existing Gameplan Stats tab.
+    """
+    root = Path(root).resolve()
+    now = _aware_timestamp(clock() if reviewed_at is None else reviewed_at, "review time")
+    context = completed_session_context(now, action_date)
+    deadline_at = _aware_timestamp(deadline, "deadline") if deadline is not None else None
+    if deadline_at is not None and now >= deadline_at:
+        raise ValueError("Actuals review publication deadline passed")
+    report = {"schema_version": VERSION, "status": "COMPLETE", **context,
+              "review_mode": "completed-session-before-training", "successor_gameplan_run": None,
+              "source_selection": "Last verified publication and matching trade plan saved before the reviewed 04:00 opening",
+              "orders_placed": 0, "broker_orders_enabled": False}
+    if deadline_at is not None:
+        report["deadline_at"] = deadline_at.isoformat()
+    return _publish_session_review(root, report=report, inputs=[], clock=clock,
+                                   price_loader=price_loader, deadline_at=deadline_at)
+
+
+def _publish_session_review(root: Path, *, report: dict, inputs: list,
+                            clock, price_loader=None, deadline_at=None) -> Path:
+    from ml.stock_target_prices import load_stock_target_prices
+    action_date = report["action_date"]
+    now = _aware_timestamp(report["reviewed_at"], "review time")
+    cutoff = _aware_timestamp(report["outcomes_through"], "outcome cutoff")
+    original = _latest_saved_gameplan(root, action_date)
+    results, price_results = pd.DataFrame(), pd.DataFrame()
     if original is not None:
         forecasts = pd.read_parquet(original.run_directory / "forecasts.parquet")
         trades = _saved_trade_plan(root, original)
@@ -516,7 +579,11 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
                       prices={str(key): int(value) for key, value in price_results.comparison_status.value_counts().items()})
     else:
         report["coverage_status"] = "NO_SAVED_INDEPENDENT_GAMEPLAN"
-    if _aware_timestamp(clock(), "completion time") >= deadline_at:
+        if report.get("review_mode") == "completed-session-before-training":
+            # This is the new workflow's display/default contract, not an
+            # invented historical forecast. The saved result remains empty.
+            report.update(probability_target_metadata(RAW_DIRECTION_TARGET))
+    if deadline_at is not None and _aware_timestamp(clock(), "completion time") >= deadline_at:
         raise ValueError("Actuals review publication deadline passed")
     run = create_timestamp_directory(root / RUNS, timestamp=now)
     results.to_parquet(run / "forecast-results.parquet", index=False)
@@ -525,10 +592,10 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
     (run / "Gameplan-results.md").write_text(render_actuals_review(results, price_results, report), encoding="utf-8")
     write_manifest(run, run_timestamp=now, input_files=inputs,
                    output_files=["forecast-results.parquet", "price-results.parquet", "report.json", "Gameplan-results.md"],
-                   configuration={key: report[key] for key in ("schema_version", "action_date", "successor_gameplan_run", "outcomes_through")},
+                   configuration={key: report[key] for key in ("schema_version", "action_date", "successor_gameplan_run", "outcomes_through", "review_mode", "probability_target_contract") if key in report},
                    datastore_root=root)
     verify_manifest(run)
-    if _aware_timestamp(clock(), "publication time") >= deadline_at:
+    if deadline_at is not None and _aware_timestamp(clock(), "publication time") >= deadline_at:
         raise ValueError("Actuals review publication deadline passed")
     _write_json(run / "receipt.json", {"schema_version": VERSION, "status": "COMPLETE", "action_date": action_date,
                 "run_path": run.relative_to(root).as_posix(), "manifest_sha256": file_checksum(run / "manifest.json"),
@@ -553,14 +620,26 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--datastore", type=Path)
     group.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
-    parser.add_argument("--gameplan-run", required=True, type=Path, help="The completed successor Gameplan")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--gameplan-run", type=Path, help="Legacy completed successor Gameplan")
+    mode.add_argument("--completed-session", action="store_true", help="Publish completed-session Stats before successor training")
+    parser.add_argument("--action-date", help="Explicit reviewed XNYS session; otherwise the most recent completed 17:00 Pacific action day")
+    parser.add_argument("--reviewed-at", help="Explicit timezone-aware review time; default is the current time")
     parser.add_argument("--deadline")
     parser.add_argument('--deadline-exception', type=Path)
     args = parser.parse_args(argv)
+    if not args.completed_session and (args.action_date is not None or args.reviewed_at is not None):
+        parser.error("--action-date and --reviewed-at require --completed-session")
+    if args.completed_session and args.deadline_exception is not None:
+        parser.error("--deadline-exception belongs to the legacy successor review")
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-actuals-review.lock", process_name="Gameplan actuals review"):
         extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
-        run = publish_actuals_review(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
+        if args.completed_session:
+            run = publish_completed_session_review(root, action_date=args.action_date,
+                reviewed_at=args.reviewed_at, deadline=args.deadline)
+        else:
+            run = publish_actuals_review(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
     print(json.dumps({"status": "COMPLETE", "run_path": str(run), "review_path": str(run / "Gameplan-results.md"), "orders_placed": 0}))
     return 0
 

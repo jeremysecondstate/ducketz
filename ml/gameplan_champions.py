@@ -20,11 +20,13 @@ from ml.stock_target_prices import stock_price_dataset
 
 
 CHAMPION_RETENTION_POLICY = "latest-compatible-promoted-same-action-date-v1"
+NIGHTLY_CHAMPION_RETENTION_POLICY = "latest-compatible-promoted-current-or-prior-session-v1"
 
 
 def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
                              price_source: str, before, source_selection_contract: str | None = None,
-                             probability_target: str | None = None) -> dict | None:
+                             probability_target: str | None = None,
+                             allow_prior_sessions: bool = False) -> dict | None:
     """Choose latest eligible publication, never compare held-out candidate scores."""
     from ml.nightly_gameplan import GAMEPLAN_VERSION, read_gameplan_run
     root = Path(root).resolve()
@@ -38,7 +40,9 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
         config = manifest.get("configuration", {})
         if (config.get("schema_version") != GAMEPLAN_VERSION
                 or config.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
-                or config.get("action_date") != str(action_date)
+                or (str(config.get("action_date", "")) > str(action_date) if allow_prior_sessions
+                    else config.get("action_date") != str(action_date))
+                or not config.get("action_date")
                 or tuple(config.get("symbols", ())) != tuple(symbols)
                 or config.get("target_price_source_contract") != price_source
                 or config.get("source_selection_contract") != source_selection_contract
@@ -91,7 +95,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
         files = (run / "manifest.json", run / "receipt.json", run / "model-reports.json", model_path, run / cohort_name)
         return {"run": run, "payload": payload, "report": report, "files": files,
                 "model_path": model_path, "cohort_path": run / cohort_name,
-                "evidence": {"policy": CHAMPION_RETENTION_POLICY,
+                "evidence": {"policy": NIGHTLY_CHAMPION_RETENTION_POLICY if allow_prior_sessions else CHAMPION_RETENTION_POLICY,
                     "source_run": run.relative_to(root).as_posix(),
                     "source_published_at": publication.receipt["published_at"],
                     "files": [{"path": str(path), "size": path.stat().st_size,

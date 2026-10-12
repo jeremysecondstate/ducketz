@@ -18,7 +18,7 @@ from ml.nightly_gameplan import ASSUMED_ROUND_TRIP_COST, read_current_gameplan
 from ml.stock_trader.contracts import PredictionSignal, STOCK_TRADER_SYMBOLS, utc
 from ml.stock_trader.gameplan import read_gameplan_stock_activation_intent
 from ml.stock_trader.independent_runtime import LEDGER_RELATIVE_PATH, _has_inventory, run_independent_stock_trader_once
-from ml.stock_trader.independent_signals import _validated_independent_forecasts
+from ml.stock_trader.independent_signals import _validated_independent_forecasts, late_publication_time
 from ml.stock_trader.model import enrichment_signal_readiness, load_current_enrichment_model
 from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.market_features import read_frozen_market_feature_values
@@ -40,7 +40,8 @@ def _independent_forecast_preflight(root: Path, *, action_date) -> dict:
                 or tuple(config.get("symbols", ())) != tuple(STOCK_TRADER_SYMBOLS)):
             raise ValueError("Current stock publication differs from this action date, target contract or universe")
         frame = _validated_independent_forecasts(pd.read_parquet(publication.run_directory / "forecasts.parquet"),
-                                                 action_date=action_date.isoformat(), symbols=tuple(STOCK_TRADER_SYMBOLS))
+                                                 action_date=action_date.isoformat(), symbols=tuple(STOCK_TRADER_SYMBOLS),
+                                                 late_publication_at=late_publication_time(config, publication.receipt))
         if not frame.target_price_source_contract.eq(config.get("target_price_source_contract")).all():
             raise ValueError("Stock forecast source differs from its declared publication")
         groups = verified_promoted_model_groups(publication)
@@ -99,6 +100,7 @@ an unqualified horizon cannot block another horizon with qualified evidence.
         forecasts = _validated_independent_forecasts(
             pd.read_parquet(publication.run_directory / "forecasts.parquet"),
             action_date=action_date.isoformat(), symbols=tuple(STOCK_TRADER_SYMBOLS),
+            late_publication_at=late_publication_time(config, publication.receipt),
         )
         from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE
         if not forecasts["target_price_source_contract"].eq(
@@ -174,6 +176,11 @@ def run_independent_stock_session(
     """
     root = Path(root).resolve()
     sizing_policy = validate_sizing_policy(sizing_policy)
+    from ml.account_gameplan.config import load_account_config, assert_coordinator, verify_cutover
+    account_config = load_account_config(root)
+    assert_coordinator(account_config, sizing_policy)
+    if account_config is not None:
+        verify_cutover(root, account_config)
     started = utc(clock())
     recovery_pending = bool(resume_quote_run or resume_quote_symbol)
     if recovery_pending:

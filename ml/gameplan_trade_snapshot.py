@@ -253,6 +253,7 @@ def _ownership(root, symbols, identity, held, observed):
             allocation["owned_shares"] -= quantity
             if latest and item["snapshot_sequence"] >= latest["sequence"]:
                 net_transfers[allocation["symbol"]] -= quantity
+        reserved_buy_cash = {symbol: Decimal(0) for symbol in symbols}
         for item in reservations:
             allocation = by_id.get(item["allocation"])
             if allocation is None or item["side"] not in {"BUY", "SELL"} or item["status"] not in _STATUSES:
@@ -264,6 +265,11 @@ def _ownership(root, symbols, identity, held, observed):
             if item["status"] in _OPEN:
                 key = "reserved_buy_shares" if item["side"] == "BUY" else "reserved_sell_shares"
                 allocation[key] += quantity - filled
+                if item["side"] == "BUY" and quantity > filled:
+                    price = Decimal(str(item["price"]))
+                    if not price.is_finite() or price <= 0:
+                        raise ValueError("INVALID_LEDGER_RESERVATION_PRICE")
+                    reserved_buy_cash[allocation["symbol"]] += (quantity - filled) * price
                 reasons.add("PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION")
         owned = {symbol: 0 for symbol in symbols}
         active_keys = set()
@@ -312,6 +318,8 @@ def _ownership(root, symbols, identity, held, observed):
             "safe_for_planning": not reasons, "account_matches": True,
             "active_allocations": sorted(active, key=lambda item: (item["symbol"], item["horizon"])),
             "blocked_symbols": blocked, "owned_shares": owned, "reason_codes": sorted(reasons),
+            **({"reserved_buy_cash_by_symbol": {s: float(v) for s, v in reserved_buy_cash.items()}}
+               if "PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION" in reasons else {}),
             "last_saved_reconciliation_at": _timestamp(latest["observed_at"]) if latest else None,
             "last_saved_reconciliation_ready": latest["ready"] == 1 if latest else None,
             "current_broker_reconciliation_performed": False}
@@ -331,6 +339,30 @@ def capture_trade_planning_snapshot(
     requested = tuple(dict.fromkeys(str(value).strip().upper() for value in symbols))
     if not requested or any(symbol not in STOCK_TRADER_SYMBOLS for symbol in requested):
         raise ValueError("Trade planning requires configured production symbols")
+    from ml.account_gameplan.config import load_account_config
+    binding = load_account_config(datastore_root)
+    if binding is not None and binding.role == "coordinator" and binding.activation.get("status") == "ACTIVE":
+        if not set(requested).issubset(binding.symbols):
+            raise ValueError("Research symbols differ from the bound execution account")
+        # Atlas's native ledger is account-wide; a research partition cannot
+        # invalidate or discard another symbol's original horizon ownership.
+        def bound_ownership(identity, snapshot):
+            if load_account_config(datastore_root) != binding or identity != binding.account_fingerprint:
+                return _ownership_unavailable("OWNERSHIP_ACCOUNT_BINDING_CHANGED_OR_MISMATCHED")
+            return _ownership(datastore_root, binding.symbols, identity,
+                snapshot["held_shares"], snapshot["observed_at"])
+        return _capture_trade_planning_snapshot(datastore_root, requested=binding.symbols,
+            session=session, observed_at=observed_at, explicit_universe=True,
+            ownership_reader=bound_ownership, retain_planning_reservations=True)
+    return _capture_trade_planning_snapshot(datastore_root, requested=requested,
+        session=session, observed_at=observed_at)
+
+
+def _capture_trade_planning_snapshot(
+    datastore_root, *, requested, session=None, observed_at=None,
+    explicit_universe=False, ownership_reader=None, retain_planning_reservations=False,
+):
+    """Shared read implementation; the account adapter validates its own authority."""
     timestamp = utc(observed_at).isoformat()
     result = {"schema_version": "gameplan-trade-planning-snapshot-v1",
         "authority": "INFORMATIONAL_READ_ONLY", "observed_at": timestamp,
@@ -383,6 +415,7 @@ def capture_trade_planning_snapshot(
                 component = "PORTFOLIO_ECONOMICS"
                 portfolio = capture_portfolio_state(
                     _CachedReads(account, orders, quotes), observed_at=attempt_at, parallel=False,
+                    **({"symbols": requested} if explicit_universe else {}),
                 )
                 return portfolio, normalized, account, quotes, stable_identity
             except Exception as exc:
@@ -454,7 +487,12 @@ def capture_trade_planning_snapshot(
         result["stock_market_value_by_symbol"] = {symbol: float(value) for symbol, value in stock_values.items()}
         result["other_symbol_exposure"] = {symbol: float(value) for symbol, value in other_values.items()}
         result["position_exposure_basis"] = "ABSOLUTE_REPORTED_POSITION_MARKET_VALUE_MATCHING_NATIVE_GROSS_EXPOSURE"
-        result["ownership"] = _ownership(datastore_root, requested, stable_identity, result["held_shares"], timestamp)
+        component = "OWNERSHIP_EVIDENCE"
+        result["ownership"] = (ownership_reader(stable_identity, result) if ownership_reader is not None
+            else _ownership(datastore_root, requested, stable_identity, result["held_shares"], timestamp))
+        if retain_planning_reservations:
+            from ml.planning_reservations import retain_local_reservations
+            result = retain_local_reservations(result)
     except Exception as exc:
         # Broker exceptions may contain account URLs or order identifiers.
         # Neither their strings nor payloads are suitable for this artifact.

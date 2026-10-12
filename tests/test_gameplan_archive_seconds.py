@@ -172,13 +172,13 @@ def write_receipt(directory, manifest):
 
 
 @pytest.fixture
-def native_headers(monkeypatch):
+def native_headers(monkeypatch, offline_databento_sdk):
     # Only raw header decoding is substituted. Native receipt, both SHA256s,
     # Parquet schema/row/range checks and production comparison remain real.
     def read_header(path):
         return SimpleNamespace(metadata=SimpleNamespace(**json.loads(path.read_text())),
                                reader=SimpleNamespace(close=lambda: None))
-    monkeypatch.setattr(archive.db.DBNStore, "from_file", read_header)
+    monkeypatch.setattr(offline_databento_sdk.DBNStore, "from_file", read_header)
 
 
 def fixtures(root):
@@ -275,3 +275,50 @@ def test_loader_requires_both_schemas_and_unique_universe(native_headers, tmp_pa
         verify(tmp_path)
     with pytest.raises(ValueError, match="unique configured universe"):
         archive.verify_second_minute_overlap(tmp_path, symbols=("COST", "cost"), available_at=CUTOFF)
+
+
+def test_import_and_empty_archive_do_not_initialize_databento(tmp_path, monkeypatch):
+    import builtins
+    import runpy
+
+    original_import = builtins.__import__
+
+    def reject_sdk(name, *args, **kwargs):
+        if name == "databento" or name.startswith("databento."):
+            raise AssertionError("Saved-archive module import must not initialize the SDK")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", reject_sdk)
+    namespace = runpy.run_path(archive.__file__)
+    with pytest.raises(ValueError, match="Native 1s/1m archive is missing"):
+        namespace["verify_second_minute_overlap"](
+            tmp_path, symbols=("COST",), available_at=CUTOFF)
+
+
+@pytest.mark.parametrize("dataset", ["XNAS.ITCH", "OTHER"])
+def test_loader_uses_real_saved_dbn_metadata_reader(offline_databento_sdk, tmp_path, dataset):
+    import databento_dbn as dbn
+    import zstandard
+    from databento.common.dbnstore import DBNStore
+
+    assert offline_databento_sdk.DBNStore is DBNStore
+    for schema, frame in [("ohlcv-1s", bars()), ("ohlcv-1m", minute())]:
+        directory = write_partition(tmp_path, schema, frame)
+        path = directory / "provider.dbn.zst"
+        metadata = dbn.Metadata(dataset=dataset, start=START.value, end=END.value,
+            stype_in=dbn.SType.RAW_SYMBOL, stype_out=dbn.SType.INSTRUMENT_ID,
+            schema=dbn.Schema(schema), symbols=["COST"])
+        path.write_bytes(zstandard.ZstdCompressor().compress(metadata.encode()))
+        manifest_path = directory / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["raw"].update(size_bytes=path.stat().st_size, checksum_sha256=file_checksum(path))
+        manifest_path.write_text(json.dumps(manifest))
+        write_receipt(directory, manifest)
+    if dataset == "OTHER":
+        with pytest.raises(ValueError, match="Native DBN header"):
+            verify(tmp_path)
+    else:
+        report, files = verify(tmp_path)
+        assert report["status"] == "VERIFIED"
+        assert report["native_archive_partitions_verified"] == 2
+        assert len(files) == 8

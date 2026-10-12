@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import time
 import tkinter as tk
 import weakref
@@ -25,8 +26,16 @@ def tab(tmp_path):
     view = stats_ui.GameplanStatsTab(root, frame, datastore_root=tmp_path, auto_load=False)
     write_review(tmp_path)
     view.set_review(load_gameplan_stats(tmp_path))
-    yield view
-    root.destroy()
+    reference = weakref.ref(view)
+    try:
+        # Pytest caches the yielded value until after fixture finalization. Keep
+        # its cache weak so all Tk resources can be reclaimed on this thread.
+        yield weakref.proxy(view)
+    finally:
+        root.destroy()
+        del view, frame, root
+        gc.collect()
+        assert reference() is None, "Stats fixture retained its destroyed Tk view"
 
 
 def _finish_refresh(tab):

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -249,16 +250,34 @@ def _outcome(row: dict) -> PredictionOutcome:
     )
 
 
-def load_gameplan_stats(datastore_root: Path | None = None, session: str | None = None) -> GameplanStatsReview:
+def load_gameplan_stats(datastore_root: Path | None = None, session: str | None = None, *,
+                        run_directory: Path | None = None,
+                        expected_receipt_sha256: str | None = None) -> GameplanStatsReview:
+    """Read the selected display, or an explicitly pinned immutable publication.
+
+    The latter is for historical evidence verification. It neither changes the
+    display pointers nor interprets a dated pointer as the original publication.
+    """
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
     try:
         requested = _session(session) if session is not None else None
-        pointer_path = root / "ml/gameplan-actuals-review-latest/run.json"
-        if requested:
-            dated = root / f"ml/gameplan-actuals-review-by-date/{requested}/run.json"
-            if dated.is_file():
-                pointer_path = dated
-        selected, run, pointer = _pointer(pointer_path, root)
+        if run_directory is not None:
+            run = Path(run_directory).resolve()
+            if (run.parent != root / "ml/gameplan-actuals-review-runs"
+                    or not isinstance(expected_receipt_sha256, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", expected_receipt_sha256) is None):
+                raise GameplanStatsError("Frozen Stats require a saved run and exact receipt hash")
+            selected = _session(_json(run / "receipt.json").get("action_date"))
+            pointer = {"receipt_sha256": expected_receipt_sha256}
+        else:
+            if expected_receipt_sha256 is not None:
+                raise GameplanStatsError("A frozen receipt hash requires an explicit saved run")
+            pointer_path = root / "ml/gameplan-actuals-review-latest/run.json"
+            if requested:
+                dated = root / f"ml/gameplan-actuals-review-by-date/{requested}/run.json"
+                if dated.is_file():
+                    pointer_path = dated
+            selected, run, pointer = _pointer(pointer_path, root)
         if requested and selected != requested:
             raise GameplanStatsError(f"No verified results have been published for {requested}")
         receipt_path = run / "receipt.json"

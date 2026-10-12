@@ -1,0 +1,17 @@
+{
+  "schema_version": "ducketz-nightly-workflow-v1",
+  "actor": "Scout",
+  "repository": "C:/dev/ducketz",
+  "datastore": "C:/DATASTORE",
+  "state_root": "C:/dev/ducketz/scratch/nightly-workflow",
+  "local_profile": "C:/dev/ducketz/scratch/cross-pc/local-profile.json",
+  "coordination_active": "C:/dev/ducketz/scratch/cross-pc/active.json",
+  "stock_price_source": "xnas-itch-archive-v1",
+  "archive_history": true,
+  "peer_communication_enabled": false,
+  "reviewer": {
+    "model": "gpt-6-astra",
+    "reasoning_effort": "high",
+    "timeout_seconds": 1800
+  }
+}

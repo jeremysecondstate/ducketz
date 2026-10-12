@@ -183,7 +183,10 @@ def _split_source_files(root: Path, symbol: str) -> tuple[Path, ...]:
     return tuple(sorted((root / "normalized/fmp/corporate").glob(f"{safe_token(symbol)}_stock_splits_*.parquet")))
 
 
-def _load_schema(root, symbols, schema, *, as_of):
+def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
+    evidence_cutoff = _utc(as_of if evidence_available_at is None else evidence_available_at)
+    if evidence_cutoff < _utc(as_of):
+        raise ValueError("Archive evidence cutoff precedes its information cutoff")
     frames, files, exclusions = [], [], []
     coverage = {symbol: [] for symbol in symbols}
     interval = {"ohlcv-1d": pd.Timedelta(days=1), "ohlcv-1h": pd.Timedelta(hours=1),
@@ -208,7 +211,7 @@ def _load_schema(root, symbols, schema, *, as_of):
                 or file_checksum(raw_path) != raw.get("checksum_sha256")
                 or part.receipt.get("raw_checksum_sha256") != raw.get("checksum_sha256")):
             raise ValueError("Archive feature raw evidence verification failed")
-        if _utc(part.manifest["published_at"]) > _utc(as_of):
+        if _utc(part.manifest["published_at"]) > evidence_cutoff:
             raise ValueError("Archive feature evidence was published after the frozen as-of")
         start, end = pd.Timestamp(request["start"], tz="UTC"), pd.Timestamp(request["end"], tz="UTC")
         symbol = request["symbol_scope"][0]
@@ -240,20 +243,25 @@ def _load_schema(root, symbols, schema, *, as_of):
 
 
 def load_archive_feature_sources(datastore_root: Path, *, symbols: Sequence[str], available_at,
-                                 minute_bars: pd.DataFrame | None = None) -> ArchiveFeatureSources:
+                                 minute_bars: pd.DataFrame | None = None,
+                                 evidence_available_at=None) -> ArchiveFeatureSources:
     """Read native daily/hourly and minute evidence without altering DATASTORE.
 
     The optional target-price frame is deliberately not treated as OHLCV feature
     evidence: that frame may contain only open/close endpoints. Native OHLCV and
-    full interval coverage are independently verified here.
+    full interval coverage are independently verified here. Explicit late recovery
+    can admit archives acquired by its actual creation time, while every bar and
+    feature remains bounded by the original information cutoff. Neither clock is
+    backdated; ordinary callers retain the single-clock policy.
     """
     root = Path(datastore_root).resolve()
     clean = tuple(str(s).strip().upper() for s in symbols)
     if not clean or len(set(clean)) != len(clean) or any(not s for s in clean):
         raise ValueError("Archive features require a unique configured universe")
-    daily, dfiles, _, dex = _load_schema(root, clean, "ohlcv-1d", as_of=available_at)
-    hourly, hfiles, _, hex_ = _load_schema(root, clean, "ohlcv-1h", as_of=available_at)
-    minutes, mfiles, coverage, mex = _load_schema(root, clean, "ohlcv-1m", as_of=available_at)
+    clocks = dict(as_of=available_at, evidence_available_at=evidence_available_at)
+    daily, dfiles, _, dex = _load_schema(root, clean, "ohlcv-1d", **clocks)
+    hourly, hfiles, _, hex_ = _load_schema(root, clean, "ohlcv-1h", **clocks)
+    minutes, mfiles, coverage, mex = _load_schema(root, clean, "ohlcv-1m", **clocks)
     daily = _prefer_native(daily, _aggregate_minutes(minutes, frequency="1d", coverage=coverage, as_of=available_at))
     hourly = _prefer_native(hourly, _aggregate_minutes(minutes, frequency="1h", coverage=coverage, as_of=available_at))
     split_events = {symbol: discover_split_events(root, symbol=symbol) for symbol in clean}
@@ -261,7 +269,10 @@ def load_archive_feature_sources(datastore_root: Path, *, symbols: Sequence[str]
     result = build_archive_feature_sources(daily, hourly, symbols=clean, available_at=available_at,
                                           split_events=split_events, excluded_intervals=(*dex, *hex_, *mex))
     return ArchiveFeatureSources(result.sources, result.feature_columns,
-                                 tuple(dict.fromkeys((*dfiles, *hfiles, *mfiles, *split_files))), result.report)
+                                 tuple(dict.fromkeys((*dfiles, *hfiles, *mfiles, *split_files))),
+                                 {**result.report, "information_cutoff": _utc(available_at).isoformat(),
+                                  "evidence_available_at": _utc(available_at if evidence_available_at is None
+                                                               else evidence_available_at).isoformat()})
 
 
 def build_archive_feature_sources(daily_bars: pd.DataFrame, hourly_bars: pd.DataFrame, *,

@@ -172,6 +172,9 @@ def run_stock_trader_once(
     """
 
     root = Path(datastore_root).resolve()
+    from ml.account_gameplan.config import load_account_config
+    if load_account_config(root) is not None:
+        raise ValueError("COMBINED_ACCOUNT_REQUIRES_SOLE_INDEPENDENT_GAMEPLAN_SESSION")
     if allow_open_queue and allow_premarket_queue:
         raise ValueError(
             "allow_open_queue and allow_premarket_queue are mutually exclusive"

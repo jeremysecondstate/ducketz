@@ -218,8 +218,10 @@ def test_native_publication_staging_loading_and_source_checksum(tmp_path, monkey
     paths = tuple(run / name for name in ["manifest.json", "receipt.json", *[f"training-cohort-{group}.parquet" for group in GROUPS]])
     for group, path in zip(GROUPS, paths[2:]):
         cohorts[group].to_parquet(path)
-    write_manifest(run, run_timestamp=TRAINED, input_files=(), output_files=tuple(path.name for path in paths[2:]),
-        configuration={"target_contract_version": STOCK_TARGET_CONTRACT_VERSION, "action_date": "2026-09-08"})
+    configuration = {"target_contract_version": STOCK_TARGET_CONTRACT_VERSION, "action_date": "2026-09-08"}
+    (run / "gameplan.json").write_text(json.dumps(configuration), encoding="utf-8")
+    write_manifest(run, run_timestamp=TRAINED, input_files=(),
+        output_files=("gameplan.json", *(path.name for path in paths[2:])), configuration=configuration)
     receipt = {"schema_version": GAMEPLAN_RECEIPT_VERSION, "run_path": run.relative_to(tmp_path).as_posix(),
         "manifest_checksum_sha256": file_checksum(paths[0]), "execution_authority": EXECUTION_AUTHORITY,
         "broker_orders_enabled": False, "orders_placed": 0, "run_timestamp": TRAINED.isoformat(),
