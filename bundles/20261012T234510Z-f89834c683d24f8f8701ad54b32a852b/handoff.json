@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T23:45:10.626476Z",
+  "id": "20261012T234510Z-f89834c683d24f8f8701ad54b32a852b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Exact design, architecture, readiness and adoption documents supplied with Atlas setup/source response; no distributed live admission service found. Proposed Atlas authority/isolation and Scout local client/send-journal ownership; source installation and runtime activation remain separate."
+}
