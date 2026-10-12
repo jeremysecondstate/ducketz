@@ -40,7 +40,9 @@ _FORECAST_REQUIRED = {
 _FORECAST_OPTIONAL = {
     "preprocessing_seconds", "training_seconds", "inference_seconds", "symbol_seconds_before_persistence",
     "training_started_at", "training_completed_at", "synthetic_policy", "issue_after_target",
+    "source_dataset", "source_id",
 }
+_SOURCE_IDENTITIES = {dataset: f"databento:{dataset}:ohlcv-1m" for dataset in ("EQUS.MINI", "XNAS.ITCH")}
 _MODEL_REQUIRED = {"name", "status", "probability_not_down", "version"}
 _MODEL_OPTIONAL = {"family", "training_seconds", "inference_seconds", "artifact_persistence_seconds",
                    "training_started_at", "training_completed_at", "inference_started_at", "inference_completed_at",
@@ -143,6 +145,11 @@ def _operational_fields(value, produced):
 
 def _validate_forecast(forecast, *, pc, produced):
     _keys(forecast, _FORECAST_REQUIRED, _FORECAST_OPTIONAL)
+    if "source_dataset" in forecast or "source_id" in forecast:
+        dataset = forecast.get("source_dataset")
+        if (not isinstance(dataset, str) or dataset not in _SOURCE_IDENTITIES
+                or forecast.get("source_id") != _SOURCE_IDENTITIES[dataset]):
+            raise ContractError("Monitoring source identity must name a supported dataset and its matching portable source")
     _hash(forecast["forecast_id"], "forecast identity")
     _token(forecast["cycle_id"], "cycle identity")
     if forecast["pc"] != pc:
@@ -262,9 +269,9 @@ def validate_packet(packet, *, expected_peer=None, as_of=None):
     names = set()
     for forecast in forecasts:
         _validate_forecast(forecast, pc=pc, produced=produced)
-        key = (forecast["symbol"], forecast["mode"])
+        key = (forecast["symbol"], forecast["mode"], forecast.get("source_dataset"))
         if key in names:
-            raise ContractError("Monitoring snapshot repeats a latest symbol/mode")
+            raise ContractError("Monitoring snapshot repeats a latest symbol/mode/source dataset")
         names.add(key)
     cycle_ids = set()
     for cycle in cycles:
@@ -369,11 +376,11 @@ def export_packet(database_path, *, producer_pc, source_version, produced_at=Non
     with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as db:
         db.execute("PRAGMA query_only=ON")
         db.execute("BEGIN")
-        # The WHERE and ordered source identities isolate this PC and keep replay
-        # separate from shadow. Private inputs/intents/orders are never queried.
+        # The WHERE and ordered source identities isolate this PC and keep replay,
+        # shadow and source datasets separate. Private inputs/intents/orders are never queried.
         for (payload,) in db.execute("SELECT payload FROM forecasts WHERE pc=? ORDER BY issued_at DESC, rowid DESC", (pc,)):
             value = json.loads(payload)
-            key = (value["symbol"], value["mode"])
+            key = (value["symbol"], value["mode"], value.get("source_dataset"))
             if key in keys:
                 continue
             keys.add(key)

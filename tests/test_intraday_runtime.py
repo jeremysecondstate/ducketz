@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import sys
 import threading
+import json
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,61 @@ from ml.intraday.runtime import ResearchConfig, ShadowRunner
 from ml.intraday.store import ShadowStore
 
 REF = datetime(2026,10,8,17,tzinfo=timezone.utc)
+
+
+def research_binding(tmp_path):
+    watch = tmp_path / "watchlist.local.txt"
+    watch.write_text("AAA\nBBB\n")
+    profile = tmp_path / "profile.json"
+    profile.write_text(json.dumps(dict(actor="Scout", machine="pc-new", symbols=["AAA", "BBB"],
+                                       symbol_profile_path=str(watch))))
+    return profile, watch
+
+
+def test_research_membership_without_account_config_is_read_only(tmp_path):
+    from ml.intraday.runtime import local_symbols
+    profile, watch = research_binding(tmp_path)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    assert local_symbols(profile, watch, tmp_path) == ("Scout", ("AAA", "BBB"))
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+    assert not (tmp_path / "state").exists()
+
+
+@pytest.mark.parametrize("change", ["path", "symbols", "duplicate_watch", "duplicate_profile", "actor", "machine"])
+def test_research_membership_rejects_unbound_or_conflicting_scope(tmp_path, change):
+    from ml.intraday.runtime import local_symbols
+    profile, watch = research_binding(tmp_path)
+    saved = json.loads(profile.read_text())
+    if change == "path": saved["symbol_profile_path"] = str(tmp_path / "other.txt")
+    if change == "symbols": saved["symbols"] = ["AAA", "CCC"]
+    if change == "duplicate_watch": watch.write_text("AAA\nBBB\nAAA\n")
+    if change == "duplicate_profile": saved["symbols"].append("AAA")
+    if change == "actor": saved["actor"] = "Other"
+    if change == "machine": saved["machine"] = "pc-original"
+    profile.write_text(json.dumps(saved))
+    with pytest.raises(ContractError): local_symbols(profile, watch, tmp_path)
+
+
+def test_existing_account_membership_is_checked_without_research_fallback(tmp_path):
+    from ml.intraday.runtime import local_symbols
+    profile, watch = research_binding(tmp_path)
+    binding = tmp_path / "state/account-gameplan/config.json"
+    binding.parent.mkdir(parents=True)
+    binding.write_text(json.dumps(dict(machine_id="pc-new", participants={"pc-new": ["AAA", "CCC"]})))
+    with pytest.raises(ContractError, match="ownership disagree"):
+        local_symbols(profile, watch, tmp_path)
+    binding.write_text(json.dumps(dict(machine_id="pc-new", participants={"pc-new": ["BBB", "AAA"]})))
+    assert local_symbols(profile, watch, tmp_path) == ("Scout", ("BBB", "AAA"))
+    binding.write_text("invalid json")
+    with pytest.raises(ValueError): local_symbols(profile, watch, tmp_path)
+
+
+@pytest.mark.parametrize("mode", [["--mode", "shadow"], ["--watch"]])
+def test_archive_selection_cannot_change_shadow_provider_binding(tmp_path, mode):
+    from ml.intraday.runtime import main
+    with pytest.raises(ContractError, match="historical replay only"):
+        main(["--datastore", str(tmp_path), "--profile", "absent", "--watchlist", "absent",
+              "--reference", REF.isoformat(), "--source-dataset", "XNAS.ITCH", *mode])
 
 
 def history(symbol):
@@ -129,6 +185,51 @@ def test_earlier_replay_scoring_does_not_backdate_or_expose_later_outcomes(tmp_p
     before=[r.store.revisions(f['forecast_id']) for f in r.store.forecasts()]
     assert r.score_available({},as_of=(REF+timedelta(minutes=46)).isoformat())==[]
     assert [r.store.revisions(f['forecast_id']) for f in r.store.forecasts()]==before
+
+
+@pytest.mark.parametrize("other_dataset,other_source", [
+    ("XNAS.ITCH", "databento:XNAS.ITCH:ohlcv-1m"),
+    ("EQUS.MINI", "other:EQUS.MINI:ohlcv-1m"),
+])
+def test_scoring_keeps_same_symbol_targets_separate_by_source(tmp_path,other_dataset,other_source):
+    r=runner(tmp_path,trainer=trained)
+    def sourced_dataset(frame,**kwargs):
+        built=dataset(frame,**kwargs)
+        built.inference.update(source_dataset=frame.iloc[0].source_dataset,source=frame.iloc[0].source_id)
+        return built
+    r.dataset_builder=sourced_dataset
+    sources=[("EQUS.MINI","databento:EQUS.MINI:ohlcv-1m"),(other_dataset,other_source)]
+    forecasts=[]
+    outcomes=[]
+    for index,(source_dataset,source_id) in enumerate(sources):
+        inputs={s:history(s).assign(source_dataset=source_dataset,source_id=source_id) for s in r.symbols}
+        result=r.run_cycle(inputs,reference_at=REF,experiment=f"source-{index}")
+        forecasts.append(result["forecasts"])
+        outcomes.append({s:frame.assign(opened_at=REF+timedelta(minutes=30),
+            available_at=REF+timedelta(minutes=45),close=99 if index==0 else 101) for s,frame in inputs.items()})
+    as_of=(REF+timedelta(minutes=46)).isoformat()
+    first=r.score_available(outcomes[0],as_of=as_of)
+    assert len(first)==len(r.symbols) and all(o["target_not_down"] is False for o in first)
+    saved={s:r.store.revisions(f["forecast_id"]) for s,f in forecasts[0].items()}
+    assert all(not r.store.revisions(f["forecast_id"]) for f in forecasts[1].values())
+    second=r.score_available(outcomes[1],as_of=as_of)
+    assert len(second)==len(r.symbols) and all(o["target_not_down"] is True for o in second)
+    assert saved=={s:r.store.revisions(f["forecast_id"]) for s,f in forecasts[0].items()}
+    # A mixed frame must select the matching source before choosing its latest row.
+    mixed={s:pd.concat([outcomes[0][s],outcomes[1][s]],ignore_index=True) for s in r.symbols}
+    all_scores=r.score_available(mixed,as_of=as_of)
+    assert len(all_scores)==2*len(r.symbols)
+    assert {s:r.store.revisions(f["forecast_id"]) for s,f in forecasts[0].items()}==saved
+    assert all(len(r.store.revisions(f["forecast_id"]))==1 for f in forecasts[1].values())
+
+
+def test_legacy_forecasts_without_source_bindings_still_score(tmp_path):
+    r=runner(tmp_path,trainer=trained)
+    r.run_cycle({s:history(s) for s in r.symbols},reference_at=REF)
+    targets={s:history(s).assign(opened_at=REF+timedelta(minutes=30),
+        available_at=REF+timedelta(minutes=45)) for s in r.symbols}
+    scores=r.score_available(targets,as_of=(REF+timedelta(minutes=46)).isoformat())
+    assert len(scores)==len(r.symbols) and all(o["status"]=="scored" for o in scores)
 
 
 def test_manual_watch_retrains_on_fixed_grid_and_retains_cursor(tmp_path,monkeypatch):

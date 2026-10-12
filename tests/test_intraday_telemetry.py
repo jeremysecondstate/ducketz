@@ -20,8 +20,9 @@ PRODUCED = "2026-10-12T17:47:00+00:00"
 RECEIVED = "2026-10-12T17:48:00+00:00"
 
 
-def source_store(path, pc="Atlas", *, scored=True):
+def source_store(path, pc="Atlas", *, scored=True, source_dataset=None):
     store = ShadowStore(path)
+    source = {"source_dataset": source_dataset, "source_id": f"databento:{source_dataset}:ohlcv-1m"} if source_dataset else {}
     cycle_id = digest({"cycle": 1, "pc": pc})
     cycle = dict(pc=pc, symbols=["AAPL"], reference_at="2026-10-12T17:00:00+00:00",
                  mode="shadow", started_at="2026-10-12T17:15:30+00:00", status="running",
@@ -48,12 +49,13 @@ def source_store(path, pc="Atlas", *, scored=True):
         mode="shadow", availability_basis="observed", probability_not_down=.72,
         configured_count=3, successful_count=2, ensemble_status="incomplete", models=models,
         features={"close": "do-not-export-feature"}, snapshot={"raw": "do-not-export-candle"},
-        account_id="do-not-export-account", local_path="C:/private/store.sqlite3"),
+        account_id="do-not-export-account", local_path="C:/private/store.sqlite3", **source),
         intent=dict(desired_quantity=4, adjusted_quantity=0, disposition="do-not-export-capacity"))
     if scored:
         candle = dict(symbol="AAPL", opened_at="2026-10-12T17:30:00+00:00", available_at="2026-10-12T17:45:04+00:00",
                       open="100", high="101", low="99", close="100", volume=100,
                       source_id="do-not-export-full-candle", availability_kind="actual", synthetic=False)
+        candle.update(source)
         store.observe(forecast, as_of="2026-10-12T17:46:00+00:00", candle=candle)
     return store, forecast
 
@@ -90,6 +92,53 @@ def test_export_projection_preserves_models_scores_and_excludes_private_fields(t
     for secret in ("do-not-export", "C:/private", "artifact_path", "desired_quantity", "adjusted_quantity",
                    "metadata", "snapshot", "features", "account_id", "resources_after", "configuration"):
         assert secret not in exported
+
+
+@pytest.mark.parametrize("dataset", ["EQUS.MINI", "XNAS.ITCH"])
+def test_portable_source_provenance_survives_export_and_receipt(tmp_path, dataset):
+    store, forecast = source_store(tmp_path / "source.sqlite3", source_dataset=dataset)
+    packet = export_packet(store.path, producer_pc="Atlas", source_version="release-source", produced_at=PRODUCED)
+    value = packet["payload"]["forecasts"][0]
+    assert value["source_dataset"] == dataset
+    assert value["source_id"] == f"databento:{dataset}:ohlcv-1m"
+    assert value["forecast_id"] == forecast["forecast_id"]
+    packet_path = write_packet(packet, tmp_path / "packet.json")
+    received = import_packet(packet_path, tmp_path / "received", expected_peer="Atlas", local_pc="Scout", received_at=RECEIVED)
+    loaded = load_receipt(received["receipt_path"], expected_peer="Atlas", local_pc="Scout", as_of=RECEIVED)
+    assert loaded["receipt"]["packet"]["payload"]["forecasts"][0] == value
+
+
+def test_latest_forecasts_keep_each_source_dataset_and_legacy_scope(tmp_path):
+    store, legacy = source_store(tmp_path / "source.sqlite3", scored=False)
+    expected_ids = {legacy["forecast_id"]}
+    for dataset in ("EQUS.MINI", "XNAS.ITCH"):
+        for revision, issue in enumerate((ISSUE, "2026-10-12T17:17:00+00:00")):
+            value = store.save_forecast(dict(legacy, cycle_id=f"{dataset}-{revision}",
+                issued_at=issue, recorded_at=issue, source_dataset=dataset, source_id=f"databento:{dataset}:ohlcv-1m"))
+        expected_ids.add(value["forecast_id"])
+    packet = export_packet(store.path, producer_pc="Atlas", source_version="release-source", produced_at=PRODUCED)
+    rows = packet["payload"]["forecasts"]
+    assert len(rows) == 3 and {row["forecast_id"] for row in rows} == expected_ids
+    assert {row.get("source_dataset") for row in rows} == {None, "EQUS.MINI", "XNAS.ITCH"}
+    packet["payload"]["forecasts"].append(deepcopy(rows[0]))
+    with pytest.raises(ContractError, match="repeats a latest"):
+        validate_packet(resign(packet))
+
+
+@pytest.mark.parametrize("source", [
+    {"source_dataset": "EQUS.MINI"},
+    {"source_id": "databento:EQUS.MINI:ohlcv-1m"},
+    {"source_dataset": "EQUS.MINI", "source_id": "databento:XNAS.ITCH:ohlcv-1m"},
+    {"source_dataset": "EQUS.MINI", "source_id": "C:/private/history.parquet"},
+    {"source_dataset": "C:/private", "source_id": "databento:C:/private:ohlcv-1m"},
+    {"source_dataset": "OTHER.DATA", "source_id": "databento:OTHER.DATA:ohlcv-1m"},
+    {"source_dataset": None, "source_id": None},
+])
+def test_source_provenance_rejects_partial_unknown_mismatched_and_private_identities(tmp_path, source):
+    _, packet, _, _ = packet_file(tmp_path)
+    packet["payload"]["forecasts"][0].update(source)
+    with pytest.raises(ContractError, match="source identity"):
+        validate_packet(resign(packet))
 
 
 def test_two_pc_reception_is_immutable_and_duplicates_preserve_first_received_at(tmp_path):

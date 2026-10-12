@@ -206,14 +206,20 @@ def load_intraday_snapshot(database_paths: Mapping[str, Path] | None = None, *,
     return IntradaySnapshot(now, tuple(forecasts), tuple(cycles), tuple(sources), tuple(warnings))
 
 
+def source_dataset_label(row: Mapping[str, Any]) -> str:
+    return str(row.get("source_dataset") or "Unrecorded")
+
+
 def filter_forecasts(snapshot: IntradaySnapshot, *, pc: str = "All", symbol: str = "All",
-                     session: str = "All", mode: str = "shadow", reference_slot: str = "All") -> tuple[dict[str, Any], ...]:
+                     session: str = "All", mode: str = "shadow", reference_slot: str = "All",
+                     source_dataset: str = "All") -> tuple[dict[str, Any], ...]:
     def accepts(row):
         issued = timestamp(row.get("issued_at"))
         reference = timestamp(row.get("reference_at"))
         return ((pc == "All" or row.get("pc") == pc)
                 and (symbol == "All" or row.get("symbol") == symbol)
                 and (mode == "All" or row.get("mode", "shadow") == mode)
+                and (source_dataset == "All" or source_dataset_label(row) == source_dataset)
                 and (reference_slot == "All" or (reference is not None and reference.astimezone(PACIFIC).strftime("%H:%M") == reference_slot))
                 and (session == "All" or (issued is not None and issued.astimezone(PACIFIC).date().isoformat() == session)))
     return tuple(row for row in snapshot.forecasts if accepts(row))
@@ -366,7 +372,7 @@ def regime_metrics(rows: Sequence[Mapping[str, Any]]) -> tuple[dict[str, Any], .
 def latest_matrix(rows: Sequence[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
     latest = {}
     for row in sorted(rows, key=lambda row: timestamp(row.get("issued_at")) or datetime.min.replace(tzinfo=UTC)):
-        latest[(row.get("pc"), row.get("symbol"))] = row
+        latest[(row.get("pc"), row.get("symbol"), source_dataset_label(row), row.get("mode", "shadow"))] = row
     return tuple(latest[key] for key in sorted(latest))
 
 
