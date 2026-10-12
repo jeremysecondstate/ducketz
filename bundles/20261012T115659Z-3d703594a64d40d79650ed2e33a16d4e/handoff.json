@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T11:56:59.750683Z",
+  "id": "20261012T115659Z-3d703594a64d40d79650ed2e33a16d4e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed shared Gameplan order timeout policy: five minutes, confirmed cancel, one refreshed five-minute attempt, then abandon its canceled remainder."
+}

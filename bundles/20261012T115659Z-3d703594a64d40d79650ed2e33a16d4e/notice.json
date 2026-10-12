@@ -1,0 +1,34 @@
+{
+  "author": "Atlas",
+  "base_sha": "3ff1c5833e3acd8d2bcd3278c90e4de8987e635e",
+  "branch": "codex/atlas/20261012T115221Z-05f6f682546f46bcb3457651239e0da2",
+  "change_id": "20261012T115221Z-05f6f682546f46bcb3457651239e0da2",
+  "files": [
+    "ml/stock_trader/catchup.py",
+    "ml/stock_trader/contracts.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "ml/stock_trader/independent_runtime.py",
+    "docs/development/trader-order-timeouts.md",
+    "tests/test_order_timeout_catchup.py",
+    "tests/test_order_timeout_ledger.py",
+    "tests/test_order_timeout_runtime.py"
+  ],
+  "limitations": [
+    "335 synthetic offline regressions; no live broker/provider calls or running-worker validation.",
+    "Five minutes is a cancellation threshold; worker polling and broker confirmation can extend wall-clock duration.",
+    "Exact source base includes previously reviewed catch-up/account prerequisites not yet reconciled into current main; main integration is a separate stage.",
+    "Main integration helper rejected non-descendant base; prerequisite owner reconciliation remains pending. Scout installation is unverified."
+  ],
+  "main_integrated": false,
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exactly eight reviewed files installed on Atlas. Next manual trader start loads the policy; no broker calls, restart or deployment performed. Partial fills and unknown reservations are preserved. Shared engine behavior applies to Scout with its own reviewed installation and local bindings.",
+  "scope": "shared",
+  "source_sha": "95a57dccdcae9f178446c9f570a72aa9415dd21d",
+  "source_url": "https://github.com/jeremysecondstate/ducketz/pull/70",
+  "summary": "Atlas completed shared Gameplan order timeout policy: five minutes, confirmed cancel, one refreshed five-minute attempt, then abandon its canceled remainder.",
+  "tests": {
+    "completed_at_utc": "2026-10-12T11:54:47Z",
+    "evidence": "Sealed completion record binds 109 source/dependency fingerprints and fresh isolated offline tests.",
+    "result": "335 passed in isolated candidate (41.82s) and installed Atlas checkout (40.04s)"
+  }
+}
