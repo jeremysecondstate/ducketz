@@ -157,7 +157,7 @@ def _project(captured, *, symbols, scope, observed):
             raise ValueError("Account horizon allocation is malformed")
         identity = _hash(item.get("allocation_id_sha256"))
         symbol, horizon = item.get("symbol"), item.get("horizon")
-        intraday = horizon == "15m" and item.get("stream") == "atlas-15m"
+        intraday = horizon == "15m" and item.get("stream") in {"atlas-15m", "scout-15m"}
         if (symbol not in symbols or (horizon not in {"1h", "4h", "1d", "1w"} and not intraday)
                 or item.get("status") != "ACTIVE" or identity in identities or (symbol, horizon) in routes):
             raise ValueError("Account horizon allocation identity or universe differs")
@@ -167,7 +167,7 @@ def _project(captured, *, symbols, scope, observed):
             raise ValueError("Account horizon allocation quantities or targets disagree")
         selected.append({"allocation_id_sha256": identity, "symbol": symbol, "horizon": horizon,
             "status": "ACTIVE", **quantities, "target_start": start.isoformat(), "target_end": end.isoformat(),
-            **({"stream": "atlas-15m"} if intraday else {})})
+            **({"stream": item["stream"]} if intraday else {})})
         totals[symbol] += quantities["owned_shares"]
         reserved[symbol] += quantities["reserved_sell_shares"]
         identities.add(identity)
