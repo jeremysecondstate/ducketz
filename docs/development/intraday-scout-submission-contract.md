@@ -2,8 +2,11 @@
 
 This is a dormant library and an interface proposal for Atlas review, **not an
 agreed production wire protocol or evidence that Scout is ready to trade**.
-There is no network adapter, broker adapter, service startup, launcher wiring,
+There is no network adapter, service startup, launcher wiring,
 account activation or runtime deployment in this change.
+The later Scout integration checkpoint adds the local prepared-broker adapter
+described below. It still requires the actual shared capacity service and
+production session wiring before a manual start can be offered.
 
 Reuse the reviewed forecasting, exact target, scoring and independent sizing
 from [PR #78](https://github.com/jeremysecondstate/ducketz/pull/78)
@@ -20,9 +23,9 @@ does not transfer Scout submission to an Atlas execution gateway or delegate
 separate cash budgets. SQLite databases stay host-local; telemetry and nightly
 file exchange do not supply a live order protocol.
 
-The human relayed that Atlas has no newer admission service. Atlas's response
-was not published because approval review blocked it; this statement is not a
-durable peer receipt. Correlated setup request
+Atlas subsequently published its exact setup response and source comparison in
+the existing coordination issue, confirming the reusable execution/recovery
+implementation and the remaining distributed service boundary. Correlated request
 `scout-15m-live-readiness-20261012` remains the coordination identity for reuse,
 interface agreement and division of ownership.
 
@@ -156,3 +159,39 @@ acknowledgments. Future joint tests must cover all three streams sharing capacit
 fence expiry and partitions at every send boundary, exact partial fills/cancel
 races, confirmed releases and old-loaded-writer rejection. No test here proves
 a deployed service, real authentication, broker readiness or live permission.
+
+## Local prepared-broker integration
+
+`scout_broker.py` reuses the existing prepared Schwab POST/DELETE APIs and exact
+order-status normalizer. Construction takes the existing broker and Scout
+journal; it creates no broker, native account ledger or capacity pool. Scout
+continues to submit and manage its own orders. Authentication identifies the
+participants communicating with the shared capacity service; it does not make
+Atlas an execution gateway or confer Gameplan control on Scout.
+
+Use `ScoutBrokerAdapter.send` only as the one-use `ScoutClient` sender. The
+adapter checks the persisted SENDING request/grant, the locally bound account,
+the prepared account generation, exact granted quantity and unchanged limit,
+the market session, request/grant validity and strict 16:45 Pacific cutoff.
+Its `authorization_gate` verifies the durable shared-capacity send receipt;
+its `final_gate` uses nonblocking local evidence for manual control, current
+forecast/quote, fixed target, loaded-writer compatibility and prior-order
+resolution. Account verification IO finishes before that final local gate.
+These injected gates are contracts for the remaining integration, not defaults
+that establish runtime readiness.
+
+Acceptance requires the exact HTTPS Schwab Location for the prepared account
+and a canonical order ID. Missing or malformed acceptance remains uncertain
+through the existing journal/client behavior. Status reads derive identity
+from the immutable accepted journal entry and reuse exact quantity/leg/fill
+normalization. Cancellation returns the observed status separately from its
+DELETE acknowledgment. The caller must persist cancellation intent and status
+evidence, retain commitments and await terminal confirmation; acknowledgment
+alone never releases capacity. Recovery keeps the original journal/session
+and grant identity even when later service fencing changes.
+
+The shared manual-session queue, pending-cycle reconstruction and scorer now
+accept an explicit participant while preserving Atlas defaults. Queue reads,
+supersession and mutations isolate the persisted forecast participant. This
+reuses the same forecast and scoring engine for Scout; it does not remove the
+live-start guard before the remaining service and production wiring are ready.
