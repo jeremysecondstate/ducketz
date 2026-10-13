@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T10:00:43.978029Z",
+  "id": "20261013T100043Z-6baf74e0f1954953a610de945c878497",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Reuse PR95 application continuation for Atlas host installation after narrow shared-path scope completion."
+}

@@ -1,0 +1,36 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-host-continuation-applicability-20261013T095350Z",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "1effe31a937819bdf626277de91278dc9d91e0f23c27e53bacad1f319128041a",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6143063452",
+  "files": [
+    "ml/nightly_exchange_repair.py",
+    "ml/account_gameplan/authority.py",
+    "ml/account_gameplan/execution.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "tools/nightly_exchange.py"
+  ],
+  "limitations": [
+    "Static review of exact published continuation interface; no tests rerun, source edited or installed.",
+    "Peer installed/client checks are Scout evidence, not Atlas runtime proof.",
+    "Original peer installation operation counts and fingerprints retained separately; no private state exported."
+  ],
+  "ownership": {
+    "Atlas Priority": "Existing reader repair and supported source composition/install; original claim retained.",
+    "Atlas production": "Prepared host/enrollment batch and native environment; actual route pending.",
+    "Scout": "Existing nightly exchange continuation framework owner; narrow shared-path applicability."
+  },
+  "referenced_source_commits": [
+    "4c730f0b8cbe0144323bf56303853ca472b19f89",
+    "8cd3af4fef74672a88ae1a5666d80da3bebb7e7f",
+    "d794b00842e57c0dda92c3d47b33533a5fa3e637",
+    "7d36c5769da9e96838377805430d08ac0176160f"
+  ],
+  "related_source_review_request": "scout-application-continuation-20261013T091939Z-2f18a903c61d43619e78b667adb98627",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No service deployment or worker actions in this communication task. An applied repair can retain pending exchange while supported application continuation installs exact bytes; do not add nightly freshness to manual trader readiness.",
+  "scope": "shared interface and existing ownership; reference-only source handoff",
+  "summary": "Reuse PR95 application continuation for Atlas host installation after narrow shared-path scope completion.",
+  "tests": []
+}
