@@ -26,12 +26,18 @@ from ml import nightly_repair_registry as registry
 from ml.artifacts import file_checksum, utc_timestamp
 
 VERSION = "nightly-exchange-source-repair-v1"
-# These entrypoints are not imported by the running trader. Shared numerical,
-# UI and joint-adoption libraries deliberately need a separate deployment route.
+# These entrypoints retain the existing independent, live-safe repair boundary.
 ALLOWED = frozenset(("tools/nightly_exchange.py", "ml/nightly_exchange_repair.py",
                      "ml/nightly_repair_registry.py",
                      "ml/nightly_synthesis.py", "ml/nightly_handoff.py",
                      "ml/nightly_joint_readiness.py"))
+# These exact shared planning/export sources require quiescent stock sessions throughout
+# prepare/apply. This is not permission to change neighboring numerical, account,
+# execution or UI sources, or to start/stop any operating process.
+PLANNING_READERS = frozenset(("ml/gameplan_cash_ledger.py", "ml/gameplan_trade_planning.py",
+                              "ml/gameplan_trade_snapshot.py", "tools/nightly_account_snapshot.py"))
+STOCK_SESSION_LOCKS = ("intraday-manual-session.lock", "independent-stock-session.lock",
+                       "stock-trader-hourly.lock")
 
 
 def _bytes(value):
@@ -114,7 +120,7 @@ def _guard(saved, completion_record=None):
 
 
 @contextmanager
-def _locks(config, native):
+def _locks(config, native, *, execution=False):
     root = Path(native["state_root"])
     with FileLock(str(root / "workflow.lock"), timeout=0):
         with FileLock(str(Path(config["state_root"]) / "exchange.lock"), timeout=0):
@@ -122,8 +128,16 @@ def _locks(config, native):
                 with exclusive_runtime_lock(Path(native["datastore"]) / ".ducketz-overnight-runtime.lock",
                                             process_name="Reviewed exchange source repair"):
                     with ExitStack() as direct_runs:
+                        if execution:
+                            for name in STOCK_SESSION_LOCKS:
+                                direct_runs.enter_context(exclusive_runtime_lock(
+                                    Path(native["datastore"]) / "locks" / name,
+                                    process_name="Reviewed exchange planning-reader repair"))
                         for status in sorted((Path(config["state_root"]) / "sessions").glob("*/status.json")):
-                            if _read(status).get("status") == "COMPLETE":
+                            saved = _read(status)
+                            if execution:
+                                _assert_dead(saved)
+                            if saved.get("status") == "COMPLETE":
                                 continue
                             for operation in ("synthesis", "handoff"):
                                 direct_runs.enter_context(exclusive_runtime_lock(
@@ -166,6 +180,34 @@ def _quiescent(native):
         if value.get("status") == "RUNNING":
             _assert_dead(value)
             raise ValueError("Record interrupted native attempt before source installation")
+
+
+def _planning_quiescent(config, native, saved):
+    # Reuse the reviewed process inventory and source-bound preparation guard.
+    # Call only while all stock lifetime gates are held, closing the gap between
+    # observing an idle process inventory and freezing/installing shared code.
+    from ml.nightly_stage_repair import _trader_running, _transition_other_runs
+    if _trader_running(Path(native["repository"])):
+        raise ValueError("Active trader prevents exchange planning-reader repair")
+    _transition_other_runs(native, saved["action_date"])
+    for path in sorted((Path(native["state_root"]) / "runs").glob("*/state.json")):
+        if path.parent.name == saved["action_date"]:
+            continue
+        preparation = _read(path)
+        session = _session(config, preparation["action_date"])
+        status = session / "status.json"
+        if status.exists() and _read(status).get("status") == "COMPLETE":
+            continue
+        original = original_binding(config, preparation["action_date"], current_binding=saved["before_binding"])
+        source, binding, files, _ = _transition_endpoint(config, native, preparation, original)
+        # Compare with the claim's baseline, not partly installed current bytes.
+        # Preserve already source-incompatible history only after validating its
+        # complete frozen chain. Malformed or changed evidence remains an error.
+        if source != saved["before_source"]:
+            continue
+        if binding != saved["before_binding"] or (files is not None and files != saved["before_files"]):
+            raise ValueError("Other unfinished exchange binding or dependency baseline is unverified")
+        raise ValueError("Another unfinished source-compatible exchange prevents planning-reader repair")
 
 
 def _preparation(config, native, action_date):
@@ -237,6 +279,16 @@ def _check_hashes(hashes):
             raise ValueError("Protected evidence changed: " + path.name)
 
 
+def _freeze_file(destination, source, expected):
+    """Capture only the reviewed bytes, including concurrent capture failures."""
+    _check_hashes({str(source): expected})
+    raw = Path(source).read_bytes()
+    if sha256(raw).hexdigest() != expected:
+        raise ValueError("Reviewed evidence changed during capture")
+    _atomic(destination, raw, immutable=True)
+    _check_hashes({str(source): expected, str(destination): expected})
+
+
 def _transition_entries(session):
     path = session / "repair-transitions.json"
     return _read(path) if path.exists() else []
@@ -254,11 +306,8 @@ def original_binding(config, action_date, *, current_binding=None):
     return _binding(config) if current_binding is None else current_binding
 
 
-def verify_transition(config, preparation, original_binding, *, current_binding=None):
-    """Validate an append-only source path; never rebind historical preparation."""
-    native = _native(config)
-    repository = Path(native["repository"])
-    current_binding = _binding(config) if current_binding is None else current_binding
+def _transition_endpoint(config, native, preparation, original_binding):
+    """Validate frozen chain evidence independently of the installed endpoint."""
     session = _session(config, preparation["action_date"])
     source, binding = preparation["source_identity"], original_binding
     entries = _transition_entries(session)
@@ -281,11 +330,20 @@ def verify_transition(config, preparation, original_binding, *, current_binding=
             raise ValueError("Broken reviewed exchange source transition")
         _check_hashes(spec["immutable_inputs"])
         source, binding = entry["after_source"], entry["after_binding"]
+    return source, binding, spec["expected_files"] if entries else None, len(entries)
+
+
+def verify_transition(config, preparation, original_binding, *, current_binding=None):
+    """Validate an append-only source path; never rebind historical preparation."""
+    native = _native(config)
+    repository = Path(native["repository"])
+    current_binding = _binding(config) if current_binding is None else current_binding
+    source, binding, files, repairs = _transition_endpoint(config, native, preparation, original_binding)
     if source != workflow.source_identity(repository) or binding != current_binding:
         raise ValueError("Unreviewed exchange source or immutable private binding change")
-    if entries and _inventory(repository) != spec["expected_files"]:
+    if files is not None and _inventory(repository) != files:
         raise ValueError("Unreviewed exchange dependency source change")
-    return {"verified": True, "repairs": len(entries)}
+    return {"verified": True, "repairs": repairs}
 
 
 def pending_claim(config, action_date):
@@ -410,7 +468,7 @@ def prepare(config, *, claim_path, owner, candidate, changes, completion_record,
         raise ValueError("Explicit repair classification required")
     if (risk == "source" and not changes) or (risk == "external_dependency" and changes):
         raise ValueError("Dependency restoration cannot change source")
-    if not set(changes) <= ALLOWED or any(op not in {"add", "modify", "delete"} for op in changes.values()):
+    if not set(changes) <= ALLOWED | PLANNING_READERS or any(op not in {"add", "modify", "delete"} for op in changes.values()):
         raise ValueError("Repair exceeds supported independent entrypoint scope")
     if "delete" in changes.values():
         raise ValueError("Required operating repair entrypoints cannot be deleted")
@@ -419,14 +477,17 @@ def prepare(config, *, claim_path, owner, candidate, changes, completion_record,
     observed = utc_timestamp(now)
     if repository == candidate or repository in candidate.parents or candidate in repository.parents:
         raise ValueError("Review candidate must be isolated")
-    with _locks(config, native):
+    with _locks(config, native, execution=bool(set(changes) & PLANNING_READERS)):
         directory, saved = _owned(config, native, claim_path, owner)
         _quiescent(native)
+        if set(changes) & PLANNING_READERS:
+            _planning_quiescent(config, native, saved)
         _check_hashes(saved["protected"])
         if _inventory(repository) != saved["before_files"] or _binding(config) != saved["before_binding"]:
             raise ValueError("Installed source changed after repair claim")
         expected = dict(saved["before_files"])
         records = []
+        frozen = {}
         for name, operation in changes.items():
             before = expected.get(name)
             target = candidate / name
@@ -444,9 +505,11 @@ def prepare(config, *, claim_path, owner, candidate, changes, completion_record,
                 if before == after:
                     raise ValueError("Source repair must change reviewed bytes")
                 expected[name] = after
-                _atomic(directory / "candidate" / name, target.read_bytes(), immutable=True)
+                _freeze_file(directory / "candidate" / name, target, after)
+                frozen[str(directory / "candidate" / name)] = after
             if before is not None:
-                _atomic(directory / "original-source" / name, (repository / name).read_bytes(), immutable=True)
+                _freeze_file(directory / "original-source" / name, repository / name, before)
+                frozen[str(directory / "original-source" / name)] = before
             records.append({"path": name, "operation": operation, "before": before, "after": after})
         if _inventory(candidate) != expected:
             raise ValueError("Candidate contains missing or unreviewed source dependencies")
@@ -466,19 +529,29 @@ def prepare(config, *, claim_path, owner, candidate, changes, completion_record,
             if not log.is_absolute() or log.is_symlink() or not log.is_file() or not log.stat().st_size:
                 raise ValueError("Absolute regular passing check log required")
             saved_log = directory / "checks" / str(len(evidence))
-            _atomic(saved_log, log.read_bytes(), immutable=True)
-            evidence.append({**check, "log": str(saved_log), "log_sha256": file_checksum(saved_log)})
+            log_sha256 = file_checksum(log)
+            _freeze_file(saved_log, log, log_sha256)
+            frozen.update({str(log): log_sha256, str(saved_log): log_sha256})
+            evidence.append({**check, "log": str(saved_log), "log_sha256": log_sha256})
         before_binding = saved["before_binding"]
         after_binding = json.loads(json.dumps(before_binding))
         for item in records:
-            if item["path"] == "tools/nightly_exchange.py":
+            if item["path"] in {"tools/nightly_exchange.py", "tools/nightly_account_snapshot.py"}:
                 if item["after"] is None:
-                    raise ValueError("The exchange entrypoint cannot be deleted")
-                after_binding["adapter_sources"]["nightly_exchange.py"] = item["after"]
+                    raise ValueError("A required exchange adapter cannot be deleted")
+                after_binding["adapter_sources"][Path(item["path"]).name] = item["after"]
         immutable_inputs = {name: digest for name, digest in saved["protected"].items()
                             if Path(name).name not in {"state.json", "status.json", "failure.json", "run.json"}}
         # Completed prep is immutable even though partial adoption state is not.
         immutable_inputs[str((Path(native["state_root"]) / "runs" / saved["action_date"] / "state.json").resolve())] = saved["preparation_sha256"]
+        # A late mutation must fail before binding an immutable Completion-Record.
+        _owned(config, native, claim_path, owner)
+        _check_hashes(saved["protected"])
+        _check_hashes(frozen)
+        if (_inventory(repository) != saved["before_files"] or _binding(config) != saved["before_binding"]
+                or workflow.source_identity(repository) != saved["before_source"]
+                or _inventory(candidate) != expected):
+            raise ValueError("Reviewed source or binding changed during repair preparation")
         registry.bind_completion(native["state_root"], _guard(saved), completion_record)
         spec = {"schema_version": VERSION, "claim": saved, "claim_sha256": file_checksum(Path(claim_path)),
                 "repository_claim": registry.read(native["state_root"]),
@@ -510,7 +583,7 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
     repository = Path(native["repository"])
     spec_path = Path(spec_path)
     spec = _read(spec_path)
-    with _locks(config, native):
+    with _locks(config, native, execution=any(item["path"] in PLANNING_READERS for item in spec["changes"])):
         directory, saved = _owned(config, native, spec_path.parent / "claim.json", owner)
         if (spec_path != directory / "spec.json" or spec.get("schema_version") != VERSION
                 or spec["claim"] != saved or spec["claim_sha256"] != file_checksum(directory / "claim.json")):
@@ -526,7 +599,7 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
         normalized = dict(actual)
         for item in spec["changes"]:
             name = item["path"]
-            if name not in ALLOWED or actual.get(name) not in {item["before"], item["after"]}:
+            if name not in ALLOWED | PLANNING_READERS or actual.get(name) not in {item["before"], item["after"]}:
                 raise ValueError("Source differs from exact before/after installation bytes")
             if item["before"] is None:
                 normalized.pop(name, None)
@@ -560,6 +633,8 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
         if any(item["repair_id"] == saved["repair_id"] for item in entries) and not prior.exists():
             raise ValueError("Immutable applied repair receipt is missing")
         _quiescent(native)
+        if any(item["path"] in PLANNING_READERS for item in spec["changes"]):
+            _planning_quiescent(config, native, saved)
         _check_hashes(saved["protected"])
         intent = directory / "install-intent.json"
         _atomic(intent, _bytes(result), immutable=True)
@@ -577,6 +652,11 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
                 or _binding(config) != spec["after_binding"]):
             raise ValueError("Installed source differs from reviewed expected identity")
         _check_hashes(saved["protected"])
+        _owned(config, native, spec_path.parent / "claim.json", owner)
+        _check_hashes({str(directory / kind / item["path"]): item[key]
+                       for item in spec["changes"] for kind, key in (("original-source", "before"), ("candidate", "after"))
+                       if item[key] is not None})
+        _check_hashes({check["log"]: check["log_sha256"] for check in spec["checks"]})
         # Order makes interruption resumable: immutable applied record first,
         # then append exactly once; pending_claim checks both before dispatch.
         _atomic(directory / "applied.json", _bytes(result), immutable=True)

@@ -25,7 +25,7 @@ def env(tmp_path, monkeypatch):
     repo, candidate, data, work, exchange = (tmp_path / name for name in ("repo", "candidate", "data", "work", "exchange"))
     for path in (repo, data, work, exchange):
         path.mkdir()
-    for name in repair.ALLOWED | {"tools/nightly_account_snapshot.py", "tools/nightly_ownership.py", "ml/immutable_policy.py"}:
+    for name in repair.ALLOWED | repair.PLANNING_READERS | {"tools/nightly_account_snapshot.py", "tools/nightly_ownership.py", "ml/immutable_policy.py"}:
         path = repo / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# original " + name + "\n")
@@ -525,6 +525,362 @@ def test_multi_file_apply_rechecks_exact_bytes_before_each_write(env, monkeypatc
     changed.write_bytes(original[names[1]] if mutation == "installed" else reviewed)
     assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_APPLIED"
     assert all((env["repo"] / name).read_bytes() == reviewed for name in names)
+    assert len(repair._transition_entries(env["session"])) == 1
+
+
+@pytest.fixture
+def planning_env(env, monkeypatch):
+    import psutil
+    monkeypatch.setattr(psutil, "process_iter", lambda *args: iter(()))
+    return env
+
+
+@pytest.mark.parametrize("reader", sorted(repair.PLANNING_READERS))
+def test_pending_exchange_planning_reader_preserves_completed_preparation(planning_env, reader):
+    env = planning_env
+    write(env["status"], {"actor": "Scout", "action_date": DAY, "review_session": "2026-10-08",
+                          "status": "PENDING", "reason": "PREPARATION_ATLAS"})
+    originals = {path: path.read_bytes() for path in (env["prep"], env["budget"], env["selection"],
+                                                     env["status"], env["partial"], env["original_binding"])}
+    with pytest.raises(ValueError, match="Unreviewed exchange source"):
+        target = env["repo"] / reader
+        original = target.read_bytes()
+        try:
+            target.write_bytes(b"# unreviewed overlay\n")
+            repair.verify_transition(env["config"], env["state"], repair._read(env["original_binding"]))
+        finally:
+            target.write_bytes(original)
+    spec = prepared(env, path=reader)
+    frozen = repair._read(spec)
+    if reader == "tools/nightly_account_snapshot.py":
+        assert frozen["before_source"] == frozen["after_source"]
+        expected_binding = json.loads(json.dumps(frozen["before_binding"]))
+        expected_binding["adapter_sources"]["nightly_account_snapshot.py"] = file_checksum(env["candidate"] / reader)
+        assert frozen["after_binding"] == expected_binding
+        assert frozen["before_binding"] != frozen["after_binding"]
+    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_APPLIED"
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert repair.verify_transition(env["config"], env["state"], repair._read(env["original_binding"])) == {
+        "verified": True, "repairs": 1}
+    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_ALREADY_APPLIED"
+    assert registry.read(env["work"])["completion_record"] == "actual-queue-id"
+
+
+@pytest.mark.parametrize("phase", ["after_first_reader", "after_adapter", "before_receipt", "after_receipt"])
+def test_four_reader_and_adapter_binding_transition_resumes_exact_mixed_install(planning_env, monkeypatch, phase):
+    from tools import nightly_exchange
+    env = planning_env
+    claim_path = claimed(env)
+    names = sorted(repair.PLANNING_READERS)
+    originals = {path: path.read_bytes() for path in (env["prep"], env["budget"], env["selection"],
+                                                     env["status"], env["partial"], env["original_binding"])}
+    for name in names:
+        (env["candidate"] / name).write_bytes(("# corrected fixture " + name + "\n").encode())
+    spec = repair.prepare(env["config"], claim_path=claim_path, owner="Scout source reconciliation",
+        candidate=env["candidate"], changes=dict.fromkeys(names, "modify"), completion_record="exact-four-reader-queue",
+        checks=[{"command": ["python", "-B", "-m", "pytest", "fixture"], "log": str(env["log"]), "exit_code": 0,
+                 "started_at": NOW, "completed_at": NOW, "source_files": repair._inventory(env["candidate"])}],
+        rationale="Four exact planning/export fixtures", runtime_implications="Quiescent installation without capture",
+        reviewed=True, now=NOW)
+    saved = repair._read(spec)
+    expected_binding = json.loads(json.dumps(saved["before_binding"]))
+    expected_binding["adapter_sources"]["nightly_account_snapshot.py"] = file_checksum(
+        env["candidate"] / "tools/nightly_account_snapshot.py")
+    assert saved["after_binding"] == expected_binding
+    assert saved["before_source"] != saved["after_source"]
+    owner = registry.read(env["work"])
+    install, atomic = repair._install_file, repair._atomic
+
+    def interrupted_install(path, raw):
+        install(path, raw)
+        if ((phase == "after_first_reader" and path == env["repo"] / names[0])
+                or (phase == "after_adapter" and path == env["repo"] / "tools/nightly_account_snapshot.py")):
+            raise OSError("interrupted mixed source and adapter install")
+
+    def interrupted_receipt(path, raw, **kwargs):
+        if Path(path).name == "applied.json" and phase in {"before_receipt", "after_receipt"}:
+            if phase == "after_receipt":
+                atomic(path, raw, **kwargs)
+            raise OSError("interrupted mixed transition receipt")
+        return atomic(path, raw, **kwargs)
+
+    monkeypatch.setattr(repair, "_install_file", interrupted_install)
+    monkeypatch.setattr(repair, "_atomic", interrupted_receipt)
+    with pytest.raises(OSError, match="interrupted mixed"):
+        applied(env, spec)
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert registry.read(env["work"]) == owner
+    assert repair.pending_claim(env["config"], DAY) is not None
+    monkeypatch.setattr(repair, "_install_file", install)
+    monkeypatch.setattr(repair, "_atomic", atomic)
+    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_APPLIED"
+    assert repair._binding(env["config"]) == expected_binding
+    assert all((env["repo"] / name).read_bytes() == (env["candidate"] / name).read_bytes() for name in names)
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    monkeypatch.setattr(nightly_exchange, "_binding", repair._binding)
+    assert nightly_exchange._local_state(env["config"], env["native"], DAY, "2026-10-08") == env["state"]
+    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_ALREADY_APPLIED"
+    assert len(repair._transition_entries(env["session"])) == 1
+    assert registry.read(env["work"]) == owner
+
+
+@pytest.mark.parametrize("reader", sorted(repair.PLANNING_READERS))
+def test_planning_export_scope_cannot_delete_required_sources(planning_env, reader):
+    env = planning_env
+    claim_path = claimed(env)
+    with pytest.raises(ValueError, match="cannot be deleted"):
+        repair.prepare(env["config"], claim_path=claim_path, owner="Scout source reconciliation",
+            candidate=env["candidate"], changes={reader: "delete"}, completion_record="must-not-bind",
+            checks=[{"synthetic": "scope fails before checks"}], rationale="review",
+            runtime_implications="deletion prohibited", reviewed=True, now=NOW)
+    assert registry.read(env["work"])["completion_record"] is None
+
+
+@pytest.mark.parametrize("operation", ["prepare", "apply"])
+@pytest.mark.parametrize("name", repair.STOCK_SESSION_LOCKS)
+@pytest.mark.parametrize("reader", sorted(repair.PLANNING_READERS))
+def test_each_stock_lifetime_gate_blocks_planning_reader(planning_env, operation, name, reader):
+    env = planning_env
+    claim_path = claimed(env)
+    spec = prepared(env, claim_path, path=reader) if operation == "apply" else None
+    source = repair._inventory(env["repo"])
+    original_claim = claim_path.read_bytes()
+    original_prep = env["prep"].read_bytes()
+    with repair.exclusive_runtime_lock(env["data"] / "locks" / name, process_name="healthy stock session"):
+        with pytest.raises(RuntimeError, match="owns these artifacts"):
+            if operation == "prepare":
+                prepared(env, claim_path, path=reader)
+            else:
+                applied(env, spec)
+    assert repair._inventory(env["repo"]) == source
+    assert claim_path.read_bytes() == original_claim and env["prep"].read_bytes() == original_prep
+    assert not claim_path.with_name("applied.json").exists()
+    if operation == "prepare":
+        assert not claim_path.with_name("spec.json").exists()
+        assert registry.read(env["work"])["completion_record"] is None
+
+
+@pytest.mark.parametrize("name", repair.STOCK_SESSION_LOCKS)
+def test_legacy_independent_repair_preserves_live_safe_behavior(env, monkeypatch, name):
+    from ml import nightly_stage_repair
+    monkeypatch.setattr(nightly_stage_repair, "_trader_running",
+                        lambda *args: pytest.fail("Legacy independent repair must retain its boundary"))
+    claim_path = claimed(env)
+    with repair.exclusive_runtime_lock(env["data"] / "locks" / name, process_name="healthy stock session"):
+        spec = prepared(env, claim_path)
+        assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_APPLIED"
+
+
+@pytest.mark.parametrize("operation", ["prepare", "apply"])
+@pytest.mark.parametrize("command", [["python", "-m", "ml.stock_trader"],
+                                      ["python", "-m", "ml.intraday.live_session"], []])
+def test_actual_process_inventory_refuses_active_or_unverifiable_trader(planning_env, monkeypatch, operation, command):
+    from types import SimpleNamespace
+    import psutil
+    env = planning_env
+    claim_path = claimed(env)
+    spec = prepared(env, claim_path, path="ml/gameplan_cash_ledger.py") if operation == "apply" else None
+    process = SimpleNamespace(pid=123, info={"pid": 123, "name": "python.exe", "cmdline": command})
+    monkeypatch.setattr(psutil, "process_iter", lambda *args: iter((process,)))
+    source = repair._inventory(env["repo"])
+    with pytest.raises(ValueError, match="Active trader|quiescence is unverified"):
+        prepared(env, claim_path, path="ml/gameplan_cash_ledger.py") if operation == "prepare" else applied(env, spec)
+    assert repair._inventory(env["repo"]) == source
+    assert not claim_path.with_name("applied.json").exists()
+
+
+@pytest.mark.parametrize("operation", ["prepare", "apply"])
+def test_manual_start_after_process_snapshot_cannot_enter_any_stock_gate(planning_env, monkeypatch, operation):
+    import psutil
+    env = planning_env
+    claim_path = claimed(env)
+    spec = prepared(env, claim_path, path="ml/gameplan_cash_ledger.py") if operation == "apply" else None
+    refused = []
+
+    def snapshot(*args):
+        for name in repair.STOCK_SESSION_LOCKS:
+            with pytest.raises(RuntimeError, match="owns these artifacts"):
+                with repair.exclusive_runtime_lock(env["data"] / "locks" / name, process_name="racing manual start"):
+                    pytest.fail("Session started between process inspection and installation")
+            refused.append(name)
+        return iter(())
+
+    monkeypatch.setattr(psutil, "process_iter", snapshot)
+    if operation == "prepare":
+        prepared(env, claim_path, path="ml/gameplan_cash_ledger.py")
+    else:
+        assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_APPLIED"
+    assert refused == list(repair.STOCK_SESSION_LOCKS)
+
+
+@pytest.mark.parametrize("neighbor", ["ml/planning_reservations.py", "tools/nightly_ownership.py",
+                                     "ml/joint_capital_plan.py", "ml/stock_trader/runtime.py"])
+def test_planning_reader_scope_does_not_admit_neighboring_libraries(planning_env, neighbor):
+    env = planning_env
+    claim_path = claimed(env)
+    with pytest.raises(ValueError, match="supported independent entrypoint scope"):
+        repair.prepare(env["config"], claim_path=claim_path, owner="Scout source reconciliation",
+            candidate=env["candidate"], changes={neighbor: "add"}, completion_record="must-not-bind",
+            checks=[{"synthetic": "scope fails before check validation"}], rationale="review",
+            runtime_implications="neighbor not supported", reviewed=True, now=NOW)
+    assert registry.read(env["work"])["completion_record"] is None
+
+
+def test_planning_reader_preserves_old_failed_exchange_but_fences_unfinished_preparation(planning_env):
+    env = planning_env
+    old = write(env["exchange"] / "sessions/2026-10-08/status.json", {"status": "FAILED", "action_date": "2026-10-08"})
+    original = old.read_bytes()
+    claim_path = claimed(env)
+    other = write(env["work"] / "runs/2026-10-10/state.json", {"status": "FAILED"})
+    with pytest.raises(ValueError, match="Another unfinished source-bound"):
+        prepared(env, claim_path, path="ml/gameplan_cash_ledger.py")
+    other.unlink()  # Synthetic competing run is explicitly withdrawn by its fixture owner.
+    spec = prepared(env, claim_path, path="ml/gameplan_cash_ledger.py")
+    applied(env, spec)
+    assert old.read_bytes() == original
+
+
+def test_unverifiable_exchange_owner_refuses_planning_reader(planning_env):
+    import os
+    env = planning_env
+    claim_path = claimed(env)
+    status = repair._read(env["status"])
+    write(env["status"], {**status, "owner_pid": os.getpid()})
+    with pytest.raises(ValueError, match="Live or unverifiable"):
+        prepared(env, claim_path, path="ml/gameplan_cash_ledger.py")
+    assert registry.read(env["work"])["completion_record"] is None
+
+
+def other_completed_preparation(env, *, status="PENDING", historical=False):
+    day = "2026-10-10"
+    state = json.loads(json.dumps(env["state"]))
+    state.update(action_date=day, run_id="other-completed-preparation")
+    if historical:
+        state["source_identity"]["source_sha256"] = "b" * 64
+    path = write(env["work"] / "runs" / day / "state.json", state)
+    session = env["exchange"] / "sessions" / day
+    binding = write(session / "binding.json", repair._read(env["original_binding"]))
+    if status is not None:
+        write(session / "status.json", {"actor": "Scout", "action_date": day, "status": status})
+    return path, session, binding
+
+
+@pytest.mark.parametrize("operation", ["prepare", "apply"])
+@pytest.mark.parametrize("status", ["PENDING", None])
+def test_planning_reader_cannot_strand_another_source_valid_exchange(planning_env, operation, status):
+    env = planning_env
+    claim_path = claimed(env)
+    spec = prepared(env, claim_path, path="ml/gameplan_cash_ledger.py") if operation == "apply" else None
+    path, session, binding = other_completed_preparation(env, status=status)
+    state = repair._read(path)
+    assert repair.verify_transition(env["config"], state, repair._read(binding))["verified"]
+    source = repair._inventory(env["repo"])
+    original = path.read_bytes()
+    with pytest.raises(ValueError, match="Another unfinished source-compatible exchange"):
+        prepared(env, claim_path, path="ml/gameplan_cash_ledger.py") if operation == "prepare" else applied(env, spec)
+    assert repair._inventory(env["repo"]) == source and path.read_bytes() == original
+    assert repair.verify_transition(env["config"], state, repair._read(binding))["verified"]
+    assert not claim_path.with_name("applied.json").exists()
+
+
+def test_partly_installed_retry_checks_other_exchange_against_original_source(planning_env, monkeypatch):
+    env = planning_env
+    spec = prepared(env, path="ml/gameplan_cash_ledger.py")
+    install = repair._install_file
+
+    def interrupted(path, raw):
+        install(path, raw)
+        raise OSError("interrupted after source write")
+
+    monkeypatch.setattr(repair, "_install_file", interrupted)
+    with pytest.raises(OSError, match="interrupted after"):
+        applied(env, spec)
+    monkeypatch.setattr(repair, "_install_file", install)
+    other_completed_preparation(env)
+    with pytest.raises(ValueError, match="Another unfinished source-compatible exchange"):
+        applied(env, spec)
+    assert not spec.with_name("applied.json").exists()
+    assert repair._transition_entries(env["session"]) == []
+
+
+def test_already_incompatible_historical_exchange_remains_fenced_and_unchanged(planning_env):
+    env = planning_env
+    path, session, binding = other_completed_preparation(env, status="FAILED", historical=True)
+    originals = {item: item.read_bytes() for item in (path, binding, session / "status.json")}
+    with pytest.raises(ValueError, match="Unreviewed exchange source"):
+        repair.verify_transition(env["config"], repair._read(path), repair._read(binding))
+    spec = prepared(env, path="ml/gameplan_cash_ledger.py")
+    applied(env, spec)
+    assert all(item.read_bytes() == raw for item, raw in originals.items())
+    with pytest.raises(ValueError, match="Unreviewed exchange source"):
+        repair.verify_transition(env["config"], repair._read(path), repair._read(binding))
+
+
+def test_historical_source_mismatch_does_not_hide_malformed_transition_evidence(planning_env):
+    env = planning_env
+    path, session, binding = other_completed_preparation(env, status="FAILED", historical=True)
+    write(session / "repair-transitions.json", [{"spec_path": str(session / "outside-spec.json"),
+                                               "repair_id": "historical-repair"}])
+    claim_path = claimed(env)
+    with pytest.raises(ValueError, match="Repair transition identity changed"):
+        prepared(env, claim_path, path="ml/gameplan_cash_ledger.py")
+    assert registry.read(env["work"])["completion_record"] is None
+
+
+@pytest.mark.parametrize("damage", ["candidate", "original", "protected", "log", "frozen_candidate", "frozen_original",
+                                    "frozen_log", "original_evidence", "dependency"])
+def test_late_prepare_mutation_does_not_bind_completion(planning_env, monkeypatch, damage):
+    env = planning_env
+    claim_path = claimed(env)
+    directory = claim_path.parent
+    reader = "ml/gameplan_cash_ledger.py"
+    paths = {"candidate": env["candidate"] / reader, "original": env["repo"] / reader,
+             "protected": env["selection"], "log": env["log"], "frozen_candidate": directory / "candidate" / reader,
+             "frozen_original": directory / "original-source" / reader, "frozen_log": directory / "checks/0",
+             "original_evidence": next((directory / "original-evidence").iterdir()),
+             "dependency": env["candidate"] / "ml/unreviewed_dependency.py"}
+    atomic = repair._atomic
+
+    def interleave(path, raw, **kwargs):
+        atomic(path, raw, **kwargs)
+        if Path(path) == directory / "checks/0":
+            paths[damage].write_bytes(b"concurrent mutation must be refused\n")
+
+    monkeypatch.setattr(repair, "_atomic", interleave)
+    source = repair._inventory(env["repo"])
+    with pytest.raises(ValueError, match="evidence changed|source or binding changed"):
+        prepared(env, claim_path, path=reader)
+    assert registry.read(env["work"])["completion_record"] is None
+    assert not directory.joinpath("spec.json").exists()
+    if damage != "original":
+        assert repair._inventory(env["repo"]) == source
+
+
+@pytest.mark.parametrize("damage", ["candidate", "original", "log", "original_evidence"])
+def test_frozen_evidence_mutation_during_apply_cannot_produce_receipt(planning_env, monkeypatch, damage):
+    env = planning_env
+    reader = "ml/gameplan_cash_ledger.py"
+    spec = prepared(env, path=reader)
+    paths = {"candidate": spec.parent / "candidate" / reader, "original": spec.parent / "original-source" / reader,
+             "log": spec.parent / "checks/0", "original_evidence": next((spec.parent / "original-evidence").iterdir())}
+    target = paths[damage]
+    original = target.read_bytes()
+    install = repair._install_file
+
+    def interleave(path, raw):
+        install(path, raw)
+        target.write_bytes(b"concurrent mutation must be refused\n")
+
+    monkeypatch.setattr(repair, "_install_file", interleave)
+    with pytest.raises(ValueError, match="evidence changed"):
+        applied(env, spec)
+    assert not spec.with_name("applied.json").exists()
+    assert repair._transition_entries(env["session"]) == []
+    original_owner = registry.read(env["work"])
+    target.write_bytes(original)
+    monkeypatch.setattr(repair, "_install_file", install)
+    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_APPLIED"
+    assert registry.read(env["work"]) == original_owner
     assert len(repair._transition_entries(env["session"])) == 1
 
 
