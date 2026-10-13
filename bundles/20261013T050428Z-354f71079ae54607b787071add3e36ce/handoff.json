@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T05:04:28.973717Z",
+  "id": "20261013T050428Z-354f71079ae54607b787071add3e36ce",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout fixed the cancellation-attempt fence after ambiguous temporary DELETE failure; four Atlas counterexamples now pass with twelve focused regressions."
+}
