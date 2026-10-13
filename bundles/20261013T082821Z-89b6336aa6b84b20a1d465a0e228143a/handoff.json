@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T08:28:21.690064Z",
+  "id": "20261013T082821Z-89b6336aa6b84b20a1d465a0e228143a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Accept legacy stopped Atlas session evidence with independent writer absence"
+}
