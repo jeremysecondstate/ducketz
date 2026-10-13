@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T08:19:58.002202Z",
+  "id": "20261013T081958Z-57047742113c46e2a61bd427f1b45b73",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Remove legacy stopped-session false rejection and reduce manual-start preparation to documented functional prerequisites."
+}
