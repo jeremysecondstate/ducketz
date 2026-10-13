@@ -1,4 +1,4 @@
-# Cross-PC source backlog audit
+# Historical cross-PC source backlog audit
 
 Audit date: October 1, 2026, America/Los_Angeles. This is a sanitized,
 read-only inventory of the original Atlas application checkout and retained
@@ -6,6 +6,11 @@ publication evidence. A separate fresh isolated Gameplan verification is dated
 below. This work does not publish, install, merge, or deploy the application
 changes listed below. Later infrastructure release evidence
 belongs in the release/bootstrap record and may supersede this initial audit.
+
+This dated source audit preserves original findings and receipts. It is not a
+current trader-start or nightly-completion checklist. Current operations follow
+[nightly-operations.md](nightly-operations.md) and the October 13 standing
+authorization in `AGENTS.md`; later source-publication evidence remains separate.
 
 ## Source and receipt baseline
 

@@ -509,7 +509,7 @@ def scout_manual_fixture(tmp_path, monkeypatch, *, proof_changes=None):
         raise KeyboardInterrupt()
     return dict(repository=tmp_path,datastore=tmp_path,profile=tmp_path/"profile.json",
         watchlist=tmp_path/"watchlist.txt",config=live_session.ResearchConfig(),
-        clock=lambda:"2026-10-08T17:17:00Z",sleep=stop),calls,executors
+        clock=lambda:"2026-10-08T17:17:00Z",sleep=stop,scout_admission="atlas-service"),calls,executors
 
 
 def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path,monkeypatch,capsys):

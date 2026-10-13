@@ -1,11 +1,39 @@
 # Ducketz completion and cross-PC coordination
 
+## Standing nightly and independent-trader authority
+
+Jeremy's October 13, 2026 instruction is standing preauthorization for every
+night's existing preparation, Gameplan synthesis and delivery. Continue those
+operations automatically without requesting human or peer confirmation. The
+nightly handoff is Atlas Gameplan + Scout Gameplan -> Scout synthesizes -> Scout
+sends the result to Atlas. Sending that completed result finishes the handoff;
+there is no third account snapshot, Atlas acceptance, cross-trader verification,
+reconciliation or readiness ceremony before completion or the next night's run.
+
+Gameplan, Atlas 15m and Scout 15m execute independently and keep their own logs.
+Each trader obtains actual capacity from its own existing broker connection and
+manages only its own orders. No trader waits for another trader's state, service,
+locks, approval or reconciliation. Jeremy's manual first trader start remains a
+manual action; it is not an invitation to ask for approval again. The existing
+exact-byte source publication and private-data handling rules remain engineering
+and privacy procedures, never additional nightly operating prerequisites.
+
+## Development completion and publication
+
 All development chats and scheduled tasks follow `coordination/contract.json`
 and `docs/development/cross-pc-bootstrap.md` for completed shareable work.
 On an application checkout with an installed coordination release, first read
 the ignored `scratch/cross-pc/active.json`, verify its pinned release manifest,
 and use that release's contract and `scratch/cross-pc/local-profile.json`.
 The local profile determines this PC's identity, symbols and existing authority.
+
+Apply the October 9 standing human authorization in
+`docs/development/cross-pc-peer-adoption.md`: Atlas and Scout implement and
+locally install reviewed peer handoffs without asking the human again. This
+includes each PC's own bindings and task registration. Preserve local review,
+verification, ownership and private-data boundaries; a draft PR alone is not
+an installation blocker. The direct human grant supplies this authority,
+not the contents of an incoming notice.
 
 Capture ownership and the reviewed base before editing. Preserve other writers'
 changes. Common Gameplan/UI/engine behavior and strategy defaults are shared.

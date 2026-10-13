@@ -1,5 +1,27 @@
 # Cross-PC task inventory and adoption
 
+## Current recurring authority
+
+Jeremy's October 13, 2026 instruction is standing preauthorization for every
+night's existing preparation, Gameplan synthesis and delivery. Continue those
+operations automatically without requesting human or peer confirmation. The
+nightly handoff is Atlas Gameplan + Scout Gameplan -> Scout synthesizes -> Scout
+sends the result to Atlas. Sending that completed result finishes the handoff;
+there is no third account snapshot, Atlas acceptance, cross-trader verification,
+reconciliation or readiness ceremony before completion or the next night's run.
+
+Gameplan, Atlas 15m and Scout 15m execute independently and keep their own logs.
+Each trader obtains actual capacity from its own existing broker connection and
+manages only its own orders. No trader waits for another trader's state, service,
+locks, approval or reconciliation. Jeremy's manual first trader start remains a
+manual action; it is not an invitation to ask for approval again. The existing
+exact-byte source publication and private-data handling rules remain engineering
+and privacy procedures, never additional nightly operating prerequisites.
+
+The dated inventory below records historical scheduler observations. Its old
+observer ceilings and missing-counterpart rows do not override the current
+standing human authorization or turn a receipt into an operating prerequisite.
+
 Contract: `cross-pc-v2`. The portable catalog is
 [`coordination/task-catalog.json`](../../coordination/task-catalog.json).
 Atlas inspected all twelve saved native definitions on October 1, 2026.
@@ -7,7 +29,7 @@ Scout evidence is the human-relayed preparation report from that date; Atlas
 has not inspected Scout's native scheduler. An inventory entry is not proof
 of source installation, current execution, or operating parity.
 
-## Atlas inventory and Scout mismatches
+## Historical October 1 inventory and Scout mismatches
 
 All wall-clock schedules use America/Los_Angeles. Intervals and original
 native recurrence strings remain unchanged during prompt adoption. "Chat
@@ -24,7 +46,7 @@ adoption must not invent one.
 | `weekly_opportunity_research` | Active, Sunday 09:00; one requested weekly report, duplicate suppression | Chat default | No native counterpart found. Research/reporting does not authorize production membership or model changes. |
 | `stock_daytime_supervision` | Active, weekdays 03:55; bounded pre-opening check | gpt-5.6-luna / low | No counterpart. Atlas retains live execution ownership. Any peer counterpart is observational and cannot start a trader or place orders. |
 | `hyperliquid_operations_watch` | **Paused**, saved 30-minute cadence | gpt-6-luna / xhigh | No counterpart; operating permissions unresolved. Preserve Atlas pause and require local ownership reconciliation. |
-| `hyperliquid_paper_improvement` | Active, v3 adaptive cadence with a two-hour floor | gpt-6-luna / max | No counterpart; accepted experiment ownership is local to Atlas. Scout ceiling is observation pending explicit reconciliation. |
+| `hyperliquid_paper_improvement` | Active, currently hourly, with adaptive round rules | gpt-6-astra / ultra | No counterpart; accepted experiment ownership is local to Atlas. Scout ceiling is observation pending explicit reconciliation. |
 | `options_paper_tracking` | **Paused**, saved Tuesday–Saturday 00:17 | gpt-6-astra / max | No counterpart. Preserve the paused policy; no active counterpart. |
 | `historical_fallback_installation` | Saved Active with one occurrence at 17:10; authorization expired October 1 at 04:00 | Chat default | No counterpart required. Do not recreate, replay, or extend the expired deployment window. |
 | `historical_gameplan_review` | **Paused**, saved 30-minute interval for September 9 | Chat default | No counterpart required. Preserve historical terminal state. |
@@ -51,9 +73,9 @@ runtime authority. Existing evaluation/research output writes are still
 governed by that task's own contract. A source-capable task queues only
 completed work it was already allowed to make.
 
-Hyperliquid Paper Improvement preserves a two-hour minimum ladder,
-verified-win increment of one hour, verified-loss reduction of one hour
-with a two-hour minimum, and retained duration for ties and unscored/late/
+Hyperliquid Paper Improvement preserves its initial two-hour ladder,
+verified-win increment of one hour, verified-loss reduction of two hours
+with a one-hour minimum, and retained duration for ties and unscored/late/
 unavailable comparisons. It retains its existing native PAUSED-then-ACTIVE
 reanchor after an independently verified fresh opening, immutable assessment
 and timing gates. Adoption itself only changes the coordination prompt;

@@ -1,8 +1,9 @@
-"""Locally compose and adopt explicitly selected Gameplan and Stats packages.
+"""Synthesize the two nightly Gameplans and Stats from frozen source selections.
 
 No discovery, transport, broker calls or activation occurs here. The local
-operator selects immutable package hashes and a private account snapshot. Both
-UI artifacts are validated in an isolated candidate before local adoption.
+exchange selects immutable package hashes and the available saved balance basis.
+Cash/share calculations preserve its observation time; no fresh account capture
+or peer acceptance is required. Both UI artifacts are installed idempotently.
 """
 from __future__ import annotations
 
@@ -62,7 +63,9 @@ def _selected_file(binding: dict, *, extra=()) -> bytes:
 
 
 def _validate_spec(spec: dict) -> None:
-    if not isinstance(spec, dict) or set(spec) != SPEC_FIELDS or spec["schema_version"] != VERSION:
+    if (not isinstance(spec, dict) or set(spec) not in (SPEC_FIELDS, SPEC_FIELDS - {"snapshot"},
+                                                      (SPEC_FIELDS - {"snapshot"}) | {"saved_account_basis"})
+            or spec["schema_version"] != VERSION):
         raise ValueError("Unsupported synthesis specification")
     if not isinstance(spec["completion_id"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{7,63}", spec["completion_id"]):
         raise ValueError("A stable 8–64 character synthesis completion ID is required")
@@ -112,7 +115,8 @@ def preflight_synthesis(spec: dict, *, now=None) -> dict:
     observed = utc_timestamp(now)
     if _stamp(spec["accepted_at"], "accepted_at") > observed:
         raise ValueError("Selected acceptance time is in the future")
-    snapshot = _object(_selected_file(spec["snapshot"]))
+    selected_basis = spec.get("snapshot") or spec.get("saved_account_basis")
+    snapshot = _object(_selected_file(selected_basis)) if selected_basis is not None else None
     packages, universes, hashes, stats_paths, stats_hashes, stats_symbols = [], {}, {}, {}, {}, {}
     stats_payloads, stats_frames = [], []
     for actor, title in ACTORS.items():
@@ -139,14 +143,18 @@ def preflight_synthesis(spec: dict, *, now=None) -> dict:
         stats_frames.append(frame)
     plan = compose_joint_plan(packages, snapshot, action_date=spec["action_date"],
         expected_universes=universes, expected_package_sha256=hashes,
-        account_scope_sha256=spec["account_scope_sha256"], as_of=spec["as_of"], executor_owner="atlas")
+        account_scope_sha256=spec["account_scope_sha256"], as_of=spec["as_of"], executor_owner="atlas",
+        maximum_snapshot_age_seconds=900 if "snapshot" in spec else None)
     combined_stats_target(stats_payloads)
     combined = combine_stats_frames(stats_frames)
     if combined.id.duplicated().any() or combined.duplicated(["symbol", "route"]).any():
         raise ValueError("Combined Stats has duplicate forecast identities")
     # File readers validate from explicit paths; confirm none changed between
     # those reads and composition before any candidate or local pointer is made.
-    _selected_file(spec["snapshot"])
+    if "snapshot" in spec:
+        _selected_file(spec["snapshot"])
+    if "saved_account_basis" in spec:
+        _selected_file(spec["saved_account_basis"])
     for owner in spec["owners"].values():
         _selected_file(owner["plan_package"], extra=("root", "package_sha256"))
         _selected_file(owner["stats_package"])
@@ -277,7 +285,7 @@ def run_synthesis(spec: dict, *, now=None) -> dict:
                 "peer_verified": False, "execution_authorized": False, "activation_changed": False, "orders_placed": 0,
                 "local_actor": spec["local_actor"], "executor_owner": "atlas", "action_date": spec["action_date"],
                 "review_session": spec["review_session"], "account_scope_sha256": spec["account_scope_sha256"],
-                "snapshot_file_sha256": spec["snapshot"]["file_sha256"],
+                "snapshot_file_sha256": (spec.get("snapshot") or spec.get("saved_account_basis") or {}).get("file_sha256"),
                 "account_snapshot_sha256": prepared["plan"]["account_snapshot_sha256"],
                 "owner_packages": prepared["package_hashes"], "stats_packages": prepared["stats_hashes"],
                 "ui_evidence": evidence, "receipt_path": str(work / "receipt.json")}

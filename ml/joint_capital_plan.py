@@ -1,4 +1,4 @@
-"""Offline composition of two frozen Gameplans against one account snapshot.
+"""Offline composition of two frozen Gameplans, with optional capital projection.
 
 Package digests prove byte consistency, not producer authenticity. The caller
 must independently verify the source receipts and supply their selected package
@@ -30,6 +30,7 @@ from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
 PACKAGE_SCHEMA = "joint-capital-owner-package-v1"
 PLAN_SCHEMA = "joint-capital-plan-v1"
 RANKING_POLICY = "existing_global_probability_order_v1"
+PLAN_ONLY_MODE = "MERGED_SOURCE_INSTRUCTIONS"
 MAXIMUM_JSON_BYTES = 8 * 1024 * 1024
 _HASH = re.compile(r"[0-9a-f]{64}\Z")
 _OWNER = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z")
@@ -135,6 +136,12 @@ def _validate_package(package: Mapping) -> None:
     validate_fallback_policy(package.get("cross_horizon_fallback_policy"), day)
     symbols = _symbols(package.get("frozen_symbols"))
     created = _time(package.get("created_at"), "package created_at")
+    if "account_basis" in package:
+        basis = package["account_basis"]
+        if package["owner_id"] != "atlas" or not isinstance(basis, dict):
+            raise ValueError("Saved account balances must belong to the Atlas Gameplan")
+        _time(basis.get("observed_at"), "account basis observed_at")
+        _hash(basis.get("account_scope_sha256"), "account basis scope")
     hashes = package.get("source_hashes")
     if not isinstance(hashes, dict) or set(hashes) != _SOURCE_HASHES:
         raise ValueError("Required native source hashes are missing")
@@ -278,7 +285,8 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
                         action_date: str, frozen_symbols: Sequence[str], created_at: str,
                         source_hashes: Mapping, forecasts: Sequence[Mapping], price_path: Mapping,
                         cross_horizon_fallback_policy: Mapping | None = None,
-                        source_reference: Mapping | None = None, late_publication_at: str | None = None) -> dict:
+                        source_reference: Mapping | None = None, late_publication_at: str | None = None,
+                        account_basis: Mapping | None = None) -> dict:
     """Seal already verified native inputs; this does not authenticate a producer."""
     package = deepcopy({"schema_version": PACKAGE_SCHEMA, "owner_id": owner_id,
         "run_id": run_id, "source_revision": source_revision, "action_date": action_date,
@@ -289,6 +297,10 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
         "source_hashes": dict(source_hashes), "forecasts": [_forecast_json(row) for row in forecasts], "price_path": dict(price_path)})
     if late_publication_at is not None:
         package["late_publication_at"] = late_publication_at
+    if account_basis is not None:
+        if owner_id != "atlas":
+            raise ValueError("The Gameplan executor supplies the saved account balance basis")
+        package["account_basis"] = deepcopy(dict(account_basis))
     package["content_sha256"] = {"forecasts": content_sha256(package["forecasts"]),
                                  "price_path": content_sha256(package["price_path"])}
     package["package_sha256"] = content_sha256(package)
@@ -296,12 +308,13 @@ def build_owner_package(*, owner_id: str, run_id: str, source_revision: str | No
     return package
 
 
-def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd.Timestamp, age: int, *, fallback: bool) -> None:
+def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd.Timestamp, age: int | None, *, fallback: bool,
+                       require_ownership: bool = True) -> None:
     _json_bytes(snapshot)
     if snapshot.get("account_scope_sha256") != scope:
         raise ValueError("Authoritative snapshot belongs to a different account scope")
     elapsed = (now - _time(snapshot.get("observed_at"), "snapshot observed_at")).total_seconds()
-    if not 0 <= elapsed <= age:
+    if elapsed < 0 or age is not None and elapsed > age:
         raise ValueError("Authoritative account snapshot is stale or future-dated")
     for name in ("account_equity", "available_cash", "reserved_cash", "gross_exposure"):
         _number(snapshot.get(name), name, positive=name == "account_equity")
@@ -323,6 +336,8 @@ def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd
             if not isinstance(quote, dict):
                 raise ValueError("Pending buys require their observed quote")
             _number(quote.get("ask"), "pending buy ask", positive=True)
+    if not require_ownership:
+        return
     ownership = snapshot.get("ownership", {})
     allocations = ownership.get("active_allocations")
     if not isinstance(allocations, list) or not isinstance(ownership.get("blocked_symbols"), list):
@@ -346,19 +361,20 @@ def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd
             _number(allocation.get(name, 0), name)
 
 
-def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping, *, action_date: str,
+def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = None, *, action_date: str,
                        expected_universes: Mapping[str, Sequence[str]], expected_package_sha256: Mapping[str, str],
                        account_scope_sha256: str, as_of: str, executor_owner: str,
                        policy: StockTraderPolicy | None = None,
-                       maximum_snapshot_age_seconds: int = 900,
+                       maximum_snapshot_age_seconds: int | None = 900,
                        maximum_package_age_seconds: int = 604800) -> dict:
-    """Compose exactly two selected sources with one globally applied cash policy.
+    """Synthesize two Gameplans with their saved cash/share basis when supplied.
 
     The supplied trusted package digests must come from the caller's independent
     source verification. No source or broker state is discovered by this function.
     """
     day, scope, now = _date(action_date), _hash(account_scope_sha256, "account scope"), _time(as_of, "as_of")
-    if type(maximum_snapshot_age_seconds) is not int or not 1 <= maximum_snapshot_age_seconds <= 3600:
+    if maximum_snapshot_age_seconds is not None and (type(maximum_snapshot_age_seconds) is not int
+                                                    or not 1 <= maximum_snapshot_age_seconds <= 3600):
         raise ValueError("Snapshot freshness bound must be within one hour")
     if type(maximum_package_age_seconds) is not int or not 1 <= maximum_package_age_seconds <= 604800:
         raise ValueError("Package freshness bound must be within seven days")
@@ -408,12 +424,23 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping, *, action
             identifier = "joint:" + content_sha256([owner, package["run_id"], row["id"]])
             all_rows.append({**deepcopy(row), "id": identifier, "original_forecast_id": row["id"],
                              "owner_id": owner, "owner_run_id": package["run_id"]})
-    _validate_snapshot(snapshot, all_symbols, scope, now, maximum_snapshot_age_seconds, fallback=fallback_policy is not None)
+    if snapshot is None and selected[executor_owner].get("account_basis") is not None:
+        snapshot = deepcopy(selected[executor_owner]["account_basis"])
+        maximum_snapshot_age_seconds = None
     effective_policy = policy or StockTraderPolicy()
     effective_policy.validate()
-    rows, ledger = project_direction_trades(pd.DataFrame(all_rows), deepcopy(snapshot),
-        {**deepcopy(price_metadata[0]), "points": points}, policy=effective_policy, signal_driven=True,
-        cross_horizon_fallback_policy=fallback_policy)
+    if snapshot is None:
+        # Forecast intent is complete from the two prepared sources. Actual
+        # quantities belong to the executor's current account, not synthesis.
+        rows = pd.DataFrame(all_rows)
+        ledger = {"status": "NOT_PROJECTED", "events": [],
+                  "reason": "Quantities are sized from actual account capacity at execution."}
+    else:
+        _validate_snapshot(snapshot, all_symbols, scope, now, maximum_snapshot_age_seconds,
+            fallback=fallback_policy is not None, require_ownership=maximum_snapshot_age_seconds is not None)
+        rows, ledger = project_direction_trades(pd.DataFrame(all_rows), deepcopy(snapshot),
+            {**deepcopy(price_metadata[0]), "points": points}, policy=effective_policy, signal_driven=True,
+            cross_horizon_fallback_policy=fallback_policy, saved_balance_math=maximum_snapshot_age_seconds is None)
     # DataFrame missing optional fields become NaN; preserve exact source fields
     # and add only the projection fields produced by the ledger.
     projected = {str(row["id"]): row for row in rows.to_dict("records")}
@@ -422,9 +449,9 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping, *, action
         "projected_shares_after", "projected_available_shares_after"}
     projection_fields |= {name for name in rows.columns if name.startswith("fallback_")}
     outputs = [{**row, **{k: v for k, v in projected[row["id"]].items() if k in projection_fields}}
-               for row in all_rows]
+               for row in all_rows] if snapshot is not None else deepcopy(all_rows)
     for row in outputs:
-        for key in projection_fields:
+        for key in projection_fields if snapshot is not None else ():
             if pd.isna(row.get(key)):
                 row[key] = None
     event_owners = {row["id"]: row["owner_id"] for row in outputs}
@@ -437,18 +464,32 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping, *, action
         for owner in sorted(selected)}
     plan = {"schema_version": PLAN_SCHEMA, "status": "COMPLETE", "authority": "INFORMATIONAL_ONLY",
         "action_date": day, "as_of": now.isoformat(), "account_scope_sha256": scope,
-        "account_snapshot_sha256": content_sha256(snapshot), "account_snapshot_observed_at": snapshot["observed_at"],
+        "account_snapshot_sha256": content_sha256(snapshot) if snapshot is not None else None,
+        "account_snapshot_observed_at": snapshot["observed_at"] if snapshot is not None else None,
         "input_bindings": bindings, "ranking_policy": RANKING_POLICY,
         "sole_executor_owner": executor_owner,
         "holding_policy": SIGNAL_DRIVEN_HOLDING_POLICY, "cross_horizon_fallback_policy": deepcopy(fallback_policy),
         "risk_policy_fingerprint": effective_policy.fingerprint,
-        "cash_basis": "ONE_ACCOUNT_SNAPSHOT_CONDITIONAL_ON_PROJECTED_FILLS",
+        "cash_basis": "ONE_ACCOUNT_SNAPSHOT_CONDITIONAL_ON_PROJECTED_FILLS" if snapshot is not None else "SIZED_AT_EXECUTION",
         "live_capital_reserved": False, "live_orders_authorized": False,
         "forecasts": outputs, "ledger": ledger,
         "limitations": ["Projected sales fund projected purchases only if fills occur and the broker makes cash available.",
             "Unknown, cancelled or unfilled orders do not release live cash reservations.",
             "A joint forecast does not serialize live submissions or reserve real account capital.",
             "Source hashes verify consistency; caller-selected trusted bindings establish source provenance."]}
+    if snapshot is None:
+        plan.update(composition_mode=PLAN_ONLY_MODE,
+            price_path={**deepcopy(price_metadata[0]), "points": points},
+            source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)},
+            limitations=["The two source Gameplans determine trade intent; no account snapshot is required for synthesis.",
+                "The Gameplan executor sizes orders using its actual account cash, holdings and pending orders.",
+                "No broker state or projected fills are invented by this merge."])
+    elif maximum_snapshot_age_seconds is None:
+        plan.update(composition_mode="MERGED_GAMEPLAN_WITH_SAVED_BALANCES",
+            account_basis_usage="SAVED_PLANNING_BALANCES_NO_FRESHNESS_PREREQUISITE",
+            account_basis_age_seconds=(now - _time(snapshot["observed_at"], "snapshot observed_at")).total_seconds(),
+            source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)})
+        plan["limitations"].append("Cash/share arithmetic uses the disclosed saved balance observation; execution uses actual available capacity.")
     plan_id = "joint-capital:" + content_sha256(plan)
     plan["plan_id"] = plan_id
     plan["owner_views"] = {owner: {"plan_id": plan_id, "owner_id": owner,

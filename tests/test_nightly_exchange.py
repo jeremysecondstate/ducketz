@@ -34,7 +34,7 @@ def files(root):
 def rendezvous(exchange, monkeypatch):
     from tools import nightly_ownership
     wake(exchange, "scout")
-    assert wake(exchange, "atlas")["reason"] == "ACCOUNT_SNAPSHOT_REFRESH_REQUIRED"
+    assert wake(exchange, "atlas")["reason"] == "JOINT_SCOUT"
     configs, natives, _, captures = exchange
     preparations = {actor: module._receive(configs["atlas"], DAY, "2026-09-08", actor, "preparation")
                     for actor in ("atlas", "scout")}
@@ -125,16 +125,16 @@ def prepared(exchange):
 
 def synthesized(exchange):
     prepared(exchange)
-    assert wake(exchange, "scout")["reason"] == "ACCEPTED_ATLAS"
+    assert wake(exchange, "scout")["status"] == "COMPLETE"
 
 
 def test_two_machine_real_synthesis_handoff_and_repeat_without_changes(exchange):
     configs, natives, _, captures = exchange
     synthesized(exchange)
     accepted = wake(exchange, "atlas")
-    assert accepted["status"] == "COMPLETE" and accepted["joint_ready"] and accepted["peer_verified"]
+    assert accepted["status"] == "COMPLETE" and accepted["joint_ready"] and not accepted["peer_verified"]
     confirmed = wake(exchange, "scout")
-    assert confirmed["status"] == "COMPLETE" and confirmed["accepted_packet_sha256"] == accepted["accepted_packet_sha256"]
+    assert confirmed["status"] == "COMPLETE" and confirmed["joint_packet_sha256"] == accepted["joint_packet_sha256"]
     for actor, native in natives.items():
         assert set(load_gameplan(Path(native["datastore"])).symbols) == {"AAPL", "ABCL"}
         assert set(load_gameplan_stats(Path(native["datastore"])).symbols) == {"AAPL", "ABCL"}
@@ -144,7 +144,7 @@ def test_two_machine_real_synthesis_handoff_and_repeat_without_changes(exchange)
     assert wake(exchange, "scout", now="2026-09-09T12:00:00Z") == confirmed
     assert files(Path(configs["scout"]["exchange_root"])) == private_before
     assert {actor: files(Path(native["datastore"])) for actor, native in natives.items()} == source_before
-    assert len(captures) == 1
+    assert len(captures) == 0
     assert not accepted["execution_authorized"] and accepted["orders_placed"] == 0
     assert json.loads(Path(configs["atlas"]["account_config"]).read_text())["activation"]["status"] == "PREPARING"
 
@@ -168,7 +168,7 @@ def test_completed_session_uses_retained_evidence_without_stage_or_peer_replay(e
         assert wake(exchange, actor, now="2026-09-09T23:30:00Z", capture=actor == "atlas") == expected[actor]
     assert {actor: files(Path(native["datastore"])) for actor, native in exchange[1].items()} == local_before
     assert {actor: files(Path(config["state_root"])) for actor, config in exchange[0].items()} == state_before
-    assert len(exchange[3]) == 1
+    assert len(exchange[3]) == 0
 
 
 def test_damaged_terminal_evidence_never_downgrades_completion_or_replays(exchange, monkeypatch):
@@ -183,14 +183,14 @@ def test_damaged_terminal_evidence_never_downgrades_completion_or_replays(exchan
         with pytest.raises(ValueError, match="Completed exchange local receipt changed"):
             wake(exchange, "atlas", capture=True)
         assert (session / "status.json").read_bytes() == before
-    assert len(exchange[3]) == 1
+    assert len(exchange[3]) == 0
 
 
-def test_no_snapshot_read_until_both_preparations_and_explicit_flag(exchange):
+def test_no_snapshot_capture_even_when_compatibility_flag_present(exchange):
     assert wake(exchange, "atlas", capture=True)["reason"] == "PREPARATION_SCOUT"
     assert exchange[3] == []
-    assert wake(exchange, "scout")["reason"] == "SNAPSHOT_ATLAS"
-    assert wake(exchange, "atlas")["reason"] == "ACCOUNT_SNAPSHOT_REFRESH_REQUIRED"
+    assert wake(exchange, "scout")["status"] == "COMPLETE"
+    assert wake(exchange, "atlas")["status"] == "COMPLETE"
     assert exchange[3] == []
     with pytest.raises(ValueError, match="Only Atlas"):
         wake(exchange, "scout", capture=True)
@@ -237,21 +237,12 @@ def test_partial_joint_packet_blocks_refresh_even_when_snapshot_stale(exchange):
     # Restored peer delivery later in the market session adopts the exact
     # already synthesized result; its old account observation is not recaptured.
     assert wake(exchange, "atlas", now="2026-09-09T21:00:00Z", capture=True)["status"] == "COMPLETE"
-    assert len(exchange[3]) == 1
+    assert len(exchange[3]) == 0
 
 
-def test_snapshot_refresh_before_synthesis_and_frozen_retry_after_adoption(exchange):
-    prepared(exchange)
-    assert wake(exchange, "scout", now="2026-09-09T10:16:00Z")["reason"] == "FRESH_ACCOUNT_SNAPSHOT"
-    assert wake(exchange, "atlas", now="2026-09-09T10:16:00Z", capture=True)["reason"] == "JOINT_SCOUT"
-    assert wake(exchange, "scout", now="2026-09-09T10:16:00Z")["reason"] == "ACCEPTED_ATLAS"
-    assert len(exchange[3]) == 2
-    assert wake(exchange, "atlas", now="2026-09-09T11:00:00Z", capture=True)["status"] == "COMPLETE"
-    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
-    assert len(exchange[3]) == 2
 
 
-def test_pre_adoption_crash_cannot_backdate_first_synthesis(exchange, monkeypatch):
+def test_pre_adoption_crash_resumes_exact_frozen_plan_without_freshness_gate(exchange, monkeypatch):
     prepared(exchange)
     original = nightly_synthesis.run_synthesis
     monkeypatch.setattr(nightly_synthesis, "run_synthesis", lambda *a, **kw: (_ for _ in ()).throw(InterruptedError("fixture interruption")))
@@ -260,9 +251,9 @@ def test_pre_adoption_crash_cannot_backdate_first_synthesis(exchange, monkeypatc
     frozen = Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json"
     before = frozen.read_bytes()
     monkeypatch.setattr(nightly_synthesis, "run_synthesis", original)
-    assert wake(exchange, "scout", now="2026-09-09T10:16:00Z")["reason"] == "FROZEN_SNAPSHOT_STALE_BEFORE_ADOPTION_REVIEW_REQUIRED"
+    assert wake(exchange, "scout", now="2026-09-09T10:16:00Z")["status"] == "COMPLETE"
     assert frozen.read_bytes() == before
-    assert not (Path(exchange[1]["scout"]["datastore"]) / "ml/joint-gameplan-by-date").exists()
+    assert (Path(exchange[1]["scout"]["datastore"]) / "ml/joint-gameplan-by-date").exists()
 
 
 def test_partial_ui_adoption_resumes_exact_spec_and_does_not_recapture(exchange, monkeypatch):
@@ -278,8 +269,8 @@ def test_partial_ui_adoption_resumes_exact_spec_and_does_not_recapture(exchange,
     frozen = Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json"
     before = frozen.read_bytes()
     monkeypatch.setattr(nightly_synthesis, "_adopt_stats", original)
-    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["reason"] == "ACCEPTED_ATLAS"
-    assert frozen.read_bytes() == before and len(exchange[3]) == 1
+    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
+    assert frozen.read_bytes() == before and len(exchange[3]) == 0
 
 
 def test_changed_export_does_not_replace_selected_preparation(exchange):
@@ -314,133 +305,20 @@ def test_scope_and_universe_mismatch_rejected(exchange):
         module._receive(config, DAY, "2026-09-08", "scout", "preparation")
 
 
-def test_atlas_checks_exact_original_snapshot_before_handoff(exchange):
-    synthesized(exchange)
-    config = exchange[0]["atlas"]
-    selected = module._receive(config, DAY, "2026-09-08", "atlas", "snapshot")
-    own_snapshot = Path(config["state_root"]) / "sessions" / DAY / "own-snapshots" / selected["digest"] / "snapshot.json"
-    value = json.loads(own_snapshot.read_text())
-    value["available_cash"] += 1
-    write(own_snapshot, value)
-    with pytest.raises(ValueError, match="exact captured snapshot"):
-        wake(exchange, "atlas")
-    assert not (Path(exchange[1]["atlas"]["datastore"]) / "ml/joint-gameplan-by-date").exists()
 
 
-def test_atlas_rejects_joint_with_unpublished_snapshot_identity(exchange):
-    synthesized(exchange)
-    config = exchange[0]["atlas"]
-    folder = module._folder(config, DAY, "scout", "joint")
-    selected = json.loads((folder / "selection.json").read_text())
-    packet = json.loads((folder / "packets" / (selected["content_sha256"] + ".json")).read_text())
-    packet["inputs"]["snapshot"] = "b" * 64
-    packet.pop("content_sha256")
-    packet["content_sha256"] = module.content_sha256(packet)
-    data = module._bytes(packet)
-    (folder / "packets" / (packet["content_sha256"] + ".json")).write_bytes(data)
-    write(folder / "selection.json", {"schema_version": module.SELECTION,
-        "content_sha256": packet["content_sha256"], "file_sha256": module._sha(data), "bytes": len(data)})
-    with pytest.raises(ValueError, match="not locally published by this Atlas attempt"):
-        wake(exchange, "atlas")
-    assert not (Path(exchange[1]["atlas"]["datastore"]) / "ml/joint-gameplan-by-date").exists()
 
 
-def test_received_atlas_packet_and_cache_cannot_replace_own_capture_proof(exchange):
-    synthesized(exchange)
-    config = exchange[0]["atlas"]
-    selected = module._receive(config, DAY, "2026-09-08", "atlas", "snapshot")
-    proof = Path(config["state_root"]) / "sessions" / DAY / "own-snapshots" / selected["digest"] / "receipt.json"
-    proof.unlink()
-    # Valid peer-visible bytes can repopulate receive cache/history. They still
-    # do not establish that Atlas captured this account observation itself.
-    recovered = module._receive(config, DAY, "2026-09-08", "atlas", "snapshot")
-    assert recovered["files"]["snapshot.json"].exists() and not proof.exists()
-    with pytest.raises(ValueError, match="not locally published"):
-        wake(exchange, "atlas")
-    assert not (Path(exchange[1]["atlas"]["datastore"]) / "ml/joint-gameplan-by-date").exists()
 
 
-def test_own_snapshot_origin_is_durable_before_shared_publication(exchange, monkeypatch):
-    wake(exchange, "scout")
-    original = module._write
-    seen = []
-    def observe(path, data, **kwargs):
-        path = Path(path)
-        if path.parent.name == "packets" and path.parent.parent.name == "snapshot":
-            packet = json.loads(data)
-            origin = Path(exchange[0]["atlas"]["state_root"]) / "sessions" / DAY / "own-snapshots" / packet["content_sha256"]
-            proof = json.loads((origin / "receipt.json").read_text())
-            assert proof["packet_file_sha256"] == module._sha(data)
-            assert proof["snapshot_file_sha256"] == file_checksum(origin / "snapshot.json")
-            seen.append(True)
-        return original(path, data, **kwargs)
-    monkeypatch.setattr(module, "_write", observe)
-    assert wake(exchange, "atlas", capture=True)["reason"] == "JOINT_SCOUT"
-    assert seen == [True]
 
 
-def test_interrupted_snapshot_publication_replays_exact_bytes_without_capture(exchange, monkeypatch):
-    wake(exchange, "scout")
-    original = module._write
-    def interrupted(path, data, **kwargs):
-        path = Path(path)
-        if path.parent.name == "packets" and path.parent.parent.name == "snapshot":
-            raise OSError("fixture Drive write interrupted")
-        return original(path, data, **kwargs)
-    monkeypatch.setattr(module, "_write", interrupted)
-    with pytest.raises(OSError, match="Drive write interrupted"):
-        wake(exchange, "atlas", capture=True)
-    assert len(exchange[3]) == 1
-    selected = Path(exchange[0]["atlas"]["state_root"]) / "sessions" / DAY / "snapshot-publication.json"
-    before = selected.read_bytes()
-    monkeypatch.setattr(module, "_write", original)
-    # Finishing an already authorized saved publication needs no new read flag.
-    assert wake(exchange, "atlas")["reason"] == "TRANSIENT_RETRY_COOLDOWN"
-    assert wake(exchange, "atlas", now="2026-09-09T10:05:00Z")["reason"] == "JOINT_SCOUT"
-    assert len(exchange[3]) == 1 and selected.read_bytes() == before
-    received = module._receive(exchange[0]["scout"], DAY, "2026-09-08", "atlas", "snapshot")
-    assert received["digest"] == json.loads(before)["content_sha256"]
 
 
-def test_unknown_shared_snapshot_generation_is_not_overwritten_as_recovery(exchange):
-    prepared(exchange)
-    config = exchange[0]["atlas"]
-    selected = module._folder(config, DAY, "atlas", "snapshot") / "selection.json"
-    value = json.loads(selected.read_text())
-    value["content_sha256"] = "b" * 64
-    write(selected, value)
-    before = selected.read_bytes()
-    with pytest.raises(ValueError, match="not locally published"):
-        wake(exchange, "atlas", capture=True)
-    assert selected.read_bytes() == before and len(exchange[3]) == 1
 
 
-def test_snapshot_capture_uses_post_capture_clock(exchange, monkeypatch):
-    wake(exchange, "scout")
-    from tools import nightly_account_snapshot
-    ticks = [10]
-    def delayed(config, now=None, ownership_observations=None):
-        value = snapshot()
-        value["observed_at"] = (pd.Timestamp(now) + pd.Timedelta(seconds=1)).isoformat()
-        ticks[0] += 2
-        return value
-    monkeypatch.setattr(module, "monotonic", lambda: ticks[0])
-    monkeypatch.setattr(nightly_account_snapshot, "capture_snapshot", delayed)
-    assert wake(exchange, "atlas", capture=True)["reason"] == "JOINT_SCOUT"
 
 
-def test_io_elapsed_time_counts_toward_first_synthesis_freshness(exchange, monkeypatch):
-    prepared(exchange)
-    original = module._owners
-    ticks = [100]
-    def delayed(*args):
-        value = original(*args)
-        ticks[0] += 10
-        return value
-    monkeypatch.setattr(module, "monotonic", lambda: ticks[0])
-    monkeypatch.setattr(module, "_owners", delayed)
-    assert wake(exchange, "scout", now="2026-09-09T10:14:55Z")["reason"] == "FRESH_ACCOUNT_SNAPSHOT"
-    assert not (Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json").exists()
 
 
 def test_pending_local_preparation_does_not_freeze_setup_bindings(exchange, monkeypatch):
@@ -456,26 +334,6 @@ def test_pending_local_preparation_does_not_freeze_setup_bindings(exchange, monk
     assert not Path(exchange[0]["scout"]["exchange_root"]).exists()
 
 
-def test_partial_synthesis_retains_original_snapshot_after_atlas_refresh(exchange, monkeypatch):
-    prepared(exchange)
-    original = nightly_synthesis._adopt_stats
-    def interrupted(root, *args):
-        if root == Path(exchange[1]["scout"]["datastore"]):
-            raise InterruptedError("fixture stop after plan")
-        return original(root, *args)
-    monkeypatch.setattr(nightly_synthesis, "_adopt_stats", interrupted)
-    with pytest.raises(InterruptedError):
-        wake(exchange, "scout")
-    frozen_path = Path(exchange[0]["scout"]["state_root"]) / "sessions" / DAY / "synthesis-selection.json"
-    frozen = json.loads(frozen_path.read_text())
-    assert wake(exchange, "atlas", now="2026-09-09T10:20:00Z", capture=True)["reason"] == "JOINT_SCOUT"
-    latest = module._receive(exchange[0]["atlas"], DAY, "2026-09-08", "atlas", "snapshot")
-    assert latest["digest"] != frozen["inputs"]["snapshot"]
-    monkeypatch.setattr(nightly_synthesis, "_adopt_stats", original)
-    assert wake(exchange, "scout", now="2026-09-09T10:20:00Z")["reason"] == "ACCEPTED_ATLAS"
-    assert wake(exchange, "atlas", now="2026-09-09T10:20:00Z")["status"] == "COMPLETE"
-    assert json.loads(frozen_path.read_text()) == frozen
-    assert len(exchange[3]) == 2
 
 
 def test_adapter_source_change_after_export_requires_review(exchange, monkeypatch):
@@ -490,21 +348,6 @@ def test_adapter_source_change_after_export_requires_review(exchange, monkeypatc
         wake(exchange, "scout")
 
 
-def test_joint_arriving_during_capture_preserves_snapshot_selection(exchange, monkeypatch):
-    prepared(exchange)
-    config = exchange[0]["atlas"]
-    selected = module._folder(config, DAY, "atlas", "snapshot") / "selection.json"
-    before = selected.read_bytes()
-    from tools import nightly_account_snapshot
-    def concurrent_joint(config, now=None, ownership_observations=None):
-        joint = module._folder(config, DAY, "scout", "joint") / "selection.json"
-        write(joint, {"fixture": "sync arrival in progress"})
-        value = snapshot()
-        value["observed_at"] = pd.Timestamp(now).isoformat()
-        return value
-    monkeypatch.setattr(nightly_account_snapshot, "capture_snapshot", concurrent_joint)
-    assert wake(exchange, "atlas", now="2026-09-09T10:20:00Z", capture=True)["reason"] == "JOINT_ARRIVED_DURING_CAPTURE"
-    assert selected.read_bytes() == before
 
 
 def test_acceptance_with_wrong_stats_is_not_completion(exchange):
@@ -721,7 +564,7 @@ def test_active_account_retains_native_union_snapshot_without_peer_ledger(exchan
     monkeypatch.setattr(module, "_ownership_observations", lambda *args: pytest.fail("ACTIVE uses its native union ledger"))
     wake(exchange, "scout")
     assert wake(exchange, "atlas", capture=True)["reason"] == "JOINT_SCOUT"
-    assert len(exchange[3]) == 1
+    assert len(exchange[3]) == 0
 
 
 @pytest.mark.parametrize('activation', ['PREPARING', 'ACTIVE'])
@@ -733,28 +576,12 @@ def test_complete_joint_handoff_never_requests_scout_history(exchange, monkeypat
         monkeypatch.setattr(module, name, lambda *a: pytest.fail('Scout history is not a planning dependency'))
     wake(exchange, 'scout')
     assert wake(exchange, 'atlas', capture=True)['reason'] == 'JOINT_SCOUT'
-    assert wake(exchange, 'scout')['reason'] == 'ACCEPTED_ATLAS'
+    assert wake(exchange, 'scout')['status'] == 'COMPLETE'
     assert wake(exchange, 'atlas')['status'] == 'COMPLETE'
     assert wake(exchange, 'scout')['status'] == 'COMPLETE'
-    assert len(exchange[3]) == 1
+    assert len(exchange[3]) == 0
 
 
-def test_binding_change_during_account_capture_is_refused_before_export(exchange, monkeypatch):
-    from tools import nightly_account_snapshot
-    path = Path(exchange[0]["atlas"]["account_config"])
-    original = nightly_account_snapshot.capture_snapshot
-    def changed(*args, **kwargs):
-        result = original(*args, **kwargs)
-        value = json.loads(path.read_text())
-        value["activation"]["status"] = "ACTIVE"
-        write(path, value)
-        return result
-    monkeypatch.setattr(nightly_account_snapshot, "capture_snapshot", changed)
-    wake(exchange, "scout")
-    with pytest.raises(ValueError, match="operating bindings changed"):
-        wake(exchange, "atlas", capture=True)
-    assert len(exchange[3]) == 1
-    assert not (module._folder(exchange[0]['atlas'], DAY, 'atlas', 'snapshot')/'selection.json').exists()
 
 
 def test_audited_exchange_source_repair_resumes_same_partial_adoption_and_releases_owner(exchange, monkeypatch, tmp_path):
@@ -808,13 +635,13 @@ def test_audited_exchange_source_repair_resumes_same_partial_adoption_and_releas
         rationale="Fix adoption only", runtime_implications="No numerical inputs or active trader changes", reviewed=True, now=NOW)
     repair.apply(config, spec, owner="Scout source reconciliation", reviewed=True, now=NOW)
     monkeypatch.setattr(nightly_synthesis, "_adopt_stats", original_adopt)
-    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["reason"] == "ACCEPTED_ATLAS"
+    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
     assert wake(exchange, "atlas", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
     assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
     assert registry.read(native["state_root"]) is None
     assert (spec.parent / "resolved.json").is_file()
     assert all(path.read_bytes() == raw for path, raw in originals.items())
-    assert len(captures) == 1
+    assert len(captures) == 0
     assert (session / "failure.json").is_file()
 
 

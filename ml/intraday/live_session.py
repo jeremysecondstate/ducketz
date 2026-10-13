@@ -278,7 +278,8 @@ def _scout_startup_proof(executor, session_id, *, clock):
                        for name,writer in verified["writers"].items()}}
 
 
-def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
+def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep,
+               scout_admission="broker-local"):
     from .data import AcquisitionJournal, load_local_history
     from .cancellation import retry_delay
     from app.services.schwab import SchwabSession
@@ -288,6 +289,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     pc,symbols = local_symbols(profile,watchlist,root)
     if pc not in {"Atlas", "Scout"}:
         raise ContractError("Manual execution requires an explicitly bound Atlas or Scout participant")
+    if scout_admission not in {"broker-local", "atlas-service"}:
+        raise ContractError("Unknown Scout admission mode")
     config.validate()
     if config.source_dataset != "EQUS.MINI":
         raise ContractError("Existing single-source live provider binding required")
@@ -326,7 +329,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         value = dict(schema_version=VERSION if pc == "Atlas" else SCOUT_VERSION,session_id=session_id,pc=pc,
                      pid=os.getpid(),process_create_time=process_create_time,started_at=started.isoformat(),
                      heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,
-                     evidence_paths=evidence_paths,**extra)
+                     evidence_paths=evidence_paths,scout_admission=scout_admission if pc == "Scout" else None,**extra)
         for destination in (session_status,status_path):
             temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
             temporary.write_text(encoded(value),encoding="utf-8")
@@ -354,11 +357,22 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         try:
             load_dotenv(repository / ".env")
             if pc == "Scout":
-                from .scout_execution import ScoutAccountExecutor
-                executor = ScoutAccountExecutor(repository=repository,profile=profile,datastore=root,store=store,
+                if scout_admission == "broker-local":
+                    from .scout_local_execution import ScoutLocalAccountExecutor
+                    executor_type = ScoutLocalAccountExecutor
+                else:
+                    from .scout_execution import ScoutAccountExecutor
+                    executor_type = ScoutAccountExecutor
+                executor = executor_type(repository=repository,profile=profile,datastore=root,store=store,
                     broker=SchwabSession(),local_symbols=symbols,session_started_at=started,session_id=session_id,
                     clock=clock,manual_authority=manual_authority,stopped=stopped.is_set)
-                startup = _scout_startup_proof(executor,session_id,clock=clock)
+                if scout_admission == "broker-local":
+                    startup = executor.preflight()
+                    if (not isinstance(startup,Mapping) or startup.get("session_id") != session_id
+                            or startup.get("mode") != "scout-local-broker-account" or startup.get("ready") is not True):
+                        raise ContractError("Scout local broker-account preflight did not pass")
+                else:
+                    startup = _scout_startup_proof(executor,session_id,clock=clock)
                 executor_paths = getattr(executor,"evidence_paths",{})
                 if not isinstance(executor_paths,Mapping) or any(not isinstance(key,str) or not isinstance(value,str)
                         for key,value in executor_paths.items()):
@@ -488,6 +502,8 @@ def main(argv=None):
     parser.add_argument("--profile",type=Path)
     parser.add_argument("--watchlist",type=Path)
     parser.add_argument("--live",action="store_true")
+    parser.add_argument("--scout-admission",choices=("broker-local","atlas-service"),default="broker-local",
+        help="Scout defaults to local broker-account execution; atlas-service explicitly selects distributed admission")
     parser.add_argument("--publication-offset-seconds",type=float,default=30)
     parser.add_argument("--symbol-workers",type=int,default=1)
     parser.add_argument("--lookback-days",type=int)
@@ -496,11 +512,17 @@ def main(argv=None):
     watchlist = args.watchlist or args.repository / "datafetching/watchlist.local.txt"
     if not args.live:
         from .readiness import inspect_readiness
-        print(json.dumps(inspect_readiness(repository=args.repository,datastore=args.datastore,
-            profile=profile,watchlist=watchlist),sort_keys=True))
+        scout_profile = profile.is_file() and json.loads(profile.read_text(encoding="utf-8")).get("actor") == "Scout"
+        if scout_profile and args.scout_admission == "broker-local":
+            from .scout_prestart import run_local_checks
+            report = run_local_checks(args.repository,args.datastore)
+        else:
+            report = inspect_readiness(repository=args.repository,datastore=args.datastore,
+                profile=profile,watchlist=watchlist)
+        print(json.dumps(report,sort_keys=True))
         return 2
     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
-        config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
+        scout_admission=args.scout_admission,config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
             symbol_workers=args.symbol_workers,lookback_days=args.lookback_days))
     print(json.dumps(result,sort_keys=True))
     return 1 if result["status"] == "FAILED" else 0

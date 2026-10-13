@@ -226,6 +226,17 @@ def _loaded_fallback_policy(root, run, action_date):
     """Bind the verified future policy to this exact immutable receipt."""
     from ml.artifacts import file_checksum
     if run is not None and Path(run).resolve().parent == (Path(root) / "ml/joint-gameplan-runs").resolve():
+        from ml.joint_capital_adoption import read_accepted_joint_plan
+        from ml.joint_capital_plan import PLAN_ONLY_MODE
+        from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
+        selected = read_accepted_joint_plan(root, action_date)
+        if selected is None or Path(run).resolve() != selected[2]:
+            raise ValueError("Fallback source is not the selected combined Gameplan")
+        if selected[0].get("composition_mode") == PLAN_ONLY_MODE:
+            policy = validate_fallback_policy(selected[0].get("cross_horizon_fallback_policy"), action_date)
+            return (None, None) if policy is None else (policy, {
+                "source_run": selected[2].relative_to(Path(root).resolve()).as_posix(),
+                "source_receipt_sha256": file_checksum(selected[2] / "accepted-plan.json")})
         # Combined instructions already contain the bounded synthesized donor
         # quantities. The catch-up adapter attributes these to that donor.
         return None, None
@@ -584,16 +595,18 @@ def run_independent_stock_trader_once(
         if source_gameplan_run is not None and (source_gameplan_run / "accepted-plan.json").is_file():
             from ml.joint_capital_adoption import read_accepted_joint_plan
             from ml.stock_trader.catchup import catchup_signals
+            from ml.joint_capital_plan import PLAN_ONLY_MODE
             accepted = read_accepted_joint_plan(root, timestamp.tz_convert("America/Los_Angeles").date().isoformat())
-            qualified = catchup_signals(accepted[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
-                                       reservations=state.reservations, blocked=rejected_catchup,
-                                       abandoned=abandoned_catchup)
-            metadata["catchup"] = {"plan_sha256": accepted[0]["plan_sha256"],
-                "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
-                "blocked_intentions": rejected_catchup,
-                "abandoned_intentions": abandoned_catchup,
-                "net_quantities": {f"{s}/{h}": signal.planned_quantity * (1 if signal.calibrated_probability else -1)
-                                   for (s, h), signal in qualified.items()}}
+            if accepted[0].get("composition_mode") != PLAN_ONLY_MODE:
+                qualified = catchup_signals(accepted[0], as_of=timestamp, source_fingerprint=source_gameplan_run.name,
+                                           reservations=state.reservations, blocked=rejected_catchup,
+                                           abandoned=abandoned_catchup)
+                metadata["catchup"] = {"plan_sha256": accepted[0]["plan_sha256"],
+                    "policy": "cumulative-due-intentions-less-fills-and-open-reservations-v1",
+                    "blocked_intentions": rejected_catchup,
+                    "abandoned_intentions": abandoned_catchup,
+                    "net_quantities": {f"{s}/{h}": signal.planned_quantity * (1 if signal.calibrated_probability else -1)
+                                       for (s, h), signal in qualified.items()}}
         elif any(Path(source).name == "receipt.json" and Path(source).resolve().parent.parent ==
                  (root / "ml/gameplan-trade-plan-runs").resolve() for source in sources):
             from ml.stock_trader.catchup import native_catchup_plan, catchup_signals

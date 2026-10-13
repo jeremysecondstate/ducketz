@@ -1,7 +1,8 @@
 """Noncommitting Scout installation checks; never starts or controls a trader.
 
-Local checks do not connect. --check-connection calls only the actual authority
-client's capabilities/readiness methods and saves private prestart receipts.
+Default broker-local checks do not connect or require Atlas enrollment.
+Explicit --check-connection selects the separate distributed authority check
+and saves private prestart receipts.
 Original journals are audited through raw read-only SQLite connections using
 the existing pure journal validators, without constructing a production store.
 Fresh market/account checks remain the real startup and execution gates' job.
@@ -26,7 +27,7 @@ import tomllib
 
 MANIFEST_PATH = "scratch/cross-pc/evidence/scout-live-final-preparation/final-installed-manifest.json"
 REQUIRED_SOURCE = frozenset({
-    "ml/intraday/scout_prestart.py", "ml/intraday/live_session.py",
+    "ml/intraday/scout_prestart.py", "ml/intraday/live_session.py", "ml/intraday/scout_local_execution.py",
     "ml/intraday/scout_execution.py", "ml/intraday/scout_authority.py",
     "ml/intraday/scout_journal.py", "ml/intraday/scout_books.py", "ml/intraday/scout_accounting.py",
     "ml/intraday/scout_protocol.py", "ml/intraday/scout_broker.py",
@@ -209,7 +210,7 @@ def audit_journal(path, item, *, deadline=None, original_requests=None):
                     authority_release_inferred=False)
 
 
-def inspect_books(root, account_fingerprint):
+def inspect_books(root, account_fingerprint=None):
     from .scout_accounting import audit_saved_accounting
     deadline = time.monotonic() + BOOKS_AUDIT_SECONDS
     root = local_path(root)
@@ -218,6 +219,16 @@ def inspect_books(root, account_fingerprint):
     path = root / "inventory.json"
     journals = root / "journals"
     actual = {p.name for p in journals.iterdir()} if journals.exists() else set()
+    if account_fingerprint is None:
+        if path.exists():
+            account_fingerprint = read_json(path)["inventory"]["account_fingerprint"]
+        else:
+            require(not actual, "Original books inventory is missing while journals remain")
+            require(not any(p.is_file() for folder in (root / "accounting", root / "receipts")
+                            if folder.exists() for p in folder.rglob("*")),
+                    "Saved order records remain without their original inventory")
+            return dict(status="no_journals_yet", journals=0, records=0,
+                        account_binding="existing_local_broker_at_manual_start")
     if not path.exists():
         require(not actual, "Original books inventory is missing while journals remain")
         accounting = audit_saved_accounting(root, account_fingerprint=account_fingerprint,
@@ -476,14 +487,53 @@ def run_checks(repository, datastore, *, manifest_path=None, connect=False):
     return result
 
 
+def run_local_checks(repository, datastore, *, manifest_path=None):
+    """Read local launch prerequisites without asking Atlas or contacting Schwab.
+
+    Ready means the installed manual launcher is prepared. Current broker
+    credentials, quotes and order status are checked by the human-started run.
+    Cash or held shares are never a launch prerequisite.
+    """
+    repository, datastore = local_path(repository), local_path(datastore)
+    result = dict(version="scout-local-prestart-v1", checked_at_utc=datetime.now(timezone.utc).isoformat(),
+        mode="broker-local", ready=False, local_checks_passed=False, runtime_started=False,
+        orders_or_commitments_created=False, atlas_connection_required=False, checks={}, errors=[])
+    stage = "coordination"
+    try:
+        result["checks"][stage] = verify_release(repository)
+        stage = "profile"
+        profile = verify_profile(repository)
+        result["checks"][stage] = dict(actor="Scout",participant_id="pc-new",symbol_count=len(profile["symbols"]))
+        stage = "installation"
+        result["checks"][stage] = verify_installation(repository,manifest_path or repository / MANIFEST_PATH)
+        stage = "dependencies"
+        result["checks"][stage] = verify_dependencies(repository)
+        result["checks"]["broker_account"] = dict(binding="existing_local_broker_at_manual_start",
+            gameplan_configuration_required=False)
+        stage = "session"
+        result["checks"][stage] = inspect_session(datastore)
+        stage = "books"
+        result["checks"][stage] = inspect_books(datastore / "intraday/scout")
+        result.update(ready=True,local_checks_passed=True)
+    except (OSError,ValueError,TypeError,KeyError,sqlite3.Error,ImportError) as error:
+        result["errors"].append(dict(check=stage,type=type(error).__name__,message=str(error)
+            if isinstance(error,PrestartError) else "Local launch prerequisite failed; inspect private configuration"))
+    result["scope"] = "Installed manual-start readiness. Live broker/provider access remains untested until human start; account capacity affects submitted quantity, not launch or desired trade."
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--datastore", type=Path, default=Path(r"C:\DATASTORE"))
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--check-connection", action="store_true", help="Only authenticated capabilities/readiness; no trading commitments")
+    parser.add_argument("--scout-admission", choices=("broker-local","atlas-service"),default="broker-local")
     args = parser.parse_args(argv)
-    result = run_checks(args.repository, args.datastore, manifest_path=args.manifest, connect=args.check_connection)
+    if args.check_connection or args.scout_admission == "atlas-service":
+        result = run_checks(args.repository,args.datastore,manifest_path=args.manifest,connect=args.check_connection)
+    else:
+        result = run_local_checks(args.repository,args.datastore,manifest_path=args.manifest)
     print(json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False))
     return 0 if result["ready"] or result["local_checks_passed"] and not args.check_connection else 2
 
