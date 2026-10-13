@@ -162,15 +162,18 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             pending_horizons.add((symbol, horizon))
         if reserved or (symbol, horizon) in pending_horizons:
             pending_any_horizons.add((symbol, horizon))
-        if reserved > quantity or horizon not in FIXED_HORIZON_WEIGHTS:
+        intraday = horizon == "15m" and allocation.get("stream") == "atlas-15m"
+        if reserved > quantity or (horizon not in FIXED_HORIZON_WEIGHTS and not intraday):
             raise ValueError("Invalid active horizon allocation")
+        # The separate stream's stock stays owned, never free Gameplan stock.
+        # Keep it in share conservation without assigning a Gameplan exit.
         free[symbol] -= quantity
         owned_reserved[symbol] += reserved
         if quantity:
             lot = {"symbol": symbol, "horizon": horizon, "quantity": quantity - reserved,
                          "reserved": reserved, "end": _time(allocation.get("target_end")),
                          "forecast_id": str(allocation.get("prediction_id", "EXISTING_ALLOCATION"))}
-            if fallback_policy is not None:
+            if fallback_policy is not None and not intraday:
                 identifier = allocation.get("allocation_id_sha256")
                 if (not isinstance(identifier, str) or len(identifier) != 64
                         or any(char not in "0123456789abcdef" for char in identifier) or identifier in initial_donors):
@@ -362,7 +365,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                     "trigger_forecast_id", "trigger_horizon", "donor_allocation_id_sha256", "donor_horizon",
                     "slot_quota", "symbol_daily_cap", "symbol_used_after", "donor_daily_cap", "donor_used_after")})
         for lot in ([] if signal_driven else sorted(lots, key=lambda item: (item["end"], item["symbol"], item["horizon"], item["forecast_id"]))):
-            if lot["symbol"] not in blocked and lot["end"] <= timestamp and lot["quantity"] >= 1:
+            if (lot["horizon"] in FIXED_HORIZON_WEIGHTS and lot["symbol"] not in blocked
+                    and lot["end"] <= timestamp and lot["quantity"] >= 1):
                 quantity = Decimal(int(lot["quantity"]))
                 lot["quantity"] -= quantity
                 trade(timestamp, lot["symbol"], "SELL", quantity, "HORIZON_EXIT", lot=lot)
