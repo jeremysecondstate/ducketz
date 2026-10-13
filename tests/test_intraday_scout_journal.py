@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -471,3 +472,405 @@ def test_returned_values_cannot_mutate_stored_records(tmp_path):
     ledger.close()
     with pytest.raises(JournalError, match="closed"):
         ledger.get("request-1")
+
+
+def accepted(tmp_path):
+    ledger = ready(tmp_path)
+    token = ledger.claim_send("request-1")
+    ledger.outcome("request-1", token, "123")
+    return ledger
+
+
+def order_evidence(*, identity="observation-1", status="WORKING", filled=0,
+                   observed="2026-10-12T18:01:00+00:00", **changes):
+    from ml.stock_trader.horizon_ledger import FillEvidence, OrderEvidence
+    fills = tuple(FillEvidence("fill-" + str(i), 1, "10.2", "2026-10-12T18:00:30+00:00")
+                  for i in range(filled))
+    value = OrderEvidence(identity, "reservation-1", BINDING["account_fingerprint"], observed,
+        "123", status, 2, filled, 0 if status in {"FILLED", "CANCELLED", "REJECTED"} else 2 - filled,
+        fills, status)
+    return replace(value, **changes)
+
+
+def observe(ledger, value):
+    return ledger.observe_order("request-1", value, as_of="2026-10-12T18:10:00+00:00")
+
+
+def cancellation(ledger, **changes):
+    args = dict(stream="scout-15m", reason="new-forecast", as_of="2026-10-12T18:01:01+00:00",
+                evidence_id="cancel-1")
+    return ledger.reserve_stream_cancellation("reservation-1", **(args | changes))
+
+
+def test_private_lifecycle_projection_reopens_without_changing_submission_outbox(tmp_path):
+    ledger = accepted(tmp_path)
+    old_events = ledger.pending_events()
+    initial = ledger.lookup_reservation("reservation-1")
+    assert initial.status == "SUBMITTED" and initial.broker_order_id == "123"
+    assert initial.allocation_id == initial.batch_id == ""
+    assert ledger.account_fingerprint == BINDING["account_fingerprint"]
+    assert ledger.reservation_stream("reservation-1") == "scout-15m"
+    observe(ledger, order_evidence(status="PARTIAL", filled=1))
+    assert cancellation(ledger)
+    actual = reopen(ledger).lookup_reservation("reservation-1")
+    assert actual.status == "PARTIAL" and actual.filled_quantity == 1 and actual.reserved_quantity == 1
+    assert actual.last_evidence_at == "2026-10-12T18:01:00+00:00"
+    assert actual.cancel_requested_at == "2026-10-12T18:01:01+00:00"
+    assert actual.quantity == grant().quantity and ledger.pending_events() == old_events
+    assert ledger.pending_reservations() == (actual,)
+
+
+def test_records_preserve_unresolved_states_without_misclassifying_inflight_send(tmp_path):
+    ledger = ready(tmp_path)
+    ledger.claim_send("request-1")
+    assert ledger.records()[0]["state"] == "SENDING"
+    assert ledger.pending_reservations() == ()
+    with pytest.raises(JournalStateError, match="accepted"):
+        ledger.lookup_reservation("reservation-1")
+    with pytest.raises(JournalStateError, match="accepted"):
+        observe(ledger, order_evidence())
+    copy = ledger.records()
+    copy[0]["state"] = "ACCEPTED"
+    assert ledger.records()[0]["state"] == "SENDING"
+
+
+def test_complete_cumulative_terminal_evidence_preserves_fills_and_prevents_demotions(tmp_path):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence(status="PARTIAL", filled=1))
+    terminal = order_evidence(identity="terminal", status="CANCELLED", filled=2,
+                              observed="2026-10-12T18:01:02+00:00")
+    observe(ledger, terminal)
+    assert ledger.pending_reservations() == ()
+    assert ledger.lookup_reservation("reservation-1").filled_quantity == 2
+    assert ledger.get("request-1")["state"] == "ACCEPTED"  # Submission history is immutable.
+    with pytest.raises(JournalStateError, match="regressed"):
+        observe(ledger, order_evidence(identity="demotion", status="PARTIAL", filled=1,
+                                     observed="2026-10-12T18:01:03+00:00"))
+    assert reopen(ledger).order_state("request-1")["evidence"]["status"] == "CANCELLED"
+
+
+@pytest.mark.parametrize("changes", [
+    {"broker_order_id": "999"}, {"reservation_id": "other"}, {"account_fingerprint": "f" * 64},
+    {"order_quantity": 3}, {"cumulative_filled_quantity": True}, {"remaining_quantity": 2},
+    {"fills": ()}, {"status": "UNKNOWN"}, {"status": "WORKING"},
+    {"observed_at": "2026-10-12T17:59:00+00:00"},
+])
+def test_bad_exact_order_or_fill_evidence_is_never_recorded(tmp_path, changes):
+    ledger = accepted(tmp_path)
+    with pytest.raises(JournalStateError):
+        observe(ledger, replace(order_evidence(status="PARTIAL", filled=1), **changes))
+    assert ledger.order_state("request-1")["evidence"] is None
+
+
+def test_future_order_or_fill_evidence_is_rejected(tmp_path):
+    ledger = accepted(tmp_path)
+    with pytest.raises(JournalStateError, match="future"):
+        ledger.observe_order("request-1", order_evidence(), as_of="2026-10-12T18:00:59+00:00")
+    original = order_evidence(status="PARTIAL", filled=1)
+    with pytest.raises(JournalStateError):
+        observe(ledger, replace(original, fills=(replace(original.fills[0], executed_at="2026-10-12T18:02:00Z"),)))
+
+
+@pytest.mark.parametrize("mutation", ["missing", "price", "time", "duplicate"])
+def test_complete_cumulative_fill_ids_are_immutable(tmp_path, mutation):
+    ledger = accepted(tmp_path)
+    first = order_evidence(status="PARTIAL", filled=1)
+    observe(ledger, first)
+    later = order_evidence(identity="filled", status="FILLED", filled=2,
+                           observed="2026-10-12T18:01:03+00:00")
+    a, b = later.fills
+    if mutation == "missing": a = replace(a, fill_id="replacement-id")
+    if mutation == "price": a = replace(a, price="10.1")
+    if mutation == "time": a = replace(a, executed_at="2026-10-12T18:00:31Z")
+    if mutation == "duplicate": b = a
+    with pytest.raises(JournalStateError):
+        observe(ledger, replace(later, fills=(a, b)))
+    assert ledger.lookup_reservation("reservation-1").filled_quantity == 1
+
+
+def test_same_evidence_id_retries_exactly_and_rejects_mutation_even_after_later_poll(tmp_path):
+    ledger = accepted(tmp_path)
+    first = order_evidence()
+    observe(ledger, first)
+    second = replace(first, evidence_id="observation-2", observed_at="2026-10-12T18:01:02+00:00")
+    state = observe(ledger, second)
+    assert observe(ledger, first) == state  # Exact old receipt is an idempotent replay.
+    with pytest.raises(JournalStateError, match="ID reused"):
+        observe(ledger, replace(first, observed_at="2026-10-12T18:01:03+00:00"))
+    assert ledger.order_state("request-1") == state
+
+
+def test_unchanged_polling_refreshes_receipt_without_growing_replay_history(tmp_path):
+    ledger = accepted(tmp_path)
+    initial = datetime(2026, 10, 12, 18, 1, tzinfo=timezone.utc)
+    for index in range(100):
+        observe(ledger, order_evidence(identity="poll-" + str(index), observed=(initial + timedelta(seconds=index)).isoformat()))
+    with sqlite3.connect(ledger.path) as db:
+        assert db.execute("SELECT COUNT(*) FROM lifecycle_events").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM lifecycle_evidence_ids").fetchone()[0] == 100
+    state = reopen(ledger).order_state("request-1")
+    assert state["evidence"]["evidence_id"] == "poll-99"
+    assert ledger.lookup_reservation("reservation-1").last_evidence_at == "2026-10-12T18:02:39+00:00"
+
+
+def test_cancel_intent_is_one_stable_marker_and_ack_is_not_terminal(tmp_path):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence())
+    assert cancellation(ledger)
+    assert not cancellation(ledger, as_of="2026-10-12T18:01:02+00:00")
+    assert not cancellation(ledger, evidence_id="a-new-forecast-does-not-replace-intent", as_of="2026-10-12T18:01:03+00:00")
+    assert ledger.lookup_reservation("reservation-1").cancel_requested_at == "2026-10-12T18:01:01+00:00"
+    detail = {"reservation_id": "reservation-1", "stream": "scout-15m", "observed_at": "2026-10-12T18:01:02+00:00",
+              "acknowledgment_is_terminal": False}
+    state = ledger.record_cancellation_event("cancel-attempt-1:ack", "cancellation_acknowledged", detail)
+    assert reopen(ledger).record_cancellation_event("cancel-attempt-1:ack", "cancellation_acknowledged", detail) == state
+    assert ledger.lookup_reservation("reservation-1").status == "WORKING"
+    assert ledger.lookup_reservation("reservation-1").reserved_quantity == 2
+    with pytest.raises(JournalStateError, match="ID reused"):
+        ledger.record_cancellation_event("cancel-attempt-1:ack", "cancellation_acknowledged", detail | {"observed_at": "2026-10-12T18:01:03+00:00"})
+    with pytest.raises(JournalStateError):
+        ledger.record_cancellation_event("false-terminal", "cancellation_acknowledged", detail | {"acknowledgment_is_terminal": True})
+
+
+@pytest.mark.parametrize("change", [{"stream": "atlas-15m"}, {"stream": "gameplan"},
+    {"reason": "unreviewed-policy"}, {"as_of": "2026-10-12T18:00:59+00:00"}])
+def test_cancel_fences_stream_policy_and_stale_intent(tmp_path, change):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence())
+    with pytest.raises(JournalStateError):
+        cancellation(ledger, **change)
+    assert ledger.lookup_reservation("reservation-1").cancel_requested_at is None
+
+
+def test_lifecycle_needs_explicit_audited_known_legacy_migration(tmp_path):
+    import ml.intraday.scout_journal as module
+    ledger = ready(tmp_path)
+    ledger.claim_send("request-1")
+    events = ledger.pending_events()
+    with sqlite3.connect(ledger.path) as db:
+        for name in reversed(tuple(module._LIFECYCLE_SCHEMA)):
+            db.execute("DROP TABLE " + name)
+        control = json.loads(db.execute("SELECT payload FROM control").fetchone()[0])
+        control["schema_version"] = module.LEGACY_VERSION
+        db.execute("UPDATE control SET payload=?,sha256=?", (module._encoded(control), canonical_sha256(control)))
+    before = ledger.path.read_bytes()
+    with pytest.raises(JournalCorruptionError):
+        reopen(ledger)
+    assert ledger.path.read_bytes() == before
+    restored = ScoutJournal(ledger.path, binding=BINDING, migrate_legacy=True)
+    assert restored.pending_events() == events and restored.get("request-1")["state"] == "SENDING"
+    assert restored.order_state("request-1")["evidence"] is None
+    with pytest.raises(JournalStateError):
+        restored.claim_send("request-1")
+
+
+@pytest.mark.parametrize("damage", ["event", "tail", "state", "evidence_identity", "lost_table"])
+def test_private_lifecycle_corruption_fails_closed_for_all_journal_work(tmp_path, damage):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence())
+    with sqlite3.connect(ledger.path) as db:
+        if damage == "event": db.execute("UPDATE lifecycle_events SET payload='{}'")
+        if damage == "tail": db.execute("DELETE FROM lifecycle_events")
+        if damage == "state": db.execute("UPDATE lifecycle_records SET payload='{}'")
+        if damage == "evidence_identity": db.execute("DELETE FROM lifecycle_evidence_ids")
+        if damage == "lost_table": db.execute("DROP TABLE lifecycle_events")
+    with pytest.raises(JournalCorruptionError):
+        ledger.records()
+    with pytest.raises(JournalCorruptionError):
+        ScoutJournal(ledger.path, binding=BINDING, migrate_legacy=True)
+
+
+def test_lifecycle_write_failure_rolls_back_evidence_id_state_and_chain(tmp_path, monkeypatch):
+    ledger = accepted(tmp_path)
+    original = ledger._append_lifecycle
+    def fail(*args):
+        original(*args)
+        raise RuntimeError("before transaction commit")
+    monkeypatch.setattr(ledger, "_append_lifecycle", fail)
+    with pytest.raises(RuntimeError):
+        observe(ledger, order_evidence())
+    assert reopen(ledger).order_state("request-1")["evidence"] is None
+    with sqlite3.connect(ledger.path) as db:
+        assert db.execute("SELECT COUNT(*) FROM lifecycle_evidence_ids").fetchone()[0] == 0
+    assert observe(reopen(ledger), order_evidence())["evidence"]["status"] == "WORKING"
+
+
+def test_open_existing_never_recreates_missing_original_journal(tmp_path):
+    path = tmp_path / "missing-parent" / "missing.sqlite3"
+    with pytest.raises(JournalCorruptionError):
+        ScoutJournal(path, binding=BINDING, create=False)
+    assert not path.exists() and not path.parent.exists()
+    ledger = ready(tmp_path)
+    identity = ledger.journal_id
+    ledger.path.unlink()
+    with pytest.raises(JournalCorruptionError):
+        ScoutJournal(ledger.path, binding=BINDING, create=False, expected_journal_id=identity)
+    assert not ledger.path.exists()
+
+
+def test_original_identity_pin_rejects_replacement_even_with_same_binding(tmp_path):
+    ledger = ready(tmp_path)
+    original = ledger.journal_id
+    assert ScoutJournal(ledger.path, binding=BINDING, create=False, expected_journal_id=original).journal_id == original
+    ledger.path.unlink()
+    replacement = ScoutJournal(ledger.path, binding=BINDING)
+    assert replacement.journal_id != original
+    before = replacement.path.read_bytes()
+    with pytest.raises(JournalCorruptionError, match="original identity"):
+        ScoutJournal(ledger.path, binding=BINDING, create=False, expected_journal_id=original)
+    assert replacement.path.read_bytes() == before
+
+
+_LIFECYCLE_CRASH = """
+import json, os, socket, sys
+from pathlib import Path
+data = json.load(sys.stdin)
+sys.path.insert(0, data['root'])
+def no_network(*args, **kwargs): raise RuntimeError('offline test forbids network')
+socket.create_connection = socket.socket.connect = socket.socket.connect_ex = no_network
+from ml.intraday.scout_journal import ScoutJournal
+from ml.stock_trader.horizon_ledger import OrderEvidence
+journal = ScoutJournal(data['path'], binding=data['binding'], create=False, expected_journal_id=data['journal_id'])
+if data['when'] == 'before_commit':
+    append = journal._append_lifecycle
+    def crash(*args, **kwargs):
+        append(*args, **kwargs)
+        os._exit(23)
+    journal._append_lifecycle = crash
+if data['action'] == 'observe':
+    journal.observe_order('request-1', OrderEvidence('crash-evidence','reservation-1',data['binding']['account_fingerprint'],
+        '2026-10-12T18:01:00+00:00','123','WORKING',2,0,2), as_of='2026-10-12T18:01:01+00:00')
+else:
+    journal.reserve_stream_cancellation('reservation-1', stream='scout-15m', reason='new-forecast',
+        as_of='2026-10-12T18:01:01+00:00', evidence_id='crash-cancel')
+os._exit(23)
+"""
+
+
+@pytest.mark.parametrize("action", ["observe", "cancel"])
+@pytest.mark.parametrize("when", ["before_commit", "after_commit"])
+def test_abrupt_death_retains_atomic_lifecycle_and_cancel_marker(tmp_path, action, when):
+    ledger = accepted(tmp_path)
+    if action == "cancel":
+        observe(ledger, order_evidence())
+    before = ledger.order_state("request-1")
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run([sys.executable, "-B", "-c", _LIFECYCLE_CRASH], input=json.dumps({
+        "root": str(root), "path": str(ledger.path), "binding": BINDING, "journal_id": ledger.journal_id,
+        "action": action, "when": when,
+    }), cwd=root, text=True, capture_output=True, timeout=20)
+    assert result.returncode == 23, result.stderr
+    recovered = reopen(ledger)
+    if when == "before_commit":
+        assert recovered.order_state("request-1") == before
+    elif action == "observe":
+        assert recovered.order_state("request-1")["evidence"]["evidence_id"] == "crash-evidence"
+    else:
+        assert recovered.lookup_reservation("reservation-1").cancel_requested_at == "2026-10-12T18:01:01+00:00"
+    assert recovered.get("request-1")["broker_order_id"] == "123"
+    with pytest.raises(JournalStateError):
+        recovered.claim_send("request-1")
+
+
+def test_competing_lifecycle_writers_cannot_mutate_one_evidence_identity(tmp_path):
+    ledger = accepted(tmp_path)
+    barrier = Barrier(2)
+    def attempt(index):
+        other = reopen(ledger)
+        value = order_evidence(observed="2026-10-12T18:01:0" + str(index) + "+00:00")
+        barrier.wait(timeout=10)
+        try:
+            observe(other, value)
+            return True
+        except JournalStateError:
+            return False
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(attempt, (0, 1))) == [False, True]
+    with sqlite3.connect(ledger.path) as db:
+        assert db.execute("SELECT COUNT(*) FROM lifecycle_events").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM lifecycle_evidence_ids").fetchone()[0] == 1
+
+
+def test_fill_identity_cannot_be_attributed_to_two_local_orders(tmp_path):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence(status="PARTIAL", filled=1))
+    req = request("request-2")
+    ledger.prepare(req)
+    ledger.grant(grant(req, gid="grant-2", reservation="reservation-2"))
+    token = ledger.claim_send(req.request_id)
+    ledger.outcome(req.request_id, token, "456")
+    evidence = order_evidence(identity="second-evidence", status="PARTIAL", filled=1,
+                              reservation_id="reservation-2", broker_order_id="456")
+    with pytest.raises(JournalStateError, match="Fill identity reused"):
+        ledger.observe_order(req.request_id, evidence, as_of="2026-10-12T18:01:01+00:00")
+    assert ledger.lookup_reservation("reservation-2").filled_quantity == 0
+
+
+@pytest.mark.parametrize("status", ["WORKING", "CANCELLED"])
+def test_new_evidence_before_cancel_marker_cannot_release_or_refresh_order(tmp_path, status):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence())
+    cancellation(ledger, as_of="2026-10-12T18:01:10+00:00")
+    with pytest.raises(JournalStateError, match="predates.*cancellation"):
+        observe(ledger, order_evidence(identity="stale-cancel", status=status, observed="2026-10-12T18:01:05+00:00"))
+    assert ledger.pending_reservations()[0].status == "WORKING"
+
+
+def test_lost_older_poll_identity_cannot_be_reused_with_new_content(tmp_path):
+    ledger = accepted(tmp_path)
+    first = order_evidence()
+    observe(ledger, first)
+    observe(ledger, replace(first, evidence_id="second-poll", observed_at="2026-10-12T18:01:02+00:00"))
+    with sqlite3.connect(ledger.path) as db:
+        db.execute("DELETE FROM lifecycle_evidence_ids WHERE evidence_id=?", (first.evidence_id,))
+    with pytest.raises(JournalCorruptionError):
+        ledger.records()
+    with pytest.raises(JournalCorruptionError):
+        observe(ledger, replace(first, observed_at="2026-10-12T18:01:03+00:00"))
+
+
+def test_changed_order_economics_must_have_a_newer_observation_time(tmp_path):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence())
+    with pytest.raises(JournalStateError, match="regressed"):
+        observe(ledger, order_evidence(identity="conflicting-same-time", status="PARTIAL", filled=1))
+    assert ledger.lookup_reservation("reservation-1").filled_quantity == 0
+
+
+def test_terminal_order_cumulative_fills_cannot_change_after_confirmation(tmp_path):
+    ledger = accepted(tmp_path)
+    observe(ledger, order_evidence(status="CANCELLED", filled=1))
+    with pytest.raises(JournalStateError, match="regressed"):
+        observe(ledger, order_evidence(identity="late-changed-terminal", status="CANCELLED", filled=2,
+                                      observed="2026-10-12T18:01:02+00:00"))
+
+
+@pytest.mark.parametrize("raw,provenance,allowed", [
+    ("2026-10-12T18:00:01Z", True, True),
+    ("2026-10-12T18:00:01.000Z", True, False),
+    ("2026-10-12T18:00:01Z", False, False),
+    ("2026-10-12T18:00:00Z", True, False),
+])
+def test_fill_lower_bound_reuses_only_verified_whole_second_precision_tolerance(tmp_path, raw, provenance, allowed):
+    ledger = journal(tmp_path)
+    req = replace(request(), issued_at="2026-10-12T18:00:01.500000+00:00")
+    ledger.prepare(req)
+    ledger.grant(replace(grant(req), issued_at=req.issued_at))
+    ledger.outcome(req.request_id, ledger.claim_send(req.request_id), "123")
+    value = order_evidence(status="PARTIAL", filled=1)
+    fill = replace(value.fills[0], executed_at=raw)
+    detail = {"version": "schwab-execution-time-v1", "fills": {
+        fill.fill_id: {"raw_timestamp": raw, "source_field": "execution_leg.time"}}} if provenance else None
+    value = replace(value, fills=(fill,), fill_time_provenance=detail)
+    if allowed:
+        assert observe(ledger, value)["evidence"]["cumulative_filled_quantity"] == 1
+    else:
+        with pytest.raises(JournalStateError):
+            observe(ledger, value)
+
+
+def test_fill_cannot_violate_immutable_buy_limit(tmp_path):
+    ledger = accepted(tmp_path)
+    value = order_evidence(status="PARTIAL", filled=1)
+    with pytest.raises(JournalStateError):
+        observe(ledger, replace(value, fills=(replace(value.fills[0], price="10.26"),)))
