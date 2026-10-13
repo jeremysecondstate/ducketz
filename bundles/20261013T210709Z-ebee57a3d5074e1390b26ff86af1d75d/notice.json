@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "base_commit": "c0dd8f3fb8ddd91d54fb683f1a7401a8265db946",
+  "branch": "codex/scout/20261013T210413Z-363c920429d74e7e9a82f3cdc6391742",
+  "change_id": "20261013T210413Z-363c920429d74e7e9a82f3cdc6391742",
+  "commit_sha": "e179dce89f9d1fc875bfda72ff3ea8ae98ca58b1",
+  "files": [
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_scout_local_execution.py"
+  ],
+  "limitations": [
+    "Offline fixtures only; no live provider, account, order or trader-control operations.",
+    "Two-file change stacked on the reviewed independent local-trader baseline; main integration is separate."
+  ],
+  "peer_applicability": "Shared local-executor implementation; each PC retains its existing trader bindings, symbols and controls.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/101",
+  "remote_sha": "e179dce89f9d1fc875bfda72ff3ea8ae98ca58b1",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout local sizing now accepts current quotes received during account capture. Original account and quote evidence timestamps, sizing arithmetic and rounding are preserved. Local adoption requires a human-controlled stop and manual restart.",
+  "scope": "shared",
+  "summary": "Scout quote availability timing repair published; reviewed installation and human restart remain separate",
+  "tests": [
+    "Two advancing-clock regressions fail on original source;45 focused tests pass in exact-byte queue and isolated publication candidate."
+  ]
+}

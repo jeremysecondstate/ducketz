@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T21:07:09.653167Z",
+  "id": "20261013T210709Z-ebee57a3d5074e1390b26ff86af1d75d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout quote availability timing repair published; reviewed installation and human restart remain separate"
+}
