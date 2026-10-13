@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T05:54:50.391610Z",
+  "id": "20261013T055450Z-37c8e7a457e847619536e37b14964eb2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independently reviewed Scout 6fc33eae installed-transition framework: 337 offline checks pass; two reproduced lifetime-lock/original-inventory races block adoption."
+}

@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-review:20261013T053359Z-76606b166fad496398fdc3ea3d8e1edb",
+  "coordination": {
+    "in_reply_to": "scout-prestats-source-transition-20261013",
+    "kind": "response",
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-prestats-transition-review-6fc33eae-20261013",
+    "request_type": "workflow_question",
+    "result": "needs_review",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "summary": "Independent review complete:337 offline checks pass, but exact-source counterexamples reproduce missing independent-stock-session lifetime exclusion and lost original-inventory proof. Return a corrected handoff through the existing Scout owners; no real recovery verified."
+  },
+  "files": [
+    "ml/nightly_stage_repair.py",
+    "tests/test_nightly_stage_repair.py",
+    "docs/development/nightly-operations.md"
+  ],
+  "limitations": [
+    "Review of immutable peer source and synthetic fixtures only; no real domain claim, application installation or resumed stage.",
+    "Existing Scout framework/incident ownership retained; successor source must correct both findings and retain original repair ancestry.",
+    "Healthy Atlas preparation retains its frozen source; combined readiness unresolved."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_completion_record": "20261013T053359Z-76606b166fad496398fdc3ea3d8e1edb",
+  "reviewed_source_commit": "6fc33eae689e80074b97557bd2a8d2afd58110e5",
+  "runtime_implications": "Block adoption of this source until independent-session lifetime locking and original-inventory revalidation are corrected and verified. Use the existing Scout incident owner for guarded claim/application/ordinary continuation; preserve deadlines and manual trader controls.",
+  "scope": "shared",
+  "summary": "Atlas independently reviewed Scout 6fc33eae installed-transition framework: 337 offline checks pass; two reproduced lifetime-lock/original-inventory races block adoption.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T05:51:47.4212817Z",
+      "declared_dependency_hashes_verified": 78,
+      "declared_owned_hashes_verified": 3,
+      "kind": "offline_candidate_suite",
+      "output_sha256": "f48a5ce44d5f5fe681d70b28fe746c46fd17cae90d0ff89f8917e3f8de754b65",
+      "passed": 337,
+      "skipped": 0,
+      "started_at_utc": "2026-10-13T05:50:15.5512469Z"
+    },
+    {
+      "kind": "offline_counterexamples",
+      "reproduced": [
+        "Apply succeeds while independent-stock-session lifetime lock is held after an empty process snapshot.",
+        "Prepare/apply succeeds after original reconstruction changes; frozen before inventory and backup disagree with the validated source snapshot."
+      ],
+      "source_sha256": "f875b8dd8947abf31abb92468591b88c97448093b1317ed4c9ecbf67a6e22119"
+    }
+  ]
+}
