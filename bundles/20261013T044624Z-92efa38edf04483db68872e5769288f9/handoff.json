@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T04:46:24.528874Z",
+  "id": "20261013T044624Z-92efa38edf04483db68872e5769288f9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas retained exact Scout PR86 and reproduced an ambiguous temporary DELETE retry fence defect in four offline cases; correction routed to Scout ownership."
+}

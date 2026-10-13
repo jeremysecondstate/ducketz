@@ -1,0 +1,72 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-scout-pr86-cancellation-review-20261013T042813Z",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "ac3d00305def4a441d25b54cc9ab05935fdea8ef6ef382ebd617f59f7505f700",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6138437592",
+  "files": [],
+  "finding": {
+    "cause": "temporary delete failure sets retry=True despite known_before_delete=False",
+    "expected_boundary": "False/missing provenance retains consumed claim; exact WORKING status after timeout is not no-send proof; retain commitment until full terminal evidence.",
+    "lines": [
+      415,
+      416
+    ],
+    "path": "ml/intraday/scout_execution.py",
+    "proposed_correction": "retry = item['payload'].get('known_before_delete') is True"
+  },
+  "incoming_notice": {
+    "id": "20261013T042614Z-2fae5f119fd846ee8f096027b4eba657",
+    "manifest_sha256": "473f9d93d0cf75dc8363dc585ae556d382f785019177dceadee0151b2fce08a5"
+  },
+  "limitations": [
+    "PR86 retained review_pending; not installed on Atlas. No fixed successor or manual-live readiness claimed.",
+    "Scout installed1180-test receipt is peer evidence; its 137-dependency fingerprint map was not in incoming notice and was not independently verified.",
+    "The correction is a source-review suggestion, not an implemented or tested fix.",
+    "New review tests prove duplicate cancellation attempts, not duplicate POST orders or capacity release."
+  ],
+  "owner_routing": {
+    "Atlas": "Production host/context/capture, authenticated noncommitting readiness and actual loaded-writer proof, private TLS enrollment and participant-scoped canonical private accounting remain.",
+    "Scout": "Correct own executor and adopt regression, publish exact successor and installed-byte check receipt under existing ownership."
+  },
+  "regression": {
+    "source_sha256": "3f48587be5ba69b9200b61718ebcc9442392fe922ca08e4baed06286e354141a",
+    "source_text": "\"\"\"Private review regression for PR86 cc0132f11f325c89c2cc727b9b175e3c414da469.\n\nCopy into the isolated candidate's tests directory for the pinned offline check.\nReuse its real temporary books and synthetic after-effect broker fixture. No\nnetwork, provider, production datastore, or runtime process is accessed here.\nThe four cases are expected to fail on the exact reviewed PR86 source.\n\"\"\"\n\nimport pytest\n\nfrom test_intraday_scout_execution import (\n    env,\n    record,\n    reload_scout,\n    save_forecast,\n    submit,\n)\n\n\n@pytest.mark.parametrize(\"error_type\", [TimeoutError, ConnectionError], ids=[\"timeout\", \"connection\"])\n@pytest.mark.parametrize(\"manual_reload\", [False, True], ids=[\"same-process\", \"manual-reload\"])\ndef test_ambiguous_temporary_delete_keeps_consumed_attempt_after_fresh_working_status(\n    env, monkeypatch, error_type, manual_reload\n):\n    submit(env)\n    original = record(env)\n    original_session = env.executor.session_id\n    request_id = original[\"request\"][\"request_id\"]\n    reservation_id = original[\"grant\"][\"reservation_id\"]\n    newer = save_forecast(env)\n\n    # The existing fake broker appends the DELETE effect before raising this\n    # exception. It proves ambiguity, not a failure before the effect.\n    env.broker.delete_error = error_type(\"synthetic lost reply after DELETE effect\")\n    first = env.executor.step(newer)\n    assert first[\"disposition\"] == \"previous_intention_reconciliation\"\n    assert len(env.broker.deletes) == 1\n    state = env.executor.journal.order_state(request_id)\n    assert state[\"cancellation_events\"][-1][\"kind\"] == \"cancellation_temporary_failure\"\n    assert state[\"cancellation_events\"][-1][\"payload\"][\"known_before_delete\"] is False\n    assert any(item[\"kind\"] == \"cancellation_send_claimed\" for item in state[\"cancellation_events\"])\n    previous_observation = state[\"evidence\"][\"observed_at\"]\n\n    env.broker.delete_error = None\n    env.atlas.clock.tick(seconds=3)\n    try:\n        if manual_reload:\n            assert reload_scout(env, monkeypatch) == original_session\n            assert original_session in env.books.sessions()\n            # Advance from the cancellation-triggering forecast, not the\n            # fixture's original forecast. Reusing its reference would correctly\n            # hit processed-reference deduplication before cancellation recovery.\n            forecast_base = env.forecast\n            env.forecast = newer\n            try:\n                newer = save_forecast(env)\n            finally:\n                env.forecast = forecast_base\n\n        reads_before = len(env.broker.reads)\n        result = env.executor.step(newer)\n        assert result[\"disposition\"] == \"previous_intention_reconciliation\"\n        assert len(env.broker.reads) > reads_before, \"The retry must first observe exact broker status\"\n        with env.books.open_session(original_session) as journal:\n            current = journal.order_state(request_id)[\"evidence\"]\n            assert current[\"status\"] == \"WORKING\"\n            assert current[\"observed_at\"] > previous_observation\n        assert env.atlas.authority.reservation(reservation_id).status == \"WORKING\"\n        assert len(env.broker.posts) == 1, \"An unresolved original order cannot admit its replacement\"\n        assert len(env.broker.deletes) == 1, (\n            \"An after-effect temporary failure consumed the DELETE attempt; \"\n            \"fresh WORKING status must not authorize a second DELETE\"\n        )\n    finally:\n        # The imported fixture owns the initial executor; close only the new\n        # executor constructed by its existing manual-reload helper here.\n        if manual_reload and env.executor.journal is not None:\n            env.executor.journal.close()\n            env.executor.journal = None\n",
+    "suggested_local_path": "tests/test_atlas_pr86_cancel_review.py"
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6138221780
+  ],
+  "reused_completion_records": [
+    "20261013T041956Z-de5830bbda8044499c08acf0fa55224a",
+    "20261013T035035Z-6488d2c283fe4c41ac25a71164eaf127"
+  ],
+  "runtime_implications": "No primary installation, provider/broker calls, training, service deployment, key exchange, worker actions or trading-control/schedule changes.",
+  "scope": "Exact-source review and synthetic cancellation regression; no implementation publication",
+  "source_identities": {
+    "atlas_85": "03b1c54218a1c434ab5f8be81af174b36333d74f",
+    "scout_86": "cc0132f11f325c89c2cc727b9b175e3c414da469"
+  },
+  "summary": "Atlas retained exact Scout PR86 and reproduced an ambiguous temporary DELETE retry fence defect in four offline cases; correction routed to Scout ownership.",
+  "tests": [
+    {
+      "output_sha256": "37f80cb32dd53505b0da8041de4cbb9226847cefdc8c06864aad0421e7ce330f",
+      "result": "387 passed, zero skips; four added review cases in the same run failed (two exact defects, two reload fixture setup errors)",
+      "scope": "Five existing focused PR86 suites"
+    },
+    {
+      "output_sha256": "354ac2a45b3a4540dd14d8bf52d01173a295c2872cde84a9db1c6aca29eeea06",
+      "result": "4 failed at duplicate DELETE assertion: actual2 expected1; no skips",
+      "scope": "Four corrected review counterexamples only; same-process/manual-reload x TimeoutError/ConnectionError"
+    }
+  ],
+  "verification": {
+    "atlas_selected_committed_fingerprints": 415,
+    "committed_source_unchanged": true,
+    "import_violations": [],
+    "local_review_tests": 1,
+    "network_disabled": true,
+    "owned_source_hashes": 18
+  }
+}
