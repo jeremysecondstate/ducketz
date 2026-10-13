@@ -413,7 +413,7 @@ class ScoutAccountExecutor:
             if item['kind'] in {'cancellation_send_claimed','cancellation_acknowledged'}:
                 retry = False
             elif item['kind'] == 'cancellation_temporary_failure' and item['payload'].get('stage') == 'delete_exact_order':
-                retry = True
+                retry = item['payload'].get('known_before_delete') is True
             elif item['kind'] == 'cancellation_reconciliation_required' and item['payload'].get('stage') == 'delete_exact_order':
                 retry = item['payload'].get('known_before_delete') is True
         try:
