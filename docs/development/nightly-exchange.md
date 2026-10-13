@@ -316,14 +316,26 @@ client and helper publication identities separate. Checks use the existing
 `source_files` evidence. Capture genuine passing offline execution before
 preparation; the helper verifies exact published blobs locally without fetching.
 
-The only client production paths supported here are individual Python files in
-`ml/intraday/`, plus `pyproject.toml`, the two intraday production-interface and
+The supported production paths are individual Python files in `ml/intraday/`
+and exactly four shared host dependencies: `ml/account_gameplan/authority.py`,
+`ml/account_gameplan/execution.py`, `ml/stock_trader/horizon_ledger.py`, and
+`tools/nightly_exchange.py`. Neighboring account, trader and adapter sources
+remain outside this scope. The supporting paths are `pyproject.toml`, the two
+intraday production-interface and
 Scout manual-start documents, and intraday tests/fixtures. Only the exact input
 operations are copied. The new `ml/nightly_exchange_repair.py` is an additional
 explicit operation proven by the separate framework publication. All other
 production source and private bindings retain their current bytes. Non-Python
 operations remain part of the verified endpoint even though the application
 Python inventory does not include them.
+
+A reviewed `tools/nightly_exchange.py` operation changes only its exact
+`adapter_sources.nightly_exchange.py` binding. Preparation seals that after hash;
+an interrupted apply accepts the binding implied by the adapter's actual,
+already validated before/after bytes. It compares every other binding field
+unchanged and verifies the full after binding on completion and duplicate apply.
+Local-actor publication checks remain unchanged: Atlas uses its reviewed Atlas
+composition and retains Scout ancestry, rather than relabeling Scout records.
 
 Preparation writes a separate immutable specification under
 `sessions/<action-date>/source-repairs/<continuation-id>/`. It does not replace
