@@ -195,3 +195,42 @@ accept an explicit participant while preserving Atlas defaults. Queue reads,
 supersession and mutations isolate the persisted forecast participant. This
 reuses the same forecast and scoring engine for Scout; it does not remove the
 live-start guard before the remaining service and production wiring are ready.
+
+## Local recovery across manual sessions
+
+`scout_books.py` inventories original Scout journals under a host-local private
+root. Every registered session pins its journal's immutable identity and account,
+participant and stream bindings. Starting another session audits the originals;
+missing, replaced, corrupted or unregistered journals and database residue block
+startup for explicit repair. Opening a registered journal uses `create=False` and
+its expected original journal ID. It can never silently replace an outstanding
+send claim with a fresh empty journal. `inspect()` reads inventory only and creates
+no production stores. Exact service receipts may be saved as private immutable
+content-addressed files; writing such a receipt supplies no authorization itself.
+
+The journal retains the original submission/outbox transitions and adds a
+separate private lifecycle for exact accepted-order observations and cancellation
+intent/attempt evidence. A recognized legacy journal requires explicit migration;
+its existing requests, claims, accepted identities and outbox bytes are preserved.
+Cumulative fills cannot regress or change identity. Terminal evidence cannot be
+demoted. Cancellation acknowledgments and temporary errors do not change order
+status or release capacity. Unchanged observations update an indexed latest
+receipt without appending another full replay event. The private reservation
+projection supports the existing cancellation interface; it is not a second
+native inventory ledger. Unknown native allocation identifiers remain unknown
+until exact service evidence supplies them.
+
+`scout_runtime_gate.local_gate` checks the exact saved Scout forecast, original
+manual session, immutable snapshot and fixed target, current local controls,
+quote freshness, market window and strict cutoff. Its SQLite reads use `mode=ro`,
+`query_only` and zero lock wait; a newer full current-session forecast supersedes
+an older one even when published during preceding account IO. Its required local
+proof callback must also verify the exact saved sizing, rounded quote limit,
+authenticated send receipt, compatible account writers and prior-order clearance.
+Neither a permissive callback nor a saved message acknowledgment supplies those
+facts. Use this helper only for new POSTs; reconciliation and exact cancellation
+remain possible after submission cutoff or forecast target expiry.
+
+These completed local pieces still require the actual Atlas service contract,
+Scout production orchestration, authenticated bindings and compatible loaded
+writers before manual-start readiness. They do not start or stop a worker.
