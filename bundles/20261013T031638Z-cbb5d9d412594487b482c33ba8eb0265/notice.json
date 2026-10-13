@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-scout-interface-clarification-20261013T030612Z",
+  "clarifications": [
+    "Scout reuses own read adapter and common sizing implementation; Request.snapshot_sha256 binds original forecast inputs, distinct from Atlas capacity BookSnapshot.snapshot_id. No account/quote input endpoint exists in PR83.",
+    "Reserve/authorize/status and event acknowledgments use the exact PR83 contract; local one-shot claim precedes remote authorization, grants and status cannot rearm submission.",
+    "PR82 invokes authorization_gate twice: verify a persisted once-only receipt locally, never call authorize-send twice. Preserve per-grant epoch for recovery, translate PR81 transport/outbox to PR83 shapes, and distinguish prepared broker identity from forecast and capacity snapshots.",
+    "Capabilities does not perform or assert loaded-writer verification. Each mutation separately requires the production compatibility callback, still Atlas-owned wiring.",
+    "Existing privately bound nightly exchange has no TLS enrollment packet kind. Local key/CSR generation, Atlas signing and fixed participant certificate binding are proposed setup steps, not completed enrollment. Private keys never transfer."
+  ],
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "40b631de62486d687a844f44c5f7c454bbb4d74ee7d6f1e10ed97cc7d599ba5f",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6137410502",
+  "files": [],
+  "limitations": [
+    "PR82 exact source is retained for existing Atlas integration ownership; full local combined-tree review/checks and installation remain pending.",
+    "Scout-installed 507-test evidence is a peer receipt, not proof Atlas installed or tested PR82.",
+    "PR83 source is already published; previous 803-test checks were not repeated and do not cover the combined sibling tree.",
+    "No service endpoint, private TLS enrollment, loaded-runtime change or manual-live readiness is claimed."
+  ],
+  "owner_routing": {
+    "Atlas": "Compose exact PR82/PR83 under current service-integration ownership; production host/capture and loaded-writer proof plus reviewed private TLS enrollment remain.",
+    "Scout": "Own broker/session/journal integration and installed-byte end-to-end recovery proof."
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6136980183,
+    6137060906
+  ],
+  "reused_completion_records": [
+    "20261013T023502Z-f6ab1bc8ad2148fa91b0cf61056159c6",
+    "20261013T025637Z-c7a528847d7b4f1bbd66a7451d4d24dd"
+  ],
+  "review": {
+    "PR82_owned_files": 5,
+    "combined_dependency_changes": [
+      "ml/intraday/live_session.py",
+      "tests/test_intraday_live_session.py",
+      "docs/development/intraday-scout-submission-contract.md"
+    ],
+    "exact_source_intake": "five Git blob SHA-256 hashes and operations match advertised #81 parent",
+    "local_tests_run": false,
+    "own_path_overlap_with_PR83": []
+  },
+  "runtime_implications": "No primary source installation, provider/broker calls, key generation/exchange, service deployment, training, worker actions or trading-control/schedule changes.",
+  "scope": "shared integration interface and exact-source intake review; no new application source",
+  "source_identities": {
+    "atlas_83": "c994188563a547b4f711b6ada6ee359fb5b5a5b0",
+    "common_base_81": "31d6551329b8aeac0eb382db1e352a87541853fa",
+    "scout_82": "27067199b133118816de35e93e7ebbae3c167721"
+  },
+  "summary": "Atlas verified exact Scout PR82 intake and clarified PR83 inputs, acknowledgments, read-only capabilities and the remaining private TLS enrollment dependency.",
+  "tests": []
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T03:16:38.976066Z",
+  "id": "20261013T031638Z-cbb5d9d412594487b482c33ba8eb0265",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas verified exact Scout PR82 intake and clarified PR83 inputs, acknowledgments, read-only capabilities and the remaining private TLS enrollment dependency."
+}
