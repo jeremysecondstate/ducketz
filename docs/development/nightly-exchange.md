@@ -216,9 +216,38 @@ times, absolute regular log and exact source-file inventory. Checks must finish
 after the claim and no later than preparation of the repair specification; a
 rejected check does not bind the completion record. The inventory includes `ml`, `app`,
 `datafetching`, `tools`, `fundamentals`, `options`, `signals` and `technicals`.
-Only the helper's narrow independent-entrypoint allowlist can change. Shared
-numerical, UI and trader-imported adoption libraries need a separately supported
-safe deployment boundary; this repair helper never stops or restarts a trader.
+The independent-entrypoint allowlist retains its existing live-safe behavior.
+The additional supported shared planning/export sources are exactly
+`ml/gameplan_cash_ledger.py`, `ml/gameplan_trade_planning.py`,
+`ml/gameplan_trade_snapshot.py` and `tools/nightly_account_snapshot.py`.
+Preparing or applying a change to any of those exact paths
+holds `intraday-manual-session.lock`, `independent-stock-session.lock`, then
+`stock-trader-hourly.lock` for the whole operation, after the existing workflow,
+exchange, stage-repair and overnight runtime gates and before direct exchange
+session gates. Under those locks, actual trader process inspection must prove
+quiescence; an active or unverifiable process refuses the operation. Other
+unfinished source-bound preparation runs also refuse it. A different completed
+preparation with a still source-compatible unfinished exchange, including one
+without an exchange status yet, blocks the transition. This check uses the
+claim's original source baseline even during a partly installed retry. Historical
+failed exchanges already incompatible with that source retain their original
+evidence and source-chain rejection; their frozen chains must still validate.
+They are not reopened by a later repair.
+Neighboring planning, numerical, account, execution and UI sources remain outside
+this boundary. The helper never stops or restarts a trader.
+An account-snapshot adapter change binds its exact reviewed before/after hash in
+`adapter_sources.nightly_account_snapshot.py`, alongside the unchanged original
+binding anchor. It does not execute account capture or change snapshot bytes.
+The ownership adapter remains outside the supported change scope.
+
+Capture rechecks original source, candidate source, protected inputs and passing
+check logs before binding the completion record. Installation rechecks the
+frozen source and check evidence before recording its applied receipt. Preserve
+the same claim and exact inputs when resuming an interrupted operation.
+Framework development may be published while a required peer reader correction
+is pending, but leave the claim's completion record null and do not prepare or
+apply that incomplete composite. Once all required source is reviewed, test and
+publish the exact final composite, then bind its actual completion record once.
 
 `apply` takes the frozen specification path and exact owner. It accepts only the
 reviewed before/after bytes and can resume an interrupted installation. The
