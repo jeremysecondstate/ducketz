@@ -174,6 +174,84 @@ def _allocation_timestamp(value):
         return None
 
 
+def _intraday_ownership(connection, metadata, allocations, reservations):
+    """Read exact native SELL attribution without opening a writable ledger.
+
+    A 15m order can sell several existing horizon lots. Its parent allocation
+    is not the owner of every share; every fill and pending slice must balance
+    before any of those lots can be used for informational planning.
+    """
+    tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    required = {"intraday_streams", "intraday_sell_slices", "intraday_fill_attribution"}
+    intraday = {row["id"] for row in allocations if row["horizon"] == "15m"}
+    if not intraday and not tables.intersection(required):
+        return set(), {}, {}
+    if not required.issubset(tables) or metadata.get("intraday_accounting_version") != "account-shares-attribution-v1":
+        raise ValueError("INVALID_INTRADAY_OWNERSHIP_SCHEMA")
+    owners = {row["id"]: row for row in allocations}
+    orders = {row["id"]: row for row in reservations}
+    streams = {}
+    for row in connection.execute("SELECT kind,id,stream FROM intraday_streams"):
+        key = (row["kind"], row["id"])
+        records = owners if row["kind"] == "allocation" else orders if row["kind"] == "reservation" else {}
+        record = records.get(row["id"])
+        allocation = row["id"] if row["kind"] == "allocation" else record["allocation"] if record else None
+        if key in streams or record is None or allocation not in intraday or row["stream"] != "atlas-15m":
+            raise ValueError("INVALID_INTRADAY_OWNERSHIP_STREAM")
+        streams[key] = row["stream"]
+    if (any(("allocation", identity) not in streams for identity in intraday)
+            or any(("reservation", identity) not in streams for identity, row in orders.items()
+                   if row["allocation"] in intraday)):
+        raise ValueError("INTRADAY_OWNERSHIP_STREAM_MISSING")
+    slices, slice_totals = {}, {}
+    for row in connection.execute("SELECT reservation,allocation,quantity,ordinal FROM intraday_sell_slices"):
+        order, owner = orders.get(row["reservation"]), owners.get(row["allocation"])
+        quantity, ordinal = _whole(row["quantity"]), _whole(row["ordinal"])
+        key = (row["reservation"], ordinal)
+        if (order is None or owner is None or order["side"] != "SELL" or quantity <= 0
+                or order["allocation"] not in intraday or key in slices
+                or owner["symbol"] != owners[order["allocation"]]["symbol"]):
+            raise ValueError("INVALID_INTRADAY_OWNERSHIP_SLICE")
+        slices[key] = (row["allocation"], quantity)
+        slice_totals[row["reservation"]] = slice_totals.get(row["reservation"], 0) + quantity
+    sliced = set(slice_totals)
+    for identity, order in orders.items():
+        if order["allocation"] in intraday and order["side"] == "SELL":
+            if slice_totals.get(identity) != _whole(order["quantity"]):
+                raise ValueError("INTRADAY_OWNERSHIP_SLICES_INCOMPLETE")
+    fills = {row["id"]: row for row in connection.execute("SELECT id,reservation,quantity FROM fills")}
+    charged, fill_totals, seen = {}, {}, set()
+    for row in connection.execute("SELECT fill,allocation,slice_ordinal,quantity FROM intraday_fill_attribution"):
+        fill = fills.get(row["fill"])
+        quantity, ordinal = _whole(row["quantity"]), _whole(row["slice_ordinal"])
+        key = (fill["reservation"], ordinal) if fill else None
+        unique = (row["fill"], ordinal)
+        if (key not in slices or unique in seen or quantity <= 0
+                or slices[key][0] != row["allocation"]):
+            raise ValueError("INVALID_INTRADAY_OWNERSHIP_FILL")
+        seen.add(unique)
+        charged[key] = charged.get(key, 0) + quantity
+        fill_totals[row["fill"]] = fill_totals.get(row["fill"], 0) + quantity
+    order_fills = dict.fromkeys(sliced, 0)
+    for identity, fill in fills.items():
+        if fill["reservation"] in sliced:
+            quantity = _whole(fill["quantity"])
+            if quantity <= 0 or fill_totals.get(identity) != quantity:
+                raise ValueError("INTRADAY_OWNERSHIP_FILL_INCOMPLETE")
+            order_fills[fill["reservation"]] += quantity
+    if any(quantity != _whole(orders[identity]["filled"]) for identity, quantity in order_fills.items()):
+        raise ValueError("INTRADAY_OWNERSHIP_FILLS_DO_NOT_BALANCE")
+    debits, pending = {}, {}
+    for key, (owner, quantity) in slices.items():
+        filled = charged.get(key, 0)
+        if filled > quantity:
+            raise ValueError("INTRADAY_OWNERSHIP_FILL_EXCEEDS_SLICE")
+        debits[owner] = debits.get(owner, 0) + filled
+        if orders[key[0]]["status"] in _OPEN:
+            pending[owner] = pending.get(owner, 0) + quantity - filled
+    return sliced, debits, pending
+
+
 def _ownership(root, symbols, identity, held, observed):
     path = Path(root).resolve() / _LEDGER_PATH
     if not path.is_file():
@@ -201,8 +279,10 @@ def _ownership(root, symbols, identity, held, observed):
                 "SELECT id,account,symbol,horizon,start,end,status FROM allocations"
             ).fetchall()
             reservations = connection.execute(
-                "SELECT allocation,side,quantity,price,filled,status FROM reservations"
+                "SELECT * FROM reservations"
             ).fetchall()
+            sliced, intraday_debits, intraday_pending = _intraday_ownership(
+                connection, metadata, allocations, reservations)
             blocks = connection.execute("SELECT symbol FROM blocks").fetchall()
             latest = connection.execute(
                 "SELECT rowid AS sequence,observed_at,ready,payload,owned FROM snapshots ORDER BY observed_at DESC LIMIT 1"
@@ -219,7 +299,7 @@ def _ownership(root, symbols, identity, held, observed):
         reasons, active, by_id = set(), [], {}
         for item in allocations:
             if (item["account"] != identity or item["symbol"] not in symbols
-                    or item["horizon"] not in _HORIZONS
+                    or item["horizon"] not in _HORIZONS | {"15m"}
                     or item["status"] not in {"ACTIVE", "CLOSED"}):
                 raise ValueError("INVALID_LEDGER_ALLOCATION")
             start, end = _allocation_timestamp(item["start"]), _allocation_timestamp(item["end"])
@@ -230,6 +310,8 @@ def _ownership(root, symbols, identity, held, observed):
                 "owned_shares": 0, "reserved_buy_shares": 0, "reserved_sell_shares": 0,
                 "target_start": start, "target_end": end,
                 "status": item["status"]}
+            if item["horizon"] == "15m":
+                by_id[item["id"]]["stream"] = "atlas-15m"
         assignment_map = {item["id"]: item for item in assignments}
         net_transfers = {symbol: 0 for symbol in symbols}
         released_by_id = {}
@@ -261,16 +343,22 @@ def _ownership(root, symbols, identity, held, observed):
             quantity, filled = _whole(item["quantity"]), _whole(item["filled"])
             if quantity <= 0 or filled > quantity:
                 raise ValueError("INVALID_LEDGER_FILL")
-            allocation["owned_shares"] += filled * (1 if item["side"] == "BUY" else -1)
+            is_sliced = bool(sliced) and item["id"] in sliced
+            if not is_sliced:
+                allocation["owned_shares"] += filled * (1 if item["side"] == "BUY" else -1)
             if item["status"] in _OPEN:
                 key = "reserved_buy_shares" if item["side"] == "BUY" else "reserved_sell_shares"
-                allocation[key] += quantity - filled
+                if not is_sliced:
+                    allocation[key] += quantity - filled
                 if item["side"] == "BUY" and quantity > filled:
                     price = Decimal(str(item["price"]))
                     if not price.is_finite() or price <= 0:
                         raise ValueError("INVALID_LEDGER_RESERVATION_PRICE")
                     reserved_buy_cash[allocation["symbol"]] += (quantity - filled) * price
                 reasons.add("PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION")
+        for allocation_id, allocation in by_id.items():
+            allocation["owned_shares"] -= intraday_debits.get(allocation_id, 0)
+            allocation["reserved_sell_shares"] += intraday_pending.get(allocation_id, 0)
         owned = {symbol: 0 for symbol in symbols}
         active_keys = set()
         for item in by_id.values():
