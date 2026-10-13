@@ -220,6 +220,40 @@ def test_explicitly_stopped_session_with_complete_absence_is_not_loaded_code_pro
     assert {str(path):path.read_bytes() for path in case.root.rglob("*") if path.is_file()} == before
 
 
+@pytest.mark.parametrize("terminal", ["STOPPED", "FAILED"])
+def test_legacy_terminal_atlas_status_without_pc_requires_independent_absence(case, terminal):
+    case.status.pop("pc")
+    case.status["status"] = terminal
+    write_json(case.root/writer.STATUS_PATH, case.status)
+    (case.root/writer.LOCK_PATH).unlink()
+    original = (case.root/writer.STATUS_PATH).read_bytes()
+    calls = []
+    def inventory(): calls.append(1); return []
+    result = read(case, process_inventory=inventory)
+    assert result["ready"] and result["compatibility_state"] == "absent"
+    assert result["loaded_code_proven"] is False and len(calls) == 2
+    assert (case.root/writer.STATUS_PATH).read_bytes() == original
+    assert not (case.root/writer.HEARTBEAT_PATH).exists()
+
+
+@pytest.mark.parametrize("damage", ["wrong_pc", "null_pc", "wrong_schema", "running", "lock", "process", "late_process"])
+def test_legacy_terminal_format_does_not_bypass_identity_lock_or_process_checks(case, damage):
+    case.status.pop("pc")
+    case.status["status"] = "STOPPED"
+    if damage == "wrong_pc": case.status["pc"] = "Scout"
+    elif damage == "null_pc": case.status["pc"] = None
+    elif damage == "wrong_schema": case.status["schema_version"] = "manual-scout-15m-session-v1"
+    elif damage == "running": case.status["status"] = "RUNNING"
+    write_json(case.root/writer.STATUS_PATH, case.status)
+    if damage != "lock": (case.root/writer.LOCK_PATH).unlink()
+    observations = iter([[], [case.process]])
+    inventory = (lambda: next(observations)) if damage == "late_process" else (
+        lambda: [case.process] if damage == "process" else [])
+    result = read(case, process_inventory=inventory)
+    assert not result["ready"] and result["compatibility_state"] == "blocked"
+    assert "proof_sha256" not in result
+
+
 def test_missing_heartbeat_alone_and_stale_or_malformed_lock_never_prove_absence(case):
     for text in ("pid=123\n", "", (case.root/writer.LOCK_PATH).read_text()):
         (case.root/writer.LOCK_PATH).write_text(text)
