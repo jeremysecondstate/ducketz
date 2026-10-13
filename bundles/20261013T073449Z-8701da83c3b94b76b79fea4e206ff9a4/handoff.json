@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T07:34:49.639425Z",
+  "id": "20261013T073449Z-8701da83c3b94b76b79fea4e206ff9a4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Fail closed on unsupported admission server TLS contexts while preserving actual client truststore support."
+}
