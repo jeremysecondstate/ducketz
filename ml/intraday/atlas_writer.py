@@ -249,8 +249,12 @@ def read_atlas_runtime_compatibility(datastore, repository, *, as_of=None, now=N
             if (root/LOCK_PATH).exists():
                 return reject("ATLAS_MANUAL_LOCK_WITHOUT_VERIFIED_WRITER")
             status = _read(root/STATUS_PATH) if (root/STATUS_PATH).exists() else None
+            # Legacy Atlas terminal records predate the explicit pc field.
+            # Only a missing field is compatible; a supplied wrong identity
+            # remains invalid, and both inventories plus lock checks still apply.
             if status is not None and (status.get("schema_version") != "manual-atlas-15m-session-v1"
-                    or status.get("pc") != "Atlas" or status.get("status") not in {"STOPPED", "FAILED"}):
+                    or ("pc" in status and status["pc"] != "Atlas")
+                    or status.get("status") not in {"STOPPED", "FAILED"}):
                 return reject("ATLAS_SESSION_ABSENCE_UNVERIFIED")
             if _candidates(process_inventory()) or (root/LOCK_PATH).exists():
                 return reject("ATLAS_INVENTORY_CHANGED_DURING_CHECK")
