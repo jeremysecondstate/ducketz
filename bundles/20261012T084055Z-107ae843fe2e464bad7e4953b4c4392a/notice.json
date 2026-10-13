@@ -1,0 +1,34 @@
+{
+  "author": "Atlas",
+  "branch": null,
+  "change_id": "20261012T083823Z-2372c77e7dbf45edbbd862de53d636ce",
+  "files": [
+    "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md",
+    "tests/check_markdown_documents.py"
+  ],
+  "limitations": [
+    "Documentation hygiene and source inventory review only; no training, model performance, probability compatibility or runtime verification.",
+    "The separate referenced design remains independently owned documentation; this publication contains the architecture request and its offline checker.",
+    "The architecture draft and reused checker are new paths relative to the reviewed main base. Existing local draft prose is preserved."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/commit/6ce10db336a46348ba79914d19a38ce051db958a"
+  ],
+  "local_installation": "The requested local architecture document has matching reviewed bytes. Peer installation and runtime behavior are unverified.",
+  "main_sha": "6ce10db336a46348ba79914d19a38ce051db958a",
+  "peer_applicability": "Atlas and Scout use the same proposed registry. This document update does not implement or enable any model.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Documentation only. No application implementation, fitted model export, provider access, training, schedules, trading or runtime deployment.",
+  "scope": "shared",
+  "source_sha": null,
+  "summary": "Atlas expanded the 15-minute architecture model registry from reviewed prior model code; documentation checks pass and the change is published on main.",
+  "tests": [
+    {
+      "check": "Offline Markdown hygiene for the architecture document",
+      "completed_at_utc": null,
+      "exit_code": null,
+      "output_sha256": null,
+      "started_at_utc": null
+    }
+  ]
+}

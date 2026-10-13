@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-12T08:40:55.580084Z",
+  "id": "20261012T084055Z-107ae843fe2e464bad7e4953b4c4392a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas expanded the 15-minute architecture model registry from reviewed prior model code; documentation checks pass and the change is published on main."
+}
