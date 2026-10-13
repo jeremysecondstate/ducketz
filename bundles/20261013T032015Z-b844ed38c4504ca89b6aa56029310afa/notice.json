@@ -1,0 +1,83 @@
+{
+  "author": "Scout",
+  "base_commit": "27067199b133118816de35e93e7ebbae3c167721",
+  "branch": "codex/scout/20261013T030409Z-9d95689ecbd54ff999c6a89f8e8b28e1",
+  "change_id": "20261013T030409Z-9d95689ecbd54ff999c6a89f8e8b28e1",
+  "commit_sha": "b294b8c263c58bef0ce8c8841ce4d38c21abe389",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_journal.py",
+      "sha256": "cd4f5d3b1ddc655871496ba72754fcdf844b2968f635e596a10c0c51cfa17b49"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scout_journal.py",
+      "sha256": "ff000617108e39a54585b03730d8931c96c5e434b0033d64dae5243146cf9bc4"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_books.py",
+      "sha256": "d711cf0cca7ddc76a4b5d6afebd38c8f807f26cd83938078f515db762e206ee0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_books.py",
+      "sha256": "096d8cf256062a6d834ac08bf643757685ec967a4f5eeb2a3223edcc25fbc2b6"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_runtime_gate.py",
+      "sha256": "c4401110f06bcba58933e804ba779baafbccb7aa1c585ea23aefab541e1305d3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_runtime_gate.py",
+      "sha256": "c951103a7069e0ec3eb31a8858e48a9e1112f53cc529d0dfa8c1e472adb6d5a7"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-scout-submission-contract.md",
+      "sha256": "348c4fbec81fa8ebb3db5210e1937a8b724466d43eefac7d8f989bdcbda554f0"
+    }
+  ],
+  "limitations": [
+    "Atlas service, Scout production executor/transport wiring, private authenticated bindings and loaded-writer verification remain pending.",
+    "This checkpoint is completed recovery/gating code, not manual-start readiness. No production broker/provider connection, worker start/reload or live order was performed.",
+    "Legacy private journals require an explicit recognized schema migration. No existing production journal was migrated in preparation.",
+    "No main merge or loaded-runtime claim."
+  ],
+  "peer_applicability": "Atlas retains authenticated shared admission and native-ledger ownership; Scout owns local books, submission/cancellation journal and final local gates. Original-session binding and one-use claims persist across reloads; cancellation acknowledgment alone never establishes terminal evidence or authority capacity release.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/84",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Seven reviewed paths installed with expected-before checks; 127 dependency fingerprints match and 123 imported repository files match the published test closure. Prior installation receipt, existing guarded launcher, private binding, Git index and unrelated running workers were preserved. No production journal was opened, migrated or created.",
+  "scope": "shared",
+  "summary": "Scout published and locally installed the reviewed original-session books, exact-ID order lifecycle journal and final local submission gate checkpoint. Full production integration remains in progress.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T03:04:37.232283Z",
+      "output_sha256": "7c67fd13a5328e0095b8b976630f6f2967e85036cc7e7b9bdbfdfc37c8415697",
+      "passed": 638,
+      "skipped": 0,
+      "stage": "queue",
+      "started_at_utc": "2026-10-13T03:04:09.517551Z"
+    },
+    {
+      "completed_at_utc": "2026-10-13T03:05:42.314288Z",
+      "output_sha256": "ecc10c9a4c156026c816d88174538b0ac683624767717cb3b75f200c199df92b",
+      "passed": 638,
+      "skipped": 0,
+      "stage": "isolated",
+      "started_at_utc": "2026-10-13T03:05:14.553653Z"
+    },
+    {
+      "completed_at_utc": "2026-10-13T03:19:01.517798+00:00",
+      "output_sha256": "e76609e86d5b635712c98ac22a8dfd8e0423652e6e54b7a164800bb0e4459a61",
+      "passed": 638,
+      "skipped": 0,
+      "stage": "installed",
+      "started_at_utc": "2026-10-13T03:18:30.834215+00:00"
+    }
+  ]
+}

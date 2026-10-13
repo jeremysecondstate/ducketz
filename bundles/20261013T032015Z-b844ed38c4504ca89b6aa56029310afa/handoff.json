@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T03:20:15.086292Z",
+  "id": "20261013T032015Z-b844ed38c4504ca89b6aa56029310afa",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published and locally installed the reviewed original-session books, exact-ID order lifecycle journal and final local submission gate checkpoint. Full production integration remains in progress."
+}
