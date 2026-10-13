@@ -147,6 +147,135 @@ def application_apply(application, spec):
         owner="Scout source reconciliation", reviewed=True, now=NOW)
 
 
+HOST_APPLICATION_PATHS = ("ml/account_gameplan/authority.py", "ml/account_gameplan/execution.py",
+                          "ml/stock_trader/horizon_ledger.py", "tools/nightly_exchange.py")
+
+
+def application_host_source(application, names=HOST_APPLICATION_PATHS):
+    value = repair._read(application["input"])
+    record_path = Path(value["completion_record"]["path"])
+    publication_path = Path(value["publication"]["path"])
+    record, publication = repair._read(record_path), repair._read(publication_path)
+    for name in names:
+        target = application["candidate"] / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("# exact published host dependency " + name + "\n")
+        before = application["repo"] / name
+        before_hash = file_checksum(before) if before.exists() else None
+        after_hash = file_checksum(target)
+        value["operations"][name] = {"operation": "add" if before_hash is None else "modify",
+                                    "before_sha256": before_hash, "after_sha256": after_hash}
+        record["fingerprints"][name] = after_hash
+        application["blobs"][(publication["commit_sha"], name)] = after_hash
+    record["tests"][0]["tested_fingerprints"] = record["fingerprints"]
+    write(record_path, record)
+    value["completion_record"]["sha256"] = file_checksum(record_path)
+    publication["record_sha256"] = file_checksum(record_path)
+    write(publication_path, publication)
+    value["publication"]["sha256"] = file_checksum(publication_path)
+    write(application["input"], value)
+    application["request"]["installation_input_sha256"] = file_checksum(application["input"])
+    application["request"]["checks"][0]["source_files"] = repair._inventory(application["candidate"])
+
+
+@pytest.mark.parametrize("path", HOST_APPLICATION_PATHS)
+def test_application_host_exact_path_installs_and_preserves_original_owner(application, path):
+    application_host_source(application, (path,))
+    owner = registry.read(application["work"])
+    spec = application_prepare(application)
+    frozen = repair._read(spec)
+    expected_binding = json.loads(json.dumps(frozen["before_binding"]))
+    if path == "tools/nightly_exchange.py":
+        expected_binding["adapter_sources"]["nightly_exchange.py"] = file_checksum(application["candidate"] / path)
+    assert frozen["after_binding"] == expected_binding
+    assert registry.read(application["work"]) == owner
+    application_apply(application, spec)
+    assert file_checksum(application["repo"] / path) == file_checksum(application["candidate"] / path)
+    assert registry.read(application["work"]) == owner
+    assert repair._binding(application["config"]) == expected_binding
+    from tools import nightly_exchange
+    assert nightly_exchange._local_state(application["config"], application["native"], DAY, "2026-10-08") == application["state"]
+    assert application_apply(application, spec)["status"] == "APPLICATION_TRANSITION_ALREADY_APPLIED"
+
+
+@pytest.mark.parametrize("path", ["ml/account_gameplan/planner.py", "ml/account_gameplan/authority_extra.py",
+    "ml/stock_trader/execution.py", "ml/stock_trader/horizon_ledger_extra.py", "tools/nightly_account_snapshot.py",
+    "tools/nightly_ownership.py"])
+def test_application_host_scope_rejects_neighbors(application, path):
+    application_host_source(application, (path,))
+    with pytest.raises(ValueError, match="scope"):
+        application_prepare(application)
+
+
+def test_application_host_adapter_interrupted_after_write_reuses_exact_binding(application, monkeypatch):
+    application_host_source(application)
+    spec = application_prepare(application)
+    frozen = repair._read(spec)
+    install = repair._install_file
+    def stop_after_adapter(target, raw):
+        install(target, raw)
+        if target.relative_to(application["repo"]).as_posix() == "tools/nightly_exchange.py":
+            raise OSError("injected after adapter write")
+    monkeypatch.setattr(repair, "_install_file", stop_after_adapter)
+    with pytest.raises(OSError, match="after adapter"):
+        application_apply(application, spec)
+    assert repair._binding(application["config"]) == frozen["after_binding"] != frozen["before_binding"]
+    assert repair.pending_claim(application["config"], DAY)
+    monkeypatch.setattr(repair, "_install_file", install)
+    application_apply(application, spec)
+    assert application_apply(application, spec)["status"] == "APPLICATION_TRANSITION_ALREADY_APPLIED"
+    repair.verify_transition(application["config"], application["state"], repair._read(application["original_binding"]))
+
+
+@pytest.mark.parametrize("changed", ["account_config", "other_adapter", "exchange_adapter"])
+def test_application_host_partial_install_rejects_unrelated_binding_drift(application, monkeypatch, changed):
+    application_host_source(application)
+    spec = application_prepare(application)
+    install = repair._install_file
+    def stop_after_adapter(target, raw):
+        install(target, raw)
+        if target.relative_to(application["repo"]).as_posix() == "tools/nightly_exchange.py":
+            raise OSError("partial adapter")
+    monkeypatch.setattr(repair, "_install_file", stop_after_adapter)
+    with pytest.raises(OSError):
+        application_apply(application, spec)
+    monkeypatch.setattr(repair, "_install_file", install)
+    binding = repair._binding
+    def drift(config):
+        value = binding(config)
+        if changed == "account_config":
+            value["account_config_sha256"] = "f" * 64
+        else:
+            value["adapter_sources"]["nightly_ownership.py" if changed == "other_adapter" else "nightly_exchange.py"] = "f" * 64
+        return value
+    monkeypatch.setattr(repair, "_binding", drift)
+    with pytest.raises(ValueError, match="binding changed"):
+        application_apply(application, spec)
+
+
+@pytest.mark.parametrize("which", ["client", "framework"])
+def test_application_host_keeps_local_actor_publication_validation(application, which):
+    application_host_source(application)
+    value = repair._read(application["input"])
+    refs = ({"record": value["completion_record"], "publication": value["publication"]}
+            if which == "client" else application["request"]["framework"])
+    record = repair._read(refs["record"]["path"])
+    record["actor"] = "Atlas"
+    write(Path(refs["record"]["path"]), record)
+    refs["record"]["sha256"] = file_checksum(Path(refs["record"]["path"]))
+    publication = repair._read(refs["publication"]["path"])
+    publication["record_sha256"] = refs["record"]["sha256"]
+    publication["branch"] = "codex/atlas/" + record["id"]
+    write(Path(refs["publication"]["path"]), publication)
+    refs["publication"]["sha256"] = file_checksum(Path(refs["publication"]["path"]))
+    if which == "client":
+        write(application["input"], value)
+        application["request"]["installation_input_sha256"] = file_checksum(application["input"])
+    assert repair._application_publication({"actor": "Atlas"}, refs, {})[0]["actor"] == "Atlas"
+    with pytest.raises(ValueError, match="publication identity"):
+        application_prepare(application)
+
+
 def test_application_transition_preserves_original_owner_receipts_and_pending_state(application, monkeypatch):
     original = application["original_spec"].parent
     preserved = {p: p.read_bytes() for p in (original / "claim.json", original / "spec.json", original / "applied.json",

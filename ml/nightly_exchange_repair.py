@@ -726,7 +726,9 @@ def _application_path(name):
     allowed = (re.fullmatch(r"ml/intraday/[A-Za-z0-9_]+\.py", name)
                or re.fullmatch(r"tests/(?:test_intraday_[A-Za-z0-9_]+|intraday_tls_fixture)\.py", name)
                or name in {"pyproject.toml", "docs/development/intraday-production-interface.md",
-                           "docs/development/scout-15m-manual-start.md"})
+                           "docs/development/scout-15m-manual-start.md",
+                           "ml/account_gameplan/authority.py", "ml/account_gameplan/execution.py",
+                           "ml/stock_trader/horizon_ledger.py", "tools/nightly_exchange.py"})
     if not allowed:
         raise ValueError("Application continuation exceeds reviewed intraday-client scope")
 
@@ -934,6 +936,10 @@ def prepare_application_transition(config, *, claim_path, owner, continuation_id
                      if Path(name).name not in {"state.json", "status.json", "failure.json", "run.json"}}
         immutable[str(prep_path.resolve())] = file_checksum(prep_path)
         immutable.update(frozen)
+        after_binding = json.loads(json.dumps(before_binding))
+        for item in records:
+            if item["path"] == "tools/nightly_exchange.py":
+                after_binding["adapter_sources"]["nightly_exchange.py"] = item["after"]
         spec = {"schema_version": APPLICATION_VERSION, "continuation_id": continuation_id,
             "parent_repair_id": saved["repair_id"], "claim": saved, "claim_path": str(claim_path),
             "claim_sha256": file_checksum(claim_path), "repository_claim": registry.read(native["state_root"]),
@@ -942,7 +948,7 @@ def prepare_application_transition(config, *, claim_path, owner, continuation_id
             "framework_completion_record": helper_record["id"], "changes": records, "checks": evidence,
             "before_files": before_files, "expected_files": expected, "before_entries": entries,
             "before_source": before_source, "after_source": _source_from_files(before_source["commit"], expected),
-            "before_binding": before_binding, "after_binding": before_binding, "protected": protected,
+            "before_binding": before_binding, "after_binding": after_binding, "protected": protected,
             "immutable_inputs": immutable, "rationale": rationale, "runtime_implications": runtime_implications}
         _check_hashes(protected)
         _check_hashes(immutable)
@@ -982,6 +988,7 @@ def apply_application_transition(config, spec_path, *, owner, reviewed=False, no
             raise ValueError("Application source chain changed")
         actual = _inventory(repository)
         normalized = dict(actual)
+        expected_binding = json.loads(json.dumps(spec["before_binding"]))
         bootstrap = next(item for item in spec["changes"] if item["path"] == APPLICATION_HELPER)
         unarmed = actual.get(APPLICATION_HELPER) == bootstrap["before"]
         for item in spec["changes"]:
@@ -991,12 +998,14 @@ def apply_application_transition(config, spec_path, *, owner, reviewed=False, no
                 raise ValueError("Application source differs from exact before/after bytes")
             if unarmed and current != item["before"]:
                 raise ValueError("Client source changed before application helper bootstrap")
+            if item["path"] == "tools/nightly_exchange.py":
+                expected_binding["adapter_sources"]["nightly_exchange.py"] = current
             if item["path"] in spec["expected_files"]:
                 if item["before"] is None:
                     normalized.pop(item["path"], None)
                 else:
                     normalized[item["path"]] = item["before"]
-        if (normalized != spec["before_files"] or _binding(config) != spec["before_binding"]
+        if (normalized != spec["before_files"] or _binding(config) != expected_binding
                 or workflow.source_identity(repository)["commit"] != spec["before_source"]["commit"]):
             raise ValueError("Unrelated application source or binding changed")
         if applied.exists() and result in entries:
