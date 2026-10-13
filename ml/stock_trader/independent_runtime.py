@@ -565,7 +565,11 @@ def run_independent_stock_trader_once(
             return finish("TRADER_INACTIVE_AFTER_BROKER_CAPTURE")
         window = stock_execution_window(timestamp)
         if not window.executable:
-            return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=window.reason)
+            metadata["execution_window_after_capture"] = {"mode": window.mode, "reason": window.reason}
+            # A capture can span a normal broker-session boundary. Preserve the
+            # no-order outcome without classifying the scheduled pause as failure.
+            error = None if window.reason == "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION" else window.reason
+            return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=error)
         state = ledger.snapshot()
         if source_gameplan_run is not None and (source_gameplan_run / "accepted-plan.json").is_file():
             from ml.joint_capital_adoption import read_accepted_joint_plan
