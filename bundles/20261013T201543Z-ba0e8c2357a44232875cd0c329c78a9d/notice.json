@@ -1,0 +1,378 @@
+{
+  "author": "Atlas",
+  "base_commit": "e6e77414dd4f944d5227ceaeb31cc935c5ffdd84",
+  "branch": "codex/atlas/20261013T201011Z-bb838715086b4c07b991a1518f249a4a",
+  "change_id": "20261013T201011Z-bb838715086b4c07b991a1518f249a4a",
+  "commit_sha": "6e83bfd86ca6d41161055062a9819076b9c00679",
+  "completion_id": "20261013T201011Z-bb838715086b4c07b991a1518f249a4a",
+  "completion_record": "20261013T201011Z-bb838715086b4c07b991a1518f249a4a",
+  "completion_records": [
+    "20261013T194458Z-464d36a9261c4a6e895918c87a06e640",
+    "20261013T201011Z-bb838715086b4c07b991a1518f249a4a"
+  ],
+  "current_policy": "https://github.com/jeremysecondstate/atlas-scout/blob/main/coordination/independent-traders.md",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "AGENTS.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/atlas-scheduled-tasks.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/atlas-scout-git-handoff.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-bootstrap.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-common-main.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-communication.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-github-coordination.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/cross-pc-peer-adoption.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/cross-pc-task-matrix.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/independent-traders.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-15m-prototype.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-live-readiness.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-scout-adoption.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-scout-submission-contract.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-scout-update-prompt.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/main-integration-protocol.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/nightly-exchange.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/nightly-operations.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/nightly-workflow.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/trader-order-timeouts.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/trader-rejection-recovery.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/gameplan-stats-tab-design-ui/IMPLEMENTATION.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/gameplan-tab-design-ui/IMPLEMENTATION.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/CURRENT_SYSTEM.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/HOURLY_TRADER_LOOP_C_HANDOFF_PROMPT.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/INDEPENDENT_STOCK_HORIZONS.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/LOOPS_SYSTEM_MIND_MAP.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/LOOP_INVENTORY.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/LOOP_MAP.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/LOOP_RELATIONSHIPS.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/PREDICTION_CONTRIBUTION_MATRIX.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/README.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/RELEVANCE_REVIEW.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/STOCK_TRADER_AUTOMATION.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/STOCK_TRADER_RUNTIME.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/SYSTEM_FUNCTIONALITY.md"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/multiple-pcs.md"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_snapshot.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/cancellation.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/local_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "delete",
+      "path": "ml/intraday/runtime_compatibility.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/nightly_direct_exchange.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_joint_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_synthesis.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_workflow.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/fallback_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_session.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/quote_recovery.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_execution_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_intraday_ownership.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_snapshot.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_session.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_cancellation.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_local_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_runtime.py"
+    },
+    {
+      "operation": "delete",
+      "path": "tests/test_intraday_runtime_compatibility.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_account_snapshot.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_common_union.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_direct_exchange.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_exchange.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_joint_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_stage_repair.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_synthesis.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_workflow.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/gameplan_execution_readiness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/nightly_account_snapshot.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/nightly_exchange.py"
+    },
+    {
+      "operation": "add",
+      "path": "tools/prepare_independent_intraday.py"
+    }
+  ],
+  "limitations": [
+    "Atlas local installation and manual-start preparation are complete. Scout local installation has not been observed by Atlas.",
+    "Private bindings, balances, packets, databases and models are excluded from source publication.",
+    "This is an incremental source PR on the existing PR 92 branch. It does not assert main integration."
+  ],
+  "operating_outcome": "October 13 combined Gameplan synthesis completed and peer output was delivered through the existing private exchange. Atlas local preparation is complete. Subsequent local status and process ancestry show both Atlas traders running through their manual launchers. No trader was started or order submitted by preparation or publication.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/100",
+  "repository": "jeremysecondstate/ducketz",
+  "request_id": "scout-15m-live-readiness-20261012",
+  "runtime_implications": "Under permanent human authority, Scout installs the explicit portable source operations, prepares its independent 15-minute binding, adopts the already-delivered combined Gameplan and updates native nightly prompts and memories. Trader starts remain manual; preparation does not activate them. No cross-trader or network setup dependency applies.",
+  "scope": "Shared Gameplan, nightly preparation and independent local trader behavior; applies to Atlas and Scout.",
+  "summary": "Atlas completed independent traders and permanent nightly Gameplan synthesis; portable source is ready for Scout local installation.",
+  "task": "independent-traders-manual-readiness",
+  "tests": "The independent-trader baseline passed 1,048 offline tests in queue and isolated publication. The subsequent four-file normal-market-pause correction passed 111 focused runtime, session and reporting tests on its final bytes in queue and isolated publication. The final 87 owned operations and dependencies were reviewed."
+}
