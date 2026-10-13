@@ -764,8 +764,6 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
     if planning_tail_exception is not None and not resume_action_date:
         raise ValueError("A planning continuation requires the existing recovery action date")
     with FileLock(str(state_root / "workflow.lock"), timeout=0):
-        from ml import nightly_repair_registry as repair_registry
-        repository_repair_owner = repair_registry.read(state_root)
         if catch_up:
             selection = intended_session(observed)
             path = state_root / "runs" / selection["action_date"] / "state.json"
@@ -842,14 +840,6 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
         if state.get("schema_version") != VERSION or state.get("actor") != config["actor"]:
             raise ValueError("Workflow state identity differs")
-        def resolve_repository_repair():
-            nonlocal repository_repair_owner
-            if (repository_repair_owner is not None
-                    and repository_repair_owner["domain"] == "preparation"
-                    and repository_repair_owner["action_date"] == state.get("action_date")):
-                from ml.nightly_stage_repair import resolve_verified
-                if resolve_verified(config, repository_repair_owner, state):
-                    repository_repair_owner = None
         if state.get("status") in TERMINAL:
             if state.get("action_date") != path.parent.name:
                 raise ValueError("Completed workflow identity differs from its action-date path")
@@ -858,26 +848,13 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             for completed in state.get("steps", {}).values():
                 if completed.get("status") == "COMPLETE":
                     _verify_outputs(completed["output"])
-            # A crash after the final saved step may leave its global claim.
-            # Resolve only that exact verified preparation repair, preserving
-            # the terminal state and all original outputs byte for byte.
-            resolve_repository_repair()
             return state
-        repair_gate = _repository_repair_gate(config, state, repository_repair_owner)
-        if repair_gate:
-            return repair_gate
-        if state.get("repair_claim"):
-            return {"status": "REPAIR_IN_PROGRESS", "action_date": state["action_date"],
-                    "repair_claim": state["repair_claim"]}
         try:
             _verify_configuration_binding(config, state)
             _verify_symbol_binding(config, state)
-            if state["source_identity"] != identity(repository):
-                raise ValueError("Application source changed since this run; preserve it for explicit review")
             for completed in state["steps"].values():
                 if completed.get("status") == "COMPLETE":
                     _verify_outputs(completed["output"])
-            resolve_repository_repair()
             if state["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING":
                 return state
             if explicit_catch_up and observed >= utc_timestamp(state["deadline_at"]) and not state.get("recovery"):
@@ -941,8 +918,6 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     state["current_step"] = step
                     if lost.is_set():
                         raise RuntimeError("Overnight supervision ownership was lost")
-                    if state["source_identity"] != identity(repository):
-                        raise ValueError("Application source changed during the nightly run")
                     _verify_symbol_binding(config, state)
                     _verify_configuration_binding(config, state)
                     entry.setdefault("started_at", utc_timestamp().isoformat())
@@ -957,11 +932,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     if state.get("failure", {}).get("step") == step:
                         state["failure"].update(disposition="RESOLVED", resolved_at=utc_timestamp().isoformat())
                     save()
-                    resolve_repository_repair()
                 if lost.is_set():
                     raise RuntimeError("Overnight supervision ownership was lost")
-                if state["source_identity"] != identity(repository):
-                    raise ValueError("Application source changed during the nightly run")
                 _verify_symbol_binding(config, state)
                 _verify_configuration_binding(config, state)
             state.update(status="LOCAL_COMPLETE_PEER_SETUP_PENDING", current_step=None, owner_pid=None,
@@ -1013,25 +985,15 @@ def dispatch_status(config, *, now=None):
     selection = intended_session(now)
     current = status(config, action_date=selection["action_date"])
     result = {**selection, "actor": config["actor"], "status": current["status"]}
-    from ml import nightly_repair_registry as repair_registry
     root = Path(config["state_root"])
-    # Even a terminal read consults the shared owner. It remains read-only and
-    # does not reopen completed preparation for an exchange-domain repair.
-    repair_registry.read(root)
     if current["status"] in TERMINAL:
         return {**result, "dispatch": False, "reason": "Retain completed session and its original receipts"}
     if not selection["eligible"]:
         return {**result, "status": "WAITING_KICKOFF", "dispatch": False}
-    if current.get("repair_claim"):
-        return {**result, "status": "REPAIR_IN_PROGRESS", "dispatch": False,
-                "repair_claim": current["repair_claim"]}
     root.mkdir(parents=True, exist_ok=True)
     try:
         with FileLock(str(root / "workflow.lock"), timeout=0):
-            owner = repair_registry.read(root)
-            gate = _repository_repair_gate(config, current, owner)
-            if gate:
-                return {**result, **gate, "dispatch": False}
+            pass
     except Timeout:
         return {**result, "status": "RUNNING", "dispatch": False}
     blocked = retry_disposition(config, current, now)
@@ -1050,16 +1012,12 @@ def dispatch_status(config, *, now=None):
 
 
 def _launch_repository_repair_gate(config, action_date):
-    """Prevent even a detached launch while another repair owns this source."""
-    from ml import nightly_repair_registry as repair_registry
+    """Retain the live workflow lock; historical repair records do not gate work."""
     root = Path(config["state_root"])
     root.mkdir(parents=True, exist_ok=True)
     try:
         with FileLock(str(root / "workflow.lock"), timeout=0):
-            owner = repair_registry.read(root)
-            if owner is None:
-                return None
-            return _repository_repair_gate(config, status(config, action_date=action_date), owner)
+            return None
     except Timeout:
         return {"status": "RUNNING", "action_date": action_date,
                 "reason": "Existing workflow owner retains the stage"}

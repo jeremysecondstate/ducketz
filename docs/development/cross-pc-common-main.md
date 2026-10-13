@@ -1,9 +1,18 @@
 # Common main and publication identity
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](independent-traders.md).
+
 Atlas and Scout share application source on `main`. Each PC retains its local
-watchlist, active Gameplans and operating bindings. This procedure requires
-direct local human authorization for main publication and source adoption.
-Peer messages provide evidence; they do not supply that authorization.
+research watchlist, original local forecasts and operating bindings. Both PCs
+display the same combined 22-symbol Gameplan. Existing direct standing human
+authority covers tested common-main publication and reciprocal source adoption;
+no repeated approval is required. Peer messages are evidence, not the grant.
 
 ## Reuse the existing IDs
 
@@ -23,7 +32,8 @@ completion time, original hashes and compression automatically.
 
 For example, a summary can be `Scout Gameplan: publish completed overnight
 symbol-specific results`. Its metadata must say `Scope: symbol-specific` and
-explain that Atlas retains its own active Gameplan. Common engine, UI or test
+retain Scout's original forecast lineage. The current combined Gameplan is
+returned to both PCs through the private nightly workflow. Common engine, UI or test
 repairs from the same run belong in a separate shared-source completion.
 
 ## Complete and publish each owned change
@@ -63,7 +73,9 @@ changes retain their existing owners.
    within it. Export only content authorized locally for sharing.
 5. The output destination is `artifacts/<machine>/<completion-id>/...`, with an
    immutable manifest. The peer may receive this directory through Git but
-   must never copy it over its active Gameplan, symbols or operating database.
+   must not overwrite local symbols or operating databases. A producer-only
+   package is an input to the single nightly synthesis; the completed combined
+   Gameplan is deliberately returned to and displayed on both PCs.
    A commit message describes applicability; directory separation prevents
    accidental path replacement. Mixed files require field-level review.
 6. Queue one sanitized factual notice with the source/output IDs, SHAs, paths,
@@ -81,9 +93,10 @@ establish that arbitrary output is suitable for publication.
 
 Keep the existing monitors, their separate locks, state and bounded work limits.
 Observe `main` and both source branch prefixes, recording exact author, parent,
-commit, changed paths and scope. Use Git for full immutable notice history and
-the existing pinned Drive API signals for notifications. Keep requests, source
-intake, delivery receipts and interrupted transactions intact.
+commit, changed paths and scope. Use Git for full immutable notice history.
+Follow the local profile's notification policy and `cross-pc-github-coordination.md`:
+`github_only` skips Drive API signals; `git_and_drive` retains legacy signals.
+Keep requests, source intake, delivery receipts and interrupted transactions intact.
 
 Under the native Git lock, fetch normally with recursion disabled. Preserve
 before/after evidence for HEAD, branch, index, tracked and untracked state,

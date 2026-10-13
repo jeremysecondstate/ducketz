@@ -1,5 +1,13 @@
 # Running Ducketz on two PCs
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](development/independent-traders.md).
+
 Both PCs share application behavior and common defaults. Each PC keeps its
 authorized stock membership and live operating bindings locally. Source parity,
 task parity and runtime deployment are separate facts.
@@ -81,9 +89,11 @@ Mixed files need field-level classification. A push cannot resolve that review.
 
 Publish completed operating output separately under `artifacts/<machine>/...`
 on `main` with the installed artifact helper. Its manifest records the source
-paths, exact original hashes, compression and scope. A symbol-specific Atlas
-Gameplan remains Atlas's result even though Scout can inspect its Git bytes.
-Do not copy it into Scout's active Gameplan or symbol settings. The helper
+paths, exact original hashes, compression and scope. Each producer-only
+Gameplan retains its original lineage and eleven-symbol research scope. The
+nightly workflow combines the two packages once and deliberately returns the
+same 22-symbol Gameplan to both PCs. Never overwrite either local watchlist or
+private operating database with a producer export. The helper
 rejects `.env` private-key values; never stage `.env` itself.
 
 Each PC's existing five-minute monitors observe author, branch, SHA, changed

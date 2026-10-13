@@ -71,7 +71,7 @@ def _scout_price_only_fixture(root, trade, source):
     assert all(row.quantity is None for row in view.forecasts)
 
 
-def _prepare(tmp_path, monkeypatch, actor):
+def _prepare(tmp_path, monkeypatch, actor, *, local_synthesis=False):
     """Bind synthetic packages to real original worker/feedback artifacts."""
     monkeypatch.setattr(joint_fixture, "DAY", DAY)
     monkeypatch.setattr(joint_fixture, "NOW", NOW)
@@ -144,7 +144,7 @@ def _prepare(tmp_path, monkeypatch, actor):
     monkeypatch.setattr(nightly_readiness.workflow, "status", lambda *_, **kwargs: deepcopy(state))
     # The regression requires frozen verification, never today's changed default pointers.
     monkeypatch.setattr(nightly_readiness.workflow, "_display", lambda *_: pytest.fail("Readiness must not invoke _display"))
-    scout_receipt = nightly_synthesis.run_synthesis(spec, now=NOW)
+    scout_receipt = None if local_synthesis else nightly_synthesis.run_synthesis(spec, now=NOW)
     if actor == "scout":
         return config, state, scout_receipt, spec
     checkout = Path(config["repository"])
@@ -159,6 +159,12 @@ def _prepare(tmp_path, monkeypatch, actor):
     account_path = root / CONFIG
     account_path.parent.mkdir(parents=True)
     _json(account_path, account)
+    if local_synthesis:
+        spec.update(local_actor="atlas", datastore_root=str(root),
+                    state_root=str(tmp_path / "atlas-state"), completion_id="fixture-atlas-synthesis")
+        monkeypatch.setattr(nightly_synthesis, "__file__", str(checkout / "ml/nightly_synthesis.py"))
+        nightly_synthesis.validate_local_profile(spec, profile)
+        return config, state, nightly_synthesis.run_synthesis(spec, now=NOW), spec
     plan_path = Path(scout_receipt["ui_evidence"]["plan_run"]) / "joint-plan.json"
     handoff_spec = {"schema_version": nightly_handoff.VERSION, "completion_id": "fixture-atlas-completion",
         "datastore_root": str(root), "state_root": str(tmp_path / "atlas-state"), "local_actor": "atlas",
@@ -211,6 +217,19 @@ def test_real_completed_adoption_verifies_local_and_combined_readiness_without_m
     assert result["peer_communication_enabled"] is False and result["orders_placed"] == 0
     assert result["receipt_sha256"] == file_checksum(Path(receipt["receipt_path"]))
     assert _bytes(tmp_path) == before
+
+
+def test_atlas_local_synthesis_verifies_real_dated_readiness_without_peer_receipt(tmp_path, monkeypatch):
+    config, state, receipt, spec = _prepare(tmp_path, monkeypatch, "atlas", local_synthesis=True)
+    before = _bytes(tmp_path)
+    result = nightly_readiness.readiness(config, now=NOW)
+    assert result["status"] == "JOINT_READY_LOCAL"
+    assert result["local_ready"] and result["joint_ready"] and result["ui_ready"]
+    assert not result["peer_verified"] and not result["execution_authorized"]
+    assert receipt["local_actor"] == "atlas" and receipt["schema_version"] == nightly_synthesis.VERSION
+    assert nightly_synthesis.run_synthesis(spec, now=NOW) == receipt
+    assert _bytes(tmp_path) == before
+    assert not (tmp_path / "scout-adoption").exists()
 
 
 def test_combined_display_without_completion_receipt_preserves_local_preparation(adopted, tmp_path):

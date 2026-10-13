@@ -37,10 +37,13 @@ MAX_PACKET_BYTES = 40 * 1024 * 1024
 FIELDS = {"schema_version", "actor", "workflow_config", "local_profile", "coordination_active",
           "exchange_root", "state_root", "account_scope_sha256", "owners", "private_exchange_authorized"}
 FILES = {"preparation": {"plan.json", "stats.json"}, "snapshot": {"snapshot.json"},
+         "combined": {"joint-plan.json", "atlas-synthesis-receipt.json", "atlas-plan.json", "atlas-stats.json",
+                      "scout-plan.json", "scout-stats.json"},
          "joint": {"joint-plan.json", "scout-receipt.json", "atlas-plan.json", "atlas-stats.json",
                    "scout-plan.json", "scout-stats.json"}, "accepted": {"atlas-receipt.json"},
          "ownership_request": {"request.json"}, "ownership": {"ownership.json"}}
 SENDERS = {"preparation": {"atlas", "scout"}, "snapshot": {"atlas"}, "joint": {"scout"}, "accepted": {"atlas"},
+           "combined": {"atlas"},
            "ownership_request": {"atlas"}, "ownership": {"scout"}}
 OWNERSHIP_KINDS = {"ownership_request", "ownership"}
 
@@ -921,7 +924,8 @@ def _run_once(config, *, now=None, allow_snapshot_refresh=False):
         return result
 
 
-def run_once(config, *, now=None, allow_snapshot_refresh=False):
+def legacy_run_once(config, *, now=None, allow_snapshot_refresh=False):
+    """Historical reciprocal protocol retained for explicit rollback only."""
     result = _run_once(config, now=now, allow_snapshot_refresh=allow_snapshot_refresh)
     if result.get("status") == "COMPLETE":
         from ml import nightly_exchange_repair as repair
@@ -934,6 +938,12 @@ def run_once(config, *, now=None, allow_snapshot_refresh=False):
             repair.resolve(config, action_date=result["action_date"], owner=owner["owner"],
                            verified_result=result, now=now)
     return result
+
+
+def run_once(config, *, now=None, allow_snapshot_refresh=False):
+    """Publish inputs, then synthesize once on Atlas without a peer roundtrip."""
+    from ml.nightly_direct_exchange import run_once as direct_run_once
+    return direct_run_once(config, now=now)
 
 
 def main(argv=None):

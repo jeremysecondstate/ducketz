@@ -1,51 +1,58 @@
-# Gameplan stock trader
+# Stock trader scheduling and authority
 
-The daytime trader reads the immutable Gameplan created before that action day.
-It does not fetch training data, fit models, or replace predictions during the
-04:00–17:00 America/Los_Angeles action window.
+Reviewed October 11, 2026 on Atlas. The former hourly one-shot plus separate
+13:05 transition schedule is historical. It is not the current independent
+Gameplan session contract. Saved schedules, reviewed source, local installation,
+actual process ownership and completed trading outcomes are separate evidence.
 
-The active Scheduled tasks are `Loops Gameplan Stock Trader — Hourly` at
-04:01–12:01 and 14:01–16:01 on weekdays, and `Loops Gameplan Stock Trader —
-1 p.m. Transition` at 13:05. Both run the existing stock-only command:
+## Current shared contract
 
-```powershell
-.\.venv\Scripts\python.exe -u -m ml.gameplan_stock_trader --datastore-target pc --execute --target-horizon 1h
-```
+Current October 13 operating direction: every night Atlas and Scout each produce their own eleven-symbol Gameplan. Synthesize only those two Gameplans once with one actual cash and stock balance; return the same 22-symbol Gameplan and Stats to both PCs. Atlas may complete synthesis directly without a peer acceptance wait. Atlas runs the combined Gameplan trader and its own 15-minute trader; Scout runs only its own 15-minute trader. All three run and log independently. No cross-trader synthesis, reconciliation, verification, compatibility proof or approval is required. Nightly preparation is permanently authorized; the human manually starts each trader. See [independent traders](../development/independent-traders.md).
 
-They consume the current forward hourly forecast once and perform read-only
-reconciliation afterward. An overlapping 4-hour forecast confirms the hourly
-entry; an opposite actionable direction vetoes the entry. The 16:00 forecast
-covers 16:00–17:00. At 17:00 there is no new forward entry window.
+The Gameplan policy remains `gameplan-direction-current-market-v1`. Its target expiry scores forecasts and does not automatically liquidate signal-driven holdings. Own-order catch-up nets due intentions against that trader's real fills and pending orders. Keep local manual controls and original own order identities.
 
-The universe is AAPL, AMZN, GOOG, MU, NVDA, and SNDK. The current trader uses BUY
-and SELL of owned stock; options execution and short selling are disabled.
-The separate persistent stock and Gameplan activation controls plus `--execute`
-are required. Current account/quote evidence, exposure, cash, spread, order-size,
-exact-once, target deadline, and actual broker-session checks still apply.
-The Gameplan artifact itself has no order authority; only the separate trader
-can consume it under these controls.
+## Archived Atlas saved configuration, October 11
 
-Schwab's actual session includes a five-minute pause after the regular close.
-That pause does not justify rejecting the 13:00–14:00 forecast after trading
-resumes. The September 4 audit found that the current adapter labels its
-13:00 start CLOSED, which then fails the order-session and target-session checks.
-A [proposed correction](audits/2026-09-04/gameplan-session-fix.patch) labels a
-forecast starting at the exchange's regular close as POST. It leaves actual
-broker availability checks intact and applies to the exchange's close rather
-than a hard-coded 13:00 time. It is **prepared and tested, not applied to the
-active trader**. The current five-minute entry grace (ten at 13:00) and live
-schedules have not changed in this supervision update.
+The following schedule observation is historical, including the former guarded-start proposal. It is not current start authority; current preparation leaves each trader for the human's manual launch.
 
-The offline [validation](audits/2026-09-04/gameplan-session-fix-validation.json)
-checks all 13 hourly action slots using September 4's saved Gameplan without
-broker contact. To inspect/apply the prepared source correction manually:
+Read-only inspection found the historical Windows independent stock-session
+registration **disabled**. The old LOG and Saturday review native definitions
+are paused. Preparation now has separate weekday responsibility checkpoints and
+an enabled five-minute Windows dispatcher. Atlas's Trader Representative is
+active at weekday 03:55, then 04:05 hourly through 17:05; the final check observes
+the closed session. The source/handoff supervisors use distinct twenty-minute
+evening and after-midnight windows.
 
-```powershell
-git apply --check --ignore-space-change docs/loops-system-analysis/audits/2026-09-04/gameplan-session-fix.patch
-git apply --ignore-space-change docs/loops-system-analysis/audits/2026-09-04/gameplan-session-fix.patch
-```
+The representative's saved conditional guarded-start authority requires its
+reviewed installed launcher, exact readiness/order-state evidence and respect
+for an explicit operator hold. The documentation audit does not establish that
+launcher's installation or authorize a raw-worker substitute. The user retains
+the [manual launcher](../../Start-Gameplan-Trader.cmd) and trader controls.
+Scout's schedules and responsibilities require Scout's own verified readback.
 
-Overnight acquisition, active training supervision, repair, and saved forecast
-evaluation follow [NIGHTLY_GAMEPLAN.md](NIGHTLY_GAMEPLAN.md). Saturday's review
-follows [WEEKLY_REVIEW_AUTOMATION.md](WEEKLY_REVIEW_AUTOMATION.md). Neither
-Scheduled workflow executes the stock trader or grants options authority.
+Ordinary session entries begin at HH:01, with 13:06 after the broker transition.
+A verified preopening manual worker can wait without broker calls or entry
+claims and load its selected source on wake. Later cycles recheck unfinished
+Gameplan intentions under persistent order identities. These source capabilities
+do not imply an automatic recurring trader start or any actual order.
+
+## Historical transition patch
+
+The September 4 [prepared patch](audits/2026-09-04/gameplan-session-fix.patch)
+and [validation](audits/2026-09-04/gameplan-session-fix-validation.json) explain
+the original one-shot adapter's regular-close/POST labeling issue. Its offline
+result belongs to that saved Gameplan and code context. The October 11 inspected
+legacy helper still delegates to the calendar; current manual execution checks
+the actual broker window. Neither the old patch nor a passing historical test
+proves a current installation. The patch is retained as evidence, with no apply
+instruction in the active scheduling guide.
+
+Earlier fixed symbol lists, one-hour/four-hour confirmation rules and named
+schedule recurrences are historical deployment particulars. Current research
+membership comes from local configuration; combined execution membership comes
+from the exact accepted plan. Options and short selling are not enabled by
+either the old schedule or this refresh.
+
+See [RELEVANCE_REVIEW.md](RELEVANCE_REVIEW.md) for original-byte recovery,
+observation dates, source evidence and limits. This review changed documentation
+only; it did not edit schedules, prompts, bindings, controls or workers.

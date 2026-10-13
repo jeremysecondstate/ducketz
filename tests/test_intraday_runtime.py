@@ -49,18 +49,15 @@ def test_research_membership_rejects_unbound_or_conflicting_scope(tmp_path, chan
     with pytest.raises(ContractError): local_symbols(profile, watch, tmp_path)
 
 
-def test_existing_account_membership_is_checked_without_research_fallback(tmp_path):
+def test_other_trader_configuration_cannot_change_local_research_membership(tmp_path):
     from ml.intraday.runtime import local_symbols
     profile, watch = research_binding(tmp_path)
     binding = tmp_path / "state/account-gameplan/config.json"
     binding.parent.mkdir(parents=True)
-    binding.write_text(json.dumps(dict(machine_id="pc-new", participants={"pc-new": ["AAA", "CCC"]})))
-    with pytest.raises(ContractError, match="ownership disagree"):
-        local_symbols(profile, watch, tmp_path)
-    binding.write_text(json.dumps(dict(machine_id="pc-new", participants={"pc-new": ["BBB", "AAA"]})))
-    assert local_symbols(profile, watch, tmp_path) == ("Scout", ("BBB", "AAA"))
-    binding.write_text("invalid json")
-    with pytest.raises(ValueError): local_symbols(profile, watch, tmp_path)
+    for content in ('invalid json', '{"machine_id":"pc-original"}'):
+        binding.write_text(content)
+        assert local_symbols(profile, watch, tmp_path) == ("Scout", ("AAA", "BBB"))
+        assert binding.read_text() == content
 
 
 @pytest.mark.parametrize("mode", [["--mode", "shadow"], ["--watch"]])
@@ -442,7 +439,7 @@ def test_final_1645_edge_preserves_inputs_without_invented_forecast(tmp_path):
         assert snapshot["next_session_target"] is None and snapshot["candles"]
 
 
-def test_resource_snapshot_counts_real_module_workers_without_exposing_arguments(monkeypatch):
+def test_resource_snapshot_does_not_inspect_other_trader_commands(monkeypatch):
     import ml.intraday.runtime as runtime
     private_argument="private-account-state-must-not-appear"
     workers=[
@@ -463,18 +460,19 @@ def test_resource_snapshot_counts_real_module_workers_without_exposing_arguments
         ("python.exe",[]),
         ("other.exe",["other.exe","-m","ml.gameplan_stock_trader"]),
     ]
-    monkeypatch.setattr(runtime.psutil,"process_iter",lambda fields: iter(
-        [SimpleNamespace(info={"name":name,"cmdline":command}) for name,command in workers]))
+    def inventory(fields):
+        assert fields == ["name"]
+        return iter([SimpleNamespace(info={"name":name}) for name,_ in workers])
+    monkeypatch.setattr(runtime.psutil,"process_iter",inventory)
     monkeypatch.setattr(runtime.psutil,"Process",lambda:SimpleNamespace(
         cpu_times=lambda:SimpleNamespace(user=2,system=3),memory_info=lambda:SimpleNamespace(rss=100)))
     monkeypatch.setattr(runtime.psutil,"virtual_memory",lambda:SimpleNamespace(available=1000))
     monkeypatch.setattr(runtime.psutil,"cpu_percent",lambda interval:0)
     snapshot=runtime.resource_snapshot()
-    assert snapshot["gameplan_worker_processes_observed"]==3
     assert snapshot["process_count"]==len(workers)
     assert snapshot["process_cpu_seconds"]==5
     assert snapshot["process_rss_bytes"]==100
     assert set(snapshot)=={"process_rss_bytes","process_cpu_seconds","system_available_memory_bytes",
-                           "system_cpu_percent","python_process_count","process_count","gameplan_worker_processes_observed"}
+                           "system_cpu_percent","python_process_count","process_count"}
     assert private_argument not in str(snapshot)
     assert "cmdline" not in snapshot and "active_session" not in snapshot

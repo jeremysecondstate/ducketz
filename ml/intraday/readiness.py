@@ -1,11 +1,10 @@
-"""Inspect local 15m prerequisites without starting, enabling or calling anything.
+"""Report local 15m manual-start preparation without starting the trader.
 
-This report distinguishes implemented manual-session source from loaded Gameplan
-compatibility and the fresh preflight needed before any order. It reads saved
-forecast evidence, public source and read-only process/status evidence. It does
+This report describes independent manual-session source and local configuration. It reads saved forecast evidence, local bindings and
+public source. No other trader status, plan, configuration or ledger is read. It does
 not authenticate, train, construct account ledgers, supervise workers or verify
-current provider/broker/quote availability. Only the explicit manual live command
-can perform that preflight; this diagnostic never authorizes or starts trading.
+current provider/broker/quote availability. The manually started session obtains its own market and account data automatically;
+this diagnostic never authorizes or starts trading.
 """
 from __future__ import annotations
 
@@ -24,20 +23,19 @@ from tempfile import TemporaryDirectory
 
 from .execution_policy import submission_gate
 from .prediction import ContractError, PACIFIC, STEP, TARGET_VERSION, digest, instant, number
-from .runtime_compatibility import read_gameplan_runtime_compatibility
+from .local_execution import CONFIG_PATH, load_local_binding
 
-VERSION = "intraday-read-only-readiness-v2"
+VERSION = "intraday-read-only-readiness-v3"
 SYMBOL = re.compile(r"[A-Z][A-Z0-9.-]{0,15}")
 HASH = re.compile(r"[a-f0-9]{64}")
 SOURCE_IDS = {name: f"databento:{name}:ohlcv-1m" for name in ("EQUS.MINI", "XNAS.ITCH")}
-GAMEPLAN_HEARTBEAT_AGE_SECONDS = 120
 PUBLIC_SOURCES = (
     "ml/intraday/readiness.py", "ml/intraday/runtime.py", "ml/intraday/store.py",
     "ml/intraday/execution_policy.py", "ml/intraday/technical_sizing.py",
-    "ml/account_gameplan/authority.py", "ml/account_gameplan/execution.py",
+    "ml/account_gameplan/authority.py", "ml/intraday/local_execution.py",
     "ml/stock_trader/horizon_ledger.py", "ml/stock_trader/horizon_broker.py",
-    "ml/stock_trader/independent_runtime.py", "ml/intraday/cancellation.py",
-    "ml/intraday/runtime_compatibility.py", "ml/intraday/account_execution.py",
+    "ml/intraday/cancellation.py",
+    "ml/intraday/account_execution.py",
     "ml/intraday/live_session.py", "ml/intraday/starter_sizing.py",
     "ml/intraday/capacity.py", "ml/intraday/intentions.py",
     "ml/intraday/models.py", "ml/intraday/data.py", "ml/intraday/prediction.py",
@@ -58,7 +56,7 @@ SOURCE_INTERFACES = {
         "run_manual": {"IntradayAccountExecutor", "SchwabSession", "DatabentoMarketDataProvider", "forecasting_loop", "scoring_loop"},
         "main": {"run_manual", "inspect_readiness"},
         "forecasting_loop": {"run_cycle"}, "scoring_loop": {"observe"}}},
-    "shared_actual_capacity": {"ml/account_gameplan/authority.py": {
+    "local_actual_capacity": {"ml/account_gameplan/authority.py": {
         "AccountAuthority.publish_intraday_snapshot": {"_lease"},
         "AccountAuthority.reserve_intraday": {"_intraday_snapshot", "_intraday_remaining"},
         "AccountAuthority.available_intraday_capacity": {"_intraday_remaining"},
@@ -67,25 +65,22 @@ SOURCE_INTERFACES = {
         "HorizonLedger.reserve_intraday": {"_intraday_schema", "_insert_reservation"},
         "HorizonLedger._snapshot": {"_intraday_share_accounting"},
         "HorizonLedger._apply_order": {"_attribute_intraday_fills"},
-        "HorizonLedger.reservation_stream": {"_stream"}, "HorizonLedger.allocation_stream": {"_stream"}}},
+        "HorizonLedger.reservation_stream": {"_stream"}, "HorizonLedger.allocation_stream": {"_stream"},
+        "OwnOrderLedger.reconcile": {"_apply_order", "_snapshot", "_save_evidence"}}},
     "live_account_adapter": {"ml/intraday/account_execution.py": {
         "IntradayAccountExecutor._account": {"exclusive_runtime_lock", "AccountAuthority", "HorizonLedger", "acquire_lease"},
         "IntradayAccountExecutor._capture": {"capture_order_evidence", "capture_portfolio_state", "publish_intraday_snapshot"},
         "IntradayAccountExecutor._submit": {"reserve_intraday", "submit_prepared_order", "submit", "mark_submission"},
         "IntradayAccountExecutor.step": {"size_forecast", "available_intraday_capacity", "_submit"}}},
-    "shared_cancellation": {"ml/intraday/cancellation.py": {
+    "local_cancellation": {"ml/intraday/cancellation.py": {
         "read_exact_status": {"capture_order_evidence"},
         "CancellationService.request": {"reserve_stream_cancellation", "cancel_prepared_order"},
         "CancellationService.recover": {"_observe"}}},
-    "gameplan_stream_fences": {"ml/stock_trader/independent_runtime.py": {
-        "_cancel_expired_entries": {"gameplan_reservation"}, "_exit_decisions": {"gameplan_allocation"}},
-        "ml/stock_trader/horizon_ledger.py": {"HorizonLedger.due_exits": {"_stream"}}},
     "independent_starter_sizing": {"ml/intraday/starter_sizing.py": {
         "starter_policy": {"ScoreRecipe", "SymbolSizingPolicy"},
         "independent_reference": {"SymbolReference"}, "size_forecast": {"indicator_snapshot", "evaluate_size"}}},
-    "runtime_compatibility_reader": {"ml/intraday/runtime_compatibility.py": {
-        "read_gameplan_runtime_compatibility": {"expected_fingerprints", "verify_runtime_compatibility"},
-        "verify_runtime_compatibility": {"process_reader", "expected_fingerprints"}}},
+    "independent_local_binding": {"ml/intraday/local_execution.py": {
+        "load_local_binding": {"validate_binding"}}},
 }
 
 
@@ -139,13 +134,12 @@ def _bindings(datastore, profile_path, watchlist_path):
                                if line.strip() and not line.lstrip().startswith("#")))
         if set(watch) != set(symbols):
             raise ValueError("Membership mismatch")
-        account_path = datastore / "state/account-gameplan/config.json"
+        account_path = datastore / CONFIG_PATH
         if account_path.exists():
             result["account_binding"] = "invalid"
-            account = _json(account_path)
-            members = _symbols(account["participants"][machine])
-            if account.get("machine_id") != machine or set(members) != set(symbols):
-                raise ValueError("Account membership mismatch")
+            account = load_local_binding(datastore)
+            if account.actor != actor or account.machine_id != machine or set(account.symbols) != set(symbols):
+                raise ValueError("Independent 15m account membership mismatch")
             result["account_binding"] = "membership_verified"
         else:
             result["account_binding"] = "absent_research_only"
@@ -502,13 +496,14 @@ def _source_capabilities(repository):
     explicit_live = bool(main and any(isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute)
         and node.func.attr == "add_argument" and node.args and isinstance(node.args[0],ast.Constant)
         and node.args[0].value == "--live" for node in ast.walk(main)))
+    readiness_exit = ast.dump(ast.parse('0 if result.get("manual_live_start_ready") else 2', mode="eval").body)
     read_only_default = bool(main and any(isinstance(node,ast.If) and isinstance(node.test,ast.UnaryOp)
         and isinstance(node.test.op,ast.Not) and isinstance(node.test.operand,ast.Attribute)
         and node.test.operand.attr == "live" and not any(isinstance(child,ast.Call) and isinstance(child.func,ast.Name)
         and child.func.id in {"run_manual","SchwabSession","DatabentoMarketDataProvider","IntradayAccountExecutor"}
         for statement in node.body for child in ast.walk(statement))
-        and any(isinstance(child,ast.Return) and isinstance(child.value,ast.Constant)
-        and child.value.value == 2 for statement in node.body for child in ast.walk(statement)) for node in ast.walk(main)))
+        and any(isinstance(child,ast.Return) and isinstance(child.value,ast.IfExp)
+        and ast.dump(child.value) == readiness_exit for statement in node.body for child in ast.walk(statement)) for node in ast.walk(main)))
     components["manual_session"]["explicit_live_flag_and_read_only_default_verified"] = explicit_live and read_only_default
     components["manual_session"]["source_interfaces_verified"] = manual and explicit_live and read_only_default
     implemented = all(component["source_interfaces_verified"] for component in components.values())
@@ -516,40 +511,14 @@ def _source_capabilities(repository):
     return {"declaration_basis": "parsed_public_source_interfaces_and_call_wiring_not_loaded_runtime_or_live_preflight",
             "research_forecasting_source_present": all(evidence[path]["present"] for path in ("ml/intraday/runtime.py", "ml/intraday/store.py")),
             "offline_cutoff_replacement_helper_present": evidence["ml/intraday/execution_policy.py"]["present"],
-            "existing_shared_authority_horizons": horizons,
-            "existing_shared_authority_supports_15m": components["shared_actual_capacity"]["source_interfaces_verified"],
-            "live_execution_implemented": implemented, "manual_live_start_ready": False,
+            "local_authority_horizons": horizons,
+            "local_authority_supports_15m": components["local_actual_capacity"]["source_interfaces_verified"],
+            "live_execution_implemented": implemented,
             "missing_integration": missing,
-            "future_scout_integration": ["SCOUT_DISTRIBUTED_RESERVATION_PROTOCOL_NOT_IMPLEMENTED"],
+            "future_scout_integration": [],
             "deferred_research": ["NEXT_ELIGIBLE_SESSION_0400_TARGET_CONTRACT_NOT_SELECTED", "AUTOMATIC_SAME_FORECAST_REPRICING_NOT_ENABLED"],
             "source_component_checks":components,
             "public_source_evidence": evidence}
-
-
-def _runtime_compatibility_probe(datastore, repository, capabilities):
-    """Current process evidence is never backdated to a historical --as-of."""
-    observed = datetime.now(timezone.utc)
-    result = {"status":"not_inspected","ready":False,"loaded_code_proven":False,
-              "observed_at":observed.isoformat(),"maximum_heartbeat_age_seconds":GAMEPLAN_HEARTBEAT_AGE_SECONDS,
-              "orders_placed":0,"workers_changed":False,"reason_codes":[]}
-    if not capabilities["source_component_checks"]["runtime_compatibility_reader"]["source_interfaces_verified"]:
-        return {**result,"reason_codes":["RUNTIME_COMPATIBILITY_SOURCE_UNVERIFIED"]}
-    try:
-        checked = read_gameplan_runtime_compatibility(datastore,repository,as_of=observed.isoformat(),
-            maximum_heartbeat_age_seconds=GAMEPLAN_HEARTBEAT_AGE_SECONDS,allow_verified_absence=True)
-        mode = checked.get("mode")
-        ready = checked.get("ready") is True and (
-            mode == "verified_gameplan_absent" and checked.get("reviewed_installed_code_checked") is True
-            or mode == "loaded_gameplan_verified" and checked.get("loaded_code_proven") is True)
-        reasons = checked.get("reason_codes",[])
-        if not isinstance(reasons,list) or any(not isinstance(item,str) or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,127}",item) for item in reasons):
-            reasons = ["GAMEPLAN_COMPATIBILITY_EVIDENCE_UNAVAILABLE"]
-            ready = False
-        return {**result,"ready":ready,"status":mode if ready else "blocked",
-                "loaded_code_proven":ready and checked.get("loaded_code_proven") is True,
-                "reason_codes":reasons if reasons or ready else ["GAMEPLAN_COMPATIBILITY_EVIDENCE_UNAVAILABLE"]}
-    except (OSError,ValueError,TypeError,KeyError,AttributeError,ImportError,SyntaxError):
-        return {**result,"status":"blocked","reason_codes":["GAMEPLAN_COMPATIBILITY_EVIDENCE_UNAVAILABLE"]}
 
 
 def inspect_readiness(*, repository, datastore, profile, watchlist, as_of=None):
@@ -563,29 +532,22 @@ def inspect_readiness(*, repository, datastore, profile, watchlist, as_of=None):
     binding = _bindings(datastore, profile, watchlist)
     saved = _forecast_store(datastore, binding, now)
     capabilities = _source_capabilities(repository)
-    compatibility = _runtime_compatibility_probe(datastore,repository,capabilities)
     gate = submission_gate(as_of=now, eligible_session=now.astimezone(PACIFIC).date())
     blockers = list(capabilities["missing_integration"])
-    if binding["status"]!="verified" or binding["account_binding"]!="membership_verified" or binding["actor"]!="Atlas":
-        blockers.append("VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED")
-    if not compatibility["ready"]:
-        blockers.extend(compatibility["reason_codes"])
-    if gate.state!="before_submission_cutoff":
-        blockers.append("SUBMISSION_CUTOFF_REACHED")
-    preflight = ["EXPLICIT_MANUAL_LIVE_INVOCATION", "CURRENT_ACCOUNT_CONFIG_AND_CUTOVER_VERIFICATION",
-                 "FRESH_EXACT_ORDER_STATUS_AND_COHERENT_ACCOUNT_RECONCILIATION", "FRESH_SIDE_QUOTE_AND_MANUAL_AUTHORITY_FINAL_GATE",
-                 "NEW_OBSERVED_FULL_ENSEMBLE_FORECAST_AFTER_MANUAL_START", "CURRENT_PROVIDER_COVERAGE_AND_ELIGIBLE_SESSION"]
+    if binding["status"]!="verified" or binding["account_binding"]!="membership_verified":
+        blockers.append("INDEPENDENT_LOCAL_15M_BINDING_MISSING_OR_INVALID")
     return {"schema_version": VERSION, "observed_at": now.isoformat(),
-            "status":"MANUAL_LIVE_PREFLIGHT_REQUIRED" if not blockers else "MANUAL_LIVE_START_BLOCKED",
+            "status":"READY_FOR_MANUAL_START" if not blockers else "MANUAL_LIVE_START_BLOCKED",
             "read_only": True, "live_execution_implemented":capabilities["live_execution_implemented"],
-            "manual_live_source_ready":not blockers,"manual_live_start_ready":False,"manual_live_preflight_required":True,
-            "reason_codes":list(dict.fromkeys(blockers)),"required_live_preflight":preflight,
+            "manual_live_source_ready":not blockers,"manual_live_start_ready":not blockers,"manual_live_preflight_required":False,
+            "reason_codes":list(dict.fromkeys(blockers)),"required_live_preflight":[],
+            "on_manual_start":"The local session obtains current forecasts, quotes, cash, shares and its own order status automatically.",
             "local_binding": binding, "saved_forecasting": saved, "capabilities": capabilities,
-            "gameplan_runtime_compatibility":compatibility,
+            "execution_independence": {"gameplan_required":False,"peer_trader_required":False,"own_ledger_namespace":"intraday/execution"},
             "submission_time": {**asdict(gate), "eligible_session_not_verified": True},
             "provider_availability_verified": False, "broker_reconciliation_performed": False,
             "execution_authorized": False, "activation_changed": False, "orders_placed": 0,
-            "scope": "Saved forecast clocks use the requested as-of; source and runtime evidence are observed now. Source readiness is separate from manual live preflight, order eligibility and model performance."}
+            "scope": "Prepared for manual launch when local source and binding are present. The running session obtains market and account data and applies order timing automatically."}
 
 
 def main(argv=None):
@@ -599,7 +561,7 @@ def main(argv=None):
     result = inspect_readiness(repository=args.repository, datastore=args.datastore, profile=args.profile,
                                watchlist=args.watchlist, as_of=args.as_of)
     print(json.dumps(result, sort_keys=True, allow_nan=False))
-    return 2
+    return 0 if result.get("manual_live_start_ready") else 2
 
 
 if __name__ == "__main__":

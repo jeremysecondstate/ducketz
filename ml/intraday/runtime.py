@@ -47,9 +47,8 @@ class ResearchConfig:
 def local_symbols(profile_path, watchlist_path, datastore):
     """Validate research membership without creating or activating trading state.
 
-    An installed profile and its exact local watchlist bind research on a PC
-    that has no account Gameplan configuration. If account configuration exists,
-    it must also agree; invalid or conflicting account state never falls back.
+    Only the installed local profile and its exact watchlist bind research.
+    Other trader configuration is outside this runtime.
     """
     profile = json.loads(Path(profile_path).read_text(encoding="utf-8"))
     watch = tuple(x.strip() for x in Path(watchlist_path).read_text(encoding="utf-8").splitlines()
@@ -61,18 +60,11 @@ def local_symbols(profile_path, watchlist_path, datastore):
             not symbols or len(set(symbols)) != len(symbols) or
             not watch or len(set(watch)) != len(watch) or set(watch) != set(symbols)):
         raise ContractError("Local profile and watchlist research membership disagree")
-    binding_path = Path(datastore) / "state/account-gameplan/config.json"
-    if not binding_path.exists():
-        pinned_watchlist = profile.get("symbol_profile_path")
-        if not pinned_watchlist or Path(pinned_watchlist).resolve() != Path(watchlist_path).resolve():
-            raise ContractError("Research requires the installed profile's exact local watchlist")
-        return profile["actor"], symbols
-    binding = json.loads(binding_path.read_text(encoding="utf-8"))
-    symbols = tuple(binding["participants"][machine])
-    if (binding["machine_id"] != machine or len(set(symbols)) != len(symbols) or
-            set(watch) != set(symbols) or set(profile["symbols"]) != set(symbols)):
-        raise ContractError("Local profile, watchlist and existing ownership disagree")
+    pinned_watchlist = profile.get("symbol_profile_path")
+    if not pinned_watchlist or Path(pinned_watchlist).resolve() != Path(watchlist_path).resolve():
+        raise ContractError("Research requires the installed profile's exact local watchlist")
     return profile["actor"], symbols
+
 
 
 def _frame(history):
@@ -98,29 +90,10 @@ def resource_snapshot():
     cpu = process.cpu_times()
     # Names and counts only; no account state, worker arguments or private logs.
     processes = [p.info["name"] for p in psutil.process_iter(["name"]) if p.info["name"]]
-    gameplan_workers=0
-    for worker in psutil.process_iter(["name","cmdline"]):
-        try:
-            command=worker.info.get("cmdline") or []
-            module=None
-            argument=1 # cmdline[0] is the Python executable.
-            while argument<len(command):
-                option=command[argument]
-                if option=="-m":
-                    module=command[argument+1] if argument+1<len(command) else None
-                    break
-                if option.startswith(("-c","-m")) or option in {"--","-","-h","--help","-V","--version"} or not option.startswith("-"):
-                    break # Module-like text in script/-c arguments is not a worker.
-                argument+=2 if option in {"-W","-X"} else 1
-            if "python" in (worker.info.get("name") or "").lower() and module in {
-                "ml.gameplan_stock_trader","ml.stock_trader.independent_session","ml.stock_trader.independent_runtime"}:
-                gameplan_workers+=1
-        except (psutil.AccessDenied,psutil.NoSuchProcess):
-            continue
     return dict(process_rss_bytes=process.memory_info().rss, process_cpu_seconds=cpu.user + cpu.system,
                 system_available_memory_bytes=psutil.virtual_memory().available,
                 system_cpu_percent=psutil.cpu_percent(interval=None), python_process_count=sum("python" in n.lower() for n in processes),
-                process_count=len(processes),gameplan_worker_processes_observed=gameplan_workers)
+                process_count=len(processes))
 
 
 def regime_measurements(snapshot):

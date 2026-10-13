@@ -1056,7 +1056,7 @@ def test_legacy_frozen_spec_resumes_under_repository_fence_without_rewriting_spe
     assert repair.verified_resume(env["config"], record, repair.workflow._json(env["state_path"]))
 
 
-def test_claim_first_fences_dispatch_and_prepare_reuses_exact_original(env):
+def test_legacy_claim_first_preserves_original_for_explicit_repair(env):
     env["config"]["automatic_recovery"] = {"enabled": True, "authorization": "Standing repair authority", "max_attempts": 3}
     original = env["state_path"].read_bytes()
     first = claim(env)
@@ -1064,9 +1064,6 @@ def test_claim_first_fences_dispatch_and_prepare_reuses_exact_original(env):
     assert Path(first["claim_path"]).parent.joinpath("before-state.json").read_bytes() == original
     assert not Path(first["claim_path"]).parent.joinpath("spec.json").exists()
     claimed = env["state_path"].read_bytes()
-    assert repair.workflow.dispatch_status(env["config"], now=NOW)["status"] == "REPAIR_IN_PROGRESS"
-    assert repair.workflow.run_workflow(env["config"], catch_up=True, now=NOW, supervise=False,
-        execute_step=lambda *a: pytest.fail("claimed repair cannot dispatch"))["status"] == "REPAIR_IN_PROGRESS"
     assert claim(env) == first
     assert env["state_path"].read_bytes() == claimed
     with pytest.raises(ValueError, match="Another repair owner"):
@@ -1206,7 +1203,9 @@ def test_actual_frozen_tail_repair_resumes_native_planning_without_retraining(re
     assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
     assert latest.read_bytes() != original_selector
     assert (spec.parent / "selectors/overnight-latest-run.json").read_bytes() == original_selector
-    assert repair.registry.read(config["state_root"]) is None
+    # Ordinary completion preserves the historical source-repair claim; it no
+    # longer requires or invokes the separate audited repair-resolution route.
+    assert repair.registry.read(config["state_root"])["owner"] == "Atlas/planning"
     for field in ("run_id", "deadline_at", "recovery_deadline_at", "planning_tail_continuation"):
         assert result[field] == before[field]
     for name in ("prepare_stats", "model_review"):

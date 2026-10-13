@@ -1,78 +1,18 @@
-# Atlas intraday 15m forecasting and manual execution implementation
+# Intraday forecasting and independent manual execution implementation
 
-The original structural fixture implements behavior from the
-[saved design, PR #28](https://github.com/jeremysecondstate/ducketz/pull/28),
-source commit `9d4ca66858d148cdbeaeee46e4031428ca6d15d1`. Its authoritative
-consolidated design is now
-[INTRADAY_15M_SYSTEM_DESIGN.md](../15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md),
-with the [ensemble proposal](../15m-trading-system/15M-ARCHITECTURE-CHANGE.md)
-and October 12 human clarifications incorporated. The current build adds genuine
-independent fitting, durable shadow/replay/live forecasts, delayed scoring, a
-read-only tab and an explicit manual Atlas execution path. Old fixtures do not
-establish trained-model performance or override the later independent sizing
-and actual-capacity contract. Implemented source and offline checks remain
-distinct from installation, loaded compatibility and a live run.
+Jeremy's October 13, 2026 standing direction defines three independent traders. Atlas runs the combined 22-symbol Gameplan trader and Atlas's local eleven-symbol 15-minute trader. Scout runs its own eleven-symbol 15-minute trader. Each trades and logs its own activity with its own local state. No trader checks, verifies, reconciles, combines, or depends on another trader.
 
-Actor: Atlas. Producer: human-authorized-development. Task:
-intraday-ensemble-build. Shared source is applicable to both PCs;
-the implemented execution scope is Atlas first. Source publication, main
-integration, local installation and loaded runtime deployment are distinct.
+Only the two nightly eleven-symbol Gameplans are synthesized. Use one actual account cash/stock balance, publish the same combined Gameplan and Stats on both PCs, and prepare the traders every night under permanent authorization. Atlas may synthesize directly and return the completed result to Scout without an acceptance wait. The human manually starts each trader. See [Independent trading systems](independent-traders.md).
 
 ## Components and offline verification
 
-The old structural modules use the standard library. The new ensemble modules
-use the existing NumPy/pandas/scikit-learn/XGBoost/joblib/psutil environment.
-The manual adapter additionally reuses existing stock-trader contracts,
-account configuration, shared authority, native ledger, prepared Schwab
-transport and stream-fenced Gameplan dependencies. The current Gameplan's
-combined 22-symbol nightly stream and four horizons retain their operating
-bindings. `Check-15m-Readiness.cmd` is read-only; `Start-15m-Trader.cmd` is an
-explicit human manual launcher capable of real orders after runtime gates.
-No schedule, live session or production-worker restart was performed here.
+The established forecasting modules retain the causal prediction contract, independent model fitting, technical sizing, immutable store, delayed scoring, evaluation and read-only UI. Numerical code uses the existing NumPy/pandas/scikit-learn/XGBoost/joblib environment.
 
-| Component | Implemented behavior |
-|---|---|
-| `prediction.py` | Opening-time completed candles, actual availability, immutable quarter-hour issues, exact not-down targets and append-only outcome evidence. |
-| `sizing.py` | Retained legacy hourly-reference fixture multiplication and configurable rounding; not the current live size scale. |
-| `technical_sizing.py` / `starter_sizing.py` | Modern frozen-snapshot causal indicators, approved independent 1.5%-equity/side-price scale, nine-term per-symbol BUY/SELL score, half-up desired shares and complete immutable explanations. |
-| `capacity.py` / `intentions.py` | Actual whole-share capacity clipping and append-only desired/adjusted/order projections, including null sizing and zero capacity; forecasts are never rewritten. |
-| `account_execution.py` | Bounded shared native/account admission and prepared broker steps, exact-identity recovery, stream-specific supersession and final manual/cutoff/identity gates. |
-| `live_session.py` / `Start-15m-Trader.cmd` | Explicit Atlas manual session, latest-completed/no-backlog forecasting, persistent execution/retry queues and independent scoring; no scheduler or Scout activation. |
-| `runtime_compatibility.py` | Loaded compatible Gameplan proof or independently verified worker absence, preserving actual process/lock/code identities. |
-| `readiness.py` / `Check-15m-Readiness.cmd` | Read-only source/binding/runtime/saved-evidence checks, separating source readiness from fresh broker preflight; no provider/broker calls or trader start. |
-| `book.py` | Host-local offline account book with atomic reservations, exact identities, allocation ownership, fill attribution, account/exposure headrooms and durable history. |
-| `execution.py` | Explicit mock venue seam, contemporaneous quotes, ask-BUY/bid-SELL proposal, unknown-submission recovery, status retries and cancellation reconciliation. |
-| `cancellation.py` | Explicit 15m stream/reason policy using existing prepared Schwab DELETE and exact status evidence; acknowledgment never releases commitment by itself. |
-| `execution_policy.py` | Pure offline decisions for the strict Pacific submission cutoff and reconciliation before a new forecast replaces an unfilled intention; no broker or book mutation. |
-| `prototype.py` | Original explicit fixture runner, local binding checks, frozen sizing explanation and mock instruction mechanics. It is not the trained ensemble runner. |
-| `data.py` | Exact targets, causal features and matured labels, single-source local history, anchored acquisition, persistent interval recovery and evidence-backed no-trade constituents. |
-| `models.py` | Fresh independent fits, real probability interfaces, model/source/data/configuration versions, immutable local fitted artifacts and per-model failure/timing records. |
-| `store.py` | Immutable cycle snapshots and forecasts, append-only candle/outcome revisions, intentions including zero capacity, and operational cycle events in host-local SQLite. |
-| `runtime.py` | Full enabled ensemble retraining every 15m research cycle, immediate per-symbol persistence, durable partial-cycle recovery, automatic available-outcome scoring and workload measurements. |
-| `evaluation.py` | Purged chronological validation and point-in-time walk-forward comparisons on common timestamps with explicit retraining schedules/windows. |
-| `telemetry.py` | Minimal forecast/score monitoring packets, strict peer identity and schema validation, immutable receipts, producer-based freshness and serialized concurrent admission. |
-| `app/ui/intraday*.py` | Read-only 15-Minute Duckets tab with model probability bars, matrix, metrics, calibration, disagreement, diagnostics, timing and freshness. |
+`local_execution.py` supplies this PC's `intraday/execution/config.json` and separate holdings/authority state. `account_execution.py` uses that local state and the prepared broker transport. `live_session.py` runs only this local manual session. `readiness.py` describes only this trader's own setup. The former `runtime_compatibility.py` cross-trader gate is removed.
 
-Run the focused offline checks using the project's Python environment:
+Gameplan has separate state in `state/gameplan-trader/`. Each worker records its own actual order responses/fills and reads current broker account capacity; no shared trading ledger, remote grant or cross-trader order reconciliation is involved.
 
-```text
-python -B -m pytest tests/test_intraday_prediction.py tests/test_intraday_book.py tests/test_intraday_execution.py tests/test_intraday_execution_policy.py tests/test_intraday_data.py tests/test_intraday_models.py tests/test_intraday_store.py tests/test_intraday_runtime.py tests/test_intraday_evaluation.py tests/test_intraday_telemetry.py tests/test_intraday_ui.py -q -p no:cacheprovider
-```
-
-The manual/account extension has separate focused checks:
-
-```text
-python -B -m pytest tests/test_intraday_technical_sizing.py tests/test_intraday_starter_sizing.py tests/test_intraday_capacity.py tests/test_intraday_intentions.py tests/test_intraday_account_authority.py tests/test_intraday_native_ledger.py tests/test_intraday_account_execution.py tests/test_intraday_cancellation.py tests/test_intraday_live_session.py tests/test_intraday_runtime_compatibility.py tests/test_intraday_readiness.py -q -p no:cacheprovider
-```
-
-Tests use temporary databases, explicit model/score/venue fixtures and injected
-clocks/sleep functions. They exercise the eleven-symbol Atlas issue workload,
-refreshes, end-to-end issue/size/quote/reserve/fill/outcome behavior, delayed and
-future observations, conflicting data, exact targets and equality labels,
-immutable issues, outcome corrections, duplicate prevention, simultaneous local
-commitments, matched working orders, filled-BUY accounting, adjusted sales,
-hierarchy, allocation attribution, cancellation races, replacement cost and
-remainders, send-time crashes, unknown submissions and more than six sends.
+Focused offline suites cover prediction/data/models/store/evaluation/UI and each trader's own sizing, capacity, cancellation, execution and recovery. Their fixture results are software evidence and do not require another trader to be running or compatible.
 
 ## Data and prediction contract
 
@@ -167,12 +107,7 @@ normalization are in the
 All recipe/inputs/contributions and reference/forecast hashes are saved locally.
 There is no minimum-trade veto, hourly aggregate cap or forced position close.
 
-Legacy fixture SELLs carry explicit allocation/ceiling policies. The later
-manual contract clips instead to actual eligible uncommitted same-symbol shares
-across native lots and observed unallocated holdings. Native slice order is
-stable accounting, not a horizon eligibility or pacing gate. It can span lots
-while preserving each actual ownership reduction. Gameplan's longer signals
-and cancellation selectors remain fenced away from 15m inventory/orders.
+The live 15-minute worker clips its desired sale to actual available broker shares. It records only its own fills and never attributes a sale to Gameplan's or another trader's allocations. Earlier cross-stream lot-slicing fixtures remain historical; they do not describe the independent runtime.
 
 The reviewed legacy bearish-sale rules remain in the existing source: fallback
 only when own inventory is genuinely absent, at most one donor per forecast,
@@ -181,104 +116,15 @@ simultaneous-instruction exclusions and pending-order restrictions. Those rules
 remain Gameplan rules. They are not copied into the approved independent 15m
 path and are not removed from Gameplan.
 
-Offline admissions carry an explicit identity supplied by the caller. The
-SQLite transaction serializes mutations to prevent double commitments; it
-does not establish an agreed arrival-order priority. Contention priority and
-distributed communication remain open. Scout execution is rejected, and no
-network service or shared-drive SQLite protocol is implemented.
+Each independent local database serializes only that trader's own durable writes. Scout's local worker requires no shared-host authority, distributed grant or Gameplan process check.
 
 ## Accounting and recovery
 
-The retained fixture book receives Atlas 15m and mock Gameplan requests from
-one test pool. It remains separate from operating authority. Its database is named
-`offline-intraday.sqlite3` and must use a separate host-local fixture directory;
-tests never open active ledgers or copy account state into source publication.
+The live local 15-minute worker records its own orders, fills, partial fills, cancellations and unresolved attempts in its own execution namespace. Current broker cash, positions and working commitments are account capacity, without attribution to or inspection of another trader.
 
-The manual adapter uses the existing local native holdings ledger and account
-Gameplan authority. It adds stream/immutable forecast proof, intraday capacity
-snapshots and admission while preserving daily Gameplan context. Serialized
-account reads and exact identified status reconcile before reservation. Full
-model work does not hold the account lease/cycle lock. No independent stream
-budget or Gameplan plan is required. Desired BUY 4 at $50 with $100 actual cash
-becomes adjusted BUY 2; desired SELL 4 with three eligible shares becomes SELL 3.
-Zero adjustment is logged with the original forecast and desired quantity.
+The approved technical recipe determines desired quantity; actual capacity may reduce that quantity, including zero. Keep the original forecast scoreable. A newer same-symbol forecast replaces only this trader's own prior unfilled intention after its own broker status/cancellation outcome. Preserve ambiguous order identities and never fabricate a fill or resend an unknown submission.
 
-The legacy fixture's capacity evidence supplies cash, gross and symbol headrooms
-already net of unmatched broker commitments and its explicit test constraints;
-gross/symbol headrooms are not manual 15m admission gates. Exact
-identified working orders overlap local reservations only once. BUY fills
-remain charged until account evidence explicitly identifies their executions;
-SELL fills do not create purchasing capacity. Balances alone report inventory
-discrepancies without manufacturing fills or allocation effects.
-
-Requests retain account, stream, forecast, symbol, side, desired and permitted
-quantities, price, allocation sources, sizing explanation and persistent
-identity. Each fill preserves its execution identity/price/time and derived
-allocation effects. A completed ten-share hourly purchase remains completed
-after a 15m sale reduces its remaining allocation to seven; retries do not
-replenish it.
-
-The mock executor persists the submission gate before sending. A crash,
-timeout or ambiguous send retains commitments and looks up the same request
-identity. A nonauthoritative missing status never releases capacity or permits
-another POST. Temporary quote/status failures retry without a count ceiling,
-sleeping at least a few seconds and respecting a supplied retry-after interval.
-Invalid requests and code problems propagate for correction while ambiguous
-submissions retain their commitments. Stopping a test preserves unknown state.
-
-Quotes record bid, ask, midpoint, spread, current price and observation/receipt
-times. Quote age tolerance is an explicit caller input. An unchanged fresh
-quote is usable; an unavailable/stale quote retries. Spread width adds no
-execution veto. Order evidence records actual acceptance/status and identified
-fills; a successful send is never treated as a completed trade.
-
-Cancellation acknowledgment does not free capacity. Complete old-order status
-and intervening fills must establish cancellation before a caller explicitly
-requests a replacement. Only its permitted unfilled remainder may be reserved;
-an increased BUY price must fit remaining account/exposure capacity. The
-prototype does not automatically select repricing cadence or cancel/resubmit
-timing. An unsent persisted reservation
-needing repricing stays reserved and reports that unresolved policy.
-
-The October 12 new-forecast rule is now settled: replace the preceding unfilled
-intention for the same 15m stream and symbol only after confirming old-order
-cancellation/status and applying intervening fills. An unknown send or still-
-working order retains its commitment. Keep the new forecast and intention while
-waiting; do not fabricate a fill or delete the old intention. A new forecast's
-quantity is recalculated by the symbol's sizing logic, not copied from the old
-remainder. Same-forecast repricing still pursues only the remaining quantity.
-
-The human also settled reuse of the existing Schwab cancellation/status
-mechanism for Gameplan and 15m, with stream-specific order selection and
-cancellation reasons. Source now includes explicit Gameplan stream fences and
-the manual `CancellationService` adapter through existing prepared DELETE/status
-APIs. Loaded compatibility is required before sharing account state; new disk
-source alone cannot upgrade a running worker. Legacy mock cancellation checks
-do not establish actual broker behavior. The
-[live preparation record](intraday-live-readiness.md) identifies the reusable
-call chain, actual account integration and loaded-worker compatibility gates.
-
-An accepted manual 15m order stays working until actual terminal status or a
-newer same-symbol forecast confirms cancellation. Gameplan's timeout/expiry
-rules do not apply, and no same-forecast repricing timer is selected. First
-desired size stays immutable while quote/capacity observations and attempt
-records append. A proven NOT_SUBMITTED attempt can have a linked retry with
-fresh quote/capacity; an UNKNOWN/SUBMITTING attempt cannot be resent. Exact
-shared acceptance persisted before native projection permits accepted-ID crash
-repair. A missing returned ID remains a recovery limitation; shape matching
-and fabricated nonacceptance are forbidden.
-
-`execution_policy.py` checks these states and the strict submission boundary
-without making requests or mutating records. At or after 16:45:00 Pacific on
-the eligible session date it prohibits a new submission, including replacements;
-wrong-date checks prevent an old intention from becoming eligible the next day.
-It still identifies old orders requiring reconciliation after the cutoff.
-Ready means ready for the other execution checks, not permission to trade.
-The manual adapter checks actual time immediately before submission.
-The helper remains pure; the manual adapter now invokes its boundary check
-alongside real-market/identity/freshness gates. It does not force resting-order
-cancellation at 16:45. Offline tests cover both Pacific UTC offsets, the exact boundary,
-unresolved status/cancellation, intervening fills and stream/symbol isolation.
+No shared authority database, stream-to-Gameplan inventory slice, distributed request/grant protocol, Gameplan process attestation or peer acknowledgment is required. Keep the old mixed databases unchanged as historical originals. Each human manually starts the local trader; the strict 16:45 Pacific new-submission cutoff remains.
 
 ## Research configuration, evidence and remaining work
 
@@ -379,7 +225,9 @@ final-session exceptions preserve information and report unresolved policy.
 Provider recovery has no retry-count ceiling and honors persisted waiting
 evidence after interruption. No native task is registered by this command.
 
-## Measured Atlas research runs, October 12, 2026
+## Archived measured Atlas research runs, October 12, 2026
+
+Dated measurements below retain historical evidence. They are not operating instructions or current compatibility prerequisites.
 
 The following are prior forecasting/replay measurements, retained unchanged.
 They are not live-execution measurements for the manual-account source
@@ -496,7 +344,9 @@ This small comparison does not select a shorter production window or replace
 the all-available-history, full-15m benchmark; timings were not collected under
 identical background load.
 
-## Human-started Atlas recovery observations, October 12, 2026
+## Archived human-started Atlas recovery observations, October 12, 2026
+
+The former coupled runtime and shared-lock incidents below are historical; the October 13 independent-trader contract supersedes that topology.
 
 The initial manual cycle freshly fitted all 110 models in 187.963 seconds;
 Gameplan subsequently exited on shared-lock contention. After the reviewed

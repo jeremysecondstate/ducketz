@@ -244,6 +244,7 @@ def test_no_capture_cycles_preserve_failure_until_verified_broker_recovery(tmp_p
 
 @pytest.mark.parametrize("failure", [
     {"status": "SUBMISSION_STOPPED_SAFETY_CHECK"},
+    {"status": "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", "error": "UNEXPECTED_WINDOW_FAILURE"},
     {"status": "SUBMISSION_STOPPED_AFTER_ERROR"},
     {"status": "NO_ORDERS_SUBMITTED", "stopped_after_error": True},
     {"status": "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE"},
@@ -702,3 +703,42 @@ def test_only_authentic_unacquired_shared_lock_errors_are_retried(tmp_path, monk
     assert status["runtime_lock_wait"] is None
     assert status["last_cycle"] == {"status": "UNHANDLED_WORKER_ERROR", "error_type": "RuntimeError"}
     assert clock.sleeps == [] and not (tmp_path / "locks/independent-stock-session.lock").exists()
+
+
+@pytest.mark.parametrize("prior_failure", [False, True])
+def test_capture_crossing_close_is_normal_and_preserves_prior_failure(tmp_path, monkeypatch, prior_failure):
+    clock = Clock("2026-09-08T19:59:54Z" if prior_failure else "2026-09-08T19:59:59Z")
+    reopened = pd.Timestamp("2026-09-08T20:05:00Z")
+    monkeypatch.setattr(worker, "_has_inventory", lambda _: True)
+    monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent",
+                        lambda _: SimpleNamespace(active=clock() <= reopened))
+    attempts, observed, reports = [], [], []
+    status_path = tmp_path / "state/independent-stock-trader/session-status.json"
+    def runner(root, **kwargs):
+        assert worker.stock_execution_window(clock()).executable
+        attempts.append(clock())
+        if prior_failure and len(attempts) == 1:
+            payload = {"status": "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE", "error": "ReadTimeout",
+                       "broker_state_capture": {"status": "UNAVAILABLE"}}
+        elif clock() < reopened:
+            clock.now = pd.Timestamp("2026-09-08T20:00:01Z")
+            payload = {"status": "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", "error": None,
+                       "broker_state_capture": {"status": "CURRENT"}}
+        else:
+            payload = {"status": "NO_ORDERS_SUBMITTED", "broker_state_capture": {"status": "CURRENT"}}
+        return SimpleNamespace(submitted_orders=0, to_dict=lambda: payload)
+    def sleep(seconds):
+        observed.append((clock(), json.loads(status_path.read_text())))
+        next_tick = clock() + pd.Timedelta(seconds=seconds)
+        clock.now = min(next_tick, reopened) if clock() < reopened else next_tick
+    worker.run_independent_stock_session(tmp_path, clock=clock, sleep=sleep, runner=runner, reporter=reports.append)
+    pause = [state for at, state in observed if pd.Timestamp("2026-09-08T20:00:00Z") <= at < reopened]
+    assert pause
+    assert all(state["status"] == ("DEGRADED" if prior_failure else "RUNNING") for state in pause)
+    assert all(state["failed_cycles"] == state["consecutive_failures"] == int(prior_failure) for state in pause)
+    assert attempts[-1] == reopened
+    assert observed[-1][1]["status"] == "RUNNING"
+    assert observed[-1][1]["failed_cycles"] == int(prior_failure)
+    assert observed[-1][1]["consecutive_failures"] == 0
+    assert not prior_failure or any("ATTENTION" in report for report in reports)
+    assert prior_failure or any("WAITING" in report and "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE" in report for report in reports)

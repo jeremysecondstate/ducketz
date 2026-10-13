@@ -76,7 +76,7 @@ def buy_order(asset_type="EQUITY"):
 
 
 def ledger(root, *, account=IDENTITY, shares=1, ready=1, block=False):
-    path = root / "state/independent-stock-trader/holdings.sqlite3"
+    path = root / "state/gameplan-trader/holdings.sqlite3"
     path.parent.mkdir(parents=True)
     with sqlite3.connect(path) as db:
         db.executescript("""
@@ -178,8 +178,9 @@ def test_single_read_sanitized_cash_only_and_no_state_created(tmp_path):
     assert result["pending_buy_shares"] == {"AAPL": 2}
     assert result["working_order_count"] == 1
     assert all(session.calls.count(name) == 1 for name in ("account", "orders", "quotes", "prepare", "verify"))
-    assert result["ownership"]["safe_for_planning"] is False
-    assert result["ownership"]["reason_codes"] == ["OWNERSHIP_DATABASE_MISSING"]
+    assert result["ownership"]["safe_for_planning"] is True
+    assert result["ownership"]["fresh_gameplan_epoch"] is True
+    assert result["ownership"]["owned_shares"] == {"AAPL": 0}
     assert list(tmp_path.iterdir()) == []
     serialized = json.dumps(result)
     assert "SECRET_" not in serialized
@@ -280,7 +281,6 @@ def test_invalid_allocation_expiry_cannot_become_current_time_or_spendable_cash(
 
 @pytest.mark.parametrize("options,reason", [
     ({"account": "b" * 64}, "OWNERSHIP_ACCOUNT_MISMATCH"),
-    ({"shares": 3}, "BROKER_SHARES_BELOW_HORIZON_INVENTORY"),
     ({"ready": 0}, "LAST_SAVED_RECONCILIATION_NOT_READY"),
     ({"block": True}, "PERSISTENT_OWNERSHIP_BLOCKS"),
 ])
@@ -429,14 +429,15 @@ def test_option_price_exception_preserves_identity_quantity_and_valuation_gates(
     assert result["available_cash"] is None
 
 
-def test_manual_reduction_still_above_owned_inventory_requires_review(tmp_path):
+def test_external_share_reduction_does_not_require_cross_trader_review(tmp_path):
     ledger(tmp_path)
     session = ReadSession()
     position = session.account["securitiesAccount"]["positions"][0]
     position.update(longQuantity=1, marketValue=100)
     owner = capture(tmp_path, session)["ownership"]
-    assert owner["safe_for_planning"] is False
-    assert "UNEXPLAINED_SHARE_REDUCTION_SINCE_SAVED_RECONCILIATION" in owner["reason_codes"]
+    assert owner["safe_for_planning"] is True
+    assert owner["reason_codes"] == []
+    assert owner["owned_shares"] == {"AAPL": 1}
 
 
 def test_unknown_requested_symbol_is_rejected_before_broker_read(tmp_path):

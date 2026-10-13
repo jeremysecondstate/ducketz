@@ -1,5 +1,13 @@
 # Ducketz main integration and per-PC outputs
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](independent-traders.md).
+
 Both PCs use `main` as the accepted shared source. A completed source change is
 first sealed with the local cross-pc-v2 queue, tested, and pushed on its
 producer's `codex/atlas/<completion-id>` or `codex/scout/<completion-id>` branch.

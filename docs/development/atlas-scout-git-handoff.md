@@ -1,5 +1,13 @@
 # Atlas and Scout Git handoffs
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](independent-traders.md).
+
 > **October 1, 2026 amendment — cross-pc-v2:** The shared contract and explicit
 > GitHub transport in [cross-pc-bootstrap.md](cross-pc-bootstrap.md) supersede
 > the filesystem/Drive transport and mutable v1 completion guidance below.
@@ -58,9 +66,10 @@ For unattended publication, use an isolated managed worktree based on the
 recorded HEAD and publish only the exact reviewed file set. Use owned branches
 `codex/atlas/<ready-id>` or `codex/scout/<ready-id>` without force. Preserve the
 running checkout's source, index and branch. Verify the remote SHA after a
-push. Do not automatically merge or deploy peer changes into a running system.
-A direct user request can separately authorize publishing reviewed files on
-the current branch, as with Atlas's September 30 main-branch commit.
+push. Tested main publication and reviewed peer implementation/local installation
+follow the existing standing authority in `cross-pc-common-main.md` and
+`cross-pc-peer-adoption.md`; do not request permission again for that scope.
+Preserve active writers and private bindings. Trader starts remain manual.
 
 The courier also notices manual/local/peer commits and pushes. Mark tests
 unknown where no verified test evidence exists, and deduplicate notices by

@@ -1,5 +1,7 @@
 # Confirmed broker rejection during Gameplan catch-up
 
+This policy concerns only the Gameplan trader's own orders and real broker responses. Gameplan uses its separate `state/gameplan-trader/` records. It never verifies or reconciles another trader's internal state, and its outcome cannot gate either local 15-minute trader. Routine diagnosis and repair are already authorized; the human retains manual start/stop. See [independent traders](independent-traders.md).
+
 The ordinary trader nets each accepted Gameplan's due intentions against actual
 fills and open reservations. A confirmed broker rejection has no filled or open
 quantity, but it is an unresolved execution failure: it must not manufacture a

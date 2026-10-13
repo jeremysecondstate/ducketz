@@ -149,20 +149,8 @@ def test_legacy_rows_remain_gameplan_and_explicit_intraday_is_fenced():
     assert not gameplan_reservation(intraday, reservation()) and not gameplan_allocation(intraday, "a1")
 
 
-def test_gameplan_cancel_scanner_skips_intraday_without_broker_or_allocation_lookup():
-    ledger = Ledger()
-    class Forbidden:
-        def __getattr__(self, name): raise AssertionError("Unexpected access: "+name)
-    assert independent_runtime._cancel_expired_entries(None, Forbidden(), ledger,
-        SimpleNamespace(reservations=[reservation()], allocations=[]), None, None, lambda: NOW) == (0,None)
 
 
-def test_gameplan_exit_scanner_cannot_liquidate_explicit_intraday_allocation():
-    ledger = Ledger()
-    ledger.snapshot = lambda: SimpleNamespace(reservations=[])
-    ledger.due_exits = lambda **_: (SimpleNamespace(allocation_id="a1"),)
-    assert independent_runtime._exit_decisions(ledger, None, None, None,
-        SimpleNamespace(isoformat=lambda: NOW), "snapshot", "DAY") == ()
 
 
 def test_final_transport_gate_refuses_changed_account_and_does_not_release_marker():

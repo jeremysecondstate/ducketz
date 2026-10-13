@@ -70,7 +70,7 @@ def claim_quote_recovery(root, metadata, *, as_of):
         previous = json.loads(path.read_text(encoding="utf-8"))
         if any(previous.get(k) != metadata.get(k) for k in ("forecast_id", "source_run", "symbol", "target_end")):
             raise ValueError("Quote recovery claim belongs to another request")
-        ledger_path = root / "state/independent-stock-trader/holdings.sqlite3"
+        ledger_path = root / "state/gameplan-trader/holdings.sqlite3"
         # Broker submission requires its durable forecast allocation first.
         # An operator retry can proceed when no such reservation ever existed.
         with sqlite3.connect(ledger_path.as_uri()+"?mode=ro", uri=True) as db:

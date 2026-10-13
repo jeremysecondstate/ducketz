@@ -155,7 +155,7 @@ def main(argv=None):
         parser.error('Review output must be outside the datastore; native state is read-only')
     if output.exists():
         parser.error('Review output directory must be new; existing observations cannot be replaced')
-    review = review_fallback_day(root/'state/independent-stock-trader/holdings.sqlite3', args.action_date)
+    review = review_fallback_day(root/'state/gameplan-trader/holdings.sqlite3', args.action_date)
     output.parent.mkdir(parents=True,exist_ok=True)
     output.mkdir()
     destination = output/'report.json'

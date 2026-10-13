@@ -25,8 +25,10 @@ from ml.joint_capital_plan import load_owner_package
 VERSION = "nightly-joint-readiness-selection-v1"
 FIELDS = {"schema_version", "local_actor", "action_date", "review_session",
           "completion_id", "receipt_path", "receipt_sha256"}
-COMPLETIONS = {"scout": ("nightly-gameplan-synthesis-v1", "JOINT_READY_LOCAL"),
-               "atlas": ("nightly-gameplan-handoff-v1", "HANDOFF_VERIFIED_LOCAL")}
+COMPLETIONS = {"scout": (("nightly-gameplan-synthesis-v1", "JOINT_READY_LOCAL"),
+                         ("nightly-gameplan-adoption-v1", "JOINT_READY_LOCAL")),
+               "atlas": (("nightly-gameplan-synthesis-v1", "JOINT_READY_LOCAL"),
+                         ("nightly-gameplan-handoff-v1", "HANDOFF_VERIFIED_LOCAL"))}
 
 
 def _selection(root: Path, action_date: str) -> Path:
@@ -53,8 +55,8 @@ def _receipt_identity(receipt: dict, *, actor: str, action_date: str, review_ses
             or not {"plan_run", "stats_run", "files", "plan_sha256", "stats_receipt_sha256"}.issubset(evidence)
             or not isinstance(evidence["files"], dict)):
         raise ValueError("Joint readiness receipt evidence fields differ from the completed contract")
-    if (expected is None or receipt.get("schema_version") != expected[0]
-            or receipt.get("status") != expected[1] or receipt.get("local_actor") != actor
+    if (expected is None or (receipt.get("schema_version"), receipt.get("status")) not in expected
+            or receipt.get("local_actor") != actor
             or receipt.get("executor_owner") != "atlas" or receipt.get("action_date") != action_date
             or receipt.get("review_session") != review_session or receipt.get("ui_ready") is not True
             or receipt.get("joint_ready") is not True or receipt.get("execution_authorized") is not False

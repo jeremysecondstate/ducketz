@@ -1,8 +1,8 @@
-"""Explicit manual Atlas execution against the existing shared account ledgers.
+"""Explicit manual local 15m execution against only its own ledgers.
 
 Construction performs no broker IO. The caller owns the manual session and
 repeatedly invokes one bounded step. Pending recovery returns to that loop so
-Gameplan can use its existing cycle lock between attempts.
+the next attempt can reobserve its own orders and account capacity.
 """
 from contextlib import contextmanager
 from dataclasses import asdict, replace
@@ -15,10 +15,9 @@ import uuid
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
     IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted)
-from ml.account_gameplan.config import load_account_config, verify_cutover
-from ml.account_gameplan.execution import AUTHORITY_PATH, _broker_pending, evidence_ledger
 from ml.stock_trader.horizon_broker import capture_order_evidence
-from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence
+from ml.stock_trader.horizon_ledger import PortfolioEvidence
+from .local_execution import (load_local_binding, IntradayLedger as HorizonLedger, NATIVE_PATH, AUTHORITY_PATH, LOCK_PATH, broker_pending)
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.session import stock_execution_window
 from app.services.schwab_stock_orders import build_schwab_stock_order_payload
@@ -30,18 +29,17 @@ from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
 from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
 
-NATIVE_PATH = Path("state/independent-stock-trader/holdings.sqlite3")
 
 
-def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
+def forecast_disposition(forecast, *, now, session_started_at, local_symbols, actor="Atlas"):
     """A current manual session cannot execute a replay or previously saved issue."""
     original = dict(forecast)
     key = original.pop("forecast_id", None)
     if key != digest(original) or forecast["target_version"] != TARGET_VERSION:
         raise ContractError("Immutable exact-target forecast required")
     current = instant(now)
-    if forecast["pc"] != "Atlas" or forecast["symbol"] not in local_symbols:
-        return "outside_local_atlas_scope"
+    if forecast["pc"] != actor or forecast["symbol"] not in local_symbols:
+        return "outside_local_actor_scope"
     if forecast["mode"] != "live" or forecast["availability_basis"] != "observed":
         return "not_a_current_live_forecast"
     if instant(forecast["issued_at"]) < instant(session_started_at):
@@ -60,11 +58,14 @@ def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
 
 class IntradayAccountExecutor:
     def __init__(self, *, datastore, store, broker, local_symbols, session_started_at,
-                 clock, manual_authority, compatibility, stopped=lambda: False):
+                 clock, manual_authority, stopped=lambda: False, actor="Atlas"):
+        if actor not in {"Atlas", "Scout"}:
+            raise ContractError("Explicit local 15m actor required")
+        self.actor, self.stream = actor, actor.lower() + "-15m"
         self.root, self.store, self.broker = Path(datastore), store, broker
         self.symbols = tuple(local_symbols)
         self.session_started_at = instant(session_started_at)
-        self.clock, self.manual_authority, self.compatibility, self.stopped = clock, manual_authority, compatibility, stopped
+        self.clock, self.manual_authority, self.stopped = clock, manual_authority, stopped
         self.intents = IntentionStore(store)
         self.config = self.ledger = self.authority = self.lease = None
         self.portfolio = self.snapshot_id = None
@@ -79,32 +80,25 @@ class IntradayAccountExecutor:
     def _binding(self):
         if self.stopped() or not self.manual_authority():
             raise ContractError("Manual 15m session is no longer active")
-        config = load_account_config(self.root)
-        if (config is None or config.machine_id != "pc-original" or config.role != "coordinator"
-                or config.activation["status"] != "ACTIVE"
-                or set(self.symbols) != set(config.participants["pc-original"])):
-            raise ContractError("Existing Atlas account binding and local symbols required")
-        verify_cutover(self.root, config)
+        config = load_local_binding(self.root)
+        if config.actor != self.actor or set(self.symbols) != set(config.symbols):
+            raise ContractError("Independent local 15m account binding and symbols required")
         if self.config is not None and config.fingerprint != self.config.fingerprint:
             raise ContractError("Account binding changed during execution")
-        proof = self.compatibility()
-        if not proof["ready"]:
-            raise ContractError("Loaded Gameplan compatibility: " + ",".join(proof["reason_codes"]))
         self.config = config
         return config
 
     @contextmanager
     def _account(self):
-        # Same lock as Gameplan: account reads, native mutations and the final
-        # send are serialized. Model training never holds this lock.
-        with exclusive_runtime_lock(self.root / "locks/stock-trader-hourly.lock", process_name="stock-trader-hourly"):
+        # This trader serializes only its own orders, capacity and receipts.
+        with exclusive_runtime_lock(self.root / LOCK_PATH, process_name="intraday-execution"):
             config = self._binding()
             self.ledger = HorizonLedger(self.root / NATIVE_PATH, config.account_fingerprint)
             self.authority = AccountAuthority(self.root / AUTHORITY_PATH,
                 AuthorityBinding(config.account_fingerprint, config.coordinator_id, config.participants),
                 clock=lambda: instant(self.clock()))
             self.lease = self.authority.acquire_lease(coordinator_id=config.machine_id,
-                holder_id="manual-atlas-15m:" + uuid.uuid4().hex)
+                holder_id="manual-" + self.stream + ":" + uuid.uuid4().hex)
             try:
                 self._repair_pre_send()
                 yield
@@ -117,14 +111,14 @@ class IntradayAccountExecutor:
     def _assert_current(self):
         self._binding()
         if self.broker.stable_account_fingerprint() != self.config.account_fingerprint:
-            raise ContractError("Broker account differs from reviewed Atlas account")
+            raise ContractError("Broker account differs from local 15m binding")
         self.lease = self.authority.renew_lease(self.lease.token)
 
     def _repair_pre_send(self):
         """Repair only provable no-send or exact accepted-ID crash boundaries."""
         records = {r["request"]["native_reservation_id"]:r for r in self.authority.read_state()["reservations"]}
         for native in self.ledger.pending_reservations():
-            if self.ledger.reservation_stream(native.reservation_id) != "atlas-15m":
+            if self.ledger.reservation_stream(native.reservation_id) != self.stream:
                 continue
             record = records.get(native.reservation_id)
             if record is not None and record["broker_order_id"]:
@@ -143,7 +137,26 @@ class IntradayAccountExecutor:
 
     def _capture(self, required_evidence=()):
         self._assert_current()
-        owner = evidence_ledger(self.root, self.ledger, self.config)
+        # The local authority may have persisted acceptance before its native
+        # row reached terminal state (or vice versa). Recover those exact own
+        # identities without consulting any other trader's authority.
+        pending = {r.reservation_id:r for r in self.ledger.pending_reservations()
+                   if self.ledger.reservation_stream(r.reservation_id) == self.stream}
+        for record in self.authority.read_state()["reservations"]:
+            if record["request"].get("stream") != self.stream:
+                raise ContractError("Foreign stream in local 15m authority")
+            if record["status"] in OPEN:
+                native = self.ledger.lookup_reservation(record["request"]["native_reservation_id"])
+                if self.ledger.reservation_stream(native.reservation_id) != self.stream:
+                    raise ContractError("Foreign stream in local 15m native ledger")
+                if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
+                    raise ContractError("Local order acceptance identities differ")
+                pending[native.reservation_id] = native
+        class OwnEvidence:
+            account_fingerprint = self.config.account_fingerprint
+            def pending_reservations(self):
+                return tuple(pending.values())
+        owner = OwnEvidence()
         evidence = capture_order_evidence(self.broker, owner, account_fingerprint=self.config.account_fingerprint,
                                          as_of=self.clock(), observation_clock=self.clock)
         current_by_id = {item.reservation_id:item for item in evidence}
@@ -177,15 +190,15 @@ class IntradayAccountExecutor:
         for record in self.authority.read_state()["reservations"]:
             native = self.ledger.lookup_reservation(record["request"]["native_reservation_id"])
             if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
-                raise ContractError("Shared account/native identity mismatch")
+                raise ContractError("Local authority/native identity mismatch")
             observed = by_native.get(native.reservation_id)
             if observed is None:
                 if record["status"] in OPEN:
-                    raise ContractError("Shared commitment lacks complete status evidence")
+                    raise ContractError("Local commitment lacks complete status evidence")
                 continue
             if record["last_evidence_at"] and instant(observed.observed_at) <= instant(record["last_evidence_at"]):
                 if observed.cumulative_filled_quantity != record["filled_quantity"] or observed.status != record["status"]:
-                    raise ContractError("Shared order evidence did not advance")
+                    raise ContractError("Local order evidence did not advance")
                 continue
             self.authority.reconcile(self.lease.token, OrderEvidence(observed.evidence_id, record["reservation_id"],
                 observed.account_fingerprint, observed.broker_order_id, observed.observed_at, observed.status,
@@ -199,8 +212,8 @@ class IntradayAccountExecutor:
         self.authority.publish_intraday_snapshot(self.lease.token, IntradayCapacitySnapshot(
             snapshot_id, self.config.account_fingerprint, at.astimezone(PACIFIC).date().isoformat(),
             portfolio.observed_at, str(portfolio.available_cash),
-            {s:int(Decimal(str(q)).to_integral_value(rounding=ROUND_FLOOR)) for s,q in portfolio.held_shares.items()},
-            _broker_pending(portfolio), accounted, portfolio.source_fingerprint,
+            {s:int(Decimal(str(portfolio.held_shares.get(s,0))).to_integral_value(rounding=ROUND_FLOOR)) for s in self.symbols},
+            broker_pending(portfolio), accounted, portfolio.source_fingerprint,
             self.config.account_fingerprint, self.config.account_fingerprint, True))
         self.portfolio, self.snapshot_id = portfolio, snapshot_id
         return evidence
@@ -220,7 +233,7 @@ class IntradayAccountExecutor:
 
     def _newer_forecasts(self, forecast):
         """Per-symbol publication can supersede a queue item during account IO."""
-        return [f["forecast_id"] for f in self.store.forecasts(pc="Atlas")
+        return [f["forecast_id"] for f in self.store.forecasts(pc=self.actor)
                 if f["symbol"] == forecast["symbol"] and f["mode"] == "live"
                 and f["ensemble_status"] == "full"
                 and instant(f["issued_at"]) >= self.session_started_at
@@ -234,8 +247,8 @@ class IntradayAccountExecutor:
     def step(self, forecast):
         """One bounded execution/recovery step; the outer session owns retries."""
         initial = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
-                                       local_symbols=self.symbols)
-        if initial in {"outside_local_atlas_scope", "not_a_current_live_forecast", "forecast_precedes_manual_start",
+                                       local_symbols=self.symbols, actor=self.actor)
+        if initial in {"outside_local_actor_scope", "not_a_current_live_forecast", "forecast_precedes_manual_start",
                        "incomplete_ensemble", "wrong_session_date"}:
             return self._record(forecast, initial)
         with self._account():
@@ -249,7 +262,7 @@ class IntradayAccountExecutor:
                 return self._record(forecast, "recover_existing_intention", order=existing,
                     evidence={"native_reservation_id":existing.reservation_id, "status":existing.status})
             newer = [r for r in self.ledger.snapshot().reservations
-                     if self.ledger.reservation_stream(r.reservation_id) == "atlas-15m"
+                     if self.ledger.reservation_stream(r.reservation_id) == self.stream
                      and r.forecast_id != forecast["forecast_id"]
                      and r.symbol == forecast["symbol"] and r.target_start is not None
                      and instant(r.target_start) >= instant(forecast["reference_at"])]
@@ -278,7 +291,7 @@ class IntradayAccountExecutor:
             # A zero desired or elapsed forecast still retires an old intention.
             from .cancellation import CancellationService
             pending = [r for r in self.ledger.pending_reservations()
-                       if self.ledger.reservation_stream(r.reservation_id) == "atlas-15m"
+                       if self.ledger.reservation_stream(r.reservation_id) == self.stream
                        and r.symbol == forecast["symbol"] and r.forecast_id != forecast["forecast_id"]]
             if pending:
                 def before_cancel(context, reservation):
@@ -289,7 +302,7 @@ class IntradayAccountExecutor:
                     account_fingerprint=self.config.account_fingerprint, before_cancel=before_cancel,
                     apply_evidence=lambda evidence:self._capture((evidence,)),
                     record_event=lambda kind,value:self.store.event(forecast["cycle_id"],kind,value,symbol=forecast["symbol"]),
-                    clock=self.clock, stopped=self.stopped)
+                    clock=self.clock, stopped=self.stopped, stream=self.stream)
                 # A failed DELETE's durable phase survives a session restart.
                 # An acknowledged DELETE is observed until terminal evidence.
                 retry_send = False
@@ -309,7 +322,7 @@ class IntradayAccountExecutor:
             if unavailable is not None:
                 return unavailable
             disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
-                                               local_symbols=self.symbols)
+                                               local_symbols=self.symbols, actor=self.actor)
             if disposition != "eligible_for_account_checks":
                 return self._record(forecast, disposition)
             window = stock_execution_window(self.clock())
@@ -335,10 +348,10 @@ class IntradayAccountExecutor:
         """Reconcile tracked orders even after cutoff; never submit from history."""
         with self._account():
             self._capture()
-            forecasts = {f["forecast_id"]:f for f in self.store.forecasts(pc="Atlas")}
+            forecasts = {f["forecast_id"]:f for f in self.store.forecasts(pc=self.actor)}
             results = []
             for native in self.ledger.snapshot().reservations:
-                if self.ledger.reservation_stream(native.reservation_id) != "atlas-15m":
+                if self.ledger.reservation_stream(native.reservation_id) != self.stream:
                     continue
                 forecast = forecasts.get(native.forecast_id)
                 if forecast is None or self.intents.get(native.forecast_id) is None:
@@ -348,7 +361,7 @@ class IntradayAccountExecutor:
             return results
 
     def _submit(self, forecast, capacity, quote, window):
-        key = "atlas-15m:" + forecast["forecast_id"]
+        key = self.stream + ":" + forecast["forecast_id"]
         previous = self._same_forecast(forecast)
         if previous:
             if not self._proven_unsent(previous):
@@ -370,14 +383,14 @@ class IntradayAccountExecutor:
                 broker_pending_sell_orders={str(row["order_id"]):int(Decimal(str(row["remaining_quantity"])))
                     for row in self.portfolio.broker_working_orders
                     if row["symbol"] == forecast["symbol"] and row["instruction"] == "SELL"},
-                retry_of_reservation_id=previous.reservation_id if previous else None)
+                retry_of_reservation_id=previous.reservation_id if previous else None, stream=self.stream)
             account = self.authority.reserve_intraday(self.lease.token, IntradayReservationRequest(
                 key, self.snapshot_id, self.config.account_fingerprint, instant(self.clock()).astimezone(PACIFIC).date().isoformat(),
                 self.config.machine_id, forecast["symbol"], forecast["forecast_id"], capacity.side,
                 capacity.adjusted_quantity, capacity.limit_price, capacity.limit_price,
                 native.reservation_id, native.allocation_id, forecast["forecast_id"], forecast["snapshot_hash"],
                 forecast["issued_at"], forecast["reference_at"], forecast["target_close"], TARGET_VERSION, self.symbols,
-                retry_of_native_reservation_id=account_previous))
+                retry_of_native_reservation_id=account_previous, stream=self.stream))
             payload = build_schwab_stock_order_payload(symbol=forecast["symbol"], instruction=capacity.side,
                 order_type="LIMIT", time_in_force=window.time_in_force, position_effect="AUTO",
                 quantity=capacity.adjusted_quantity, price=capacity.limit_price)
@@ -391,7 +404,7 @@ class IntradayAccountExecutor:
                             raise ContractError("Prepared order context differs from account snapshot")
                         current = instant(self.clock())
                         if forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
-                                                local_symbols=self.symbols) != "eligible_for_account_checks":
+                                                local_symbols=self.symbols, actor=self.actor) != "eligible_for_account_checks":
                             raise ContractError("Forecast eligibility changed before submission")
                         if stock_execution_window(current).time_in_force != window.time_in_force:
                             raise ContractError("Market session changed before submission")

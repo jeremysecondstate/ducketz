@@ -564,3 +564,24 @@ def test_plain_live_once_cannot_open_entries_without_session_manager(environment
     metadata = _decisions(result)["prediction_handoff"]
     assert metadata["session_managed"] is False
     assert metadata["entry_management_status"] == "ENTRY_REQUIRES_SESSION_MANAGER"
+
+
+@pytest.mark.parametrize("reason", ["OUTSIDE_US_EQUITY_ACTIONABLE_SESSION", "UNEXPECTED_WINDOW_FAILURE"])
+def test_capture_crossing_normal_close_waits_without_orders_or_failure(environment, monkeypatch, reason):
+    env = environment
+    env.now = pd.Timestamp("2026-09-08T19:59:59Z")
+    monkeypatch.setattr(runtime, "_has_inventory", lambda _: True)
+    original_window = runtime.stock_execution_window
+    def window(value):
+        result = original_window(value)
+        return replace(result, reason=reason) if not result.executable else result
+    monkeypatch.setattr(runtime, "stock_execution_window", window)
+    env.after_capture = lambda: setattr(env, "now", pd.Timestamp("2026-09-08T20:00:01Z"))
+    result = _run(env, entries=False)
+    assert result.status == "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE"
+    assert result.error == (None if reason == "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION" else reason)
+    assert result.broker_state_capture["status"] == "CURRENT"
+    assert result.submitted_orders == result.selected_orders == 0
+    assert env.broker.submissions == env.broker.cancellations == []
+    assert _decisions(result)["prediction_handoff"]["execution_window_after_capture"] == {
+        "mode": "CLOSED", "reason": reason}

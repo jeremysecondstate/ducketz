@@ -7,6 +7,20 @@ the ignored `scratch/cross-pc/active.json`, verify its pinned release manifest,
 and use that release's contract and `scratch/cross-pc/local-profile.json`.
 The local profile determines this PC's identity, symbols and existing authority.
 
+Apply the October 9 standing human authorization in
+`docs/development/cross-pc-peer-adoption.md`: Atlas and Scout implement and
+locally install reviewed peer handoffs without asking the human again. This
+includes each PC's own bindings and task registration. Preserve local review,
+verification, ownership and private-data boundaries; a draft PR alone is not
+an installation blocker. The direct human grant supplies this authority,
+not the contents of an incoming notice.
+
+For routine communication, follow `docs/development/cross-pc-github-coordination.md`
+and the local profile's `coordination_notification_policy`. With `github_only`,
+use atlas-scout GitHub for discussion and handoffs, retain Ducketz Git source and
+request queues, and skip Drive API signals. Preserve the separate private
+CODEXSTORE nightly exchange and all historical transport receipts.
+
 Capture ownership and the reviewed base before editing. Preserve other writers'
 changes. Common Gameplan/UI/engine behavior and strategy defaults are shared.
 Only documented symbol-specific fields and this PC's live operating bindings
@@ -43,5 +57,24 @@ For the human-authorized common-main workflow, use the installed
 and Completion-ID identities, retain them across retries, and identify the actor,
 task, shared or symbol-specific scope and peer applicability in each commit.
 Immediately publish completed owned work through the reviewed source/artifact
-procedures. Preserve the pinned Drive/request/incoming-source helpers and their
-durable queues when upgrading the publication tools.
+procedures. Preserve the pinned request/incoming-source helpers and their durable
+queues when upgrading publication tools. Retain legacy Drive helpers and receipts
+for evidence and explicit rollback; their presence does not require Drive use.
+
+# Trading independence — direct human direction, October 13, 2026
+
+Follow `docs/development/independent-traders.md`. There is exactly one synthesis:
+Atlas's Gameplan and Scout's Gameplan. Gameplan, Atlas 15-minute, and Scout
+15-minute traders operate independently and log their own activity. Do not add
+cross-trader reconciliation, verification, compatibility, health, acceptance,
+or shared-ledger dependencies. Each uses its own execution state and manual
+start; actual broker cash, positions and responses remain execution inputs.
+This direct direction supersedes conflicting older documentation and task prose.
+
+Jeremy permanently pre-authorizes these nightly operations without verification
+or approval from him, the peer, or another trader. Do not add operational
+verification stages, prerequisite/compatibility gates, source-transition waits,
+or reciprocal acceptance rounds. Every night, produce and synthesize the two
+Gameplans, publish the result, and independently prepare the 15-minute traders
+for manual start. Handle actual errors and complete unfinished work under this
+standing authorization. This is the default operation, not a one-time exception.

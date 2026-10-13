@@ -106,19 +106,22 @@ class CancellationService:
     def __init__(self, *, broker, ledger, account_fingerprint, before_cancel,
                  apply_evidence, record_event, clock=lambda: datetime.now(timezone.utc),
                  sleep=time.sleep, stopped=lambda: False, observe=None,
-                 is_temporary=temporary_status_failure):
+                 is_temporary=temporary_status_failure, stream=ATLAS_STREAM):
+        if stream not in {"atlas-15m", "scout-15m"}:
+            raise ContractError("Explicit local intraday stream required")
+        self.stream = stream
         self.broker, self.ledger, self.account_fingerprint = broker, ledger, account_fingerprint
         self.before_cancel, self.apply_evidence, self.record_event = before_cancel, apply_evidence, record_event
         self.clock, self.sleep, self.stopped = clock, sleep, stopped
         self.observe, self.is_temporary = observe, is_temporary
 
     def _record(self, kind, **payload):
-        self.record_event(kind, {**payload, "observed_at": instant(self.clock()).isoformat(), "stream": ATLAS_STREAM})
+        self.record_event(kind, {**payload, "observed_at": instant(self.clock()).isoformat(), "stream": self.stream})
 
     def _owned(self, reservation_id):
         reservation = self.ledger.lookup_reservation(reservation_id)
-        if reservation_stream(self.ledger, reservation_id) != ATLAS_STREAM:
-            raise ContractError("Cancellation outside the atlas-15m stream")
+        if reservation_stream(self.ledger, reservation_id) != self.stream:
+            raise ContractError("Cancellation outside the local 15m stream")
         if self.ledger.account_fingerprint != self.account_fingerprint:
             raise ContractError("Cancellation account binding changed")
         return reservation
@@ -211,7 +214,7 @@ class CancellationService:
                 return CancellationResult("pending", reservation_id, current.status, "PERSISTED_CANCELLATION_AWAITS_TERMINAL_STATUS", False, 3.)
             if evidence.broker_status == "PENDING_CANCEL":
                 return CancellationResult("pending", reservation_id, current.status, "BROKER_CANCELLATION_PENDING", False, 3.)
-            self.ledger.reserve_stream_cancellation(reservation_id, stream=ATLAS_STREAM, reason=reason,
+            self.ledger.reserve_stream_cancellation(reservation_id, stream=self.stream, reason=reason,
                                                    as_of=instant(self.clock()).isoformat(), evidence_id=evidence_id)
             self._record("cancellation_requested", reservation_id=reservation_id, evidence_id=evidence_id,
                          trigger_forecast_id=trigger_forecast_id, reason=reason)
@@ -257,7 +260,7 @@ class CancellationService:
                 return self._result("terminal", reservation_id, "EXACT_TERMINAL_EVIDENCE", terminal=True)
             if current.status not in {"WORKING", "PARTIAL"}:
                 return self._result("reconciliation_required", reservation_id, "WORKING_STATUS_NOT_CONFIRMED")
-            self.ledger.reserve_stream_cancellation(reservation_id, stream=ATLAS_STREAM, reason=reason,
+            self.ledger.reserve_stream_cancellation(reservation_id, stream=self.stream, reason=reason,
                                                    as_of=instant(self.clock()).isoformat(), evidence_id=evidence_id)
             self._record("cancellation_requested", reservation_id=reservation_id, evidence_id=evidence_id,
                          trigger_forecast_id=trigger_forecast_id, reason=reason)

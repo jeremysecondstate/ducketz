@@ -648,7 +648,8 @@ class AccountAuthority:
         _hash(request.account_fingerprint); _hash(request.forecast_sha256); _hash(request.forecast_snapshot_sha256)
         if request.forecast_id!=request.forecast_sha256:
             raise AuthorityError("IMMUTABLE_INTRADAY_FORECAST_HASH_REQUIRED")
-        if (request.account_fingerprint!=self.binding["account_fingerprint"] or request.stream!="atlas-15m" or request.horizon!="15m"
+        if (request.account_fingerprint!=self.binding["account_fingerprint"] or request.stream not in {"atlas-15m", "scout-15m"} or request.horizon!="15m"
+                or request.stream != {"pc-original":"atlas-15m", "pc-new":"scout-15m"}.get(request.participant_id)
                 or request.participant_id!=self.binding["coordinator_id"] or request.side not in {"BUY","SELL"}
                 or len(request.local_symbols)!=len(set(request.local_symbols))
                 or set(request.local_symbols)!=set(self.binding["participants"].get(request.participant_id,()))
@@ -729,7 +730,7 @@ class AccountAuthority:
         return prior
 
     def _submission_snapshot(self, db, now, request):
-        if request.get("stream")=="atlas-15m":
+        if request.get("stream") in {"atlas-15m", "scout-15m"}:
             if not _time(request["issued_at"])<=now<_time(request["target_close_at"]):
                 raise AuthorityError("INTRADAY_FORECAST_NOT_CURRENT")
             return self._intraday_snapshot(db,now,request["snapshot_id"])
@@ -947,7 +948,7 @@ class AccountAuthority:
             if row["status"]!="RESERVED":
                 return self._reservation(row)
             request = json.loads(row["request"])
-            if request.get("stream")!="atlas-15m" and db.execute("SELECT 1 FROM reservations WHERE status IN ('SUBMITTING','UNKNOWN') AND id!=? LIMIT 1",
+            if request.get("stream") not in {"atlas-15m", "scout-15m"} and db.execute("SELECT 1 FROM reservations WHERE status IN ('SUBMITTING','UNKNOWN') AND id!=? LIMIT 1",
                           (reservation_id,)).fetchone():
                 raise AuthorityError("UNCERTAIN_SUBMISSION_REQUIRES_RECONCILIATION")
             self._submission_snapshot(db,now,request)

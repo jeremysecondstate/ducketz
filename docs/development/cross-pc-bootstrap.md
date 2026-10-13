@@ -1,5 +1,19 @@
 # Ducketz cross-PC bootstrap — cross-pc-v2
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](independent-traders.md).
+
+For reviewed GitHub-only coordination adoption, follow
+`cross-pc-github-coordination.md`. The local profile explicitly selects
+`coordination_notification_policy: github_only`; profiles without that field
+retain legacy `git_and_drive` behavior. Preserve the separate private nightly
+exchange, source/request queues and historical Drive evidence during cutover.
+
 For a locally authorized common-main workflow, also follow
 `cross-pc-common-main.md`. It preserves immutable Atlas/Scout completion IDs,
 immediate reviewed publication, symbol-specific output namespaces and the
@@ -21,9 +35,11 @@ GitHub `main` is canonical accepted source. Own publication branches are
 `codex/atlas/<completion-id>` and `codex/scout/<completion-id>`. A pushed branch
 is available for reviewed integration. It does not establish main integration,
 peer installation, or the version loaded by a running process. Those stages are
-recorded separately. Merge and application/runtime deployment require the
-existing explicit approval path. Infrastructure adoption permits installation
-of coordination helpers and task instructions only.
+recorded separately. Tested common-main publication follows the standing human
+authority in `cross-pc-common-main.md`; reciprocal implementation and local
+installation follow `cross-pc-peer-adoption.md` without repeated permission.
+Normal nightly preparation is permanently authorized by the October 13
+direction. Each trader remains separately human-started.
 
 Gameplan logic/UI, common engines, tests, documentation, and common strategy
 defaults are shared. Each PC keeps symbols and documented symbol-specific

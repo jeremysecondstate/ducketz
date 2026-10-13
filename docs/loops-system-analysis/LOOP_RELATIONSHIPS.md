@@ -1,131 +1,83 @@
 # Loop relationships
 
+Current October 13 operating direction: every night Atlas and Scout each produce their own eleven-symbol Gameplan. Synthesize only those two Gameplans once with one actual cash and stock balance; return the same 22-symbol Gameplan and Stats to both PCs. Atlas may complete synthesis directly without a peer acceptance wait. Atlas runs the combined Gameplan trader and its own 15-minute trader; Scout runs only its own 15-minute trader. All three run and log independently. No cross-trader synthesis, reconciliation, verification, compatibility proof or approval is required. Nightly preparation is permanently authorized; the human manually starts each trader. See [independent traders](../development/independent-traders.md).
+
 ## Current sequence
 
-Current relationships are sequential artifact handoffs inside one overnight
-workflow, not independently timed live-loop relationships.
-
 ```text
-provider/session data
-  -> Loop A close fetch and OPRA cursors
-  -> Loop B causal feature/sample authority
-  -> Options Strategy profit models
-  -> Strategy exact candidates
-  -> immutable next-session gameplan
-  -> Duckets clock-rotating forecast UI
-  -> daytime exact-once stock trader and optional paper reader
-  -> next-close directional evaluation
+completed-session data / exact provider readiness
+  -> Stats from original saved forecasts and actuals
+  -> bounded model review
+  -> local target fitting, Gameplan, enrichment and planning inputs
+  -> two private Gameplan research packages
+  -> one combined 22-symbol Gameplan + Stats
+  -> same completed result / both PCs' readers
+  -> separate manually controlled Atlas stock execution
 ```
 
-`D` means data, `C` control/readiness, `M` model, and `E` evaluation.
+This shows responsibility dependencies. Individual saved runs retain their own
+stage list and source revision; [Current system](CURRENT_SYSTEM.md) records the
+installed-source and task evidence limits.
 
-## R1 — Providers and prior storage → Loop A close fetch
+## R1 - providers and prior storage to Loop A
 
-- **Type:** D + C.
-- **Exchange:** newest completed-session EQUS equity data, macro/cross-asset
-  inputs, and incremental OPRA `definition`, `cbbo-1m`, and `ohlcv-1h` for all
-  configured parent symbols from this PC's production watchlist (local file
-  when present, otherwise shared default; see [two-PC setup](../multiple-pcs.md)).
-- **Boundary:** OPRA provider estimate, byte/cost cap, lock, partition receipt,
-  and exclusive `completed_through` cursor.
-- **Failure:** any required production cursor lag or invalid receipt stops the
-  overnight chain. A closed market with no newer session is not a lag.
+Acquire only the configured scope through its provider, cost, lock and receipt
+contracts. Preserve provider/dataset identity and exclusive coverage cursors.
+Closed-session currentness is not the same clock as a live execution quote.
 
-## R2 — Loop A → Directional Loop B
+## R2 - Loop A to Loop B and target history
 
-- **Type:** D + C.
-- **Exchange:** complete provider cycle, normalized equity bars, feature-family
-  artifacts, availability clocks, and route readiness.
-- **Boundary:** Loop B uses only evidence available by the overnight cutoff and
-  publishes one checksum-bound generation.
-- **Failure:** missing required routes or incompatible evidence blocks later
-  stages; no previous/partial generation is silently relabeled current.
+Loop B consumes causally available feature families and publishes compatible
+samples/directional evidence. Target-history maintenance supplies explicit
+stock-label provenance. Missing or incompatible required evidence must remain
+visible; an old partial generation cannot be silently renamed current.
 
-## R3 — Loop A OPRA history + Loop B → Strategy-profit training
+## R3 - optional options models and Strategy
 
-- **Type:** D + M.
-- **Exchange:** Loop B samples/directional features and verified historical OPRA
-  contract/quote/surface partitions.
-- **Boundary:** every one of the 18 production cursors must cover the newest
-  required completed session. Historical candidate entry/exit economics use
-  nearest causal `cbbo-1m` BBO snapshots where available. `1h` requires exact
-  CBBO; older `4h`/`1d`/`1w` targets may use a separately labeled conservative
-  hourly fallback, never an OHLC bar presented as an executable quote.
-- **Model:** separate `1h`, `4h`, `1d`, and `1w` HGB/MLP challenger paths with
-  purged chronological selection, calibration, and assessment cohorts.
-- **Failure:** a rejected horizon prevents publication of a new complete
-  multi-horizon authority and preserves the prior pointer.
+Explicit options scopes use compatible Loop B context, OPRA contract identity
+and quote/surface history. Strategy-profit models and candidate generation are
+separate from stock-direction training. Production cursor count scales with
+the saved universe, not a hard-coded historical count. Stock-only scopes omit
+these optional stages without pretending options promotion succeeded.
 
-## R4 — Loop B + Strategy-profit authority → Strategy generation
+## R4 - Stats to model review and immutable Gameplan
 
-- **Type:** D + M.
-- **Exchange:** directional probability, causal features, registered candidate
-  definitions, exact option legs, completed-session BBO/liquidity evidence, and
-  promoted profitable-outcome models.
-- **Planning freshness:** the final quote from the completed session may be
-  hours old after close and remains valid for overnight selection.
-- **Execution boundary:** planning validity does not grant order validity. A
-  future executor must revalidate the same legs with a current tradable quote
-  and may execute or skip only.
+Score matured original forecasts before reviewing candidate model specifications.
+Train/select/calibrate/assess with separate chronological cohorts. Preserve
+the original route identity and target window, including research-only or
+unavailable status. Normal pre-opening publication and explicitly dated late
+recovery have different evidence; neither may backdate availability.
 
-## R5 — Loop B + Strategy → nightly gameplan
+## R5 - local publications to combined planning
 
-- **Type:** D + M + C.
-- **Exchange:** current causal source rows, historical one-minute equity labels,
-  four path-model groups, and exact Strategy candidates.
-- **Output:** 24 directional forecasts and 24 options intents per symbol for one action
-  date, plus model reports and prior-plan directional evaluations.
-- **Boundary:** publication occurs atomically before 04:00 PT. The plan cannot be
-  republished once that action window begins.
+Both owners supply their Gameplan packages. Atlas can synthesize once against one actual cash/stock snapshot and return the same 22-symbol plan and Stats to both PCs without a reciprocal acceptance wait. Conditional planning sales do not create
+live buying power. An incomplete peer package is not a complete joint plan.
 
-## R6 — immutable gameplan → daytime consumers
+## R6 - publications to daytime consumers
 
-- **Type:** D + C.
-- **Exchange:** exact action date, route, probability, model status, frozen
-  candidate/legs, and execution constraints.
-- **Paper consumer:** `ml.gameplan_executor` validates and records
-  advisory/paper decisions only.
-- **Live stock consumer:** `ml.gameplan_stock_trader` uses the same immutable
-  forecast as signal input to the established stock risk engine. Two persistent
-  controls, `--execute`, current Schwab state/quotes, session/deadline checks,
-  exposure/cash/spread limits, and exact-once reservations are mandatory.
-- **Horizon collision:** the 1-hour signal controls entry timing. An active
-  4-hour signal is confirmation; an opposite actionable direction vetoes a new
-  entry and agreement still permits at most one order per symbol.
-- **Prohibitions:** no fetch, training, candidate substitution, intraday plan
-  update, short sale, or option order.
+The UI and advisory/paper reader consume verified artifacts without placing
+orders. The separate stock adapter requires current source, role, ownership,
+quotes, account state and controls. Four stock horizons own separate inventory;
+the old hourly/four-hour confirmation veto is historical. Current cumulative
+catch-up nets due quantities against actual fills and commitments rather than
+replaying historical order instructions. See [independent horizons](INDEPENDENT_STOCK_HORIZONS.md).
 
-The Duckets `Rolling Forecasts` tab is a separate read-only projection of the
-same authority. It selects the active frozen 1h/4h target window at load time,
-refreshes five seconds after each wall-clock hour, and exposes all five daily
-components without changing the underlying plan. It joins every displayed
-forecast to the same-route frozen options intent and exposes the Strategy,
-profit probability, pricing source, and explicit decision reason.
+Loop C's observer/risk contract is independent. Neither a UI view nor an observer
+receipt is a live execution receipt. Options intents require separate future
+authorization and exact-leg execution revalidation.
 
-## R7 — completed action day → next nightly evaluation
+## R7 - observed outcomes to future Stats
 
-- **Type:** E.
-- **Exchange:** the prior immutable directional forecasts and newly completed
-  one-minute equity bars/outcomes.
-- **Boundary:** evaluate only matured targets and preserve unmatched targets as
-  pending. Because the source plan was frozen, results are reproducible.
-  Realized option P/L additionally requires an exact-leg execution receipt;
-  absent that, no trade outcome is inferred.
+Revisit each saved forecast when its exact target matures; preserve pending and
+missing-data outcomes. Combined Stats uses original-source counts and metrics.
+Directional correctness and hypothetical planning prices are not realized P/L.
+Option P/L requires exact-leg execution evidence; unexecuted studies must say
+counterfactual.
 
 ## Evidence-family boundaries
 
-- EQUS operational bars, Schwab price history, and XNAS archive provenance stay
-  separate. Similar timestamps are not proof of identical rows or authority.
-- OPRA DBN, normalized Parquet, manifest, and receipt form one checksum-bound
-  lineage.
-- Historical OPRA is valid for offline training and completed-session planning.
-  It is not silently converted into a current live quote.
-- The stock action grid is 04:00–17:00 PT. Option contracts retain their own
-  tradable-session restriction even when their underlyings trade extended hours.
-
-## Legacy timing relationships
-
-The old 15-minute/hourly phase relationships remain documented in per-loop git
-history and implementation code for explicit recovery. They are not current
-production scheduling authority and must not be used to restart the stopped
-stack.
+EQUS operational bars, XNAS archive/target provenance and Schwab history remain
+distinct. OPRA native bytes, normalized tables, manifests and receipts describe
+one lineage. Historical quote evidence is not a current tradable quote. Legacy
+minute/hour phase relationships in the per-loop reports are not present task
+authority on either machine.

@@ -278,7 +278,13 @@ def test_between_stage_failure_preserves_completed_outputs_and_records_failure(s
         else:
             lost.set()
         return {"files": {}}
-    with pytest.raises((RuntimeError, ValueError), match="source changed|ownership was lost"):
+    if reason == "source":
+        result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
+        assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+        assert result["source_identity"] == _identity(None)
+        assert all(entry["status"] == "COMPLETE" for entry in result["steps"].values())
+        return
+    with pytest.raises(RuntimeError, match="ownership was lost"):
         run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
     failed = _saved_state(setup)
     assert calls == ["prepare_stats"]

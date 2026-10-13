@@ -376,9 +376,10 @@ def run_independent_stock_session(
                 failed_cycles += int(failed)
                 if failed:
                     consecutive_failures += 1
-                elif (last_cycle.get("broker_state_capture") or {}).get("status") in {"CURRENT", "CURRENT_AFTER_RETRY"}:
-                    # A no-signal cycle can return before reading the broker.
-                    # It is normal, but cannot resolve a prior broker failure.
+                elif (cycle_status != "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE"
+                      and (last_cycle.get("broker_state_capture") or {}).get("status") in {"CURRENT", "CURRENT_AFTER_RETRY"}):
+                    # No-signal cycles and a scheduled closed-window pause are
+                    # normal, but cannot resolve an earlier executable-cycle failure.
                     consecutive_failures = 0
                 reporter(format_session_cycle_report(session_cycle_report(
                     last_cycle, as_of=now, session_orders_submitted=submitted,
