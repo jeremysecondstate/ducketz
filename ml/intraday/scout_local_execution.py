@@ -259,6 +259,9 @@ class ScoutLocalAccountExecutor:
         if self.intents.processed_at_or_after(forecast):
             return self._record(forecast, 'newer_or_same_reference_intention_already_processed')
         portfolio = self._capture()
+        # Quotes can arrive while the account capture is in progress. Their
+        # availability is capture completion; keep the original account time.
+        quote_available_at = instant(self.clock()).isoformat()
         original = self.intents.get(forecast['forecast_id'])
         if original is None:
             frozen = self.store.inputs(forecast['cycle_id'], forecast['symbol'])
@@ -270,7 +273,7 @@ class ScoutLocalAccountExecutor:
                     'schwab-liquidation-equity', dict(account_fingerprint=self.account_fingerprint,
                         snapshot_identity=portfolio.broker_identity_fingerprint,
                         snapshot_sha256=portfolio.source_fingerprint, observed_at=portfolio.observed_at)),
-                quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at, portfolio.observed_at,
+                quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at, quote_available_at,
                     'schwab-current-quote', {'quote': asdict(quote)}), calculated_at=self.clock(),
                 maximum_quote_age_seconds=self.maximum_evidence_age_seconds)
             original = self.intents.save_sizing(forecast, result)
