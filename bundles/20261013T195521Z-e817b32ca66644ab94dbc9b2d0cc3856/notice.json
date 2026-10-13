@@ -1,0 +1,36 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261013T195325Z-279d172ccad44ed999728bf76524d565",
+  "change_id": "20261013T195325Z-279d172ccad44ed999728bf76524d565",
+  "commit": "c0dd8f3fb8ddd91d54fb683f1a7401a8265db946",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scout_local_execution.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixture checks only. Two-file stacked PR on the published independent-trader baseline; main integration remains separate."
+  ],
+  "peer_applicability": "Shared source for the local Scout execution mode; preserves independent traders and existing validators.",
+  "pr": "https://github.com/jeremysecondstate/ducketz/pull/99",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout local installation is pending a human-controlled stop. No active source or worker controls changed.",
+  "scope": "shared",
+  "summary": "Scout local sizing preserves captured equity provenance",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T19:54:06.214890Z",
+      "exit_code": 0,
+      "output_sha256": "463ea68835363ed8ecea3cd41facd94ecde3eb3300fba51cc5f6e7a5bf205b98",
+      "result": "......................................                                   [100%]\r\n38 passed in 5.54s\r\n\n",
+      "started_at_utc": "2026-10-13T19:53:59.542248Z"
+    }
+  ]
+}

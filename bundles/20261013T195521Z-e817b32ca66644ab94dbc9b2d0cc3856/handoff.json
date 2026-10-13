@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T19:55:21.553628Z",
+  "id": "20261013T195521Z-e817b32ca66644ab94dbc9b2d0cc3856",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout local sizing preserves captured equity provenance"
+}
