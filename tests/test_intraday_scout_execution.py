@@ -926,3 +926,119 @@ def test_retained_orphan_claim_blocks_expired_negative_proof_and_new_symbol_repl
     finally:
         env.executor.journal.close()
         env.executor.journal = None
+
+
+def assert_original_cancellation_commitment(env, original, shared_request):
+    """Read only the original session; a reload's new journal cannot own it."""
+    with env.books.open_session(original['request']['session_id']) as previous:
+        assert previous.get(original['request']['request_id']) == original
+        state = previous.order_state(original['request']['request_id'])
+        assert state['evidence']['status'] == 'WORKING'
+        assert state['evidence']['cumulative_filled_quantity'] == 0
+        assert state['evidence']['account_fingerprint'] == original['request']['account_fingerprint']
+    shared = env.atlas.authority.reservation(original['grant']['reservation_id'])
+    assert shared.request == shared_request and shared.status == 'WORKING'
+    assert shared.broker_order_id == original['broker_order_id'] and shared.filled_quantity == 0
+    native = env.atlas.ledger.lookup_reservation(shared.request['native_reservation_id'])
+    assert native.status == 'WORKING' and native.reserved_quantity == original['grant']['quantity']
+    assert len(env.atlas.authority.read_state()['reservations']) == 1
+    assert len(env.atlas.ledger.snapshot().reservations) == 1 and len(env.broker.posts) == 1
+    return state
+
+
+@pytest.mark.parametrize('error_type', [TimeoutError, ConnectionError])
+@pytest.mark.parametrize('manual_reload', [False, True])
+def test_temporary_failure_after_delete_never_rearms_on_fresh_working_status(env, monkeypatch, error_type, manual_reload):
+    submit(env)
+    original, shared_request = record(env), dict(reservation(env).request)
+    newer = save_forecast(env)
+    env.broker.delete_error = error_type('synthetic reply lost after DELETE entry')
+    env.executor.step(newer)
+    assert len(env.broker.deletes) == 1
+    state = assert_original_cancellation_commitment(env, original, shared_request)
+    assert state['cancellation_events'][-1]['kind'] == 'cancellation_temporary_failure'
+    assert state['cancellation_events'][-1]['payload']['known_before_delete'] is False
+    prior_observation = state['evidence']['observed_at']
+    env.broker.delete_error = None
+    if manual_reload:
+        assert reload_scout(env, monkeypatch) == original['request']['session_id']
+        env.forecast = newer
+        newer = save_forecast(env)
+    try:
+        env.atlas.clock.tick(seconds=3)
+        assert env.executor.step(newer)['disposition'] == 'previous_intention_reconciliation'
+        state = assert_original_cancellation_commitment(env, original, shared_request)
+        assert instant(state['evidence']['observed_at']) > instant(prior_observation)
+        assert len(env.broker.deletes) == 1  # A fresh WORKING observation is not proof DELETE never happened.
+        env.atlas.clock.tick(seconds=3)
+        env.executor.step(newer)
+        assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
+    finally:
+        if manual_reload:
+            env.executor.journal.close()
+            env.executor.journal = None
+
+
+@pytest.mark.parametrize('provenance', ['missing', False, True])
+@pytest.mark.parametrize('manual_reload', [False, True])
+def test_latest_temporary_delete_provenance_replaces_older_retry_permission(env, monkeypatch, provenance, manual_reload):
+    submit(env)
+    original, shared_request = record(env), dict(reservation(env).request)
+    newer = save_forecast(env)
+    def stop(path, result):
+        if path == '/v1/cancel-intent': env.state.stop = True
+        return result
+    env.transport.mutate = stop
+    env.executor.step(newer)
+    assert env.broker.deletes == []
+    state = assert_original_cancellation_commitment(env, original, shared_request)
+    assert state['cancellation_events'][-1]['payload']['known_before_delete'] is True
+    env.state.stop = False
+    env.transport.mutate = lambda path, result: result
+    env.atlas.clock.tick()
+    # Exercise persisted older/partial histories without changing production policy:
+    # absence of an explicit before-effect flag must not inherit an earlier True.
+    payload = dict(reservation_id=original['grant']['reservation_id'], stream='scout-15m',
+        observed_at=env.atlas.clock().isoformat(), stage='delete_exact_order', error_type='TimeoutError')
+    if provenance != 'missing': payload['known_before_delete'] = provenance
+    env.executor.journal.record_cancellation_event('latest-temporary-outcome', 'cancellation_temporary_failure', payload)
+    if manual_reload:
+        reload_scout(env, monkeypatch)
+        env.forecast = newer
+        newer = save_forecast(env)
+    try:
+        env.atlas.clock.tick(seconds=3)
+        assert env.executor.step(newer)['disposition'] == 'previous_intention_reconciliation'
+        assert_original_cancellation_commitment(env, original, shared_request)
+        assert len(env.broker.deletes) == (1 if provenance is True else 0)
+        env.atlas.clock.tick(seconds=3)
+        env.executor.step(newer)
+        assert len(env.broker.deletes) == (1 if provenance is True else 0)
+    finally:
+        if manual_reload:
+            env.executor.journal.close()
+            env.executor.journal = None
+
+
+@pytest.mark.parametrize('error_type', [TimeoutError, ConnectionError])
+def test_temporary_failure_proven_before_delete_keeps_one_safe_retry(env, monkeypatch, error_type):
+    submit(env)
+    original, shared_request = record(env), dict(reservation(env).request)
+    newer = save_forecast(env)
+    prepare = env.broker.prepare_order_submission
+    def fail_before_delete():
+        raise error_type('synthetic prepared-context failure before DELETE')
+    monkeypatch.setattr(env.broker, 'prepare_order_submission', fail_before_delete)
+    env.executor.step(newer)
+    assert env.broker.deletes == []
+    state = assert_original_cancellation_commitment(env, original, shared_request)
+    assert state['cancellation_events'][-1]['kind'] == 'cancellation_temporary_failure'
+    assert state['cancellation_events'][-1]['payload']['known_before_delete'] is True
+    monkeypatch.setattr(env.broker, 'prepare_order_submission', prepare)
+    env.atlas.clock.tick(seconds=3)
+    env.executor.step(newer)
+    assert_original_cancellation_commitment(env, original, shared_request)
+    assert len(env.broker.deletes) == 1
+    env.atlas.clock.tick(seconds=3)
+    env.executor.step(newer)
+    assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
