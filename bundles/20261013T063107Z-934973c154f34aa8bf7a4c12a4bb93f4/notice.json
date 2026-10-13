@@ -1,0 +1,2329 @@
+{
+  "author": "Atlas",
+  "base_commit": "5f50b2afc1967bd4115e82d8acd136c71d5aa813",
+  "branch": "codex/atlas/20261013T062842Z-993f98743fcd4a5fb26af3bc2849c14b",
+  "change_id": "20261013T062842Z-993f98743fcd4a5fb26af3bc2849c14b",
+  "commit_sha": "5783ca535ef81ebdd885c29c3be938153befd82c",
+  "completion_record": "20261013T062842Z-993f98743fcd4a5fb26af3bc2849c14b",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "dependencies": [
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "Check-15m-Readiness.cmd",
+      "sha256": "a7b5e3a38980f47b8e4b600096c5ba641dba7210765ef71230b5bbfdcb5fc513"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "Start-15m-Trader.cmd",
+      "sha256": "9afac3bac6c939ae60dc1126219a11b32a7ec612b33b502b25083ce26cbe1c8c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "Start-Gameplan-Trader.cmd",
+      "sha256": "785861b060123006656992b5d973c024ec9356d7ba82cfc7cd23d5d6cfeb1c27"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/config.py",
+      "sha256": "2b38d3ee2c814d714faf964bdb9cc59a2877cbcb74478b7fba2fce024dc51b1d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/hyperliquid_accounts.py",
+      "sha256": "76f89f2f23251482357fa2a10f3d210cb8d2392ffa91bc39e46769d277a529b2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/models/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/models/market_data.py",
+      "sha256": "c28724cbc075f1b57eca2bb23c86c5dc12b410d4241b660e793c8f55fead63bd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/models/option_management.py",
+      "sha256": "c8cd27bef3679035872745f818ceb93de50958e67c2895c38b9ff7c5456a0eda"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/models/past_positions.py",
+      "sha256": "e8e1a768671fc3b40c1d1b501b82ea5d3b51275a29483d7ea2cd74762fcd53c5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/models/portfolio.py",
+      "sha256": "fc3149c587703db8d442eb806654f34b94462a222f892b27a54eccc826bc615d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/aggregate.py",
+      "sha256": "01be2b3f092b8d8ff8a49e42c6484baed0c1c487a43fefe5705fb57dc65ba57c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/databento_cme_context.py",
+      "sha256": "e0bcfe1c96651a2b6f8ba37dbb7516a5815fba5ab8c8407c182f909d7eb96fe1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/databento_market_data.py",
+      "sha256": "fb8e4a61428b3821a5ea1d30cf7aec2d14556a51d58f64b31afafe66c026c0fa"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/databento_retry.py",
+      "sha256": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/fmp_corporate_data.py",
+      "sha256": "b5d512ad9a1523312d2fb6907bcaec78916226e197a9a58a9266117db466801b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/fmp_macro_context.py",
+      "sha256": "f15c136818789b98fe02681cc7dbdc3490686f97997efef96a4b080262b1e4dd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/hyperliquid.py",
+      "sha256": "5f816a5e9dbc433c123cc401f2829ad293fba92337db502a1bed0b55f5d24cbd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/hyperliquid_account_history.py",
+      "sha256": "6cca6642b1287761981b80a526d860d876275df7c59bbec818f426c0b01ef696"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/hyperliquid_markets.py",
+      "sha256": "cba985f41eb5cfed7902a0dc5f1489f61b9a820d6651b820e3a07d150c9d5ce8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/hyperliquid_paper_view.py",
+      "sha256": "3a63cfead6c942fa5c4403907d970f3ab55358e0d5d646101197d434751fcdaa"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/hyperliquid_powder_view.py",
+      "sha256": "1aec243946b6edd1651348fc5aa789cb86656166d95b13d37d7c652d6aea3692"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/hyperliquid_trading.py",
+      "sha256": "13cda401d8efa0ff0faff23c576d0ec7ec8ac0a35feca841dd05558629a689b4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/market_fetch_specs.py",
+      "sha256": "c40ceb7aaaed0804956dfded3407fc295b9c5a7390e0732058ec7d18068db6e4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/option_exercise.py",
+      "sha256": "d844214a3854485209ea3abd8e18d9415b080294b0b36c010cc8076c8024a33e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/option_exit_plans.py",
+      "sha256": "e0799e2e0d8c0e63c8356a1aed0f16f890194061dea415d307aba4d6771d4458"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/option_order_review.py",
+      "sha256": "28948d2681e7ef7bd02afe16a4f5061aae94b03542bc42514fca1c60c8cec416"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/option_rolls.py",
+      "sha256": "5387e8072ad33f4736eb8c4bd6e8cf280e66d24c3f3ba50dd75459576a4a8a95"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/option_time_exits.py",
+      "sha256": "09ddaf1768fcf92434c371613ad0b6afc2232b68d0854147c5f0afe0eb98b42c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/options_chat.py",
+      "sha256": "72b21d59a0b69f2c6719d0cf5d42cc1c32a46f79287efd5892d2aea01e206f69"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab.py",
+      "sha256": "76d3d9adea02030e9b419aa032be882a6dcd3b2eb1438e613da6bc1da9258308"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_market_data.py",
+      "sha256": "19535ea3d048d01f65802b7a2b52d59b0302723521a56658efe7c28ed24f0c0a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_option_management.py",
+      "sha256": "59d02ffa5223df6dae22bf7b69723dadf26a551f34a96b7e086ed4f62e6883b2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_order_fields.py",
+      "sha256": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_past_positions.py",
+      "sha256": "f0df4a5a10891e6d1b86aa2971f15bcd166f8269289b078ae3f8263de3b445b7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_policy_inputs.py",
+      "sha256": "0eb11577966952cf5890c8f84d6c4bf74c9650b486e4a28f41b5a2350c8a1b39"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_retry.py",
+      "sha256": "dcf97fdae508dabe4a9b1499abd73d6225bb03cfefcdbeb5168c014f72e0fa16"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_stock_orders.py",
+      "sha256": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_strategy_orders.py",
+      "sha256": "3ad5d499716a00df315f1dcf7dceeec813f76f94907fd6e0d7428958037abe4b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/schwab_token_store.py",
+      "sha256": "6bf4bba20b41d891501d55853f448d5a71d39d32de1f84392ccad12f7eb96850"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/sec_capital_structure.py",
+      "sha256": "853497a03c21b937e3f0b3c2631b4154c1af4c1d2147f0427983bf9cd6889a70"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/strategy_order_review.py",
+      "sha256": "a29495b0d3407692ff6e385f74fa80a82920ba837c7a92419682dd40182bc7a7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/services/strategy_portfolio_impact.py",
+      "sha256": "68426be0a66009e4c343f00a53e63260f0b3c6c47d61be2aecc1b710960c0736"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/background_tasks.py",
+      "sha256": "e39578d968700190102fedf25b308367a8e9eba8e2e392c0f556cf00455a238f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/ducket_bucket.py",
+      "sha256": "aae23f40f439abd41f30f851278ba2fecf0a037547fe661317668173adf6b370"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/gameplan.py",
+      "sha256": "de0056b026fadeaec2541d3380cb148945203d6e19761224bead73e392159471"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/gameplan_data.py",
+      "sha256": "2a16be69362f6b687bb7bab164c7ea7dc1657f80aee816490794962cf3a14f64"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/gameplan_stats.py",
+      "sha256": "a9228a83841d1b406ba6afe3f8e71d19680845964e5b8b48cef576c5de045aec"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/gameplan_stats_data.py",
+      "sha256": "20c8d3a6502b7e75cdfcbf4f2465ff9e8dddb31d2bcca57e92701aca552823f5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/gameplan_widgets.py",
+      "sha256": "caa600f5b0fd0ffa06d3dc08a842b0458dd74989c3533c872cf20f182a0ca526"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/hyper_workspace.py",
+      "sha256": "adaf94ab6b7f2ce9a59a3ccbbc15e8270808ef46097a9497f3ce3b5ce39c9f8b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/hyperliquid_controls.py",
+      "sha256": "66123716ab7cd3f450aade64ff36d97a2d60636a779a30142a6c10fd8c009560"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/hyperliquid_workspace.py",
+      "sha256": "bc64fdfd9baab17bab31e9bf4893344bb8d7a998951353b073c011920ec68cb8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/intraday.py",
+      "sha256": "150cb4a92c5cbdf632cab380a44f36057228df6ceecf21dfd5ee5a34b41766a9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/intraday_data.py",
+      "sha256": "bcc13199e5f7fd1f88f7ae728c62505f1f1ea31995142129bfbad620ce5b0a68"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/option_exercise.py",
+      "sha256": "75c6cb11166b8e31708d8798bad45043e6d25e0f9a6f1bf7fbe4e5a300f37eea"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/option_exit_plans.py",
+      "sha256": "a910e9016cebacd8503641e571d4d7a5e14c7a20623eafdcafb7181c5ae6cc3a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/option_order_review.py",
+      "sha256": "ee50b07492bbd904f45f33896a528cbdf009f2322cec4fd39926a21bfd6d0888"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/option_rolls.py",
+      "sha256": "c5f1b28e120ee041f43a6a7db04d6234dd3d84d93173393569ce3febcb794477"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/option_templates.py",
+      "sha256": "dcaf68f570d60a0315fe8dff96ca1ec4d45f21e47b9405403ce555fe66c9e54a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/options_chat.py",
+      "sha256": "2afdb74f43411b74153a0738718c33eedb4bcdc5d5bfd53fa72b6b7d56168a64"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/options_management.py",
+      "sha256": "2528da99ad2d5f9a67a89b5e7849d66ffa12fd462f1e043a72ba817a1286f589"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/options_strategies.py",
+      "sha256": "ecafe252cef5ffadfa275750cef24a4b9d71131b22c2db3add58442fb90661bc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/options_strategy_data.py",
+      "sha256": "016e221a6cb9cf5e73356244b209cd83c67f677b4039c38d4af6d1dd5611cfdf"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/past_positions.py",
+      "sha256": "54de791d3e11e503bc29c8c772435b2499961a1122117784a7a434f249a64950"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/rolling_forecast_data.py",
+      "sha256": "192fb521e24caee8ab8d5a201e826ef2d7a451864d228f5c34b1f84918d003bf"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/rolling_forecasts.py",
+      "sha256": "647cdcfa4888025673fa2a6b7a3067f2a494a7181ae06ad7377c5903f9dfa2d0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/schwab_duckets.py",
+      "sha256": "84f2135ed2eaec05d056874ddae1f40caf677cf741dc674e386e46f835c1d9e6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/schwab_order_messages.py",
+      "sha256": "9ce13f164206bd8384dd8293837e758cb5f7f64d3b3ebcdf5dea2c86f852fa81"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "app/ui/theme.py",
+      "sha256": "7b8a2edf4890eb176955c5e4cc8ede84c64006d9a219fd870b92fee6605a78ff"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/__init__.py",
+      "sha256": "5545a124cd32e3dda499f6b1c1359951d07ff3c29e8f95204c1ed87387e02cce"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/bar_consolidation.py",
+      "sha256": "c328eae4715cd850b30bd7917ee38cdef2f6bec765e809e906b5872659ccf461"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/bar_readiness.py",
+      "sha256": "9e760e130138985cb9e3708315279a412845d7db4be0bc3b26c6330e541c6b28"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/bar_schema.py",
+      "sha256": "a27b8b795bd6a9d936b5e3b0ad18dc96fda8c799db6fe4b10405eade80147950"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/bar_timing.py",
+      "sha256": "16650cc616ff2b766e9ba45552c2b218ec2cd2cb596156f9a04a3484be1c4004"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/calculated_features.py",
+      "sha256": "97f974f484bef43515607c162b80248da28f531f903056c72658b5f238e06ce9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/cme_cross_asset_context.py",
+      "sha256": "0cdb50d7c8acee77139e8496afc4bc715ceaa80b59e26c4ddb619cde8cf14dc2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/cme_history.py",
+      "sha256": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/cme_runtime.py",
+      "sha256": "7acbc622020b9ea5dc6ea4b0cb9ac0ecbae6e969aff9902e5124312d85459557"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/continuation.py",
+      "sha256": "f6eaa978d4f4dfe6886f71f67a4967a168a6686a5546bd577a6e94b4d65c3b7d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_archive.py",
+      "sha256": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_cold_start.py",
+      "sha256": "fcee81a4e4467f298fbdeb4f2aa3d99b0f9a35cc6a30f1f688458d6f5c98428f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_fetch.py",
+      "sha256": "7aa1431157a8344826386f60b718a4d34af8611fa786accfb8dd12c30317e257"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_history_policy.py",
+      "sha256": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_opra_history.py",
+      "sha256": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_opra_replay.py",
+      "sha256": "7d732b72c85fbe1ff9b4e332ca9a901e0ddcddf55890f4181503027380746b94"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_storage.py",
+      "sha256": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/databento_xnas_replay.py",
+      "sha256": "e8404e2225710ee7b1c008977fe5c479335977d20e2534af0724a69abca5a54c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/decision_time.py",
+      "sha256": "7a683551970d0b9be64ca4e4ed8e56cfb6a0fce553ced3b6cd6fe27d6fa16064"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/derived_bars.py",
+      "sha256": "9a630bc36366f7efb37ba39d5754da2b7f485df631362eb45d84aa77814543f1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/fmp_energy_context.py",
+      "sha256": "d7d648aafc4f1bc064c7d5d93ab099169a712fb933c4b4e3e9c28c7f0e8fc9ab"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/fmp_fetch.py",
+      "sha256": "532d13db7c76c1433a6253e38e3fd492bae802d6dc0fc2eb5ab8c03009b857a8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/fred_fetch.py",
+      "sha256": "975f66050c0cdd6de11f4574273cfe3e12421ebb2fc3c8f27bacd1f120bb3c39"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/fred_vintages.py",
+      "sha256": "d5b1c37f277e7c007f8ae7c0139d105c4ec801010ce2355ac19fe5f1bd45f15e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/history_scope.py",
+      "sha256": "9906f4a42920bc1e648c07a464a91d07bcca0fab614edf40d18df69a7fe7a844"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/hyperliquid_candles.py",
+      "sha256": "652cd9509e3c12228c997d03e84b0674a88cf67e1c218b111507246f40737320"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/ids.py",
+      "sha256": "daead3e39055cc9bd4ea4adef9dd715d4371da4c606269a4d88f2e9f088e850a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/layout.py",
+      "sha256": "20719c8416759435691457adee1936dd9598b3e4c1f31a785dfa5a7252d6c976"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/loop_a_cycle.py",
+      "sha256": "6c95fadc3b0a4224174942be9d8df23b9999cd2759e319293dea71e7cf6720fb"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/main.py",
+      "sha256": "1dc4ea3f40cd21eb69fb70d0e134392267bded23b016a9b50dca001154c7efcd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/observability.py",
+      "sha256": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/opra_concurrent_stream.py",
+      "sha256": "320d3e6932f3fa507867caa318489049a3a70cc37c1ed66013cbd9e0b4bbe5dd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/opra_replay_fallback.py",
+      "sha256": "4c3fe0f8ab7a8f31bddc224a895caa6720c9aa466ba25646bd7b02db8d5b4a92"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/options_runtime.py",
+      "sha256": "a012181ef5badea60020f243dc5e7d9404fbbae9368ef80ea44f8deba4196c35"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/orchestrate.py",
+      "sha256": "04c70f7a0514ae28f783e5e8dff1186ca893d526a3b046a67129aea70156fdee"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/parquet_store.py",
+      "sha256": "f54d54544cdf574f8ed261dd3b62c1942d0bd12d7a2e0b53a4123e6164d930c7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/pricing_barrier.py",
+      "sha256": "3eeaf8be2d847c60589c03eff1fe872cd230c424f4cb22934246abca8245b710"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/quote_liquidity.py",
+      "sha256": "1a03232208bb7dce98633b548e0d6c53d77db059de2db79582c75d863a85b366"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/readiness_lane.py",
+      "sha256": "a07f376a8f74aa1f89df5c970403dbd1dbe5704eed40e6d76005f5cf0152e886"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/runtime_lock.py",
+      "sha256": "5d4561c68af90cb52f248140cab74beea67abcbc998194bd3c044252f19980fd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/schwab_fetch.py",
+      "sha256": "51bf16455ed16c2f10f5fd19580dc020cf05b80ce0dfb66b2da1a8d08698ad8c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/sec_events.py",
+      "sha256": "38dd42b0c4730c72edf7db33cbf6df4d14b4c42aa905dca4de75bb7b314e12ef"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/sec_fetch.py",
+      "sha256": "1fb0f0235210a5d96230c0428d0d2deb68d69f46dedd6121b7942167f2bc3af8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/symbol_onboarding.py",
+      "sha256": "81014c0ae701f56a2782a381e7fe4e74b6ff4dcb316340e94dfae91d8b8c2eb8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/symbol_universe.py",
+      "sha256": "4547943d6c8a8670348082fef7e33637467c92c8a6a0cdcc1c876da1e93ee88b"
+    },
+    {
+      "installation_classification": "retain-peer-symbol-selection",
+      "path": "datafetching/watchlist.txt",
+      "sha256": "3aa79e6cfbd3701dba7696ca705fbe519e9b24123da7ba86c6e7294a6e7e11df"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "datafetching/xnas_replay_archive.py",
+      "sha256": "4f8c5856f5bfad75980f8f94e3d2fbd002f831bd915e8ccaae5ff6a64813f1d7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md",
+      "sha256": "e81ae46cd58a523d9ac0eaf67bc86d754f3700a94f50d7975a44a7f9c50724e7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md",
+      "sha256": "d26a103d25b06ce329bf5409226bda311c2fb19dadd1b2aaf4fa4fed184d6ef6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/datafetch-ml/start_stock_session.ps1",
+      "sha256": "9eff7a46daeb098aaaad6b016a7844c1582e74da32b7c24b2b928b280ead2a97"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/intraday-15m-prototype.md",
+      "sha256": "f08207a7a3ccb16f129f44edfc21d8d138cfc4c0bf0632343a58526ad5a6f45b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/intraday-live-readiness.md",
+      "sha256": "c89330eaf56d05231913215280f3df26ad66ea44fe1c294ceef14000e9df0217"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/intraday-scout-adoption.md",
+      "sha256": "514fb6aa0e619661005db6c3c6a187ce6910fffbcb5864bef9529f14c6149a1c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/intraday-scout-submission-contract.md",
+      "sha256": "f2fbc013fe7e2a72b4d55f4e96b1be045f29fc1058b1d835370b631b5bdd5d13"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/intraday-scout-update-prompt.md",
+      "sha256": "27ed5830f85af914a9faa4ca66b0dd3d6a0bd93989ec3455e39814950237299b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/intraday-shared-admission-service.md",
+      "sha256": "fea50eeba9d33892d7f279239b2ac522503a9906caacffa9e722c3bf384db2b6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/scout-15m-manual-start.md",
+      "sha256": "9b8d29335d8870d9143b3cd529a454dc0f703a3fbe28bcf225a60325d2f0c515"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/development/trader-order-timeouts.md",
+      "sha256": "1e83086997e3ebb18b33bfb03f7d64798a1f06967239b8f16b8a984a88d9289b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+      "sha256": "e3df3a00d7eccb7f12840bb4dbfd9c8c9f01d8a420eb693adc489a994a2906d8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "docs/loops-system-analysis/INTRADAY_15M_SYSTEM_DESIGN.md",
+      "sha256": "574e2d9cfa60827e77f080f723a114e46a04bd1a2105eb9e78e08c6067ae6b58"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "fundamentals/__init__.py",
+      "sha256": "8b535c883ea067208c7a038855a92c87c6820887dd555c25dba850acdcfbefff"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "fundamentals/calculation.py",
+      "sha256": "9876f717f4c9d06a2d57a9e69838d2617007e0da894fb6baa17e4e7605b4431d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "fundamentals/join.py",
+      "sha256": "672edf328d23abecd7899448ffdb09006601f3c83d0d72e15fd0816fd922d0c5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "fundamentals/main.py",
+      "sha256": "899882888f9bf8712cc2284e3ffeccc6069cd0a5df02e3bab3784dba468a1d64"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "fundamentals/parquet_io.py",
+      "sha256": "4d75ff5dc665b693efe0f24ac7296800030d42909f50ffb213728b0d156810f6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "fundamentals/point_in_time.py",
+      "sha256": "9934daeae28c204a4b6b9497a08f85650ab0e9cc827a04c0d4140313740d84b3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/__init__.py",
+      "sha256": "9e91f038d8d3c6b24fbefd894f58568634d607f4d1b7f696f6561580ab811be8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/authority.py",
+      "sha256": "1ef10f5f7da314c7c13c449d025041c7e909a4b99dca6cdfcda1b98c50fa7fc4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/config.py",
+      "sha256": "98b11be488262ca5fbc921f316fddd45314617c640b37671ac9387409aebcf38"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/cutover.py",
+      "sha256": "f0b72efb879f4be945b63439f08a07c8397a3a43cb5ab5cbd6eb0c06a3558317"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/execution.py",
+      "sha256": "b62faa56f40879ebaa858925c68915e78b83956e3f736050cfbe4fe6654a2cb5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/joint_bridge.py",
+      "sha256": "ba5684373433c9e16c8792c0a0a7b61a8cd180cb7d24b84c530aee5e827a4588"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/migration.py",
+      "sha256": "dfd6d62d722dc28720dc6bb0f8e376be98dea0e9927c1c9c420cda09aa75436c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/planner.py",
+      "sha256": "76429f03524371f0131e81475183b3de29db6d47e08722eced4302bd04f0b6f8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/preparation.py",
+      "sha256": "095da3391b67d70817688db41ae3ccce44f7cd9cd5f436392cc56b01084a4e3b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/snapshot.py",
+      "sha256": "0d2e9ed4c9794187a2366a2c7524cae224481f2e3a8e588cad9333f9a177f869"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/account_gameplan/sources.py",
+      "sha256": "b8475cc04a8fa3233938e77c1413afe79770f01bc149603ac3c8c823997fa7b4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/artifacts.py",
+      "sha256": "8e76f065038ab878cb25deeaa973053b06e031b0df32861849da0911fae8d399"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/calendars.py",
+      "sha256": "c87adbd5527daa93c84490903611cb20a7e57cc6355e3c77b63b67c880663dcc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/calibration.py",
+      "sha256": "07e8d9468f7f7d58f4f566d4eda0b40c329d95ee8b7aa6d54985e0b7095d8926"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/contracts.py",
+      "sha256": "0cdd68b74d3c7b4f75634a0d66a2806368f5285791d1605aa2e51d53b3485c05"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/current_publication.py",
+      "sha256": "45f4524c2ea2aa146b6ac3ddfb8c200d9657a49300a93a27a7d1ca54cf94a465"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/directional_forecast_evaluation.py",
+      "sha256": "04d8bb069b17a64feaa5c7b9781d92265311ad549b7e4c34d23098814546cb57"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/directional_forecasts.py",
+      "sha256": "fcb27a76d0ae404ff04669c47c6ebc2ab18817e08e2341a56e10e58094fddcaa"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_actuals_review.py",
+      "sha256": "3dd28e203e418bf608def8219be33fcc2e7600eda6fe81eefade78f9cd3a007a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_archive_features.py",
+      "sha256": "1263126bb015be0ee0def4c463a0f80689246c81a314921f34ac878d720392e2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_archive_integration.py",
+      "sha256": "fc9dc08dc06d16eb57adb45841a561a6776545ca46a687fb28a276767faa2601"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_archive_seconds.py",
+      "sha256": "8e6316dfc8b215eaaf3575bb74e0608bde7659ce0f6e50945a76dcbd9fed19d4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_cash_ledger.py",
+      "sha256": "f90907b265b883428c994f2c5ee452ec5ccb5286bbec94788f5df4768443aa5c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_champions.py",
+      "sha256": "d25284aebe46b42db1a7fcacafe81f1a70ad325110a88ddfda42353ff84b61af"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_deployment.py",
+      "sha256": "308fbc0a3b088f2d39ca125d7b73b4151168907e1333a0e918eb267fafa5d572"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_development_selection.py",
+      "sha256": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_estimators.py",
+      "sha256": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_evaluation.py",
+      "sha256": "154f6f18bcfa3c463e6881b4228d5f811deff653102bc796ea6af6d18a7c73a0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_model_feedback.py",
+      "sha256": "aebbec385c40bf1115bcef9d949079fd414bf5fd89531df322b386c636575857"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_price_bands.py",
+      "sha256": "ab43a3b36bf9958b4692d668204cf443cbb58184f4c0632d1f6e7d13305bca99"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_price_completion.py",
+      "sha256": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_probability_target.py",
+      "sha256": "78744f567ee87603de3137353482c03bf739a7a8661743ac75b1168577007b3d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_promotion.py",
+      "sha256": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_source_selection.py",
+      "sha256": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_stats_handoff.py",
+      "sha256": "76759dfcfead75c2925bd14a2bd75582224a85a3cb0c4521c2eda4484445d5c4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_stock_trader.py",
+      "sha256": "3ad1e5a1927a6debb722c5bd33d28617f602b989e475399777c2da3666a3cb4c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "a14deea3cd4b49c6778ea3c3cf4ed55e48c1e9aaa810e08c8d430178356252f5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_trade_review.py",
+      "sha256": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "2c074bebcc58bb9868a6827040e97d41940f30be758d7b1f689108399e71eafd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/horizons.py",
+      "sha256": "382c9ebeaf1e286b14476297400a51168a72490df0fe04cee7926b7bfcb334dc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_coordinator_config.py",
+      "sha256": "cae383d54497cb8e79c065078da110add075ebd85e652d111b6a298aef0f3b4c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_data_loop.py",
+      "sha256": "1d3dc2001b02e1f0d642164f9032098bf14bf8027a0029e4dcb5cdee815d51fb"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_data_pipeline.py",
+      "sha256": "d7c3de821fdb0cf67a4a06e1da87882595a1f2a92e897908c5ae55d4f685b01c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_model_config.py",
+      "sha256": "16342421cc3732d65322e7df439a003ce4396eb62823a204152df99225bc230a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_models.py",
+      "sha256": "b535b9ea4d8c18826787d3f4f5a72e41a476cc52de5337afc10d842b44089426"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_powder_ledger.py",
+      "sha256": "5f4b399062be1b3122707af23e46c01672290a00dede98c6bfef3b3379c01ae2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/hyperliquid_powder_lock.py",
+      "sha256": "cb2a3be78f33a67c790a1ed4cf1263cff4adf4f0e663a23c92f8429eb61e640f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/independent_stock_targets.py",
+      "sha256": "d083d8454ab8c81866a8b892fb27866b0c2ee2b3558b7585b4a72307826d8016"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/__init__.py",
+      "sha256": "2b1407361de7dc4b7233ee8329adf4383336afbd0b4f53266e2da38edd236cf8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/admission_service.py",
+      "sha256": "ec6238965fd0210914164f623586140489858d71eca4fae7958b0757c9daacd6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/book.py",
+      "sha256": "3e3c1af09dfd2e4e86f5a36bba5ab89a01aad6d489721a431f8c9238bf506fb7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/cancellation.py",
+      "sha256": "105531818617b5a3e7b890eecd3aaac164dcad8f99febf4ae0e9075a3851c84a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/capacity.py",
+      "sha256": "12512fa69fd8188eda9653c7cf477a47f731aa7a675f5dec343c2214c91f46f6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/data.py",
+      "sha256": "b4d9548b5fd1163373c82ea680b1f5323d013a1c55a8974687ccd6baadb22be9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/evaluation.py",
+      "sha256": "c613d1cf44ae233234f702bd4467c3247489f657387649e9b0c486b7d3bfabe3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/execution.py",
+      "sha256": "83cb02b3249a61d035a4456c897130e7db23ba4f8f8b9817c63c34af7effbab0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/execution_policy.py",
+      "sha256": "48f29958464fa40726e98744ac60bd94a10f847e1cc43bea73e07828e71ea356"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/intentions.py",
+      "sha256": "272fdcb8504844e23d123711c4d9ec2b28a07f92a44b3cfbe2c45475add73631"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/live_session.py",
+      "sha256": "83e3f56727182290961712e69aaa278b66d3a7e649719251893602041cde8972"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/models.py",
+      "sha256": "9dc6a7e3c682eb0fd3a85ded4a09e578687ac99b994933ba3ec193d48c4fc72e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/prediction.py",
+      "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/prototype.py",
+      "sha256": "1e71cb605992ac5e99b419b0b535d269301110ffac4c524e00002359aa7f50b6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/readiness.py",
+      "sha256": "937e2cd838286b8b04f0158ef54656a4b54c0e51c3f46b0b7a87bd1150962a62"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/runtime.py",
+      "sha256": "cef67792e6c60bd932807998c37ca0c882fe44aba67ab0e2241750911fd33b0d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_authority.py",
+      "sha256": "7fa00986d48af33950fc9f734285fb1bd479df7e032ccd0ea99186893f725303"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_books.py",
+      "sha256": "d711cf0cca7ddc76a4b5d6afebd38c8f807f26cd83938078f515db762e206ee0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_broker.py",
+      "sha256": "41d5a8ef756bd74f72629d5e6d62c555e2b233e93b4cc3c37c7bf04eec77ded6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_client.py",
+      "sha256": "01483746079ad541e19ea67c92260761a873808a4824606b33a4e049846f8855"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_execution.py",
+      "sha256": "57eb5811b03f08b1dc09e8eff3e3730752756394782a1cbaa37fb9650727415e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_journal.py",
+      "sha256": "522e2092339dcc3ae1b21c1770754b639b50d2b06edd30753df4da3262e66b00"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_prestart.py",
+      "sha256": "14fa8356f9f3d06031b76dfa318280bf4e8ea020817885439453582cc1dad279"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_protocol.py",
+      "sha256": "4e3ee306a1ba04c1b0ed164065d6a89e17bb403ddbde9aac6523d638bec28a4a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/scout_runtime_gate.py",
+      "sha256": "c4401110f06bcba58933e804ba779baafbccb7aa1c585ea23aefab541e1305d3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/sizing.py",
+      "sha256": "c760cba18da2d053300d42f6d405b975659d7cfdbd05902b8fee445122c5beba"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/starter_sizing.py",
+      "sha256": "fa6fa34ca3bf690b712b4e9025fe31d276b30898536a6b8ea3ceb52d362af9b7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/store.py",
+      "sha256": "e2922a2233e6ebde33cf108e1bd8489e4e28c45fe11db0ac48b89df28e833d9d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/technical_sizing.py",
+      "sha256": "74fa3d8bfb2385d94ac88143da38858d6e823511652b3d2e02b9583b53800732"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/intraday/telemetry.py",
+      "sha256": "dae1bbe20ed467601ff842c573ae31b09958c87913e2758e5414a59572e81d5d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/joint_capital_adoption.py",
+      "sha256": "f3f80088786cdd17a0f942a759ea0e53bcf49cfa4cab9e996002548b649ba4ba"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/joint_capital_handoff.py",
+      "sha256": "dadec4f9255945689f78765f9093dfbdf7d8cd3be382e6e5c3c721a655155149"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/joint_capital_plan.py",
+      "sha256": "16558224e284b141a7ebf0326b8fde4cd572756915ab37a615c64c9dce681f15"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/live_evidence.py",
+      "sha256": "17fdae66c3c91926a7582fab886fb9e836acccd86216003e87c782222aa617bf"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/__init__.py",
+      "sha256": "aed31022a4d6f10455656ea676c3f0f340bacca632b309da489a3f606eed13d8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/engine.py",
+      "sha256": "b610521b36f4609fadb4cd1d6d128f658d25f9758ce186fae0fde6a572b7b195"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/inputs.py",
+      "sha256": "578ba6f3843c2b0aa6122698349dcafb523cd7d65caaaf142723e10ef91052cd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/paper_ledger.py",
+      "sha256": "8d79c25b19e5631b0dd7578c981259d2cf2649d60b095e633a88f7ad72e7f75b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/policy.py",
+      "sha256": "339bdf6f7b82e9a4131e751d99e7eb49328722a0b1f9f4903aa7547b562e0fe7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/publication.py",
+      "sha256": "87a3bd06c73e9bd8f14be5213c6fd65397a80b2014c1c84c75b2ffe2c8637cf5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/risk_proposal.py",
+      "sha256": "3a63c240aac7aceef94c5c439819ac2630c75d12c566506b0bce4752bc56d655"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/schwab_snapshot.py",
+      "sha256": "4518ebe0d300e83aeaa208495ab0015db7128253297a65a8fd5bb4052ea89d38"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/loop_c/weekly_review.py",
+      "sha256": "88533bb99aaa58e7e56bd4219940d8f3fb71d2ae459f81e2317d5f6dd390a37c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_dispatch.py",
+      "sha256": "1683b5cb6a24e5c462ed22dd8c6c1153f0a7f794d618eb017cfcef707cf80968"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_exchange_repair.py",
+      "sha256": "aa3aa5ca316eab9561bb318d0b26d6e6ee6048fe6e9832cb99e178ad80154e36"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_gameplan.py",
+      "sha256": "2f48a1a8bdc4bc83fef8b81dd4d3522ebc5194e0822426c09edaf788109ec4e1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_handoff.py",
+      "sha256": "997fb74c6b4bbe70b4e8ed6f67b020926fa643f119e21445612ef77ff3fcc57c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_joint_readiness.py",
+      "sha256": "668ae2e613fa183c0def42dad5e5b3c62bda1a5811026d1d19f8a6a9e98866a0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_readiness.py",
+      "sha256": "4695682ff912052bb25ad6d27cd145d3c956aae8eb6df8773e582bb86799afac"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_recovery.py",
+      "sha256": "a53e33297d60bc9bdb0c2fd76283a7024f0d94b05ea89f22ed0b072f65d09ee0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_repair_registry.py",
+      "sha256": "8ef3d0c6635d8cb201b886ba86baebfc70db0e1af8a64f80be24a623f6f8a540"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_stage_repair.py",
+      "sha256": "31875340a4e9339888bbdc45f270ea4a04870facccd15e48b2b3b4273a18c115"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_synthesis.py",
+      "sha256": "d1b7b6ccd3370c11fa220f29ce7a79e181b4915c5729df2e02e78f5ffe467cde"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/nightly_workflow.py",
+      "sha256": "6acd2025f71c2184a0f54815c0f34ad009f5eabc42d3b9285f1f4ff0bb728903"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/__init__.py",
+      "sha256": "cbe926bcf69cc090d120ca88f75a9d85b3cacca2ca3a4ef9488a98fe021478d3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/black_scholes.py",
+      "sha256": "37a838a75b752d46ceb6d3eb5324eceb2a94ba30b24c470666938d13ea933470"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/candidate.py",
+      "sha256": "e1d93130643b219a2cb1edde422790b779ecbfd9a51ae9f71b91674ae7cb92ed"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/causal.py",
+      "sha256": "92a35c597f629a0cba99a38634e40f03b6fb95cf7ba331c6ecf5e47864748a7b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/constraints.py",
+      "sha256": "8dc138890ef3ea1a9c445e498594768aa0a7f8519bc50000be657150a9528fdb"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/dividends.py",
+      "sha256": "2e477411595f80f7b708688f060e799cb8adb26173314a85dbb61159b2e8a0e1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/eligibility.py",
+      "sha256": "2db3165145f75270524ffe7545024108e38fd66f08f7bcffdddd8e24903928bc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/lineage.py",
+      "sha256": "356d2aba08806e05b51a92abc9dc78167d1fe68b42b71b54ee05b8f683495805"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/lockbox.py",
+      "sha256": "3b3790826bf94566d309916aaba1b37a8cf5b5c72a4a9a800ad6a3aa4e97994b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/model.py",
+      "sha256": "680674d0e15be60b7f923563f50b4bd6665a1e4bc98c981fea43c72e29b0438e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/operations.py",
+      "sha256": "6ae2442aef08a24f8b8245e7efa8462e0fbb4c1cb9add769eb13b1687c57bea5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/opra.py",
+      "sha256": "7dee8fe1f6c744a71b34de6fe8da98cd1b1e1e9ff3a1acd735d944dc355fb514"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/opra_materialization.py",
+      "sha256": "6fd590492ea420201ad8d91b19ee9d31a7d06131a343e60dc29650e8c90ac28e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/policies.py",
+      "sha256": "0435494ab712a187dc45ed3ce4ac3e7026214a33100eb1ca67e67a840002b9c0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/prediction.py",
+      "sha256": "9392de14871aaf5fc99599122f4e799f3bbd7da16921a0d9a992f4fa61060ca4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/publication.py",
+      "sha256": "b5ad7b88749948a6cce06682eef367d3a28cc78007d34cf8d7352f6c4bc5fcf1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/rates.py",
+      "sha256": "a2b99a33f4fd1ed35557581c6ea92b601afc2cf65efe0179c03f2a12e0344b2f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/schwab_materialization.py",
+      "sha256": "b4fe9176d706c031ef2beaf2f4cb7e123b2f082eff999b1977440cf0f7ee88c0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/shadow_model.py",
+      "sha256": "1eca0b613033f0b592b142b9e89afbfb80e61664c3c5dd602012c9ba4de88954"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/strategy_outcomes.py",
+      "sha256": "6f4bfffaedeb3037c5b712008a79df791909376bf91debfeaf42888b50409a89"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/target_outcome.py",
+      "sha256": "53cf4b88a174a40c06bfd27554a29d20987665843f1ed18653b3777925f3eaa4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing/weighting.py",
+      "sha256": "c9e56e72da8dd2d33304961aebc82d0e553885201a8fab4b5a654789594a96ff"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/option_pricing_opra_replay.py",
+      "sha256": "306f91356cbc75144cf2a12adaa8d4aa2807cc939550426d210377b52ddccee7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/overnight_runtime.py",
+      "sha256": "54c49f8380a7889be2600e0f6aa9df6aa002cd6da968f831c6c05c47bc76ba06"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/parquet_contracts.py",
+      "sha256": "e274a16295d26b9ccf2af7548419829d3412fcc98aad160ab9b9514e77bee43c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/planning_reservations.py",
+      "sha256": "ee78b7083b6fa9c3a9138e6d677497e1474f7caee629254aff81e5d0354ff575"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/preparation_deadline.py",
+      "sha256": "8d2e5790aeb7cc32282a1fdfe28fa994b9fa33e0eccf218dff16b343c5b87d8e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/sequence_encoder/__init__.py",
+      "sha256": "548d63769e3068b75e83315902344591572dec31f129ec3f93cad88c7e9a4cdc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/sequence_encoder/contracts.py",
+      "sha256": "314a85908f743935d78e9d8e3dd104a3fc64c907204f6870e139949fa9ae3bf7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_direction_policy.py",
+      "sha256": "7797ddaabe0aec686df618e3cbf356f18bde4aaf3b072fcbcd3e3c142e332bab"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_target_prices.py",
+      "sha256": "f9f52937ea14232365c04c2ae9302f946bf29a7ded31482e8db47df7c3d155da"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/__init__.py",
+      "sha256": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/audit.py",
+      "sha256": "40012563e5ba7a1423f8b6325c2169d135195306daae1ecdd293a7023f224cf2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/catchup.py",
+      "sha256": "8d2415bfd76b074aa0375d1b4e6fdde6447ffd95fff61ead7b9efa5e67ae33b3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/contracts.py",
+      "sha256": "9b20941167702594ac6dfbd6a8215ce5a58d65e3f9c552cb79f9681fb5cb37ae"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/control.py",
+      "sha256": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/cross_horizon_fallback.py",
+      "sha256": "51bd770ec0d9e08ee00e26a44ec591bc5d5697cd0bbe0475263dff4bd2b834af"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/daily_adaptation.py",
+      "sha256": "f2069ef1898ef2669cf9a9dfe64de3591c06f660ca08338aabf6341e3acd4f8e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/engine.py",
+      "sha256": "f0d034120ab916113359bea43c5f423a71372cbb12c8864b65080ed7469dca23"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/execution_lifecycle.py",
+      "sha256": "7b39ae139d607cd811308db33c304b1a098119eb02d03b25821bd0165cab3b28"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/fixed_horizon_budget.py",
+      "sha256": "06651eeb504f4103e10310d6fac71adad72b1f8a62f495b302b870f1ffdb2abc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/fixed_horizon_engine.py",
+      "sha256": "dfbf5b8ef6aed29556c313cb5736880d18c3741c50b84b12fd3b3ef050eaeb0c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/gameplan.py",
+      "sha256": "7bfa48a0bc3bbd5076bf8a089cebd034fcede1d7dfd30de44be60172f2fc84ee"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/gameplan_direction_engine.py",
+      "sha256": "767e2686488d4daad8eec61ec1583d0f7cf91e3a1dc10af4ec7077b0319fadcb"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/gameplan_execution.py",
+      "sha256": "212e1268f7d7928db14ff3775f5d687313088c1ae5493824a35196a3141ad1af"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/handoff.py",
+      "sha256": "2843c9c6cad8e4e4ee51177bd06ceb4ba285c2da199fd0df2eebfd25e989e91f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/horizon_broker.py",
+      "sha256": "38a8cad6ace29a647051b08662a03fc1ede83288ef8f2db7241807a33579919e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/horizon_ledger.py",
+      "sha256": "6d424119177df970c16b4cc98881a6162ae37318465966132f401b0ee1de33a7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/independent_engine.py",
+      "sha256": "f4f1387cb4afaf9dcb4374eaeb21be810891fe69351db08caa3d08f722c83b8a"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/independent_runtime.py",
+      "sha256": "c09eda26adf6fbc58781d2d76da89fa61d868b862350e5827842983a93db4fed"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/independent_session.py",
+      "sha256": "f924cbdb51f5ca99d01b372b2f582a31f137fe4b314182eec1943c1d6f15c87d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/independent_signals.py",
+      "sha256": "55e03300e062e427d602b9da598a2d8837ea484daf6be50367d01ad6dc433dbc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/independent_training.py",
+      "sha256": "1bfa5df652bfec0734b14e2a22432f9ff77b6900fb598acd35615bb1258289e8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/inputs.py",
+      "sha256": "31b154c5f5f95b971abbe30cbcc40b4c7f26c4d9df65451d096094ccafaad664"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/market_features.py",
+      "sha256": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/model.py",
+      "sha256": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/price_comparison.py",
+      "sha256": "ab7d0565c86742d42da1134faa67e43958c9c8cf30e06c3cf21a66be1e0a0a08"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/publication.py",
+      "sha256": "510c5a7b5878d61babdc7dceefd94f9a5460f19de6eb8b841ad73daca714ef19"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/quote_recovery.py",
+      "sha256": "0a567e5f3683dc5b4c25c50c6bfd44198233a97d6e42e6811f18dd69604d747c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/reconciliation.py",
+      "sha256": "5d359aa371f739a98e01f7010831a31f80cb6b892e135b31ed92941a86c528c8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/runtime.py",
+      "sha256": "5c1050d19f7c1cd6070b127d08107cf7bbd4de63761b9f4511b5ea9ebb97bb9d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/scope_qualification.py",
+      "sha256": "fa2949e7978672e4e4693f855589dd3d33b1f7e7d44e5241171d1a2786ea4323"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/session.py",
+      "sha256": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/session_reporting.py",
+      "sha256": "ad662d5ec9b841a67be6d506bc844c0b9abb154a2f23cfacbcccf52ea3bd0f4d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/sizing_policy.py",
+      "sha256": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/state.py",
+      "sha256": "cb2563e83b44fd0aff39e23e033448de534fbe2dfe682f52225497bc73ce8ff0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/stock_trader/training.py",
+      "sha256": "2477f58a2ddac3f3d343ebd68030e2e9dfb65eab29a2114e6f11766d534d82f2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_publication.py",
+      "sha256": "85c9afea6b3847091c4c9cac6d83f73f5fe10b9e7dc9531cf60410c691bfcf87"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_selection/__init__.py",
+      "sha256": "93f30056c7858a9df158485b20ebd9f8f3372bed0b1005ea9552e37d20687f72"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_selection/candidates.py",
+      "sha256": "22264c4761d762268c65fa65d46aa76a7737efe9dfcaa476913934e4beb57521"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_selection/chain.py",
+      "sha256": "28431c5d30ebae43b438c8f65c97b726b3b80f7dc199dd773d3937383beba6ee"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_selection/contracts.py",
+      "sha256": "84efdc4dd225a3fbe95ea8bb025af5d5c52650cab1da5e79a31c99cb0ad42527"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_selection/opra_cache.py",
+      "sha256": "ddb5b1feee5ff1e6291643d32936efa5d7444dcfd23288e84371a90e8c9e6122"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/strategy_selection/registry.py",
+      "sha256": "2e363317bfba811c87c87962d7b7d8e5d736403f48e323ad5caec8696b15076c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/training_progress.py",
+      "sha256": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "ml/universe.py",
+      "sha256": "ad91c1a5dcc3ed0b521cb1664045815140ebd56b8765e11267d841cfc2de9880"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/__init__.py",
+      "sha256": "5ecb3bc7b73b37a28167302d8d085964f49bf68ed2c3cd7155938a8ef421bff5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/databento_live.py",
+      "sha256": "b5de1175ec6d311d6d320fdfda963acc2f20003f59d62a52e5f8235a0b0ad83b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/features.py",
+      "sha256": "d346c5e9b3d943450398152f1641bc0edfaa39297c7e4f13083df60de3ef8252"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/pending_capture.py",
+      "sha256": "c8066efa30c0d125bf335d6e5af5f4cc3efdcc39b5091fb1a1956f7f9a80fa8c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/providers.py",
+      "sha256": "9e1039bdb4ba88dc15cb10fae0dc5bdfa27d3a8e6a85748e71348bd36e7dd3ec"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/publication.py",
+      "sha256": "a01a9b7ede9e8784d253aab0144ce8826efe21fc3e5f9a598e76680ad45e8d6d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "options/snapshot.py",
+      "sha256": "af8a2d0c74e2f97e2f14b07585a6fde04928a1595f33d28a7c7fc9de314ed4ef"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "requirements-ml-runtime.lock",
+      "sha256": "d9c3ecb77efe462033d2d6495e22ea9fb74450a10b6c5ef6d7e9ba3d1d905f86"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "requirements.txt",
+      "sha256": "0801547633cc24aee37d57576e659ac54663b2d053db6b059a6aaf4d474a0725"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/__init__.py",
+      "sha256": "88b949169975624109bca24355ff728c0a931bca690c43a08ff81bcb54115403"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/calculation.py",
+      "sha256": "2d208b5eccf3e6b26ec0f488267e309798e7244167152987408886e5accf6d30"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/consensus.py",
+      "sha256": "6e4aa30b2488522bb5a3c1270350e8526279c0adb9dbe878bb677e7985ca883e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/fundamental_context.py",
+      "sha256": "cdefe273c16c0e146aea89db0076926668c646442565896e50c1a2ce472d93e3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/main.py",
+      "sha256": "ce8a85a16523be3101564d24236521369663de30b4f8f8e2273266b29da407c8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/parquet_io.py",
+      "sha256": "c9a8668964bf99f38a9bc57facbe863c6bd417c836b666f97ca61006929f561e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "signals/technical_lifecycle.py",
+      "sha256": "686a443b3f23123c8cbd45fe80bb8a63b50747d0bcdb821c714e9be3a810ae42"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/__init__.py",
+      "sha256": "1efc66c02ed6cd95f37f5edf7544fcde252c2a9242018153bd1ad0923eb8a4a3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/calculations/__init__.py",
+      "sha256": "4479d4a0e8d97eafa245b457c1462bd7d95271b3c2c4c1299c8d2902302520e8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/calculations/bar_shape.py",
+      "sha256": "97f24db22504537a4347ef60cf5f9b0d2f6ddacfda82858556faf66c2d5940c1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/calculations/breakout_pressure.py",
+      "sha256": "a1c00934faf8e6ba1e6f2d7a707c90cd8f9b61980c4b6fea4f1cce1f3c8bb3ee"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/calculations/market_regime.py",
+      "sha256": "929c1039f624aa6bc1a4188eaa2bbfbe10470658935723cd124e8ce2c3df3a01"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/calculations/session_aware_breakout.py",
+      "sha256": "52ead979d91d0f456e6d065a514c7a6c2447b008aca7814d64b3b3e1f64ef16e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/calculations/weekly_context.py",
+      "sha256": "b24d794a8fdf391b05631a8298b123ad38814961f4cb76624325a230936d9a9e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/hyperliquid_features.py",
+      "sha256": "c77b7f521e3abd63203161d110c066a449974ec8d688478b898edfde49e0bc23"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/main.py",
+      "sha256": "d5f679d5a55461b5d9bdc2c7bb665ad207a9b620274fe46a706ec78d88153cbc"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/parquet_io.py",
+      "sha256": "103d73460bc36b060121ca637f34419257a2128cc40199a8e8b6e9a727ca9460"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "technicals/split_adjustments.py",
+      "sha256": "cc2e053c5dd353d11d3fb1315db17077cc5715d72734cc2f1d3479e7ac79b084"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/conftest.py",
+      "sha256": "ad70e0f40fe55479492938525d1f28a4002e4525f96227676ee34afe5e139345"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/gameplan_fixture.py",
+      "sha256": "be3c8d0a3725cde1e470e4bea2cc623eebe95a1c075ef87d4e6f9f8644fbfd2f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/gameplan_stats_fixture.py",
+      "sha256": "4cc017355a439500794097ee7aa78840e87913dd53edc6e0153892728051bd3c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_account_gameplan_authority.py",
+      "sha256": "33d9e8842f061ab7f7a293a1b27c8fbbb15b12494c6ec8f83812b69a126a5ec8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_account_gameplan_execution.py",
+      "sha256": "37bbd8ae9e9ddec182456102d8aa7c84f9b5564a019b893b49445527c5b9fbcd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_catchup_rejection_guard.py",
+      "sha256": "3c3b07d96c5269deade31e89c5c883aa19e87884b9a185afd1301a3cef771c32"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_cross_horizon_fallback_ledger.py",
+      "sha256": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_fixed_horizon_engine.py",
+      "sha256": "6e06f6686f9b1d7cf0e8ab9720303dad4cc10fc5bea67731a2ca58a738809ff1"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_gameplan_catchup.py",
+      "sha256": "33738f6f710329a8bdd026319181a3050f5c12bc503c4810bef8d4ab8e597806"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_gameplan_direction_engine.py",
+      "sha256": "8f390c0dee25962f0bdecfbe4e6b35a144aafe8c6e9501b15b61cb7bb249c55f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_gameplan_direction_runtime.py",
+      "sha256": "2b690a888f4f9bfd36df5e3965f1453b41a912cd039ca421bd79c9b5b2f51656"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_gameplan_stats_handoff.py",
+      "sha256": "9ef89fd87899868b49f3a976c3d314e70af734cfbead0a421a35d1dc5f8d6095"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_hyperliquid_features.py",
+      "sha256": "d14ad38b5cadc66436c25a2f895375f9b605051bbce4e9959d27c9b846d6b2fd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_independent_stock_runtime.py",
+      "sha256": "efa665375160069fe2d042466f734b4bfde739e4bf1e07c305c7e494a177ed4d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_independent_stock_session.py",
+      "sha256": "cbf20ce22746f5f527145f815f5606b8fef0824f51b89007fb2cdfa03e788f55"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_independent_stock_signals.py",
+      "sha256": "430775f688aafc2e1674441e5bb996e5ef7848e83730cce02b604aad10d5bda9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_account_authority.py",
+      "sha256": "d04afa9249f9289198ea4a315299503f5e81401147ed16c3f22778440dfc9d72"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_account_execution.py",
+      "sha256": "ae1f5a2b5e739a2ea03e86c67b1a2d1c4c1c68ee8ec6d93f3b2a40aa7e7785e9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_admission_service.py",
+      "sha256": "5b76634a602defff47e7549400476c5ac9f8424495026fb1b265188f8d47d0cd"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_book.py",
+      "sha256": "6738e97c77f3914c23e284fef571bf57267c28564feed109c8149ed472ee917f"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_cancellation.py",
+      "sha256": "3bae3ffa72cdfe889f94b2b08e72b4dd474205b80e95e2abf76eaa70636be608"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_capacity.py",
+      "sha256": "cadbf2be22397fd94d73544ebbc5d17c41402a433c1eeeca79b905815a198ff4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_data.py",
+      "sha256": "7f2b5c3d2baf4eb583836eb24e2aeecf796da7e7ab51859c27ff406b04140cbf"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_evaluation.py",
+      "sha256": "ee3291b90984fc8bb161baa8af5fc20c3636cd54013f1bda859e50d922a1f339"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_execution.py",
+      "sha256": "57424295bb6adf103a66cb2b4400896b97e1964374bd88cea86ad404e44e0a95"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_execution_policy.py",
+      "sha256": "45b51ebd5e15a3277276e271d41146b04ad94a599914b7fe04cddb810ee0d625"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_intentions.py",
+      "sha256": "5fc742a3d4d2949b3af4a52808608f4963397c1d617928e5f8d5554a2dd9db99"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_live_session.py",
+      "sha256": "3174fcd5fa17557bce8775ebc22a204e2b48e3fcf7d74a3dae1849d714fcaf01"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_models.py",
+      "sha256": "ea6fb18137d6ab44c635d4432bd1ee16d0764665eac69fd568f3ac5b5fbd70da"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_native_ledger.py",
+      "sha256": "6f9b2bebf46b5dcd92343d9bf23b31d2b01f0414a098206d07eafad2eb4f42e8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_prediction.py",
+      "sha256": "e75a03b69a172fecb316b7ea49c488b728c25b501e55be31fe2721cfdd3ecca8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_readiness.py",
+      "sha256": "1bf60a55bfaa96b87cedc4f21975a52b09f9c124373df1c4f99d00fcad704bd3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_remote_authority.py",
+      "sha256": "cdb5648875576335e568ff4b62176f98aa719715775c00f940dad8b9ccb02ea4"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_runtime.py",
+      "sha256": "1ce339e7b1ff0ee2c0064d87091ea38ad5e0f2a95cdd953affdbccfe89f417ed"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_authority.py",
+      "sha256": "3ad3f9441152c66abaae4e90747d2c3bdd3f89955e89ff5708fdc0e15392bed2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_books.py",
+      "sha256": "096d8cf256062a6d834ac08bf643757685ec967a4f5eeb2a3223edcc25fbc2b6"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_broker.py",
+      "sha256": "0958135b4d24effecc41cafde1fcb3e58bd09d8b4ed950e486468b398f3b0383"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_client.py",
+      "sha256": "6fbf0a9d34e46b120c42afb1fdabc22d82e1a6c2a77ccb4d463581a7cddf284d"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_execution.py",
+      "sha256": "19c1bf42833e259bb4bed397188c9f62931c55add65b9e7ba9c059acf268a139"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_journal.py",
+      "sha256": "ed485cf4f39e14157e9249d9bf583b0e33949363165521ff974167c48c6e6cf8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_prestart.py",
+      "sha256": "8eea35d7995ce036861903e704245c846335088f6a6df109fa435818939411a0"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_protocol.py",
+      "sha256": "2621729d1733a320f380687105487b136a3319b208d9f1ff23613ec1ff450e73"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_scout_runtime_gate.py",
+      "sha256": "c951103a7069e0ec3eb31a8858e48a9e1112f53cc529d0dfa8c1e472adb6d5a7"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_shared_streams.py",
+      "sha256": "f96534645bfac70f597e0c2cbdf13fc2bd8ce26828c4dd0d5a2bbf2e39886999"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_starter_sizing.py",
+      "sha256": "84e35d57fccdfffd36c3e7679c9bd3f36a00bcf0c548b943e85229474d73d2ea"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_store.py",
+      "sha256": "de5132606f96cec42168a1acbe6fe4735ce31d360c883ce3689810008532c7e9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_technical_sizing.py",
+      "sha256": "7cce6aa9ab0b01470c470a452d64b4096e6e3ee1a442181a6e7028efe7f45ec3"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_telemetry.py",
+      "sha256": "017795ff70a859c0900f44b3d00fdc29d812d828ef5039b139d0978501a23600"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_intraday_ui.py",
+      "sha256": "e930822ee29a457b4e6898d4d965d8301c82df50f8b775cdaa9abca8819cc9b8"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_joint_capital_plan.py",
+      "sha256": "428a113ea4398989669bacaacec66f8a46bb631d8febbec5cc7f5895b92ab1ed"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_native_ownership_exchange.py",
+      "sha256": "363f5429430260cd4cfea6e4d36884589d3f0ad5f84b5d21ad0b236afd475cb5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_native_ownership_export.py",
+      "sha256": "93a8113e31ff57a063dfa13bdde0b13cd79690b8584c61e266b21c81c0e91b9c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_nightly_joint_readiness.py",
+      "sha256": "803a3101cfa2ca60d15022429571f0c6b8cd28091d19ac39a1437b547613ddb2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_nightly_synthesis.py",
+      "sha256": "a258c1994fa6629ded51cd291670b1ab7950f2b451a14008465b0da6f8b7e782"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_nightly_workflow.py",
+      "sha256": "309b2bb33509a7b5ef5bc2567cd5bd9c60e79ba6b46ae12a30a8c2f42bc88796"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_order_timeout_catchup.py",
+      "sha256": "3a5be0c615f2164985d45d8f48a483d51c6baf0a17dda03cd9cab1dd9a587ebb"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_order_timeout_ledger.py",
+      "sha256": "a93245a53f7b44a4734b8cc823d28f7273746a8962c2041d44f8b98eb6abf282"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_order_timeout_runtime.py",
+      "sha256": "f760f629be1ab4b76795c233b10610b3af46a4cc7bdc62ef7fa15247d7c1218e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_runtime_lock_identity.py",
+      "sha256": "e812cf12fc3aba959ca2abba02bfc224931acc2bf16f61ac740cda56e490f94b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_start_stock_session_cancel.py",
+      "sha256": "776fa7660985607d647adbda22eb26219188b413f291180cbbe307868640d4c9"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_stock_horizon_broker.py",
+      "sha256": "e45d6e5681249a66ecc27028b750bf5a26d1a12dc28528a27f52fb94a3ae473b"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_stock_horizon_ledger.py",
+      "sha256": "6705ff0c6955237813263667136ca6742aa7c3cf7bad04d1a72c799b70dc2eac"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_stock_session_reporting.py",
+      "sha256": "92014831b5a0fa261aa44af93817e43736846250fcbfb96b31fe5599f77c4f65"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tests/test_stock_trader.py",
+      "sha256": "8d10b7d8dd4bb71ba2c5581ecfd79e7e4e63307e22fbf1f6501c8785ad6b1c54"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/__init__.py",
+      "sha256": "1b472f785258a90201d7d15f72fb8766a1e6504186d3b553ea0b5954f7a2691e"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/gameplan_execution_readiness.py",
+      "sha256": "b049f0d243f205c8b12f2c3955db1ecabbfdb33111b6a953e9ab32acc67a71d2"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/gameplan_first_use.py",
+      "sha256": "9a02cb952a32ae389ab558ed766effb7004d822113427f923a0ed77fccf949f5"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/native_ownership_cutover.py",
+      "sha256": "38238c20ced0e5eef5665451ea2f50cdce6c95668acb613a3f36e4da219a357c"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/native_ownership_exchange.py",
+      "sha256": "60f24c2240742c338a030ca9915637199d3d4d8977d69ccd7aed2ee40932ea44"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/native_ownership_export.py",
+      "sha256": "1d8a45b7e7cd273e1ed6f337db72210cf8fb84cc28d81b17d2ae49613fc94cea"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/nightly_account_snapshot.py",
+      "sha256": "3bd83a6d30fad0db744850807ecf26b7ad3e7f356a6e8c02c16cece4298b6792"
+    },
+    {
+      "installation_classification": "reviewed-common-dependency",
+      "path": "tools/nightly_ownership.py",
+      "sha256": "bbfac57e1ed6194ae4099872d5bc326699b012202281f4f271961e85ae6de162"
+    }
+  ],
+  "discussion_body_sha256": "9171ec884b45920f98cfeead549c4324bfef49105dd752f04972cf1d1ea5ce8c",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6139734166",
+  "environment": {
+    "packages": {
+      "cffi": "2.1.1",
+      "cryptography": "48.0.1",
+      "pycparser": "3.11",
+      "pytest": "9.1.1"
+    },
+    "python": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]"
+  },
+  "files": [
+    {
+      "operation": "add",
+      "path": "Start-15m-Admission.cmd",
+      "sha256": "d641aee3e6a3ed27e4ec6a452cfb6aa42b70464a129619ec2fd9f52d0621cc49"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-production-interface.md",
+      "sha256": "1401732773db5f766e661570652ca6f9a8f89d2f6fdff79f61023c4b340c99a1"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py",
+      "sha256": "d7d15c881af7c024b7741467d8e650a0fdbe365482b05a09dca93dd448f0cc59"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/admission_contract.py",
+      "sha256": "75f439e59a1e185045fddbb27c92bc70ec7ada27f28a0f19c42d23f60aeacddd"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/admission_enrollment.py",
+      "sha256": "ce162e3ec2073023eeb8cdf86be5b47b5f44b4ef769241f4a984288bdd53e9c2"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/admission_host.py",
+      "sha256": "b2488a021418156b7ecd698a158c6a81f6fb289502f6aeebc311e359823feefb"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/admission_transport.py",
+      "sha256": "3d40310e7cc40b971d628c48c2c3189fabd70d04ff5c77821610c935308c002c"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/admission_views.py",
+      "sha256": "99746c9059c435f9c574e467567b15438549f648fb5672f67de7e39c80447094"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/atlas_writer.py",
+      "sha256": "cb0a31e6ec50f34d92a61120383952f89da21755d44a817ed29afddfb94d5c46"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/runtime_compatibility.py",
+      "sha256": "b2464cc32c9ceeaea31660e9ad9b83fe0ebaf2320cffaf457b9484186ae3cc3b"
+    },
+    {
+      "operation": "modify",
+      "path": "pyproject.toml",
+      "sha256": "635e3863e263bc0c22ce7dd669c4efe79d35fdad6c976b83604564b3272e96e1"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_admission_contract.py",
+      "sha256": "0a790ce181d29dd4093b27e709bc07bb4982c3b3add85cad2ebd5b69b524b31c"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_admission_enrollment.py",
+      "sha256": "57fdb7c31966b07293a6ac33f42c66ea5e6bfc0fdb339f59f16054a69bc8fc2f"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_admission_host.py",
+      "sha256": "281e1e2a80b297eba963e61cf8039e842c74bf693334e6407896e8b26fce4231"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_admission_transport.py",
+      "sha256": "e37e2137cced3ca895b1257d8bc87e68680a893e86a172e2c2b645a573eba8b3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_admission_views.py",
+      "sha256": "a84eef78207fda10faaf221953c0fed222c832d87534ca4f43250a35ae4389a8"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_atlas_writer.py",
+      "sha256": "030767a4a9c701c8c802882179d16010f258dffffa949c33844a692404fa96dd"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_runtime_compatibility.py",
+      "sha256": "e1c8b578e5463f882387f5b537c7e8cd0cff4ff5479151858bf52a663477ee4f"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_exchange.py",
+      "sha256": "f42b202f023db8047332cf44a413d0a512605c2864f579342018a0ddd9ba60fb"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/nightly_exchange.py",
+      "sha256": "1b3f659c0eb384a31ac01cbeb70a6b12aedc1cec7ce9a0dbf2b192e002564143"
+    }
+  ],
+  "installation_manifest": {
+    "dependency_paths": 416,
+    "owned_operations": 20,
+    "schema": "exact-shared-source-paths-v1",
+    "symbol_local_dependency": "datafetching/watchlist.txt is tested base context only; preserve Scout actual eleven symbols"
+  },
+  "installation_status": {
+    "Atlas_primary": "not installed",
+    "Scout_primary": "no adoption receipt for this new completion",
+    "endpoint": "not deployed",
+    "loaded_runtime": "unchanged; not proven by source tests",
+    "manual_live_ready": false,
+    "private_enrollment": "fixture-only; no production credentials created",
+    "source": "published"
+  },
+  "installation_steps": [
+    "Fetch exact published commit in the supported isolated cache/worktree; this is a focused child of coherent87, not a replay of every historical PR.",
+    "Review the 20 owned operations against exact PR #87 base 5f50b2afc1967bd4115e82d8acd136c71d5aa813. Compose with Scout newer client/books/prestart/runtime-gate/live-session and nightly transition work (last reported starting point 6fc33eae689e80074b97557bd2a8d2afd58110e5); record retained differences. Keep all original completion/request/incoming identities.",
+    "Preserve Scout actual eleven-symbol watchlist/private bindings. Base dependency fingerprints are test context, not a directive to overwrite symbol-local files. Review common dependency overlaps explicitly.",
+    "Prepare admission-tls dependency from reviewed pyproject in the intended environment. Run relevant offline checks on exact combined bytes, then separately record installed-byte evidence under the existing reconciliation guard. Do not repeat unchanged old checks.",
+    "Use the existing private exchange enrollment offer/CSR/certificate helpers only under local operating authority. Keep private keys local; use accepted offer server_sha256 as transport leaf pin in Scout-owned adapter.",
+    "Real host deployment, private noncommitting connection verification, loaded Atlas/Gameplan proof or verified absence, Scout installed recovery/accounting conformance and human manual start are separate. Do not start/restart traders from this handoff."
+  ],
+  "interface_document": "docs/development/intraday-production-interface.md",
+  "limitations": [
+    "Offline synthetic brokers, temporary ledgers/process evidence and temporary certificates only; no real account/provider/broker calls or endpoint deployment.",
+    "No primary application installation or running-writer reload; old loaded processes do not acquire compatibility by publishing source.",
+    "Scout retains local client/readiness/accounting/pinning integration and installed-byte verification; enrollment artifacts and real private connectivity remain separate owner steps.",
+    "Canonical gross fills and lot provenance are supplied; fees and cost-basis/realized amounts remain explicitly unknown where canonical books do not establish them.",
+    "No main integration or manual-live readiness claim.",
+    "Earlier full826-test source/candidate receipts apply only to the retained pre-correction checkpoint. Final checks focus on the changed accounting contract and its host/transport/book/executor integration; unchanged component bytes are verified against that checkpoint."
+  ],
+  "prior_interface_comments": [
+    6139098198,
+    6139260261
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/88",
+  "remaining_owners": {
+    "Atlas": [
+      "Review actual local adoption/enrollment/service deployment in a separate operating step",
+      "Supply real authenticated endpoint/readiness evidence and loaded-writer proof only after those steps; old running writer remains incompatible until separately authorized reload or verified absence"
+    ],
+    "Scout": [
+      "Compose own client with exact routes/field bounds, preserve capabilities operations list, and wire original-offer server leaf pin",
+      "Verify canonical per-request accounting and recovery on exact installed combined bytes",
+      "Retain existing nightly transition/reconciliation owner; no competing install or deadline reset",
+      "Record noncommitting private connectivity and all startup prerequisites before manual-live readiness"
+    ]
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6138656932,
+    6139164352,
+    6139551698
+  ],
+  "reused_completion_records": [
+    "20261013T050004Z-dadd51e0c82049f091ffcdbb268cfc40",
+    "20261013T041956Z-de5830bbda8044499c08acf0fa55224a",
+    "20261013T035035Z-6488d2c283fe4c41ac25a71164eaf127"
+  ],
+  "review_disposition": "Whole owned diff and full dependency closure reviewed; independent reviews found and fixed heartbeat expiry/clock, canonical pair, credential rotation, key directory ACL and strict TLS details. Old private state and operating source untouched.",
+  "runtime_implications": "Source only until separately reviewed installation, private enrollment and host deployment. Preserve workers, private state, eleven-symbol selection and manual start/stop controls; no source adoption implies a live trading start.",
+  "scope": "shared",
+  "summary": "Production host, authenticated noncommitting readiness/canonical accounting, loaded Atlas writer proof and private mTLS enrollment implemented and tested on coherent PR87 source.",
+  "supersedes_unpublished_completion_records": [
+    "20261013T061503Z-ecaf6554e3424ebd8455362d83302d7f"
+  ],
+  "tests": [
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_admission_contract.py",
+        "tests/test_intraday_admission_transport.py",
+        "tests/test_intraday_admission_host.py",
+        "tests/test_intraday_admission_views.py",
+        "tests/test_intraday_scout_books.py",
+        "tests/test_intraday_account_execution.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "candidate_imports": 121,
+      "completed_at_utc": "2026-10-13T06:29:02.434043Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "204a366c9a51769c6547c43ee447a010fb963275996dfb70b0c2a5348d0d8bda",
+      "network": "disabled by pinned offline verifier",
+      "output_sha256": "15ad0c9d2fd14df75d59b6dd4806088f9e51bee02599d11495f5b9d14668b451",
+      "passed": 291,
+      "skipped": 0,
+      "stage": "sealed-source",
+      "started_at_utc": "2026-10-13T06:28:42.736163Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "argv": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_intraday_admission_contract.py",
+        "tests/test_intraday_admission_transport.py",
+        "tests/test_intraday_admission_host.py",
+        "tests/test_intraday_admission_views.py",
+        "tests/test_intraday_scout_books.py",
+        "tests/test_intraday_account_execution.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "candidate_imports": 121,
+      "completed_at_utc": "2026-10-13T06:29:50.624729Z",
+      "exit_code": 0,
+      "import_evidence_sha256": "204a366c9a51769c6547c43ee447a010fb963275996dfb70b0c2a5348d0d8bda",
+      "network": "disabled by pinned offline verifier",
+      "output_sha256": "7157d13eb96a7ff7b76714a35355669430613b617d93f38e26225311db055246",
+      "passed": 291,
+      "skipped": 0,
+      "stage": "isolated-publication-candidate",
+      "started_at_utc": "2026-10-13T06:29:31.412250Z",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

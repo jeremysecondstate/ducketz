@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T06:31:07.430092Z",
+  "id": "20261013T063107Z-934973c154f34aa8bf7a4c12a4bb93f4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Production host, authenticated noncommitting readiness/canonical accounting, loaded Atlas writer proof and private mTLS enrollment implemented and tested on coherent PR87 source."
+}
