@@ -35,6 +35,7 @@ from ml.stock_trader.horizon_ledger import LedgerError, validate_fill_time_prove
 
 VERSION = "single-host-account-authority-v1"
 SUBMISSION_RECEIPT_VERSION = "account-exact-submission-receipt-v1"
+REMOTE_CLAIM_VERSION = "scout-account-send-claim-v1"
 OPEN = frozenset({"RESERVED", "SUBMITTING", "SUBMITTED", "UNKNOWN", "WORKING", "PARTIAL"})
 TERMINAL = frozenset({"FILLED", "CANCELLED", "REJECTED", "NOT_SUBMITTED"})
 HORIZONS = frozenset({"1h", "4h", "1d", "1w"})
@@ -282,6 +283,8 @@ class AccountAuthority:
                 "CREATE TABLE IF NOT EXISTS order_evidence(id TEXT PRIMARY KEY,payload TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS fills(reservation TEXT NOT NULL,fill_id TEXT NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(reservation,fill_id))",
                 "CREATE TABLE IF NOT EXISTS submission_receipts(reservation TEXT PRIMARY KEY,broker_id TEXT,receipt_id TEXT UNIQUE NOT NULL,received_at TEXT NOT NULL,payload TEXT NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS remote_submission_claims(reservation TEXT PRIMARY KEY,payload TEXT NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS remote_no_send_receipts(reservation TEXT PRIMARY KEY,proof_sha256 TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS events(sequence INTEGER PRIMARY KEY AUTOINCREMENT,observed TEXT NOT NULL,kind TEXT NOT NULL,payload TEXT NOT NULL)",
             ):
                 db.execute(statement)
@@ -637,7 +640,23 @@ class AccountAuthority:
         cap or due instruction is a 15m funding gate. Unknown commitments keep
         their complete quantities; they are never guessed away or resubmitted.
         """
+        return self._reserve_intraday(token, request)
+
+    def reserve_remote_intraday(self, token: str, request: IntradayReservationRequest, *, request_sha256: str) -> Reservation:
+        """Reserve Scout capacity under the coordinator's fence, never submit.
+
+        The authenticated service verifies the complete wire request and makes
+        its native reservation before calling this API. The hash binds later
+        send/recovery operations to those exact bytes. Atlas's original entry
+        point remains coordinator-only; this explicit path uses the same pool.
+        """
+        _hash(request_sha256)
+        return self._reserve_intraday(token, request, remote_request_sha256=request_sha256)
+
+    def _reserve_intraday(self, token, request, *, remote_request_sha256=None):
         payload = asdict(request)
+        if remote_request_sha256 is not None:
+            payload["remote_request_sha256"] = remote_request_sha256
         if request.retry_of_native_reservation_id is None:
             payload.pop("retry_of_native_reservation_id")
         else:
@@ -648,8 +667,11 @@ class AccountAuthority:
         _hash(request.account_fingerprint); _hash(request.forecast_sha256); _hash(request.forecast_snapshot_sha256)
         if request.forecast_id!=request.forecast_sha256:
             raise AuthorityError("IMMUTABLE_INTRADAY_FORECAST_HASH_REQUIRED")
-        if (request.account_fingerprint!=self.binding["account_fingerprint"] or request.stream!="atlas-15m" or request.horizon!="15m"
-                or request.participant_id!=self.binding["coordinator_id"] or request.side not in {"BUY","SELL"}
+        expected_stream = "scout-15m" if remote_request_sha256 is not None else "atlas-15m"
+        expected_participant = "pc-new" if remote_request_sha256 is not None else self.binding["coordinator_id"]
+        if (request.account_fingerprint!=self.binding["account_fingerprint"] or request.stream!=expected_stream or request.horizon!="15m"
+                or request.participant_id!=expected_participant or request.side not in {"BUY","SELL"}
+                or (remote_request_sha256 is not None and self.binding["coordinator_id"]!="pc-original")
                 or len(request.local_symbols)!=len(set(request.local_symbols))
                 or set(request.local_symbols)!=set(self.binding["participants"].get(request.participant_id,()))
                 or request.symbol not in request.local_symbols):
@@ -784,11 +806,150 @@ class AccountAuthority:
             self._event(db,now,"reserved",{"reservation_id":identity,"request":payload})
             return self._reservation(self._row(db,identity))
 
+    def _remote_row(self, db, reservation_id, participant_id, request_sha256):
+        _hash(request_sha256)
+        row = self._row(db, reservation_id)
+        request = json.loads(row["request"])
+        if (self.binding["coordinator_id"]!="pc-original" or participant_id!="pc-new"
+                or request.get("participant_id")!=participant_id or request.get("stream")!="scout-15m"
+                or request.get("remote_request_sha256")!=request_sha256):
+            raise AuthorityError("REMOTE_RESERVATION_SCOPE_MISMATCH")
+        return row
+
+    def _remote_claim(self, db, reservation_id, participant_id, request_sha256, claim_id):
+        self._remote_row(db, reservation_id, participant_id, request_sha256)
+        _name(claim_id)
+        raw = db.execute("SELECT payload FROM remote_submission_claims WHERE reservation=?", (reservation_id,)).fetchone()
+        if raw is None:
+            raise AuthorityError("EXACT_REMOTE_SEND_CLAIM_REQUIRED")
+        claim = json.loads(raw["payload"])
+        if (claim["reservation_id"]!=reservation_id or claim["participant_id"]!=participant_id
+                or claim["request_sha256"]!=request_sha256 or claim["claim_id"]!=claim_id):
+            raise AuthorityError("REMOTE_SEND_CLAIM_SCOPE_MISMATCH")
+        return claim
+
+    def remote_claim(self, reservation_id: str, *, participant_id: str, request_sha256: str):
+        """Read retained claim provenance; a read never authorizes another send."""
+        with self._transaction() as db:
+            self._remote_row(db, reservation_id, participant_id, request_sha256)
+            raw = db.execute("SELECT payload FROM remote_submission_claims WHERE reservation=?", (reservation_id,)).fetchone()
+            return json.loads(raw["payload"]) if raw else None
+
+    def claim_remote_send(self, token: str, reservation_id: str, *, participant_id: str,
+                          request_sha256: str, claim_id: str, expires_at: str,
+                          snapshot_id: str | None = None):
+        """Consume the remote send opportunity exactly once, before replying.
+
+        A lost reply is uncertain and keeps the entire commitment. Repeating
+        even the same claim fails; status may reveal provenance, never rearm it.
+        A new operation lease need not equal the immutable admission/claim epoch.
+        Caller supplies authenticated participant identity and checks the manual
+        session, forecast, current quote and cutoff at the Scout send boundary.
+        """
+        _name(claim_id)
+        expires = _time(expires_at)
+        with self._transaction() as db:
+            now, owner = self._lease(db, token)
+            row = self._remote_row(db, reservation_id, participant_id, request_sha256)
+            request = json.loads(row["request"])
+            if db.execute("SELECT 1 FROM remote_submission_claims WHERE reservation=?", (reservation_id,)).fetchone():
+                raise AuthorityError("REMOTE_SEND_ALREADY_CLAIMED")
+            if row["status"]!="RESERVED":
+                raise AuthorityError("REMOTE_SEND_REQUIRES_RESERVED_STATE")
+            if not _time(request["issued_at"])<=now<expires<=_time(request["target_close_at"]):
+                raise AuthorityError("REMOTE_SEND_WINDOW_INVALID")
+            snapshot = self._intraday_snapshot(db, now, snapshot_id or request["snapshot_id"])
+            if snapshot["action_date"]!=request["action_date"]:
+                raise AuthorityError("RESERVATION_SOURCE_BINDING_MISMATCH")
+            cash, shares = self._intraday_remaining(db, snapshot)
+            if ((request["side"]=="BUY" and cash<ZERO)
+                    or (request["side"]=="SELL" and shares[request["symbol"]]<0)):
+                raise AuthorityError("REMOTE_RESERVED_CAPACITY_NO_LONGER_AVAILABLE")
+            claim = {"version":REMOTE_CLAIM_VERSION, "reservation_id":reservation_id,
+                     "participant_id":participant_id, "request_sha256":request_sha256,
+                     "claim_id":claim_id, "authority_epoch":owner["epoch"],
+                     "holder_id":owner["holder"], "issued_at":now.isoformat(),
+                     "expires_at":expires.isoformat(), "snapshot_id":snapshot["snapshot_id"]}
+            db.execute("INSERT INTO remote_submission_claims VALUES(?,?)", (reservation_id, _json(claim)))
+            db.execute("UPDATE reservations SET status='SUBMITTING' WHERE id=?", (reservation_id,))
+            self._event(db, now, "remote-send-claimed", claim)
+            return claim
+
+    def record_remote_submission(self, token: str, reservation_id: str, *, participant_id: str,
+                                 request_sha256: str, claim_id: str, broker_order_id: str) -> Reservation:
+        """Bind an authenticated journal's exact response, including after expiry.
+
+        No symbol/price/time guessing and no remote callback occur here. Scout's
+        journal retains the exact response until this durable operation succeeds.
+        Later fill/cancellation evidence uses the ordinary cumulative checks.
+        """
+        if not isinstance(broker_order_id, str) or not re.fullmatch(r"[1-9][0-9]{0,63}", broker_order_id):
+            raise AuthorityError("EXACT_BROKER_ORDER_ID_REQUIRED")
+        with self._transaction() as db:
+            now, _ = self._lease(db, token)
+            self._remote_claim(db, reservation_id, participant_id, request_sha256, claim_id)
+            row = self._row(db, reservation_id)
+            if row["broker_id"] is not None:
+                if row["broker_id"]!=broker_order_id:
+                    raise AuthorityError("REMOTE_BROKER_ORDER_ID_CONFLICT")
+                return self._reservation(row)
+            if row["status"] not in {"SUBMITTING", "UNKNOWN"} or row["filled"]:
+                raise AuthorityError("REMOTE_SUBMISSION_STATE_CONFLICT")
+            try:
+                db.execute("UPDATE reservations SET status='SUBMITTED',broker_id=? WHERE id=?", (broker_order_id, reservation_id))
+            except sqlite3.IntegrityError as exc:
+                raise AuthorityError("BROKER_ORDER_ID_ALREADY_BOUND") from exc
+            self._event(db, now, "remote-exact-order-bound", {"reservation_id":reservation_id,
+                        "claim_id":claim_id, "broker_order_id":broker_order_id})
+            return self._reservation(self._row(db, reservation_id))
+
+    def mark_remote_unknown(self, token: str, reservation_id: str, *, participant_id: str,
+                            request_sha256: str, claim_id: str) -> Reservation:
+        """Record uncertainty without dropping an exact receipt or capacity."""
+        with self._transaction() as db:
+            now, _ = self._lease(db, token)
+            self._remote_claim(db, reservation_id, participant_id, request_sha256, claim_id)
+            row = self._row(db, reservation_id)
+            if row["status"]=="SUBMITTING":
+                db.execute("UPDATE reservations SET status='UNKNOWN' WHERE id=?", (reservation_id,))
+                self._event(db, now, "remote-submission-unknown", {"reservation_id":reservation_id, "claim_id":claim_id})
+            elif row["status"] not in {"UNKNOWN", "SUBMITTED", "WORKING", "PARTIAL", "FILLED", "CANCELLED", "REJECTED"}:
+                raise AuthorityError("REMOTE_SUBMISSION_STATE_CONFLICT")
+            return self._reservation(self._row(db, reservation_id))
+
+    def release_remote_unsubmitted(self, token: str, reservation_id: str, *, participant_id: str,
+                                   request_sha256: str, proof_sha256: str) -> Reservation:
+        """Release a proven never-claimed request; claim expiry is not proof.
+
+        The authenticated service supplies the exact durable Scout revocation
+        evidence. Even a subsequent NOT_SENT report cannot release a claim that
+        might have reached Scout. An exact broker terminal result is then needed.
+        """
+        _hash(proof_sha256)
+        with self._transaction() as db:
+            now, _ = self._lease(db, token)
+            row = self._remote_row(db, reservation_id, participant_id, request_sha256)
+            if db.execute("SELECT 1 FROM remote_submission_claims WHERE reservation=?", (reservation_id,)).fetchone():
+                raise AuthorityError("POSSIBLE_REMOTE_SUBMISSION_CANNOT_BE_RELEASED")
+            previous = db.execute("SELECT proof_sha256 FROM remote_no_send_receipts WHERE reservation=?", (reservation_id,)).fetchone()
+            if previous is not None:
+                if previous["proof_sha256"]!=proof_sha256 or row["status"]!="NOT_SUBMITTED":
+                    raise AuthorityError("REMOTE_NO_SEND_RECEIPT_CONFLICT")
+                return self._reservation(row)
+            if row["status"]!="RESERVED" or row["broker_id"] is not None or row["filled"]:
+                raise AuthorityError("POSSIBLE_REMOTE_SUBMISSION_CANNOT_BE_RELEASED")
+            db.execute("INSERT INTO remote_no_send_receipts VALUES(?,?)", (reservation_id, proof_sha256))
+            db.execute("UPDATE reservations SET status='NOT_SUBMITTED' WHERE id=?", (reservation_id,))
+            self._event(db, now, "remote-not-submitted", {"reservation_id":reservation_id, "proof_sha256":proof_sha256})
+            return self._reservation(self._row(db, reservation_id))
+
     def abandon_unsubmitted(self, token: str, reservation_id: str):
         """Release only a reservation that has never reached SUBMITTING."""
         with self._transaction() as db:
             now, _ = self._lease(db,token)
             row = self._row(db,reservation_id)
+            if json.loads(row["request"]).get("stream")=="scout-15m":
+                raise AuthorityError("REMOTE_RESERVATION_REQUIRES_REMOTE_RECOVERY")
             if row["status"]=="NOT_SUBMITTED":
                 return self._reservation(row)
             if row["status"]!="RESERVED":
@@ -944,6 +1105,8 @@ class AccountAuthority:
         with self._transaction() as db:
             now, owner = self._lease(db,token)
             row = self._row(db,reservation_id)
+            if json.loads(row["request"]).get("stream")=="scout-15m":
+                raise AuthorityError("REMOTE_RESERVATION_CANNOT_USE_LOCAL_SUBMIT")
             if row["status"]!="RESERVED":
                 return self._reservation(row)
             request = json.loads(row["request"])
@@ -998,6 +1161,14 @@ class AccountAuthority:
         return self.reservation(reservation_id)
 
     def reconcile(self, token: str, evidence: OrderEvidence) -> Reservation:
+        return self._reconcile(token, evidence)
+
+    def remote_reconcile(self, token: str, evidence: OrderEvidence, *, participant_id: str,
+                         request_sha256: str, claim_id: str) -> Reservation:
+        """Apply existing exact fill/status checks within the remote send scope."""
+        return self._reconcile(token, evidence, remote_identity=(participant_id, request_sha256, claim_id))
+
+    def _reconcile(self, token, evidence, *, remote_identity=None):
         """Apply complete cumulative evidence for an already exact-bound ID.
 
         Unknown acceptance without a stored broker ID needs a separate reviewed
@@ -1033,15 +1204,19 @@ class AccountAuthority:
             now, _ = self._lease(db,token)
             row = self._row(db,evidence.reservation_id)
             request = json.loads(row["request"])
+            if remote_identity is not None:
+                self._remote_claim(db, evidence.reservation_id, *remote_identity)
             if not row["broker_id"] or row["broker_id"]!=evidence.broker_order_id:
                 raise AuthorityError("EXACT_PREVIOUSLY_BOUND_BROKER_ORDER_ID_REQUIRED")
-            if not _time(row["created"])<=observed<=now or (now-observed).total_seconds()>60:
-                raise AuthorityError("ORDER_EVIDENCE_STALE_OR_INVALID")
             previous = db.execute("SELECT payload FROM order_evidence WHERE id=?", (evidence.evidence_id,)).fetchone()
             if previous:
                 if previous[0]!=_json(payload):
                     raise AuthorityError("ORDER_EVIDENCE_ID_REUSED")
+                # Accepted immutable evidence remains replayable after transport
+                # delays. The first application still requires fresh evidence.
                 return self._reservation(row)
+            if not _time(row["created"])<=observed<=now or (now-observed).total_seconds()>60:
+                raise AuthorityError("ORDER_EVIDENCE_STALE_OR_INVALID")
             quantity = _quantity(evidence.order_quantity,positive=True)
             filled = _quantity(evidence.cumulative_filled_quantity)
             remaining = _quantity(evidence.remaining_quantity)

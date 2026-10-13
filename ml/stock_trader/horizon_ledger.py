@@ -472,20 +472,33 @@ class HorizonLedger:
                 raise LedgerError("UNKNOWN_ALLOCATION")
             return self._stream(db,"allocation",allocation_id)
 
-    def intraday_attempts(self, *, symbol: str, forecast_id: str) -> tuple[ReservationState, ...]:
+    def intraday_attempts(self, *, symbol: str, forecast_id: str, stream: str = "atlas-15m") -> tuple[ReservationState, ...]:
         """Return durable insertion order, independent of hashes or clock ties.
 
         Attempts retain independent idempotency identities. Public legacy
         snapshot ordering and record serialization remain unchanged.
         """
+        stream = self._intraday_stream(stream)
         with self._transaction() as db:
-            output=[]
-            for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
-                                  (self.account_fingerprint,_name(symbol).upper())):
-                request=json.loads(row["request"])
-                if request.get("stream")=="atlas-15m" and request.get("forecast")==_name(forecast_id):
-                    output.append(self._reservation(db,row["id"]))
-            return tuple(output)
+            return self._intraday_attempts(db,self.account_fingerprint,_name(symbol).upper(),_name(forecast_id),stream)
+
+    @staticmethod
+    def _intraday_stream(stream):
+        if stream not in {"atlas-15m", "scout-15m"}:
+            raise LedgerError("UNREVIEWED_INTRADAY_STREAM")
+        return stream
+
+    @classmethod
+    def _intraday_attempts(cls, db, account, symbol, forecast_id, stream):
+        output=[]
+        for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
+                              (account,symbol)):
+            request=json.loads(row["request"])
+            if request.get("stream")==stream and request.get("forecast")==forecast_id:
+                if cls._stream(db,"reservation",row["id"])!=stream:
+                    raise LedgerError("INTRADAY_RESERVATION_STREAM_MISMATCH")
+                output.append(cls._reservation(db,row["id"]))
+        return tuple(output)
 
     @staticmethod
     def _intraday_schema(db):
@@ -564,7 +577,7 @@ class HorizonLedger:
         The caller owns timing/supersession eligibility and broker guards. This
         never invokes a broker or releases capacity, including after DELETE.
         """
-        if stream!="atlas-15m" or reason not in {"new-forecast","repricing","manual-stop"}:
+        if stream not in {"atlas-15m", "scout-15m"} or reason not in {"new-forecast","repricing","manual-stop"}:
             raise LedgerError("UNREVIEWED_STREAM_CANCELLATION_POLICY")
         now = _utc(as_of)
         with self._transaction() as db:
@@ -605,7 +618,7 @@ class HorizonLedger:
                          reference_at: str, target_close_at: str, forecast_sha256: str,
                          forecast_snapshot_sha256: str, local_symbols: Sequence[str], pending_sell_shares=0,
                          broker_pending_sell_orders: Mapping[str, int] | None = None,
-                         retry_of_reservation_id: str | None = None) -> ReservationState:
+                         retry_of_reservation_id: str | None = None, stream: str = "atlas-15m") -> ReservationState:
         """Record 15m commitment/fills without Gameplan horizon funding rules.
 
         The shared authority admits cash and exact account shares. A SELL can
@@ -613,6 +626,7 @@ class HorizonLedger:
         is a stable accounting identity order, never a donor eligibility policy.
         A fresh forecast is independently sized; filled purchases never reenter.
         """
+        stream = self._intraday_stream(stream)
         symbol,forecast_id = _name(symbol).upper(),_name(forecast_id)
         if (side not in {"BUY","SELL"} or symbol not in local_symbols or len(local_symbols)!=len(set(local_symbols))
                 or any(not isinstance(s,str) or not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}",s) for s in local_symbols)):
@@ -634,7 +648,7 @@ class HorizonLedger:
             if len(exact_pending)!=len(broker_pending_sell_orders) or sum(exact_pending.values())!=external_pending:
                 raise LedgerError("EXACT_BROKER_PENDING_SELL_QUANTITIES_REQUIRED")
         key,batch = _name(idempotency_key),_name(batch_id)
-        request = {"kind":"intraday-account-intention","stream":"atlas-15m","symbol":symbol,"horizon":"15m",
+        request = {"kind":"intraday-account-intention","stream":stream,"symbol":symbol,"horizon":"15m",
                    "forecast":forecast_id,"side":side,"quantity":quantity,"price":price,"snapshot":snapshot_id,
                    "batch":batch,"start":reference,"end":target,"forecast_sha256":forecast_sha256,
                    "forecast_snapshot_sha256":forecast_snapshot_sha256,"local_symbols":sorted(local_symbols),
@@ -650,17 +664,19 @@ class HorizonLedger:
             portfolio = self._require_intraday_snapshot(db,snapshot_id,now)
             if retry_of_reservation_id is not None:
                 self._intraday_retry_parent(db,request)
-            elif self._forecast_reserved(db,self.account_fingerprint,symbol,"15m",forecast_id):
+            elif self._intraday_attempts(db,self.account_fingerprint,symbol,forecast_id,stream):
                 raise LedgerError("FORECAST_ALREADY_RESERVED_NO_REENTRY")
             state = self._snapshot(db)
             active = next((a for a in state.allocations if a.symbol==symbol and a.horizon=="15m" and a.status=="ACTIVE"),None)
-            if active and self._stream(db,"allocation",active.allocation_id)!="atlas-15m":
+            if active and self._stream(db,"allocation",active.allocation_id)!=stream:
                 raise LedgerError("INTRADAY_ALLOCATION_STREAM_MISMATCH")
             allocation_id = active.allocation_id if active else _identity([self.account_fingerprint,symbol,"15m",forecast_id])
             if not active:
                 previous_allocation = db.execute("SELECT * FROM allocations WHERE id=?",(allocation_id,)).fetchone()
+                if previous_allocation is not None and self._stream(db,"allocation",allocation_id)!=stream:
+                    raise LedgerError("INTRADAY_ALLOCATION_STREAM_MISMATCH")
                 if previous_allocation is not None and retry_of_reservation_id is not None:
-                    if previous_allocation["status"]!="CLOSED" or self._stream(db,"allocation",allocation_id)!="atlas-15m":
+                    if previous_allocation["status"]!="CLOSED" or self._stream(db,"allocation",allocation_id)!=stream:
                         raise LedgerError("INTRADAY_RETRY_ALLOCATION_UNVERIFIED")
                     db.execute("UPDATE allocations SET status='ACTIVE' WHERE id=?",(allocation_id,))
                 else:
@@ -669,9 +685,9 @@ class HorizonLedger:
             self._intraday_schema(db)
             proof = {"forecast_sha256":forecast_sha256,"forecast_snapshot_sha256":forecast_snapshot_sha256,
                      "reference_at":reference,"target_close_at":target,"forecast_id":forecast_id}
-            db.execute("INSERT OR IGNORE INTO intraday_streams VALUES('allocation',?,'atlas-15m',?)",(allocation_id,_encoded(proof)))
+            db.execute("INSERT OR IGNORE INTO intraday_streams VALUES('allocation',?,?,?)",(allocation_id,stream,_encoded(proof)))
             reservation = self._insert_reservation(db,allocation_id,side,quantity,price,key,batch,request)
-            db.execute("INSERT INTO intraday_streams VALUES('reservation',?,'atlas-15m',?)",(reservation.reservation_id,_encoded(proof)))
+            db.execute("INSERT INTO intraday_streams VALUES('reservation',?,?,?)",(reservation.reservation_id,stream,_encoded(proof)))
             if side=="SELL":
                 held = int(_number(portfolio["held_shares"].get(symbol,0)))
                 local_orders = [r for r in state.reservations if r.symbol==symbol and r.side=="SELL" and r.reserved_quantity]
@@ -716,15 +732,10 @@ class HorizonLedger:
         original = json.loads(db.execute("SELECT request FROM reservations WHERE id=?",(previous.reservation_id,)).fetchone()[0])
         fields = ("kind","stream","symbol","horizon","forecast","side","start","end",
                   "forecast_sha256","forecast_snapshot_sha256","local_symbols")
-        if any(original.get(k)!=request[k] for k in fields) or cls._stream(db,"reservation",previous.reservation_id)!="atlas-15m":
+        if any(original.get(k)!=request[k] for k in fields) or cls._stream(db,"reservation",previous.reservation_id)!=request["stream"]:
             raise LedgerError("INTRADAY_RETRY_PREDECESSOR_SCOPE_MISMATCH")
-        predecessors = []
         account = db.execute("SELECT account FROM allocations WHERE id=?",(previous.allocation_id,)).fetchone()[0]
-        for row in db.execute("SELECT r.id,r.request FROM reservations r JOIN allocations a ON a.id=r.allocation WHERE a.account=? AND a.symbol=? ORDER BY r.rowid",
-                              (account,request["symbol"])):
-            candidate = json.loads(row["request"])
-            if candidate.get("stream")=="atlas-15m" and candidate.get("forecast")==request["forecast"]:
-                predecessors.append(cls._reservation(db,row["id"]))
+        predecessors = cls._intraday_attempts(db,account,request["symbol"],request["forecast"],request["stream"])
         if (not predecessors or predecessors[-1].reservation_id!=previous.reservation_id
                 or any(order.status!="REJECTED" or order.broker_order_id is not None or order.filled_quantity
                        or order.submitted_at is not None for order in predecessors)):
@@ -746,7 +757,7 @@ class HorizonLedger:
         now = _utc(as_of)
         with self._transaction() as db:
             order = self._reservation(db, reservation_id)
-            if self._stream(db,"reservation",reservation_id)=="atlas-15m":
+            if self._stream(db,"reservation",reservation_id)!="gameplan":
                 raise LedgerError("CANCELLATION_STREAM_MISMATCH")
             if order.cancel_requested_at is not None:
                 return False
@@ -774,7 +785,7 @@ class HorizonLedger:
         now = _utc(as_of)
         with self._transaction() as db:
             order = self._reservation(db, reservation_id)
-            if self._stream(db,"reservation",reservation_id)=="atlas-15m":
+            if self._stream(db,"reservation",reservation_id)!="gameplan":
                 raise LedgerError("CANCELLATION_STREAM_MISMATCH")
             self._account(db.execute("SELECT account FROM allocations WHERE id=?", (order.allocation_id,)).fetchone()[0])
             if order.cancel_requested_at is not None:
@@ -812,6 +823,8 @@ class HorizonLedger:
             child = self._reservation(db, child_reservation_id)
             parent = self._reservation(db, parent_reservation_id)
             for order in (child, parent):
+                if self._stream(db,"reservation",order.reservation_id)!="gameplan":
+                    raise LedgerError("TIMEOUT_RETRY_STREAM_MISMATCH")
                 self._account(db.execute("SELECT account FROM allocations WHERE id=?", (order.allocation_id,)).fetchone()[0])
             if child.retry_parent_id is not None:
                 if child.retry_parent_id != parent_reservation_id:
@@ -958,6 +971,22 @@ class HorizonLedger:
                    (status, broker_id, filled, observed, order.reservation_id))
         self._attribute_intraday_fills(db, order.reservation_id)
         self._release_unfilled_assignment(db, order.reservation_id, observed)
+
+    def apply_stream_order_evidence(self, evidence: OrderEvidence, *, stream: str) -> ReservationState:
+        """Persist exact stream-owned fills without fabricating a portfolio read.
+
+        The caller verifies authenticated provenance and holds the common account
+        lock. Existing cumulative fill, timestamp and identity checks remain the
+        sole order mutation path; later shared capture reconciles actual holdings.
+        """
+        stream = self._intraday_stream(stream)
+        with self._transaction() as db:
+            self._reservation(db,evidence.reservation_id)
+            if self._stream(db,"reservation",evidence.reservation_id)!=stream:
+                raise LedgerError("ORDER_EVIDENCE_STREAM_MISMATCH")
+            self._apply_order(db,evidence)
+            self._close_empty_allocations(db)
+            return self._reservation(db,evidence.reservation_id)
 
     def reconcile(self, portfolio: PortfolioEvidence, *, order_evidence: Sequence[OrderEvidence] = ()) -> ReconciliationResult:
         """Apply cumulative fill evidence and reconcile a subsequent fresh portfolio.
@@ -1392,7 +1421,7 @@ class HorizonLedger:
                 reasons.append(str(exc))
             plans = []
             for allocation in self._snapshot(db).allocations:
-                if self._stream(db,"allocation",allocation.allocation_id)=="atlas-15m":
+                if self._stream(db,"allocation",allocation.allocation_id)!="gameplan":
                     continue
                 if allocation.status != "ACTIVE" or not self._exit_due(allocation.target_end, now, exit_lead_seconds):
                     continue
@@ -1419,7 +1448,7 @@ class HorizonLedger:
                 return existing
             self._require_snapshot(db, snapshot_id, now, batch_id=batch)
             allocation = next((a for a in self._snapshot(db).allocations if a.allocation_id == allocation_id), None)
-            if self._stream(db,"allocation",allocation_id)=="atlas-15m":
+            if self._stream(db,"allocation",allocation_id)!="gameplan":
                 raise LedgerError("INTRADAY_HAS_NO_SCHEDULED_LIQUIDATION")
             if allocation is None or allocation.status != "ACTIVE":
                 raise LedgerError("NO_ACTIVE_HORIZON_ALLOCATION")

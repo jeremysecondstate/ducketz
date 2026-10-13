@@ -39,6 +39,35 @@ def _whole(value):
     return int(number)
 
 
+def remote_preclaim_native(authority, record, native, *, ledger):
+    """Recognize only canonical Scout commitments that cannot yet be submitted.
+
+    Callers hold the common account lock. This omits an exact preclaim from a
+    broker history request, never from account capacity or native accounting.
+    Orphans, mismatches and any possible send remain subject to reconciliation.
+    """
+    request = record["request"]
+    if (request.get("stream")!="scout-15m" or request.get("participant_id")!="pc-new"
+            or not request.get("remote_request_sha256") or record["status"]!="RESERVED"
+            or native.status!="RESERVED" or record["broker_order_id"] is not None
+            or native.broker_order_id is not None or record["filled_quantity"]!=0
+            or native.filled_quantity!=0 or native.submitted_at is not None
+            or ledger.account_fingerprint!=request["account_fingerprint"]
+            or ledger.reservation_stream(native.reservation_id)!="scout-15m"
+            or ledger.allocation_stream(native.allocation_id)!="scout-15m"):
+        return False
+    pairs = ((native.reservation_id,request["native_reservation_id"]),
+             (native.allocation_id,request["native_allocation_id"]),
+             (native.symbol,request["symbol"]), (native.side,request["side"]),
+             (native.quantity,request["quantity"]), (native.forecast_id,request["forecast_id"]),
+             (native.horizon,request["horizon"]))
+    if (any(actual!=expected for actual,expected in pairs)
+            or Decimal(native.limit_price)!=Decimal(str(request["limit_price"]))):
+        return False
+    return authority.remote_claim(record["reservation_id"],participant_id=request["participant_id"],
+                                  request_sha256=request["remote_request_sha256"]) is None
+
+
 def evidence_ledger(root, ledger, config):
     """Include authority-pending IDs in the native caller's one history read.
 
@@ -57,6 +86,9 @@ def evidence_ledger(root, ledger, config):
         if (native.broker_order_id!=record["broker_order_id"]
                 or native.allocation_id!=record["request"]["native_allocation_id"]):
             raise AuthorityError("NATIVE_AND_ACCOUNT_ORDER_IDENTITIES_DIFFER")
+        if remote_preclaim_native(authority,record,native,ledger=ledger):
+            pending.pop(native.reservation_id,None)
+            continue
         pending[native.reservation_id] = native
 
     class PendingEvidence:
@@ -129,7 +161,10 @@ class AccountExecutionContext:
                 raise AuthorityError("NATIVE_AND_ACCOUNT_ORDER_IDENTITIES_DIFFER")
             observed = by_native.get(native.reservation_id)
             if observed is None:
+                if remote_preclaim_native(self.authority,record,native,ledger=self.native_ledger):
+                    continue
                 if (record["status"]=="RESERVED" and native.status=="REJECTED"
+                        and self.native_ledger.reservation_stream(native.reservation_id)=="gameplan"
                         and not native.broker_order_id and native.filled_quantity==0):
                     self.authority.abandon_unsubmitted(self.lease.token,record["reservation_id"])
                 elif record["status"] in OPEN:
