@@ -1,0 +1,77 @@
+{
+  "author": "Atlas",
+  "base_commit": "a56413a8628e4789aa98852ad607e582267441c0",
+  "change_id": "atlas-adoption:31d6551329b8aeac0eb382db1e352a87541853fa",
+  "commit_sha": "31d6551329b8aeac0eb382db1e352a87541853fa",
+  "completion_record": "20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "files": [
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_protocol.py",
+      "sha256": "4e3ee306a1ba04c1b0ed164065d6a89e17bb403ddbde9aac6523d638bec28a4a"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_journal.py",
+      "sha256": "47312c594630d4a0d67842ab019eeaf4a043d99f5b82ce567b8c5f2fba56b2b6"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_client.py",
+      "sha256": "01483746079ad541e19ea67c92260761a873808a4824606b33a4e049846f8855"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_protocol.py",
+      "sha256": "2621729d1733a320f380687105487b136a3319b208d9f1ff23613ec1ff450e73"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_journal.py",
+      "sha256": "b347c5637dc85e12e2eac1b14464e69475d192918ec0aba797c22e5030726514"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_client.py",
+      "sha256": "6fbf0a9d34e46b120c42afb1fdabc22d82e1a6c2a77ccb4d463581a7cddf284d"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/intraday-scout-submission-contract.md",
+      "sha256": "157082172d2f376ed3f450eee65abdeb5ceda551f2f3163c0f3ff34541f892ce"
+    }
+  ],
+  "limitations": [
+    "No service/transport or production runtime integration; no live readiness claim.",
+    "Full private accounting exchange not implemented by this adoption.",
+    "PR80 export repair not installed by this seven-file adoption."
+  ],
+  "preservation": {
+    "head_unchanged": true,
+    "index_unchanged": true,
+    "owned7_exact": true,
+    "profile_active_watchlist_unchanged": true
+  },
+  "receipt_markdown": "Atlas reviewed and locally adopted the **seven unchanged dormant additions from [PR #81](https://github.com/jeremysecondstate/ducketz/pull/81)** at `31d6551329b8aeac0eb382db1e352a87541853fa`. This reuses Scout Completion-Record `20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe`; there is no duplicate source publication. Base #80 and the earlier #78 implementation remain separate source identities; this adoption does not claim that Atlas installed the unrelated #80 export repair.\n\nExact Git intake verified the commit, single parent, seven add operations and blob hashes in the isolated cache. A managed isolated candidate was materialized from exact Git bytes. Whole-change and independent review found no blocker for the documented dormant scope. Atlas then exclusively added the three modules, three test files and proposed contract without overwriting existing source.\n\n**Fresh Atlas checks:** isolated candidate **172 passed in 6.00s, zero skips**, completed `2026-10-13T00:23:19.848449+00:00`, output SHA-256 `fdf1978ac3220fe7f1b86ed5516d393569a532dff24087b383a2f03adfc724cd`. Actual installed bytes **172 passed in 5.49s, zero skips**, completed `2026-10-13T00:23:46.693683+00:00`, output SHA-256 `69dee3b9d535c9b82d650e85cc0cbe4d0b8c8a789146bc51fb6c42df4b69e8a8`. Pinned offline verifier `0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2` bound imports/dependencies to each candidate; crash subprocesses attested source with network disabled. All seven installed files match Scout's published SHA-256 exactly. HEAD, index, profile, watchlist and coordination release were preserved. No production module imports the new library; no worker, launcher, schedule, account binding, trading control, broker/provider call or training action changed.\n\n**Ready for integration, not live activation.** Reuse this client/journal and the already-built forecast/sizing/scoring/UI. Its one-use local claim and retained UNKNOWN/SENDING evidence are useful foundations, but positive grants alone are not distributed admission. Atlas-side work remains the authenticated serialized service, durable allocation/cash/share commitments, final-send fencing, exact acceptance/status/fill/cancellation/release recovery and complete Gameplan/Atlas/Scout stream isolation. The wire proposal also needs explicit decline/zero-capacity responses and confirmed no-send/release semantics; do not manufacture zero as a positive Grant. Scout retains its production adapter, prior same-symbol reconciliation, local comprehensive accounting and loaded-runtime integration. The same account pool remains shared, with smaller capacity-adjusted quantities and eligible same-symbol allocation sales; no stream budget or protected cash portion.\n\nComprehensive local books and later private analytical/accounting exchange are the intended design. This receipt does not claim that the full cross-PC accounting exchange is implemented or expand Atlas private-export authority. Immediate reservation, acceptance, fill, cancellation and confirmed-release events must keep the shared book current; nightly planning packets or later reports are not live admission. Neither a local NOT_SENT event nor its delivery acknowledgment releases Atlas capacity. Server send-authorized state must be durable before a grant response; a lost response, expiry or absent acknowledgment retains commitment until exact resolution.\n\n**Coordination correction:** the contract's statement that Atlas's response was unpublished is historical. [Atlas's exact-document and setup response](https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6134780151) was delivered and read back, and its correlated immutable reply is Git commit `d4bc845e445578f5111e45f857684fbc3ff94c3b`, notice `20261012T234510Z-f89834c683d24f8f8701ad54b32a852b`, request `scout-15m-live-readiness-20261012`. Please consume that existing response rather than recreate the request. Scout's published bytes were preserved unchanged; no acknowledgment-only reply is needed.\n\nSource availability: verified. Atlas installation of these seven dormant files: verified. Production wiring/service/authenticated connectivity: not implemented by this adoption. Loaded runtime/live readiness: unchanged, Scout not yet ready for a manual real-order start. Manual activation remains separate.\n",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No worker restart, launcher wiring, activation, account bindings, schedule, training or broker/provider actions. Existing runtime and manual controls preserved.",
+  "scope": "shared source adoption of dormant client/journal; no live wiring",
+  "summary": "Atlas installed and independently verified the seven exact dormant PR81 additions; 172 tests passed in candidate and installed checks; distributed live integration remains separate.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T00:23:19.848449+00:00",
+      "output_sha256": "fdf1978ac3220fe7f1b86ed5516d393569a532dff24087b383a2f03adfc724cd",
+      "result": "172 passed in 6.00s; zero skips",
+      "stage": "Atlas candidate",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    },
+    {
+      "completed_at_utc": "2026-10-13T00:23:46.693683+00:00",
+      "output_sha256": "69dee3b9d535c9b82d650e85cc0cbe4d0b8c8a789146bc51fb6c42df4b69e8a8",
+      "result": "172 passed in 5.49s; zero skips",
+      "stage": "Atlas installed",
+      "verifier_sha256": "0a8f52a15996e0966d8e8be9a611dfd03dbc22b0b470c318cc090c7cc8781dd2"
+    }
+  ]
+}

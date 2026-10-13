@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T00:24:50.508359Z",
+  "id": "20261013T002450Z-98b7c03cbf85456ea6c3267822f89263",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed and independently verified the seven exact dormant PR81 additions; 172 tests passed in candidate and installed checks; distributed live integration remains separate."
+}
