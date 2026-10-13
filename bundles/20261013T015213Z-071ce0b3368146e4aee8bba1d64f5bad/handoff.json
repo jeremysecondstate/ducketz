@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T01:52:13.442551Z",
+  "id": "20261013T015213Z-071ce0b3368146e4aee8bba1d64f5bad",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas current source comparison confirms existing 15-minute execution and recovery code is already published; preserve Scout verified installation and scope remaining work to the cross-PC shared reservation connection."
+}

@@ -1,0 +1,317 @@
+{
+  "author": "Atlas",
+  "base_commit": "53aea68a29ebb136faa4378e89261109100652e3",
+  "change_id": "atlas-same-build-source-readback-20261013",
+  "commit_sha": "31d6551329b8aeac0eb382db1e352a87541853fa",
+  "completion_record": "20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "files": [],
+  "limitations": [
+    "Scout new 390-file recheck is user-relayed peer evidence, not an Atlas local verification of Scout.",
+    "This notice does not establish full #81 installation on Scout, a loaded Scout runtime or live readiness.",
+    "No cross-PC reservation service or connection implemented in this verification."
+  ],
+  "other_published_differences": [
+    {
+      "commit_sha": "69b5c47d82796dcecba8b2071624af3694dc76a5",
+      "git_blob": "709fe7387782b0177f8d281a6f93f9b37fb4fb0d",
+      "path": "app/ui/schwab_duckets.py",
+      "remote_verified": true,
+      "scope": "company logos",
+      "sha256": "d2527bc530057f03ff26031bd83d60e5f0b07e77d0d00c15d2a52a7b08435b23"
+    },
+    {
+      "commit_sha": "c7698769c0ebaf46dd461066291ebbf3c14b5a1a",
+      "git_blob": "18aab28408e64aa173160866a8c17cc73bc732e8",
+      "path": "datafetching/databento_opra_history.py",
+      "remote_verified": true,
+      "scope": "OPRA metadata timeout and diagnostics",
+      "sha256": "48e7bdc1ddbd14f9aeae56a697cc70700953e4a18d5219aa3c5fe9651eb8c42a"
+    },
+    {
+      "commit_sha": "2c3daae113aa2482d7bfb0383ffc964955624926",
+      "git_blob": "dcb353cedc4374fb7d9df5351c0e0ef0ec4564fd",
+      "path": "docs/loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md",
+      "remote_verified": true,
+      "scope": "historical scheduling documentation",
+      "sha256": "5767c8185fb379dcf1b13731da7dcbbfcd05cbd372f63a1ce5f5f352a64defc8"
+    }
+  ],
+  "receipt_markdown": "Atlas source comparison and narrowed Scout integration scope — `atlas-same-build-source-readback-20261013`.\n\nThe human relayed Scout's new readback that all 390 installed files still match the reviewed Atlas package plus Scout's compatibility repair. That agrees with Atlas's source comparison: **the existing submission, fill and cancellation recovery implementation is already published and transferred. It does not need rebuilding or resending.** This adds Atlas's local-to-remote byte comparison to the existing installation receipt, rather than creating another source publication.\n\nThe reusable implementation is #78 `53aea68a29ebb136faa4378e89261109100652e3`. The coherent descendant #81 `31d6551329b8aeac0eb382db1e352a87541853fa` also contains Scout's #80 compatibility repair (`a56413a8628e4789aa98852ad607e582267441c0`) and its seven dormant client/journal additions. At Atlas's readback, all **25 local `ml/intraday/*.py` files match that published descendant byte for byte**: 22 existing Atlas modules and the three adopted Scout modules. The manual launchers, shared account authority/execution, Gameplan trader, horizon broker/ledger, independent runtime and intraday UI also match the published blobs; `pyproject.toml` differs only in line endings.\n\nExact source references for integration:\n\n- [Existing execution and recovery modules](https://github.com/jeremysecondstate/ducketz/tree/53aea68a29ebb136faa4378e89261109100652e3/ml/intraday), particularly [account_execution.py](https://github.com/jeremysecondstate/ducketz/blob/53aea68a29ebb136faa4378e89261109100652e3/ml/intraday/account_execution.py), and [existing intraday tests](https://github.com/jeremysecondstate/ducketz/tree/53aea68a29ebb136faa4378e89261109100652e3/tests).\n- [Shared account authority](https://github.com/jeremysecondstate/ducketz/blob/53aea68a29ebb136faa4378e89261109100652e3/ml/account_gameplan/authority.py), [account execution](https://github.com/jeremysecondstate/ducketz/blob/53aea68a29ebb136faa4378e89261109100652e3/ml/account_gameplan/execution.py), [horizon ledger](https://github.com/jeremysecondstate/ducketz/blob/53aea68a29ebb136faa4378e89261109100652e3/ml/stock_trader/horizon_ledger.py) and [Gameplan integration](https://github.com/jeremysecondstate/ducketz/blob/53aea68a29ebb136faa4378e89261109100652e3/ml/gameplan_stock_trader.py).\n- [Scout client/journal source](https://github.com/jeremysecondstate/ducketz/tree/31d6551329b8aeac0eb382db1e352a87541853fa/ml/intraday) and [proposed submission contract](https://github.com/jeremysecondstate/ducketz/blob/31d6551329b8aeac0eb382db1e352a87541853fa/docs/development/intraday-scout-submission-contract.md).\n- [Existing exact dependency/installation manifest](https://github.com/jeremysecondstate/ducketz/blob/34f88147c5dc17736e2239404f9793a5bc2f5073/docs/development/intraday-scout-exact-installation.json) and [handoff](https://github.com/jeremysecondstate/ducketz/blob/34f88147c5dc17736e2239404f9793a5bc2f5073/docs/development/intraday-scout-exact-handoff.md). The design/architecture documents were also delivered in [the setup response](https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6134780151).\n\nThe full #78 manifest comparison found 284 exact-byte matches, 101 line-ending-only differences, and three other already-published changes (company logos, OPRA metadata timeout/diagnostics, and historical scheduling documentation). Those are not missing 15-minute execution code. Preserve Scout's reviewed improvements. #77 remains a separate sibling, excluded from this baseline; do not replay earlier PRs already composed into #74/#78 or replace an entire dirty checkout.\n\n**Remaining integration scope:** reuse Atlas's execution/recovery functions and tests, and connect Scout's local submission to Atlas's existing reservation authority. Atlas owns the serialized authenticated admission boundary and durable shared commitments. Scout owns the local adapter and durable submission journal. Together, verify exact order ownership, acceptance, fills, cancellation and commitment release across interruptions/restarts; a lost reply or uncertain send must retain its commitment until resolved. This is cross-PC integration of the existing book, not a new forecasting, sizing, scoring, UI or recovery-system build. Preserve capacity-adjusted quantities, eligible same-symbol shares across horizons, and one shared pool without protected stream budgets. Preserve Scout's eleven symbols and local credentials/settings; do not copy databases or impersonate Atlas to bypass the current guards.\n\nNo reinstallation or repeat test suite is requested for unchanged verified files. Reuse the existing completion identities and evidence. Atlas's earlier seven-file #81 adoption passed 172 candidate and 172 installed tests; Scout's earlier 390-file installation receipt reports 310 combined and 232 installed tests. **No new tests were run or claimed for this read-only source comparison.** New connection changes need their own exact-byte offline tests and each PC's installation verification.\n\nSource availability and Scout's existing installation are established by their respective receipts. Loaded Scout runtime and manual live readiness remain separate and unverified here. This message changes no trader controls, workers or schedules. No acknowledgment-only reply is needed; report actual new integration work, concrete missing paths/hashes, or a technical blocker through this issue and the existing durable queues.\n",
+  "repository": "jeremysecondstate/ducketz",
+  "reused_completion_records": {
+    "78": "20261012T185820Z-3e62123b644c4b839dc6f127e1c1a3a5",
+    "79": "20261012T222307Z-e6fdd6ab7e774d20a4ed3cd9c609120c",
+    "80": "20261012T225221Z-afffb55c4ad14957ac2cdccf876969bf",
+    "81": "20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe"
+  },
+  "runtime_implications": "No application, trader controls, workers, schedules, provider/broker calls, databases or private bindings changed.",
+  "scope": "shared source verification and integration scope clarification; no source mutation",
+  "source_byte_comparison": {
+    "checked_at": "2026-10-13T01:51:55.827013+00:00",
+    "files": [
+      {
+        "exact": true,
+        "git_blob": "892e6d1d14dbf6766d61132136b55c392f938d47",
+        "path": "Check-15m-Readiness.cmd",
+        "remote_blob": "892e6d1d14dbf6766d61132136b55c392f938d47",
+        "sha256": "a7b5e3a38980f47b8e4b600096c5ba641dba7210765ef71230b5bbfdcb5fc513"
+      },
+      {
+        "exact": true,
+        "git_blob": "aaa8e46fba1cc61d492e952f4ab1f5b62a95495e",
+        "path": "Start-15m-Trader.cmd",
+        "remote_blob": "aaa8e46fba1cc61d492e952f4ab1f5b62a95495e",
+        "sha256": "9afac3bac6c939ae60dc1126219a11b32a7ec612b33b502b25083ce26cbe1c8c"
+      },
+      {
+        "exact": true,
+        "git_blob": "bd2d76260d90c389325f5c6425465406762d74bc",
+        "path": "ml/account_gameplan/authority.py",
+        "remote_blob": "bd2d76260d90c389325f5c6425465406762d74bc",
+        "sha256": "92a1087d2890bcfe384a05b97f79cda328a47c21939218b1c490bc2d9c095be6"
+      },
+      {
+        "exact": true,
+        "git_blob": "03a4a503ed91dcf2358a106a23884b29b7a39870",
+        "path": "ml/account_gameplan/execution.py",
+        "remote_blob": "03a4a503ed91dcf2358a106a23884b29b7a39870",
+        "sha256": "163955a739a6391b1add3c576c00a7b059011870f9c3ed64296ac5a818ac6421"
+      },
+      {
+        "exact": true,
+        "git_blob": "441c64f469b63437a747506f67ecdf208fadbb99",
+        "path": "ml/gameplan_stock_trader.py",
+        "remote_blob": "441c64f469b63437a747506f67ecdf208fadbb99",
+        "sha256": "3ad1e5a1927a6debb722c5bd33d28617f602b989e475399777c2da3666a3cb4c"
+      },
+      {
+        "exact": true,
+        "git_blob": "5a4160fae052faebbeed35d48eee0f891747d7ea",
+        "path": "ml/intraday/__init__.py",
+        "remote_blob": "5a4160fae052faebbeed35d48eee0f891747d7ea",
+        "sha256": "2b1407361de7dc4b7233ee8329adf4383336afbd0b4f53266e2da38edd236cf8"
+      },
+      {
+        "exact": true,
+        "git_blob": "83fa43c87f7de39275deef05ebda3f74c5b58d1a",
+        "path": "ml/intraday/account_execution.py",
+        "remote_blob": "83fa43c87f7de39275deef05ebda3f74c5b58d1a",
+        "sha256": "bca4d9f9990a530d848a53cbf0d201af838d2934de190678805fb06c6a18a62b"
+      },
+      {
+        "exact": true,
+        "git_blob": "8d2bc1c42536800bec55470004046de0cb88d267",
+        "path": "ml/intraday/book.py",
+        "remote_blob": "8d2bc1c42536800bec55470004046de0cb88d267",
+        "sha256": "3e3c1af09dfd2e4e86f5a36bba5ab89a01aad6d489721a431f8c9238bf506fb7"
+      },
+      {
+        "exact": true,
+        "git_blob": "d4ff1559d78ad41226b5557072302b09c7fea9e7",
+        "path": "ml/intraday/cancellation.py",
+        "remote_blob": "d4ff1559d78ad41226b5557072302b09c7fea9e7",
+        "sha256": "5459b873a0b1b6b9aa63a0da70a60501496910252c4ad221d7c4dd38c87499e9"
+      },
+      {
+        "exact": true,
+        "git_blob": "23e3db32a5ec0a76f3d11b8cb2b0d48db5aadf54",
+        "path": "ml/intraday/capacity.py",
+        "remote_blob": "23e3db32a5ec0a76f3d11b8cb2b0d48db5aadf54",
+        "sha256": "12512fa69fd8188eda9653c7cf477a47f731aa7a675f5dec343c2214c91f46f6"
+      },
+      {
+        "exact": true,
+        "git_blob": "49ab7e7f5d6f8e84ce9d7a70def5cea0ed2830f0",
+        "path": "ml/intraday/data.py",
+        "remote_blob": "49ab7e7f5d6f8e84ce9d7a70def5cea0ed2830f0",
+        "sha256": "b4d9548b5fd1163373c82ea680b1f5323d013a1c55a8974687ccd6baadb22be9"
+      },
+      {
+        "exact": true,
+        "git_blob": "435f7d48fc148c8114766f1a6c82871f9a7bd7a0",
+        "path": "ml/intraday/evaluation.py",
+        "remote_blob": "435f7d48fc148c8114766f1a6c82871f9a7bd7a0",
+        "sha256": "c613d1cf44ae233234f702bd4467c3247489f657387649e9b0c486b7d3bfabe3"
+      },
+      {
+        "exact": true,
+        "git_blob": "7ee8499da269a2de042c8d9db966c878da0e0b09",
+        "path": "ml/intraday/execution.py",
+        "remote_blob": "7ee8499da269a2de042c8d9db966c878da0e0b09",
+        "sha256": "83cb02b3249a61d035a4456c897130e7db23ba4f8f8b9817c63c34af7effbab0"
+      },
+      {
+        "exact": true,
+        "git_blob": "834011613305d0b48e9150ee257cf2bbc690bab7",
+        "path": "ml/intraday/execution_policy.py",
+        "remote_blob": "834011613305d0b48e9150ee257cf2bbc690bab7",
+        "sha256": "48f29958464fa40726e98744ac60bd94a10f847e1cc43bea73e07828e71ea356"
+      },
+      {
+        "exact": true,
+        "git_blob": "8f85de435c8d09c767426439f8b6a16a0cb1041d",
+        "path": "ml/intraday/intentions.py",
+        "remote_blob": "8f85de435c8d09c767426439f8b6a16a0cb1041d",
+        "sha256": "272fdcb8504844e23d123711c4d9ec2b28a07f92a44b3cfbe2c45475add73631"
+      },
+      {
+        "exact": true,
+        "git_blob": "0f1973f47cf293e86f9533bb1b122138f1c59e91",
+        "path": "ml/intraday/live_session.py",
+        "remote_blob": "0f1973f47cf293e86f9533bb1b122138f1c59e91",
+        "sha256": "e55ae43bad42691150805400fa5bacdc2839ee9074e8a81dabb81dae3fdd1a95"
+      },
+      {
+        "exact": true,
+        "git_blob": "e54d77001dc23fd0518af5899c78cef335e072b3",
+        "path": "ml/intraday/models.py",
+        "remote_blob": "e54d77001dc23fd0518af5899c78cef335e072b3",
+        "sha256": "9dc6a7e3c682eb0fd3a85ded4a09e578687ac99b994933ba3ec193d48c4fc72e"
+      },
+      {
+        "exact": true,
+        "git_blob": "0cea3d6350a12da1c8fe4f6cc22847247e0794ea",
+        "path": "ml/intraday/prediction.py",
+        "remote_blob": "0cea3d6350a12da1c8fe4f6cc22847247e0794ea",
+        "sha256": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c"
+      },
+      {
+        "exact": true,
+        "git_blob": "88caa9a74b8c7e91a2e0fb7ba8a8913a3a69f8e5",
+        "path": "ml/intraday/prototype.py",
+        "remote_blob": "88caa9a74b8c7e91a2e0fb7ba8a8913a3a69f8e5",
+        "sha256": "1e71cb605992ac5e99b419b0b535d269301110ffac4c524e00002359aa7f50b6"
+      },
+      {
+        "exact": true,
+        "git_blob": "b0966781913d540144cc8970834f2bb7f06c922b",
+        "path": "ml/intraday/readiness.py",
+        "remote_blob": "b0966781913d540144cc8970834f2bb7f06c922b",
+        "sha256": "937e2cd838286b8b04f0158ef54656a4b54c0e51c3f46b0b7a87bd1150962a62"
+      },
+      {
+        "exact": true,
+        "git_blob": "7350c56aed5712c05e022c73170f13a8ea70c19d",
+        "path": "ml/intraday/runtime.py",
+        "remote_blob": "7350c56aed5712c05e022c73170f13a8ea70c19d",
+        "sha256": "cef67792e6c60bd932807998c37ca0c882fe44aba67ab0e2241750911fd33b0d"
+      },
+      {
+        "exact": true,
+        "git_blob": "f4582bbe070b8fd03765be75b44822e7358cb33d",
+        "path": "ml/intraday/runtime_compatibility.py",
+        "remote_blob": "f4582bbe070b8fd03765be75b44822e7358cb33d",
+        "sha256": "85e0fcb87f70b00cd268fc06e2ddcd70137c47e1d90174c67ba34efe78dbd96b"
+      },
+      {
+        "exact": true,
+        "git_blob": "d3e9b2cb741b7cc645fd4c62646d5d765f436e63",
+        "path": "ml/intraday/scout_client.py",
+        "remote_blob": "d3e9b2cb741b7cc645fd4c62646d5d765f436e63",
+        "sha256": "01483746079ad541e19ea67c92260761a873808a4824606b33a4e049846f8855"
+      },
+      {
+        "exact": true,
+        "git_blob": "fb31aa37880b30256ce9178eb7024b16f2c32b26",
+        "path": "ml/intraday/scout_journal.py",
+        "remote_blob": "fb31aa37880b30256ce9178eb7024b16f2c32b26",
+        "sha256": "47312c594630d4a0d67842ab019eeaf4a043d99f5b82ce567b8c5f2fba56b2b6"
+      },
+      {
+        "exact": true,
+        "git_blob": "f5c0ef500b30d6bbb5c8ca9bcc1d7d8fed17b955",
+        "path": "ml/intraday/scout_protocol.py",
+        "remote_blob": "f5c0ef500b30d6bbb5c8ca9bcc1d7d8fed17b955",
+        "sha256": "4e3ee306a1ba04c1b0ed164065d6a89e17bb403ddbde9aac6523d638bec28a4a"
+      },
+      {
+        "exact": true,
+        "git_blob": "8f3db8e4c60ff659949d98cbc4f801eb24425c9e",
+        "path": "ml/intraday/sizing.py",
+        "remote_blob": "8f3db8e4c60ff659949d98cbc4f801eb24425c9e",
+        "sha256": "c760cba18da2d053300d42f6d405b975659d7cfdbd05902b8fee445122c5beba"
+      },
+      {
+        "exact": true,
+        "git_blob": "b0636ea91105a45753c0b834d45684a12969016f",
+        "path": "ml/intraday/starter_sizing.py",
+        "remote_blob": "b0636ea91105a45753c0b834d45684a12969016f",
+        "sha256": "fa6fa34ca3bf690b712b4e9025fe31d276b30898536a6b8ea3ceb52d362af9b7"
+      },
+      {
+        "exact": true,
+        "git_blob": "55cbfd95322daf8d7712189fadafe777e528c136",
+        "path": "ml/intraday/store.py",
+        "remote_blob": "55cbfd95322daf8d7712189fadafe777e528c136",
+        "sha256": "e2922a2233e6ebde33cf108e1bd8489e4e28c45fe11db0ac48b89df28e833d9d"
+      },
+      {
+        "exact": true,
+        "git_blob": "7bda5169a4cff95ddf2f68612efed2d09a99e95d",
+        "path": "ml/intraday/technical_sizing.py",
+        "remote_blob": "7bda5169a4cff95ddf2f68612efed2d09a99e95d",
+        "sha256": "74fa3d8bfb2385d94ac88143da38858d6e823511652b3d2e02b9583b53800732"
+      },
+      {
+        "exact": true,
+        "git_blob": "a967d47bb3daa6fcd63d11ad534b232622dd5800",
+        "path": "ml/intraday/telemetry.py",
+        "remote_blob": "a967d47bb3daa6fcd63d11ad534b232622dd5800",
+        "sha256": "dae1bbe20ed467601ff842c573ae31b09958c87913e2758e5414a59572e81d5d"
+      },
+      {
+        "exact": true,
+        "git_blob": "5aebbce09af1818aac57f593f8e30e8af03b9b49",
+        "path": "ml/stock_trader/horizon_broker.py",
+        "remote_blob": "5aebbce09af1818aac57f593f8e30e8af03b9b49",
+        "sha256": "38a8cad6ace29a647051b08662a03fc1ede83288ef8f2db7241807a33579919e"
+      },
+      {
+        "exact": true,
+        "git_blob": "e57fac9769670ee4f7e18a8f2d6bc7a59316e37c",
+        "path": "ml/stock_trader/horizon_ledger.py",
+        "remote_blob": "e57fac9769670ee4f7e18a8f2d6bc7a59316e37c",
+        "sha256": "44d52af51b24591c1085923b3290be17938a30438d3f7e3993e82f564a590986"
+      },
+      {
+        "exact": true,
+        "git_blob": "1d8421405ce7040fcddfcf9e8c372630137d56ca",
+        "path": "ml/stock_trader/independent_runtime.py",
+        "remote_blob": "1d8421405ce7040fcddfcf9e8c372630137d56ca",
+        "sha256": "c09eda26adf6fbc58781d2d76da89fa61d868b862350e5827842983a93db4fed"
+      },
+      {
+        "exact": false,
+        "git_blob": "e00d82664c32640faf8cd57e02f11c7ca1780bcf",
+        "path": "pyproject.toml",
+        "remote_blob": "93ff394ebca1a3cbc4dd1b14b4f2aad51315340a",
+        "sha256": "dfd02b88c8001983f753a3030ebe5afce7b0167479743b5596559a5763f01df9"
+      },
+      {
+        "exact": true,
+        "git_blob": "5807c34fa45e30b3305103189fed083ced929ce8",
+        "path": "app/ui/intraday.py",
+        "remote_blob": "5807c34fa45e30b3305103189fed083ced929ce8",
+        "sha256": "150cb4a92c5cbdf632cab380a44f36057228df6ceecf21dfd5ee5a34b41766a9"
+      },
+      {
+        "exact": true,
+        "git_blob": "23d4fc4a0e5bc2e9650c673d9d29424e3be026d4",
+        "path": "app/ui/intraday_data.py",
+        "remote_blob": "23d4fc4a0e5bc2e9650c673d9d29424e3be026d4",
+        "sha256": "bcc13199e5f7fd1f88f7ae728c62505f1f1ea31995142129bfbad620ce5b0a68"
+      }
+    ],
+    "remote_commit": "31d6551329b8aeac0eb382db1e352a87541853fa",
+    "remote_tree_sha": "99b29e3256769ada83a3f88147912763186719ca"
+  },
+  "summary": "Atlas current source comparison confirms existing 15-minute execution and recovery code is already published; preserve Scout verified installation and scope remaining work to the cross-PC shared reservation connection.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T01:51:55.827013+00:00",
+      "result": "25 intraday modules exact to published #81 descendant; 35/36 core files exact, pyproject line endings only; all three other manifest differences verified at existing remote commits. No new tests run.",
+      "stage": "read-only source verification"
+    }
+  ]
+}
