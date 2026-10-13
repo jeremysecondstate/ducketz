@@ -64,11 +64,18 @@ def env(tmp_path, monkeypatch):
         clock=lambda: state.now, manual_authority=lambda: state.manual, stopped=lambda: state.stop)
     result = SimpleNamespace(executor=executor, state=state, broker=broker, store=store,
         reference=reference, cash=250, held=20, pending_sell=0, quote_age=0, captures=0,
-        root=tmp_path, fill_time=state.now + timedelta(seconds=1), working=())
+        root=tmp_path, fill_time=state.now + timedelta(seconds=1), working=(),
+        capture_seconds=0, account_age=0, realtime_nbbo=False)
     def capture(*args, **kwargs):
         result.captures += 1
-        at = state.now
-        quote = QuoteState('DOCU', 99.99, 100., 100., 100., 1., (at - timedelta(seconds=result.quote_age)).isoformat())
+        at = instant(kwargs['observed_at']) - timedelta(seconds=result.account_age)
+        state.now += timedelta(seconds=result.capture_seconds)
+        quote_at = state.now - timedelta(seconds=result.quote_age)
+        quote = QuoteState('DOCU', 99.99, 100., 100., 100., 1.,
+            (at - timedelta(seconds=120)).isoformat() if result.realtime_nbbo else quote_at.isoformat(),
+            received_at=quote_at.isoformat() if result.realtime_nbbo else None,
+            realtime=True if result.realtime_nbbo else None,
+            quote_type='NBBO' if result.realtime_nbbo else None)
         return PortfolioState(at.isoformat(), 10000, result.cash, 0, 0, {'DOCU': result.held}, {}, {},
             {'DOCU': result.pending_sell}, len(result.working), {'DOCU': quote}, 'd' * 64, GENERATION, result.working)
     monkeypatch.setattr(execution, 'capture_portfolio_state', capture)
@@ -107,8 +114,7 @@ def test_zero_cash_still_records_full_intention_then_zero_capacity(env):
     assert env.broker.posts == []
 
 
-@pytest.mark.parametrize('quote_age', [0, 61])
-def test_real_sizing_preserves_captured_equity_provenance_and_quote_freshness(env, monkeypatch, quote_age):
+def use_real_sizing(env, monkeypatch):
     from ml.intraday.starter_sizing import size_forecast
     from test_intraday_starter_sizing import fixture as sizing_fixture
 
@@ -122,9 +128,13 @@ def test_real_sizing_preserves_captured_equity_provenance_and_quote_freshness(en
     snapshot['cutoff'] = (instant(snapshot['cutoff']) + offset).isoformat()
     snapshot['inference']['reference_at'] = reference.isoformat()
     env.forecast = forecast(env, advance=True, snapshot=snapshot)
-    env.cash, env.quote_age = 0, quote_age
     monkeypatch.setattr(execution, 'size_forecast', size_forecast)
 
+
+@pytest.mark.parametrize('quote_age', [0, 61])
+def test_real_sizing_preserves_captured_equity_provenance_and_quote_freshness(env, monkeypatch, quote_age):
+    use_real_sizing(env, monkeypatch)
+    env.cash, env.quote_age = 0, quote_age
     result = env.executor.step(env.forecast)
     if quote_age:
         assert result['kind'] == 'sizing_unavailable'
@@ -143,6 +153,58 @@ def test_real_sizing_preserves_captured_equity_provenance_and_quote_freshness(en
     assert equity['available_at'] == env.state.now.isoformat()
     assert equity['evidence'] == dict(account_fingerprint=ACCOUNT,
         snapshot_identity=GENERATION, snapshot_sha256='d' * 64, observed_at=env.state.now.isoformat())
+    assert env.broker.posts == [] and env.broker.deletes == []
+
+
+@pytest.mark.parametrize('realtime_nbbo', [False, True], ids=['ordinary-quote', 'realtime-nbbo'])
+def test_real_sizing_uses_quote_availability_after_capture_and_submits_positive_size(env, monkeypatch, realtime_nbbo):
+    use_real_sizing(env, monkeypatch)
+    env.capture_seconds, env.quote_age, env.realtime_nbbo = 2, 1, realtime_nbbo
+    capture_started_at = env.state.now
+    quote_observed_at = capture_started_at + timedelta(seconds=1)
+    quote_available_at = capture_started_at + timedelta(seconds=2)
+
+    result = env.executor.step(env.forecast)
+
+    assert result['disposition'] == 'submitted', result
+    assert result['desired_quantity'] > 0
+    assert result['adjusted_quantity'] == result['submitted_quantity'] > 0
+    assert len(env.broker.posts) == 1 and env.broker.deletes == []
+    sizing = env.executor.intents.get(env.forecast['forecast_id'])['sizing']
+    quote = sizing['reference_context']['quote']
+    assert quote['observed_at'] == quote_observed_at.isoformat()
+    assert quote['available_at'] == quote_available_at.isoformat()
+    if realtime_nbbo:
+        evidence = quote['evidence']['quote']
+        assert evidence['received_at'] == quote_observed_at.isoformat()
+        assert evidence['observed_at'] == (capture_started_at - timedelta(seconds=120)).isoformat()
+    equity = sizing['reference_context']['account_equity']
+    assert equity['available_at'] == capture_started_at.isoformat()
+    assert equity['evidence'] == dict(account_fingerprint=ACCOUNT,
+        snapshot_identity=GENERATION, snapshot_sha256='d' * 64, observed_at=capture_started_at.isoformat())
+
+
+@pytest.mark.parametrize('realtime_nbbo', [False, True], ids=['ordinary-quote', 'realtime-nbbo'])
+@pytest.mark.parametrize('quote_age,reason', [
+    (61, 'quote_stale_or_future'), (-1, 'quote_observation_after_availability')], ids=['stale', 'future'])
+def test_post_capture_availability_does_not_hide_stale_or_future_quotes(env, monkeypatch, realtime_nbbo, quote_age, reason):
+    use_real_sizing(env, monkeypatch)
+    env.capture_seconds, env.quote_age, env.realtime_nbbo = 2, quote_age, realtime_nbbo
+
+    result = env.executor.step(env.forecast)
+
+    assert result['kind'] == 'sizing_unavailable'
+    assert result['evidence']['sizing']['reason'] == reason
+    assert env.executor.intents.get(env.forecast['forecast_id']) is None
+    assert env.broker.posts == [] and env.broker.deletes == []
+
+
+def test_post_capture_availability_does_not_refresh_stale_account_evidence(env, monkeypatch):
+    use_real_sizing(env, monkeypatch)
+    env.capture_seconds, env.account_age, env.quote_age = 2, 61, 1
+    with pytest.raises(ContractError, match='Local account snapshot is stale'):
+        env.executor.step(env.forecast)
+    assert env.executor.intents.get(env.forecast['forecast_id']) is None
     assert env.broker.posts == [] and env.broker.deletes == []
 
 
