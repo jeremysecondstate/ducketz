@@ -1,5 +1,25 @@
 # Ducketz cross-PC bootstrap — cross-pc-v2
 
+## Standing operating handoff
+
+Jeremy's October 13, 2026 instruction is standing preauthorization for every
+night's existing preparation, Gameplan synthesis and delivery. Continue those
+operations automatically without requesting human or peer confirmation. The
+nightly handoff is Atlas Gameplan + Scout Gameplan -> Scout synthesizes -> Scout
+sends the result to Atlas. Sending that completed result finishes the handoff;
+there is no third account snapshot, Atlas acceptance, cross-trader verification,
+reconciliation or readiness ceremony before completion or the next night's run.
+
+Gameplan, Atlas 15m and Scout 15m execute independently and keep their own logs.
+Each trader obtains actual capacity from its own existing broker connection and
+manages only its own orders. No trader waits for another trader's state, service,
+locks, approval or reconciliation. Jeremy's manual first trader start remains a
+manual action; it is not an invitation to ask for approval again. The existing
+exact-byte source publication and private-data handling rules remain engineering
+and privacy procedures, never additional nightly operating prerequisites.
+
+## Source coordination procedures
+
 For a locally authorized common-main workflow, also follow
 `cross-pc-common-main.md`. It preserves immutable Atlas/Scout completion IDs,
 immediate reviewed publication, symbol-specific output namespaces and the

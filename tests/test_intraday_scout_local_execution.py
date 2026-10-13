@@ -1,5 +1,4 @@
 """Real local journals/effect gates with injected account and broker fixtures."""
-from dataclasses import replace
 from datetime import timedelta
 from types import SimpleNamespace
 import json
@@ -8,7 +7,6 @@ import socket
 import pytest
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.account_gameplan.config import VERSION, digest as config_digest
 from ml.intraday import scout_local_execution as execution
 from ml.intraday.prediction import ContractError, TARGET_VERSION, digest, encoded, instant
 from ml.intraday.store import ShadowStore
@@ -55,12 +53,6 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(socket, 'socket', forbidden)
     reference = instant('2026-10-12T17:00:00Z')
     state = SimpleNamespace(now=reference + timedelta(minutes=16, seconds=10), manual=True, stop=False)
-    config = dict(schema_version=VERSION, machine_id='pc-new', coordinator_id='pc-original',
-        participants={'pc-original': ['MSFT'], 'pc-new': ['DOCU']}, account_fingerprint=ACCOUNT)
-    config['activation'] = dict(status='ACTIVE', binding_sha256=config_digest(config))
-    path = tmp_path / 'state/account-gameplan/config.json'
-    path.parent.mkdir(parents=True)
-    path.write_text(json.dumps(config), encoding='utf-8')
     store, broker = ShadowStore(tmp_path / 'forecasts.sqlite3'), Broker()
     executor = execution.ScoutLocalAccountExecutor(repository=tmp_path, datastore=tmp_path,
         profile=dict(actor='Scout', machine='pc-new', symbols=['DOCU']), store=store, broker=broker,
@@ -93,11 +85,12 @@ def record(env, saved=None):
     return env.executor.journal.get(execution.PREFIX + (saved or env.forecast)['forecast_id'])
 
 
-def test_local_preflight_uses_configured_scout_account_without_atlas_or_enrollment(env):
+def test_local_preflight_uses_existing_broker_without_gameplan_config_atlas_or_enrollment(env):
     assert env.proof['mode'] == execution.MODE and env.proof['ready'] is True
     assert env.proof['local_proof']['broker_identity_verified'] is True
     assert 'readiness_receipt' not in env.proof and 'authority_binding' not in env.proof
     assert not (env.root / 'intraday/scout/authority-binding.json').exists()
+    assert not (env.root / 'state/account-gameplan/config.json').exists()
     assert env.broker.posts == []
 
 
@@ -206,9 +199,9 @@ def test_stale_quote_is_not_an_order_and_retains_desired_sizing(env):
     assert result['desired_quantity'] == 4 and env.broker.posts == []
 
 
-def test_config_identity_change_cannot_rebind_existing_books(env):
-    env.executor.config = replace(env.executor.config, account_fingerprint='b' * 64)
-    with pytest.raises(ContractError, match='configuration changed'):
+def test_broker_identity_change_cannot_rebind_existing_books(env):
+    env.broker.account = 'b' * 64
+    with pytest.raises(ContractError, match='broker account changed'):
         env.executor.step(env.forecast)
 
 

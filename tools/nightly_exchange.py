@@ -735,6 +735,64 @@ def _resume_snapshot_publication(config, action, review, inputs, now):
     _write(folder / "selection.json", selector_bytes, replace=True)
 
 
+def _saved_account_basis(config, action, review, native=None):
+    """Read the latest already published balances; never capture or refresh.
+
+    Current and recent session selectors are bounded. This is mathematical
+    input carried into the Atlas preparation, not a liveness/freshness gate.
+    """
+    days = {action}
+    for root in (Path(config["state_root"]) / "sessions", Path(config["exchange_root"]) / "sessions"):
+        if root.is_dir():
+            days.update(path.name for path in root.iterdir() if path.is_dir()
+                        and re.fullmatch(r"\d{4}-\d{2}-\d{2}", path.name) and path.name <= action)
+    candidates = []
+    symbols = set(config["owners"]["atlas"] + config["owners"]["scout"])
+    def keep(value):
+        if (value.get("status") != "OBSERVED" or value.get("cash_status") != "CASH_ONLY_BOUNDED"
+                or any(set(value.get(name, {})) != symbols for name in
+                       ("held_shares", "symbol_exposure", "stock_market_value_by_symbol", "other_symbol_exposure"))):
+            return
+        candidates.append((pd.Timestamp(value["observed_at"]), value))
+    if config["actor"] == "Atlas" and native is not None:
+        # Ordinary Atlas Gameplan production already saves its observed account
+        # balances. Carry the latest available observation with the next plan;
+        # do not revive the old separate snapshot/ownership capture stage.
+        root = Path(native["datastore"])
+        for folder in ("ml/account-gameplan-runs", "ml/gameplan-trade-plan-runs"):
+            paths = sorted((root / folder).glob("*/account-snapshot.json"),
+                           key=lambda path: path.stat().st_mtime, reverse=True)[:32]
+            for path in paths:
+                value = _object(_read(path))
+                if value.get("account_scope_sha256", value.get("account_fingerprint")) != config["account_scope_sha256"]:
+                    continue
+                value["account_scope_sha256"] = config["account_scope_sha256"]
+                keep(value)
+    for day in sorted(days, reverse=True)[:32]:
+        selected_review = review if day == action else _context(pd.Timestamp(day, tz="America/Los_Angeles") + pd.Timedelta(hours=12))[1]
+        try:
+            packet = _receive(config, day, selected_review, "atlas", "snapshot")
+        except Pending:
+            continue
+        value = _object(_read(packet["files"]["snapshot.json"]))
+        if value.get("account_scope_sha256") != config["account_scope_sha256"]:
+            raise ValueError("Saved planning balances belong to a different account")
+        keep(value)
+    if not candidates:
+        return None
+    value = max(candidates, key=lambda item: item[0])[1]
+    fields = ("account_scope_sha256", "observed_at", "status", "cash_status", "account_equity", "available_cash",
+              "reserved_cash", "gross_exposure", "held_shares", "symbol_exposure", "stock_market_value_by_symbol",
+              "other_symbol_exposure", "pending_buy_shares", "pending_sell_shares")
+    basis = {key: value[key] for key in fields if key in value}
+    basis["quotes"] = {symbol: {"ask": quote.get("ask")} for symbol, quote in value.get("quotes", {}).items()}
+    allocation_fields = ("symbol", "horizon", "owned_shares", "reserved_sell_shares", "reserved_buy_shares",
+                         "target_end", "prediction_id", "allocation_id_sha256")
+    basis["ownership"] = {"active_allocations": [{key: row[key] for key in allocation_fields if key in row}
+        for row in value.get("ownership", {}).get("active_allocations", []) if row.get("horizon") in ("1h", "4h", "1d", "1w")]}
+    return basis
+
+
 def _run(config, native, action, review, clock, allow_snapshot_refresh):
     actor = config["actor"].lower()
     local = _local_state(config, native, action, review)
@@ -760,6 +818,28 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
         if exported["files"].get(source) != _sha(data):
             raise ValueError("Completed preparation export changed before copying")
         local_files[name] = data
+    # Atlas routinely carries its already available balance basis with its
+    # Gameplan. An existing immutable preparation is never rewritten on retry.
+    if actor == "atlas" and not (_folder(config, action, actor, "preparation") / "selection.json").exists():
+        plan = _object(local_files["plan.json"])
+        if plan.get("account_basis") is None:
+            basis = _saved_account_basis(config, action, review, native)
+            if basis is not None:
+                plan["account_basis"] = basis
+                plan["package_sha256"] = content_sha256({k: v for k, v in plan.items() if k != "package_sha256"})
+                local_files["plan.json"] = _bytes(plan)
+    elif actor == "atlas":
+        # The native source remains independently frozen; the selected private
+        # envelope additionally contains the saved mathematical balance input.
+        prior = _receive(config, action, review, actor, "preparation")
+        previous = _object(_read(prior["files"]["plan.json"]))
+        original = _object(local_files["plan.json"])
+        if "account_basis" in previous:
+            comparable = {k: v for k, v in previous.items() if k not in ("account_basis", "package_sha256")}
+            if (comparable != {k: v for k, v in original.items() if k not in ("account_basis", "package_sha256")}
+                    or original.get("account_basis") is not None and original["account_basis"] != previous["account_basis"]):
+                raise ValueError("Original Atlas Gameplan changed after its balance-carrying export")
+            local_files["plan.json"] = _read(prior["files"]["plan.json"])
     own = _publish(config, action, review, "preparation", local_files)
     peer = "atlas" if actor == "scout" else "scout"
     preparations = {actor: own, peer: _receive(config, action, review, peer, "preparation")}
@@ -775,77 +855,39 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
                 raise ValueError("Frozen synthesis preparations changed")
             inputs = frozen_inputs
         else:
-            # Scout is a research producer. The single account snapshot comes
-            # from Atlas's native account/horizon history, never a peer ledger.
-            snapshot = _receive(config, action, review, "atlas", "snapshot")
-            if snapshot["inputs"] != inputs:
-                raise ValueError("Snapshot belongs to different preparation packages")
             now = clock()
-            if _snapshot_age(snapshot, now) > 900:
-                raise Pending("FRESH_ACCOUNT_SNAPSHOT")
-            inputs = {**inputs, "snapshot": snapshot["digest"]}
             spec = {"schema_version": "nightly-gameplan-synthesis-v1", "completion_id": _completion(action, actor, inputs),
                 "datastore_root": native["datastore"], "state_root": str(session / "synthesis"),
                 "local_actor": actor, "executor_owner": "atlas", "action_date": action, "review_session": review,
                 "account_scope_sha256": config["account_scope_sha256"], "as_of": now.isoformat(), "accepted_at": now.isoformat(),
-                "snapshot": _bind(snapshot["files"]["snapshot.json"]), "owners": owners}
+                "owners": owners}
+            atlas_plan = _object(_read(preparations["atlas"]["files"]["plan.json"]))
+            if atlas_plan.get("account_basis") is None:
+                # Compatibility with preparations already exported before
+                # balance-carrying packets: reuse disclosed saved data as-is.
+                basis = _saved_account_basis(config, action, review)
+                if basis is not None:
+                    basis_path = session / "saved-account-basis.json"
+                    _frozen(basis_path, basis)
+                    spec["saved_account_basis"] = _bind(basis_path)
             _frozen(spec_path, {"spec": spec, "inputs": inputs})
         validate_local_profile(spec, Path(config["local_profile"]))
         now = clock()
-        _verify_synthesis_freshness(spec, now)
         receipt = run_synthesis(spec, now=now)
         files = {"joint-plan.json": Path(receipt["ui_evidence"]["plan_run"]) / "joint-plan.json",
                  "scout-receipt.json": Path(receipt["receipt_path"])}
         for owner, selected in preparations.items():
             files.update({f"{owner}-plan.json": selected["files"]["plan.json"], f"{owner}-stats.json": selected["files"]["stats.json"]})
         joint = _publish(config, action, review, "joint", files, inputs)
-        accepted = _receive(config, action, review, "atlas", "accepted")
-        _verify_acceptance(config, action, review, joint, accepted)
         return {"status": "COMPLETE", "local_status": receipt["status"], "joint_packet_sha256": joint["digest"],
-                "accepted_packet_sha256": accepted["digest"], "peer_verified": True, "ui_ready": True, "joint_ready": True}
-    try:
-        joint = _receive(config, action, review, "scout", "joint")
-    except Pending:
-        if (_folder(config, action, "scout", "joint") / "selection.json").exists():
-            raise
-        _resume_snapshot_publication(config, action, review, inputs, clock())
-        try:
-            snapshot = _receive(config, action, review, "atlas", "snapshot")
-        except Pending:
-            snapshot = None
-        if snapshot is not None and snapshot["inputs"] != inputs:
-            raise ValueError("Selected account snapshot preparations changed")
-        now = clock()
-        if snapshot is None or _snapshot_age(snapshot, now) > 900:
-            if not allow_snapshot_refresh:
-                raise Pending("ACCOUNT_SNAPSHOT_REFRESH_REQUIRED")
-            from tools.nightly_account_snapshot import capture_snapshot
-            from ml.account_gameplan.config import load_account_config
-            _check_ownership_binding(config, action)
-            account = load_account_config(native["datastore"])
-            if account is None:
-                raise ValueError("Atlas account configuration is missing")
-            _check_ownership_binding(config, action)
-            value = capture_snapshot(config, now=clock())
-            _check_ownership_binding(config, action)
-            capture_completed = clock()
-            if (_folder(config, action, "scout", "joint") / "selection.json").exists():
-                raise Pending("JOINT_ARRIVED_DURING_CAPTURE")
-            snapshot = _publish(config, action, review, "snapshot", {"snapshot.json": _bytes(value)}, inputs, refresh=True)
-            if _snapshot_age(snapshot, capture_completed) > 900:
-                raise ValueError("Snapshot helper returned stale account data")
-        raise Pending("JOINT_SCOUT")
-    if set(joint["inputs"]) != {*inputs, "snapshot"} or any(joint["inputs"].get(k) != v for k, v in inputs.items()):
+                "delivery_mode": "TWO_PLAN_GAMEPLAN", "delivered": True,
+                "peer_verified": False, "ui_ready": True, "joint_ready": True}
+    # Atlas only consumes Scout's returned two-plan artifact. Snapshot capture
+    # and cross-trader accounting are not stages of the nightly handoff.
+    joint = _receive(config, action, review, "scout", "joint")
+    if (set(joint["inputs"]) not in (set(inputs), {*inputs, "snapshot"})
+            or any(joint["inputs"].get(k) != v for k, v in inputs.items())):
         raise ValueError("Joint plan belongs to different preparation selections")
-    snapshot_digest = joint["inputs"]["snapshot"]
-    # Receiving an Atlas-named shared packet can populate a cache, but can
-    # never establish that this PC captured it. Require our prior local proof.
-    snapshot_path, _ = _own_snapshot(config, action, review, snapshot_digest, inputs)
-    snapshot = _object(_read(snapshot_path))
-    joint_plan = _object(_read(joint["files"]["joint-plan.json"]))
-    if (joint_plan.get("account_snapshot_sha256") != content_sha256(snapshot)
-            or joint_plan.get("account_snapshot_observed_at") != snapshot.get("observed_at")):
-        raise ValueError("Scout synthesis differs from Atlas's exact captured snapshot")
     # Do not follow source paths or select packages from the receipt. Every
     # handed-back source must equal our independently selected preparation.
     for owner, selected in preparations.items():
@@ -876,7 +918,8 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
     accepted = _publish(config, action, review, "accepted", {"atlas-receipt.json": Path(receipt["receipt_path"])}, handoff_inputs)
     _verify_acceptance(config, action, review, joint, accepted)
     return {"status": "COMPLETE", "local_status": receipt["status"], "joint_packet_sha256": joint["digest"],
-            "accepted_packet_sha256": accepted["digest"], "peer_verified": True, "ui_ready": True, "joint_ready": True}
+            "accepted_packet_sha256": accepted["digest"], "delivery_mode": "TWO_PLAN_GAMEPLAN", "delivered": True,
+            "peer_verified": False, "ui_ready": True, "joint_ready": True}
 
 
 def _verify_acceptance(config, action, review, joint, accepted):
@@ -916,20 +959,25 @@ def _completed_result(config, native, action, review, common):
     result = _object(_read(status_path))
     if result.get("status") != "COMPLETE":
         return None
-    expected = {**common, "joint_ready": True, "ui_ready": True, "peer_verified": True}
+    plan_only_delivery = result.get("delivery_mode") == "TWO_PLAN_GAMEPLAN"
+    expected = {**common, "joint_ready": True, "ui_ready": True, "peer_verified": not plan_only_delivery}
+    if plan_only_delivery:
+        expected["delivered"] = True
     if any(result.get(key) != value for key, value in expected.items()):
         raise ValueError("Completed exchange status identity changed")
     joint = _receive(config, action, review, "scout", "joint", local_only=True)
-    accepted = _receive(config, action, review, "atlas", "accepted", local_only=True)
+    actor = config["actor"].lower()
+    accepted = (_receive(config, action, review, "atlas", "accepted", local_only=True)
+                if actor == "atlas" or not plan_only_delivery else None)
     if (joint["digest"] != result.get("joint_packet_sha256")
-            or accepted["digest"] != result.get("accepted_packet_sha256")):
+            or accepted is not None and accepted["digest"] != result.get("accepted_packet_sha256")):
         raise ValueError("Completed exchange packet selections changed")
-    _verify_acceptance(config, action, review, joint, accepted)
+    if accepted is not None:
+        _verify_acceptance(config, action, review, joint, accepted)
     from app.ui.gameplan_data import load_gameplan
     from app.ui.gameplan_stats_data import load_gameplan_stats
     from ml.joint_capital_adoption import read_accepted_joint_plan
     from ml.nightly_joint_readiness import FIELDS, VERSION as READINESS_VERSION, _receipt_identity
-    actor = config["actor"].lower()
     root = Path(native["datastore"]).resolve()
     pin = _object(_read(root / "ml/nightly-joint-readiness-by-date" / action / "run.json"))
     receipt = _object(_read((accepted if actor == "atlas" else joint)["files"][f"{actor}-receipt.json"]))

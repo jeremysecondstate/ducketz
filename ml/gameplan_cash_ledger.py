@@ -63,7 +63,8 @@ def _planning_direction(row: Mapping) -> str:
 
 def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                              price_path: Mapping, *, policy: StockTraderPolicy | None = None,
-                             signal_driven: bool = False, cross_horizon_fallback_policy: Mapping | None = None
+                             signal_driven: bool = False, cross_horizon_fallback_policy: Mapping | None = None,
+                             saved_balance_math: bool = False
                              ) -> tuple[pd.DataFrame, dict]:
     """Simulate saved directions with conditional fills and shared accounting.
 
@@ -78,8 +79,14 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     if trade_rows.empty or trade_rows.id.duplicated().any():
         raise ValueError("The cash ledger requires unique forecast identities")
     ownership = snapshot.get("ownership", {})
+    if saved_balance_math:
+        # The nightly calculation uses actual saved cash and shares. Only
+        # Gameplan's own optional lots affect its horizon arithmetic; another
+        # trader's status or reconciliation cannot gate these instructions.
+        ownership = {"active_allocations": [item for item in ownership.get("active_allocations", [])
+                     if item.get("horizon") in FIXED_HORIZON_WEIGHTS], "blocked_symbols": []}
     if (snapshot.get("status") != "OBSERVED" or snapshot.get("cash_status") != "CASH_ONLY_BOUNDED"
-            or ownership.get("safe_for_planning") is not True):
+            or not saved_balance_math and ownership.get("safe_for_planning") is not True):
         raise ValueError("The cash ledger requires a complete current account snapshot")
     records = trade_rows.to_dict("records")
     directions = {str(row["id"]): _planning_direction(row) for row in records}
@@ -162,15 +169,20 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             pending_horizons.add((symbol, horizon))
         if reserved or (symbol, horizon) in pending_horizons:
             pending_any_horizons.add((symbol, horizon))
-        if reserved > quantity or horizon not in FIXED_HORIZON_WEIGHTS:
+        intraday = horizon == "15m" and allocation.get("stream") in {"atlas-15m", "scout-15m"}
+        if reserved > quantity or (horizon not in FIXED_HORIZON_WEIGHTS and not intraday):
             raise ValueError("Invalid active horizon allocation")
+        # The separate stream's stock stays owned, never free Gameplan stock.
+        # Keep it in share conservation without assigning a Gameplan exit.
         free[symbol] -= quantity
         owned_reserved[symbol] += reserved
         if quantity:
             lot = {"symbol": symbol, "horizon": horizon, "quantity": quantity - reserved,
                          "reserved": reserved, "end": _time(allocation.get("target_end")),
                          "forecast_id": str(allocation.get("prediction_id", "EXISTING_ALLOCATION"))}
-            if fallback_policy is not None:
+            if intraday:
+                lot["stream"] = allocation["stream"]
+            if fallback_policy is not None and not intraday:
                 identifier = allocation.get("allocation_id_sha256")
                 if (not isinstance(identifier, str) or len(identifier) != 64
                         or any(char not in "0123456789abcdef" for char in identifier) or identifier in initial_donors):
@@ -362,7 +374,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                     "trigger_forecast_id", "trigger_horizon", "donor_allocation_id_sha256", "donor_horizon",
                     "slot_quota", "symbol_daily_cap", "symbol_used_after", "donor_daily_cap", "donor_used_after")})
         for lot in ([] if signal_driven else sorted(lots, key=lambda item: (item["end"], item["symbol"], item["horizon"], item["forecast_id"]))):
-            if lot["symbol"] not in blocked and lot["end"] <= timestamp and lot["quantity"] >= 1:
+            if (lot["horizon"] in FIXED_HORIZON_WEIGHTS and lot["symbol"] not in blocked
+                    and lot["end"] <= timestamp and lot["quantity"] >= 1):
                 quantity = Decimal(int(lot["quantity"]))
                 lot["quantity"] -= quantity
                 trade(timestamp, lot["symbol"], "SELL", quantity, "HORIZON_EXIT", lot=lot)

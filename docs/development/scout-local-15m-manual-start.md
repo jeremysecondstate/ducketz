@@ -1,7 +1,7 @@
 # Scout local 15-minute manual trader
 
-Actor: Scout. Task: finish manual-start preparation. Shared source, Scout-specific
-execution selection; Atlas Gameplan ownership is unchanged. October 13, 2026.
+Actor: Scout. Current standing operating contract, October 13, 2026.
+Shared implementation; each trader owns its local execution and logs.
 
 The human's October 13 correction removes Atlas enrollment and service readiness
 as prerequisites for Scout's manual trader. The command-line launcher defaults
@@ -25,13 +25,14 @@ The operator starts the actual trader manually:
 .\.venv\Scripts\python.exe -B -m ml.intraday.live_session --live --scout-admission broker-local
 ```
 
-The first command neither authenticates to the broker nor starts a worker. Its
-ready result establishes local installation, dependencies, account identity,
-symbol membership and saved-book readiness. The second command uses the existing
+The first command is an optional local diagnostic; it neither authenticates to
+the broker nor starts a worker and is not another approval or operating gate.
+It reports local installation, dependencies, symbol membership and saved books. The second command uses the existing
 local credentials and begins the real session. Current broker/provider access,
 fresh quotes and accepted orders can only be observed after that manual start.
-No cash balance, held position, Gameplan allocation or Atlas connection is a
-startup requirement. Ctrl-C stops this worker gracefully; resting orders and
+The live executor obtains its account fingerprint directly from its existing
+broker at manual startup. No Gameplan account configuration, cash balance, held
+position, Gameplan allocation or Atlas connection is a startup requirement. Ctrl-C stops this worker gracefully; resting orders and
 their exact identities remain recorded for recovery.
 
 Each completed quarter-hour cycle uses the existing full configured ensemble,
@@ -63,3 +64,21 @@ event log, the existing forecast/acquisition stores, and Scout's private books
 under `intraday/scout` in this PC's DATASTORE. The first-session watch observes
 those saved identities and outcomes. Installation and offline fixtures are
 separate from an actual human-started session and its measured trading results.
+
+## Every-night standing authorization
+
+Jeremy's October 13, 2026 instruction is standing preauthorization for every
+night's existing preparation, Gameplan synthesis and delivery. Continue those
+operations automatically without requesting human or peer confirmation. The
+nightly handoff is Atlas Gameplan + Scout Gameplan -> Scout synthesizes -> Scout
+sends the result to Atlas. Sending that completed result finishes the handoff;
+there is no third account snapshot, Atlas acceptance, cross-trader verification,
+reconciliation or readiness ceremony before completion or the next night's run.
+
+Gameplan, Atlas 15m and Scout 15m execute independently and keep their own logs.
+Each trader obtains actual capacity from its own existing broker connection and
+manages only its own orders. No trader waits for another trader's state, service,
+locks, approval or reconciliation. Jeremy's manual first trader start remains a
+manual action; it is not an invitation to ask for approval again. The existing
+exact-byte source publication and private-data handling rules remain engineering
+and privacy procedures, never additional nightly operating prerequisites.

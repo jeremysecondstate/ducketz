@@ -18,3 +18,8 @@ only when that mode is explicitly selected.
 Keep installed readiness, offline validation and actual human-started runtime
 results separate. The current instructions document quantity adjustment, local
 recovery, accounting limits and the absence of atomic cross-PC reservations.
+
+The current instruction is standing for every night: Atlas plan + Scout plan,
+Scout synthesis, then delivery to Atlas completes the Gameplan handoff. No
+human confirmation, third snapshot, peer acceptance or cross-trader readiness
+is required. Each trader executes independently and keeps its own logs.

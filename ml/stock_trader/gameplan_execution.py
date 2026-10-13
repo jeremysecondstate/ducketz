@@ -199,11 +199,15 @@ def load_execution_signals(root: Path, *, as_of):
     local = now.tz_convert("America/Los_Angeles")
     from ml.joint_capital_adoption import read_accepted_joint_plan
     selected = read_accepted_joint_plan(root, local.date().isoformat())
+    sources = ()
     if selected:
         plan, _, run = selected
         _assert_execution_deployment(root, run, action_date=local.date().isoformat())
-        from ml.stock_trader.catchup import catchup_signals
-        return catchup_signals(plan, as_of=now, source_fingerprint=run.name), (run / "accepted-plan.json", run / "joint-plan.json")
+        sources = (run / "accepted-plan.json", run / "joint-plan.json")
+        from ml.joint_capital_plan import PLAN_ONLY_MODE
+        if plan.get("composition_mode") != PLAN_ONLY_MODE:
+            from ml.stock_trader.catchup import catchup_signals
+            return catchup_signals(plan, as_of=now, source_fingerprint=run.name), sources
     frame, run = execution_frame(root, action_date=local.date().isoformat())
     from ml.stock_trader.catchup import catchup_signals, native_catchup_plan
     native = (native_catchup_plan(root, action_date=local.date().isoformat(), source_run=run)
@@ -213,7 +217,7 @@ def load_execution_signals(root: Path, *, as_of):
         return catchup_signals(plan, as_of=now, source_fingerprint=run.name), sources
     start = local.floor("h").tz_convert("UTC")
     if not 4 <= local.hour < 17:
-        return {}, ()
+        return {}, sources
     due = frame.loc[frame.target_window_start.eq(start)]
     signals = {}
     for row, probability, abstention in _validated_instructions(due):
@@ -236,7 +240,7 @@ def load_execution_signals(root: Path, *, as_of):
         )
     # Execution records retain the saved run ID. No training files, reports or
     # planning estimates need to be hashed before asking the broker for a quote.
-    return signals, ()
+    return signals, sources
 
 
 def execution_preflight(root: Path, *, action_date):

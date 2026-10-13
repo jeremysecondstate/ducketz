@@ -1,23 +1,17 @@
 # Codex: Implement 15-Minute Duckets — Continuously Retrained Multi-Model Ensemble
 
-I want to extend my existing Schwab/Ducketz trading system with a continuously retrained, heterogeneous ensemble forecasting engine and a dedicated **15-Minute Duckets** UI tab.
+The current architecture follows the [consolidated design](INTRADAY_15M_SYSTEM_DESIGN.md)
+and Jeremy's October 13 standing instruction. The model and target requirements
+below remain common to both PCs; trader operation is independently local.
 
-Read `INTRADAY_15M_SYSTEM_DESIGN.md` and inspect the actual repository before modifying anything. Preserve the existing architecture and its settled decisions. Do not build a separate replacement system.
-
-The [consolidated design](INTRADAY_15M_SYSTEM_DESIGN.md) includes the later
-October 12 decisions: per-symbol publication, inclusion of confirmed synthetic
-no-trade outcomes with separate breakdowns, all compatible history for the first
-timed benchmark, per-symbol technical-indicator sizing every 15 minutes,
-the approved independent `0.015 * account equity / fresh side price` scale and
-half-up nearest-share rounding, actual shared capacity without stream budgets,
-replacement of prior unfilled intentions only after cancellation/status is
-confirmed, and a strict 16:45 Pacific submission cutoff. These clarifications
-govern the proposal below. Development now also targets a human-started Atlas
-live launcher, followed by Scout after Atlas observation. Source now implements
-the Atlas manual session and shared-account execution adapter with offline
-injected-broker verification. Publication, local installation, compatible
-loaded Gameplan and a human-started live run remain separate evidence; no live
-launcher was started or production worker restarted by this change.
+Every night is already authorized by Jeremy's October 13 standing instruction:
+Atlas produces its Gameplan, Scout produces its Gameplan, Scout synthesizes the
+two plans, and Scout sends the result to Atlas. Delivery completes the handoff.
+No further human permission, peer acceptance, third account snapshot or
+cross-trader verification/reconciliation is an operating prerequisite. Each of
+Gameplan, Atlas 15m and Scout 15m executes independently and keeps its own logs.
+The first trader start remains Jeremy's manual action. Source publication and
+private-data procedures continue separately from this operating authority.
 
 ## 1. Objective
 
@@ -241,11 +235,11 @@ Atlas runs the existing Gameplan stream as well as Atlas 15m. Scout runs its own
 
 Do not alter the existing Gameplan's horizons or nightly workflow.
 
-Respect the design's Atlas-side shared purchasing-capacity authority, allocation ownership rules, unresolved cross-PC reservation protocol, and local Scout order-submission ownership.
+Each trader uses its own existing broker connection, broker-observed cash/shares, manual controls and local logs. It does not use another trader's service, process status, locks, acceptance or reconciliation as a prerequisite.
 
 Do not place SQLite authority databases on a shared network drive or assume existing host-local reservations work across PCs.
 
-Use read-only telemetry for dashboard updates, separate from eventual order coordination.
+Optional read-only telemetry may inform dashboards; it never coordinates or authorizes orders.
 
 The approved starter is a transparent technical-indicator calculus evaluated
 for each symbol on each 15-minute cycle. EMA20/SMA20/VWAP20 distances and
@@ -271,58 +265,34 @@ Gameplan's donor ceilings/pacing. Gameplan's own policy and stream fences remain
 in force. The initial accepted 15m order works until terminal status or a newer
 same-symbol forecast confirms cancellation; no Gameplan expiry/timeout or
 automatic same-forecast repricing is adopted. Final-information/next-session
-targets, future recipe tuning, any later repricing policy and the distributed
-reservation protocol remain separately identified work.
+targets, future recipe tuning and any later repricing policy remain separately
+identified work. A distributed reservation protocol is not required.
 
-## 10. Safety and Implementation Phases
+## 10. Implementation and operating boundaries
 
-The original proposal authorizes development, historical testing, shadow-mode
-predictions, scoring and a read-only UI. The later human instruction extends
-development toward the manual Atlas live execution path. It does not turn the
-shadow runner into a live trader or start sessions, enable Scout execution,
-change live schedules, or restart/deploy production workers. The manual Atlas
-source uses the existing host-local native/account ledgers and prepared Schwab
-transport. Only an explicit human invocation of `Start-15m-Trader.cmd` enters
-its live path. `Check-15m-Readiness.cmd` remains read-only; it distinguishes
-implemented source from runtime compatibility and fresh broker preflight.
+Use the existing local model/provider/broker connections and each PC's own
+symbols. The shared full-retraining pipeline, saved forecasts, scoring, UI and
+approved sizing are reusable. Scout's manual production path is `broker-local`;
+its account fingerprint comes directly from its existing broker at human start.
+Neither 15m trader waits for Gameplan, Atlas enrollment or a peer receipt.
 
-The manual worker starts at the latest eligible completed candle, fits all
-enabled models from scratch, publishes each symbol separately and skips missed
-boundaries rather than trading a backlog. Forecast/model work is separate from
-serialized account steps. Entry gates require current manual-session live
-forecasts with observed availability and full ensembles, fixed unexpired
-targets, the real market window, fresh identity/account/quote evidence, a
-fenced shared lease, strict pre-16:45 submission and compatible loaded Gameplan
-or independently verified absence. Old shadow/replay issues cannot submit.
+The manual worker selects the latest eligible completed candle, fits the full
+enabled ensemble, publishes each symbol separately, and records missed cycles
+without trading a backlog. Its own fixed target, quote age, account identity,
+market window, strict 16:45 Pacific cutoff and manual stop remain local behavior.
+Own exact-order recovery prevents duplicate sends or fills. Source development
+must not restart another trader or alter its operating controls.
 
-Use already-authorized read-only historical/market-data access where permitted. Seek approval before initiating new live provider access or modifying credentials.
+Every night's preparation, Scout two-plan synthesis and delivery to Atlas are
+preauthorized. Delivery finishes the handoff without another snapshot, human
+approval, Atlas acceptance or cross-trader verification. The engineering source
+queue still captures exact reviewed bytes and meaningful checks for code changes;
+that publication procedure is separate from nightly operating completion.
 
-Implement in stages:
-
-**Phase 1:** Inspect the repository, map existing modules, implement and test the model registry, exact target generation, Atlas shadow forecasting, and 15-minute retraining.
-
-**Phase 2:** Implement delayed scoring, persisted performance tracking, and the new Ducketz tab, including the complete probability-bar consensus visualization.
-
-**Phase 3:** Apply the same code and configuration scheme to Scout and establish safe read-only monitoring for both PCs.
-
-**Phase 4:** Backtest and shadow-test performance, benchmark retraining schedules, and document what remains before any future trading integration.
-
-**Phase 5:** Implement and offline-test the explicit Atlas manual session,
-independent approved sizing, actual shared capacity clipping, durable intention
-logging, exact-identity recovery and stream-specific cancellation. Source for
-this phase exists; temporary-database checks do not prove live broker behavior.
-Human launch and subsequent Atlas observation are distinct operating steps.
-
-**Phase 6:** Apply reviewed common source on Scout for research/shadow and
-read-only monitoring. Scout orders remain disabled until later human activation
-and an implemented distributed Atlas reservation protocol; telemetry is not
-that protocol.
-
-Include tests for target equality, label maturity, lookahead leakage,
-missing/duplicate candles, DST and the strict 16:45 submission cutoff,
-new-intention reconciliation, model failures, immutable forecasts, crash
-recovery and absence of broker-order side effects. Final-session/next-open
-prediction targets remain separate unresolved contracts.
+Research compares model families, lookbacks and alternate recipes explicitly;
+it never substitutes old fitted models or changes an issued forecast silently.
+Preserve the prior measured research/operating evidence and report new actual
+results from the local logs. The human's first trader invocation remains manual.
 
 ## 11. Expected Deliverables
 

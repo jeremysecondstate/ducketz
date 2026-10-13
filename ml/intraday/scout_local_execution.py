@@ -18,7 +18,6 @@ from pathlib import Path
 import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.account_gameplan.config import load_account_config
 from ml.stock_trader.horizon_ledger import ReservationState
 from ml.stock_trader.state import capture_portfolio_state, validated_symbols
 
@@ -54,25 +53,22 @@ class ScoutLocalAccountExecutor:
         if type(maximum_evidence_age_seconds) is not int or not 1 <= maximum_evidence_age_seconds <= 300:
             raise ContractError('Explicit bounded quote/account evidence age required')
         self.maximum_evidence_age_seconds = maximum_evidence_age_seconds
-        self.config = load_account_config(self.root)
-        if (self.config is None or self.config.machine_id != 'pc-new'
-                or set(self.config.participants['pc-new']) != set(self.symbols)):
-            raise ContractError('Existing Scout account identity and exact symbol scope required')
-        self.account_fingerprint = self.config.account_fingerprint
-        self.books = books or ScoutBooks(self.root / 'intraday/scout', account_fingerprint=self.account_fingerprint)
-        if self.books.account_fingerprint != self.account_fingerprint:
-            raise ContractError('Scout books belong to another account')
+        # Identity is obtained from this trader's existing broker at manual
+        # startup. No Gameplan configuration or peer account binding is read.
+        self.account_fingerprint, self.books = None, books
+        self.books_root = Path(books.root) if books is not None else self.root / 'intraday/scout'
         self.intents, self.journal = IntentionStore(store), None
-        self.evidence_paths = dict(books_root=str(self.books.root), inventory=str(self.books.path),
-            local_authorizations=str(self.books.root / 'receipts'))
+        self.evidence_paths = dict(books_root=str(self.books_root), inventory=str(self.books_root / 'inventory.json'),
+            local_authorizations=str(self.books_root / 'receipts'))
 
     def _controls(self):
         if self.manual_authority() is not True or self.stopped() is not False:
             raise ContractError('Current manual Scout session authority required')
 
     def _binding_current(self):
-        if load_account_config(self.root) != self.config:
-            raise ContractError('Local account configuration changed; manual reload required')
+        if (self.account_fingerprint is not None
+                and self.broker.stable_account_fingerprint() != self.account_fingerprint):
+            raise ContractError('Local broker account changed; manual reload required')
         profile = self.profile if isinstance(self.profile, dict) else json.loads(Path(self.profile).read_text(encoding='utf-8'))
         if (profile.get('actor') != 'Scout' or profile.get('machine') != 'pc-new'
                 or set(profile.get('symbols', ())) != set(self.symbols)):
@@ -87,7 +83,7 @@ class ScoutLocalAccountExecutor:
     def _account(self, *, starting=False):
         # Serialize only this Scout executor. Gameplan and Atlas trader state,
         # process inventories and locks are not prerequisites for Scout effects.
-        with exclusive_runtime_lock(self.books.root / 'execution.lock', process_name='scout-15m-local-execution'):
+        with exclusive_runtime_lock(self.books_root / 'execution.lock', process_name='scout-15m-local-execution'):
             if starting:
                 if self.stopped() is not False:
                     raise ContractError('Scout startup was stopped')
@@ -105,6 +101,12 @@ class ScoutLocalAccountExecutor:
         # Called only after the operator's explicit live invocation, never by
         # offline preparation. No order/cancel or remote readiness is performed.
         with self._account(starting=True):
+            current_identity = self.broker.stable_account_fingerprint()
+            if self.account_fingerprint is None:
+                self.books = self.books or ScoutBooks(self.books_root, account_fingerprint=current_identity)
+                if self.books.account_fingerprint != current_identity:
+                    raise ContractError('Scout books belong to another broker account')
+                self.account_fingerprint = current_identity
             self.books.inspect()
             for journal in self._journals():
                 for record in journal.records():
@@ -112,8 +114,8 @@ class ScoutLocalAccountExecutor:
                         state = journal.order_state(record['request']['request_id'])
                         if record['state'] != 'NOT_SENT' and (not state['evidence'] or state['evidence']['status'] not in TERMINAL):
                             raise ContractError('Original remote-mode commitment needs its original recovery')
-            if self.broker.stable_account_fingerprint() != self.account_fingerprint:
-                raise ContractError('Local broker differs from the configured account')
+            if current_identity != self.account_fingerprint:
+                raise ContractError('Local broker account changed')
             if self.journal is None:
                 self.journal = self.books.create_session(self.session_id)
                 self.evidence_paths['journal'] = str(self.journal.path)

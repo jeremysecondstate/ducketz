@@ -756,11 +756,16 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 joint_selected = False
             if joint_selected:
                 combined, binding, run = accepted
-                forecasts = tuple(sorted((_forecast(row) for row in combined["forecasts"]),
+                from ml.joint_capital_plan import PLAN_ONLY_MODE
+                plan_only = combined.get("composition_mode") == PLAN_ONLY_MODE
+                note = "Merged Atlas and Scout instructions. Order quantities are sized from actual account capacity at execution."
+                forecasts = tuple(sorted((_forecast(row, projection_available=not plan_only,
+                    unavailable_reason=note) for row in combined["forecasts"]),
                     key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
                 return Gameplan(combined_date, _timestamp(combined["as_of"]), _timestamp(binding["accepted_at"]),
-                    run, run / "joint-plan.json", forecasts, _actions(combined["ledger"], forecasts, combined_date),
-                    "COMPLETE", "", "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
+                    run, run / "joint-plan.json", forecasts, () if plan_only else _actions(combined["ledger"], forecasts, combined_date),
+                    "NOT_PROJECTED" if plan_only else "COMPLETE", note if plan_only else "",
+                    note if plan_only else "Combined plan: one account-wide budget; quantities remain subject to actual fills and cash.",
                     _execution_quotes(root, forecasts), combined["holding_policy"],
                     probability_target_contract(pd.DataFrame(combined["forecasts"])))
             if account is not None:

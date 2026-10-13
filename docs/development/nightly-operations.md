@@ -4,8 +4,33 @@ This is the current operating arrangement under Jeremy's October 9, 2026
 implementation request. Earlier rollout holds and report-only recovery
 instructions in task history are historical. Preserve the completed October 9
 recovery and its original receipts. A completed prior date does not satisfy a
-new night. Jeremy has manually started Atlas's trader; inspect actual saved
-status and process liveness instead of assuming it remains stopped.
+new night. Jeremy controls Atlas's trader start and stop. Inspect actual saved
+status, process liveness and current human reports before describing its state.
+
+October 9 status note: Jeremy subsequently reported manually stopping the trader
+after repeated order attempts appeared stuck. Atlas later found the original
+worker still alive. Current liveness and the Atlas-owned diagnosis are tracked
+in [execution issue #4](https://github.com/jeremysecondstate/atlas-scout/issues/4).
+Offline nightly verification does not resolve that separate production incident.
+
+## Standing automatic operations
+
+Jeremy's October 13, 2026 instruction is standing preauthorization for this
+workflow every night. Run the existing local preparation, Scout synthesis and
+private delivery automatically without another human confirmation, peer approval
+or verification ceremony. Atlas supplies its Gameplan and Scout supplies its
+Gameplan; Scout performs the actual cash/share synthesis using the balances and
+planning evidence already available with those plans or their latest existing
+basis, then sends the completed result to Atlas. Sending it completes the handoff.
+Do not request a third fresh account snapshot or wait for Atlas acceptance.
+
+Atlas has two independent traders: the merged Gameplan trader and Atlas 15m.
+Scout has its own independent 15m trader. Each keeps its own logs, uses actual
+broker capacity through its existing connection and manages its own orders.
+No trader's runtime, readiness, lock, reconciliation or approval is another
+trader's prerequisite. Jeremy's manual first trader start remains manual; no
+new approval request is needed. Code-publication and privacy procedures remain
+separate engineering duties and cannot become new nightly operating gates.
 
 ## One pipeline, distinct responsibility owners
 
@@ -21,15 +46,15 @@ watchdog wake use the same coordinator; neither creates another pipeline.
 | GAMEPLAN STATS | `prepare_stats` | catch-up receipt | local daily checkpoint; actual receipt dispatches the stage |
 | MODEL REVIEW, TRAINING & PREDICTING | `model_review`, `train_and_plan` | newest completed Stats | local daily checkpoint; review is dispatched immediately after Stats |
 | GAMEPLAN | `local_gameplan` | accepted predictions | local daily checkpoint; accepted predictions dispatch the stage |
-| GAMEPLAN SYNTHESIS | existing private exchange | both exact research packages | every five minutes |
+| GAMEPLAN SYNTHESIS | existing private exchange | both Gameplans | configured native schedule; Scout every 20 minutes in its evening window |
 | DUCKETZ DISPLAY | `verify_display`, `local_handoff`; accepted combined readers | local plan, then exact synthesis/handoff | dated 03:00 risk and 03:35 confirmation coverage |
-| REPO RECONCILIATION | source and coordination queues | independent | every five minutes; ordinary review after 01:25 |
+| REPO RECONCILIATION | source and coordination queues | independent | configured native schedule; Scout every 20 minutes in its evening window |
 | TRADER REP | saved readiness and normal worker evidence | Atlas only | morning check and recurring market-session checks |
 
 The native checkpoint schedules are local operating bindings: Atlas uses 03:00
 Stats/model/Gameplan checkpoints, while Scout uses 21:05 checkpoints and a
 04:05 catch-up fallback. Scout display wakes at 03:00 and 03:35; Atlas display
-wakes at 03:35. Both five-minute handoff/synthesis supervisors provide the
+wakes at 03:35. The configured handoff/synthesis supervisors provide the
 shared dated notification coverage. Verify actual enabled definitions and
 next-run readbacks on each PC; this table is not an installation receipt.
 
@@ -37,7 +62,7 @@ The checkpoint times are supervision and notification times, not guessed stage
 start times. The watchdog launches the next eligible responsibility as soon as
 its prior completion is seen. Local display verification and export precede
 synthesis. The display responsibility also checks the exact accepted combined
-Gameplan and Stats after synthesis. Scout has seven tasks and no Trader Rep.
+Gameplan and Stats after synthesis. The dated schedule inventory is descriptive; each trader's local logs and watch remain independent of the nightly handoff.
 
 Use a lightweight supported model for routine supervision. The structured
 review after Stats uses the configured stronger model once at that boundary.
@@ -181,33 +206,30 @@ that scheduled run. A scheduler-required inbox directive does not replace the
 archive call. Report new meaningful failure, correction, recovery and completion
 once; a repeated dependency condition is not a new alert.
 
-## Private handover and execution boundaries
+## Private handover and independent execution
 
-Scout numerically synthesizes both research packages against one Atlas
-account-wide snapshot. Atlas sends its package and verifies/adopts Scout's
-exact returned Gameplan, Stats and receipt. Atlas never runs numerical
-synthesis. Once that handover is loaded, planning is complete. Do not add a
-Scout execution-history export, migration, cutover, duplicate broker preflight
-or approval ceremony. A terminal exchange verifies retained evidence without
-preparation, account capture, synthesis or adoption replay.
+Scout combines Atlas's Gameplan and Scout's Gameplan, including actual cash/share
+planning arithmetic using the available plan balances or latest existing basis,
+and sends the synthesized result to Atlas. This repeats automatically every night
+under Jeremy's standing preauthorization. Delivery is handoff completion. No
+third fresh snapshot, Atlas acceptance, human approval or cross-trader readiness
+or reconciliation is required. Atlas's optional local ingestion receipt remains
+separate from delivery and does not trigger an acknowledgment loop.
 
-Read status fields in context. `HANDOFF_VERIFIED_LOCAL` with exact receipt and
-local/joint/UI readiness completes Atlas planning. A local receipt's
-`peer_verified: false` does not negate the terminal exchange's separate peer
-verification. `source_changed_after_completion: true` records a later source
-installation without reopening the historical session. Preparation's
-`execution_authorized: false` and `orders_placed: 0` describe that component,
-not Jeremy's separately controlled active trader. These flags alone do not
-create another approval, broker preflight or failure.
+Atlas operates the merged Gameplan trader and its independent 15m trader. Scout
+operates its independent 15m trader. Each trader uses its own existing broker
+connection and current actual capacity, manages its own exact order IDs and keeps
+its own local forecasts, intentions, orders, fills and cancellation logs. Do not
+make another trader's process, source, lock, account ledger or status a condition
+of operation. Own-order duplicate prevention and truthful fill records remain
+part of each trader's local behavior.
 
-Atlas alone executes all 22 symbols and all horizons. Jeremy alone manually
-starts and stops the trader. No responsibility task or watchdog may change
-trader controls, start/stop/restart it, or submit/cancel/replace orders. Trader
-Rep reads saved worker/account evidence and verifies that the normal worker's
-late-start logic nets overdue intentions, credits fills and reservations, and
-prevents duplicate submissions. Do not fetch a broker account merely to fill
-an infrastructure report. Offline fixtures are not production order evidence.
-Missing ownership history never establishes zero holdings.
+Jeremy's manual first start stays manual. Responsibility tasks do not start,
+stop or restart traders merely to prepare, inspect or complete nightly planning.
+A saved component's historical `execution_authorized: false`, missing peer receipt
+or old `HANDOFF_VERIFIED_LOCAL` status is not a new permission request. Keep
+original receipts and meaningful actual outcomes without replaying completed
+preparation or inventing a successful live trade.
 
 ## Coordination and completion
 

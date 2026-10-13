@@ -183,7 +183,8 @@ def test_single_read_sanitized_cash_only_and_no_state_created(tmp_path):
     assert list(tmp_path.iterdir()) == []
     serialized = json.dumps(result)
     assert "SECRET_" not in serialized
-    assert IDENTITY not in serialized
+    assert result["account_fingerprint"] == IDENTITY
+    assert IDENTITY not in json.dumps({key: value for key, value in result.items() if key != "account_fingerprint"})
     assert result["orders_placed"] == 0
 
 
@@ -258,7 +259,8 @@ def test_ledger_read_is_query_only_and_identifier_free(tmp_path):
     assert owner["current_broker_reconciliation_performed"] is False
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
     assert list(path.parent.iterdir()) == [path]
-    assert IDENTITY not in json.dumps(result)
+    assert result["account_fingerprint"] == IDENTITY
+    assert IDENTITY not in json.dumps({key: value for key, value in result.items() if key != "account_fingerprint"})
     assert "private-allocation" not in json.dumps(result)
 
 

@@ -40,6 +40,41 @@ STOCK_SESSION_LOCKS = ("intraday-manual-session.lock", "independent-stock-sessio
                        "stock-trader-hourly.lock")
 APPLICATION_VERSION = "nightly-exchange-application-transition-v1"
 APPLICATION_HELPER = "ml/nightly_exchange_repair.py"
+APPLICATION_NIGHTLY_PATHS = frozenset((
+    'tests/test_gameplan_trade_snapshot.py',
+    'ml/gameplan_trade_snapshot.py',
+    'ml/gameplan_cash_ledger.py',
+    'tests/test_nightly_exchange.py',
+    'AGENTS.md',
+    'docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md',
+    'docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md',
+    'docs/development/atlas-scout-git-handoff.md',
+    'docs/development/cross-pc-backlog.md',
+    'docs/development/cross-pc-bootstrap.md',
+    'docs/development/cross-pc-common-main.md',
+    'docs/development/cross-pc-communication.md',
+    'docs/development/cross-pc-task-matrix.md',
+    'docs/development/intraday-15m-prototype.md',
+    'docs/development/intraday-live-readiness.md',
+    'docs/development/intraday-production-interface.md',
+    'docs/development/intraday-scout-adoption.md',
+    'docs/development/intraday-scout-submission-contract.md',
+    'docs/development/intraday-scout-update-prompt.md',
+    'docs/development/intraday-shared-admission-service.md',
+    'docs/development/nightly-exchange.md',
+    'docs/development/nightly-operations.md',
+    'docs/development/nightly-workflow.md',
+    'docs/development/scout-15m-manual-start.md',
+    'docs/development/scout-local-15m-manual-start.md',
+    'ml/joint_capital_plan.py',
+    'ml/nightly_synthesis.py',
+    'ml/joint_capital_adoption.py',
+    'app/ui/gameplan_data.py',
+    'tools/nightly_exchange.py',
+    'ml/stock_trader/gameplan_execution.py',
+    'ml/stock_trader/independent_runtime.py',
+    'tests/test_nightly_plan_only.py',
+))
 
 
 def _bytes(value):
@@ -723,7 +758,7 @@ def _application_path(name):
     if not isinstance(name, str) or "\\" in name or any(part in {"", ".", ".."} or part.startswith(".")
             for part in name.split("/")):
         raise ValueError("Invalid application source path")
-    allowed = (re.fullmatch(r"ml/intraday/[A-Za-z0-9_]+\.py", name)
+    allowed = (name in APPLICATION_NIGHTLY_PATHS or re.fullmatch(r"ml/intraday/[A-Za-z0-9_]+\.py", name)
                or re.fullmatch(r"tests/(?:test_intraday_[A-Za-z0-9_]+|intraday_tls_fixture)\.py", name)
                or name in {"pyproject.toml", "docs/development/intraday-production-interface.md",
                            "docs/development/scout-15m-manual-start.md",
@@ -731,7 +766,7 @@ def _application_path(name):
                            "ml/account_gameplan/authority.py", "ml/account_gameplan/execution.py",
                            "ml/stock_trader/horizon_ledger.py", "tools/nightly_exchange.py"})
     if not allowed:
-        raise ValueError("Application continuation exceeds reviewed intraday-client scope")
+        raise ValueError("Application continuation exceeds reviewed trader and nightly Gameplan scope")
 
 
 def _application_result(spec_path, spec):

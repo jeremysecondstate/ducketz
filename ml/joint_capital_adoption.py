@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.joint_capital_plan import load_joint_plan, _validate_plan_digest, _json_bytes
+from ml.joint_capital_plan import load_joint_plan, _validate_plan_digest, _json_bytes, PLAN_ONLY_MODE
 
 VERSION = "accepted-joint-gameplan-v1"
 RUNS = "ml/joint-gameplan-runs"
@@ -53,7 +53,17 @@ def _verify(plan, binding):
     # This also verifies event/forecast quantities, clocks, horizons and fallback
     # attribution using the same contract that the existing Gameplan tab uses.
     from app.ui.gameplan_data import _forecast, _actions
-    _actions(plan["ledger"], tuple(_forecast(row) for row in plan["forecasts"]), plan["action_date"])
+    if plan.get("composition_mode") == PLAN_ONLY_MODE:
+        if (plan.get("account_snapshot_sha256") is not None or plan.get("account_snapshot_observed_at") is not None
+                or plan.get("cash_basis") != "SIZED_AT_EXECUTION"
+                or plan["ledger"].get("status") != "NOT_PROJECTED" or plan["ledger"].get("events") != []
+                or any(any(key.startswith(("direction_based_", "projected_", "fallback_")) for key in row)
+                       for row in plan["forecasts"])):
+            raise ValueError("Merged source instructions must not invent account projections")
+        for row in plan["forecasts"]:
+            _forecast(row, projection_available=False)
+    else:
+        _actions(plan["ledger"], tuple(_forecast(row) for row in plan["forecasts"]), plan["action_date"])
 
 
 def accepted_sessions(root: Path) -> tuple[str, ...]:

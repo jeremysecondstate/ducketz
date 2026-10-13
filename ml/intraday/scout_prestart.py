@@ -210,7 +210,7 @@ def audit_journal(path, item, *, deadline=None, original_requests=None):
                     authority_release_inferred=False)
 
 
-def inspect_books(root, account_fingerprint):
+def inspect_books(root, account_fingerprint=None):
     from .scout_accounting import audit_saved_accounting
     deadline = time.monotonic() + BOOKS_AUDIT_SECONDS
     root = local_path(root)
@@ -219,6 +219,16 @@ def inspect_books(root, account_fingerprint):
     path = root / "inventory.json"
     journals = root / "journals"
     actual = {p.name for p in journals.iterdir()} if journals.exists() else set()
+    if account_fingerprint is None:
+        if path.exists():
+            account_fingerprint = read_json(path)["inventory"]["account_fingerprint"]
+        else:
+            require(not actual, "Original books inventory is missing while journals remain")
+            require(not any(p.is_file() for folder in (root / "accounting", root / "receipts")
+                            if folder.exists() for p in folder.rglob("*")),
+                    "Saved order records remain without their original inventory")
+            return dict(status="no_journals_yet", journals=0, records=0,
+                        account_binding="existing_local_broker_at_manual_start")
     if not path.exists():
         require(not actual, "Original books inventory is missing while journals remain")
         accounting = audit_saved_accounting(root, account_fingerprint=account_fingerprint,
@@ -498,17 +508,12 @@ def run_local_checks(repository, datastore, *, manifest_path=None):
         result["checks"][stage] = verify_installation(repository,manifest_path or repository / MANIFEST_PATH)
         stage = "dependencies"
         result["checks"][stage] = verify_dependencies(repository)
-        stage = "account_binding"
-        from ml.account_gameplan.config import load_account_config
-        config = load_account_config(datastore)
-        require(config is not None and config.machine_id == "pc-new"
-            and set(config.participants["pc-new"]) == set(profile["symbols"]),
-            "Existing Scout account identity and symbols required")
-        result["checks"][stage] = dict(identity_verified=True,gameplan_ownership_unchanged=True)
+        result["checks"]["broker_account"] = dict(binding="existing_local_broker_at_manual_start",
+            gameplan_configuration_required=False)
         stage = "session"
         result["checks"][stage] = inspect_session(datastore)
         stage = "books"
-        result["checks"][stage] = inspect_books(datastore / "intraday/scout",config.account_fingerprint)
+        result["checks"][stage] = inspect_books(datastore / "intraday/scout")
         result.update(ready=True,local_checks_passed=True)
     except (OSError,ValueError,TypeError,KeyError,sqlite3.Error,ImportError) as error:
         result["errors"].append(dict(check=stage,type=type(error).__name__,message=str(error)

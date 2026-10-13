@@ -52,7 +52,7 @@ def local_prerequisites(tmp_path,monkeypatch):
     monkeypatch.setattr(scout_prestart,"inspect_session",lambda _:dict(status="not_started_yet"))
     monkeypatch.setattr(scout_prestart,"inspect_local_account_writers",lambda *a:pytest.fail("Other traders are not a startup prerequisite"))
     monkeypatch.setattr(scout_prestart,"inspect_books",lambda *a:dict(status="no_journals_yet"))
-    monkeypatch.setattr(config,"load_account_config",lambda _:SimpleNamespace(machine_id="pc-new",participants={"pc-new":["DOCU"]},account_fingerprint="a"*64))
+    monkeypatch.setattr(config,"load_account_config",lambda _:pytest.fail("Gameplan configuration is not a trader prerequisite"))
 
 
 def test_prestart_needs_no_remote_binding_and_no_cash_or_inventory(tmp_path,monkeypatch):
@@ -64,10 +64,12 @@ def test_prestart_needs_no_remote_binding_and_no_cash_or_inventory(tmp_path,monk
     assert list(tmp_path.iterdir()) == []
 
 
-def test_missing_account_identity_is_reported_without_remote_fallback(tmp_path,monkeypatch):
-    from ml.account_gameplan import config
+def test_first_start_books_need_no_gameplan_configuration_or_broker_call(tmp_path,monkeypatch):
+    original = scout_prestart.inspect_books
     local_prerequisites(tmp_path,monkeypatch)
-    monkeypatch.setattr(config,"load_account_config",lambda _:None)
+    monkeypatch.setattr(scout_prestart,"inspect_books",original)
     result = scout_prestart.run_local_checks(tmp_path,tmp_path)
-    assert not result["ready"]
-    assert result["errors"][0]["check"] == "account_binding"
+    assert result["ready"]
+    assert result["checks"]["books"]["status"] == "no_journals_yet"
+    assert result["checks"]["broker_account"]["gameplan_configuration_required"] is False
+    assert list(tmp_path.iterdir()) == []
