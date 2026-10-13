@@ -275,6 +275,70 @@ def test_context_builders_require_mutual_authentication(monkeypatch):
                       ("trust", {"cafile": "server-ca"}), ("chain", {"certfile": "certificate", "keyfile": "key"})]
 
 
+def test_server_factory_rejects_unsupported_context_before_construction_or_private_io(monkeypatch):
+    calls = []
+    class InjectedContext:
+        def __init__(self, *args):
+            calls.append("constructed")
+            raise AssertionError("Unsupported TLS factory must not run")
+    # Change only this module's reference, never the process-wide ssl module.
+    monkeypatch.setattr(transport, "ssl", SimpleNamespace(SSLContext=InjectedContext))
+    with pytest.raises(transport.AdmissionTransportError, match="^unsupported_server_tls_context$"):
+        transport.server_tls_context(certificate="private-certificate", private_key="private-key",
+                                     client_ca="private-ca")
+    assert calls == []
+
+
+@pytest.mark.parametrize("entry", ["validate", "construct", "accept"])
+def test_server_rejects_unsupported_context_before_bind_or_accept(monkeypatch, entry):
+    class InjectedContext:
+        # A wrapper may masquerade as the expected class and report safe flags.
+        @property
+        def __class__(self):
+            return ssl.SSLContext
+        protocol = ssl.PROTOCOL_TLS_SERVER
+        verify_mode = ssl.CERT_REQUIRED
+        minimum_version = ssl.TLSVersion.TLSv1_2
+    context = InjectedContext()
+    events = []
+    monkeypatch.setattr(transport.HTTPServer, "__init__", lambda *a, **k: events.append("bind"))
+    monkeypatch.setattr(transport.HTTPServer, "get_request", lambda *a: events.append("accept"))
+    service = Service()
+    with pytest.raises(transport.AdmissionTransportError, match="^unsupported_server_tls_context$"):
+        if entry == "validate":
+            transport._validate_context(context, server=True)
+        elif entry == "construct":
+            transport.AdmissionHTTPSServer(("test.invalid", 4443), service=service,
+                participants=bindings(), tls_context=context)
+        else:
+            server = transport.AdmissionHTTPSServer.__new__(transport.AdmissionHTTPSServer)
+            server.tls_context = context
+            server.get_request()
+    assert events == [] and service.calls == []
+
+
+def test_native_server_context_allowed_independently_of_client_wrapper(monkeypatch):
+    native_server = tls_context(True)
+    class ClientContext(ssl.SSLContext):
+        pass
+    shim = SimpleNamespace(**{name: getattr(ssl, name) for name in (
+        "PROTOCOL_TLS_SERVER", "PROTOCOL_TLS_CLIENT", "CERT_REQUIRED", "TLSVersion")},
+        SSLContext=ClientContext)
+    monkeypatch.setattr(transport, "ssl", shim)
+    transport._validate_context(native_server, server=True)
+    wrapped_client = ClientContext(ssl.PROTOCOL_TLS_CLIENT)
+    wrapped_client.minimum_version = ssl.TLSVersion.TLSv1_2
+    transport._validate_context(wrapped_client, server=False)
+    client = transport.AdmissionHTTPSClient("https://test.invalid", tls_context=wrapped_client)
+    assert client.tls_context is wrapped_client
+    # Even a native subclass is deliberately outside the supported server contract.
+    wrapped_server = ClientContext(ssl.PROTOCOL_TLS_SERVER)
+    wrapped_server.minimum_version = ssl.TLSVersion.TLSv1_2
+    wrapped_server.verify_mode = ssl.CERT_REQUIRED
+    with pytest.raises(transport.AdmissionTransportError, match="^unsupported_server_tls_context$"):
+        transport._validate_context(wrapped_server, server=True)
+
+
 def test_server_construction_is_explicit_and_does_not_call_service(monkeypatch):
     captured = []
     monkeypatch.setattr(transport.HTTPServer, "__init__", lambda self, *args: captured.append(args))
