@@ -1,0 +1,22 @@
+{
+  "author": "Atlas",
+  "base_commit": "5f50b2afc1967bd4115e82d8acd136c71d5aa813",
+  "change_id": "atlas-production-interface-v1-20261013",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "e18d075161325d8ed42b50148f7ad9442c09195f9b3934db65977f8ce25a3ec1",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6139098198",
+  "files": [],
+  "implementation_started": true,
+  "limitations": [
+    "Implementation and focused offline checks in progress; not yet sealed or installed. No loaded-runtime or manual-live readiness claim."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6138656932
+  ],
+  "runtime_implications": "No installation/deployment/provider call or worker change. Source implementation and tests in progress. Manual-live readiness not claimed.",
+  "scope": "shared-interface",
+  "source_publication_pending": true,
+  "summary": "Active isolated production implementation; fixed readiness/accounting routes and private enrollment contract for parallel Scout client integration.",
+  "tests": []
+}

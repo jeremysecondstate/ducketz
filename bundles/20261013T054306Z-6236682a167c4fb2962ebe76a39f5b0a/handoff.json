@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T05:43:06.865590Z",
+  "id": "20261013T054306Z-6236682a167c4fb2962ebe76a39f5b0a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Active isolated production implementation; fixed readiness/accounting routes and private enrollment contract for parallel Scout client integration."
+}
