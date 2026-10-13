@@ -116,7 +116,9 @@ def expected_fingerprints(repository):
 
 INTRADAY_EXECUTOR_CODE = {
     "ml/intraday/account_execution.py": tuple("IntradayAccountExecutor."+name for name in (
-        "_binding", "_account", "_assert_current", "_repair_pre_send", "_capture", "_submit", "recover")),
+        "__init__", "emit_runtime_heartbeat", "_record", "_binding", "_account", "_assert_current",
+        "_repair_pre_send", "_capture", "_same_forecast", "_proven_unsent", "_newer_forecasts",
+        "_assert_latest", "step", "_submit", "recover")),
     "ml/stock_trader/horizon_ledger.py": REQUIRED_CODE["ml/stock_trader/horizon_ledger.py"],
     "ml/account_gameplan/authority.py": REQUIRED_CODE["ml/account_gameplan/authority.py"],
     "ml/stock_trader/horizon_broker.py": REQUIRED_CODE["ml/stock_trader/horizon_broker.py"],

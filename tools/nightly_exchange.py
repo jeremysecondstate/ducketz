@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import argparse
 import base64
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
+from datetime import date
 import hashlib
 import json
 import os
@@ -39,10 +40,13 @@ FIELDS = {"schema_version", "actor", "workflow_config", "local_profile", "coordi
 FILES = {"preparation": {"plan.json", "stats.json"}, "snapshot": {"snapshot.json"},
          "joint": {"joint-plan.json", "scout-receipt.json", "atlas-plan.json", "atlas-stats.json",
                    "scout-plan.json", "scout-stats.json"}, "accepted": {"atlas-receipt.json"},
-         "ownership_request": {"request.json"}, "ownership": {"ownership.json"}}
+         "ownership_request": {"request.json"}, "ownership": {"ownership.json"},
+         "admission_offer": {"offer.json"}, "admission_csr": {"request.json"}, "admission_cert": {"response.json"}}
 SENDERS = {"preparation": {"atlas", "scout"}, "snapshot": {"atlas"}, "joint": {"scout"}, "accepted": {"atlas"},
-           "ownership_request": {"atlas"}, "ownership": {"scout"}}
+           "ownership_request": {"atlas"}, "ownership": {"scout"},
+           "admission_offer": {"atlas"}, "admission_csr": {"scout"}, "admission_cert": {"atlas"}}
 OWNERSHIP_KINDS = {"ownership_request", "ownership"}
+ENROLLMENT_KINDS = {"admission_offer", "admission_csr", "admission_cert"}
 
 
 class Pending(Exception):
@@ -211,17 +215,100 @@ def _metadata(config, action, review, actor, kind):
             "review_session": review, "account_scope_sha256": config["account_scope_sha256"], "owners": config["owners"]}
 
 
+def _check_enrollment(config, kind, files, inputs):
+    if kind not in ENROLLMENT_KINDS:
+        return
+    from ml.intraday.admission_enrollment import validate_public_packet
+    value = validate_public_packet(kind, _object(next(iter(files.values()))))
+    if (value["enrollment_id"] != config.get("_enrollment_id")
+            or value["account_fingerprint"] != config["account_scope_sha256"]
+            or value["symbols"] != config["owners"]["scout"]
+            or config.get("private_exchange_authorized") is not True):
+        raise ValueError("Enrollment differs from the locally authorized private exchange binding")
+    expected = {key: value[key] for key in ("offer_sha256", "request_sha256") if key in value}
+    if inputs != expected:
+        raise ValueError("Enrollment packet inputs differ from its exact preceding steps")
+
+
+@contextmanager
+def _enrollment_config(config_path, enrollment_id, action, review):
+    # Use the installed binding/authorization check first. The subfolder is an
+    # immutable enrollment namespace within that existing channel, not a new
+    # courier, independent configuration, or mutable nightly selection.
+    config = load_config(Path(config_path))
+    if not isinstance(enrollment_id, str) or re.fullmatch(r"[0-9a-f]{32}", enrollment_id) is None:
+        raise ValueError("Exact enrollment identity required")
+    for value in (action, review):
+        if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
+            raise ValueError("Exact enrollment exchange dates required")
+    native = workflow.load_config(Path(config["workflow_config"]))
+    with ExitStack() as locks:
+        # Same order as nightly execution and source installation. Enrollment
+        # neither bypasses active writers nor creates a competing inbox.
+        for root, name in ((Path(native["state_root"]), "workflow.lock"),
+                           (Path(config["state_root"]), "exchange.lock")):
+            root.mkdir(parents=True, exist_ok=True)
+            locks.enter_context(FileLock(str(root / name), timeout=0))
+        if load_config(Path(config_path)) != config:
+            raise ValueError("Enrollment exchange configuration changed while acquiring its guards")
+        yield {**config, "_enrollment_id": enrollment_id,
+               **{key: str(Path(config[key]) / "admission-enrollment" / enrollment_id)
+                  for key in ("exchange_root", "state_root")}}
+
+
+def _enrollment_receipt(config, action, review, kind, selected):
+    from ml.intraday.admission_enrollment import payload_sha256
+    # Use exactly the bytes validated before cache publication, never a second
+    # unverified read from a mutable local cache path to establish CA trust.
+    value = selected["enrollment_payload"]
+    return {"kind": kind, "enrollment_id": config["_enrollment_id"], "action_date": action,
+            "review_session": review, "packet_sha256": selected["digest"], "payload": value,
+            "trusted_payload_sha256": payload_sha256(value)}
+
+
+def publish_enrollment(config_path, *, enrollment_id, action_date, review_session, kind, payload):
+    """Explicit public CSR/certificate export through the existing private channel.
+
+    Never invoked by the nightly scheduler. Private keys and arbitrary files
+    cannot pass the allowlist. Identical retries preserve all selected bytes.
+    """
+    if kind not in ENROLLMENT_KINDS:
+        raise ValueError("Unsupported enrollment packet kind")
+    with _enrollment_config(config_path, enrollment_id, action_date, review_session) as config:
+        files = {next(iter(FILES[kind])): _bytes(payload)}
+        inputs = {key: payload[key] for key in ("offer_sha256", "request_sha256") if key in payload}
+        selected = _publish(config, action_date, review_session, kind, files, inputs=inputs)
+        return _enrollment_receipt(config, action_date, review_session, kind, selected)
+
+
+def receive_enrollment(config_path, *, enrollment_id, action_date, review_session, kind):
+    """Return a verified local-provenance receipt, not merely a packet's CA pin.
+
+    Pass this receipt's trusted_payload_sha256 to create_request together with
+    the locally bound server identity/account/symbols. Reading arbitrary JSON
+    from an untrusted source does not provide equivalent enrollment authority.
+    """
+    if kind not in ENROLLMENT_KINDS:
+        raise ValueError("Unsupported enrollment packet kind")
+    with _enrollment_config(config_path, enrollment_id, action_date, review_session) as config:
+        actor = next(iter(SENDERS[kind]))
+        selected = _receive(config, action_date, review_session, actor, kind)
+        return _enrollment_receipt(config, action_date, review_session, kind, selected)
+
+
 def _publish(config, action, review, kind, files, inputs=None, *, refresh=False):
     actor = config["actor"].lower()
     if set(files) != FILES[kind]:
         raise ValueError("Packet contains files outside the private export allowlist")
-    encoded = {}
+    encoded, decoded = {}, {}
     for name, value in files.items():
         data = value if isinstance(value, bytes) else _read(value)
         if len(data) > MAX_FILE_BYTES:
             raise ValueError("Private file exceeds its byte limit")
         _object(data)
+        decoded[name] = data
         encoded[name] = {"sha256": _sha(data), "base64": base64.b64encode(data).decode("ascii")}
+    _check_enrollment(config, kind, decoded, inputs or {})
     packet = {**_metadata(config, action, review, actor, kind), "inputs": inputs or {}, "files": encoded}
     digest = content_sha256(packet)
     packet["content_sha256"] = digest
@@ -314,6 +401,7 @@ def _receive(config, action, review, actor, kind, *, local_only=False):
             raise ValueError("Embedded file bytes differ or exceed the limit")
         _object(value)
         decoded[name] = value
+    _check_enrollment(config, kind, decoded, packet["inputs"])
     if _read(selected, 2048) != selector_bytes:
         raise Pending("SELECTION_SYNC")
     if local_only:
@@ -327,7 +415,10 @@ def _receive(config, action, review, actor, kind, *, local_only=False):
         _write(cache / "packet.json", data)
         for name, value in decoded.items():
             _write(cache / name, value)
-    return {"digest": digest, "inputs": packet["inputs"], "files": {name: cache / name for name in decoded}}
+    result = {"digest": digest, "inputs": packet["inputs"], "files": {name: cache / name for name in decoded}}
+    if kind in ENROLLMENT_KINDS:
+        result["enrollment_payload"] = _object(next(iter(decoded.values())))
+    return result
 
 
 def _bind(path, **extra):
@@ -942,8 +1033,29 @@ def main(argv=None):
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--allow-snapshot-refresh", action="store_true")
     parser.add_argument("--serve-ownership", action="store_true")
+    parser.add_argument("--enrollment-kind", choices=sorted(ENROLLMENT_KINDS))
+    parser.add_argument("--enrollment-id")
+    parser.add_argument("--enrollment-action-date")
+    parser.add_argument("--enrollment-review-session")
+    parser.add_argument("--enrollment-payload", type=Path, help="Publish this explicit public enrollment JSON; omit to receive")
+    parser.add_argument("--enrollment-receipt", type=Path, help="Immutable host-local receipt destination")
     args = parser.parse_args(argv)
+    enrollment_args = (args.enrollment_id, args.enrollment_action_date, args.enrollment_review_session, args.enrollment_receipt)
+    enrollment_mode = bool(args.enrollment_kind or any(value is not None for value in (*enrollment_args, args.enrollment_payload)))
     try:
+        if enrollment_mode:
+            if (not args.enrollment_kind or any(value is None for value in enrollment_args)
+                    or args.check or args.allow_snapshot_refresh or args.serve_ownership):
+                raise ValueError("Explicit enrollment identity, dates and receipt are required without nightly action flags")
+            from ml.intraday.admission_enrollment import _write as write_enrollment
+            options = dict(enrollment_id=args.enrollment_id, action_date=args.enrollment_action_date,
+                           review_session=args.enrollment_review_session, kind=args.enrollment_kind)
+            receipt = (publish_enrollment(args.config, **options, payload=_object(_read(args.enrollment_payload)))
+                       if args.enrollment_payload else receive_enrollment(args.config, **options))
+            write_enrollment(args.enrollment_receipt, _bytes(receipt))
+            print(json.dumps({"status": "ENROLLMENT_RECORDED", "kind": args.enrollment_kind,
+                              "packet_sha256": receipt["packet_sha256"], "orders_placed": 0}, sort_keys=True))
+            return 0
         config = load_config(args.config)
         if args.serve_ownership and (args.check or args.allow_snapshot_refresh):
             raise ValueError("Ownership responder mode cannot check or capture accounts")
@@ -955,6 +1067,9 @@ def main(argv=None):
         print(json.dumps(result, sort_keys=True))
         return 1 if result.get("status") == "FAILED" else 0
     except Exception as error:
+        if enrollment_mode:
+            print(json.dumps({"status": "FAILED", "error_type": type(error).__name__, "error": "enrollment_failed"}))
+            return 1
         if args.serve_ownership and args.config.is_absolute() and args.config.name == "ownership-responder-config.json":
             _write(args.config.parent / "ownership-responder-result.json",
                    _bytes({"status": "FAILED", "error_type": type(error).__name__, "orders_placed": 0}), replace=True)

@@ -400,3 +400,46 @@ def test_connection_constructor_failure_never_discloses_endpoint(monkeypatch):
     with pytest.raises(transport.AdmissionTransportError, match="^admission_call_failed$"):
         client.call("GET", "/v1/capabilities")
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("peer", [b"enrolled", b"other", b"", None])
+def test_enrolled_leaf_pin_is_checked_before_request(monkeypatch, peer):
+    events = []
+    class Connection:
+        def __init__(self, *args, **kwargs):
+            self.sock = SimpleNamespace(getpeercert=lambda binary_form: peer)
+        def connect(self):
+            events.append("tls")
+        def request(self, *args, **kwargs):
+            events.append("request")
+        def getresponse(self):
+            return FakeResponse()
+        def close(self):
+            events.append("closed")
+    monkeypatch.setattr(transport.http.client, "HTTPSConnection", Connection)
+    client = transport.AdmissionHTTPSClient("https://test.invalid", tls_context=tls_context(),
+        server_certificate_sha256=hashlib.sha256(b"enrolled").hexdigest())
+    if peer == b"enrolled":
+        client.call("POST", "/v1/readiness", {"request_nonce": "fresh"})
+        assert events == ["tls", "request", "closed"]
+    else:
+        with pytest.raises(transport.AdmissionTransportError, match="admission_call_failed"):
+            client.call("POST", "/v1/readiness", {"request_nonce": "fresh"})
+        assert events == ["tls", "closed"]
+
+
+def test_invalid_pin_rejected_before_connection():
+    with pytest.raises(transport.AdmissionTransportError, match="invalid_certificate_pin"):
+        transport.AdmissionHTTPSClient("https://test.invalid", tls_context=tls_context(),
+                                       server_certificate_sha256="not-a-pin")
+
+
+def test_older_service_cannot_report_view_success_or_call_mutation():
+    class Older:
+        def reserve(self, *args):
+            raise AssertionError("view must never reserve")
+    for route in ("/v1/readiness", "/v1/accounting"):
+        response = transport.AdmissionDispatcher(Older()).dispatch(
+            "pc-new", "POST", route, b'{"request_nonce":"fresh"}')
+        assert response.status == 503
+        assert json.loads(response.body)["error"] == "service_unavailable"

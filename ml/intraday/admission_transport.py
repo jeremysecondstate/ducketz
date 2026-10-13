@@ -30,6 +30,8 @@ _POST_ROUTES = MappingProxyType({
     "/v1/evidence": "evidence",
     "/v1/cancel-intent": "cancel_intent",
     "/v1/release-unsent": "release_unsent",
+    "/v1/readiness": "readiness",
+    "/v1/accounting": "accounting",
 })
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", re.ASCII)
 _FINGERPRINT = re.compile(r"[a-f0-9]{64}", re.ASCII)
@@ -332,7 +334,8 @@ class AdmissionHTTPSClient:
     """
 
     def __init__(self, endpoint: str, *, tls_context: ssl.SSLContext,
-                 timeout: float = REQUEST_TIMEOUT_SECONDS):
+                 timeout: float = REQUEST_TIMEOUT_SECONDS,
+                 server_certificate_sha256: str | None = None):
         _validate_context(tls_context, server=False)
         try:
             parsed = urlsplit(endpoint)
@@ -348,6 +351,11 @@ class AdmissionHTTPSClient:
         if not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or not 0 < timeout <= 60:
             raise _fail("invalid_timeout")
         self.tls_context, self.timeout = tls_context, timeout
+        if (server_certificate_sha256 is not None
+                and (type(server_certificate_sha256) is not str
+                     or not _FINGERPRINT.fullmatch(server_certificate_sha256))):
+            raise _fail("invalid_certificate_pin")
+        self.server_certificate_sha256 = server_certificate_sha256
 
     def call(self, method: str, path: str, payload: dict | None = None) -> dict:
         _validate_context(self.tls_context, server=False)
@@ -359,6 +367,14 @@ class AdmissionHTTPSClient:
         try:
             connection = http.client.HTTPSConnection(
                 self.host, self.port, timeout=self.timeout, context=self.tls_context)
+            if self.server_certificate_sha256 is not None:
+                # Verify enrolled leaf before transmitting even a read-only
+                # request. CA and hostname validation still run during connect.
+                connection.connect()
+                certificate = connection.sock.getpeercert(binary_form=True)
+                if (type(certificate) is not bytes or not certificate
+                        or hashlib.sha256(certificate).hexdigest() != self.server_certificate_sha256):
+                    raise _fail("server_certificate_mismatch")
             connection.request(method, path, body=body, headers={
                 "Content-Type": "application/json", "Accept": "application/json",
                 "Connection": "close", "X-Admission-Protocol": PROTOCOL_VERSION,

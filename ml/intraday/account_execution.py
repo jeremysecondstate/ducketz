@@ -70,6 +70,12 @@ class IntradayAccountExecutor:
         self.config = self.ledger = self.authority = self.lease = None
         self.portfolio = self.snapshot_id = None
 
+    def emit_runtime_heartbeat(self):
+        """Report this actual executor; failure disables peer admission, not Atlas."""
+        from .atlas_writer import emit_atlas_writer_heartbeat
+        return emit_atlas_writer_heartbeat(self, datastore=self.root,
+            repository=Path(__file__).resolve().parents[2], now=self.clock())
+
     def _record(self, forecast, disposition, *, kind="execution_disposition", evidence=None, capacity=None, order=None):
         evidence = evidence or {"reason": disposition}
         event_key = digest([kind, disposition, evidence, asdict(order) if order else None,
@@ -80,6 +86,7 @@ class IntradayAccountExecutor:
     def _binding(self):
         if self.stopped() or not self.manual_authority():
             raise ContractError("Manual 15m session is no longer active")
+        self.emit_runtime_heartbeat()
         config = load_account_config(self.root)
         if (config is None or config.machine_id != "pc-original" or config.role != "coordinator"
                 or config.activation["status"] != "ACTIVE"
