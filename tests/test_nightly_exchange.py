@@ -855,3 +855,160 @@ def test_normal_exchange_holds_shared_workflow_guard_through_source_relevant_wor
         return {"status": "PENDING", "reason": "FIXTURE_PEER_DELAY"}
     monkeypatch.setattr(module, "_run", bounded_work)
     assert wake(exchange, "scout")["reason"] == "FIXTURE_PEER_DELAY"
+
+
+@pytest.fixture
+def enrollment_exchange(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    from ml.intraday import admission_enrollment as enrollment
+    monkeypatch.setattr(enrollment, "_private_permissions", lambda *a, **k: None)
+    owners = {"atlas": [f"A{i}" for i in range(11)], "scout": [f"S{i}" for i in range(11)]}
+    configs = {actor: dict(actor=actor.title(), exchange_root=str(tmp_path / "CODEXSTORE/ducketz-nightly-exchange/v1"),
+                           state_root=str(tmp_path / actor / "state"), workflow_config=str(tmp_path / actor / "workflow.json"),
+                           owners=owners, account_scope_sha256="a" * 64, private_exchange_authorized=True)
+               for actor in ("atlas", "scout")}
+    calls = []
+    def checked_load(path):
+        calls.append(str(path))
+        config = configs[path.name]
+        if config["private_exchange_authorized"] is not True:
+            raise ValueError("Direct local authorization required")
+        return deepcopy(config)
+    monkeypatch.setattr(module, "load_config", checked_load)
+    monkeypatch.setattr(module.workflow, "load_config", lambda path: {"state_root": str(path.parent / "workflow")})
+    now = datetime(2026, 10, 13, 6, tzinfo=timezone.utc)
+    value = enrollment.create_offer(tmp_path / "atlas-key", enrollment_id="1" * 32, server_identity="atlas-test",
+                                     endpoint="https://atlas.test:9443", account_fingerprint="a" * 64,
+                                     symbols=owners["scout"], now=now)
+    args = dict(enrollment_id="1" * 32, action_date="2026-10-13", review_session="2026-10-12")
+    return configs, value, args, calls, now
+
+
+def test_enrollment_reuses_private_packet_protocol_and_preserves_nightly(enrollment_exchange, tmp_path):
+    from ml.intraday import admission_enrollment as enrollment
+    configs, offer, args, calls, now = enrollment_exchange
+    sentinel = Path(configs["atlas"]["exchange_root"]) / "sessions/2026-10-13/atlas/snapshot/selection.json"
+    write(sentinel, {"historical": "unchanged"})
+    before = sentinel.read_bytes()
+    outgoing = module.publish_enrollment(Path("atlas"), **args, kind="admission_offer", payload=offer)
+    incoming = module.receive_enrollment(Path("scout"), **args, kind="admission_offer")
+    assert incoming == outgoing and incoming["trusted_payload_sha256"] == enrollment.payload_sha256(offer)
+    request = enrollment.create_request(tmp_path / "scout-key", incoming["payload"],
+        trusted_offer_sha256=incoming["trusted_payload_sha256"], expected_server_identity="atlas-test",
+        account_fingerprint="a" * 64, symbols=configs["scout"]["owners"]["scout"], now=now)
+    module.publish_enrollment(Path("scout"), **args, kind="admission_csr", payload=request)
+    received_request = module.receive_enrollment(Path("atlas"), **args, kind="admission_csr")
+    response = enrollment.sign_request(tmp_path / "atlas-key", received_request["payload"], now=now)
+    module.publish_enrollment(Path("atlas"), **args, kind="admission_cert", payload=response)
+    received_response = module.receive_enrollment(Path("scout"), **args, kind="admission_cert")
+    enrollment.accept_response(tmp_path / "scout-key", received_response["payload"], now=now)
+    assert sentinel.read_bytes() == before
+    shared = Path(configs["atlas"]["exchange_root"])
+    bytes_before = files(shared)
+    assert module.publish_enrollment(Path("atlas"), **args, kind="admission_offer", payload=offer) == outgoing
+    assert module.receive_enrollment(Path("scout"), **args, kind="admission_offer") == incoming
+    assert files(shared) == bytes_before
+    assert len(calls) == 16  # Initial configuration and under-lock revalidation on every operation.
+    assert all(b"PRIVATE KEY" not in value for value in bytes_before.values())
+    packets = list(shared.glob("admission-enrollment/*/sessions/*/*/*/packets/*.json"))
+    assert len(packets) == 3 and all(json.loads(p.read_text())["schema_version"] == module.PACKET for p in packets)
+
+
+@pytest.mark.parametrize("change", ["private_key", "scope", "symbols", "identity", "wrong_sender", "unauthorized"])
+def test_enrollment_rejects_exports_outside_private_binding(enrollment_exchange, change):
+    configs, value, args, _, _ = enrollment_exchange
+    payload, actor = deepcopy(value), "atlas"
+    if change == "private_key":
+        payload["ca_certificate"] = "-----BEGIN PRIVATE KEY-----\nprivate\n-----END PRIVATE KEY-----\n"
+    elif change == "scope":
+        payload["account_fingerprint"] = "b" * 64
+    elif change == "symbols":
+        payload["symbols"] = configs["atlas"]["owners"]["atlas"]
+    elif change == "identity":
+        payload["enrollment_id"] = "2" * 32
+    elif change == "wrong_sender":
+        actor = "scout"
+    else:
+        configs["atlas"]["private_exchange_authorized"] = False
+    with pytest.raises(ValueError):
+        module.publish_enrollment(Path(actor), **args, kind="admission_offer", payload=payload)
+    assert not Path(configs["atlas"]["exchange_root"]).exists()
+
+
+def test_enrollment_mutated_packet_and_reselection_fail_closed(enrollment_exchange):
+    configs, value, args, _, _ = enrollment_exchange
+    module.publish_enrollment(Path("atlas"), **args, kind="admission_offer", payload=value)
+    shared = Path(configs["atlas"]["exchange_root"])
+    packet = next(shared.glob("admission-enrollment/*/sessions/*/*/*/packets/*.json"))
+    original = packet.read_bytes()
+    packet.write_bytes(original[:-2] + b"x\n")
+    with pytest.raises(ValueError):
+        module.receive_enrollment(Path("scout"), **args, kind="admission_offer")
+    packet.write_bytes(original)
+    changed = dict(value, nonce="f" * 64)
+    with pytest.raises(ValueError, match="immutable"):
+        module.publish_enrollment(Path("atlas"), **args, kind="admission_offer", payload=changed)
+    assert packet.read_bytes() == original
+
+
+def test_enrollment_partial_sync_is_pending_and_other_identity_cannot_replay(enrollment_exchange):
+    configs, value, args, _, _ = enrollment_exchange
+    with pytest.raises(module.Pending):
+        module.receive_enrollment(Path("scout"), **args, kind="admission_offer")
+    module.publish_enrollment(Path("atlas"), **args, kind="admission_offer", payload=value)
+    packet = next(Path(configs["atlas"]["exchange_root"]).glob("admission-enrollment/*/sessions/*/*/*/packets/*.json"))
+    original = packet.read_bytes()
+    packet.write_bytes(original[:30])
+    with pytest.raises(module.Pending, match="PACKET_SYNC"):
+        module.receive_enrollment(Path("scout"), **args, kind="admission_offer")
+    packet.write_bytes(original)
+    assert module.receive_enrollment(Path("scout"), **args, kind="admission_offer")["payload"] == value
+    with pytest.raises(module.Pending):
+        module.receive_enrollment(Path("scout"), **dict(args, enrollment_id="2" * 32), kind="admission_offer")
+
+
+def test_enrollment_holds_existing_writer_and_install_guards(enrollment_exchange, monkeypatch):
+    from filelock import FileLock, Timeout
+    configs, value, args, _, _ = enrollment_exchange
+    original = module._publish
+    def guarded(config, *a, **k):
+        for path in (Path(configs["atlas"]["workflow_config"]).parent / "workflow/workflow.lock",
+                     Path(configs["atlas"]["state_root"]) / "exchange.lock"):
+            with pytest.raises(Timeout):
+                with FileLock(str(path), timeout=0):
+                    pytest.fail("Enrollment must exclude overlapping source installation and exchange writers")
+        return original(config, *a, **k)
+    monkeypatch.setattr(module, "_publish", guarded)
+    module.publish_enrollment(Path("atlas"), **args, kind="admission_offer", payload=value)
+
+
+def test_enrollment_cli_records_private_receipt_without_printing_endpoint(enrollment_exchange, tmp_path, capsys):
+    _, value, args, _, _ = enrollment_exchange
+    payload = write(tmp_path / "public-offer.json", value)
+    receipt = tmp_path / "private-receipt.json"
+    common = ["--enrollment-kind", "admission_offer", "--enrollment-id", args["enrollment_id"],
+              "--enrollment-action-date", args["action_date"], "--enrollment-review-session", args["review_session"]]
+    assert module.main(["--config", "atlas", *common, "--enrollment-payload", str(payload),
+                        "--enrollment-receipt", str(receipt)]) == 0
+    output = capsys.readouterr().out
+    assert "https://" not in output and "atlas.test" not in output
+    saved = json.loads(receipt.read_text())
+    assert saved["payload"] == value and json.loads(output)["packet_sha256"] == saved["packet_sha256"]
+    assert module.main(["--config", "scout", *common, "--enrollment-receipt", str(tmp_path / "scout-receipt.json")]) == 0
+    capsys.readouterr()
+    assert module.main(["--config", "atlas", *common, "--check", "--enrollment-receipt", str(receipt)]) == 1
+    assert json.loads(capsys.readouterr().out)["status"] == "FAILED"
+
+
+def test_enrollment_cli_error_redacts_private_connection_details(enrollment_exchange, tmp_path, capsys, monkeypatch):
+    _, _, args, _, _ = enrollment_exchange
+    def fail(*a, **k):
+        raise ValueError("private endpoint https://private.test:9443 and C:/private/private.key")
+    monkeypatch.setattr(module, "receive_enrollment", fail)
+    assert module.main(["--config", "scout", "--enrollment-kind", "admission_offer",
+                        "--enrollment-id", args["enrollment_id"], "--enrollment-action-date", args["action_date"],
+                        "--enrollment-review-session", args["review_session"],
+                        "--enrollment-receipt", str(tmp_path / "private-receipt.json")]) == 1
+    output = capsys.readouterr()
+    assert output.err == "" and "private" not in output.out and "https://" not in output.out
+    assert json.loads(output.out)["error"] == "enrollment_failed"

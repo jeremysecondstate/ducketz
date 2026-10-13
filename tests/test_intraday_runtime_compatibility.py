@@ -234,3 +234,13 @@ def test_missing_future_compatible_source_blocks_absence(tmp_path):
 def test_duplicate_or_legacy_lock_is_not_silently_rewritten():
     with pytest.raises(ValueError):
         compatibility.parse_session_lock("process=independent-stock-session\npid=444\npid=555\n")
+
+
+@pytest.mark.parametrize("method", ["step", "_assert_latest", "_newer_forecasts", "emit_runtime_heartbeat"])
+def test_atlas_writer_proof_includes_actual_entry_and_guard_callbacks(method):
+    from ml.intraday.account_execution import IntradayAccountExecutor
+    executor = object.__new__(IntradayAccountExecutor)
+    expected = compatibility.expected_intraday_executor_fingerprints(REPOSITORY)
+    assert compatibility.actual_intraday_executor_fingerprints(executor) == expected
+    setattr(executor, method, lambda *_a, **_k: None)
+    assert compatibility.actual_intraday_executor_fingerprints(executor) != expected
