@@ -185,7 +185,7 @@ def _intraday_ownership(connection, metadata, allocations, reservations):
     required = {"intraday_streams", "intraday_sell_slices", "intraday_fill_attribution"}
     intraday = {row["id"] for row in allocations if row["horizon"] == "15m"}
     if not intraday and not tables.intersection(required):
-        return set(), {}, {}
+        return set(), {}, {}, {}
     if not required.issubset(tables) or metadata.get("intraday_accounting_version") != "account-shares-attribution-v1":
         raise ValueError("INVALID_INTRADAY_OWNERSHIP_SCHEMA")
     owners = {row["id"]: row for row in allocations}
@@ -196,13 +196,22 @@ def _intraday_ownership(connection, metadata, allocations, reservations):
         records = owners if row["kind"] == "allocation" else orders if row["kind"] == "reservation" else {}
         record = records.get(row["id"])
         allocation = row["id"] if row["kind"] == "allocation" else record["allocation"] if record else None
-        if key in streams or record is None or allocation not in intraday or row["stream"] != "atlas-15m":
+        if (key in streams or record is None or allocation not in intraday
+                or row["stream"] not in {"atlas-15m", "scout-15m"}):
             raise ValueError("INVALID_INTRADAY_OWNERSHIP_STREAM")
         streams[key] = row["stream"]
     if (any(("allocation", identity) not in streams for identity in intraday)
             or any(("reservation", identity) not in streams for identity, row in orders.items()
                    if row["allocation"] in intraday)):
         raise ValueError("INTRADAY_OWNERSHIP_STREAM_MISSING")
+    allocation_streams = {identity: streams["allocation", identity] for identity in intraday}
+    for identity, order in orders.items():
+        if order["allocation"] in intraday:
+            request = json.loads(order["request"])
+            stream = streams["reservation", identity]
+            if (not isinstance(request, dict) or request.get("stream") != stream
+                    or allocation_streams[order["allocation"]] != stream):
+                raise ValueError("INTRADAY_OWNERSHIP_STREAM_MISMATCH")
     slices, slice_totals = {}, {}
     for row in connection.execute("SELECT reservation,allocation,quantity,ordinal FROM intraday_sell_slices"):
         order, owner = orders.get(row["reservation"]), owners.get(row["allocation"])
@@ -249,7 +258,7 @@ def _intraday_ownership(connection, metadata, allocations, reservations):
         debits[owner] = debits.get(owner, 0) + filled
         if orders[key[0]]["status"] in _OPEN:
             pending[owner] = pending.get(owner, 0) + quantity - filled
-    return sliced, debits, pending
+    return sliced, debits, pending, allocation_streams
 
 
 def _ownership(root, symbols, identity, held, observed):
@@ -281,7 +290,7 @@ def _ownership(root, symbols, identity, held, observed):
             reservations = connection.execute(
                 "SELECT * FROM reservations"
             ).fetchall()
-            sliced, intraday_debits, intraday_pending = _intraday_ownership(
+            sliced, intraday_debits, intraday_pending, allocation_streams = _intraday_ownership(
                 connection, metadata, allocations, reservations)
             blocks = connection.execute("SELECT symbol FROM blocks").fetchall()
             latest = connection.execute(
@@ -311,7 +320,7 @@ def _ownership(root, symbols, identity, held, observed):
                 "target_start": start, "target_end": end,
                 "status": item["status"]}
             if item["horizon"] == "15m":
-                by_id[item["id"]]["stream"] = "atlas-15m"
+                by_id[item["id"]]["stream"] = allocation_streams[item["id"]]
         assignment_map = {item["id"]: item for item in assignments}
         net_transfers = {symbol: 0 for symbol in symbols}
         released_by_id = {}

@@ -38,7 +38,7 @@ def _planning_snapshot(snapshot: Mapping) -> tuple[dict, dict | None]:
     reconcile its ledger and broker state before any order decision.
     """
     ownership = snapshot.get("ownership", {})
-    if any(row.get("stream") == "atlas-15m" for row in ownership.get("active_allocations", [])):
+    if any(row.get("stream") in {"atlas-15m", "scout-15m"} for row in ownership.get("active_allocations", [])):
         # Intraday commitments stay reserved even with zero broker orders.
         # This copy never reconciles, releases, or changes the native ledger.
         from ml.planning_reservations import retain_local_reservations
