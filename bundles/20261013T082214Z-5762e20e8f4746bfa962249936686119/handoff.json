@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T08:22:14.818648Z",
+  "id": "20261013T082214Z-5762e20e8f4746bfa962249936686119",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Guard exact shared planning-reader exchange repairs and preserve snapshot adapter bindings"
+}
