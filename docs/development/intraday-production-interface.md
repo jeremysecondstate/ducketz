@@ -23,6 +23,22 @@ The enrolled server leaf SHA256 can be passed to
 CA/hostname verification and before any request body is sent. Scout's client
 owner must bind this to its reviewed private enrollment record.
 
+The listener requires the native standard-library `ssl.SSLContext` directly
+based on `_ssl._SSLContext`. Injected wrappers or subclasses are unsupported
+for the server role and fail with `unsupported_server_tls_context`: the factory
+checks before loading private certificates, and server validation checks before
+binding and before each accept. This restriction does not change the client
+context contract or disable a client's supported truststore integration.
+
+Some Windows `pip_system_certs` installations replace `ssl.SSLContext` with
+`pip._vendor.truststore._api.SSLContext`. Its reported verification flags alone
+do not establish server-side mutual authentication. Verify the actual context
+implementation in the intended listener environment before deployment. Use a
+separately reviewed native server environment; never remove certificate or
+hostname checks, globally replace/extract truststore, or change running traders'
+TLS settings to make a server fixture pass. Strict socket-free native-server
+coverage remains required alongside coverage of the actual Scout client.
+
 Existing mutation routes are unchanged. `GET /v1/capabilities` is identity and
 protocol discovery only. Its ordered `operations` list remains exactly
 `capabilities`, `reserve`, `authorize_send`, `status`, `evidence`, `cancel_intent`,
