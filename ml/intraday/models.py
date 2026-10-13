@@ -154,6 +154,10 @@ def _parameters(spec: ModelSpec) -> dict:
         raise ContractError("Warm-start is forbidden for the full-retraining benchmark")
     if params.get("n_jobs", 1) != 1 or params.get("thread_count", 1) != 1:
         raise ContractError("This research adapter requires one internal worker per model")
+    if spec.family == "knn":
+        neighbors = params["n_neighbors"]
+        if isinstance(neighbors, (bool, np.bool_)) or not isinstance(neighbors, (int, np.integer)) or neighbors < 1:
+            raise ContractError("KNN n_neighbors must be a positive integer")
     if spec.family in {"random_forest", "extra_trees", "hist_gradient_boosting", "gradient_boosting",
                        "adaboost", "xgboost", "lightgbm", "logistic", "mlp", "passive_aggressive"}:
         params["random_state"] = spec.random_state
@@ -354,6 +358,16 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
             metadata["effective_parameters"] = _parameters(spec)
             output["version"] = _sha(metadata)
             estimator = build_estimator(spec)
+            if spec.family == "knn":
+                requested = metadata["effective_parameters"]["n_neighbors"]
+                effective = min(requested, len(features))
+                # A fresh causal snapshot may have fewer rows than configured
+                # neighbors. Use only its actual fitted rows, preserving the request.
+                metadata["requested_n_neighbors"] = requested
+                metadata["neighbor_count_policy"] = "cap_to_training_rows"
+                metadata["effective_parameters"]["n_neighbors"] = effective
+                estimator.set_params(model__n_neighbors=effective)
+                output["version"] = _sha(metadata)
             with threadpool_limits(limits=1), warnings.catch_warnings(record=True) as observed_warnings:
                 warnings.simplefilter("always")
                 if spec.family in {"ridge", "passive_aggressive"}:
