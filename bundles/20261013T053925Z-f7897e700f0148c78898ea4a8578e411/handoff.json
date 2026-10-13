@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T05:39:25.149474Z",
+  "id": "20261013T053925Z-f7897e700f0148c78898ea4a8578e411",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reviewed installed-source transition preserves completed datastore work while reconciling a stopped pre-Stats source mismatch."
+}
