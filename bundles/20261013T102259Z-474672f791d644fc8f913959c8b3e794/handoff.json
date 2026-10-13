@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T10:22:59.286973Z",
+  "id": "20261013T102259Z-474672f791d644fc8f913959c8b3e794",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reviewed continuation now admits the four exact Atlas host dependencies and preserves exchange-adapter binding through partial/repeated installation."
+}

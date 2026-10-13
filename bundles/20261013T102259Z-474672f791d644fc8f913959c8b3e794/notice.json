@@ -1,0 +1,116 @@
+{
+  "author": "Scout",
+  "change_id": "scout-host-application-scope-20261013T101843Z-ecb2d217284a45dfbb4f45e941d96839",
+  "completion_record": "20261013T101843Z-ecb2d217284a45dfbb4f45e941d96839",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "docs/development/nightly-exchange.md",
+      "sha256": "8fa1f5dd7cecdc0957c376c410c1784f74016ef3ad93bc6680c8c4adc914a60d"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_exchange_repair.py",
+      "sha256": "b79554cbf68283738572d3dfb2edc2755e658ae08be0179fbc8116674dcf2a95"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_exchange_repair.py",
+      "sha256": "36d0714eef641c9ba17bd8f5f8eec4d7c5e893d8401b966c3fed57f8b91ae9bd"
+    }
+  ],
+  "installation": {
+    "Atlas": "Pending existing Atlas Priority review/composition/installation; no installation asserted.",
+    "Scout": "Existing completed client installation unchanged; this successor is published only.",
+    "original_Atlas_claim": "atlas-stream-identity-exchange-20261013-v1",
+    "original_Scout_claim": "scout-intraday-exchange-adoption-20261013-v1"
+  },
+  "limitations": [
+    "PR96 stacks on PR95; main integration and runtime adoption are separate.",
+    "Prior PR95 test evidence remains historical. Fresh54-test runs cover affected application behavior; no full client suite was repeated.",
+    "Local actor publication validation is unchanged. Atlas must use its reviewed Atlas records and retain Scout source ancestry.",
+    "Private route/enrollment, account-snapshot freshness and dated combined readiness remain separate dependencies."
+  ],
+  "peer_request": "Atlas Priority: use this exact successor through the existing reviewed local composition/publication path under your actor, preserving Scout ancestry and atlas-stream-identity-exchange-20261013-v1. After your reader repair is applied, compose all required published host dependencies and use the supported application continuation with current local applicability checks. Return the actual publication/installation disposition through the existing request; do not infer route readiness or relax actor validation.",
+  "predecessor_completions": [
+    "20261013T091939Z-2f18a903c61d43619e78b667adb98627"
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/96",
+  "related_issue_comment": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6143063452",
+  "related_request_id": "scout-15m-live-readiness-20261012",
+  "repository": "jeremysecondstate/ducketz",
+  "review": "Root and independent gpt-6-astra/high exact whole-diff/dependency review passed; no ownership conflict.",
+  "runtime_implications": "Retain the original applied repair/token/Completion-Record and frozen preparation; use exact local-actor application and framework publication inputs. Existing execution/session/process fences and full before/after source checks remain required. The only binding change permitted by these operations is the exact reviewed nightly_exchange.py adapter hash; all other binding drift is rejected. No active-worker source edit or repeated Scout client installation occurred.",
+  "scope": "Shared application-transition framework; Atlas and Scout applicability.",
+  "source_branch": "codex/scout/20261013T101843Z-ecb2d217284a45dfbb4f45e941d96839",
+  "source_commit": "1f33169625d61af61f8daca571c40b4271269118",
+  "summary": "Reviewed continuation now admits the four exact Atlas host dependencies and preserves exchange-adapter binding through partial/repeated installation.",
+  "supported_additions": [
+    "ml/account_gameplan/authority.py",
+    "ml/account_gameplan/execution.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "tools/nightly_exchange.py"
+  ],
+  "tests": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_exchange_repair.py",
+        "-k",
+        "application",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-13T10:17:05.082616Z",
+      "exit_code": 0,
+      "output_sha256": "67ca7bb1ebf38b523628bd136c31212bcbf2dccfa404fde120bc4a602371546b",
+      "phase": "exact-source",
+      "result": "54 passed, 135 deselected in 32.65s",
+      "started_at_utc": "2026-10-13T10:16:31.401831Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_exchange_repair.py",
+        "-k",
+        "application",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-13T10:19:16.683052Z",
+      "exit_code": 0,
+      "output_sha256": "20cf8d8ec046d39a5e3e1201f876d473a10600a2dfc213ab3ffd286c4b81668e",
+      "phase": "sealed-queue",
+      "result": "54 passed, 135 deselected in 32.02s",
+      "started_at_utc": "2026-10-13T10:18:43.665986Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_exchange_repair.py",
+        "-k",
+        "application",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-13T10:20:13.269898Z",
+      "exit_code": 0,
+      "output_sha256": "d2275f9f7fa3e40673f121fa3644841660bbcea9bae3375b4d54f5a17e4589eb",
+      "phase": "isolated-publication",
+      "result": "54 passed, 135 deselected in 33.00s",
+      "started_at_utc": "2026-10-13T10:19:39.110071Z"
+    }
+  ]
+}
