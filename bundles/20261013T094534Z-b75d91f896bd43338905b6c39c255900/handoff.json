@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T09:45:34.484577Z",
+  "id": "20261013T094534Z-b75d91f896bd43338905b6c39c255900",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed the independently reviewed client through an audited application continuation; the original exchange claim and freshness wait remain intact."
+}

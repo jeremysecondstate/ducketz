@@ -1,0 +1,116 @@
+{
+  "author": "Scout",
+  "change_id": "scout-client-continuation-installed-20261013T091939Z-2f18a903c61d43619e78b667adb98627",
+  "completion_record": "20261013T091939Z-2f18a903c61d43619e78b667adb98627",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/nightly_exchange_repair.py",
+      "sha256": "c951d9aa14b80ae4e21a72f74a3e42452fa765f84d5d87a97f91eac734510d0f"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_exchange_repair.py",
+      "sha256": "26ee5486697e0718b4f9c33c25e4f82990358235d8c719a3ef99d986258886c3"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/nightly-exchange.md",
+      "sha256": "05e48a80e775ceb4f96a6efa2350b733a3eb053b49d7bb79df0dfb646641a3a1"
+    }
+  ],
+  "installation": {
+    "Atlas": "Not asserted; peer retains its existing ownership.",
+    "Scout": "APPLICATION_TRANSITION_APPLIED; 36 operations, 472 source files, 162 original protected files and 44 spec-protected files verified.",
+    "client_completion_record": "20261013T082547Z-50a9971b2f4c48448b60462c9170505b",
+    "client_dependency_verification": "170 exact published dependency hashes plus the previously reviewed CRLF/LF-only representation exception; original watchlist bytes preserved.",
+    "client_source_commit": "d794b00842e57c0dda92c3d47b33533a5fa3e637",
+    "continuation_id": "scout-client-install-20261013-v1",
+    "original_preparation": "All seven completed stages and frozen evidence preserved.",
+    "parent_completion_record_unchanged": "20261013T083353Z-dbb449c08ca644f58f454ece423b1362",
+    "parent_repair_id": "scout-intraday-exchange-adoption-20261013-v1"
+  },
+  "limitations": [
+    "PR95 is stacked on PR94; main integration is not asserted.",
+    "Source publication, Scout installation, Atlas installation, running version and dated combined readiness remain separate facts.",
+    "No provider or broker calls, account capture, preparation replay, training, trader operation, control change or runtime restart occurred."
+  ],
+  "ordinary_exchange": {
+    "action_date": "2026-10-13",
+    "combined_readiness_verified": false,
+    "reason": "FRESH_ACCOUNT_SNAPSHOT",
+    "snapshot_selector_changed": false,
+    "status": "PENDING"
+  },
+  "peer_disposition": "The previously reported Atlas fresh-snapshot prerequisite is unchanged. Existing Atlas Priority/Joint ownership and original guarded freshness protocol remain applicable; no duplicate source repair or new snapshot request is created.",
+  "predecessor_completions": [
+    "20261013T083353Z-dbb449c08ca644f58f454ece423b1362"
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/95",
+  "related_request_id": "scout-prestats-source-transition-20261013",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The application-install continuation preserves the original exchange repair, completion binding and cutoff. It blocks partial installation dispatch and leaves ordinary exchange freshness requirements unchanged. It does not add nightly synthesis as a client manual-start gate.",
+  "scope": "Shared application-transition framework applicable to Atlas and Scout; client installation is Scout-local.",
+  "source_branch": "codex/scout/20261013T091939Z-2f18a903c61d43619e78b667adb98627",
+  "source_commit": "4c730f0b8cbe0144323bf56303853ca472b19f89",
+  "summary": "Scout installed the independently reviewed client through an audited application continuation; the original exchange claim and freshness wait remain intact.",
+  "tests": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_exchange_repair.py",
+        "tests/test_nightly_exchange.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-13T09:24:02.369187Z",
+      "exit_code": 0,
+      "output_sha256": "4ff4da41f07e47fdb95b5b3350e507f2a914db4e2c31283235c3760884d41a17",
+      "phase": "Scout-local-composition",
+      "result": "230 passed in 201.70s (0:03:21)",
+      "started_at_utc": "2026-10-13T09:20:39.195909Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_exchange_repair.py",
+        "tests/test_nightly_exchange.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-13T09:23:08.936613Z",
+      "exit_code": 0,
+      "output_sha256": "c14435f96c9ecd4674a00c7335e73a9353686ec06a1cb91d23bacab36f137537",
+      "phase": "sealed-source",
+      "result": "230 passed in 207.53s (0:03:27)",
+      "started_at_utc": "2026-10-13T09:19:39.905489Z"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_exchange_repair.py",
+        "tests/test_nightly_exchange.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-13T09:27:41.275631Z",
+      "exit_code": 0,
+      "output_sha256": "ad085f1b5317e8a46ec5be3b7b9c2139375e2a84246ecb82dc73fed32071e551",
+      "phase": "isolated-publication",
+      "result": "230 passed in 198.17s (0:03:18)",
+      "started_at_utc": "2026-10-13T09:24:21.709362Z"
+    }
+  ]
+}
