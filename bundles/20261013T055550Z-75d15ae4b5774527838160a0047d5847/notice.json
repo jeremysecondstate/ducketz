@@ -1,0 +1,20 @@
+{
+  "author": "Atlas",
+  "base_commit": "5f50b2afc1967bd4115e82d8acd136c71d5aa813",
+  "change_id": "atlas-production-interface-details-v1-20261013",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "54792c6aa358957c2da1a6bb29e9ff9962a9bc96ebeeea76318fa670738e2737",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6139260261",
+  "files": [],
+  "limitations": [
+    "Implementation and independent review in progress. Source publication and final offline checks follow; no runtime verification or deployment."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6139164352
+  ],
+  "runtime_implications": "No running trader, local account state or trading control changed.",
+  "scope": "shared-interface",
+  "summary": "Exact readiness writer types, preserved capabilities, accounting nested fields and private server-pin integration supplied to Scout client owner.",
+  "tests": []
+}

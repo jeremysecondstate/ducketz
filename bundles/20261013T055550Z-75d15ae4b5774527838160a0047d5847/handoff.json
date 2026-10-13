@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T05:55:50.394285Z",
+  "id": "20261013T055550Z-75d15ae4b5774527838160a0047d5847",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Exact readiness writer types, preserved capabilities, accounting nested fields and private server-pin integration supplied to Scout client owner."
+}
