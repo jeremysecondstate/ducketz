@@ -141,6 +141,79 @@ For a failure after preparation has completed, use the distinct exchange repair
 interface in `nightly-exchange.md`. Never reopen completed preparation merely
 to make the preparation helper accept an exchange failure.
 
+### Reviewed source already installed before Stats
+
+An ordinary repair claim still requires the exact source frozen by the run.
+If an independently reviewed application installation changed that source
+after datastore completion, do not reset the run, rewrite its source identity,
+fabricate a pre-edit claim or label Stats complete. The narrowly scoped
+`--prepare-installed-transition` path supports a stopped `prepare_stats` stage
+whose only completed stage is `datastore_catchup`.
+
+Run the exact reviewed and published helper from its managed isolated checkout
+against the primary private configuration. This avoids a bootstrap installation
+changing the frozen source yet again. Its final candidate can include the helper
+itself and later reviewed fixes; `--apply` installs the remaining exact bytes.
+The resulting receipt distinguishes the original, already-installed and final
+source inventories. A proven intermediate file may differ from both original
+and final bytes; rollback to an original file is never treated as a retry.
+
+The private request retains the normal prepare fields, with
+`invalidate_from: prepare_stats` and `review_binding: preserved`, and adds an
+`installed_transition` object containing:
+
+- `original`: an isolated reconstruction of the complete original Python source
+  across all eight inventory roots. Its three-root workflow digest and Git
+  identity must match the frozen run. No original byte is inferred from HEAD.
+- `source_snapshot`: `{path, sha256}` for the saved source-drift inventory with
+  `actual_shared_bytes` and `checkout_head`, covering that complete reconstruction.
+- `exchange_config`: `{path, sha256}` for the actual local exchange configuration,
+  whose workflow binding selects the same operating configuration. Its own
+  exchange lock and direct synthesis/handoff lifetime locks protect that writer.
+- `installations`: exact `{path, sha256}` references to reviewed
+  `scout-runtime-installed-checkpoint-v1` receipts. Each binds the installation
+  plan, completed operations, expected-before/after hashes, real queue record,
+  publication receipt and locally available exact public commit blobs. Every
+  already-installed application delta needs one unambiguous proof.
+- `candidate_publication`: exact `record` and `publication` references for the
+  final candidate's actual Completion-Record and verified remote commit. All
+  changed candidate bytes must match that commit; no network is used here.
+- `preservation`: `policy: datastore-before-stats-v1`, the exact saved
+  `completed_entry`, protected `source_files`, and `input_files` matching the
+  workflow's saved symbol binding. Protected source includes all non-execution
+  trees, package initializers, shared stock contracts and the static transitive
+  imports of the two saved producer commands plus their reviewed subprocess
+  roots. The helper computes this boundary; the request cannot shrink it.
+
+The preservation decision is a reviewed dependency and saved-output comparison,
+not a historical loaded-import attestation. Missing original inventory, input
+binding, native receipt/logs, a different completed command set, or any protected
+dependency change rejects this path. Such a case requires a separately reviewed
+recovery design. All actual offline checks must cover the exact final candidate.
+
+```text
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --reviewed --prepare-installed-transition PRIVATE_REQUEST
+python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --reviewed --apply FROZEN_SPEC
+```
+
+Prepare and apply hold the workflow, exchange, stage-repair and overnight runtime locks,
+then the manual intraday and hourly account-writer lifetime locks. Active or
+unverifiable workers, another preparation/exchange owner, changed original
+failure/output/deadline/configuration evidence, and concurrent source changes
+fail closed. Immutable review/intent/spec/audit records preserve exact retry
+inputs across crashes. The claim explicitly records
+`claim_origin: reviewed_installed_transition`, the actual present claim time,
+and both original and already-installed source identities; it never claims
+ownership predating the installation. The same durable owner remains through normal coordinator
+continuation and releases only after the failed stage has a verified saved
+success. Installation does not launch a worker or renew a deadline.
+
+Future application installers must acquire the workflow coordination gate and
+inspect every unfinished source-bound run and persistent repository owner before
+the first file write. A stopped worker alone does not make its frozen source
+available for replacement. Refuse that installation and hand it to the existing
+owner-controlled repair interface; do not add an installer override.
+
 The failing responsibility owns its evidence and verified disposition. REPO
 RECONCILIATION coordinates shared source defects, and the five-minute
 handoff/synthesis supervisor may repair as a bounded delegate for the saved
