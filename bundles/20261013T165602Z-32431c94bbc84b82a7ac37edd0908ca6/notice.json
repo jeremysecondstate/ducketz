@@ -1,0 +1,21 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-connection-scope-correction-20261013T165359Z",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "a4eceea22b2b7f8b7f4bdb8f08e0bf0c96f678088165f94dbf34c5c2efb8ea61",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6150730339",
+  "files": [
+    "docs/15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md",
+    "docs/15m-trading-system/15M-ARCHITECTURE-CHANGE.md"
+  ],
+  "limitations": [
+    "No installation, loaded runtime or manual-live readiness change is claimed.",
+    "No private endpoint, credentials or account information included."
+  ],
+  "related_source_review_request": "scout-application-continuation-20261013T091939Z-2f18a903c61d43619e78b667adb98627",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No service deployment, trading, worker or schedule changes.",
+  "scope": "Shared design interpretation and existing implementation ownership; no source change",
+  "summary": "Remove human LAN/VPN answer as prerequisite; retain connection setup with existing Atlas/Scout implementation owners.",
+  "tests": []
+}
