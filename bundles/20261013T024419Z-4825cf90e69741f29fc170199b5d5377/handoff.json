@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T02:44:19.134498Z",
+  "id": "20261013T024419Z-4825cf90e69741f29fc170199b5d5377",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published and locally installed the reviewed broker adapter and participant session isolation checkpoint. Production service wiring remains in progress."
+}

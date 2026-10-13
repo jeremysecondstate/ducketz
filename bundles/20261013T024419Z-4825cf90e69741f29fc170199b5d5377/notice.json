@@ -1,0 +1,72 @@
+{
+  "author": "Scout",
+  "base_commit": "31d6551329b8aeac0eb382db1e352a87541853fa",
+  "branch": "codex/scout/20261013T023502Z-f6ab1bc8ad2148fa91b0cf61056159c6",
+  "change_id": "20261013T023502Z-f6ab1bc8ad2148fa91b0cf61056159c6",
+  "commit_sha": "27067199b133118816de35e93e7ebbae3c167721",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py",
+      "sha256": "7e6c0f389ebda8b032fc4d246edba702bc973551c85b18e8544d16266dfac065"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_live_session.py",
+      "sha256": "1f861e58d409ccde1b0fa42d5aa3dfb770f00e97175eb47d4bbf93a0ec499a75"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_broker.py",
+      "sha256": "41d5a8ef756bd74f72629d5e6d62c555e2b233e93b4cc3c37c7bf04eec77ded6"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_broker.py",
+      "sha256": "0958135b4d24effecc41cafde1fcb3e58bd09d8b4ed950e486468b398f3b0383"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-scout-submission-contract.md",
+      "sha256": "06d5e62ab1fe376335be83751e621fbd86e1e8212ce7c9045f1eb05f299ff5be"
+    }
+  ],
+  "limitations": [
+    "This completed checkpoint is not manual-start readiness: shared capacity service, authenticated binding, local production orchestration and loaded peer writer verification remain pending.",
+    "No broker/provider connections, model training, trading or worker start/reload occurred.",
+    "No main merge or loaded-runtime claim."
+  ],
+  "peer_applicability": "Atlas owns the shared admission/native ledger implementation; Scout retains broker, live_session, client/journal and supervisor. Source applies to Scout submission and participant-aware shared forecast/scoring queues.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/82",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Eleven selected Scout files installed with expected-before checks: seven foundation files plus broker/test and updated live-session/test. Existing live-start guard remains until complete integration verification.",
+  "scope": "shared",
+  "summary": "Scout published and locally installed the reviewed broker adapter and participant session isolation checkpoint. Production service wiring remains in progress.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T02:35:26.833425Z",
+      "output_sha256": "d200316f2d178717e79eaceec4f8f2e70550726dd5c1982544b4422f2fca2a76",
+      "passed": 507,
+      "skipped": 0,
+      "stage": "queue",
+      "started_at_utc": "2026-10-13T02:35:02.728130Z"
+    },
+    {
+      "completed_at_utc": "2026-10-13T02:36:42.377790Z",
+      "output_sha256": "e1f2d938bc956081cdcae757222275a396e1f8632dc8381977a803487eb7bd8a",
+      "passed": 507,
+      "skipped": 0,
+      "stage": "isolated",
+      "started_at_utc": "2026-10-13T02:36:18.853402Z"
+    },
+    {
+      "completed_at_utc": "2026-10-13T02:39:41.259866+00:00",
+      "output_sha256": "b7a8815b355e6cdc46bffb4ddf2f3e885784d0861d35a15dbc55277e66f497af",
+      "passed": 507,
+      "skipped": 0,
+      "stage": "installed",
+      "started_at_utc": "2026-10-13T02:39:17.038694+00:00"
+    }
+  ]
+}
