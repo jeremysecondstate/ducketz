@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T03:02:32.331425Z",
+  "id": "20261013T030232Z-b23188892a4e405bb41cf30558391820",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the dormant shared admission service and required shared accounting/stream compatibility over exact PR81; source available for Scout adapter integration, not deployed or manual-live ready."
+}
