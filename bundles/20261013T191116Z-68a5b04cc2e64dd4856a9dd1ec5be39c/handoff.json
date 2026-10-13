@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T19:11:16.033491Z",
+  "id": "20261013T191116Z-68a5b04cc2e64dd4856a9dd1ec5be39c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "October 13 permanent architecture: independent 15-minute traders; only the two Gameplans synthesize. Existing combined Gameplan/Stats delivery completed."
+}

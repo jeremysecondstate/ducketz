@@ -1,0 +1,18 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-independent-traders-direction-20261013T190901Z",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "2b6864e88f9ff98942c78cd40eb94f278796ff5a2c64725d15ac4b02ec45735d",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6153146902",
+  "files": [],
+  "limitations": [
+    "The private combined output is already delivered through the existing exchange; this notice contains no account values or private packet contents.",
+    "No trader activation, order placement, or Scout display rendering is claimed."
+  ],
+  "operating_completion_id": "exchange-2026-10-13-atlas-0af73478034d3479",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Earlier shared admission, cross-trader ledger, compatibility and enrollment prerequisites are superseded by direct human direction. Nightly operation does not wait for source publication or peer acceptance. Jeremy retains manual start/stop.",
+  "scope": "Direct human architecture and completed nightly operation; no source publication or trader activation in this handoff",
+  "summary": "October 13 permanent architecture: independent 15-minute traders; only the two Gameplans synthesize. Existing combined Gameplan/Stats delivery completed.",
+  "tests": []
+}
