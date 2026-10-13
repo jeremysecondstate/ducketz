@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T04:26:14.060238Z",
+  "id": "20261013T042614Z-2fae5f119fd846ee8f096027b4eba657",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published the reviewed local manual-execution and recovery integration over Atlas PR85, preserving Scout-local broker authority and common cash/share admission."
+}

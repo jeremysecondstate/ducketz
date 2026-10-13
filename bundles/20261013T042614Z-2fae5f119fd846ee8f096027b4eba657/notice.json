@@ -1,0 +1,130 @@
+{
+  "author": "Scout",
+  "base_commit": "03b1c54218a1c434ab5f8be81af174b36333d74f",
+  "branch": "codex/scout/20261013T041956Z-de5830bbda8044499c08acf0fa55224a",
+  "change_id": "20261013T041956Z-de5830bbda8044499c08acf0fa55224a",
+  "commit_sha": "cc0132f11f325c89c2cc727b9b175e3c414da469",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/live_session.py",
+      "sha256": "83e3f56727182290961712e69aaa278b66d3a7e649719251893602041cde8972"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_live_session.py",
+      "sha256": "3174fcd5fa17557bce8775ebc22a204e2b48e3fcf7d74a3dae1849d714fcaf01"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_broker.py",
+      "sha256": "41d5a8ef756bd74f72629d5e6d62c555e2b233e93b4cc3c37c7bf04eec77ded6"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_broker.py",
+      "sha256": "0958135b4d24effecc41cafde1fcb3e58bd09d8b4ed950e486468b398f3b0383"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_journal.py",
+      "sha256": "522e2092339dcc3ae1b21c1770754b639b50d2b06edd30753df4da3262e66b00"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scout_journal.py",
+      "sha256": "ed485cf4f39e14157e9249d9bf583b0e33949363165521ff974167c48c6e6cf8"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_books.py",
+      "sha256": "d711cf0cca7ddc76a4b5d6afebd38c8f807f26cd83938078f515db762e206ee0"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_books.py",
+      "sha256": "096d8cf256062a6d834ac08bf643757685ec967a4f5eeb2a3223edcc25fbc2b6"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_runtime_gate.py",
+      "sha256": "c4401110f06bcba58933e804ba779baafbccb7aa1c585ea23aefab541e1305d3"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_runtime_gate.py",
+      "sha256": "c951103a7069e0ec3eb31a8858e48a9e1112f53cc529d0dfa8c1e472adb6d5a7"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_authority.py",
+      "sha256": "7fa00986d48af33950fc9f734285fb1bd479df7e032ccd0ea99186893f725303"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_authority.py",
+      "sha256": "3ad3f9441152c66abaae4e90747d2c3bdd3f89955e89ff5708fdc0e15392bed2"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_execution.py",
+      "sha256": "dafda1e73a5ecff13cb3e848b434ab27752c2ed0f9839f955fb2983323473fa2"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_execution.py",
+      "sha256": "41f2a48fd16c4e4bf457c033bc484618e8d6b4505bc7cc5444b81370267fcec4"
+    },
+    {
+      "operation": "add",
+      "path": "ml/intraday/scout_prestart.py",
+      "sha256": "14fa8356f9f3d06031b76dfa318280bf4e8ea020817885439453582cc1dad279"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_scout_prestart.py",
+      "sha256": "8eea35d7995ce036861903e704245c846335088f6a6df109fa435818939411a0"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/intraday-scout-submission-contract.md",
+      "sha256": "f2fbc013fe7e2a72b4d55f4e96b1be045f29fc1058b1d835370b631b5bdd5d13"
+    },
+    {
+      "operation": "add",
+      "path": "docs/development/scout-15m-manual-start.md",
+      "sha256": "9b8d29335d8870d9143b3cd529a454dc0f703a3fbe28bcf225a60325d2f0c515"
+    }
+  ],
+  "limitations": [
+    "Atlas production host/readiness schema, TLS enrollment, loaded Atlas writer proof and separate private accounting projection remain external integration prerequisites.",
+    "The authority readiness method deliberately fails closed until the published service route/schema is adopted. No manual-start readiness is claimed by this source checkpoint.",
+    "Atlas-owned protocol-header and interrupted unpaired-admission fixes are reused from PR85 without modifying the shared service files.",
+    "All broker effects and host readiness in tests use isolated fixtures. No production broker/provider call, training, worker control, order or live session occurred."
+  ],
+  "peer_applicability": "Atlas retains the shared admission host, authority/native ledgers and compatible account-writer proof. Scout owns the authenticated client, local broker execution, original-session journals, guarded manual launcher, prestart checks and observer. PR85 negative-admission proof is fully consumed without changing its shared service implementation. Scout readiness remains fail-closed pending the published production route/schema.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/86",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed source is available; expected-before Scout installation is in progress. Production service/readiness/TLS, loaded-writer proof and canonical private accounting remain Atlas-owned prerequisites. No start, reload, broker/provider probe, order or main merge occurred.",
+  "scope": "shared",
+  "summary": "Scout published the reviewed local manual-execution and recovery integration over Atlas PR85, preserving Scout-local broker authority and common cash/share admission.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-13T04:21:16.463305Z",
+      "output_sha256": "c053595dbf1509b7e35a5de7a5934646447ead4654d80203ec317a704acd8a06",
+      "passed": 1180,
+      "skipped": 0,
+      "stage": "queue",
+      "started_at_utc": "2026-10-13T04:19:56.581987Z"
+    },
+    {
+      "completed_at_utc": "2026-10-13T04:23:59.320195Z",
+      "output_sha256": "b184767250b046c8c632f3008cc6319bb021d2d1d6e713826cf3d82d4b196f3b",
+      "passed": 1180,
+      "skipped": 0,
+      "stage": "isolated",
+      "started_at_utc": "2026-10-13T04:22:36.027859Z"
+    }
+  ]
+}
