@@ -266,7 +266,10 @@ class ScoutLocalAccountExecutor:
                 raise ContractError('Original forecast inputs unavailable')
             quote = portfolio.quotes[forecast['symbol']]
             result = size_forecast(forecast, forecast_snapshot=frozen[1],
-                account_equity=AvailableInput(portfolio.account_equity, portfolio.observed_at, 'schwab-liquidation-equity', {}),
+                account_equity=AvailableInput(portfolio.account_equity, portfolio.observed_at,
+                    'schwab-liquidation-equity', dict(account_fingerprint=self.account_fingerprint,
+                        snapshot_identity=portfolio.broker_identity_fingerprint,
+                        snapshot_sha256=portfolio.source_fingerprint, observed_at=portfolio.observed_at)),
                 quote=QuoteObservation(quote.bid, quote.ask, quote.freshness_observed_at, portfolio.observed_at,
                     'schwab-current-quote', {'quote': asdict(quote)}), calculated_at=self.clock(),
                 maximum_quote_age_seconds=self.maximum_evidence_age_seconds)
