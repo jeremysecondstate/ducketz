@@ -16,7 +16,8 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
     IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted)
 from ml.account_gameplan.config import load_account_config, verify_cutover
-from ml.account_gameplan.execution import AUTHORITY_PATH, _broker_pending, evidence_ledger
+from ml.account_gameplan.execution import (AUTHORITY_PATH, _broker_pending, evidence_ledger,
+    remote_preclaim_native)
 from ml.stock_trader.horizon_broker import capture_order_evidence
 from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence
 from ml.stock_trader.state import capture_portfolio_state
@@ -174,10 +175,16 @@ class IntradayAccountExecutor:
             {s:portfolio.account_equity for s in self.config.symbols}, portfolio.source_fingerprint)
         reconciliation = self.ledger.reconcile(native_evidence, order_evidence=evidence)
         by_native = {item.reservation_id:item for item in evidence}
+        verified_preclaim_reasons = set()
         for record in self.authority.read_state()["reservations"]:
             native = self.ledger.lookup_reservation(record["request"]["native_reservation_id"])
             if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
                 raise ContractError("Shared account/native identity mismatch")
+            if remote_preclaim_native(self.authority, record, native, ledger=self.ledger):
+                # Scout has reserved in this same book but has no send claim.
+                # Its commitment remains charged; there is no broker ID to poll.
+                verified_preclaim_reasons.add(f"{native.symbol}:UNRECONCILED_RESERVED:{native.reservation_id}")
+                continue
             observed = by_native.get(native.reservation_id)
             if observed is None:
                 if record["status"] in OPEN:
@@ -192,8 +199,12 @@ class IntradayAccountExecutor:
                 observed.order_quantity, observed.cumulative_filled_quantity, observed.remaining_quantity,
                 tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True,
                 fill_time_provenance=observed.fill_time_provenance))
-        if not reconciliation.ready:
-            raise ContractError("Native account reconciliation: " + ",".join(reconciliation.reasons))
+        # A native RESERVED row remains explicitly unresolved in the native
+        # snapshot. Only the exact shared, unclaimed Scout hold is harmless to
+        # this account capture: it cannot have filled and remains fully charged.
+        unresolved = tuple(reason for reason in reconciliation.reasons if reason not in verified_preclaim_reasons)
+        if unresolved or (not reconciliation.ready and not reconciliation.reasons):
+            raise ContractError("Native account reconciliation: " + ",".join(unresolved))
         accounted = {r["broker_order_id"]:r["filled_quantity"] for r in self.authority.read_state()["reservations"]
                      if r["broker_order_id"] and r["filled_quantity"]}
         self.authority.publish_intraday_snapshot(self.lease.token, IntradayCapacitySnapshot(

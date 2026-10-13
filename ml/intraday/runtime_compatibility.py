@@ -21,7 +21,7 @@ from types import CodeType
 from .prediction import instant
 
 VERSION = "gameplan-intraday-loaded-compatibility-v1"
-CAPABILITY = "gameplan-excludes-explicit-intraday-cancellation-and-expiry-v1"
+CAPABILITY = "gameplan-explicit-cross-pc-stream-isolation-v2"
 REQUIRED_CODE = {
     "ml/stock_trader/independent_runtime.py": (
         "run_independent_stock_trader_once", "_cancel_expired_entries", "_exit_decisions",
@@ -31,7 +31,11 @@ REQUIRED_CODE = {
         "HorizonLedger._reservation", "HorizonLedger.snapshot", "HorizonLedger.due_exits",
         "HorizonLedger._snapshot", "HorizonLedger._stream", "HorizonLedger._intraday_share_accounting",
         "HorizonLedger._apply_order", "HorizonLedger._attribute_intraday_fills", "HorizonLedger._close_empty_allocations",
-        "HorizonLedger.reservation_stream", "HorizonLedger.allocation_stream", "HorizonLedger.reserve_stream_cancellation"),
+        "HorizonLedger.reservation_stream", "HorizonLedger.allocation_stream", "HorizonLedger.reserve_stream_cancellation",
+        "HorizonLedger._intraday_stream", "HorizonLedger._intraday_attempts", "HorizonLedger.intraday_attempts",
+        "HorizonLedger.reserve_intraday", "HorizonLedger._intraday_retry_parent",
+        "HorizonLedger.reserve_cancellation", "HorizonLedger.reserve_order_timeout",
+        "HorizonLedger.bind_timeout_retry", "HorizonLedger.reserve_exit", "HorizonLedger.apply_stream_order_evidence"),
     "ml/stock_trader/horizon_broker.py": (
         "_fills", "normalize_order_evidence", "capture_order_evidence"),
     "ml/intraday/cancellation.py": (
@@ -42,8 +46,13 @@ REQUIRED_CODE = {
         "AccountAuthority._submission_snapshot", "AccountAuthority.submit", "AccountAuthority.reconcile",
         "AccountAuthority._submission_receipt_value", "AccountAuthority.submission_receipt",
         "AccountAuthority._record_submission_receipt", "AccountAuthority._recover_submission_receipts",
-        "AccountAuthority.recover_submission_receipts"),
-    "ml/account_gameplan/execution.py": ("AccountExecutionContext._reconcile",),
+        "AccountAuthority.recover_submission_receipts", "AccountAuthority.abandon_unsubmitted",
+        "AccountAuthority.reserve_intraday", "AccountAuthority.reserve_remote_intraday", "AccountAuthority._reserve_intraday",
+        "AccountAuthority._remote_row", "AccountAuthority._remote_claim", "AccountAuthority.remote_claim",
+        "AccountAuthority.claim_remote_send", "AccountAuthority.record_remote_submission",
+        "AccountAuthority.mark_remote_unknown", "AccountAuthority.release_remote_unsubmitted",
+        "AccountAuthority.remote_reconcile", "AccountAuthority._reconcile"),
+    "ml/account_gameplan/execution.py": ("remote_preclaim_native", "evidence_ledger", "AccountExecutionContext._reconcile",),
 }
 
 
@@ -105,6 +114,86 @@ def expected_fingerprints(repository):
     return result
 
 
+INTRADAY_EXECUTOR_CODE = {
+    "ml/intraday/account_execution.py": tuple("IntradayAccountExecutor."+name for name in (
+        "_binding", "_account", "_assert_current", "_repair_pre_send", "_capture", "_submit", "recover")),
+    "ml/stock_trader/horizon_ledger.py": REQUIRED_CODE["ml/stock_trader/horizon_ledger.py"],
+    "ml/account_gameplan/authority.py": REQUIRED_CODE["ml/account_gameplan/authority.py"],
+    "ml/stock_trader/horizon_broker.py": REQUIRED_CODE["ml/stock_trader/horizon_broker.py"],
+    "ml/account_gameplan/execution.py": ("remote_preclaim_native", "evidence_ledger"),
+}
+
+
+def expected_intraday_executor_fingerprints(repository):
+    """Compile reviewed Atlas executor and shared dependencies without imports."""
+    result = {}
+    for relative,names in INTRADAY_EXECUTOR_CODE.items():
+        code = compile((Path(repository)/relative).read_bytes(),relative,"exec",
+                       dont_inherit=True,optimize=sys.flags.optimize)
+        for name in names:
+            result[relative+":"+name] = code_fingerprint(_source_function(code,name))
+    return result
+
+
+def _bound_executor_function(executor, name):
+    value = getattr(executor,name)
+    function = getattr(value,"__func__",value)
+    if name=="_account":
+        # contextmanager's wrapper code is identical across old/new bodies.
+        # Fingerprint the function retained by the actual live wrapper closure.
+        cells = dict(zip(function.__code__.co_freevars,function.__closure__ or ()))
+        body = cells["func"].cell_contents
+        if body is not function.__wrapped__:
+            raise ValueError("Loaded contextmanager body binding differs")
+        return body
+    return function
+
+
+def actual_intraday_executor_fingerprints(executor):
+    """Read actual bound executor code; never construct an executor or broker.
+
+    A worker owner must emit these into its existing birth-bound fresh heartbeat.
+    These fingerprints alone do not prove that a worker is running or absent.
+    Shared classes/functions come from the loaded executor's own globals, not
+    newly imported names that could conceal an older retained implementation.
+    """
+    account = _bound_executor_function(executor,"_account")
+    capture = _bound_executor_function(executor,"_capture")
+    native_class = account.__globals__["HorizonLedger"]
+    authority_class = account.__globals__["AccountAuthority"]
+    for attribute,expected_class in (("ledger",native_class),("authority",authority_class)):
+        retained = getattr(executor,attribute,None)
+        if retained is not None and type(retained) is not expected_class:
+            raise ValueError("Loaded executor retains a different shared implementation")
+    broker_capture = capture.__globals__["capture_order_evidence"]
+    broker_normalize = broker_capture.__globals__["normalize_order_evidence"]
+    validator = native_class._apply_order.__globals__["validate_fill_time_provenance"]
+    if (code_fingerprint(validator)!=code_fingerprint(authority_class._reconcile.__globals__["validate_fill_time_provenance"])
+            or code_fingerprint(validator)!=code_fingerprint(broker_normalize.__globals__["validate_fill_time_provenance"])):
+        raise ValueError("Loaded executor fill-time validators differ")
+    bridges = {name:capture.__globals__[name] for name in INTRADAY_EXECUTOR_CODE["ml/account_gameplan/execution.py"]}
+    if bridges["evidence_ledger"].__globals__["remote_preclaim_native"] is not bridges["remote_preclaim_native"]:
+        raise ValueError("Loaded executor preclaim helper bindings differ")
+    output = {}
+    for relative,names in INTRADAY_EXECUTOR_CODE.items():
+        for qualified in names:
+            parts = qualified.split(".")
+            if relative=="ml/intraday/account_execution.py":
+                value = _bound_executor_function(executor,parts[1])
+            elif relative.endswith("horizon_ledger.py"):
+                value = (getattr(native_class,parts[1]) if len(parts)>1 else
+                         native_class._apply_order.__globals__[parts[0]])
+            elif relative.endswith("authority.py"):
+                value = getattr(authority_class,parts[1])
+            elif relative.endswith("horizon_broker.py"):
+                value = {"capture_order_evidence":broker_capture,"normalize_order_evidence":broker_normalize,
+                         "_fills":broker_normalize.__globals__["_fills"]}[parts[0]]
+            else:
+                value = bridges[parts[0]]
+            output[relative+":"+qualified] = code_fingerprint(value)
+    return output
+
+
 def _actual_functions(runtime_namespace, ledger_class):
     from . import cancellation
     from ml.account_gameplan.authority import AccountAuthority
@@ -129,7 +218,11 @@ def _actual_functions(runtime_namespace, ledger_class):
             elif relative.endswith("authority.py"):
                 value = AccountAuthority
             elif relative.endswith("account_gameplan/execution.py"):
-                value = AccountExecutionContext
+                if len(parts) == 1:
+                    from ml.account_gameplan import execution
+                    value = getattr(execution, parts[0])
+                else:
+                    value = AccountExecutionContext
             else:
                 value = getattr(cancellation, parts[0])
             for name in parts[1:]:
