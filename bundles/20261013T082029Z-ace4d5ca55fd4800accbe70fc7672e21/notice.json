@@ -1,0 +1,115 @@
+{
+  "action_date": "2026-10-13",
+  "ancestry": {
+    "active_domain": "exchange",
+    "active_repair_id": "atlas-stream-identity-exchange-20261013-v1",
+    "disposition": "Correlate this successor with the existing source-transition request and peer adoption identity. Preserve earlier framework source ancestry, resolved Stats recovery and PR89 recovery history. No replacement request, duplicate repair owner or preparation replay is created.",
+    "existing_peer_adoption_identity": "scout-intraday-exchange-adoption-20261013-v1",
+    "predecessor_completion_record": "20261013T070830Z-35ad01561469433aad18142f73eef15d",
+    "predecessor_outcome": "The original local Gameplan ownership repair was installed and its resumed local preparation recovery verified. That completed preparation and its recovery receipts remain intact.",
+    "predecessor_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/89",
+    "predecessor_repair_id": "atlas-local-gameplan-ownership-20261013-v1",
+    "predecessor_source": "cb13f0107198f8b81df1bae2cd14016ce786d9e6",
+    "related_request_id": "scout-prestats-source-transition-20261013"
+  },
+  "author": "Atlas",
+  "change_id": "20261013T080608Z-a14a20c1fe794cc68ecd17b65d44f115",
+  "changes": [
+    "Preserve the exact atlas-15m and scout-15m native stream labels through ownership snapshots, protected-stock and cash planning, and private export.",
+    "Validate reservation marker, request stream and parent allocation consistency instead of collapsing the two native streams into one identity.",
+    "Retain the original one-active-horizon uniqueness and pending-reconciliation blocks. Conservative informational planning continues to protect reserved cash and owned shares without altering ledgers.",
+    "Keep native writer behavior, donor eligibility and the existing forecast horizon unchanged. The five-file correction changes four production readers and their focused regression tests; it contains no exchange-helper edits."
+  ],
+  "completion_record": "20261013T080608Z-a14a20c1fe794cc68ecd17b65d44f115",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "54416cb880e7cd3fa5cdc3bc182fd2ba053c84a7a8ab993f93ac52c0d79cf922"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py",
+      "sha256": "e7b1493ed8a97ad63ee84b0d73cbdc71b2b3709386b5515914b1cf1fbda87345"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "22791574dfc57b8b30255d65bb65a0775533a08207c12118ea2d944dff6c2153"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/nightly_account_snapshot.py",
+      "sha256": "89af094f720e1822d4c0ee796b3b21e48c1f8b24b57d99263cb3d520e1652de9"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_intraday_ownership.py",
+      "sha256": "832032c54bb72865a54ee25d55fe108c64e9d60099be3e76875a8fb63b87c8e2"
+    }
+  ],
+  "installation": {
+    "atlas": "Not installed. Await the reviewed supported shared-reader exchange boundary and exact-source application under the existing claim.",
+    "scout": "No installation asserted. Existing peer adoption owner and identity retained."
+  },
+  "limitations": [
+    "Four shared production readers are not live-safe independent entrypoints; publication alone cannot authorize installation into an active process.",
+    "The existing native writer predates the separately reviewed PR88 stream argument. Synthetic compatibility tests do not establish loaded writer compatibility or peer runtime installation.",
+    "Unrelated installed UI, protocol and historical-data dependencies remain preserved; the publication candidate requires its own exact-base checks.",
+    "Completed preparation, selected private packets, snapshot content and original time limits remain unchanged. The repair grants no snapshot refresh or packet replacement authority.",
+    "The exchange helper remains separately owned and unchanged by this correction; source publication, main integration, local installation, peer adoption and runtime readiness are separate facts."
+  ],
+  "owner": "atlas-priority-source-reconciliation",
+  "peer_applicability": {
+    "adoption": "Scout retains scout-intraday-exchange-adoption-20261013-v1 and the existing source-transition request. Review the exact published reader correction and full composed dependency closure, then verify installed bytes through the supported helper before joint synthesis consumes the corrected ownership.",
+    "applies_to": [
+      "Atlas exchange and planning readers",
+      "Scout joint-synthesis readers"
+    ],
+    "required_guarded_installation": "Use the existing exchange owner and claim; preserve completed preparation, frozen source ancestry, selected private packets and snapshot. Require execution-session lifetime gates, verified trader quiescence and exact before/after adapter binding. Simple expansion of the independent-entrypoint allowlist is insufficient.",
+    "requirement": "Both PCs must compose these exact reader changes with the separately reviewed native writer contract, preserving exact atlas-15m and scout-15m identities and reservation request/marker/parent consistency.",
+    "retained_scope": "No new 15m forecast horizon, model training, donor eligibility, order authority, ledger mutation or manual-start readiness follows from source availability.",
+    "safe_boundary_dependency": "Reviewed handback from the existing Scout framework owner is pending. This source correction does not implement or bypass that helper."
+  },
+  "publication": {
+    "main_integration": "Not asserted.",
+    "remote_sha": "e6e77414dd4f944d5227ceaeb31cc935c5ffdd84",
+    "remote_sha_verified": true,
+    "status": "PUBLISHED_REMOTE_SHA_VERIFIED"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/92",
+  "repair_id": "atlas-stream-identity-exchange-20261013-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base_commit": "cb13f0107198f8b81df1bae2cd14016ce786d9e6",
+  "runtime": {
+    "combined_readiness": "Unresolved. Source correction completion does not establish joint or default-reader readiness.",
+    "exchange_reason": "JOINT_SCOUT",
+    "exchange_status": "PENDING",
+    "local_preparation": "All seven stages completed; original verified PR89 local recovery remains terminal.",
+    "next_verification": "After guarded installation, ordinary exchange continuation must verify the retained selections and actual saved result. Final completion requires exact dated combined Gameplan/Stats receipts and matching default readers."
+  },
+  "runtime_implications": "Install only through the forthcoming reviewed four-reader exchange boundary under atlas-stream-identity-exchange-20261013-v1, retaining immutable completed preparation, selected evidence, execution lifetime locks and exact adapter binding. Continue through the ordinary exchange and final dated/default Gameplan and Stats verification. Preserve trader controls, source ownership, ledgers, deadlines, original uniqueness and recovery ancestry.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261013T080608Z-a14a20c1fe794cc68ecd17b65d44f115",
+  "source_commit": "e6e77414dd4f944d5227ceaeb31cc935c5ffdd84",
+  "summary": "Preserve exact Atlas and Scout intraday stream identities through shared planning readers",
+  "task": "Atlas Priority Source Reconciliation",
+  "tests": {
+    "candidate_production_source_files": 455,
+    "coverage": "Synthetic exact-stream identity, marker/request/parent consistency, original uniqueness, protected cash/stock, planning, snapshot export, joint interoperation and existing repair regressions.",
+    "final_source_check": "784 passed in 277.25 seconds on the exact final candidate, with before/after source-inventory checks and retained test dependency fingerprints.",
+    "offline_tests_passed": 784,
+    "publication_candidate_checks": [
+      {
+        "completed_at_utc": "2026-10-13T08:16:10.679645Z",
+        "exit_code": 0,
+        "output_sha256": "5d6e8308f1dd14f6e29b9656634fc22d1078e67d614b1094a0046f6c813cac7e",
+        "result": "784 tests passed",
+        "started_at_utc": "2026-10-13T08:11:33.328263Z"
+      }
+    ],
+    "queue_dependency_paths": 778,
+    "review": "Exact owned diff and dependency composition reviewed. All five owned source hashes are recorded above.",
+    "writer_compatibility_limit": "Synthetic fixtures reproduce the separately reviewed PR88 dual-stream writer contract. This verifies reader compatibility, not installation of that writer on either PC."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T08:20:29.000383Z",
+  "id": "20261013T082029Z-ace4d5ca55fd4800accbe70fc7672e21",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Preserve exact Atlas and Scout intraday stream identities through shared planning readers"
+}
