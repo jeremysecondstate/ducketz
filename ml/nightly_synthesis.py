@@ -66,8 +66,8 @@ def _validate_spec(spec: dict) -> None:
         raise ValueError("Unsupported synthesis specification")
     if not isinstance(spec["completion_id"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{7,63}", spec["completion_id"]):
         raise ValueError("A stable 8–64 character synthesis completion ID is required")
-    if spec["local_actor"] != "scout" or spec["executor_owner"] != "atlas":
-        raise ValueError("Synthesis belongs to Scout and retains Atlas as the sole executor")
+    if spec["local_actor"] not in ACTORS or spec["executor_owner"] != "atlas":
+        raise ValueError("Synthesis belongs to Atlas or Scout and retains Atlas as the sole executor")
     for key in ("datastore_root", "state_root"):
         _path(spec[key])
     _digest(spec["account_scope_sha256"])

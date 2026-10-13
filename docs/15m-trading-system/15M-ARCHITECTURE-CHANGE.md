@@ -1,23 +1,8 @@
 # Codex: Implement 15-Minute Duckets — Continuously Retrained Multi-Model Ensemble
 
-I want to extend my existing Schwab/Ducketz trading system with a continuously retrained, heterogeneous ensemble forecasting engine and a dedicated **15-Minute Duckets** UI tab.
+Jeremy's October 13, 2026 standing direction defines three independent traders. Atlas runs the combined 22-symbol Gameplan trader and Atlas's local eleven-symbol 15-minute trader. Scout runs its own eleven-symbol 15-minute trader. Each trades and logs its own activity with its own local state. No trader checks, verifies, reconciles, combines, or depends on another trader.
 
-Read `INTRADAY_15M_SYSTEM_DESIGN.md` and inspect the actual repository before modifying anything. Preserve the existing architecture and its settled decisions. Do not build a separate replacement system.
-
-The [consolidated design](INTRADAY_15M_SYSTEM_DESIGN.md) includes the later
-October 12 decisions: per-symbol publication, inclusion of confirmed synthetic
-no-trade outcomes with separate breakdowns, all compatible history for the first
-timed benchmark, per-symbol technical-indicator sizing every 15 minutes,
-the approved independent `0.015 * account equity / fresh side price` scale and
-half-up nearest-share rounding, actual shared capacity without stream budgets,
-replacement of prior unfilled intentions only after cancellation/status is
-confirmed, and a strict 16:45 Pacific submission cutoff. These clarifications
-govern the proposal below. Development now also targets a human-started Atlas
-live launcher, followed by Scout after Atlas observation. Source now implements
-the Atlas manual session and shared-account execution adapter with offline
-injected-broker verification. Publication, local installation, compatible
-loaded Gameplan and a human-started live run remain separate evidence; no live
-launcher was started or production worker restarted by this change.
+Only the two nightly eleven-symbol Gameplans are synthesized. Use one actual account cash/stock balance, publish the same combined Gameplan and Stats on both PCs, and prepare the traders every night under permanent authorization. Atlas may synthesize directly and return the completed result to Scout without an acceptance wait. The human manually starts each trader. See [Independent trading systems](../development/independent-traders.md).
 
 ## 1. Objective
 
@@ -237,92 +222,21 @@ Track both forecast performance and eventual trade outcomes, but do not treat cl
 
 ## 9. Preserve Existing Two-PC and Account Architecture
 
-Atlas runs the existing Gameplan stream as well as Atlas 15m. Scout runs its own 15m stream. All three ultimately share the same Schwab account.
+Jeremy's October 13, 2026 standing direction defines three independent traders. Atlas runs the combined 22-symbol Gameplan trader and Atlas's local eleven-symbol 15-minute trader. Scout runs its own eleven-symbol 15-minute trader. Each trades and logs its own activity with its own local state. No trader checks, verifies, reconciles, combines, or depends on another trader.
 
-Do not alter the existing Gameplan's horizons or nightly workflow.
+Only the two nightly eleven-symbol Gameplans are synthesized. Use one actual account cash/stock balance, publish the same combined Gameplan and Stats on both PCs, and prepare the traders every night under permanent authorization. Atlas may synthesize directly and return the completed result to Scout without an acceptance wait. The human manually starts each trader. See [Independent trading systems](../development/independent-traders.md).
 
-Respect the design's Atlas-side shared purchasing-capacity authority, allocation ownership rules, unresolved cross-PC reservation protocol, and local Scout order-submission ownership.
+The approved nine-term technical recipe remains `clip(0.5 + sum(terms)/18, 0, nextafter(1,0))`, with each symbol's causal EMA20/SMA20/VWAP20 distances, four-bar momentum, ATR14 normalization, simple RSI14, Bollinger20, stochastic14, issued probability and prior20 relative volume. The per-trade reference is `0.015 * current equity / fresh BUY ask or SELL bid`; multiply by the score and round half-up.
 
-Do not place SQLite authority databases on a shared network drive or assume existing host-local reservations work across PCs.
-
-Use read-only telemetry for dashboard updates, separate from eventual order coordination.
-
-The approved starter is a transparent technical-indicator calculus evaluated
-for each symbol on each 15-minute cycle. EMA20/SMA20/VWAP20 distances and
-four-bar momentum use that symbol's ATR14 normalization; simple RSI14,
-Bollinger20, stochastic14, the issued probability and prior20 relative volume
-complete nine clipped terms. BUY/SELL orientation is explicit. The score is
-`clip(0.5 + sum(terms)/18, 0, nextafter(1,0))`; each symbol retains its own
-inputs, version, contributions and immutable forecast snapshot. See the
-[complete approved sizing contract](INTRADAY_15M_SYSTEM_DESIGN.md#3-approved-independent-technical-sizing).
-
-The per-trade share reference is `0.015 * current account equity / fresh ask`
-for BUY or `/ fresh bid` for SELL. Multiply by the score and round to nearest
-whole shares with half-up ties; rounded equality is allowed. This later human
-decision replaces the old normal-hourly reference. A scheduled Gameplan order,
-horizon budget, protected cash portion or reserve buffer is not a prerequisite.
-Desired size is fixed before capacity adjustment. Actual uncommitted cash or
-eligible shares may clip it to a smaller whole quantity, including zero, while
-the original forecast and intention remain scoreable.
-
-15m SELLs use actual same-symbol shares across native lots and observed
-unallocated stock, preserving every ownership reduction. They do not inherit
-Gameplan's donor ceilings/pacing. Gameplan's own policy and stream fences remain
-in force. The initial accepted 15m order works until terminal status or a newer
-same-symbol forecast confirms cancellation; no Gameplan expiry/timeout or
-automatic same-forecast repricing is adopted. Final-information/next-session
-targets, future recipe tuning, any later repricing policy and the distributed
-reservation protocol remain separately identified work.
+Desired size is independent of Gameplan instructions. Actual usable cash or available shares can clip the submitted quantity, including zero. Preserve the forecast and own order history. No shared native ledger, Gameplan source check, remote grant or cross-trader verification is involved.
 
 ## 10. Safety and Implementation Phases
 
-The original proposal authorizes development, historical testing, shadow-mode
-predictions, scoring and a read-only UI. The later human instruction extends
-development toward the manual Atlas live execution path. It does not turn the
-shadow runner into a live trader or start sessions, enable Scout execution,
-change live schedules, or restart/deploy production workers. The manual Atlas
-source uses the existing host-local native/account ledgers and prepared Schwab
-transport. Only an explicit human invocation of `Start-15m-Trader.cmd` enters
-its live path. `Check-15m-Readiness.cmd` remains read-only; it distinguishes
-implemented source from runtime compatibility and fresh broker preflight.
+Prepare both local 15-minute implementations every night under permanent standing authority. Source adoption and routine repair do not need repeated approval. Each trader starts only from the human's manual launcher and preserves the local stop control.
 
-The manual worker starts at the latest eligible completed candle, fits all
-enabled models from scratch, publishes each symbol separately and skips missed
-boundaries rather than trading a backlog. Forecast/model work is separate from
-serialized account steps. Entry gates require current manual-session live
-forecasts with observed availability and full ensembles, fixed unexpired
-targets, the real market window, fresh identity/account/quote evidence, a
-fenced shared lease, strict pre-16:45 submission and compatible loaded Gameplan
-or independently verified absence. Old shadow/replay issues cannot submit.
+Preserve current causal live forecasts, fixed targets, the full enabled ensemble, own-symbol sizing, actual broker account capacity, current quotes, market window and strict pre-16:45 Pacific submission cutoff. Do not trade an old shadow/replay issue or a backlog. An unresolved own submission retains its true identity and is not guessed or resent.
 
-Use already-authorized read-only historical/market-data access where permitted. Seek approval before initiating new live provider access or modifying credentials.
-
-Implement in stages:
-
-**Phase 1:** Inspect the repository, map existing modules, implement and test the model registry, exact target generation, Atlas shadow forecasting, and 15-minute retraining.
-
-**Phase 2:** Implement delayed scoring, persisted performance tracking, and the new Ducketz tab, including the complete probability-bar consensus visualization.
-
-**Phase 3:** Apply the same code and configuration scheme to Scout and establish safe read-only monitoring for both PCs.
-
-**Phase 4:** Backtest and shadow-test performance, benchmark retraining schedules, and document what remains before any future trading integration.
-
-**Phase 5:** Implement and offline-test the explicit Atlas manual session,
-independent approved sizing, actual shared capacity clipping, durable intention
-logging, exact-identity recovery and stream-specific cancellation. Source for
-this phase exists; temporary-database checks do not prove live broker behavior.
-Human launch and subsequent Atlas observation are distinct operating steps.
-
-**Phase 6:** Apply reviewed common source on Scout for research/shadow and
-read-only monitoring. Scout orders remain disabled until later human activation
-and an implemented distributed Atlas reservation protocol; telemetry is not
-that protocol.
-
-Include tests for target equality, label maturity, lookahead leakage,
-missing/duplicate candles, DST and the strict 16:45 submission cutoff,
-new-intention reconciliation, model failures, immutable forecasts, crash
-recovery and absence of broker-order side effects. Final-session/next-open
-prediction targets remain separate unresolved contracts.
+Offline regression tests cover target equality, mature labels, lookahead exclusion, missing/duplicate candles, DST, model failures, immutable forecasts, own cancellation and crash recovery. They are software checks, not reciprocal trader verification. Special next-open targets and later model/recipe research remain separate work.
 
 ## 11. Expected Deliverables
 

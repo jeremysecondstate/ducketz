@@ -1,5 +1,7 @@
 # Bounded Gameplan order retries
 
+This policy concerns only the Gameplan trader's own orders and real broker responses. Gameplan uses its separate `state/gameplan-trader/` records. It never verifies or reconciles another trader's internal state, and its outcome cannot gate either local 15-minute trader. Routine diagnosis and repair are already authorized; the human retains manual start/stop. See [independent traders](independent-traders.md).
+
 Managed Gameplan catch-up orders use two bounded attempts, for both buys and
 sales. The existing current-quote limit-price policy and all account, activation,
 inventory, cash, quote-freshness and submission checks apply to each attempt.

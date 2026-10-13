@@ -8,7 +8,7 @@ import pytest
 from test_independent_stock_runtime import Broker, ACCOUNT, BROKER_ID, SYMBOLS
 from test_intraday_starter_sizing import fixture as sizing_fixture
 from ml.account_gameplan.authority import AccountAuthority, AuthorityBinding
-from ml.account_gameplan.config import AccountConfig
+from ml.intraday.local_execution import LocalExecutionBinding
 from ml.intraday import account_execution as execution
 from ml.intraday import cancellation
 from ml.intraday.prediction import ContractError, digest
@@ -24,13 +24,11 @@ def env(tmp_path, monkeypatch):
     state = SimpleNamespace(root=tmp_path, now=pd.Timestamp(original["issued_at"]), active=True,
         equity=15_000., cash=100., held=dict.fromkeys(SYMBOLS, 0.), broker=Broker(), orders={},
         captures=0, capture_fail=None, quote_age=0.)
-    state.config = AccountConfig("pc-original", "pc-original",
-        {"pc-original": SYMBOLS[:4], "pc-new": SYMBOLS[4:]}, ACCOUNT, "e" * 64, {"status": "ACTIVE"})
+    state.config = LocalExecutionBinding("Atlas", "pc-original", tuple(SYMBOLS[:4]), ACCOUNT, "e" * 64)
     state.store = ShadowStore(tmp_path / "intraday.sqlite3")
     state.session_started_at = state.now - pd.Timedelta(seconds=30)
     state.clock = lambda: state.now.isoformat()
-    monkeypatch.setattr(execution, "load_account_config", lambda _: state.config)
-    monkeypatch.setattr(execution, "verify_cutover", lambda *args: None)
+    monkeypatch.setattr(execution, "load_local_binding", lambda _: state.config)
 
     def observe(broker, ledger, **kwargs):
         state.now += pd.Timedelta(milliseconds=1)
@@ -88,7 +86,7 @@ def env(tmp_path, monkeypatch):
     state.executor = execution.IntradayAccountExecutor(datastore=tmp_path, store=state.store,
         broker=state.broker, local_symbols=state.config.participants["pc-original"],
         session_started_at=state.session_started_at, clock=state.clock,
-        manual_authority=lambda: state.active, compatibility=lambda: {"ready": True, "reason_codes": []})
+        manual_authority=lambda: state.active)
 
     def forecast(*, offset=0, probability=.72, mode="live", symbol="AAPL"):
         raw, snapshot, _, _ = sizing_fixture(symbol=symbol, probability=probability)
@@ -101,10 +99,10 @@ def env(tmp_path, monkeypatch):
         for name in ("reference_at", "data_through", "target_open", "target_close", "issued_at", "training_cutoff"):
             raw[name] = (pd.Timestamp(raw[name]) + delta).isoformat()
         cycle_id = digest([symbol, raw["reference_at"], probability, mode])
-        state.store.begin_cycle(cycle_id, {"pc": "Atlas", "symbols": [symbol], "reference_at": raw["reference_at"],
+        state.store.begin_cycle(cycle_id, {"pc": state.config.actor, "symbols": [symbol], "reference_at": raw["reference_at"],
             "mode": mode, "configuration_hash": "fixture-only", "started_at": raw["issued_at"]})
         frozen_hash, _ = state.store.freeze_inputs(cycle_id, symbol, snapshot)
-        raw.update(pc="Atlas", cycle_id=cycle_id, mode=mode,
+        raw.update(pc=state.config.actor, cycle_id=cycle_id, mode=mode,
             availability_basis="assumed_historical_close" if mode == "historical_replay" else "observed",
             information_available_at=snapshot["candles"][-1]["available_at"], snapshot_hash=frozen_hash,
             configured_count=10, successful_count=10, ensemble_status="full",
@@ -322,18 +320,12 @@ def test_new_zero_intention_cancels_only_unfilled_prior_and_preserves_partial_fi
     assert account(env).read_state()["reservations"][0]["filled_quantity"] == 1
 
 
-def test_gameplan_order_is_never_cancelled_or_reassigned_by_intraday_supersession(env):
-    with env.executor._account():
-        env.executor._capture()
-        at = env.clock()
-        gp = env.executor.ledger.reserve_entry(symbol="AAPL", horizon="1h", forecast_id="fixture-gameplan",
-            target_start=env.now.floor("h").isoformat(), target_end=(env.now.floor("h") + pd.Timedelta(hours=1)).isoformat(),
-            quantity=1, limit_price="50", snapshot_id=env.executor.snapshot_id,
-            idempotency_key="fixture-gameplan", batch_id="fixture-gp-batch", as_of=at)
-        env.executor.ledger.mark_submission(gp.reservation_id, status="SUBMITTED", observed_at=at,
-                                           evidence_id="gp-accepted", broker_order_id="9001")
-        env.orders["9001"] = {"symbol": "AAPL", "side": "BUY", "quantity": 1, "price": "50", "status": "WORKING"}
-    env.cash = 50  # Coherent available cash already excludes the exact pending Gameplan $50.
+def test_gameplan_order_files_are_not_read_or_changed_by_intraday(env):
+    foreign = env.root / "state/independent-stock-trader/holdings.sqlite3"
+    foreign.parent.mkdir(parents=True)
+    foreign.write_bytes(b"unreadable other trader database")
+    env.orders["9001"] = {"symbol":"AAPL", "side":"BUY", "quantity":1, "price":"50", "status":"WORKING"}
+    env.cash = 50
     forecast = env.forecast()
     result = env.executor.step(forecast)
     assert result["desired_quantity"] == 4 and result["adjusted_quantity"] == 1
@@ -342,8 +334,8 @@ def test_gameplan_order_is_never_cancelled_or_reassigned_by_intraday_supersessio
     env.now = pd.Timestamp(new["issued_at"])
     env.executor.step(new)
     assert "9001" not in env.broker.cancellations
-    assert native(env).reservation_stream(gp.reservation_id) == "gameplan"
-    assert native(env).lookup_reservation(gp.reservation_id).forecast_id == "fixture-gameplan"
+    assert foreign.read_bytes() == b"unreadable other trader database"
+    assert all(r.broker_order_id != "9001" for r in native(env).snapshot().reservations)
 
 
 def test_accepted_authority_id_survives_crash_before_native_acceptance(env, monkeypatch):
@@ -578,3 +570,36 @@ def test_old_native_filled_shared_submitted_recovers_whole_second_fill_without_r
     advance(env)
     env.executor.step(forecast)
     assert len(env.broker.submissions) == 1  # A completed purchase is never restored/repeated.
+
+
+def test_scout_uses_own_stream_and_independent_local_authority(env):
+    env.config = LocalExecutionBinding("Scout", "pc-new", env.config.symbols, ACCOUNT, "f"*64)
+    env.executor = execution.IntradayAccountExecutor(datastore=env.root,store=env.store,broker=env.broker,
+        local_symbols=env.config.symbols,session_started_at=env.session_started_at,clock=env.clock,
+        manual_authority=lambda:env.active,actor="Scout")
+    forecast = env.forecast()
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "submitted" and len(env.broker.submissions)==1
+    order = native(env).snapshot().reservations[0]
+    assert native(env).reservation_stream(order.reservation_id)=="scout-15m"
+    assert account(env).read_state()["reservations"][0]["request"]["stream"]=="scout-15m"
+    advance(env)
+    assert env.executor.step(forecast)["disposition"]=="recover_existing_intention"
+    assert len(env.broker.submissions)==1
+    env.equity=100
+    newer=env.forecast(offset=15)
+    env.now=pd.Timestamp(newer["issued_at"])
+    result=env.executor.step(newer)
+    assert result["disposition"]=="previous_intention_reconciliation"
+    assert order.broker_order_id in env.broker.cancellations
+
+
+def test_external_account_reduction_does_not_create_cross_trader_reconciliation(env):
+    env.held["AAPL"] = 8
+    with env.executor._account():
+        env.executor._capture()
+    advance(env)
+    env.held["AAPL"] = 2
+    forecast = env.forecast(probability=.28)
+    result = env.executor.step(forecast)
+    assert result["disposition"]=="submitted" and 0 < result["adjusted_quantity"] <= 2

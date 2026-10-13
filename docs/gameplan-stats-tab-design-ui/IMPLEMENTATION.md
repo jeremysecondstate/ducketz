@@ -1,5 +1,13 @@
 # Gameplan Stats implementation
 
+## Current combined display
+
+Both PCs display the same completed 22-symbol Gameplan and the same combined Stats/cash/stock balances. Atlas and Scout each prepare eleven research symbols; only their Gameplans are synthesized once. Atlas may publish the combined result directly and return it to Scout. Neither display nor Gameplan acceptance depends on either 15-minute trader's models, ledgers, health, compatibility or verification. Normal nightly preparation is permanently authorized and all trader starts remain manual. See [independent traders](../development/independent-traders.md).
+
+## Archived original UI implementation record
+
+The dated data snapshots, screenshots and test counts below are historical implementation evidence, not current readiness requirements.
+
 The prediction version of Concept A is now implemented as the fifth tab in the Duckets desktop UI.
 
 ## Use
@@ -61,4 +69,3 @@ September 11 has no scored bullish calls. All 105 scored directional calls are b
 The screenshot fixture is [visual_gameplan_stats_fixture.py](C:/dev/ducketz/tests/visual_gameplan_stats_fixture.py). It mounts the actual tab using saved local reviews without initializing the app's other services. It creates a short-lived preview window for capture, then exits.
 
 The implementation leaves the approved concept image intact. No changes were made to the nightly schedules, trading processes, broker controls, training pipeline or saved result data.
-

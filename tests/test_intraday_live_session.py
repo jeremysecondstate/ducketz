@@ -52,12 +52,13 @@ def test_newest_symbol_forecast_supersedes_queued_intention(tmp_path):
     assert len(store.forecasts()) == 2
 
 
-def test_default_cli_never_starts_worker(monkeypatch, capsys):
+@pytest.mark.parametrize("ready,exit_code", [(False,2),(True,0)])
+def test_default_cli_reports_readiness_exit_status_without_starting_worker(monkeypatch, capsys, ready, exit_code):
     from ml.intraday import readiness
-    monkeypatch.setattr(readiness,"inspect_readiness",lambda **kw:{"manual_live_start_ready":False})
+    monkeypatch.setattr(readiness,"inspect_readiness",lambda **kw:{"manual_live_start_ready":ready})
     monkeypatch.setattr(live_session,"run_manual",lambda **kw:pytest.fail("manual worker called"))
-    assert live_session.main([]) == 2
-    assert json.loads(capsys.readouterr().out)["manual_live_start_ready"] is False
+    assert live_session.main([]) == exit_code
+    assert json.loads(capsys.readouterr().out)["manual_live_start_ready"] is ready
 
 
 def test_later_issue_of_older_reference_never_supersedes_newer_reference(tmp_path):
@@ -277,11 +278,11 @@ def test_scoring_audits_legacy_synthetic_and_continues_after_unavailable_target(
 
 
 def test_manual_startup_failure_has_failed_status_and_never_constructs_broker(tmp_path,monkeypatch):
-    from ml.intraday import runtime_compatibility,data
+    from ml.intraday import local_execution,data
     from app.services import schwab,databento_market_data
     import dotenv
     monkeypatch.setattr(live_session,"local_symbols",lambda *args:("Atlas",("AAPL",)))
-    monkeypatch.setattr(runtime_compatibility,"read_gameplan_runtime_compatibility",lambda *a,**k:{"ready":True})
+    monkeypatch.setattr(local_execution,"load_local_binding",lambda *a:SimpleNamespace(actor="Atlas",symbols=live_session.local_symbols(None,None,None)[1]))
     monkeypatch.setattr(dotenv,"load_dotenv",lambda *args:None)
     monkeypatch.setattr(data,"load_local_history",lambda *a,**k:object())
     def fail():
@@ -296,11 +297,11 @@ def test_manual_startup_failure_has_failed_status_and_never_constructs_broker(tm
 
 
 def test_forecast_worker_failure_is_not_a_successful_manual_stop(tmp_path,monkeypatch):
-    from ml.intraday import runtime_compatibility,data,account_execution
+    from ml.intraday import local_execution,data,account_execution
     from app.services import schwab,databento_market_data
     import dotenv
     monkeypatch.setattr(live_session,"local_symbols",lambda *args:("Atlas",("AAPL",)))
-    monkeypatch.setattr(runtime_compatibility,"read_gameplan_runtime_compatibility",lambda *a,**k:{"ready":True})
+    monkeypatch.setattr(local_execution,"load_local_binding",lambda *a:SimpleNamespace(actor="Atlas",symbols=live_session.local_symbols(None,None,None)[1]))
     monkeypatch.setattr(dotenv,"load_dotenv",lambda *args:None)
     monkeypatch.setattr(data,"load_local_history",lambda *a,**k:object())
     monkeypatch.setattr(databento_market_data,"DatabentoMarketDataProvider",lambda:SimpleNamespace(dataset="EQUS.MINI"))
@@ -328,7 +329,7 @@ def test_broker_retry_after_fences_next_symbol_and_recovery_in_same_batch(tmp_pa
     transports only. This does not start a provider, train a model or POST.
     """
     import requests
-    from ml.intraday import runtime_compatibility,data,account_execution,cancellation
+    from ml.intraday import local_execution,data,account_execution,cancellation
     from app.services import schwab,databento_market_data
     import dotenv
     now=[instant("2026-10-08T17:17:00Z")]
@@ -342,7 +343,7 @@ def test_broker_retry_after_fences_next_symbol_and_recovery_in_same_batch(tmp_pa
     delay=cancellation.retry_delay(error,now[0])
     assert delay==120
     monkeypatch.setattr(live_session,"local_symbols",lambda *args:("Atlas",("AAPL","AMZN")))
-    monkeypatch.setattr(runtime_compatibility,"read_gameplan_runtime_compatibility",lambda *a,**k:{"ready":True})
+    monkeypatch.setattr(local_execution,"load_local_binding",lambda *a:SimpleNamespace(actor="Atlas",symbols=live_session.local_symbols(None,None,None)[1]))
     monkeypatch.setattr(dotenv,"load_dotenv",lambda *args:None)
     monkeypatch.setattr(data,"load_local_history",lambda *a,**k:object())
     monkeypatch.setattr(databento_market_data,"DatabentoMarketDataProvider",lambda:SimpleNamespace(dataset="EQUS.MINI"))

@@ -6,7 +6,7 @@ import os
 import sqlite3
 import time
 from contextlib import closing
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable
@@ -23,7 +23,7 @@ from ml.stock_trader.contracts import PredictionSignal, QuoteState, StockTraderP
 from ml.stock_trader.engine import _direct_no_trade
 from ml.stock_trader.gameplan import _entry_deadline, read_gameplan_stock_activation_intent
 from ml.stock_trader.gameplan_execution import GameplanDeploymentUnavailable, _assert_execution_deployment
-from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence
+from ml.stock_trader.horizon_ledger import OwnOrderLedger as HorizonLedger, PortfolioEvidence
 from ml.stock_trader.independent_engine import build_independent_trade_decisions
 from ml.stock_trader.independent_signals import load_current_independent_gameplan_signals
 from ml.stock_trader.model import enrichment_signal_readiness, load_current_enrichment_model
@@ -41,19 +41,10 @@ from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
 from ml.stock_direction_policy import stock_direction
-from ml.intraday.cancellation import gameplan_allocation, gameplan_reservation
 
-LEDGER_RELATIVE_PATH = Path("state/independent-stock-trader/holdings.sqlite3")
+LEDGER_RELATIVE_PATH = Path("state/gameplan-trader/holdings.sqlite3")
 CLOSE_EXIT_LEAD_SECONDS = 60
 MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS = 5.
-
-
-@dataclass(frozen=True)
-class _StreamCompatibleStockTraderRunResult(StockTraderRunResult):
-    intraday_runtime_compatibility: Mapping[str, object] | None = None
-
-    def to_dict(self):
-        return {**super().to_dict(), "intraday_runtime_compatibility": self.intraday_runtime_compatibility}
 
 
 def _defer_opposing_limit_orders(decisions, portfolio):
@@ -331,10 +322,6 @@ def run_independent_stock_trader_once(
         metadata["entry_management_status"] = "ENTRY_REQUIRES_SESSION_MANAGER"
 
     def finish(status, *, decisions=(), error=None, submitted=0, duplicates=0, publication=None):
-        from ml.intraday.runtime_compatibility import emit_loaded_attestation
-        proof = emit_loaded_attestation(globals(), HorizonLedger, observed_at=utc(clock()).isoformat(),
-                                        session_managed=session_managed)
-        metadata["intraday_runtime_compatibility"] = proof
         if rejected_catchup and error is None and status in {
                 "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS"}:
             status = ("ORDERS_SUBMITTED_WITH_REJECTION_REVIEW_REQUIRED" if submitted
@@ -354,11 +341,10 @@ def run_independent_stock_trader_once(
             policy=active_policy, execution_requested=execute, source_files=sources,
             status=status, prediction_handoff=metadata, broker_state_capture=broker_state_capture,
         )
-        return _StreamCompatibleStockTraderRunResult(
+        return StockTraderRunResult(
             status, output.run_directory, sum(d.quantity > 0 for d in decisions),
             submitted, duplicates, status.startswith("SUBMISSION_STOPPED"),
             execute, activation.active, error=error, broker_state_capture=broker_state_capture,
-            intraday_runtime_compatibility=proof,
         )
 
     with exclusive_runtime_lock(root / "locks/stock-trader-hourly.lock", process_name="stock-trader-hourly"):
@@ -841,8 +827,6 @@ def _exit_decisions(ledger, portfolio, activation, policy, timestamp, snapshot_i
     state = ledger.snapshot()
     for plan in ledger.due_exits(as_of=timestamp.isoformat(), snapshot_id=snapshot_id,
                                  exit_lead_seconds=CLOSE_EXIT_LEAD_SECONDS):
-        if not gameplan_allocation(ledger, plan.allocation_id):
-            continue
         quote = portfolio.quotes.get(plan.symbol)
         attempts = sum(r.allocation_id == plan.allocation_id and r.side == "SELL" for r in state.reservations)
         # A terminal partial/cancelled exit can leave a new residual to close.
@@ -901,8 +885,6 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
     requested = 0
     allocations = {a.allocation_id: a for a in state.allocations}
     for reservation in state.reservations:
-        if not gameplan_reservation(ledger, reservation):
-            continue
         managed_timeout = gameplan_entries and reservation.forecast_id.startswith("catchup:")
         if ((not managed_timeout and reservation.side != "BUY") or reservation.status not in {"WORKING", "PARTIAL"}
                 or not reservation.broker_order_id or reservation.cancel_requested_at is not None):

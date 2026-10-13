@@ -43,10 +43,17 @@ def local(tmp_path):
 
 
 def account(local, **changes):
-    path = local["datastore"] / "state/account-gameplan/config.json"
+    from ml.intraday.local_execution import CONFIG_PATH, VERSION
+    path = local["datastore"] / CONFIG_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    value = {"machine_id": "pc-original", "participants": {"pc-original": ["AAPL", "IONQ"]},
-             "account_id": PRIVATE_VALUE, "api_key": PRIVATE_VALUE, "activation": "live"}
+    value = {"schema_version":VERSION,"actor":"Atlas","machine":"pc-original","symbols":["AAPL","IONQ"],
+             "account_fingerprint":"a"*64,"manual_start_only":True,
+             "legacy_history_policy":"PRESERVE_ORIGINALS_NEW_BROKER_CAPACITY_EPOCH"}
+    if "machine_id" in changes:
+        value["machine"] = changes.pop("machine_id")
+        value["actor"] = {"pc-original":"Atlas","pc-new":"Scout"}[value["machine"]]
+    if "participants" in changes:
+        value["symbols"] = changes.pop("participants").get(value["machine"], [])
     value.update(changes)
     path.write_text(json.dumps(value), encoding="utf-8")
     return path
@@ -148,8 +155,8 @@ def test_full_current_saved_forecasts_never_establish_live_readiness(local):
     assert saved["missing_shadow_symbols"] == []
     assert all(row["bound_data"]["status"] == "verified_recorded_inputs" for row in saved["latest_forecasts"])
     assert result["local_binding"]["account_binding"] == "membership_verified"
-    assert result["capabilities"]["existing_shared_authority_horizons"] == ["1d", "1h", "1w", "4h"]
-    assert result["capabilities"]["existing_shared_authority_supports_15m"] is False
+    assert result["capabilities"]["local_authority_horizons"] == ["1d", "1h", "1w", "4h"]
+    assert result["capabilities"]["local_authority_supports_15m"] is False
     assert not result["live_execution_implemented"] and not result["manual_live_start_ready"]
     assert not result["provider_availability_verified"] and not result["broker_reconciliation_performed"]
     assert not result["execution_authorized"] and not result["activation_changed"]
@@ -379,7 +386,7 @@ def test_missing_profile_watchlist_and_unreadable_store_are_bounded(local):
     local["watchlist"].write_text("AAPL\nIONQ\n")
     account(local)
     path = local["datastore"] / "intraday/shadow.sqlite3"
-    path.parent.mkdir()
+    path.parent.mkdir(exist_ok=True)
     path.write_bytes(PRIVATE_VALUE.encode())
     before = inventory(local["datastore"])
     saved = report(local)["saved_forecasting"]
@@ -405,12 +412,12 @@ def test_capabilities_use_only_public_source_not_account_activation(local):
     result = report(local)
     capabilities = result["capabilities"]
     assert capabilities["research_forecasting_source_present"]
-    assert "SOURCE_CAPABILITY_UNVERIFIED:shared_cancellation" in capabilities["missing_integration"]
-    assert capabilities["future_scout_integration"] == ["SCOUT_DISTRIBUTED_RESERVATION_PROTOCOL_NOT_IMPLEMENTED"]
-    assert not capabilities["manual_live_start_ready"]
+    assert "SOURCE_CAPABILITY_UNVERIFIED:local_cancellation" in capabilities["missing_integration"]
+    assert capabilities["future_scout_integration"] == []
+    assert "manual_live_start_ready" not in capabilities
     assert all(re.fullmatch("[a-f0-9]{64}", row["sha256"]) for row in capabilities["public_source_evidence"].values())
     (local["repository"] / "ml/account_gameplan/authority.py").write_text("broken source(")
-    assert report(local)["capabilities"]["existing_shared_authority_horizons"] == []
+    assert report(local)["capabilities"]["local_authority_horizons"] == []
 
 
 def test_cli_outputs_safe_json_exit_two_and_does_not_change_inputs_or_cwd(local, capsys):
@@ -436,7 +443,7 @@ def test_module_has_no_provider_training_broker_activation_or_ledger_constructor
     imports = [(node.module or "") for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
     imports += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
     prohibited = ("runtime", "store", "models", "datafetch", "authority", "ledger", "broker", "provider", "schwab", "subprocess", "threading")
-    assert not any(any(word in name for word in prohibited) for name in imports if name != "runtime_compatibility")
+    assert not any(any(word in name for word in prohibited) for name in imports)
     calls = {node.func.id for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
     assert not calls & {"ShadowStore", "OfflineBook", "AccountAuthority", "AccountLedger", "Popen", "setup_account"}
     connections = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
@@ -461,9 +468,6 @@ def test_manual_readiness_cmd_calls_only_readiness_module_and_forwards_diagnosti
     assert not any(token in launch[0].lower() for token in ("activation", "launcher", "provider", "broker", "runtime", "train"))
 
 
-def test_public_source_inventory_includes_every_loaded_compatibility_dependency():
-    from ml.intraday.runtime_compatibility import REQUIRED_CODE
-    assert set(REQUIRED_CODE) <= set(readiness.PUBLIC_SOURCES)
 
 
 def installed_sources(local):
@@ -505,64 +509,29 @@ def test_live_mode_cannot_bypass_actual_availability_recording_or_fixed_target(l
     assert saved["latest_forecasts"]==[]
 
 
-def test_current_implemented_source_reports_preflight_required_without_starting(local,monkeypatch):
+def test_current_implemented_source_is_ready_for_manual_start_without_starting(local,monkeypatch):
     installed_sources(local)
     account(local)
     write_store(local,[pair(mode="live"),pair(mode="live",symbol="IONQ")])
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *args,**kwargs:verified_absence(**kwargs))
     before = inventory(local["datastore"])
     result = report(local)
     assert result["live_execution_implemented"] and result["manual_live_source_ready"]
-    assert result["status"]=="MANUAL_LIVE_PREFLIGHT_REQUIRED"
-    assert result["manual_live_start_ready"] is False and result["manual_live_preflight_required"] is True
+    assert result["status"]=="READY_FOR_MANUAL_START"
+    assert result["manual_live_start_ready"] is True and result["manual_live_preflight_required"] is False
     assert result["capabilities"]["missing_integration"]==[]
-    assert result["capabilities"]["existing_shared_authority_supports_15m"]
-    assert result["capabilities"]["existing_shared_authority_horizons"]==["1d","1h","1w","4h"]
-    assert result["gameplan_runtime_compatibility"]["status"]=="verified_gameplan_absent"
-    assert "FRESH_EXACT_ORDER_STATUS_AND_COHERENT_ACCOUNT_RECONCILIATION" in result["required_live_preflight"]
+    assert result["capabilities"]["local_authority_supports_15m"]
+    assert result["capabilities"]["local_authority_horizons"]==["1d","1h","1w","4h"]
+    assert result["execution_independence"]["gameplan_required"] is False
+    assert result["required_live_preflight"] == []
     assert not result["execution_authorized"] and not result["broker_reconciliation_performed"]
     assert not result["provider_availability_verified"] and result["orders_placed"]==0
     assert PRIVATE_VALUE not in json.dumps(result) and inventory(local["datastore"])==before
 
 
-def test_new_source_and_fresh_forecasts_do_not_replace_loaded_gameplan_proof(local,monkeypatch):
-    installed_sources(local)
-    account(local)
-    write_store(local,[pair(mode="live")])
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:{
-        "ready":False,"reason_codes":["LOADED_GAMEPLAN_COMPATIBILITY_PROOF_REQUIRED"],"loaded_code_proven":False})
-    result = report(local)
-    assert result["live_execution_implemented"] and not result["manual_live_source_ready"]
-    assert result["status"]=="MANUAL_LIVE_START_BLOCKED"
-    assert result["gameplan_runtime_compatibility"]["status"]=="blocked"
-    assert "LOADED_GAMEPLAN_COMPATIBILITY_PROOF_REQUIRED" in result["reason_codes"]
 
 
-def test_loaded_code_and_absence_modes_need_their_exact_proof_flags(local,monkeypatch):
-    installed_sources(local)
-    account(local)
-    for mode in ("loaded_gameplan_verified","verified_gameplan_absent"):
-        monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:{
-            "ready":True,"mode":mode,"reason_codes":[]})
-        assert not report(local)["gameplan_runtime_compatibility"]["ready"]
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:{
-        "ready":True,"mode":"loaded_gameplan_verified","reason_codes":[],"loaded_code_proven":True})
-    checked = report(local)["gameplan_runtime_compatibility"]
-    assert checked["ready"] and checked["loaded_code_proven"]
 
 
-def test_historical_forecast_as_of_never_backdates_current_process_probe(local,monkeypatch):
-    installed_sources(local)
-    account(local)
-    observed=[]
-    def probe(*args,**kwargs):
-        observed.append(kwargs)
-        return verified_absence(**kwargs)
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",probe)
-    result = report(local,as_of="2001-01-01T12:00:00+00:00")
-    assert instant(result["gameplan_runtime_compatibility"]["observed_at"])>instant(result["observed_at"])
-    assert observed[0]["as_of"]==result["gameplan_runtime_compatibility"]["observed_at"]
-    assert observed[0]["maximum_heartbeat_age_seconds"]==120 and observed[0]["allow_verified_absence"] is True
 
 
 def test_comments_empty_adapters_and_unsafe_default_do_not_claim_implemented_source(local):
@@ -581,45 +550,60 @@ def test_comments_empty_adapters_and_unsafe_default_do_not_claim_implemented_sou
     assert not capabilities["source_component_checks"]["manual_session"]["source_interfaces_verified"]
 
 
-def test_real_compatibility_reader_uses_injected_read_only_inventory_and_never_opens_ledgers(local,monkeypatch):
-    from ml.intraday import runtime_compatibility
+
+
+
+
+
+
+@pytest.mark.parametrize("actor,machine",[("Atlas","pc-original"),("Scout","pc-new")])
+def test_own_binding_ready_without_any_other_trader_files_or_process_probe(local,monkeypatch,actor,machine):
     installed_sources(local)
-    account(local)
+    profile=json.loads(local["profile"].read_text())
+    profile.update(actor=actor,machine=machine)
+    local["profile"].write_text(json.dumps(profile))
+    account(local,machine_id=machine)
+    foreign=local["datastore"] / "state/account-gameplan/config.json"
+    foreign.parent.mkdir(parents=True)
+    foreign.write_text("invalid other trader state")
+    assert "ml/intraday/runtime_compatibility.py" not in readiness.PUBLIC_SOURCES
     before=inventory(local["datastore"])
-    reader=runtime_compatibility.read_gameplan_runtime_compatibility
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:reader(*a,**kw,process_inventory=lambda:[]))
     result=report(local)
-    assert result["gameplan_runtime_compatibility"]["status"]=="verified_gameplan_absent"
+    assert result["manual_live_source_ready"] and result["reason_codes"]==[]
+    assert result["execution_independence"]=={"gameplan_required":False,"peer_trader_required":False,"own_ledger_namespace":"intraday/execution"}
+    assert result["manual_live_start_ready"] and not result["execution_authorized"]
     assert inventory(local["datastore"])==before
-    assert not (local["datastore"] / "state/account-gameplan/authority.sqlite3").exists()
-    assert not (local["datastore"] / "state/independent-stock-trader/holdings.sqlite3").exists()
 
 
-def test_runtime_probe_errors_are_private_bounded_and_cli_still_exits_two(local,monkeypatch,capsys):
+def test_cli_stays_read_only_and_requires_manual_start(local,capsys):
     installed_sources(local)
     account(local)
-    def fail(*args,**kwargs):
-        raise OSError(PRIVATE_VALUE)
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",fail)
-    result=report(local)
-    assert result["gameplan_runtime_compatibility"]["reason_codes"]==["GAMEPLAN_COMPATIBILITY_EVIDENCE_UNAVAILABLE"]
-    assert PRIVATE_VALUE not in json.dumps(result)
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:verified_absence(**kw))
     args=["--as-of",NOW]
     for name in ("repository","datastore","profile","watchlist"):
         args.extend(["--"+name,str(local[name])])
-    assert readiness.main(args)==2
-    output=json.loads(capsys.readouterr().out)
-    assert output["status"]=="MANUAL_LIVE_PREFLIGHT_REQUIRED" and not output["manual_live_start_ready"]
+    assert readiness.main(args)==0
+    result=json.loads(capsys.readouterr().out)
+    assert result["manual_live_source_ready"] and result["manual_live_start_ready"]
 
 
-def test_scout_source_does_not_enable_scout_live_execution(local,monkeypatch):
+@pytest.mark.parametrize("replacement", ["return 0", "return 2",
+    'return 2 if result.get("manual_live_start_ready") else 0'])
+def test_manual_diagnostic_source_must_return_status_matching_readiness(local, replacement):
     installed_sources(local)
-    profile=json.loads(local["profile"].read_text())
-    profile.update(actor="Scout",machine="pc-new")
-    local["profile"].write_text(json.dumps(profile))
-    account(local,machine_id="pc-new",participants={"pc-new":["AAPL","IONQ"]})
-    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:verified_absence(**kw))
-    result=report(local)
-    assert result["live_execution_implemented"] and not result["manual_live_source_ready"]
-    assert "VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED" in result["reason_codes"]
+    source = local["repository"] / "ml/intraday/live_session.py"
+    text = source.read_text()
+    expected = 'return 0 if result.get("manual_live_start_ready") else 2'
+    assert text.count(expected) == 1
+    source.write_text(text.replace(expected,replacement))
+    capabilities = readiness._source_capabilities(local["repository"])
+    assert not capabilities["source_component_checks"]["manual_session"]["source_interfaces_verified"]
+
+
+def test_order_cutoff_does_not_block_manual_start_preparation(local):
+    installed_sources(local)
+    account(local)
+    result = report(local, as_of="2026-10-13T01:00:00+00:00")
+    assert result["manual_live_start_ready"]
+    assert result["reason_codes"] == []
+    assert result["submission_time"]["state"] != "before_submission_cutoff"
+    assert result["execution_authorized"] is False

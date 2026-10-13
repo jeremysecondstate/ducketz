@@ -1,5 +1,27 @@
 # Automatic communication between Atlas and Scout
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](independent-traders.md).
+
+## Current routing policy
+
+The local profile's `coordination_notification_policy` selects `github_only` or
+legacy `git_and_drive` (the default for existing profiles without the field).
+For `github_only`, follow `cross-pc-github-coordination.md`: routine discussion
+and handoffs use atlas-scout GitHub, and immutable source/notices/requests retain
+their existing Ducketz Git transport. Skip all Drive API notification operations
+and any requirement for two-channel delivery. The retained Drive instructions
+below apply only to `git_and_drive`; their presence is not a current requirement
+for GitHub-only tasks. Shared Git inventory, request and source-intake rules
+continue to apply. The private CODEXSTORE nightly exchange is separate.
+
+## Legacy Drive notification extension
+
 GitHub stores shared source and the complete immutable notice history. Google
 Drive carries a small, verified notification file in each sender's existing
 CODEXSTORE outbox. Existing inbox and courier schedules perform both parts.

@@ -1,5 +1,13 @@
 # Gameplan tab — implemented Concept A
 
+## Current combined display
+
+Both PCs display the same completed 22-symbol Gameplan and the same combined Stats/cash/stock balances. Atlas and Scout each prepare eleven research symbols; only their Gameplans are synthesized once. Atlas may publish the combined result directly and return it to Scout. Neither display nor Gameplan acceptance depends on either 15-minute trader's models, ledgers, health, compatibility or verification. Normal nightly preparation is permanently authorized and all trader starts remain manual. See [independent traders](../development/independent-traders.md).
+
+## Archived original UI implementation record
+
+The dated data snapshots, screenshots and test counts below are historical implementation evidence, not current readiness requirements.
+
 The sixth Duckets workspace is **Gameplan**, immediately after Gameplan Stats. It displays the saved session run sheet, with conditional direction-ledger trades and all saved forecast windows.
 
 ![Implemented Gameplan tab](implemented-gameplan-september-14.png)

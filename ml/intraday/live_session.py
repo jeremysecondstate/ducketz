@@ -1,4 +1,4 @@
-"""Human-started Atlas 15m session. No scheduler, autostart or Gameplan activation.
+"""Human-started local 15m session. No scheduler or autostart.
 
 The default command only reports readiness. --live is explicit manual operating
 intent. Forecast/model work and serialized broker steps run independently, with
@@ -18,7 +18,7 @@ from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .runtime import ResearchConfig, ShadowRunner, LiveHistories, local_symbols, recorded_symbol_failures
 from .store import ShadowStore, utcnow
 
-VERSION = "manual-atlas-15m-session-v1"
+VERSION = "manual-local-15m-session-v2"
 
 
 def latest_completed_reference(now, *, publication_offset_seconds):
@@ -40,8 +40,8 @@ def eligible_reference(reference):
 
 
 class ExecutionQueue:
-    def __init__(self, store, session_id):
-        self.store, self.session_id = store, session_id
+    def __init__(self, store, session_id, actor="Atlas"):
+        self.store, self.session_id, self.actor = store, session_id, actor
         with store.connect() as db:
             db.executescript("""
               CREATE TABLE IF NOT EXISTS intraday_live_queue(
@@ -92,7 +92,7 @@ class ExecutionQueue:
                 ORDER BY f.reference_at,q.symbol""",
                               (self.session_id,current)).fetchall()
         ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc="Atlas") if f["forecast_id"] in ids]
+        return [f for f in self.store.forecasts(pc=self.actor) if f["forecast_id"] in ids]
 
     def broker_due(self, now):
         with self.store.connect() as db:
@@ -125,7 +125,7 @@ def _session_cycles(store, session_id):
         rows = db.execute("SELECT id,payload FROM cycles ORDER BY rowid").fetchall()
     return [(identity, value) for identity, raw in rows
             if (value := json.loads(raw)).get("mode") == "live"
-            and value.get("pc") == "Atlas" and value.get("experiment") == session_id]
+            and value.get("pc") in {"Atlas", "Scout"} and value.get("experiment") == session_id]
 
 
 def _pending_cycle_passes(store, session_id, now):
@@ -247,7 +247,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
 
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
     from .account_execution import IntradayAccountExecutor
-    from .runtime_compatibility import read_gameplan_runtime_compatibility
+    from .local_execution import load_local_binding
     from .data import AcquisitionJournal, load_local_history
     from .cancellation import retry_delay
     from app.services.schwab import SchwabSession
@@ -255,23 +255,18 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     from dotenv import load_dotenv
     root, repository = Path(datastore),Path(repository)
     pc,symbols = local_symbols(profile,watchlist,root)
-    if pc != "Atlas":
-        raise ContractError("Scout live execution is not enabled")
+    binding = load_local_binding(root)
+    if binding.actor != pc or set(binding.symbols) != set(symbols):
+        raise ContractError("Independent local execution binding does not match profile")
     config.validate()
     if config.source_dataset != "EQUS.MINI":
         raise ContractError("Existing single-source live provider binding required")
-    def compatibility():
-        return read_gameplan_runtime_compatibility(root,repository,as_of=clock(),
-            maximum_heartbeat_age_seconds=120,allow_verified_absence=True)
-    proof = compatibility()
-    if not proof["ready"]:
-        raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
     started = instant(clock())
-    session_id = "manual-atlas-15m:" + uuid.uuid4().hex
+    session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
     stopped = threading.Event()
     worker_errors = []
     store = ShadowStore(root / "intraday/shadow.sqlite3")
-    queue = ExecutionQueue(store,session_id)
+    queue = ExecutionQueue(store,session_id,actor=pc)
     status_path = root / "intraday/manual-session.json"
     def status(state, **extra):
         value = dict(schema_version=VERSION,session_id=session_id,pid=os.getpid(),started_at=started.isoformat(),
@@ -307,7 +302,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,stopped=stopped.is_set)
             executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
-                session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=stopped.is_set)
+                session_started_at=started,clock=clock,manual_authority=manual_authority,actor=pc,stopped=stopped.is_set)
         except BaseException as exc:
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) else "FAILED",
@@ -341,7 +336,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         scorer = threading.Thread(target=score_work,name="intraday-manual-scoring",daemon=True)
         worker.start()
         scorer.start()
-        print("Atlas 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
+        print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
         next_recovery = instant(clock())
         try:
             while not stopped.is_set():
@@ -423,9 +418,10 @@ def main(argv=None):
     watchlist = args.watchlist or args.repository / "datafetching/watchlist.local.txt"
     if not args.live:
         from .readiness import inspect_readiness
-        print(json.dumps(inspect_readiness(repository=args.repository,datastore=args.datastore,
-            profile=profile,watchlist=watchlist),sort_keys=True))
-        return 2
+        result = inspect_readiness(repository=args.repository,datastore=args.datastore,
+            profile=profile,watchlist=watchlist)
+        print(json.dumps(result,sort_keys=True))
+        return 0 if result.get("manual_live_start_ready") else 2
     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
         config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
             symbol_workers=args.symbol_workers,lookback_days=args.lookback_days))

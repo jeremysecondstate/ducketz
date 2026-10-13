@@ -1,18 +1,8 @@
-# Joint Gameplan preparation and one stock executor
+# Joint Gameplan preparation and one Gameplan executor
 
-## Operating design
+Jeremy's October 13, 2026 standing direction defines three independent traders. Atlas runs the combined 22-symbol Gameplan trader and Atlas's local eleven-symbol 15-minute trader. Scout runs its own eleven-symbol 15-minute trader. Each trades and logs its own activity with its own local state. No trader checks, verifies, reconciles, combines, or depends on another trader.
 
-The selected design uses two independent forecast producers and one stock
-executor. Each producer keeps its frozen symbol universe, model preparation,
-forecast publication and accuracy review. The designated executor consumes the
-verified union of both producers' forecasts and makes one account-wide set of
-trading decisions. The local human starts that executor manually after adoption
-and ownership reconciliation.
-
-This source implements the offline forecast handoff and combined capital
-projection. It does not activate a trader, change a watchlist, move ownership,
-grant a peer authority, or install an execution binding. Runtime integration and
-the one-time ownership handoff are separate prerequisites for live adoption.
+Only the two nightly eleven-symbol Gameplans are synthesized. Use one actual account cash/stock balance, publish the same combined Gameplan and Stats on both PCs, and prepare the traders every night under permanent authorization. Atlas may synthesize directly and return the completed result to Scout without an acceptance wait. The human manually starts each trader. See [Independent trading systems](../development/independent-traders.md).
 
 ## Why the combined projection is needed
 
@@ -24,8 +14,8 @@ ledger once against one authoritative account snapshot.
 
 The combined snapshot must cover the complete execution universe. It includes
 cash already bounded by broker-visible reservations, relevant holdings,
-account-wide exposure and reconciled horizon ownership. Never add two account
-balances or treat two local ownership ledgers as one by copying their files.
+account-wide exposure and Gameplan's own trading records. Never add two account
+balances or import a 15-minute trader's local ledger.
 
 ## Producer package
 
@@ -96,51 +86,14 @@ the same untrusted file is not independent verification.
 
 ## Execution integration contract
 
-The executor adapter must preserve forecast and execution membership separately.
-Do not globally widen `PRODUCTION_LOOPS_SYMBOLS`, `STOCK_TRADER_SYMBOLS` or a
-producer's local watchlist. Those also control training and historical data.
+Atlas's Gameplan executor uses the combined source and explicit 22-symbol execution universe while each research watchlist remains local. It reads current broker cash, shares and quotes plus its own pending orders. It does not inspect 15-minute ledgers, forecasts, health or loaded code.
 
-The sole executor needs a verified composite execution source that binds both
-children, their exact source receipts, original IDs, target contracts and frozen
-policy. Pass its explicit union through quote capture, held-share and exposure
-maps, pending-order attribution, native batch limits, preflight and final
-submission checks. One native session lock, one decision batch and one reconciled
-ownership ledger then govern the shared account.
+Gameplan's own state lives under `state/gameplan-trader/`. Each 15-minute worker has its own `intraday/execution/` state and lock. The human manually starts the appropriate worker. Forecast identities, real own fills, conditional planning outcomes and actual broker execution remain separate records.
 
-The forecast-only installation must reject execution at both session startup
-and direct cycle entry once its reviewed role binding is activated. A launcher
-label or a changed schedule alone cannot enforce that role. Missing peer input
-must never silently become a complete combined plan or authorize unrestricted
-local execution.
+Both UIs display the same combined Gameplan/Stats and full account balances, with original producer lineage. Atlas can complete synthesis and publish without waiting for a peer acceptance round trip.
 
-Accuracy remains tied to each original frozen forecast. Combining plans neither
-rebuilds earlier forecasts nor relabels peer results as local results. Both UIs
-can display their producer's slice of the same joint plan while retaining local
-actuals, pending windows and unavailable outcomes.
+## Independent operating state
 
-## Ownership takeover and readiness
+No native-ledger union, 15-minute ownership takeover, shared reservation service, compatibility proof or cross-trader reconciliation is required. Preserve original mixed ledgers and historical receipts; new independent state records only its own actual orders/fills. Current broker holdings provide actual sale capacity without fabricated history.
 
-If the other producer has already traded, the new sole executor must first
-privately reconcile its active symbol/horizon allocations, consumed forecast
-identities, fills, pending broker order IDs and unknown submissions. Broker
-holdings alone cannot recover horizon ownership. Preserve both original ledgers;
-do not initialize a replacement baseline over existing positions or merge
-SQLite databases through a synchronized folder.
-
-Before live activation, require all of the following evidence:
-
-1. Both reviewed implementations are installed, with one designated executor
-   and a forecast-only role enforced on the other installation.
-2. Both selected packages match the same next-session date and their frozen
-   universes; joint coverage is complete and the selected source policy agrees.
-3. The ownership handoff is reviewed and reconciled to current broker evidence,
-   including outstanding and uncertain submissions.
-4. Native preflight validates the same composite source that the executor will
-   consume, and one combined batch applies account limits once.
-5. The human manually starts only the designated executor. Installation and
-   successful offline tests do not establish a running-process version.
-
-Missing evidence is a specific readiness limitation. It is not evidence that
-the other PC failed. Existing coordination requests track technical work and
-source review; Git/Drive notices do not serve as live trading locks or transport
-private account state merely because they can carry JSON.
+Every night is pre-authorized: produce each eleven-symbol Gameplan, synthesize once with cash/stock balances, return the same 22-symbol result to both machines and prepare the independent traders for manual start. Routine recovery does not need a new approval or verification ceremony.

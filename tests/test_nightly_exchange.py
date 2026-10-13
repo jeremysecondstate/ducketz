@@ -115,7 +115,8 @@ def exchange(source_inputs, tmp_path, monkeypatch):
 
 
 def wake(exchange, actor, *, now=NOW, capture=False):
-    return module.run_once(exchange[0][actor], now=now, allow_snapshot_refresh=capture)
+    # The old reciprocal protocol remains available only for explicit rollback.
+    return module.legacy_run_once(exchange[0][actor], now=now, allow_snapshot_refresh=capture)
 
 
 def prepared(exchange):

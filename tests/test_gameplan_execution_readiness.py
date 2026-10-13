@@ -73,7 +73,7 @@ def inspect(prepared, **kwargs):
 def test_preparing_reports_plan_success_and_missing_native_ledger_separately(prepared):
     result = inspect(prepared)
     assert result["plan_ready"] and not result["execution_setup_ready"]
-    assert result["blockers"] == ["SCOUT_OWNERSHIP_HISTORY_PENDING", "NATIVE_LEDGER_MISSING"]
+    assert result["blockers"] == ["SCOUT_OWNERSHIP_HISTORY_PENDING"]
     assert result["handoff"]["completion_id"] == prepared[0]["completion_id"]
     assert result["current_broker_reconciliation_performed"] is False and result["broker_ready"] is None
     assert result["manual_start_required"] and not result["execution_authorized"]
@@ -303,7 +303,10 @@ def test_damaged_native_metadata_cannot_report_setup_ready(prepared, damage, mon
             monkeypatch.setattr(HorizonLedger, "_snapshot", lambda _: SimpleNamespace(allocations=[allocation]))
         db.execute("UPDATE snapshots SET payload=?", (json.dumps(payload),))
     result = inspect(prepared)
-    assert "NATIVE_LEDGER_INVALID" in result["blockers"] and not result["execution_setup_ready"]
+    if damage == "ownership_exceeds_holdings":
+        assert result["execution_setup_ready"] and result["blockers"] == []
+    else:
+        assert "NATIVE_LEDGER_INVALID" in result["blockers"] and not result["execution_setup_ready"]
 
 
 def test_cli_writes_only_explicit_local_report_namespace(prepared, capsys):

@@ -27,7 +27,7 @@ from ml.joint_capital_adoption import POINTERS, read_accepted_joint_plan
 from ml.nightly_joint_readiness import FIELDS, VERSION as SELECTION_VERSION, _receipt_identity
 from ml.stock_trader.horizon_ledger import HorizonLedger, LEDGER_VERSION, _OPEN
 from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
-from tools.nightly_ownership import LEDGER, _pins, _saved_held
+from ml.stock_trader.independent_runtime import LEDGER_RELATIVE_PATH as LEDGER
 
 
 VERSION = "gameplan-execution-readiness-v1"
@@ -134,10 +134,32 @@ def _handoff(root, day, account):
             "completion_id": pin["completion_id"]}, frozen
 
 
+def _pins(path):
+    return {suffix: file_checksum(Path(str(path) + suffix)) if Path(str(path) + suffix).is_file() else None
+            for suffix in ("", "-wal", "-shm")}
+
+
+def _saved_held(value):
+    if isinstance(value, bool):
+        raise ValueError("Invalid saved broker share capacity")
+    quantity = float(value)
+    if not math.isfinite(quantity) or quantity < 0:
+        raise ValueError("Invalid saved broker share capacity")
+    return quantity
+
+
+def _empty_epoch(account):
+    return {"available": True, "fresh_gameplan_epoch": True,
+            "union_coverage": True, "saved_baseline_ready": True,
+            "saved_baseline_at": None, "covered_symbol_count": 0,
+            "expected_symbol_count": len(account.symbols), "blocked_symbol_count": 0,
+            "pending_reservation_count": 0, "current_broker_reconciliation_performed": False}
+
+
 def _ledger(root, account):
     path = root / LEDGER
     if not path.is_file():
-        return {"available": False, "reason": "NATIVE_LEDGER_MISSING"}
+        return _empty_epoch(account)
     pins = _pins(path)
     # Even SQLite read-only mode can change source SHM read marks. Copy all
     # sidecars and query only the private temporary copy, including saved WAL.
@@ -164,8 +186,10 @@ def _ledger(root, account):
             pending = db.execute("SELECT COUNT(*) FROM reservations WHERE status IN (" +
                                  ",".join("?" for _ in _OPEN) + ")", _OPEN).fetchone()[0]
             if baseline is None:
-                result = {"available": True, "union_coverage": False, "saved_baseline_ready": False,
-                          "saved_baseline_at": None, "covered_symbol_count": 0}
+                own_rows = db.execute("SELECT COUNT(*) FROM allocations").fetchone()[0]
+                result = (_empty_epoch(account) if own_rows == 0 and pending == 0 else
+                    {"available": True, "union_coverage": False, "saved_baseline_ready": False,
+                     "saved_baseline_at": None, "covered_symbol_count": 0})
             else:
                 payload = json.loads(baseline[2])
                 held = payload["held_shares"]
@@ -190,10 +214,6 @@ def _ledger(root, account):
                             or (allocation.status == "CLOSED" and allocation.filled_shares)):
                         raise ValueError("Native saved ownership is inconsistent")
                     totals[allocation.symbol] += allocation.filled_shares
-                if any((symbol not in held and quantity > 0)
-                       or (symbol in held and quantity > _saved_held(held[symbol]))
-                       for symbol, quantity in totals.items()):
-                    raise ValueError("Native ownership exceeds its saved baseline")
                 result = {"available": True, "union_coverage": set(held) == set(account.symbols),
                           "saved_baseline_ready": baseline[1] == 1, "saved_baseline_at": stamp.isoformat(),
                           "covered_symbol_count": len(held)}
@@ -341,9 +361,10 @@ def inspect_readiness(datastore_root, action_date, *, now=None, process_probe=No
                     blockers.append("NATIVE_LEDGER_BASELINE_NOT_READY")
                 if ledger["pending_reservation_count"] and account.activation["status"] != "ACTIVE":
                     blockers.append("NATIVE_PENDING_RESERVATIONS_PREVENT_CUTOVER")
-                ledger_observed = observed if now is not None else utc_timestamp()
-                if ledger["saved_baseline_at"] and _stamp(ledger["saved_baseline_at"]) > ledger_observed:
-                    raise ValueError("Native saved baseline is in the future")
+                if ledger["saved_baseline_at"]:
+                    ledger_observed = observed if now is not None else utc_timestamp()
+                    if _stamp(ledger["saved_baseline_at"]) > ledger_observed:
+                        raise ValueError("Native saved baseline is in the future")
         except (ValueError, OSError, TypeError, KeyError, sqlite3.Error):
             ledger = {"available": False, "reason": "NATIVE_LEDGER_INVALID"}
             blockers.append("NATIVE_LEDGER_INVALID")

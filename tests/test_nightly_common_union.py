@@ -16,7 +16,7 @@ from test_nightly_stage_repair import env as repair_env, prepare as prepare_repa
     ("preparation", "2026-10-12"), ("preparation", "2026-10-09"),
     ("exchange", "2026-10-12"), ("exchange", "2026-10-09"),
 ])
-def test_repository_owner_fences_new_dates_and_other_responsibilities(config, domain, claim_date):
+def test_repository_claim_history_does_not_gate_preparation(config, domain, claim_date):
     from ml import nightly_repair_registry as registry
     root = Path(config["state_root"])
     root.mkdir(parents=True)
@@ -27,11 +27,11 @@ def test_repository_owner_fences_new_dates_and_other_responsibilities(config, do
         registry.acquire(root, owner)
     original = registry.path(root).read_bytes()
     decision = workflow.dispatch_status(config, now="2026-10-10T04:15Z")
-    assert decision["status"] == "REPAIR_IN_PROGRESS" and not decision["dispatch"]
-    assert workflow._launch_repository_repair_gate(config, "2026-10-12")["status"] == "REPAIR_IN_PROGRESS"
-    actual = run(config, "datastore", lambda *args: pytest.fail("another owner must retain source"))
-    assert actual["status"] == "REPAIR_IN_PROGRESS"
-    assert not (root / "runs/2026-10-12/state.json").exists()
+    assert decision["dispatch"] and decision["responsibility"] == "datastore"
+    assert workflow._launch_repository_repair_gate(config, "2026-10-12") is None
+    actual = run(config, "datastore")
+    assert actual["steps"]["datastore_catchup"]["status"] == "COMPLETE"
+    assert (root / "runs/2026-10-12/state.json").exists()
     assert registry.path(root).read_bytes() == original
 
 
@@ -54,7 +54,7 @@ def test_repository_exchange_owner_preserves_terminal_preparation(config):
     assert registry.read(root) == owner
 
 
-def test_real_applied_repair_resumes_and_releases_only_after_verified_stage(repair_env, monkeypatch):
+def test_real_applied_repair_resumes_without_an_ordinary_workflow_resolution_gate(repair_env, monkeypatch):
     from ml import nightly_repair_registry as registry
     env = repair_env
     before = workflow._json(env["state_path"])
@@ -69,23 +69,20 @@ def test_real_applied_repair_resumes_and_releases_only_after_verified_stage(repa
     called = []
     def execute(config, state, step, save):
         called.append(step)
-        if step == "model_review":
-            assert registry.read(config["state_root"]) == owner
-        else:
-            assert registry.read(config["state_root"]) is None
+        assert registry.read(config["state_root"]) == owner
         return {"files": {}}
     result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
         now="2026-10-09T20:00:00Z", execute_step=execute, supervise=False)
     assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
     assert called[0] == "model_review" and "prepare_stats" not in called
-    assert registry.read(env["config"]["state_root"]) is None
-    assert (spec.parent / "resolved.json").is_file()
+    assert registry.read(env["config"]["state_root"]) == owner
+    assert not (spec.parent / "resolved.json").exists()
     assert result["run_id"] == before["run_id"]
     assert result["deadline_at"] == before["deadline_at"]
     assert result["steps"]["prepare_stats"] == before["steps"]["prepare_stats"]
 
 
-def test_restart_after_successful_saved_step_finishes_owner_release_without_replay(repair_env, monkeypatch):
+def test_legacy_resolution_failure_cannot_interrupt_preparation_or_replay_completed_work(repair_env, monkeypatch):
     from ml import nightly_repair_registry as registry
     env = repair_env
     before = workflow._json(env["state_path"])
@@ -97,54 +94,70 @@ def test_restart_after_successful_saved_step_finishes_owner_release_without_repl
     apply_repair(env, spec)
     calls = []
     execute = lambda config, state, step, save: calls.append(step) or {"files": {}}
-    original_release = registry.release
     def interrupt_release(*args, **kwargs):
         raise InterruptedError("power loss after verified saved output")
     monkeypatch.setattr(registry, "release", interrupt_release)
-    with pytest.raises(InterruptedError, match="power loss"):
-        workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
-            now="2026-10-09T20:00:00Z", execute_step=execute, supervise=False)
-    assert calls == ["model_review"]
+    result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
+        now="2026-10-09T20:00:00Z", execute_step=execute, supervise=False)
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert calls[0] == "model_review"
     assert registry.read(env["config"]["state_root"]) is not None
-    resolution = (spec.parent / "resolved.json").read_bytes()
-    monkeypatch.setattr(registry, "release", original_release)
+    assert not (spec.parent / "resolved.json").exists()
     result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
         now="2026-10-09T20:05:00Z", execute_step=execute, supervise=False)
     assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
     assert calls.count("model_review") == 1
-    assert registry.read(env["config"]["state_root"]) is None
-    assert (spec.parent / "resolved.json").read_bytes() == resolution
+    assert registry.read(env["config"]["state_root"]) is not None
+    assert not (spec.parent / "resolved.json").exists()
 
 
-def test_changed_repaired_source_cannot_dispatch_or_rewrite_original_failed_state(repair_env):
+def test_changed_repaired_source_does_not_gate_resuming_saved_work(repair_env):
     env = repair_env
+    state = workflow._json(env["state_path"])
+    state.pop("recovery")
+    state.pop("effective_deadline_at")
+    state["deadline_at"] = "2026-10-10T11:00:00Z"
+    workflow._write(env["state_path"], state)
     spec = prepare_repair(env)
     apply_repair(env, spec)
-    before = env["state_path"].read_bytes()
+    before = workflow._json(env["state_path"])
     (env["repo"] / "ml/nightly_workflow.py").write_text("later unreviewed edit")
     result = workflow.run_workflow(env["config"], resume_action_date="2026-10-09",
         now="2026-10-09T20:00:00Z", supervise=False,
-        execute_step=lambda *args: pytest.fail("changed repaired source cannot execute"))
-    assert result["status"] == "REPAIR_IN_PROGRESS"
-    assert "source changed" in result["reason"]
-    assert env["state_path"].read_bytes() == before
+        execute_step=lambda *args: {"files": {}})
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert result["source_identity"] == before["source_identity"]
+    assert result["steps"]["prepare_stats"] == before["steps"]["prepare_stats"]
 
 
 @pytest.mark.parametrize("source_changed", [False, True])
-def test_prepared_repair_fences_dispatch_and_direct_catchup(config, source_changed):
+def test_saved_repair_claim_and_source_history_do_not_gate_next_stage(config, source_changed):
     result = run(config, "datastore")
     path = Path(config["state_root"]) / "runs/2026-10-12/state.json"
     result["repair_claim"] = {"owner": "repair-owner", "token": "saved-token", "spec": "frozen-repair.json"}
     if source_changed:
         result["source_identity"] = {"commit": "f" * 40, "source_sha256": "e" * 64}
     workflow._write(path, result)
-    original = path.read_bytes()
+    original_claim = result["repair_claim"].copy()
     with FileLock(str(path.parents[2] / "workflow.lock")):
         decision = workflow.dispatch_status(config, now="2026-10-10T04:15Z")
-        assert decision["status"] == "REPAIR_IN_PROGRESS" and not decision["dispatch"]
-    actual = run(config, "stats", lambda *args: pytest.fail("repair owner must retain the stage"))
-    assert actual["status"] == "REPAIR_IN_PROGRESS"
-    assert path.read_bytes() == original
+        assert decision["status"] == "RUNNING" and not decision["dispatch"]
+    assert workflow.dispatch_status(config, now="2026-10-10T04:15Z")["dispatch"]
+    actual = run(config, "stats")
+    assert actual["steps"]["prepare_stats"]["status"] == "COMPLETE"
+    assert actual["repair_claim"] == original_claim
+    assert actual["source_identity"] == result["source_identity"]
+
+
+def test_unreadable_legacy_claim_is_preserved_without_blocking_next_night(config):
+    root = Path(config["state_root"])
+    root.mkdir(parents=True)
+    legacy = root / "repair-owner.json"
+    legacy.write_bytes(b"historical interrupted claim")
+    assert workflow.dispatch_status(config, now="2026-10-10T04:15Z")["dispatch"]
+    assert workflow._launch_repository_repair_gate(config, "2026-10-12") is None
+    assert run(config, "datastore")["steps"]["datastore_catchup"]["status"] == "COMPLETE"
+    assert legacy.read_bytes() == b"historical interrupted claim"
 
 
 def test_reviewer_usage_exhaustion_keeps_one_dependency_failure_and_completed_stats(config):

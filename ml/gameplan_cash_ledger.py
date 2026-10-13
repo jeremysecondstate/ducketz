@@ -162,20 +162,15 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             pending_horizons.add((symbol, horizon))
         if reserved or (symbol, horizon) in pending_horizons:
             pending_any_horizons.add((symbol, horizon))
-        intraday = horizon == "15m" and allocation.get("stream") in {"atlas-15m", "scout-15m"}
-        if reserved > quantity or (horizon not in FIXED_HORIZON_WEIGHTS and not intraday):
+        if reserved > quantity or horizon not in FIXED_HORIZON_WEIGHTS:
             raise ValueError("Invalid active horizon allocation")
-        # The separate stream's stock stays owned, never free Gameplan stock.
-        # Keep it in share conservation without assigning a Gameplan exit.
         free[symbol] -= quantity
         owned_reserved[symbol] += reserved
         if quantity:
             lot = {"symbol": symbol, "horizon": horizon, "quantity": quantity - reserved,
                          "reserved": reserved, "end": _time(allocation.get("target_end")),
                          "forecast_id": str(allocation.get("prediction_id", "EXISTING_ALLOCATION"))}
-            if intraday:
-                lot["stream"] = allocation["stream"]
-            if fallback_policy is not None and not intraday:
+            if fallback_policy is not None:
                 identifier = allocation.get("allocation_id_sha256")
                 if (not isinstance(identifier, str) or len(identifier) != 64
                         or any(char not in "0123456789abcdef" for char in identifier) or identifier in initial_donors):

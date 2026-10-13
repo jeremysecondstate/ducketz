@@ -250,8 +250,14 @@ def cli_inputs(specification, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("validate_only", [False, True])
-def test_cli_binds_valid_local_profile_before_dispatch(cli_inputs, monkeypatch, validate_only):
-    module, spec_path, profile, _ = cli_inputs
+@pytest.mark.parametrize("actor,symbol", [("scout", "ABCL"), ("atlas", "AAPL")])
+def test_cli_binds_valid_local_profile_before_dispatch(cli_inputs, monkeypatch, validate_only, actor, symbol):
+    module, spec_path, profile, definition = cli_inputs
+    spec = json.loads(spec_path.read_text())
+    spec["local_actor"] = actor
+    spec_path.write_text(json.dumps(spec))
+    definition.update(actor=actor.title(), symbols=[symbol])
+    profile.write_text(json.dumps(definition))
     calls = []
     def execute(spec):
         calls.append(spec["local_actor"])
@@ -264,11 +270,11 @@ def test_cli_binds_valid_local_profile_before_dispatch(cli_inputs, monkeypatch, 
     monkeypatch.setattr(module, "preflight_synthesis", validate)
     arguments = ["--spec", str(spec_path), "--local-profile", str(profile)]
     assert module.main(arguments + (["--validate-only"] if validate_only else [])) == 0
-    assert calls == ["scout"]
+    assert calls == [actor]
 
 
 @pytest.mark.parametrize("damage,message", [
-    ("actor", "belongs to Scout"), ("symbols", "local symbols differ"),
+    ("actor", "local actor differs"), ("symbols", "local symbols differ"),
     ("checkout", "this checkout's installed"), ("uninstalled_profile", "this checkout's installed"),
     ("relative_profile", "absolute local paths"),
 ])
@@ -304,9 +310,40 @@ def test_cli_requires_local_profile_argument(cli_inputs, monkeypatch):
     assert exc.value.code == 2
 
 
-def test_atlas_cannot_compose_even_with_valid_selected_inputs(specification):
-    specification["local_actor"] = "atlas"
-    with pytest.raises(ValueError, match="belongs to Scout"):
-        preflight_synthesis(specification, now=NOW)
-    assert not Path(specification["datastore_root"]).exists()
-    assert not Path(specification["state_root"]).exists()
+def test_atlas_synthesizes_both_packages_once_with_truthful_local_identity(specification):
+    from ml.joint_capital_adoption import read_accepted_joint_plan
+    spec = specification
+    spec["local_actor"] = "atlas"
+    originals = {owner: Path(value["plan_package"]["path"]).read_bytes() for owner, value in spec["owners"].items()}
+    result = run_synthesis(spec, now=NOW)
+    root = Path(spec["datastore_root"])
+    plan, binding, run = read_accepted_joint_plan(root, DAY)
+    assert result["local_actor"] == binding["local_actor"] == "atlas"
+    assert result["executor_owner"] == binding["executor_owner"] == "atlas"
+    assert set(plan["input_bindings"]) == {"atlas", "scout"}
+    assert result["owner_packages"] == {owner: value["plan_package"]["package_sha256"] for owner, value in spec["owners"].items()}
+    assert {row["owner_id"] for row in plan["forecasts"]} == {"atlas", "scout"}
+    assert set(load_gameplan(root).symbols) == set(load_gameplan_stats(root).symbols) == {"AAPL", "ABCL"}
+    assert result["joint_ready"] and result["ui_ready"] and not result["peer_verified"]
+    assert not result["execution_authorized"] and result["orders_placed"] == 0
+    assert_accepted_execution(root, run, action_date=DAY, account_scope_sha256=SCOPE)
+    selected_bytes = (run / "accepted-plan.json").read_bytes()
+    assert run_synthesis(spec, now=NOW) == result
+    assert (run / "accepted-plan.json").read_bytes() == selected_bytes
+    assert len(tuple((root / "ml/joint-gameplan-runs").iterdir())) == 1
+    assert len(tuple((root / "ml/gameplan-actuals-review-runs").iterdir())) == 1
+    assert {owner: Path(value["plan_package"]["path"]).read_bytes() for owner, value in spec["owners"].items()} == originals
+
+
+def test_atlas_synthesis_does_not_replace_a_selected_plan(specification):
+    spec = specification
+    spec["local_actor"] = "atlas"
+    result = run_synthesis(spec, now=NOW)
+    run = Path(result["ui_evidence"]["plan_run"])
+    before = (run / "accepted-plan.json").read_bytes()
+    changed = deepcopy(spec)
+    changed.update(completion_id="different-atlas-synthesis", as_of="2026-09-09T10:01:00Z", accepted_at="2026-09-09T10:01:00Z")
+    with pytest.raises(ValueError, match="different accepted combined plan"):
+        run_synthesis(changed, now="2026-09-09T10:01:00Z")
+    assert (run / "accepted-plan.json").read_bytes() == before
+    assert len(tuple((Path(spec["datastore_root"]) / "ml/joint-gameplan-runs").iterdir())) == 1

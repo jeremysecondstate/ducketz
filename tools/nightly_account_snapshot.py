@@ -141,12 +141,12 @@ def _project(captured, *, symbols, scope, observed):
     if (not isinstance(ownership, dict) or ownership.get("status") != "OBSERVED_CONSISTENT"
             or ownership.get("safe_for_planning") is not True or ownership.get("account_matches") is not True
             or ownership.get("blocked_symbols") != [] or ownership.get("reason_codes") != []
-            or ownership.get("last_saved_reconciliation_ready") is not True
             or ownership.get("current_broker_reconciliation_performed") is not False):
         raise ValueError("Account horizon ownership is incomplete or requires reconciliation")
-    saved_at = _stamp(ownership.get("last_saved_reconciliation_at"))
-    if saved_at > stamp:
-        raise ValueError("Account ownership reconciliation is future-dated")
+    fresh_epoch = ownership.get("fresh_gameplan_epoch") is True
+    saved_at = None if fresh_epoch else _stamp(ownership.get("last_saved_reconciliation_at"))
+    if not fresh_epoch and (ownership.get("last_saved_reconciliation_ready") is not True or saved_at > stamp):
+        raise ValueError("Gameplan own order history is not ready or is future-dated")
     owned = ownership.get("owned_shares")
     allocations = ownership.get("active_allocations")
     if not isinstance(owned, dict) or set(owned) != set(symbols) or not isinstance(allocations, list):
@@ -157,8 +157,7 @@ def _project(captured, *, symbols, scope, observed):
             raise ValueError("Account horizon allocation is malformed")
         identity = _hash(item.get("allocation_id_sha256"))
         symbol, horizon = item.get("symbol"), item.get("horizon")
-        intraday = horizon == "15m" and item.get("stream") in {"atlas-15m", "scout-15m"}
-        if (symbol not in symbols or (horizon not in {"1h", "4h", "1d", "1w"} and not intraday)
+        if (symbol not in symbols or horizon not in {"1h", "4h", "1d", "1w"}
                 or item.get("status") != "ACTIVE" or identity in identities or (symbol, horizon) in routes):
             raise ValueError("Account horizon allocation identity or universe differs")
         quantities = {name: _number(item.get(name), whole=True) for name in _QUANTITIES}
@@ -166,12 +165,13 @@ def _project(captured, *, symbols, scope, observed):
         if end <= start or quantities["reserved_sell_shares"] > quantities["owned_shares"]:
             raise ValueError("Account horizon allocation quantities or targets disagree")
         selected.append({"allocation_id_sha256": identity, "symbol": symbol, "horizon": horizon,
-            "status": "ACTIVE", **quantities, "target_start": start.isoformat(), "target_end": end.isoformat(),
-            **({"stream": item["stream"]} if intraday else {})})
+            "status": "ACTIVE", **quantities, "target_start": start.isoformat(), "target_end": end.isoformat()})
         totals[symbol] += quantities["owned_shares"]
         reserved[symbol] += quantities["reserved_sell_shares"]
         identities.add(identity)
         routes.add((symbol, horizon))
+    if fresh_epoch and (selected or any(_number(v) for v in owned.values())):
+        raise ValueError("A fresh Gameplan epoch cannot claim historical inventory")
     for symbol in symbols:
         if (_number(owned[symbol], whole=True) != totals[symbol]
                 or reserved[symbol] > result["pending_sell_shares"][symbol]
@@ -186,7 +186,9 @@ def _project(captured, *, symbols, scope, observed):
     result["ownership"] = {"status": "OBSERVED_CONSISTENT", "safe_for_planning": True, "account_matches": True,
         "active_allocations": sorted(selected, key=lambda item: (item["symbol"], item["horizon"])),
         "blocked_symbols": [], "owned_shares": totals, "reason_codes": [],
-        "last_saved_reconciliation_at": saved_at.isoformat(), "last_saved_reconciliation_ready": True,
+        "last_saved_reconciliation_at": saved_at.isoformat() if saved_at else None,
+        "last_saved_reconciliation_ready": True if saved_at else None,
+        "ownership_scope": "GAMEPLAN_ONLY", "fresh_gameplan_epoch": fresh_epoch,
         "current_broker_reconciliation_performed": False}
     if "planning_reservation_evidence" in snapshot:
         from ml.planning_reservations import BASIS, PENDING
@@ -219,32 +221,22 @@ def _project(captured, *, symbols, scope, observed):
 
 
 def capture_snapshot(config: dict, now=None, ownership_observations=None) -> dict:
-    """Read Atlas's verified union account once; never persist or activate it."""
+    """Read the Gameplan account once; other trader histories are irrelevant.
+
+    ownership_observations is retained only for old callers. Its contents are
+    never read, validated, or combined with the Gameplan trading records.
+    """
     root, workflow, account, frozen = _bindings(config)
     started, timer = utc_timestamp(now), monotonic()
-    observations = deepcopy(ownership_observations)
     def clock():
         return started + pd.Timedelta(seconds=max(0, monotonic() - timer))
-    if observations is not None:
-        from tools.nightly_ownership import validate_observations
-        records = validate_observations(config, observations, observed_at=started)
     try:
-        if observations is None:
-            from ml.account_gameplan.preparation import _native_snapshot
-            captured = _native_snapshot(root, account, observed_at=started.isoformat())
-        else:
-            from ml.account_gameplan.snapshot import capture_account_planning_snapshot
-            from ml.gameplan_trade_snapshot import SchwabSession
-            captured = capture_account_planning_snapshot(symbols=account.symbols,
-                expected_account_fingerprint=account.account_fingerprint,
-                expected_sources={record["producer"]: record["source_fingerprint"] for record in records},
-                ownership_evidence=records, session=SchwabSession(), observed_at=started.isoformat(), clock=clock)
+        from ml.account_gameplan.preparation import _native_snapshot
+        captured = _native_snapshot(root, account, observed_at=started.isoformat())
     except Exception:
         # Native failures may contain account identifiers or provider messages.
         raise ValueError("Account-wide read-only snapshot capture failed") from None
     completed = clock()
-    if observations is not None:
-        validate_observations(config, observations, observed_at=completed)
     for path, original in frozen.items():
         if _read(path, path.parent) != original:
             raise ValueError("Local account snapshot bindings changed during capture")

@@ -23,7 +23,7 @@ from ml.stock_trader.fixed_horizon_engine import _joint_budgets
 from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
 
 
-AUTHORITY_PATH = Path("state/account-gameplan/authority.sqlite3")
+AUTHORITY_PATH = Path("state/gameplan-trader/authority.sqlite3")
 
 
 def _binding(config):

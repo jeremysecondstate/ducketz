@@ -1,5 +1,13 @@
 # Cross-PC task inventory and adoption
 
+## Permanent nightly operation and independent traders
+
+Jeremy's October 13 direction permanently authorizes nightly operation on both PCs: each produces its own eleven-symbol Gameplan; synthesize those two Gameplans once with one actual cash/stock balance and return the same 22-symbol Gameplan and Stats to both PCs. Atlas can finish synthesis directly without a reciprocal acceptance wait.
+
+Atlas runs the combined Gameplan trader plus Atlas's local 15-minute trader. Scout runs only Scout's local 15-minute trader. They independently trade and log their own activity. No 15-minute synthesis, cross-trader reconciliation, verification, compatibility proof, remote grant, shared trading ledger or approval prerequisite belongs in this operation. Preparation and routine repair are already authorized; the human manually starts each trader.
+
+The source publication, ownership, exact-byte review and private-data procedures below continue to protect shared development work. They are not an additional trading or nightly operating verification ceremony. Preserve local symbols, private credentials/state, native task identities, memories, historical originals and receipts. See [Independent trading systems](independent-traders.md).
+
 Contract: `cross-pc-v2`. The portable catalog is
 [`coordination/task-catalog.json`](../../coordination/task-catalog.json).
 Atlas inspected all twelve saved native definitions on October 1, 2026.
@@ -7,7 +15,9 @@ Scout evidence is the human-relayed preparation report from that date; Atlas
 has not inspected Scout's native scheduler. An inventory entry is not proof
 of source installation, current execution, or operating parity.
 
-## Atlas inventory and Scout mismatches
+## Archived October 1 Atlas inventory and Scout mismatches
+
+The table below is the original dated observation, not current operating authority or a new prerequisite. Its observer ceilings do not restrict the permanent October 13 nightly workflow or independently human-started local 15-minute traders.
 
 All wall-clock schedules use America/Los_Angeles. Intervals and original
 native recurrence strings remain unchanged during prompt adoption. "Chat
@@ -43,8 +53,10 @@ monitors; it must not gain a duplicate standalone continuity schedule.
 
 ## Authority and adaptive timing
 
-Catalog roles are ceilings, not grants. Each original native task prompt
-continues to define its narrower operating scope and dated exceptions. A
+The standing October 13 human direction governs normal nightly preparation
+and the independent-trader topology. Historical catalog roles do not require
+new approval for that work. Other task purposes retain their own narrower scope
+and dated exceptions. A
 read-only or reporting task can communicate factual findings and retain
 local coordination evidence without gaining application-code, trading or
 runtime authority. Existing evaluation/research output writes are still

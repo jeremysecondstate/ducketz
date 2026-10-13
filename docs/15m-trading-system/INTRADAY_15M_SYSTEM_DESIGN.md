@@ -6,31 +6,11 @@ Times in this document are America/Los_Angeles
 
 ## Status and scope
 
-This document consolidates the original architecture, the newer
-[ensemble proposal](15M-ARCHITECTURE-CHANGE.md), and the October 12 human
-clarifications. Development, local training, historical evaluation, shadow
-forecasts, automatic scoring and the read-only development UI are authorized.
-Use existing authorized data and read-only provider connections. New access,
-subscriptions, credentials or expanded spending require separate authorization.
-The later October 12 instruction expands development toward a manual Atlas
-15m live-trader launcher: the human intends to start it after the execution
-implementation is complete, observe it on Atlas, and then start Scout. Scout
-may continue research/shadow runs in the meantime. Source now implements the
-manual Atlas launcher, independent technical sizing, actual shared-account
-capacity admission, exact-identity order recovery and stream-specific
-cancellation. Its verification uses injected brokers and temporary databases;
-this development has not launched it, submitted live orders, changed schedules,
-enabled Scout trading or restarted/deployed production workers. Installed source,
-loaded Gameplan compatibility and an actual human-started live run remain
-separate facts.
+Jeremy's October 13, 2026 standing direction defines three independent traders. Atlas runs the combined 22-symbol Gameplan trader and Atlas's local eleven-symbol 15-minute trader. Scout runs its own eleven-symbol 15-minute trader. Each trades and logs its own activity with its own local state. No trader checks, verifies, reconciles, combines, or depends on another trader.
 
-Current account execution bindings describe Atlas as the sole executor. Scout
-has not been enabled to trade by saving this design. Current source and saved
-task definitions are evidence of behavior, not instructions to run them.
+Only the two nightly eleven-symbol Gameplans are synthesized. Use one actual account cash/stock balance, publish the same combined Gameplan and Stats on both PCs, and prepare the traders every night under permanent authorization. Atlas may synthesize directly and return the completed result to Scout without an acceptance wait. The human manually starts each trader. See [Independent trading systems](../development/independent-traders.md).
 
-Build one piece at a time: Atlas's eleven-symbol intraday prototype first,
-then Scout's implementation and simultaneous cross-PC testing. Prototype/testing
-authorization does not itself authorize live orders.
+The causal forecast targets, model contracts, technical sizing and evaluation mathematics below remain in force. Existing authorized data/provider connections remain local. Normal preparation and routine repair do not require new human or peer approval.
 
 ## 1. Three execution streams, one account
 
@@ -183,132 +163,23 @@ window-expiry liquidation or forced end-of-day close.
 
 ## 4. Actual share ownership without a 15m horizon funding gate
 
-The later independent-account clarification supersedes the old 15m donor-gate
-proposal. An Atlas 15m SELL may use actual eligible uncommitted same-symbol
-shares across native allocations and observed unallocated holdings. Its desired
-size is independent of Gameplan horizons; allocation labels are retained for
-accounting rather than used as a 15m budget, daily ceiling or pacing veto.
-The native ledger can attribute one sale across several lots in stable
-allocation-identity order. That order is deterministic accounting, not a new
-strategic preference among horizons.
+Each 15-minute trader sizes from its own forecast and current technical inputs. Actual broker cash, available shares and working orders bound the submitted quantity. A proposed SELL can use currently available same-symbol stock without consulting Gameplan's horizon allocations or another trader's records.
 
-A sale records both the triggering 15m forecast and each actual allocation
-reduced by its identified fills. It does not fabricate a purchase or erase
-ownership history. Existing Gameplan behavior remains separately selected;
-its longer-horizon routes cannot consume 15m inventory or manage 15m orders.
+Own order IDs, fills and unresolved submissions stay in the local 15-minute ledger. Account movements caused elsewhere are ordinary changes in available capacity; do not reconstruct their cause or turn them into a cross-trader discrepancy. Preserve original fills, and never repeat a completed purchase to restore an earlier account balance.
 
-The current [cross-horizon bearish-sale policy](../loops-system-analysis/CROSS_HORIZON_BEARISH_FALLBACK.md)
-has a 50% shared daily ceiling, individual allocation ceilings, 18 weighted
-opportunities totaling 24 weight units, and other restrictions. Its current
-route permits longer-allocation sales only when normal inventory is genuinely
-absent, selects at most one longer allocation per triggering forecast, and
-excludes certain simultaneous instructions and pending orders.
+## 5. Actual account capacity and independent working quantities
 
-Those restrictions remain Gameplan policies. The manual 15m path does not
-inherit the 50% ceiling, one-donor restriction, eighteen-opportunity pacing,
-horizon weights or scheduled exit rules. Actual pending sales and unknown
-commitments still reduce eligible shares. Completed purchases are never
-repeated merely to restore stock later sold by another stream.
+The broker account is shared; the traders' operating state is independent. Each worker reads actual broker cash/positions and applies its own pending-order commitments. There is no shared reservation book, Gameplan allocation attribution, cross-PC cash grant, distributed lease or per-trader allowance exchange.
 
-## 5. Shared purchasing capacity and working quantities
+Gameplan records its own activity in `state/gameplan-trader/holdings.sqlite3` and `state/gameplan-trader/authority.sqlite3`. Each PC's local 15-minute trader uses `intraday/execution/holdings.sqlite3`, `intraday/execution/authority.sqlite3` and its own local execution binding/lock. Preserve old mixed-ledger files as historical originals.
 
-The selected direction is **one shared pool and a shared reservation book on
-Atlas, used by Gameplan, Atlas 15m, and Scout 15m**. Separate stream budgets
-and advance delegation of cash/share allowances were rejected as the first
-approach.
+A trader wanting to sell four shares when the broker has three available submits at most three. A trader wanting to buy four shares at $50 with $100 usable cash submits at most two. Save the original desired quantity and actual adjusted quantity, including zero; never fabricate a fill.
 
-The 15m traders act independently on their signals and adjust to quantities
-they can trade. The human called this their "rogue" operating style: they do
-not preserve the original Gameplan position merely to keep its purchase
-quantity intact. The shared book prevents two streams from committing the
-same capacity. It is automatic accounting, not a human confirmation ceremony.
+## 6. Independent activity records and nightly Gameplan exchange
 
-The working mechanism is a durable reservation before submission. Scout still
-submits and manages its own orders locally; using Atlas's book does not transfer
-Scout's order submission to Atlas. The actual communication interface, atomic
-protocol, and restart/reconnection behavior must be specified before building
-simultaneous execution. Copying local databases between PCs, or putting the
-existing SQLite database on a shared drive, is not that protocol.
+There is no live or overnight reconciliation between the three traders. Each records its own forecasts, order identities, cancellations, fills and outcomes. Optional telemetry is informational and cannot block operation.
 
-Each reservation identifies the account, executing stream/PC, forecast, symbol,
-side, desired and permitted quantities, limit price, allocation sources, and
-persistent request identity. A retry of the same request retrieves its existing
-commitment rather than creating another one.
-
-- A BUY commits the permitted quantity's cost at its submission limit against
-  actual uncommitted cash. Gameplan's gross/symbol budgets, 95% reserve fraction
-  and horizon caps are not 15m admission gates.
-- A SELL commits available shares from specifically identified eligible
-  allocations. Held shares already reserved for working sales are unavailable
-  for another sale.
-- Broker working orders and local commitments are matched by identity and
-  counted once. Unresolved submissions retain their commitments.
-- Filled purchases remain accounted for while balance reporting catches up.
-  Proposed sales do not create spendable purchasing capacity; account evidence
-  must establish the actual available proceeds.
-
-There are no agreed protected cash portions for Gameplan or either 15m stream.
-Contention priority remains open. Serving reservations in recorded arrival
-order was proposed, but has not been explicitly selected. Do not silently
-grant Gameplan priority or introduce new confidence hurdles or execution vetoes.
-
-The implemented Atlas path shares `state/account-gameplan/authority.sqlite3`
-and `state/independent-stock-trader/holdings.sqlite3` in local DATASTORE with
-Gameplan. It serializes broker/account steps under the existing cycle lock,
-uses a fenced authority lease, and obtains a fresh coherent account-wide
-cash/share/order snapshot before admission. It requires no daily Gameplan plan
-to size or fund a 15m instruction. These are source capabilities, not evidence
-that operating databases were migrated or a compatible worker was loaded.
-
-### Quantity-adjustment example
-
-A 15m trader wants to sell four shares. If three eligible shares are available,
-it adjusts to three, reserves them, and submits. If all three fill, that
-allocation closes. If three are held but two are already committed to a working
-sale, only one is available for a new sale.
-
-### Completed purchases are not replenishment targets
-
-Atlas's Gameplan buys ten hourly shares of a Scout-list symbol. Scout's 15m
-trader subsequently sells three from that hourly allocation. Scout records
-actual fills locally and communicates the reduction; Atlas records seven
-remaining hourly shares. The original ten-share purchase remains completed
-and is not repeated to restore ten. Later instructions use actual remaining
-shares and working commitments.
-
-| Event | Hourly shares remaining | Reserved for sale | Available for another sale |
-|---|---:|---:|---:|
-| Ten-share purchase completed | 10 | 0 | 10 |
-| Scout reserves three for a 15m sale | 10 | 3 | 7 |
-| Two sell; one remains working | 8 | 1 | 7 |
-| Final share sells | 7 | 0 | 7 |
-
-## 6. Live reconciliation and after-hours exchange
-
-Atlas checks current balances and working orders against the shared records,
-logs quantity changes/discrepancies, and keeps the account books current. Each
-PC preserves its own meticulous history. Shared accounting includes combined
-cash commitments, shares, working orders, partial fills, and unresolved sends.
-
-The planning assumption is that there are no other traders in the account.
-The distinct symbol lists identify the responsible PC for 15m activity, but
-symbol alone cannot distinguish Gameplan activity from 15m activity: Atlas's
-Gameplan trades all 22. Order and forecast identities provide that distinction.
-
-An hourly BUY of three and a 15m SELL of three can leave the balance unchanged.
-Complete actual-execution records can reconstruct this after hours. A balance
-snapshot alone cannot reveal both trades or their allocation effects.
-
-| During trading | After hours |
-|---|---|
-| Exchange reservations, order identities, acceptance/status changes, actual fills, cancellations, and affected allocation quantities. | Exchange complete predictions, inputs, sizing explanations, execution logs, reports, and outcome data. |
-| Keep cash, available shares, and unresolved quantities accurate; Atlas reconciles them with account observations. | Reconstruct activity, reconcile histories, evaluate accuracy and trading results, and integrate appropriate results into Stats/nightly review. |
-
-The live exchange can be small; full analytical reconstruction need not happen
-during trading. After-hours reports do not substitute for live commitments.
-The existing five-minute nightly exchange is not yet a real-time order protocol.
-Measure communication latency, including reservation and fill-report delays,
-in eventual cross-PC testing.
+The private nightly exchange carries the two Gameplan research packages, their Stats and the single combined Gameplan result. Both PCs receive that same result. It is not an exchange of 15-minute trading ledgers, reservations or verification receipts.
 
 ## 7. Quote, execution, and recovery behavior
 
@@ -357,18 +228,7 @@ An unsent reservation also requires a confirmed release before reserving or
 submitting the new intention. This rule does not cancel Gameplan orders or
 another symbol's orders.
 
-Reuse the existing Schwab cancellation and order-status machinery for both
-Gameplan and 15m. The cancellation mechanism is shared; the reason and order
-selection remain specific to each stream. A 15m new-forecast replacement must
-not apply Gameplan's expiry rules or cancel another stream's order. Persist the
-exact identity and cancellation request, reconcile authoritative status and
-intervening fills, then release only the confirmed unfilled commitment. A
-successful cancel request alone never proves cancellation. Source now fences
-Gameplan's selectors to its own stream and supplies
-[CancellationService](../../ml/intraday/cancellation.py) through the existing
-prepared Schwab cancellation/status transport. A loaded compatible Gameplan
-worker, or verified absence of one, is required before manual 15m admission.
-Source on disk alone cannot prove that a running worker uses those fences.
+Each trader cancels or recovers only its own exact broker orders. No loaded Gameplan proof or other-trader absence check is required.
 
 Completed fills and the old forecast/intention remain in the audit history.
 Repricing the same intention pursues only its unfilled remainder. A new forecast
@@ -512,58 +372,15 @@ unscorable and provisional comparisons are excluded from scored denominators.
 
 ## 11. Existing workflow context and implementation references
 
-At the handoff, saved Atlas definitions described 21:05 Stats-first nightly
-preparation, a five-minute joint Gameplan exchange with Scout synthesis,
-03:35 readiness, and a 03:55 representative that reports rather than starts
-trading. Priority source reconciliation ran every five minutes, and the weekly
-review was Saturday 09:00. The legacy overnight task was paused; the Windows
-independent stock-session task was disabled. The manual Gameplan launcher is
-`Start-Gameplan-Trader.cmd`.
+The current nightly workflow is permanently authorized: local completed-session data and Stats, local model work, each PC's eleven-symbol Gameplan, one combined 22-symbol cash/stock synthesis, and the same result returned to both PCs. Atlas can finish synthesis directly. Normal preparation leaves all three independent traders ready for manual start.
 
-These are saved-definition observations, not proof a particular run completed
-and not a new schedule specification. Recheck actual bindings before future
-implementation. No new 15m component existed at the architecture handoff.
-
-Relevant current project files, some under concurrent development:
-
-- `docs/development/nightly-workflow.md` and `nightly-exchange.md`.
-- `docs/loops-system-analysis/SHARED_ACCOUNT_GAMEPLAN.md`.
-- `ml/nightly_workflow.py`, `ml/overnight_runtime.py`,
-  and `ml/independent_stock_targets.py`.
-- `ml/stock_trader/independent_session.py`, `gameplan_direction_engine.py`,
-  `horizon_ledger.py`, and `catchup.py`.
-- `ml/account_gameplan/authority.py`, `config.py`, and `execution.py`.
-
-The reservation authority remains host-local and Atlas is its only submitting
-host. Source adds explicit 15m admission alongside the established Gameplan
-horizons and reuses exact fill/account-balance accounting. It is not a
-distributed service. Missing exact order identity or incomplete account-wide
-evidence blocks the manual broker step while retaining commitments and retry
-records; it never blocks saving a valid independently computed forecast.
+Current operating references are [nightly workflow](../development/nightly-workflow.md), [private nightly exchange](../development/nightly-exchange.md), [Gameplan composition](../loops-system-analysis/JOINT_ACCOUNT_CAPITAL.md), and [independent traders](../development/independent-traders.md). `Start-Gameplan-Trader.cmd` belongs to Atlas's combined Gameplan; each PC has its own `Start-15m-Trader.cmd`.
 
 ## 12. Open decisions for subsequent development
 
-1. Measured model/parameter/lookback comparisons beyond the implemented initial
-   ten-model, all-compatible-history, full-15m configuration.
-2. Separately versioned improvements to the approved independent TA starter;
-   no improvement is silently substituted into an issued intention.
-3. Atomic distributed reservation/communication/recovery protocol and contention
-   priority before Scout can submit from the shared Atlas authority.
-4. Any future same-forecast repricing policy. Initial orders remain working
-   without a Gameplan timer until terminal status or a newer reconciled forecast.
-5. Special final-information and next-session 04:00 targets, calculation timing
-   and genuine observation availability; no overnight candles are invented.
-6. Measured live publication offset, sustained resource feasibility alongside
-   active Gameplan, and remote live delivery. The initial manual worker uses
-   latest-completed/no-backlog overrun handling and requires a full ensemble;
-   broader incomplete-ensemble execution remains a separate future choice.
-7. An exact broker-supported recovery mechanism for an ambiguous POST that
-   returns no reliable broker order ID. Current recovery preserves the unknown
-   commitment and does not guess or resend.
+Future research may compare model parameters, lookbacks, training cadence, technical recipes, measured publication offsets and sustained resource use. Special final-information and next-session 04:00 targets remain separate forecast contracts; no overnight candles are invented. A future same-forecast repricing policy must preserve original intention/order identities.
 
-Resolve only these genuinely open details; do not restart or reconfirm the
-settled execution arrangement, moving not-down target, transparent first sizing,
-shared pool, remaining-quantity recovery, or read-only UI requirement.
+The independent-trader topology, lack of cross-trader verification, single Gameplan synthesis and permanent nightly authorization are settled. A distributed reservation protocol or a compatible Gameplan process is not required for Scout or Atlas 15-minute execution.
 
 ## 13. Acquisition, no-trade evidence and causal training
 
@@ -645,47 +462,8 @@ from any executed-trade subset. No submission means no fabricated fill or P&L.
 
 ## 15. Implementation and measured evidence
 
-The [implementation record](../development/intraday-15m-prototype.md) identifies
-the current modules, focused checks, actual data coverage and measured runs.
-Its research settings are explicit experiments. Older mock sizing, book and
-execution fixtures demonstrate mechanics only and do not settle production
-policy, establish trained-model performance, or prove current tests pass.
+The [implementation record](../development/intraday-15m-prototype.md) preserves model/data contracts and dated research measurements. The [manual execution guide](../development/intraday-live-readiness.md) describes current independent state and launch commands.
 
-`execution_policy.py` remains a pure decision helper. The new
-[account_execution.py](../../ml/intraday/account_execution.py) connects the
-approved independent `starter_sizing.py` recipe to `intentions.py`, actual
-capacity clipping, the existing native/shared ledgers and injected prepared
-broker transport. Construction performs no broker IO. Only the explicit manual
-session constructs the existing authorized provider/broker adapters and invokes
-bounded account steps. Complete sizing and execution evidence stay local;
-minimal monitoring packets omit quantities, account state, orders and private
-inputs.
+`ml/intraday/local_execution.py` supplies the local execution binding and own-state paths. `account_execution.py` connects independent sizing and actual broker capacity to the prepared broker transport. `live_session.py` retains the local manual session, own-order retries, fixed forecast targets, current quotes and strict cutoff. Gameplan and other 15-minute runtime state are not inputs.
 
-[live_session.py](../../ml/intraday/live_session.py) separates full model work,
-scoring and serialized account recovery. It retains manual-session identity,
-retry waits, immutable forecast targets and first valid desired sizes. A final
-POST gate checks manual authority, account/configuration identity, compatible
-loaded Gameplan or verified absence, lease/snapshot/quote freshness, the real
-market window, fixed target maturity and strict cutoff. Unknown acceptance
-never authorizes another POST.
-
-`Check-15m-Readiness.cmd` is read-only and does not start a trader or call a
-provider/broker. `Start-15m-Trader.cmd` is the explicit human manual launch
-command; it may place real orders when its runtime gates pass. Neither command
-creates a schedule, enables Scout or restarts Gameplan. No manual live launch,
-real order or trader restart is performed by source publication. Subsequent
-human-started Atlas sessions have separate measured evidence in the live record.
-The [live preparation record](../development/intraday-live-readiness.md)
-documents commands, gates, shared accounting, cancellation and exact recovery
-limitations. The
-[Scout update prompt](../development/intraday-scout-update-prompt.md) carries the
-reviewed source adoption and outstanding monitoring receipt instructions.
-
-Shared Gameplan account snapshots distinguish request start from validated
-information readiness. Actual quote timestamps can fall between those times.
-The adapter preserves the original snapshot time, source fingerprint and quote
-times, checks original capture age and account identity, then uses actual
-validation time for the ready snapshot. Missing, crossed, stale or genuinely
-future quotes still fail their existing checks. Loaded runtime compatibility
-must prove this code in the human-started Gameplan before 15m admission; an
-installed file alone is not that proof.
+`Check-15m-Readiness.cmd` is an optional local diagnostic. `Start-15m-Trader.cmd` is the human's local manual launcher. Source publication and nightly preparation do not start trading. Retain historical measurements as dated evidence; they do not impose the former shared-ledger or compatibility architecture.
