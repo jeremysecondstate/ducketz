@@ -215,6 +215,30 @@ def test_manifest_requires_complete_source_and_exact_bytes(tmp_path, monkeypatch
         pre.verify_installation(repository, path)
 
 
+@pytest.mark.parametrize("missing", [
+    "ml/intraday/admission_enrollment.py", "ml/intraday/scout_enrollment.py",
+    "tools/nightly_exchange.py",
+])
+def test_manifest_rejects_incomplete_private_enrollment_installation(tmp_path, monkeypatch, missing):
+    repository = tmp_path / "repo"
+    values = {}
+    for relative in pre.REQUIRED_SOURCE:
+        path = repository / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(relative.encode())
+        values[relative] = pre.digest(path.read_bytes())
+    # Reproduce a client installation whose manifest omits enrollment support,
+    # even though its other reviewed client files match.
+    values.pop(missing, None)
+    manifest = dict(version="scout-live-installed-v1", files=values,
+                    source_commits=["a" * 40], owner_chat_id="fixture")
+    path = repository / pre.MANIFEST_PATH
+    write_json(path, manifest)
+    monkeypatch.setattr(pre, "__file__", str(repository / "ml/intraday/scout_prestart.py"))
+    with pytest.raises(pre.PrestartError, match="lacks required"):
+        pre.verify_installation(repository, path)
+
+
 @pytest.mark.parametrize("path", ["../outside.py", "/absolute.py", "bad\\path.py"])
 def test_manifest_rejects_noncanonical_paths(tmp_path, path):
     with pytest.raises(pre.PrestartError):

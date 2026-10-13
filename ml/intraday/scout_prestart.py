@@ -32,6 +32,8 @@ REQUIRED_SOURCE = frozenset({
     "ml/intraday/scout_protocol.py", "ml/intraday/scout_broker.py",
     "ml/intraday/scout_runtime_gate.py", "ml/intraday/admission_transport.py",
     "ml/intraday/admission_service.py", "ml/intraday/runtime_compatibility.py",
+    "ml/intraday/admission_enrollment.py", "ml/intraday/scout_enrollment.py",
+    "tools/nightly_exchange.py",
     "pyproject.toml",
 })
 HASH = re.compile(r"[a-f0-9]{64}")
