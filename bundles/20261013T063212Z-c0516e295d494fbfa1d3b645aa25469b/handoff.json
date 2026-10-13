@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T06:32:12.660047Z",
+  "id": "20261013T063212Z-c0516e295d494fbfa1d3b645aa25469b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Fence independent sessions and retain proven originals during nightly source transitions"
+}
