@@ -50,8 +50,8 @@ def raw_order(env, *, status='WORKING', filled=0, quantity=2):
             executionId='fill:1', quantity=filled, price=99.9, time=env.fill_time.isoformat())])] if filled else []))
 
 
-@pytest.fixture
-def env(tmp_path, monkeypatch):
+@pytest.fixture(params=['datetime', 'iso8601'])
+def env(tmp_path, monkeypatch, request):
     def forbidden(*args, **kwargs):
         raise AssertionError('No network or Atlas access in local execution tests')
     monkeypatch.setattr(socket, 'socket', forbidden)
@@ -61,7 +61,8 @@ def env(tmp_path, monkeypatch):
     executor = execution.ScoutLocalAccountExecutor(repository=tmp_path, datastore=tmp_path,
         profile=dict(actor='Scout', machine='pc-new', symbols=['DOCU']), store=store, broker=broker,
         local_symbols=('DOCU',), session_started_at=reference + timedelta(seconds=1), session_id='manual-local-test',
-        clock=lambda: state.now, manual_authority=lambda: state.manual, stopped=lambda: state.stop)
+        clock=lambda: state.now.isoformat() if request.param == 'iso8601' else state.now,
+        manual_authority=lambda: state.manual, stopped=lambda: state.stop)
     result = SimpleNamespace(executor=executor, state=state, broker=broker, store=store,
         reference=reference, cash=250, held=20, pending_sell=0, quote_age=0, captures=0,
         root=tmp_path, fill_time=state.now + timedelta(seconds=1), working=(),

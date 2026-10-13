@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from ml.intraday.models import (
-    DEFAULT_MODELS, ModelSpec, build_estimator, configured_models, fit_ensemble,
+    DEFAULT_MODELS, DEFAULT_PARAMETERS, ModelSpec, build_estimator, configured_models, fit_ensemble,
     probability_not_down, purged_chronological_split, registry_status,
 )
 from ml.intraday.prediction import ContractError, TARGET_VERSION
@@ -51,6 +51,54 @@ def test_additional_real_probability_adapters(family):
     result = fit_ensemble(X, y, inference, config=[family], **kwargs)
     assert result["complete"], result["outputs"]
     assert 0 <= result["probability_not_down"] <= 1
+
+
+@pytest.mark.parametrize("rows", [2, 7, 8, 9, 10, 14, 15, 16])
+def test_knn_uses_available_causal_rows_and_records_effective_neighbors(rows):
+    X, _, inference, kwargs = dataset(rows)
+    y = np.arange(rows) % 2
+    result = fit_ensemble(X, y, inference + 0.1, config=["knn"], **kwargs)
+    output = result["outputs"][0]
+    assert result["complete"], output
+    assert 0 <= output["probability_not_down"] <= 1
+    assert output["metadata"]["training_rows"] == rows
+    assert output["metadata"]["requested_n_neighbors"] == 15
+    assert output["metadata"]["neighbor_count_policy"] == "cap_to_training_rows"
+    assert output["metadata"]["effective_parameters"]["n_neighbors"] == min(15, rows)
+    assert output["metadata"]["spec"]["parameters"] == {}
+    assert DEFAULT_PARAMETERS["knn"]["n_neighbors"] == 15
+
+
+@pytest.mark.parametrize("requested", [3, 7, 20])
+def test_knn_custom_request_matches_saved_estimator_and_metadata(tmp_path, requested):
+    X, _, inference, kwargs = dataset(7)
+    y = np.arange(7) % 2
+    spec = ModelSpec("custom_knn", family="knn", parameters={"n_neighbors": requested})
+    result = fit_ensemble(X, y, inference + 0.1, config=[spec], artifact_dir=tmp_path,
+                          run_id="knn-small-snapshot", **kwargs)
+    output = result["outputs"][0]
+    assert result["complete"], output
+    saved = joblib.load(output["artifact_path"])
+    assert saved["estimator"].named_steps["model"].n_neighbors == min(requested, 7)
+    assert saved["metadata"] == output["metadata"]
+    assert saved["version"] == output["version"]
+    assert saved["metadata"]["effective_parameters"]["n_neighbors"] == min(requested, 7)
+    assert saved["metadata"]["requested_n_neighbors"] == requested
+    assert saved["metadata"]["spec"]["parameters"] == spec.parameters == {"n_neighbors": requested}
+    assert probability_not_down(saved["estimator"], inference + 0.1) == pytest.approx(output["probability_not_down"])
+
+
+@pytest.mark.parametrize("requested", [0, -1, 1.5, 20.5, True, "15", None])
+def test_knn_invalid_neighbor_request_is_not_repaired_by_clamping(requested):
+    X, _, inference, kwargs = dataset(7)
+    spec = ModelSpec("invalid_knn", family="knn", parameters={"n_neighbors": requested})
+    result = fit_ensemble(X, np.arange(7) % 2, inference, config=[spec], **kwargs)
+    output = result["outputs"][0]
+    assert not result["complete"] and result["probability_not_down"] is None
+    assert output["error"]["phase"] == "training"
+    assert output["error"]["type"] == "ContractError"
+    assert "positive integer" in output["error"]["message"]
+    assert output["artifact_path"] is None
 
 
 def test_learned_preprocessing_is_fitted_only_on_training_rows(tmp_path):
@@ -104,7 +152,7 @@ def test_model_failure_is_saved_and_incomplete_consensus_is_explicit():
 
 def test_single_class_has_failure_without_constant_model_fallback():
     X, y, inference, kwargs = dataset()
-    result = fit_ensemble(X, np.ones_like(y), inference, config=["logistic", "gaussian_nb"], **kwargs)
+    result = fit_ensemble(X, np.ones_like(y), inference, config=["logistic", "gaussian_nb", "knn"], **kwargs)
     assert result["consensus_status"] == "failed" and result["successful_count"] == 0
     assert result["probability_not_down"] is None
     assert all(o["error"]["type"] == "ContractError" for o in result["outputs"])

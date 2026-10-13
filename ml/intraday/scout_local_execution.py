@@ -49,7 +49,10 @@ class ScoutLocalAccountExecutor:
         self.profile, self.store, self.broker = profile, store, broker
         self.symbols = validated_symbols(local_symbols)
         self.session_started_at, self.session_id = instant(session_started_at), session_id
-        self.clock, self.manual_authority, self.stopped = clock, manual_authority, stopped
+        # The live session's default clock returns ISO text; the submission
+        # client and broker adapter require an aware datetime on every read.
+        self.clock = lambda: instant(clock())
+        self.manual_authority, self.stopped = manual_authority, stopped
         if type(maximum_evidence_age_seconds) is not int or not 1 <= maximum_evidence_age_seconds <= 300:
             raise ContractError('Explicit bounded quote/account evidence age required')
         self.maximum_evidence_age_seconds = maximum_evidence_age_seconds
