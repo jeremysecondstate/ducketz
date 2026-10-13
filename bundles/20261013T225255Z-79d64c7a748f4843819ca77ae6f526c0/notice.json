@@ -1,0 +1,41 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4",
+  "change_id": "20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4",
+  "commit_sha": "eb24c5b9dfa436ae5d795c1c62fad0d3d25857d7",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_models.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/scout_local_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_scout_local_execution.py"
+    }
+  ],
+  "installation": "Prepared separately; current manual session continues using original code and controls.",
+  "limitations": [
+    "Offline synthetic model fixtures and mocked broker only; original production models/data/orders remain unchanged.",
+    "Running Python retains imported code; these checks do not establish live recovery.",
+    "Stacked on the installed reviewed quote-timing baseline; main integration remains separate."
+  ],
+  "peer_applicability": "Shared model adapter applies to both PCs; clock normalization applies to Scout local execution. No peer runtime dependency.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/102",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Prepared source takes effect at a future human-started session. Do not replace an active model module because current runtime derives artifact source hashes from disk. Preserve manual start and stop; no replay of old orders.",
+  "scope": "shared",
+  "summary": "Scout session repair: normalize local execution clocks and fit valid KNN neighbors",
+  "tests": "104 passed in exact-byte queue;104 passed in isolated candidate; focused145 execution and36 model tests passed; original regressions fail."
+}

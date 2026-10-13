@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T22:52:55.368961Z",
+  "id": "20261013T225255Z-79d64c7a748f4843819ca77ae6f526c0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout session repair: normalize local execution clocks and fit valid KNN neighbors"
+}
