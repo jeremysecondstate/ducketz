@@ -1,0 +1,37 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-scout-transport-fixture-ownership-20261013T073747Z",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "6857ab5f8b2f7ec1ea5905f11ee5a9a3bd7d2867557b6c95311cd374ef5206d9",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6140782714",
+  "files": [],
+  "fixture_constraint": "Namespaced stdlib loading must not mutate global SSLContext, enum bindings or sys.modules ssl, spoof class identity or weaken guard. Use isolated native server interpreter/environment if both invariant and native class contract cannot otherwise be retained.",
+  "identity_review": {
+    "actual_production_offer_verified": false,
+    "existing_account_exchange_equality": true,
+    "private_values_disclosed": false,
+    "production_host_binding_verified": false
+  },
+  "limitations": [
+    "Read-only source/config metadata review; no new tests or source publication.",
+    "Private offer, service, loaded-writer and authenticated connection evidence remain outstanding."
+  ],
+  "ownership_resolution": {
+    "Atlas": "Production TLS guard/environment, host, enrollment and loaded-writer evidence remain Atlas-owned; source frozen in PR90.",
+    "Priority": "Preserve original PR89 source/recovery claim and its pending protected-ownership peer adoption notice.",
+    "Scout": "Narrow test_intraday_admission_transport.py fixture setup plus existing enrollment-client/native-server fixture scope. Preserve actual client coverage, strict negative tests, immutable evidence, no-network and unchanged production guard. No overlapping Atlas test edits."
+  },
+  "peer_adoption": "Scout reports PR90 isolated expected-before composition only; no new primary installation or loaded runtime receipt.",
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6139954662,
+    6140713313
+  ],
+  "runtime_implications": "No packet/key creation, enrollment, provider/broker calls, listener deployment, worker action, trading/schedule/control changes. Manual-live readiness unverified.",
+  "scope": "shared-interface",
+  "source_commit": "40afe032987ae63b8d915476499e8162428075d0",
+  "source_completion_record": "20261013T072924Z-38e1aee5e71c45fc85c8373fe553a70d",
+  "source_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/90",
+  "summary": "Resolve Scout transport-test fixture ownership and report verified existing account/exchange identity equality without claiming a production offer or connection.",
+  "tests": []
+}

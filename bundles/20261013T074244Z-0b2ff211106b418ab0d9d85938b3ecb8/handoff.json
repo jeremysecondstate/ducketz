@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T07:42:44.581771Z",
+  "id": "20261013T074244Z-0b2ff211106b418ab0d9d85938b3ecb8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Resolve Scout transport-test fixture ownership and report verified existing account/exchange identity equality without claiming a production offer or connection."
+}
