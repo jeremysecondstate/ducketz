@@ -1431,13 +1431,122 @@ def test_installed_transition_apply_refuses_drift(transition_env, monkeypatch, m
     assert not (spec.parent / "applied.json").exists()
 
 
-@pytest.mark.parametrize("lock", ["intraday-manual-session.lock", "stock-trader-hourly.lock"])
+@pytest.mark.parametrize("lock", ["intraday-manual-session.lock", "independent-stock-session.lock",
+                                 "stock-trader-hourly.lock"])
 def test_installed_transition_account_worker_lifetime_lock_excludes_prepare(transition_env, lock):
     env = transition_env
     with repair.exclusive_runtime_lock(env["root"] / "locks" / lock, process_name="fixture account worker"):
         with pytest.raises(Exception, match="already|lock|running|owned|active"):
             transition_prepare(env)
     assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+def test_installed_transition_independent_session_lifetime_lock_excludes_apply(transition_env):
+    env = transition_env
+    spec = transition_prepare(env)
+    source, state = repair._inventory(env["repo"]), env["state_path"].read_bytes()
+    lock = env["root"] / "locks/independent-stock-session.lock"
+    with repair.exclusive_runtime_lock(lock, process_name="fixture independent session"):
+        with pytest.raises(RuntimeError, match="Another .* owns"):
+            apply(env, spec)
+    assert repair._inventory(env["repo"]) == source
+    assert env["state_path"].read_bytes() == state
+    assert not (spec.parent / "applied.json").exists()
+
+
+def test_installed_transition_independent_session_cannot_start_after_process_snapshot(transition_env, monkeypatch):
+    env = transition_env
+    spec = transition_prepare(env)
+    attempts = []
+    def empty_snapshot(repository):
+        # Model a new session entering its real lifetime gate just after the
+        # process inventory was read. It must be refused for the entire apply.
+        with pytest.raises(RuntimeError, match="Another .* owns"):
+            with repair.exclusive_runtime_lock(env["root"] / "locks/independent-stock-session.lock",
+                                               process_name="fixture independent session"):
+                pytest.fail("Independent session entered during source transition")
+        attempts.append(repository)
+        return False
+    monkeypatch.setattr(repair, "_trader_running", empty_snapshot)
+    assert apply(env, spec)["status"] == "SOURCE_REPAIR_APPLIED"
+    assert attempts
+
+
+@pytest.mark.parametrize("moment", ["after_validation", "before_claim"])
+def test_installed_transition_rejects_original_reconstruction_drift_after_validation(transition_env, monkeypatch, moment):
+    env = transition_env
+    original = env["original"] / "ml/intraday/orders.py"
+    state, source = env["state_path"].read_bytes(), repair._inventory(env["repo"])
+    if moment == "after_validation":
+        validate = repair._installed_transition
+        def mutate(*args, **kwargs):
+            result = validate(*args, **kwargs)
+            original.write_text("changed after proven original inventory\n")
+            return result
+        monkeypatch.setattr(repair, "_installed_transition", mutate)
+    else:
+        read = Path.read_bytes
+        def mutate(path):
+            result = read(path)
+            if path == env["log"]:
+                original.write_text("changed after freezing original bytes\n")
+            return result
+        monkeypatch.setattr(Path, "read_bytes", mutate)
+    with pytest.raises(ValueError, match="[Oo]riginal|source|evidence"):
+        transition_prepare(env)
+    assert env["state_path"].read_bytes() == state
+    assert repair._inventory(env["repo"]) == source
+    assert repair.registry.read(env["config"]["state_root"]) is None
+    destination = env["state_path"].parent / "source-repairs" / env["request"]["repair_id"]
+    assert not (destination / "claim.json").exists()
+    assert not (destination / "intent.json").exists()
+
+
+def test_installed_transition_frozen_original_matches_historical_source_proof(transition_env):
+    env = transition_env
+    path = transition_prepare(env)
+    spec = repair.workflow._json(path)
+    historical = repair.workflow._json(path.parent / "provenance/source-snapshot.json")["actual_shared_bytes"]
+    assert spec["before_files"] == historical
+    for record in spec["changes"]:
+        if record["before_sha256"] is not None:
+            assert file_checksum(path.parent / "originals" / record["path"]) == historical[record["path"]]
+
+
+@pytest.mark.parametrize("repository", ["original", "candidate"])
+def test_installed_transition_rejects_changed_capture_with_unchanged_disk_inventory(transition_env, monkeypatch, repository):
+    env = transition_env
+    target = env[repository] / "ml/intraday/orders.py"
+    original_bytes = target.read_bytes()
+    state, installed = env["state_path"].read_bytes(), repair._inventory(env["repo"])
+    read, checksum = Path.read_bytes, repair.file_checksum
+    checked, captured = [], []
+    def checked_checksum(path):
+        value = checksum(path)
+        if path == target:
+            checked.append(value)
+        return value
+    def changed_capture(path):
+        raw = read(path)
+        if path == target:
+            # file_checksum streams through Path.open; this later read returns
+            # different bytes while every on-disk inventory still matches.
+            assert checked and checked[-1] == hashlib.sha256(original_bytes).hexdigest()
+            captured.append(path)
+            return raw + b"changed only during frozen capture\n"
+        return raw
+    monkeypatch.setattr(repair, "file_checksum", checked_checksum)
+    monkeypatch.setattr(Path, "read_bytes", changed_capture)
+    with pytest.raises(ValueError, match="Transition source changed while freezing evidence"):
+        transition_prepare(env)
+    assert captured == [target]
+    assert read(target) == original_bytes
+    assert env["state_path"].read_bytes() == state
+    assert repair._inventory(env["repo"]) == installed
+    assert repair.registry.read(env["config"]["state_root"]) is None
+    destination = env["state_path"].parent / "source-repairs" / env["request"]["repair_id"]
+    assert not (destination / "claim.json").exists()
+    assert not (destination / "transition-review.json").exists()
 
 
 def test_installed_transition_other_unfinished_run_blocks_even_without_live_worker(transition_env):

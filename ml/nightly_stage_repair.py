@@ -153,7 +153,8 @@ def _locks(config, *, execution=False, exchange_root=None):
                                         process_name="Audited nightly stage repair"):
                 with ExitStack() as stack:
                     if execution:
-                        for name in ("intraday-manual-session.lock", "stock-trader-hourly.lock"):
+                        for name in ("intraday-manual-session.lock", "independent-stock-session.lock",
+                                     "stock-trader-hourly.lock"):
                             stack.enter_context(exclusive_runtime_lock(
                                 Path(config["datastore"]) / "locks" / name,
                                 process_name="Reviewed installed-source transition"))
@@ -839,7 +840,9 @@ def _prepare(config, *, action_date, repair_id, candidate, changes, completion_r
         retry_epochs = _retry_epochs(state, invalidated or [state["current_step"]])
         if not set(changes) <= LIVE_TRADER_SAFE and _trader_running(repository):
             raise ValueError("Active trader requires a separately supported safe installation transition")
-        before_files = _inventory(original_repository)
+        # The installed-transition proof already binds the complete original
+        # reconstruction. A later inventory must never replace that evidence.
+        before_files = dict(original_files) if transition is not None else _inventory(original_repository)
         if (destination / "claim.json").exists():
             frozen_claim = workflow._json(destination / "claim.json")
             if (frozen_claim.get("config") != config or frozen_claim.get("action_date") != action_date
@@ -873,6 +876,8 @@ def _prepare(config, *, action_date, repair_id, candidate, changes, completion_r
             if target.exists() != (operation != "add"):
                 raise ValueError("Source operation differs from installed existence")
             before = file_checksum(target) if target.exists() else None
+            if transition is not None and before != before_files.get(name):
+                raise ValueError("Original reconstruction changed after source validation")
             source = _regular(candidate, name, optional=operation == "delete")
             if operation == "delete" and source.exists():
                 raise ValueError("Deleted source still exists in reviewed candidate")
@@ -913,6 +918,7 @@ def _prepare(config, *, action_date, repair_id, candidate, changes, completion_r
             check_records.append({**check, "log": f"checks/{index}.log", "sha256": file_checksum(log)})
         if transition is not None:
             if (state_path.read_bytes() != observed_state_raw
+                    or _inventory(original_repository) != before_files
                     or _inventory(repository) != transition["installed_files"]
                     or _inventory(candidate) != expected_files
                     or any(file_checksum(Path(name)) != digest for name, digest in native_files.items())):

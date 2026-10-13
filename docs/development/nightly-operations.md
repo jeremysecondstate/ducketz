@@ -197,10 +197,14 @@ python -B -m ml.nightly_stage_repair --config PRIVATE_CONFIG --owner OWNER --rev
 ```
 
 Prepare and apply hold the workflow, exchange, stage-repair and overnight runtime locks,
-then the manual intraday and hourly account-writer lifetime locks. Active or
+then the manual intraday session, independent stock session and hourly account-writer
+locks, in that order. Both session lifetime locks remain held through the whole
+transition, excluding a session that starts after the process snapshot. Active or
 unverifiable workers, another preparation/exchange owner, changed original
 failure/output/deadline/configuration evidence, and concurrent source changes
-fail closed. Immutable review/intent/spec/audit records preserve exact retry
+fail closed. The original reconstruction inventory proven by the source snapshot
+is retained unchanged, and its bytes are checked again before freezing ownership.
+Immutable review/intent/spec/audit records preserve exact retry
 inputs across crashes. The claim explicitly records
 `claim_origin: reviewed_installed_transition`, the actual present claim time,
 and both original and already-installed source identities; it never claims
