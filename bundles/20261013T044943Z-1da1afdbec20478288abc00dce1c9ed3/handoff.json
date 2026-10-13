@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T04:49:43.381608Z",
+  "id": "20261013T044943Z-1da1afdbec20478288abc00dce1c9ed3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout prepare_stats cannot acquire a domain repair claim after a reviewed installation changed the frozen source. Review/provide a claim-first audited pre-Stats source-transition interface preserving installed bytes, completed datastore evidence, original run/date/deadlines and single owner; no direct ledger rewrite or runtime action."
+}

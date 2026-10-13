@@ -1,0 +1,46 @@
+{
+  "author": "Scout / REPO RECONCILIATION",
+  "change_id": "scout-prestats-source-transition-20261013",
+  "completion_record": "20261013T041956Z-de5830bbda8044499c08acf0fa55224a",
+  "coordination": {
+    "kind": "request",
+    "purposes": [
+      "nightly_source_reconciliation"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-prestats-source-transition-20261013",
+    "request_type": "workflow_question",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "summary": "Scout prepare_stats cannot acquire a domain repair claim after a reviewed installation changed the frozen source. Review/provide a claim-first audited pre-Stats source-transition interface preserving installed bytes, completed datastore evidence, original run/date/deadlines and single owner; no direct ledger rewrite or runtime action."
+  },
+  "discussion": "https://github.com/jeremysecondstate/atlas-scout/issues/1",
+  "evidence_link": "https://github.com/jeremysecondstate/atlas-scout/blob/5b61b8bd59a0a124597533956dbf0e2880718940/messages/scout/2026-10-13-nightly-source-transition-blocked.md",
+  "files": [],
+  "limitations": [
+    "No persistent domain claim acquired and no repair implementation or source-test pass claimed.",
+    "Source ownership is resolved; original run, source fingerprints, completed datastore output and failure remain frozen.",
+    "This request does not authorize a duplicate Scout repair owner or production action."
+  ],
+  "proposed_repair_id": "scout-source-drift-20261013",
+  "repository": "jeremysecondstate/ducketz",
+  "requirements": [
+    "Claim before candidate editing through reviewed upgraded domain interface; never use raw registry write to bypass original validations.",
+    "Reconstruct original inventory and prove frozen source hash; bind current inventory, exact published installation operations and peer owner freeze.",
+    "Use existing workflow, stage repair and runtime locks; preserve native process liveness and source checks.",
+    "Freeze original state, failures, output receipts, selectors, recovery records and original cutoff; no deadline renewal.",
+    "Reserve one persistent owner and token with null completion until real capture; retain repair/request identity on retries.",
+    "Test wrong hashes/paths/evidence, competing owners, mutation and crash retries; prepare/apply audited once and resume only original unfinished stage."
+  ],
+  "runtime_implications": "None. Scout cannot resume until a reviewed supported transition is available and passes local evidence/lock checks. No provider, training, trader controls, private export or runtime changes requested.",
+  "scope": "shared nightly transition mechanism; Scout local incident",
+  "source_commit": "cc0132f11f325c89c2cc727b9b175e3c414da469",
+  "summary": "Scout prepare_stats cannot acquire a domain repair claim after a reviewed installation changed the frozen source. Review/provide a claim-first audited pre-Stats source-transition interface preserving installed bytes, completed datastore evidence, original run/date/deadlines and single owner; no direct ledger rewrite or runtime action.",
+  "tests": [
+    {
+      "kind": "read_only_evidence",
+      "result": "Exact frozen source inventory reconstructed; 13 installed paths match source-owner freeze; actual stage-repair claim exit 1 Original source/action date differs; independent focused review found no supported alternate domain interface."
+    }
+  ]
+}
