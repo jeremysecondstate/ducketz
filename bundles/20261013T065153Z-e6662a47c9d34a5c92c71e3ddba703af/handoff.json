@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T06:51:53.412981Z",
+  "id": "20261013T065153Z-e6662a47c9d34a5c92c71e3ddba703af",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Resolve composed enrollment test ownership for Scout v2 client while preserving Atlas production enrollment and separate Priority Gameplan repair."
+}

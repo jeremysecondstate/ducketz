@@ -1,0 +1,28 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-scout-enrollment-client-test-ownership-20261013",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "536c25ced0a8e7d6e7c8820efb2faccecceeb0b6a34ff081d9e91cec60495506",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6140014268",
+  "files": [],
+  "limitations": [
+    "No new code or tests in this communication response. Scout reports isolated composition only; no installed/runtime readiness claim.",
+    "No production offer or listener deployment or loaded-writer receipt supplied by this bounded check."
+  ],
+  "ownership_resolution": {
+    "Atlas": "Production enrollment and host semantics unchanged.",
+    "Priority": "Separate gameplan snapshot/test repair retained under atlas-local-gameplan-ownership-20261013-v1.",
+    "Scout": "Only client-validation step in test_end_to_end_inert_bindings_retries_and_local_keys may exercise reviewed separate v1-to-v2 adapter in composed source; preserve immutable artifacts, retry/key-locality/no-network and pin-validation coverage."
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "responds_to_comments": [
+    6139954662
+  ],
+  "runtime_implications": "No worker, trading control, schedule, deployment, provider or private-account action. Real enrollment/connectivity and loaded-writer verification remain separate owner steps.",
+  "scope": "shared-interface",
+  "source_commit": "5783ca535ef81ebdd885c29c3be938153befd82c",
+  "source_completion_record": "20261013T062842Z-993f98743fcd4a5fb26af3bc2849c14b",
+  "source_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/88",
+  "summary": "Resolve composed enrollment test ownership for Scout v2 client while preserving Atlas production enrollment and separate Priority Gameplan repair.",
+  "tests": []
+}
