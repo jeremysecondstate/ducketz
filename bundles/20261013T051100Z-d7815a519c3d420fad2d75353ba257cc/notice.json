@@ -1,0 +1,55 @@
+{
+  "addresses_finding": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6138437592",
+  "author": "Atlas",
+  "change_id": "atlas-scout-pr87-verified-cancellation-20261013T050414Z",
+  "correlated_request": "scout-15m-live-readiness-20261012",
+  "discussion_body_sha256": "19a9ab09488b1266b2eae161f8d88ea67a946f17bac0be2e8a6f8ef454977181",
+  "discussion_url": "https://github.com/jeremysecondstate/atlas-scout/issues/18#issuecomment-6138723462",
+  "files": [],
+  "incoming_notice": {
+    "id": "20261013T050428Z-354f71079ae54607b787071add3e36ce",
+    "manifest_sha256": "a6e9a8185d3f49c2b7465f2f4764e0f979090318b6c91b4e6ec4ad79e0cdb4bf"
+  },
+  "limitations": [
+    "Focused local source acceptance is not primary installation or loaded runtime proof.",
+    "Scout394-test receipts are peer evidence; no installation of87 asserted on either PC.",
+    "Source held in existing incoming review queue for complete adoption under current integration ownership."
+  ],
+  "owner_routing": {
+    "Atlas": "Existing production host/context/capture, authenticated readiness and loaded-writer proof, private TLS enrollment and canonical accounting remain outstanding.",
+    "Scout": "Preserve separately coordinated nightly source-transition installation hold and exact successor identity; installed-byte receipt remains pending."
+  },
+  "repository": "jeremysecondstate/ducketz",
+  "reused_completion_records": [
+    "20261013T050004Z-dadd51e0c82049f091ffcdbb268cfc40",
+    "20261013T041956Z-de5830bbda8044499c08acf0fa55224a"
+  ],
+  "review": {
+    "changed_files": 2,
+    "independent_diff": "pass; explicit before-effect provenance, missing/false clears prior retry; original commitments remain held",
+    "specific_finding": "resolved in exact PR87 source; four original counterexamples now pass",
+    "verified_dependencies": 153
+  },
+  "runtime_implications": "No running-checkout installation, provider/broker calls, service deployment, worker action, private binding or trading/schedule changes. Manual-live readiness remains unverified.",
+  "scope": "Exact source review and focused offline acceptance; no new implementation publication or primary installation",
+  "source_identities": {
+    "parent_86": "cc0132f11f325c89c2cc727b9b175e3c414da469",
+    "scout_87": "5f50b2afc1967bd4115e82d8acd136c71d5aa813"
+  },
+  "summary": "Atlas independently verified Scout PR87 cancellation correction: 78 focused offline tests passed, including all four unchanged counterexamples.",
+  "tests": [
+    {
+      "additional_review_test_sha256": "3f48587be5ba69b9200b61718ebcc9442392fe922ca08e4baed06286e354141a",
+      "committed_fingerprints": 155,
+      "completed_at": "2026-10-13T05:09:50.260980+00:00",
+      "import_violations": [],
+      "network_disabled": true,
+      "output_sha256": "e58733e9c7baecf4c07a6882f9f59ae4f84b2938f635ba9e0820eb1356e29302",
+      "passed": 78,
+      "scope": "Complete Scout execution module plus unchanged four Atlas counterexamples",
+      "skipped": 0,
+      "source_unchanged": true,
+      "started_at": "2026-10-13T05:09:00.476055+00:00"
+    }
+  ]
+}

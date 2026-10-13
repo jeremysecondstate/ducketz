@@ -1,0 +1,17 @@
+{
+  "bundle_id": "20261013T051100Z-d7815a519c3d420fad2d75353ba257cc",
+  "contract_version": "cross-pc-v2",
+  "files": [
+    {
+      "bytes": 453,
+      "path": "handoff.json",
+      "sha256": "7c6e095b7c94887a31e1bc046d9a7ed5ba09146d1ddbe6ed958bdd2fbeaa8c63"
+    },
+    {
+      "bytes": 3099,
+      "path": "notice.json",
+      "sha256": "bec4525a75696cbf38799390dd534da100727a868abb39432aa3819f6b7b6aa6"
+    }
+  ],
+  "schema_version": 2
+}
