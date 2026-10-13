@@ -7,10 +7,11 @@ operations hold the existing common stock-trader lock. Capabilities is read-only
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -149,8 +150,7 @@ class AdmissionService:
                     raise AdmissionError("CANONICAL_ATLAS_BOOKS_REQUIRED")
                 yield operation
 
-    def _current(self, request):
-        now = self._now()
+    def _scope(self, request):
         reference, issued, target, valid = (datetime.fromisoformat(getattr(request, name)) for name in
                                             ("reference_at", "issued_at", "target_close_at", "valid_until"))
         if (request.account_fingerprint != self.binding["account_fingerprint"]
@@ -160,8 +160,119 @@ class AdmissionService:
                 or target != reference + timedelta(minutes=45) or issued < reference + timedelta(minutes=15)
                 or Decimal(request.limit_price) != Decimal(request.limit_price).quantize(Decimal(".01"))):
             raise AdmissionError("EXACT_TARGET_AND_CENT_PRICE_REQUIRED")
+
+    def _current(self, request):
+        self._scope(request)
+        now = self._now()
+        issued, valid = (datetime.fromisoformat(getattr(request, name)) for name in ("issued_at", "valid_until"))
         if not issued <= now < valid:
             raise AdmissionError("REQUEST_NOT_CURRENT")
+
+    @staticmethod
+    def _assert_never_admitted(operation, request):
+        """Check current and retained book evidence before certifying absence.
+
+        The caller holds the common account lock. A missing live row alone is
+        insufficient: interrupted/corrupt books can retain reservation history
+        or a once-issued send claim. This path does not release either book.
+        """
+        key = STREAM + ":" + request.sha256
+        account_id = hashlib.sha256(_encoded([request.account_fingerprint, key]).encode()).hexdigest()
+        accounts = operation.authority.read_state()["reservations"]
+        account_ids = {row["reservation_id"] for row in accounts}
+        natives = operation.ledger.snapshot().reservations
+        native_ids = {row.reservation_id for row in natives}
+
+        def check_reference(identity, known, expected=None):
+            if not isinstance(identity, str) or not identity or identity == expected or identity not in known:
+                raise AdmissionError("RETAINED_OR_ORPHAN_EFFECT_PREVENTS_NEGATIVE_PROOF")
+
+        for row in accounts:
+            if (row["reservation_id"] == account_id or row["request"].get("idempotency_key") == key
+                    or row["request"].get("remote_request_sha256") == request.sha256):
+                raise AdmissionError("PRIOR_ADMISSION_EVIDENCE_PREVENTS_NEGATIVE_PROOF")
+        for native in natives:
+            if native.idempotency_key == key:
+                raise AdmissionError("PRIOR_ADMISSION_EVIDENCE_PREVENTS_NEGATIVE_PROOF")
+        for receipt in operation.ledger.history():
+            value = json.loads(receipt.payload_json)
+            if not isinstance(value, dict):
+                raise AdmissionError("NATIVE_RESERVATION_HISTORY_INVALID")
+            if (receipt.kind == "reservation" and value.get("stream") == STREAM and value.get("forecast") == request.forecast_id
+                    and value.get("batch") == request.session_id):
+                raise AdmissionError("PRIOR_ADMISSION_EVIDENCE_PREVENTS_NEGATIVE_PROOF")
+            if "reservation_id" in value or receipt.kind in {"submission", "order"}:
+                check_reference(value.get("reservation_id"), native_ids)
+        # Native allocation reuse prevents deriving its exact reservation ID
+        # from the wire alone. Any orphan effect therefore blocks absence proof.
+        with closing(sqlite3.connect(operation.ledger.path.as_uri() + "?mode=ro", uri=True)) as db:
+            db.execute("BEGIN")
+            for table in ("fills", "cancellations", "order_submission_times", "order_timeouts"):
+                for (identity,) in db.execute(f"SELECT reservation FROM {table}"):
+                    check_reference(identity, native_ids)
+        # The public authority projection intentionally omits claim/history
+        # tables. Read the canonical local book without creating or editing it.
+        with closing(sqlite3.connect(operation.authority.path.as_uri() + "?mode=ro", uri=True)) as db:
+            db.execute("BEGIN")
+            for reservation, raw in db.execute("SELECT reservation,payload FROM remote_submission_claims"):
+                value = json.loads(raw)
+                if (not isinstance(value, dict) or value.get("reservation_id") != reservation
+                        or not {"request_sha256", "participant_id", "claim_id"} <= value.keys()):
+                    raise AdmissionError("REMOTE_CLAIM_HISTORY_INVALID")
+                if reservation == account_id or value["request_sha256"] == request.sha256:
+                    raise AdmissionError("PRIOR_ADMISSION_EVIDENCE_PREVENTS_NEGATIVE_PROOF")
+                check_reference(reservation, account_ids, account_id)
+            for table in ("submission_receipts", "fills", "remote_no_send_receipts"):
+                for (identity,) in db.execute(f"SELECT reservation FROM {table}"):
+                    check_reference(identity, account_ids, account_id)
+            for (raw,) in db.execute("SELECT payload FROM order_evidence"):
+                value = json.loads(raw)
+                if not isinstance(value, dict):
+                    raise AdmissionError("AUTHORITY_HISTORY_INVALID")
+                check_reference(value.get("reservation_id"), account_ids, account_id)
+            for kind, raw in db.execute("SELECT kind,payload FROM events"):
+                value = json.loads(raw)
+                if not isinstance(value, dict):
+                    raise AdmissionError("AUTHORITY_HISTORY_INVALID")
+                original = value.get("request", {})
+                if kind == "intraday-reserved" and not isinstance(original, dict):
+                    raise AdmissionError("AUTHORITY_HISTORY_INVALID")
+                if (value.get("reservation_id") == account_id or value.get("request_sha256") == request.sha256
+                        or (kind == "intraday-reserved" and (original.get("idempotency_key") == key
+                            or original.get("remote_request_sha256") == request.sha256))):
+                    raise AdmissionError("PRIOR_ADMISSION_EVIDENCE_PREVENTS_NEGATIVE_PROOF")
+                if "reservation_id" in value:
+                    check_reference(value["reservation_id"], account_ids, account_id)
+
+    def _negative_admission(self, operation, request, plan, response):
+        """Persist one terminal no-admission result for an expired exact request."""
+        self._scope(request)
+        if plan is not None:
+            raise AdmissionError("PLANNED_ADMISSION_REQUIRES_EXISTING_RECOVERY")
+        fixed = {"version": "intraday-negative-admission-v1", "server_identity": self.server_identity,
+                 "account_fingerprint": request.account_fingerprint, "participant_id": PARTICIPANT,
+                 "stream": STREAM, "request_id": request.request_id, "request_sha256": request.sha256,
+                 "session_id": request.session_id, "valid_until": request.valid_until,
+                 "canonical_account_absent": True, "canonical_native_absent": True, "send_claim_absent": True}
+        if response is not None:
+            proof = response.get("negative_admission_proof")
+            if (not isinstance(proof, dict) or set(proof) != {*fixed, "decided_at"}
+                    or any(type(proof[key]) is not type(value) or proof[key] != value for key, value in fixed.items())
+                    or datetime.fromisoformat(proof["decided_at"]) < datetime.fromisoformat(request.valid_until)
+                    or response != self._response(request, "DECLINED", reason="expired_before_admission", terminal=True,
+                        admitted=False, session_id=request.session_id, send_authorized=False, capacity_released=False,
+                        negative_admission_proof=proof, negative_admission_proof_sha256=canonical_sha256(proof))):
+                raise AdmissionError("NEGATIVE_ADMISSION_PROOF_CHANGED")
+        elif self._now() < datetime.fromisoformat(request.valid_until):
+            raise AdmissionError("REQUEST_HAS_NOT_EXPIRED")
+        self._assert_never_admitted(operation, request)
+        if response is None:
+            proof = {**fixed, "decided_at": self._now().isoformat()}
+            response = self._response(request, "DECLINED", reason="expired_before_admission", terminal=True,
+                admitted=False, session_id=request.session_id, send_authorized=False, capacity_released=False,
+                negative_admission_proof=proof, negative_admission_proof_sha256=canonical_sha256(proof))
+            self._save(request, "response", response)
+        return response
 
     def _request(self, request):
         with self._journal() as db:
@@ -297,6 +408,8 @@ class AdmissionService:
             request, old_plan, response = self._request(request)
             native, account = self._pair(operation, request)
             if response is not None:
+                if "negative_admission_proof" in response:
+                    return self._negative_admission(operation, request, old_plan, response)
                 if response["status"] == "GRANTED" and (native is None or account is None):
                     raise AdmissionError("CANONICAL_RESERVATION_PAIR_MISSING")
                 if account is not None:
@@ -323,6 +436,8 @@ class AdmissionService:
                     response = self._response(request, "GRANTED", grant=self._grant(request, old_plan, account).payload(), capacity=old_plan["capacity"])
                 self._save(request, "response", response)
                 return response
+            if self._now() >= datetime.fromisoformat(request.valid_until):
+                return self._negative_admission(operation, request, old_plan, response)
             self._assert_pairs(operation)
             self._current(request)
             snapshot = self.refresh(operation)
@@ -390,9 +505,13 @@ class AdmissionService:
 
     def status(self, participant, body):
         with self._operation(participant) as operation:
-            request, _, response = self._bound(body, set())
+            request, plan, response = self._bound(body, set())
             native, account = self._pair(operation, request)
+            if response is not None and "negative_admission_proof" in response:
+                return self._negative_admission(operation, request, plan, response)
             if account is None:
+                if plan is None and response is None and self._now() >= datetime.fromisoformat(request.valid_until):
+                    return self._negative_admission(operation, request, plan, response)
                 return self._response(request, "PENDING" if response is None else response["status"], decision=response)
             native, claim = self._projection(operation, request, native, account)
             if account.status == "RESERVED" and self._now() >= datetime.fromisoformat(request.valid_until):
