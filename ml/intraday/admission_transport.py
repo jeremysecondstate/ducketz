@@ -16,6 +16,7 @@ import json
 import math
 import re
 import ssl
+import _ssl
 from types import MappingProxyType
 from urllib.parse import urlsplit
 
@@ -173,9 +174,23 @@ class AdmissionDispatcher:
             return error_response(503, "service_unavailable")
 
 
+def _require_native_server_context(context_type: type) -> None:
+    # Client trust wrappers can temporarily disable OpenSSL verification and
+    # apply serverAuth policy after the handshake. That cannot authenticate an
+    # inbound client, even when their reported verify_mode is CERT_REQUIRED.
+    # Accept only the native stdlib class, never a wrapper/subclass. Do not
+    # extract or replace a process-wide TLS injection to make a listener work.
+    if (not isinstance(context_type, type) or context_type.__module__ != "ssl"
+            or context_type.__qualname__ != "SSLContext"
+            or context_type.__bases__ != (_ssl._SSLContext,)):
+        raise _fail("unsupported_server_tls_context")
+
+
 def _validate_context(context: ssl.SSLContext, *, server: bool) -> None:
+    if server:
+        _require_native_server_context(type(context))
     required = ssl.PROTOCOL_TLS_SERVER if server else ssl.PROTOCOL_TLS_CLIENT
-    if (not isinstance(context, ssl.SSLContext) or context.protocol != required
+    if ((not server and not isinstance(context, ssl.SSLContext)) or context.protocol != required
             or context.verify_mode != ssl.CERT_REQUIRED
             or context.minimum_version < ssl.TLSVersion.TLSv1_2
             or (not server and not context.check_hostname)):
@@ -185,11 +200,14 @@ def _validate_context(context: ssl.SSLContext, *, server: bool) -> None:
 def server_tls_context(*, certificate: str, private_key: str,
                        client_ca: str) -> ssl.SSLContext:
     """Load private paths only on explicit setup; TLS verifies client chains."""
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context_type = ssl.SSLContext
+    _require_native_server_context(context_type)
+    context = context_type(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.verify_mode = ssl.CERT_REQUIRED
     context.load_verify_locations(cafile=client_ca)
     context.load_cert_chain(certfile=certificate, keyfile=private_key)
+    _validate_context(context, server=True)
     return context
 
 

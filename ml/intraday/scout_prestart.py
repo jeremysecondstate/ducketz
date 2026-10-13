@@ -28,7 +28,7 @@ MANIFEST_PATH = "scratch/cross-pc/evidence/scout-live-final-preparation/final-in
 REQUIRED_SOURCE = frozenset({
     "ml/intraday/scout_prestart.py", "ml/intraday/live_session.py",
     "ml/intraday/scout_execution.py", "ml/intraday/scout_authority.py",
-    "ml/intraday/scout_journal.py", "ml/intraday/scout_books.py",
+    "ml/intraday/scout_journal.py", "ml/intraday/scout_books.py", "ml/intraday/scout_accounting.py",
     "ml/intraday/scout_protocol.py", "ml/intraday/scout_broker.py",
     "ml/intraday/scout_runtime_gate.py", "ml/intraday/admission_transport.py",
     "ml/intraday/admission_service.py", "ml/intraday/runtime_compatibility.py",
@@ -165,7 +165,7 @@ def verify_dependencies(repository):
     return dict(python=".".join(map(str, sys.version_info[:3])), versions=versions)
 
 
-def audit_journal(path, item, *, deadline=None):
+def audit_journal(path, item, *, deadline=None, original_requests=None):
     # Only pure validators are reused. No ScoutJournal or ScoutBooks instance,
     # writable transaction, migration or application client is constructed.
     from .scout_journal import ScoutJournal, _SCHEMA, _safe_path
@@ -192,6 +192,8 @@ def audit_journal(path, item, *, deadline=None):
                 and {name: sql for _, name, sql in schema} == _SCHEMA, "Original journal schema differs")
         require(db.execute("PRAGMA quick_check").fetchall() == [("ok",)] and not db.execute("PRAGMA foreign_key_check").fetchall(), "Original journal SQLite integrity failed")
         control, records, events, acked, lifecycle = ScoutJournal._audit(audit, db, include_lifecycle=True)
+        if original_requests is not None:
+            original_requests.extend(record["request"] for record in records.values())
         counts, lifecycle_counts = {}, {}
         for record in records.values():
             counts[record["state"]] = counts.get(record["state"], 0) + 1
@@ -206,14 +208,20 @@ def audit_journal(path, item, *, deadline=None):
 
 
 def inspect_books(root, account_fingerprint):
+    from .scout_accounting import audit_saved_accounting
     deadline = time.monotonic() + BOOKS_AUDIT_SECONDS
     root = local_path(root)
+    def check_deadline():
+        require(time.monotonic() < deadline, "Original books audit exceeded its time bound; explicit review is required")
     path = root / "inventory.json"
     journals = root / "journals"
     actual = {p.name for p in journals.iterdir()} if journals.exists() else set()
     if not path.exists():
         require(not actual, "Original books inventory is missing while journals remain")
-        return dict(status="no_journals_yet", journals=0, records=0, authority_release_inferred=False)
+        accounting = audit_saved_accounting(root, account_fingerprint=account_fingerprint,
+                                            requests=[], check_deadline=check_deadline)
+        return dict(status="no_journals_yet", journals=0, records=0, accounting=accounting,
+                    authority_release_inferred=False)
     envelope = read_json(path)
     require(set(envelope) == {"inventory", "sha256"} and digest(canonical(envelope["inventory"])) == envelope["sha256"], "Original books inventory hash differs")
     inventory = envelope["inventory"]
@@ -232,11 +240,16 @@ def inspect_books(root, account_fingerprint):
                 and item["filename"] == digest(canonical({"session_id": session})) + ".sqlite3", "Original session inventory identity differs")
         expected.add(item["filename"])
     require(expected <= actual and not actual - expected - {p + "-journal" for p in expected}, "Missing or unregistered original journal; preserve for repair")
+    original_requests = []
     for session, item in inventory["sessions"].items():
-        result[session] = audit_journal(journals / item["filename"], item, deadline=deadline)
+        result[session] = audit_journal(journals / item["filename"], item, deadline=deadline,
+                                      original_requests=original_requests)
+    accounting = audit_saved_accounting(root, account_fingerprint=account_fingerprint,
+                                        requests=original_requests, check_deadline=check_deadline)
     require(read_json(path) == envelope, "Concurrent inventory update; rerun the prestart check")
     return dict(status="audited", journals=len(result), records=sum(v["records"] for v in result.values()), sessions=result,
-                authority_release_inferred=False, startup_recovery_required=any(v["records"] for v in result.values()))
+                accounting=accounting, authority_release_inferred=False,
+                startup_recovery_required=any(v["records"] for v in result.values()))
 
 
 def windows_process_names():
@@ -408,15 +421,14 @@ class PrestartReceipts:
 
 def check_connection(binding, receipt_root):
     from .scout_authority import ScoutAuthorityClient, PROTOCOL_VERSION
+    from .scout_runtime_gate import readiness_gate
     client = ScoutAuthorityClient(binding, PrestartReceipts(receipt_root, binding.account_fingerprint))
     capability = client.capabilities()
-    proof = client.readiness()
-    require(type(proof) is dict and proof.get("ready") is True and proof.get("authenticated") is True
-            and proof.get("protocol_compatible") is True and proof.get("participant_id") == "pc-new"
-            and proof.get("stream") == "scout-15m" and proof.get("account_fingerprint") == binding.account_fingerprint,
-            "Authenticated service and loaded-writer readiness are not established")
+    receipt = client.readiness()
+    proof = readiness_gate(receipt, binding, now=datetime.now(timezone.utc))
     return dict(ready=True, authenticated=True, protocol_compatible=True, protocol=PROTOCOL_VERSION,
-                capability_receipt=capability.path, loaded_writer_proof=proof)
+                capability_receipt=capability.path, readiness_receipt=receipt.path,
+                readiness_receipt_sha256=receipt.sha256, loaded_writer_proof=proof)
 
 
 def run_checks(repository, datastore, *, manifest_path=None, connect=False):
@@ -455,7 +467,7 @@ def run_checks(repository, datastore, *, manifest_path=None, connect=False):
     except (OSError, ValueError, TypeError, KeyError, sqlite3.Error, ImportError) as error:
         # Secrets and endpoint URLs are not echoed from arbitrary client errors.
         safe_message = "Required evidence or authority validation failed; inspect the private configuration and reviewed contract"
-        if isinstance(error, PrestartError) or str(error) == "Atlas readiness route and schema have not been published":
+        if isinstance(error, PrestartError):
             safe_message = str(error)
         result["errors"].append(dict(check=stage, type=type(error).__name__, message=safe_message))
     result["scope"] = "Engineering prestart checks only. Runtime gates check fresh account/market state, manual controls and the strict 16:45 Pacific submission cutoff. No loaded Scout session has been verified."

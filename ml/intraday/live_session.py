@@ -264,16 +264,18 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
         pause(3)
 
 
-def _scout_startup_proof(executor, session_id):
+def _scout_startup_proof(executor, session_id, *, clock):
     """Require the authenticated executor's bound result, never a local bypass."""
+    from .scout_runtime_gate import readiness_gate
     proof = executor.preflight()
-    if (not isinstance(proof, Mapping) or proof.get("ready") is not True
-            or proof.get("authenticated") is not True or proof.get("protocol_compatible") is not True
-            or proof.get("participant_id") != "pc-new" or proof.get("stream") != "scout-15m"
-            or proof.get("session_id") != session_id or not isinstance(proof.get("protocol"), str)
-            or not proof["protocol"].strip()):
+    if (not isinstance(proof, Mapping) or proof.get("session_id") != session_id
+            or "readiness_receipt" not in proof or "authority_binding" not in proof):
         raise ContractError("Scout startup requires authenticated, protocol-compatible authority bound to this participant and session")
-    return {key:proof[key] for key in ("ready", "authenticated", "protocol_compatible", "participant_id", "stream", "protocol")}
+    verified = readiness_gate(proof["readiness_receipt"], proof["authority_binding"], now=clock())
+    return {**{key:verified[key] for key in ("ready", "authenticated", "protocol_compatible", "participant_id", "stream")},
+            "protocol":verified["protocol_version"], "readiness_expires_at":verified["expires_at"],
+            "writers":{name:{key:writer[key] for key in ("ready", "compatibility_state", "proof_sha256")}
+                       for name,writer in verified["writers"].items()}}
 
 
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
@@ -356,7 +358,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 executor = ScoutAccountExecutor(repository=repository,profile=profile,datastore=root,store=store,
                     broker=SchwabSession(),local_symbols=symbols,session_started_at=started,session_id=session_id,
                     clock=clock,manual_authority=manual_authority,stopped=stopped.is_set)
-                startup = _scout_startup_proof(executor,session_id)
+                startup = _scout_startup_proof(executor,session_id,clock=clock)
                 executor_paths = getattr(executor,"evidence_paths",{})
                 if not isinstance(executor_paths,Mapping) or any(not isinstance(key,str) or not isinstance(value,str)
                         for key,value in executor_paths.items()):

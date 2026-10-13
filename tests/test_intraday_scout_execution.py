@@ -15,7 +15,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.intraday import scout_execution as execution
 from ml.intraday.admission_service import AdmissionError, BookSnapshot
 from ml.intraday.prediction import ContractError, digest, encoded, instant
-from ml.intraday.scout_authority import ScoutAuthorityClient
+from ml.intraday.scout_authority import ScoutAuthorityClient, AuthorityProtocolError
 from ml.intraday.scout_books import ScoutBooks
 from ml.intraday.technical_sizing import SizingResult
 from ml.stock_trader.contracts import PortfolioState, QuoteState
@@ -24,7 +24,7 @@ from test_intraday_admission_service import Fixture as BaseFixture
 from test_intraday_account_authority import ACCOUNT, ATLAS, SCOUT, snapshot
 from test_intraday_scout_authority import Transport, binding
 from test_intraday_scout_broker import Broker, GENERATION
-from test_intraday_scout_runtime_gate import make_case
+from test_intraday_scout_runtime_gate import make_case, saved_readiness
 
 
 class Fixture(BaseFixture):
@@ -97,11 +97,9 @@ def env(tmp_path, monkeypatch):
     books = ScoutBooks(tmp_path / 'scout', account_fingerprint='a'*64)
     transport = Transport(atlas.service)
     client = ScoutAuthorityClient(binding(tmp_path), books, transport=transport, clock=atlas.clock)
-    ready = dict(ready=True, authenticated=True, protocol_compatible=True, participant_id='pc-new',
-        stream='scout-15m', account_fingerprint='a'*64)
-    # The currently published route intentionally refuses production readiness.
-    # This exact offline proof is an injected host capability, not a live receipt.
-    monkeypatch.setattr(client, 'readiness', lambda: dict(ready))
+    ready = {}
+    monkeypatch.setattr(client, 'readiness', lambda: saved_readiness(tmp_path,
+        atlas.clock(), binding=client.binding, changes=ready, sink=books)[1])
     monkeypatch.setattr(execution, 'inspect_local_account_writers',
         lambda *args, **kwargs: dict(ready=True, mode='verified_gameplan_absent'))
     broker = Broker()
@@ -322,7 +320,7 @@ def test_unknown_previous_order_blocks_replacement_across_original_session(env):
     ('account_fingerprint','b'*64)])
 def test_incompatible_readiness_fails_before_account_capture_or_reserve(env, field, value):
     env.ready[field] = value
-    with pytest.raises(ContractError):
+    with pytest.raises((ContractError, AuthorityProtocolError)):
         env.executor.step(env.forecast)
     assert env.capture_count == 0 and env.atlas.captures == 0 and env.broker.posts == []
 
@@ -428,7 +426,7 @@ def test_unclaimed_retry_checks_current_gates_and_never_posts_using_old_permissi
             env.executor.step(env.forecast)
     else:
         env.ready['ready'] = False
-        with pytest.raises(ContractError):
+        with pytest.raises((ContractError, AuthorityProtocolError)):
             env.executor.step(env.forecast)
     assert env.broker.posts == []
 
@@ -696,7 +694,7 @@ def test_starting_preflight_allows_registration_before_running_manual_authority(
         session_started_at=env.atlas.clock(), session_id=old.session_id+'-starting', clock=env.atlas.clock,
         manual_authority=old.manual_authority, stopped=old.stopped, authority=env.client, books=env.books)
     proof = env.executor.preflight()
-    assert proof['ready'] is True and env.executor.journal is not None
+    assert proof['readiness_receipt'].response['ready'] is True and env.executor.journal is not None
     assert env.executor.session_id in env.books.sessions()
     with pytest.raises(ContractError):
         env.executor.step(env.forecast)
@@ -741,17 +739,19 @@ def test_unknown_delete_outcome_is_not_labelled_proven_before_effect(env):
 
 
 def test_acknowledged_terminal_recovery_is_cached_only_in_current_executor_process(env):
+    def lifecycle_calls():
+        return [call for call in env.transport.calls if call[1] != '/v1/accounting']
     submit(env)
     env.atlas.clock.tick()
     env.broker.orders = [raw_order(env, status='FILLED', filled=2)]
     env.executor.recover()
-    calls = len(env.transport.calls)
+    calls = len(lifecycle_calls())
     history = len(env.executor.intents.history(env.forecast['forecast_id']))
     reads = len(env.broker.reads)
     env.atlas.clock.tick(seconds=20)
     env.executor.recover()
     env.executor.recover()
-    assert len(env.transport.calls) == calls and len(env.broker.reads) == reads
+    assert len(lifecycle_calls()) == calls and len(env.broker.reads) == reads
     assert len(env.executor.intents.history(env.forecast['forecast_id'])) == history
     old = env.executor
     old.journal.close()
@@ -763,10 +763,10 @@ def test_acknowledged_terminal_recovery_is_cached_only_in_current_executor_proce
     env.executor.preflight()
     env.executor.recover()
     # A new process must authenticate the original terminal state once again.
-    assert len(env.transport.calls) > calls and len(env.broker.reads) == reads
-    rechecked = len(env.transport.calls)
+    assert len(lifecycle_calls()) > calls and len(env.broker.reads) == reads
+    rechecked = len(lifecycle_calls())
     env.executor.recover()
-    assert len(env.transport.calls) == rechecked
+    assert len(lifecycle_calls()) == rechecked
 
 
 def test_fixed_target_expiry_and_strict_pacific_cutoff_never_request_capacity(env):
@@ -806,7 +806,8 @@ def reload_scout(env, monkeypatch):
     env.transport = Transport(env.atlas.service)
     env.books = ScoutBooks(env.books.root, account_fingerprint=ACCOUNT)
     env.client = ScoutAuthorityClient(env.client.binding, env.books, transport=env.transport, clock=env.atlas.clock)
-    monkeypatch.setattr(env.client, 'readiness', lambda: dict(env.ready))
+    monkeypatch.setattr(env.client, 'readiness', lambda: saved_readiness(old.root,
+        env.atlas.clock(), binding=env.client.binding, changes=env.ready, sink=env.books)[1])
     env.executor = execution.ScoutAccountExecutor(repository=old.repository, profile={}, datastore=old.root,
         store=old.store, broker=old.broker, local_symbols=old.symbols,
         session_started_at=env.atlas.clock(), session_id=old.session_id+'-reload', clock=env.atlas.clock,
@@ -866,6 +867,8 @@ def test_negative_proof_loss_requires_fresh_exact_recovery_after_manual_reload(e
     else:
         save = env.books.save_receipt
         def lost_save(**kwargs):
+            if kwargs['kind'] == 'authority:readiness':
+                return save(**kwargs)
             assert kwargs['payload']['response']['reason'] == 'expired_before_admission'
             if failure == 'after_receipt_save':
                 save(**kwargs)
@@ -1042,3 +1045,192 @@ def test_temporary_failure_proven_before_delete_keeps_one_safe_retry(env, monkey
     env.atlas.clock.tick(seconds=3)
     env.executor.step(newer)
     assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
+
+
+def test_accounting_runs_after_exact_partial_fill_recovery_outside_account_lock(env, monkeypatch):
+    submit(env)
+    env.atlas.clock.tick()
+    env.broker.orders = [raw_order(env, status='CANCELED', filled=1)]
+    calls = []
+    observations = []
+    def delayed(request):
+        calls.append(request)
+        shared = reservation(env)
+        pending = env.books.accounting_state(request)
+        with exclusive_runtime_lock(env.executor.root / 'locks/stock-trader-hourly.lock',
+                                    process_name='synthetic account writer'):
+            observations.append((shared.status, shared.filled_quantity,
+                                 pending['pending'], pending['last_attempt'] is not None))
+        raise TimeoutError('synthetic delayed detailed accounting')
+    monkeypatch.setattr(env.client, 'accounting', delayed)
+    result, = env.executor.recover()
+    assert result['filled_quantity'] == 1 and len(calls) == 1
+    assert observations == [('CANCELLED', 1, True, True)]
+    assert record(env)['state'] == 'ACCEPTED' and len(env.broker.posts) == 1
+    assert env.broker.deletes == []
+    env.executor.recover()
+    assert len(calls) == 1  # Immediate order recovery does not bypass view backoff.
+    env.atlas.clock.tick(seconds=3)
+    env.executor.recover()
+    assert len(calls) == 2  # Terminal lifecycle cache does not hide pending books.
+
+
+def test_interrupted_accounting_retains_pending_and_reload_rebuilds_original_request(env, monkeypatch):
+    submit(env)
+    env.atlas.clock.tick()
+    env.broker.orders = [raw_order(env, status='FILLED', filled=2)]
+    calls = []
+    def interrupted(request):
+        calls.append(request)
+        assert env.books.accounting_state(request)['pending'] is True
+        raise KeyboardInterrupt('synthetic crash during read-only reply')
+    monkeypatch.setattr(env.client, 'accounting', interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        env.executor.recover()
+    original = calls[0]
+    assert reservation(env).status == 'FILLED' and len(env.broker.posts) == 1
+    reload_scout(env, monkeypatch)
+    def lost_reply(request):
+        assert request == original
+        calls.append(request)
+        raise TimeoutError('synthetic unavailable original accounting')
+    monkeypatch.setattr(env.client, 'accounting', lost_reply)
+    env.executor.recover()
+    assert len(calls) == 2 and len(env.broker.posts) == 1 and env.broker.deletes == []
+    assert env.books.accounting_state(original)['pending'] is True
+
+
+def test_accounting_does_not_run_after_manual_stop_or_binding_change(env, monkeypatch):
+    submit(env)
+    env.executor.recover()
+    calls = []
+    monkeypatch.setattr(env.client, 'accounting', lambda req: calls.append(req))
+    env.atlas.clock.tick(seconds=60)
+    env.state.stop = True
+    env.executor._refresh_accounting()
+    env.state.stop = False
+    def changed():
+        raise ContractError('synthetic account binding changed')
+    monkeypatch.setattr(env.executor, '_binding_current', changed)
+    env.executor._refresh_accounting()
+    assert calls == [] and len(env.broker.posts) == 1 and env.broker.deletes == []
+
+
+def test_one_accounting_attempt_per_tick_does_not_starve_a_new_original_order(env, monkeypatch):
+    calls = []
+    def unavailable(request):
+        calls.append(request.request_id)
+        raise TimeoutError('synthetic unavailable accounting')
+    monkeypatch.setattr(env.client, 'accounting', unavailable)
+    submit(env)
+    env.atlas.clock.tick()
+    first_order = raw_order(env, status='FILLED', filled=2)
+    env.broker.orders = [first_order]
+    env.executor.recover()
+    original = record(env)['request']['request_id']
+    newer = save_forecast(env)
+    env.broker.location = env.broker.location.rsplit('/', 1)[0] + '/124'
+    env.broker.orders = [first_order, raw_order(env, order_id='124')]
+    assert env.executor.step(newer)['disposition'] == 'submitted'
+    next_original = record(env, newer)['request']['request_id']
+    before = len(calls)
+    env.executor.recover()
+    assert len(calls) == before + 1 and calls[-1] == next_original
+    env.executor.recover()
+    assert len(calls) == before + 2 and calls[-1] == original
+    assert len(env.broker.posts) == 2 and env.broker.deletes == []
+
+
+def test_persistent_accounting_failure_cannot_prevent_exact_cancellation_recovery(env, monkeypatch):
+    def unavailable(request):
+        raise TimeoutError('synthetic detailed view unavailable')
+    monkeypatch.setattr(env.client, 'accounting', unavailable)
+    submit(env)
+    env.executor.recover()
+    newer = save_forecast(env)
+    result = env.executor.step(newer)
+    assert result['disposition'] == 'previous_intention_reconciliation'
+    assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
+    env.atlas.clock.tick()
+    env.broker.orders = [raw_order(env, status='CANCELED', filled=1)]
+    env.executor.recover()
+    assert reservation(env).status == 'CANCELLED' and reservation(env).filled_quantity == 1
+    assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
+
+
+def test_unchanged_working_polls_preserve_accounting_retry_after(env, monkeypatch):
+    calls = []
+    def delayed(request):
+        calls.append(request.request_id)
+        error = TimeoutError('synthetic accounting service wait')
+        error.retry_after = 30
+        raise error
+    monkeypatch.setattr(env.client, 'accounting', delayed)
+    submit(env)
+    env.executor.recover()
+    for _ in range(3):
+        env.atlas.clock.tick(seconds=3)
+        env.executor.recover()
+    assert len(calls) == 1 and reservation(env).status == 'WORKING'
+    env.atlas.clock.tick(seconds=30)
+    env.executor.recover()
+    assert len(calls) == 2 and len(env.broker.posts) == 1
+
+
+def test_readiness_expiry_during_cancel_authorization_prevents_delete_and_allows_fresh_retry(env):
+    submit(env)
+    newer = save_forecast(env)
+    def delayed(path, result):
+        if path == '/v1/cancel-intent':
+            env.atlas.clock.tick(seconds=31)
+        return result
+    env.transport.mutate = delayed
+    env.executor.step(newer)
+    assert env.broker.deletes == [] and len(env.broker.posts) == 1
+    assert reservation(env).status == 'WORKING'
+    env.transport.mutate = lambda path, result: result
+    env.executor.step(newer)
+    assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
+    env.atlas.clock.tick()
+    env.broker.orders = [raw_order(env, status='CANCELED', filled=1)]
+    env.executor.recover()
+    assert reservation(env).status == 'CANCELLED' and reservation(env).filled_quantity == 1
+    assert len(env.broker.deletes) == 1 and len(env.broker.posts) == 1
+
+
+def test_successful_accounting_is_saved_against_original_order_and_polling_keeps_refresh_cadence(env, monkeypatch):
+    from test_intraday_scout_accounting import accounting_response
+    submit(env)
+    original = record(env)
+    request = execution.Request.from_payload(original['request'])
+    call = env.transport.call
+    observations = []
+    def accounting_transport(method, path, body=None):
+        if path != '/v1/accounting':
+            return call(method, path, body)
+        assert body['request_id'] == request.request_id and body['request_sha256'] == request.sha256
+        now = env.atlas.clock()
+        response = accounting_response(request, env.client.binding, now, body['request_nonce'])
+        projection = response['projection']
+        for section in ('account_reservation', 'native_reservation'):
+            projection[section].update(status='WORKING', quantity=original['grant']['quantity'],
+                                       broker_order_id=original['broker_order_id'], last_evidence_at=now.isoformat())
+        projection['account_reservation']['reservation_id'] = original['grant']['reservation_id']
+        response['snapshot_sha256'] = execution.canonical_sha256(projection)
+        observations.append(response['snapshot_sha256'])
+        return response
+    monkeypatch.setattr(env.transport, 'call', accounting_transport)
+    env.executor.recover()
+    current = env.books.accounting_state(request)
+    assert current['pending'] is False and len(current['snapshots']) == 1
+    assert current['latest_snapshot']['snapshot_sha256'] == observations[0]
+    assert current['request'] == original['request']
+    env.atlas.clock.tick(seconds=20)
+    env.executor.recover()
+    assert len(observations) == 1
+    env.atlas.clock.tick(seconds=60)
+    env.executor.recover()
+    later = env.books.accounting_state(request)
+    assert later['pending'] is False and len(observations) == 2
+    assert later['latest_snapshot']['snapshot_sha256'] == observations[-1]
+    assert len(env.broker.posts) == 1 and env.broker.deletes == []

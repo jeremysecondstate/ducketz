@@ -11,11 +11,12 @@ import pytest
 from ml.intraday.admission_service import AdmissionError
 from ml.account_gameplan.authority import AuthorityError
 from ml.intraday.scout_authority import (
-    AuthorityProtocolError, ScoutAuthorityBinding, ScoutAuthorityClient,
-    claim_id, load_binding, validate_send_receipt, validate_negative_admission_receipt,
+    AuthorityProtocolError, AuthorityReceipt, ScoutAuthorityBinding, ScoutAuthorityClient,
+    claim_id, load_binding, validate_send_receipt, validate_negative_admission_receipt, validate_view_receipt,
+    validate_readiness_receipt, validate_view_envelope, READINESS_VERSION, PROTOCOL_VERSION,
 )
-from ml.intraday.scout_books import ScoutBooks
-from ml.intraday.scout_protocol import Grant, canonical_sha256
+from ml.intraday.scout_books import ScoutBooks, VERSION as BOOKS_VERSION
+from ml.intraday.scout_protocol import Grant, ProtocolError, canonical_sha256
 from ml.stock_trader.horizon_ledger import FillEvidence, OrderEvidence
 from tests.test_intraday_admission_service import Fixture, request
 
@@ -50,7 +51,19 @@ def binding(tmp_path):
         server_identity='reviewed-atlas-server', account_fingerprint=request().account_fingerprint,
         symbols=('MSFT',), client_certificate=str(tmp_path / 'client.pem'), private_key=str(tmp_path / 'client.key'),
         server_ca=str(tmp_path / 'ca.pem'), client_certificate_sha256=hashlib.sha256(b'client-public').hexdigest(),
-        server_ca_sha256=hashlib.sha256(b'ca-public').hexdigest())
+        server_ca_sha256=hashlib.sha256(b'ca-public').hexdigest(), server_certificate_sha256='d'*64)
+
+
+def readiness_response(binding, now, nonce, **changes):
+    """Fixed Atlas6139260261 wire fixture; it never calls a production service."""
+    return dict(version=READINESS_VERSION, protocol_version=PROTOCOL_VERSION,
+        server_identity=binding.server_identity, participant_id='pc-new', stream='scout-15m',
+        account_fingerprint=binding.account_fingerprint, request_nonce=nonce,
+        observed_at=now.isoformat(), expires_at=(now + timedelta(seconds=30)).isoformat(),
+        authenticated=True, read_only=True, orders_or_commitments_created=0,
+        ready=True, protocol_compatible=True, reason_codes=[],
+        writers={'atlas': {'ready': True, 'compatibility_state': 'compatible', 'reason_codes': [], 'proof_sha256': '1'*64},
+                 'gameplan': {'ready': True, 'compatibility_state': 'absent', 'reason_codes': [], 'proof_sha256': '2'*64}}) | changes
 
 
 class Setup:
@@ -122,6 +135,16 @@ def test_private_binding_load_pins_public_files_and_preserves_key(tmp_path):
     assert key.read_bytes() == b'private-key-not-a-real-credential'
 
 
+def test_old_binding_without_explicit_enrolled_leaf_pin_cannot_be_adopted(tmp_path):
+    value = binding(tmp_path).payload()
+    value['version'] = 'scout-atlas-authority-binding-v1'
+    del value['server_certificate_sha256']
+    path = tmp_path / 'old-binding.json'
+    path.write_text(json.dumps(value))
+    with pytest.raises(AuthorityProtocolError):
+        load_binding(path)
+
+
 @pytest.mark.parametrize('changes', [
     {'endpoint': 'http://atlas.test'}, {'endpoint': 'https://a.test/path'},
     {'endpoint': 'https://u:p@a.test'}, {'endpoint': 'https://a.test:0'},
@@ -153,8 +176,352 @@ def test_capabilities_are_noncommitting_and_never_readiness(setup):
     receipt = setup.client.capabilities()
     assert receipt.response['read_only'] is True and 'ready' not in receipt.response
     assert not setup.env.service.path.exists() and setup.env.captures == 0
-    with pytest.raises(AuthorityProtocolError, match='readiness route'):
+    assert not hasattr(setup.client, '_readiness')
+
+
+def test_view_receipt_is_saved_with_bound_request_start_and_immutable_copy(setup):
+    body = {'request_nonce': setup.client._view_nonce()}
+    response = {'fixture': 'view-envelope-only'}
+    started = setup.env.clock()
+    receipt = setup.client._save('fixture-view', 'fixture:1', body, response, requested_at=started)
+    response['fixture'] = 'changed'
+    value, requested, received = validate_view_receipt(receipt, setup.binding,
+        operation='fixture-view', request_id='fixture:1', request=body, now=setup.env.clock())
+    assert value == {'fixture': 'view-envelope-only'} and requested == received == started
+    value['fixture'] = 'mutated returned view'
+    assert receipt.response == {'fixture': 'view-envelope-only'}
+    assert set(receipt.payload) == {'version', 'binding_sha256', 'operation', 'request', 'response', 'requested_at', 'received_at'}
+
+
+@pytest.mark.parametrize('mutation', ['digest', 'path', 'binding', 'operation', 'request_id', 'request',
+                                    'requested_future', 'received_future', 'missing_start', 'extra'])
+def test_view_receipt_refuses_changed_binding_or_time(setup, mutation):
+    started = setup.env.clock()
+    body = {'request_nonce': 'fresh-fixture-1'}
+    receipt = setup.client._save('fixture-view', 'fixture:1', body, {}, requested_at=started)
+    arguments = dict(operation='fixture-view', request_id='fixture:1', request=body, now=started)
+    value = receipt.payload
+    if mutation == 'digest':
+        receipt = replace(receipt, sha256='0' * 64)
+    elif mutation == 'path':
+        receipt = replace(receipt, path='')
+    elif mutation == 'binding':
+        value['binding_sha256'] = 'f' * 64
+    elif mutation in {'operation', 'request_id', 'request'}:
+        arguments[mutation] = {} if mutation == 'request' else 'another'
+    elif mutation in {'requested_future', 'received_future'}:
+        value['requested_at' if mutation == 'requested_future' else 'received_at'] = (started + timedelta(seconds=1)).isoformat()
+    elif mutation == 'missing_start':
+        del value['requested_at']
+    else:
+        value['extra'] = None
+    if value != receipt.payload:
+        saved = setup.books.save_receipt(kind='authority:fixture-view', request_id='fixture:1', payload=value)
+        receipt = AuthorityReceipt(json.dumps(value), saved['sha256'], saved['path'])
+    with pytest.raises(AuthorityProtocolError):
+        validate_view_receipt(receipt, setup.binding, **arguments)
+
+
+@pytest.mark.parametrize('nonce', ['', 'a'*129, '_first', 'has space', 'nonascii-é', [], None, True])
+def test_view_nonce_is_strict_and_consumed_before_attempt(setup, nonce):
+    setup.client._nonce_factory = lambda: nonce
+    with pytest.raises(AuthorityProtocolError, match='fresh unique'):
+        setup.client._view_nonce()
+
+
+def test_view_nonce_cannot_be_reused_by_the_same_client(setup):
+    setup.client._nonce_factory = lambda: 'fresh-once'
+    assert setup.client._view_nonce() == 'fresh-once'
+    with pytest.raises(AuthorityProtocolError, match='fresh unique'):
+        setup.client._view_nonce()
+
+
+def view_transport(setup, transform=lambda response: response):
+    class Views:
+        calls = []
+        def call(self, method, path, body):
+            self.calls.append((method, path, deepcopy(body)))
+            assert method == 'POST' and path == '/v1/readiness' and set(body) == {'request_nonce'}
+            return transform(readiness_response(setup.binding, setup.env.clock(), body['request_nonce']))
+    setup.client._transport = Views()
+    return setup.client._transport
+
+
+def test_readiness_posts_fresh_nonce_saves_proof_and_remains_noncommitting(setup):
+    transport = view_transport(setup)
+    before = setup.journal.records()
+    first = setup.client.readiness()
+    second = setup.client.readiness()
+    assert first.response['request_nonce'] != second.response['request_nonce']
+    assert len(transport.calls) == 2 and first.sha256 != second.sha256
+    assert validate_readiness_receipt(first, setup.binding, now=setup.env.clock()) == first.response
+    assert first.grant is None
+    assert setup.journal.records() == before and setup.env.captures == 0
+    assert not setup.env.service.path.exists()
+
+
+@pytest.mark.parametrize('changes', [
+    {'version': 'new'}, {'protocol_version': 'other'}, {'server_identity': 'another-server'},
+    {'participant_id': 'pc-original'}, {'stream': 'atlas-15m'}, {'account_fingerprint': 'b'*64},
+    {'request_nonce': 'replayed'}, {'request_nonce': 1}, {'authenticated': False}, {'authenticated': 1},
+    {'read_only': False}, {'read_only': 1}, {'protocol_compatible': False}, {'protocol_compatible': 1},
+    {'orders_or_commitments_created': False}, {'orders_or_commitments_created': True},
+    {'orders_or_commitments_created': 0.0}, {'orders_or_commitments_created': 1},
+    {'ready': 1}, {'ready': False}, {'reason_codes': ['ATLAS:UNKNOWN']}, {'extra': None},
+    {'writers': []}, {'writers': {}}, {'observed_at': '2026-10-12T12:00:00'},
+    {'observed_at': '2026-10-12T12:00:00-00:00'},
+])
+def test_readiness_rejects_foreign_ambiguous_or_effectful_envelope(setup, changes):
+    view_transport(setup, lambda value: value | changes)
+    with pytest.raises(ProtocolError):
         setup.client.readiness()
+    assert list((setup.books.root / 'receipts').glob('*.json')) == []
+
+
+@pytest.mark.parametrize('mutation', [
+    'missing_writer', 'extra_writer', 'not_object', 'missing_field', 'extra_field',
+    'truthy_ready', 'unknown_state', 'false_compatible', 'true_blocked',
+    'reason_for_ready', 'blocked_without_reason', 'proof_null', 'proof_upper', 'proof_short',
+    'reason_type', 'reason_lower', 'reason_long', 'too_many_reasons', 'reason_nonascii',
+])
+def test_readiness_requires_exact_writer_proofs(setup, mutation):
+    def mutate(value):
+        writer = value['writers']['atlas']
+        if mutation == 'missing_writer':
+            del value['writers']['atlas']
+        elif mutation == 'extra_writer':
+            value['writers']['scout'] = deepcopy(writer)
+        elif mutation == 'not_object':
+            value['writers']['atlas'] = []
+        elif mutation == 'missing_field':
+            del writer['proof_sha256']
+        elif mutation == 'extra_field':
+            writer['extra'] = None
+        elif mutation == 'truthy_ready':
+            writer['ready'] = 1
+        elif mutation == 'unknown_state':
+            writer['compatibility_state'] = 'disk_verified'
+        elif mutation == 'false_compatible':
+            writer['ready'] = False
+        elif mutation == 'true_blocked':
+            writer['compatibility_state'] = 'blocked'
+        elif mutation == 'reason_for_ready':
+            writer['reason_codes'] = ['STALE']
+        elif mutation == 'blocked_without_reason':
+            writer.update(ready=False, compatibility_state='blocked')
+            value['ready'] = False
+        elif mutation.startswith('proof_'):
+            writer['proof_sha256'] = {'proof_null': None, 'proof_upper': 'A'*64, 'proof_short': 'a'*63}[mutation]
+        else:
+            reasons = {'reason_type': 'STALE', 'reason_lower': ['stale'], 'reason_long': ['A'*129],
+                       'too_many_reasons': ['STALE']*33, 'reason_nonascii': ['STALE_É']}[mutation]
+            writer.update(ready=False, compatibility_state='blocked', reason_codes=reasons)
+            value.update(ready=False, reason_codes=['ATLAS:' + code for code in reasons] if type(reasons) is list else [])
+        return value
+    view_transport(setup, mutate)
+    with pytest.raises(ProtocolError):
+        setup.client.readiness()
+
+
+@pytest.mark.parametrize('atlas,gameplan', [('compatible', 'compatible'), ('absent', 'absent'),
+                                          ('blocked', 'absent'), ('compatible', 'blocked'), ('blocked', 'blocked')])
+def test_readiness_accepts_exact_ready_or_blocked_summaries(setup, atlas, gameplan):
+    def mutate(value):
+        value['reason_codes'] = []
+        for name, state in [('atlas', atlas), ('gameplan', gameplan)]:
+            reasons = ['PROOF_STALE', 'LOCK:UNKNOWN'] if state == 'blocked' else []
+            value['writers'][name].update(ready=state != 'blocked', compatibility_state=state, reason_codes=reasons)
+            value['reason_codes'].extend(name.upper() + ':' + reason for reason in reasons)
+        value['ready'] = all(writer['ready'] for writer in value['writers'].values())
+        return value
+    view_transport(setup, mutate)
+    receipt = setup.client.readiness()
+    assert validate_readiness_receipt(receipt, setup.binding, now=setup.env.clock())['ready'] is (atlas != 'blocked' and gameplan != 'blocked')
+    assert receipt.grant is None
+
+
+@pytest.mark.parametrize('observed_offset,expires_offset', [(-1, 20), (1, 20), (0, 0), (0, -1), (0, 30.000001)])
+def test_readiness_strict_request_observation_and_expiry_window(setup, observed_offset, expires_offset):
+    now = setup.env.clock()
+    view_transport(setup, lambda value: value | {
+        'observed_at': (now + timedelta(seconds=observed_offset)).isoformat(),
+        'expires_at': (now + timedelta(seconds=expires_offset)).isoformat()})
+    with pytest.raises(AuthorityProtocolError):
+        setup.client.readiness()
+
+
+def test_readiness_saved_proof_expires_and_validation_is_pure(setup, monkeypatch):
+    view_transport(setup)
+    receipt = setup.client.readiness()
+    def forbidden(*args, **kwargs):
+        raise AssertionError('pure readiness validator performed IO')
+    monkeypatch.setattr('pathlib.Path.read_bytes', forbidden)
+    monkeypatch.setattr('pathlib.Path.lstat', forbidden)
+    monkeypatch.setattr('ml.intraday.scout_authority.client_tls_context', forbidden)
+    assert validate_readiness_receipt(receipt, setup.binding, now=setup.env.clock())['ready'] is True
+    with pytest.raises(AuthorityProtocolError):
+        validate_readiness_receipt(receipt, setup.binding, now=setup.env.clock() + timedelta(seconds=30))
+    with pytest.raises(AuthorityProtocolError):
+        validate_readiness_receipt(receipt, replace(setup.binding, server_certificate_sha256='e'*64), now=setup.env.clock())
+
+
+def test_readiness_prestart_sink_is_explicit_and_cannot_validate_order_views(setup):
+    view_transport(setup)
+    receipt = setup.client.readiness()
+    envelope = json.loads(__import__('pathlib').Path(receipt.path).read_text())
+    envelope['version'] = 'scout-prestart-authority-receipt-v1'
+    prestart = replace(receipt, sha256=canonical_sha256(envelope))
+    assert validate_readiness_receipt(prestart, setup.binding, now=setup.env.clock())['ready'] is True
+    with pytest.raises(AuthorityProtocolError):
+        validate_view_receipt(prestart, setup.binding, operation='readiness', request_id=envelope['request_id'],
+            request=prestart.payload['request'], now=setup.env.clock())
+    envelope['version'] = 'untrusted-sink'
+    with pytest.raises(AuthorityProtocolError):
+        validate_readiness_receipt(replace(receipt, sha256=canonical_sha256(envelope)), setup.binding, now=setup.env.clock())
+
+
+@pytest.mark.parametrize('raw', ['[]', 'null', '{"same":1,"same":2}', '{', '"text"'])
+def test_readiness_malformed_saved_payload_raises_typed_protocol_error(setup, raw):
+    with pytest.raises(AuthorityProtocolError):
+        validate_readiness_receipt(AuthorityReceipt(raw, 'f'*64, 'synthetic-path'), setup.binding, now=setup.env.clock())
+
+
+def test_readiness_never_returns_before_durable_save_or_after_save_expiry(setup, monkeypatch):
+    view_transport(setup)
+    original = setup.books.save_receipt
+    def fail(**kwargs):
+        raise OSError('synthetic private save failure')
+    monkeypatch.setattr(setup.books, 'save_receipt', fail)
+    with pytest.raises(OSError):
+        setup.client.readiness()
+    now = setup.env.clock()
+    def delay(**kwargs):
+        saved = original(**kwargs)
+        setup.client.clock = lambda: now + timedelta(seconds=31)
+        return saved
+    monkeypatch.setattr(setup.books, 'save_receipt', delay)
+    with pytest.raises(AuthorityProtocolError):
+        setup.client.readiness()
+
+
+def test_readiness_timeout_consumes_nonce_without_retry_or_claim(setup):
+    class Timeout:
+        calls = 0
+        def call(self, *args):
+            self.calls += 1
+            raise TimeoutError('synthetic lost view reply')
+    transport = Timeout()
+    setup.client._transport = transport
+    setup.client._nonce_factory = lambda: 'unique-attempt'
+    with pytest.raises(TimeoutError):
+        setup.client.readiness()
+    with pytest.raises(AuthorityProtocolError):
+        setup.client.readiness()
+    assert transport.calls == 1 and not setup.env.service.path.exists()
+
+
+def test_binding_requires_enrolled_server_leaf_pin_and_passes_it_to_transport(setup, monkeypatch):
+    with pytest.raises(AuthorityProtocolError):
+        replace(setup.binding, server_certificate_sha256=None)
+    with pytest.raises(AuthorityProtocolError):
+        replace(setup.binding, server_certificate_sha256='D'*64)
+    seen = {}
+    class Client:
+        def __init__(self, endpoint, **kwargs):
+            seen.update(endpoint=endpoint, **kwargs)
+        def call(self, method, path, body):
+            return readiness_response(setup.binding, setup.env.clock(), body['request_nonce'])
+    monkeypatch.setattr('ml.intraday.scout_authority._verify_binding_files', lambda binding: None)
+    monkeypatch.setattr('ml.intraday.scout_authority.client_tls_context', lambda **kwargs: 'synthetic-context')
+    monkeypatch.setattr('ml.intraday.scout_authority.AdmissionHTTPSClient', Client)
+    setup.client._transport = None
+    setup.client.readiness()
+    assert seen == dict(endpoint=setup.binding.endpoint, tls_context='synthetic-context',
+                        timeout=setup.binding.timeout_seconds, server_certificate_sha256='d'*64)
+
+
+def accounting_transport(setup, transform=lambda response: response):
+    from tests.test_intraday_scout_accounting import accounting_response
+    class Views:
+        calls = []
+        def call(self, method, path, body):
+            self.calls.append((method, path, deepcopy(body)))
+            assert method == 'POST' and path == '/v1/accounting'
+            assert set(body) == {'request_nonce', 'request_id', 'request_sha256', 'session_id'}
+            return transform(accounting_response(request(), setup.binding, setup.env.clock(), body['request_nonce']))
+    setup.client._transport = Views()
+    return setup.client._transport
+
+
+def test_accounting_posts_original_identity_saves_validated_projection_and_never_claims(setup):
+    from ml.intraday.scout_accounting import validate_accounting_receipt
+    transport = accounting_transport(setup)
+    before = setup.journal.records()
+    first = setup.client.accounting(request())
+    second = setup.client.accounting(request())
+    assert first.response['request_nonce'] != second.response['request_nonce'] and len(transport.calls) == 2
+    for _, _, body in transport.calls:
+        assert body['request_id'] == request().request_id and body['session_id'] == request().session_id
+        assert body['request_sha256'] == request().sha256
+    assert validate_accounting_receipt(request(), first, setup.binding, now=setup.env.clock()) == first.response['projection']
+    assert first.grant is None and setup.journal.records() == before
+    assert setup.env.captures == 0 and not setup.env.service.path.exists()
+
+
+@pytest.mark.parametrize('change', [
+    {'status': 'UNAVAILABLE'}, {'projection': None}, {'snapshot_sha256': '0'*64},
+    {'request_id': 'foreign'}, {'request_sha256': 'f'*64}, {'session_id': 'foreign'},
+    {'request_nonce': 'old-nonce'}, {'account_fingerprint': 'b'*64},
+    {'server_identity': 'foreign-server'}, {'stream': 'atlas-15m'}, {'participant_id': 'pc-original'},
+    {'orders_or_commitments_created': False}, {'orders_or_commitments_created': 1},
+    {'extra': None}, {'protocol_compatible': False},
+])
+def test_accounting_rejects_partial_foreign_or_mutated_view_before_save(setup, change):
+    accounting_transport(setup, lambda value: value | change)
+    with pytest.raises(AuthorityProtocolError):
+        setup.client.accounting(request())
+    assert list((setup.books.root / 'receipts').glob('*.json')) == []
+
+
+def test_accounting_unavailable_http_or_local_save_failure_preserves_original_journal(setup, monkeypatch):
+    before = setup.journal.records()
+    transport = accounting_transport(setup)
+    original_call = transport.call
+    def unavailable(*args):
+        raise OSError('sanitized503 service_unavailable')
+    monkeypatch.setattr(transport, 'call', unavailable)
+    with pytest.raises(OSError):
+        setup.client.accounting(request())
+    monkeypatch.setattr(transport, 'call', original_call)
+    def save_failure(**kwargs):
+        raise OSError('synthetic disk failure')
+    monkeypatch.setattr(setup.books, 'save_receipt', save_failure)
+    with pytest.raises(OSError):
+        setup.client.accounting(request())
+    assert setup.journal.records() == before and not setup.env.service.path.exists()
+
+
+def test_accounting_fails_after_receipt_save_crosses_expiry(setup, monkeypatch):
+    accounting_transport(setup)
+    original = setup.books.save_receipt
+    now = setup.env.clock()
+    def slow_save(**kwargs):
+        saved = original(**kwargs)
+        setup.client.clock = lambda: now + timedelta(seconds=30)
+        return saved
+    monkeypatch.setattr(setup.books, 'save_receipt', slow_save)
+    with pytest.raises(AuthorityProtocolError):
+        setup.client.accounting(request())
+
+
+def test_accounting_rejects_local_scope_or_original_economics_mismatch(setup):
+    transport = accounting_transport(setup)
+    for changed in (replace(request(), account_fingerprint='f'*64), replace(request(), symbol='DOCU')):
+        with pytest.raises(AuthorityProtocolError):
+            setup.client.accounting(changed)
+    assert transport.calls == []
+    with pytest.raises(AuthorityProtocolError):
+        setup.client.accounting(replace(request(), limit_price='99'))
 
 
 def test_exact_reduced_grant_and_saved_receipt(setup):

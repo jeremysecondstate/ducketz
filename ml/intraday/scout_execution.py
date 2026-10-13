@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from contextlib import closing, contextmanager
 from dataclasses import asdict, replace
+from datetime import timedelta
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 import json
@@ -30,7 +31,7 @@ from .scout_broker import ScoutBrokerAdapter
 from .scout_client import ScoutClient
 from .scout_journal import _safe_path
 from .scout_protocol import Grant, Request, canonical_sha256
-from .scout_runtime_gate import local_gate
+from .scout_runtime_gate import local_gate, readiness_gate
 from .scout_prestart import inspect_local_account_writers
 from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
@@ -97,6 +98,7 @@ class ScoutAccountExecutor:
         self._ready_at = None
         self._clearance = None
         self._settled = {}
+        self._accounting = {}
         self.evidence_paths = dict(books_root=str(self.books.root), inventory=str(self.books.path),
             authority_receipts=str(self.books.root / 'receipts'), authority_binding=str(self.binding_path))
 
@@ -138,14 +140,10 @@ class ScoutAccountExecutor:
         # This call is an authenticated noncommitting service check. Capability
         # discovery alone cannot assert that the actual writers are compatible.
         self._binding_current()
-        proof = self.authority.readiness()
-        if (not isinstance(proof, dict) or proof.get('ready') is not True
-                or proof.get('authenticated') is not True or proof.get('protocol_compatible') is not True
-                or proof.get('participant_id') != 'pc-new' or proof.get('stream') != 'scout-15m'
-                or proof.get('account_fingerprint') != self.binding.account_fingerprint):
-            raise ContractError('Authenticated compatible account writers are not ready')
-        self._ready, self._ready_at = proof, instant(self.clock())
-        return proof
+        receipt = self.authority.readiness()
+        readiness_gate(receipt, self.binding, now=self.clock())
+        self._ready, self._ready_at = receipt, instant(self.clock())
+        return receipt
 
     def preflight(self):
         # STARTING has no order authority. Only step/recover require RUNNING;
@@ -155,7 +153,7 @@ class ScoutAccountExecutor:
 
     def _preflight(self):
         self.books.inspect()
-        proof = self._compatibility()
+        receipt = self._compatibility()
         # Audit every original journal before registering this new session.
         for session in self.books.sessions():
             with self.books.open_session(session):
@@ -163,7 +161,7 @@ class ScoutAccountExecutor:
         if self.journal is None:
             self.journal = self.books.create_session(self.session_id)
             self.evidence_paths['journal'] = str(self.journal.path)
-        return {**proof, 'session_id': self.session_id}
+        return dict(readiness_receipt=receipt, authority_binding=self.binding, session_id=self.session_id)
 
     def _record(self, forecast, disposition, *, evidence=None, kind='execution_disposition', capacity=None, order=None):
         evidence = evidence or {'reason': disposition}
@@ -300,7 +298,66 @@ class ScoutAccountExecutor:
 
     def recover(self):
         with self._account():
-            return self._recover()
+            results = self._recover()
+        # Detailed private books use the same recovery tick, after mandatory
+        # order reconciliation and outside the local account-writer lock. A
+        # failed view cannot block a cancellation, release capacity or rearm a
+        # send. There is no extra account scanner or background executor.
+        self._refresh_accounting()
+        return results
+
+    def _queue_accounting(self, journal, record):
+        if record['grant'] is None:
+            return
+        request = Request.from_payload(record['request'])
+        key = (request.session_id, request.request_id)
+        lifecycle = journal.order_state(request.request_id)
+        # Mere status polling changes observation IDs/times; it must not reset
+        # detailed-view backoff. Reuse the journal's economic identity rules.
+        evidence = canonical_sha256(dict(record=record, cancellation=lifecycle['cancellation'],
+            evidence=None if lifecycle['evidence'] is None else
+                journal._economic_evidence(lifecycle['evidence'])))
+        old = self._accounting.get(key)
+        if old is not None and old['request'] != request:
+            raise ContractError('Private accounting original request changed')
+        if old is None or old['evidence'] != evidence:
+            self._accounting[key] = dict(request=request, evidence=evidence,
+                due=instant(self.clock()), attempted=None if old is None else old['attempted'])
+
+    def _refresh_accounting(self):
+        now = instant(self.clock())
+        due = [(key, item) for key, item in self._accounting.items() if item['due'] <= now]
+        if not due or self.manual_authority() is not True or self.stopped() is not False:
+            return
+        # Oldest attempted request wins, including failed or terminal records.
+        # The order cache therefore cannot starve failed accounting after a
+        # partial fill or a manual reload. The queue rebuilds from journals.
+        key, item = min(due, key=lambda pair:(pair[1]['attempted'] is not None,
+            pair[1]['attempted'] or now, pair[0]))
+        request = item['request']
+        item['attempted'] = now
+        try:
+            self._binding_current()
+            self.books.record_accounting_pending(request,
+                reason_code='VIEW_REFRESH_IN_PROGRESS', observed_at=now.isoformat())
+            receipt = self.authority.accounting(request)
+            self.books.record_accounting(request, receipt, binding=self.binding, now=self.clock())
+            # A successful view proves only this observation. Canonical books
+            # can gain further provenance even after a terminal order status.
+            item['due'] = instant(self.clock()) + timedelta(seconds=60)
+        except Exception as exc:
+            delay = retry_delay(exc, self.clock())
+            item['due'] = instant(self.clock()) + timedelta(seconds=delay)
+            saved = True
+            try:
+                self.books.record_accounting_pending(request,
+                    reason_code='VIEW_REFRESH_FAILED', observed_at=instant(self.clock()).isoformat())
+            except Exception:
+                saved = False
+            self.store.event(self.session_id, 'accounting_refresh_pending', dict(
+                request_id=request.request_id, original_session_id=request.session_id,
+                error_type=type(exc).__name__, pending_receipt_saved=saved,
+                retry_after_seconds=delay), symbol=request.symbol)
 
     def _recover(self):
         self._controls()
@@ -321,6 +378,7 @@ class ScoutAccountExecutor:
                     continue
                 receipt = self._recover_record(journal, record)
                 current = journal.get(record['request']['request_id'])
+                self._queue_accounting(journal, current)
                 if forecast is None or self.intents.get(forecast['forecast_id']) is None:
                     raise ContractError('Private order lacks its original immutable intention')
                 order = self._order(journal,current,receipt)
@@ -386,6 +444,7 @@ class ScoutAccountExecutor:
                 raise ContractError('Exact cancellation status needs refresh before DELETE')
             if authorization[0].response.get('broker_order_id') != reservation.broker_order_id:
                 raise ContractError('Cancellation intent differs from exact accepted order')
+            readiness_gate(self._ready, self.binding, now=self.clock())
         def before_cancel(context, reservation):
             try:
                 check_cancel(context,reservation)
@@ -594,7 +653,8 @@ class ScoutAccountExecutor:
                 session_id=self.session_id,session_started=self.session_started_at,local_symbols=self.symbols,
                 account_fingerprint=self.binding.account_fingerprint,quote_observed_at=quote.freshness_observed_at,
                 max_quote_age_seconds=self.maximum_evidence_age_seconds,expected_time_in_force=window.time_in_force,
-                manual_authority=self.manual_authority,stopped=self.stopped,authorization_current=proof,clock=self.clock)
+                manual_authority=self.manual_authority,stopped=self.stopped,authorization_current=proof,
+                readiness_receipt=self._ready,authority_binding=self.binding,clock=self.clock)
         def authorize(req, granted):
             if authorized[0] is None:
                 authorized[0] = self.authority.authorize_send(self.journal.get(req.request_id))

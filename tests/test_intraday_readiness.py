@@ -406,7 +406,11 @@ def test_capabilities_use_only_public_source_not_account_activation(local):
     capabilities = result["capabilities"]
     assert capabilities["research_forecasting_source_present"]
     assert "SOURCE_CAPABILITY_UNVERIFIED:shared_cancellation" in capabilities["missing_integration"]
-    assert capabilities["future_scout_integration"] == ["SCOUT_DISTRIBUTED_RESERVATION_PROTOCOL_NOT_IMPLEMENTED"]
+    assert capabilities["scout_prestart"] == {
+        "module": "ml.intraday.scout_prestart",
+        "required": ["SCOUT_AUTHENTICATED_PRESTART_REQUIRED"],
+        "connection_verified": False,
+    }
     assert not capabilities["manual_live_start_ready"]
     assert all(re.fullmatch("[a-f0-9]{64}", row["sha256"]) for row in capabilities["public_source_evidence"].values())
     (local["repository"] / "ml/account_gameplan/authority.py").write_text("broken source(")
@@ -622,4 +626,21 @@ def test_scout_source_does_not_enable_scout_live_execution(local,monkeypatch):
     monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:verified_absence(**kw))
     result=report(local)
     assert result["live_execution_implemented"] and not result["manual_live_source_ready"]
-    assert "VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED" in result["reason_codes"]
+    assert "SCOUT_AUTHENTICATED_PRESTART_REQUIRED" in result["reason_codes"]
+    assert "VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED" not in result["reason_codes"]
+    assert result["capabilities"]["scout_prestart"]["connection_verified"] is False
+    assert not result["execution_authorized"] and result["orders_placed"] == 0
+
+
+@pytest.mark.parametrize("method", ["reserve_intraday", "reserve_remote_intraday", "_reserve_intraday"])
+def test_shared_capacity_requires_both_participant_wrappers_and_common_pool_core(local, method):
+    installed_sources(local)
+    source = local["repository"] / "ml/account_gameplan/authority.py"
+    tree = ast.parse(source.read_text())
+    authority = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "AccountAuthority")
+    selected = next(node for node in authority.body if isinstance(node, ast.FunctionDef) and node.name == method)
+    selected.body = [ast.Pass()]
+    source.write_text(ast.unparse(tree))
+    capabilities = readiness._source_capabilities(local["repository"])
+    assert not capabilities["existing_shared_authority_supports_15m"]
+    assert "SOURCE_CAPABILITY_UNVERIFIED:shared_actual_capacity" in capabilities["missing_integration"]

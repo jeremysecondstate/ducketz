@@ -60,7 +60,9 @@ SOURCE_INTERFACES = {
         "forecasting_loop": {"run_cycle"}, "scoring_loop": {"observe"}}},
     "shared_actual_capacity": {"ml/account_gameplan/authority.py": {
         "AccountAuthority.publish_intraday_snapshot": {"_lease"},
-        "AccountAuthority.reserve_intraday": {"_intraday_snapshot", "_intraday_remaining"},
+        "AccountAuthority.reserve_intraday": {"_reserve_intraday"},
+        "AccountAuthority.reserve_remote_intraday": {"_hash", "_reserve_intraday"},
+        "AccountAuthority._reserve_intraday": {"_intraday_snapshot", "_intraday_remaining"},
         "AccountAuthority.available_intraday_capacity": {"_intraday_remaining"},
         "AccountAuthority._submission_snapshot": {"_intraday_snapshot"}}},
     "native_fill_accounting": {"ml/stock_trader/horizon_ledger.py": {
@@ -520,7 +522,9 @@ def _source_capabilities(repository):
             "existing_shared_authority_supports_15m": components["shared_actual_capacity"]["source_interfaces_verified"],
             "live_execution_implemented": implemented, "manual_live_start_ready": False,
             "missing_integration": missing,
-            "future_scout_integration": ["SCOUT_DISTRIBUTED_RESERVATION_PROTOCOL_NOT_IMPLEMENTED"],
+            "scout_prestart": {"module": "ml.intraday.scout_prestart",
+                               "required": ["SCOUT_AUTHENTICATED_PRESTART_REQUIRED"],
+                               "connection_verified": False},
             "deferred_research": ["NEXT_ELIGIBLE_SESSION_0400_TARGET_CONTRACT_NOT_SELECTED", "AUTOMATIC_SAME_FORECAST_REPRICING_NOT_ENABLED"],
             "source_component_checks":components,
             "public_source_evidence": evidence}
@@ -566,7 +570,9 @@ def inspect_readiness(*, repository, datastore, profile, watchlist, as_of=None):
     compatibility = _runtime_compatibility_probe(datastore,repository,capabilities)
     gate = submission_gate(as_of=now, eligible_session=now.astimezone(PACIFIC).date())
     blockers = list(capabilities["missing_integration"])
-    if binding["status"]!="verified" or binding["account_binding"]!="membership_verified" or binding["actor"]!="Atlas":
+    if binding["actor"] == "Scout":
+        blockers.append("SCOUT_AUTHENTICATED_PRESTART_REQUIRED")
+    elif binding["status"]!="verified" or binding["account_binding"]!="membership_verified" or binding["actor"]!="Atlas":
         blockers.append("VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED")
     if not compatibility["ready"]:
         blockers.extend(compatibility["reason_codes"])

@@ -1,5 +1,6 @@
 """Offline prestart proof: immutable original books and no trading effects."""
 from dataclasses import replace
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import socket
@@ -51,6 +52,51 @@ def books_fixture(tmp_path, state="SENDING"):
 def test_absent_books_is_valid_and_creates_nothing(tmp_path):
     root = tmp_path / "missing"
     assert pre.inspect_books(root, "a" * 64)["status"] == "no_journals_yet"
+    assert not root.exists()
+
+
+def test_accounting_audit_receives_original_requests_and_remaining_deadline(tmp_path, monkeypatch):
+    from ml.intraday import scout_accounting
+    books = books_fixture(tmp_path, "ACCEPTED")
+    before = byte_snapshot(books.root)
+    seen = []
+    def audit(root, *, account_fingerprint, requests, check_deadline):
+        assert root == books.root and account_fingerprint == "a" * 64
+        assert requests == [request().payload()]
+        check_deadline()
+        seen.append(True)
+        return {"requests": 1, "snapshots": 0, "pending": 1}
+    monkeypatch.setattr(scout_accounting, "audit_saved_accounting", audit)
+    result = pre.inspect_books(books.root, "a" * 64)
+    assert seen == [True] and result["accounting"]["pending"] == 1
+    assert request().payload() not in result.values()
+    assert byte_snapshot(books.root) == before
+
+
+def test_accounting_audit_cannot_extend_original_books_deadline(tmp_path, monkeypatch):
+    from ml.intraday import scout_accounting
+    books = books_fixture(tmp_path, "PREPARED")
+    now = [100.0]
+    monkeypatch.setattr(pre.time, "monotonic", lambda: now[0])
+    def audit(root, *, account_fingerprint, requests, check_deadline):
+        now[0] += pre.BOOKS_AUDIT_SECONDS
+        check_deadline()
+        pytest.fail("Expired total audit deadline was ignored")
+    monkeypatch.setattr(scout_accounting, "audit_saved_accounting", audit)
+    with pytest.raises(pre.PrestartError, match="time bound"):
+        pre.inspect_books(books.root, "a" * 64)
+
+
+def test_absent_inventory_still_audits_orphan_accounting_without_creating_books(tmp_path, monkeypatch):
+    from ml.intraday import scout_accounting
+    root = tmp_path / "missing"
+    def audit(selected, *, account_fingerprint, requests, check_deadline):
+        assert selected == root and requests == []
+        check_deadline()
+        raise ValueError("Orphan accounting evidence")
+    monkeypatch.setattr(scout_accounting, "audit_saved_accounting", audit)
+    with pytest.raises(ValueError, match="Orphan accounting"):
+        pre.inspect_books(root, "a" * 64)
     assert not root.exists()
 
 
@@ -263,6 +309,7 @@ def test_book_audit_has_one_total_deadline(tmp_path, monkeypatch):
 
 def mocked_local_checks(tmp_path, monkeypatch):
     import ml.intraday.scout_authority as authority
+    from test_intraday_scout_authority import binding as make_binding
     monkeypatch.setattr(pre, "verify_release", lambda _: {"verified": True})
     monkeypatch.setattr(pre, "verify_profile", lambda _: {"symbols": ["DOCU"]})
     monkeypatch.setattr(pre, "verify_installation", lambda *_: {"verified": True})
@@ -270,7 +317,7 @@ def mocked_local_checks(tmp_path, monkeypatch):
     monkeypatch.setattr(pre, "inspect_session", lambda _: {"status": "not_started_yet"})
     monkeypatch.setattr(pre, "inspect_local_account_writers", lambda *_: {"ready": True, "mode": "verified_gameplan_absent"})
     monkeypatch.setattr(pre, "inspect_books", lambda *_: {"journals": 0})
-    binding = SimpleNamespace(symbols=("DOCU",), sha256="b" * 64, account_fingerprint="a" * 64)
+    binding = replace(make_binding(tmp_path), symbols=("DOCU",))
     monkeypatch.setattr(authority, "load_binding", lambda _: binding)
     return binding
 
@@ -295,22 +342,24 @@ def test_missing_final_manifest_blocks_before_binding_or_connection(tmp_path, mo
 
 def test_connection_mode_only_calls_capabilities_and_readiness(tmp_path, monkeypatch):
     import ml.intraday.scout_authority as authority
+    from test_intraday_scout_runtime_gate import saved_readiness
     binding = mocked_local_checks(tmp_path, monkeypatch)
     calls = []
     class Client:
         def __init__(self, selected, receipts):
             assert selected is binding and isinstance(receipts, pre.PrestartReceipts)
+            self.receipts = receipts
         def capabilities(self):
             calls.append("capabilities")
             return SimpleNamespace(path="saved-capability")
         def readiness(self):
             calls.append("readiness")
-            return dict(ready=True, authenticated=True, protocol_compatible=True, participant_id="pc-new",
-                        stream="scout-15m", account_fingerprint=binding.account_fingerprint)
+            return saved_readiness(tmp_path, datetime.now(timezone.utc), binding=binding, sink=self.receipts)[1]
     monkeypatch.setattr(authority, "ScoutAuthorityClient", Client)
     result = pre.run_checks(tmp_path, tmp_path, connect=True)
     assert result["ready"] and calls == ["capabilities", "readiness"]
-    assert list(tmp_path.iterdir()) == []
+    assert Path(result["checks"]["connection"]["readiness_receipt"]).is_file()
+    assert not (tmp_path / "intraday").exists()
 
 
 def test_readiness_unavailable_fails_closed_after_capability(tmp_path, monkeypatch):
@@ -322,17 +371,16 @@ def test_readiness_unavailable_fails_closed_after_capability(tmp_path, monkeypat
         def capabilities(self):
             return SimpleNamespace(path="saved-capability")
         def readiness(self):
-            raise authority.AuthorityProtocolError("Atlas readiness route and schema have not been published")
+            raise authority.AuthorityProtocolError("Offline readiness unavailable")
     monkeypatch.setattr(authority, "ScoutAuthorityClient", Client)
     result = pre.run_checks(tmp_path, tmp_path, connect=True)
     assert result["local_checks_passed"] and not result["ready"]
     assert result["errors"][0]["type"] == "AuthorityProtocolError"
     assert result["errors"][0]["check"] == "connection"
-    assert result["errors"][0]["message"] == "Atlas readiness route and schema have not been published"
+    assert result["errors"][0]["message"] == "Required evidence or authority validation failed; inspect the private configuration and reviewed contract"
 
 
-@pytest.mark.parametrize("change", [{"authenticated": False}, {"ready": 1}, {"account_fingerprint": "b" * 64}, {"stream": "atlas-15m"}, {"participant_id": "pc-original"}])
-def test_incompatible_or_wrong_service_identity_fails(tmp_path, monkeypatch, change):
+def test_positive_unsaved_readiness_dictionary_cannot_pass_prestart(tmp_path, monkeypatch):
     import ml.intraday.scout_authority as authority
     binding = mocked_local_checks(tmp_path, monkeypatch)
     class Client:
@@ -341,7 +389,28 @@ def test_incompatible_or_wrong_service_identity_fails(tmp_path, monkeypatch, cha
         def capabilities(self):
             return SimpleNamespace(path="saved-capability")
         def readiness(self):
-            return dict(ready=True, authenticated=True, protocol_compatible=True, participant_id="pc-new", stream="scout-15m", account_fingerprint=binding.account_fingerprint) | change
+            return dict(ready=True, authenticated=True, protocol_compatible=True, participant_id="pc-new",
+                        stream="scout-15m", account_fingerprint=binding.account_fingerprint)
+    monkeypatch.setattr(authority, "ScoutAuthorityClient", Client)
+    result = pre.run_checks(tmp_path, tmp_path, connect=True)
+    assert result["local_checks_passed"] and not result["ready"]
+    assert result["errors"][0]["check"] == "connection"
+
+
+@pytest.mark.parametrize("change", [{"authenticated": False}, {"ready": 1}, {"account_fingerprint": "b" * 64},
+    {"stream": "atlas-15m"}, {"participant_id": "pc-original"}, {"writers": {}}, {"ready": False}])
+def test_incompatible_or_wrong_service_identity_fails(tmp_path, monkeypatch, change):
+    import ml.intraday.scout_authority as authority
+    from test_intraday_scout_runtime_gate import saved_readiness
+    binding = mocked_local_checks(tmp_path, monkeypatch)
+    class Client:
+        def __init__(self, selected, receipts):
+            self.receipts = receipts
+        def capabilities(self):
+            return SimpleNamespace(path="saved-capability")
+        def readiness(self):
+            return saved_readiness(tmp_path, datetime.now(timezone.utc), binding=binding,
+                                   changes=change, sink=self.receipts)[1]
     monkeypatch.setattr(authority, "ScoutAuthorityClient", Client)
     result = pre.run_checks(tmp_path, tmp_path, connect=True)
     assert result["local_checks_passed"] and not result["ready"]

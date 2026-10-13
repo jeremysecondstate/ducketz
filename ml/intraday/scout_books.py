@@ -136,6 +136,21 @@ class ScoutBooks:
     def sessions(self):
         return tuple(self._read()['sessions'])
 
+    def accounting_state(self, request):
+        """Read private canonical accounting without requesting a new view."""
+        from .scout_accounting import state
+        return state(self, request)
+
+    def record_accounting_pending(self, request, *, reason_code, observed_at):
+        """Retain detailed-accounting failure; never change trading authority."""
+        from .scout_accounting import record_pending
+        return record_pending(self, request, reason_code=reason_code, observed_at=observed_at)
+
+    def record_accounting(self, request, receipt, *, binding, now):
+        """Persist canonical private accounting; never authorize an order effect."""
+        from .scout_accounting import record_accounting
+        return record_accounting(self, request, receipt, binding=binding, now=now)
+
     def save_receipt(self, *, kind, request_id, payload):
         """Persist exact already-validated service evidence before an effect.
 
@@ -146,24 +161,28 @@ class ScoutBooks:
         if (type(kind) is not str or not kind or type(request_id) is not str
                 or not request_id or type(payload) is not dict):
             raise JournalError('Receipt requires explicit kind/request and exact object payload')
+        with self.locked():
+            self._read()
+            return self._save_receipt_locked(kind=kind, request_id=request_id, payload=payload)
+
+    def _save_receipt_locked(self, *, kind, request_id, payload):
+        """Private primitive for an already-held inventory lock and audited books."""
         receipt = dict(version=VERSION, account_fingerprint=self.account_fingerprint,
                        participant_id=PARTICIPANT_ID, stream=STREAM, kind=kind,
                        request_id=request_id, payload=payload)
         sha = canonical_sha256(receipt)
         raw = json.dumps(receipt, sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False).encode('utf-8')
         destination = _safe_path(self.root / 'receipts' / (sha + '.json'))
-        with self.locked():
-            self._read()
-            destination.parent.mkdir(exist_ok=True)
-            _safe_path(destination)
-            if destination.exists():
-                if destination.read_bytes() != raw:
-                    raise JournalError('Existing immutable authority receipt is corrupted')
-            else:
-                temporary = destination.with_name('.receipt-' + uuid.uuid4().hex + '.tmp')
-                with temporary.open('xb') as handle:
-                    handle.write(raw)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(temporary, destination)
+        destination.parent.mkdir(exist_ok=True)
+        _safe_path(destination)
+        if destination.exists():
+            if destination.read_bytes() != raw:
+                raise JournalError('Existing immutable authority receipt is corrupted')
+        else:
+            temporary = destination.with_name('.receipt-' + uuid.uuid4().hex + '.tmp')
+            with temporary.open('xb') as handle:
+                handle.write(raw)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, destination)
         return dict(sha256=sha, path=str(destination))

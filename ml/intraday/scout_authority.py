@@ -5,6 +5,9 @@ Certificate/CA SHA-256 values pin their file bytes; private-key contents are
 never read by this module or stored in receipts. Paths must be absolute on a
 fixed local drive without redirected ancestors. Loading a binding is explicit;
 constructing the client performs no IO. TLS construction is deferred to a call.
+Binding v2 additionally requires the enrolled server leaf certificate's DER
+SHA-256, checked by the transport before it sends any request body. The leaf
+pin is not a hash of a PEM file and is never inferred from the CA file pin.
 
 Only a successful authorize_send call in the original local claim invocation
 can precede a POST. A saved receipt or status reply is recovery evidence, never
@@ -21,6 +24,7 @@ import math
 from pathlib import Path
 import re
 from urllib.parse import urlsplit
+import uuid
 
 from .admission_transport import AdmissionHTTPSClient, client_tls_context, decode_json
 from .capacity import clip_to_capacity
@@ -30,15 +34,21 @@ from .scout_protocol import Grant, ProtocolError, Request, canonical_sha256, _ti
 
 
 PROTOCOL_VERSION = "intraday-shared-admission-v1"
-BINDING_VERSION = "scout-atlas-authority-binding-v1"
+BINDING_VERSION = "scout-atlas-authority-binding-v2"
 RECEIPT_VERSION = "scout-atlas-authority-receipt-v1"
 CLAIM_VERSION = "scout-account-send-claim-v1"
 NEGATIVE_ADMISSION_VERSION = "intraday-negative-admission-v1"
+READINESS_VERSION = "intraday-shared-readiness-v1"
+PRESTART_RECEIPT_VERSION = "scout-prestart-authority-receipt-v1"
+VIEW_FIELDS = frozenset({"version", "protocol_version", "server_identity", "participant_id", "stream",
+    "account_fingerprint", "request_nonce", "observed_at", "expires_at", "authenticated", "read_only",
+    "orders_or_commitments_created", "protocol_compatible"})
 OPERATIONS = ("capabilities", "reserve", "authorize_send", "status", "evidence", "cancel_intent", "release_unsent")
 PARTICIPANT, STREAM = "pc-new", "scout-15m"
 _HASH = re.compile(r"[a-f0-9]{64}", re.ASCII)
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", re.ASCII)
 _ORDER = re.compile(r"[1-9][0-9]{0,63}", re.ASCII)
+_REASON = re.compile(r"[A-Z][A-Z0-9_:.-]{0,127}", re.ASCII)
 _STATUSES = frozenset({"RESERVED", "SUBMITTING", "UNKNOWN", "SUBMITTED", "WORKING", "PARTIAL", "FILLED", "CANCELLED", "REJECTED", "NOT_SUBMITTED"})
 _BASE = {"protocol_version", "status", "request_id", "request_sha256"}
 
@@ -85,6 +95,7 @@ class ScoutAuthorityBinding:
     server_ca: str
     client_certificate_sha256: str
     server_ca_sha256: str
+    server_certificate_sha256: str
     timeout_seconds: float = 10.0
 
     def __post_init__(self):
@@ -98,7 +109,8 @@ class ScoutAuthorityBinding:
             valid = False
         _require(valid, "Explicit HTTPS authority origin required")
         _require(_matches(self.server_identity, _ID), "Explicit server identity required")
-        for value in (self.account_fingerprint, self.client_certificate_sha256, self.server_ca_sha256):
+        for value in (self.account_fingerprint, self.client_certificate_sha256, self.server_ca_sha256,
+                      self.server_certificate_sha256):
             _require(_matches(value, _HASH), "Exact account and public certificate hashes required")
         _require(type(self.symbols) is tuple and self.symbols
                  and all(type(s) is str and re.fullmatch(r"[A-Z][A-Z0-9.-]{0,15}", s, re.ASCII) for s in self.symbols)
@@ -352,13 +364,116 @@ def validate_send_receipt(record, receipt, binding, *, now):
     return True
 
 
+def validate_view_receipt(receipt, binding, *, operation, request_id, request, now, allow_prestart=False):
+    """Validate a saved view envelope without reading files or creating stores.
+
+    The caller must then validate the exact response schema and its current
+    observation window. A view receipt never grants send/cancel authority.
+    """
+    current = _now(now)
+    _require(type(binding) is ScoutAuthorityBinding and type(receipt) is AuthorityReceipt,
+             "Exact authority view receipt and binding required")
+    payload = _view_payload(receipt)
+    _require(set(payload) == {"version", "binding_sha256", "operation", "request", "response", "received_at", "requested_at"}
+             and payload["version"] == RECEIPT_VERSION and payload["binding_sha256"] == binding.sha256
+             and payload["operation"] == operation and payload["request"] == request,
+             "Authority view receipt binding differs")
+    _require(not allow_prestart or operation == "readiness", "Only readiness accepts a nontrading prestart sink")
+    versions = (BOOKS_VERSION, PRESTART_RECEIPT_VERSION) if allow_prestart else (BOOKS_VERSION,)
+    envelopes = [dict(version=version, account_fingerprint=binding.account_fingerprint, participant_id=PARTICIPANT,
+                      stream=STREAM, kind="authority:" + operation, request_id=request_id, payload=payload)
+                 for version in versions]
+    _require(any(canonical_sha256(envelope) == receipt.sha256 for envelope in envelopes)
+             and type(receipt.path) is str and bool(receipt.path),
+             "Saved authority view receipt digest differs")
+    requested, received = _instant(payload["requested_at"]), _instant(payload["received_at"])
+    _require(requested <= received <= current, "Authority view receipt times are reversed or future dated")
+    return deepcopy(payload["response"]), requested, received
+
+
+def _view_payload(receipt):
+    _require(type(receipt) is AuthorityReceipt and type(receipt._json) is str, "Saved authority view receipt required")
+    try:
+        return decode_json(receipt._json.encode("utf-8"))
+    except (TypeError, ValueError, UnicodeError) as error:
+        raise AuthorityProtocolError("Saved authority view payload is not an exact bounded JSON object") from error
+
+
+def validate_view_envelope(response, binding, *, version, request_nonce, requested_at, received_at, now):
+    """Pure pinned-identity, freshness and zero-effect validation for both views.
+
+    Callers additionally enforce their route's exact field set and content.
+    A successful read-only observation conveys no order or capacity authority.
+    """
+    _require(type(response) is dict and VIEW_FIELDS <= set(response)
+             and type(binding) is ScoutAuthorityBinding and _matches(request_nonce, _ID),
+             "Complete bound authority view envelope required")
+    expected = dict(version=version, protocol_version=PROTOCOL_VERSION,
+        server_identity=binding.server_identity, participant_id=PARTICIPANT, stream=STREAM,
+        account_fingerprint=binding.account_fingerprint, request_nonce=request_nonce)
+    _require(all(type(response[key]) is str and response[key] == value for key, value in expected.items()),
+             "Authority view identity, protocol or nonce differs")
+    _require(all(response[key] is True for key in ("authenticated", "read_only", "protocol_compatible"))
+             and type(response["orders_or_commitments_created"]) is int
+             and response["orders_or_commitments_created"] == 0,
+             "Authority view must be authenticated, compatible and strictly noncommitting")
+    requested, received, current = _now(requested_at), _now(received_at), _now(now)
+    observed, expires = _instant(response["observed_at"]), _instant(response["expires_at"])
+    _require(requested <= observed <= received <= current < expires
+             and 0 < (expires - observed).total_seconds() <= 30,
+             "Authority view observation is stale, future dated or outside its bounded lifetime")
+    return deepcopy(response)
+
+
+def _readiness_response(response, binding, *, request_nonce, requested_at, received_at, now):
+    value = validate_view_envelope(response, binding, version=READINESS_VERSION,
+        request_nonce=request_nonce, requested_at=requested_at, received_at=received_at, now=now)
+    _require(set(value) == VIEW_FIELDS | {"ready", "reason_codes", "writers"}
+             and type(value["ready"]) is bool and type(value["writers"]) is dict
+             and set(value["writers"]) == {"atlas", "gameplan"}, "Exact readiness and writer fields required")
+    reasons = []
+    for name in ("atlas", "gameplan"):
+        writer = value["writers"][name]
+        _require(type(writer) is dict and set(writer) == {"ready", "compatibility_state", "reason_codes", "proof_sha256"}
+                 and type(writer["ready"]) is bool and _matches(writer["proof_sha256"], _HASH)
+                 and type(writer["reason_codes"]) is list and len(writer["reason_codes"]) <= 32
+                 and all(_matches(code, _REASON) for code in writer["reason_codes"]),
+                 "Exact bounded writer compatibility proof required")
+        _require((writer["ready"] is True and writer["compatibility_state"] in ("compatible", "absent")
+                  and writer["reason_codes"] == [])
+                 or (writer["ready"] is False and writer["compatibility_state"] == "blocked"
+                     and bool(writer["reason_codes"])), "Writer state, readiness and reasons disagree")
+        reasons.extend(name.upper() + ":" + code for code in writer["reason_codes"])
+    _require(value["ready"] is all(writer["ready"] for writer in value["writers"].values())
+             and type(value["reason_codes"]) is list and value["reason_codes"] == reasons,
+             "Readiness does not exactly summarize both account writers")
+    return value
+
+
+def validate_readiness_receipt(receipt, binding, *, now):
+    """Pure saved proof validation; returns the response, including ready:false.
+
+    The consumer must require ready:true to proceed. This performs no file,
+    process, broker or network IO and never authorizes an order by itself.
+    """
+    body = _view_payload(receipt).get("request")
+    _require(type(body) is dict and set(body) == {"request_nonce"} and _matches(body["request_nonce"], _ID),
+             "Exact readiness nonce request required")
+    response, requested, received = validate_view_receipt(receipt, binding, operation="readiness",
+        request_id="readiness:" + body["request_nonce"], request=body, now=now, allow_prestart=True)
+    return _readiness_response(response, binding, request_nonce=body["request_nonce"],
+        requested_at=requested, received_at=received, now=now)
+
+
 class ScoutAuthorityClient:
-    def __init__(self, binding, books, *, transport=None, clock=lambda: datetime.now(timezone.utc)):
+    def __init__(self, binding, books, *, transport=None, clock=lambda: datetime.now(timezone.utc),
+                 nonce_factory=lambda: uuid.uuid4().hex):
         _require(type(binding) is ScoutAuthorityBinding and books.account_fingerprint == binding.account_fingerprint,
                  "Authority client and private books must share exact account binding")
         self.binding, self.books, self.clock = binding, books, clock
         self._transport, self._capabilities = transport, None
         self._send_attempts = set()
+        self._nonce_factory, self._view_nonces = nonce_factory, set()
 
     claim_id = staticmethod(claim_id)
 
@@ -368,7 +483,8 @@ class ScoutAuthorityClient:
             context = client_tls_context(certificate=self.binding.client_certificate,
                 private_key=self.binding.private_key, server_ca=self.binding.server_ca)
             _verify_binding_files(self.binding)
-            self._transport = AdmissionHTTPSClient(self.binding.endpoint, tls_context=context, timeout=self.binding.timeout_seconds)
+            self._transport = AdmissionHTTPSClient(self.binding.endpoint, tls_context=context, timeout=self.binding.timeout_seconds,
+                                                  server_certificate_sha256=self.binding.server_certificate_sha256)
         # An injected offline transport must implement the same exact, no-retry call.
         response = self._transport.call(method, path, deepcopy(body))
         _require(type(response) is dict, "Authority response must be an exact JSON object")
@@ -380,11 +496,22 @@ class ScoutAuthorityClient:
                  and request.symbol in self.binding.symbols, "Request outside reviewed Scout account/symbol binding")
         return request
 
-    def _save(self, operation, request_id, body, response):
+    def _save(self, operation, request_id, body, response, *, requested_at=None):
         payload = dict(version=RECEIPT_VERSION, binding_sha256=self.binding.sha256, operation=operation,
                        request=deepcopy(body), response=deepcopy(response), received_at=_now(self.clock()).isoformat())
+        if requested_at is not None:
+            payload["requested_at"] = _now(requested_at).isoformat()
         saved = self.books.save_receipt(kind="authority:" + operation, request_id=request_id, payload=payload)
         return AuthorityReceipt(json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False), saved["sha256"], saved["path"])
+
+    def _view_nonce(self):
+        nonce = self._nonce_factory()
+        _require(_matches(nonce, _ID) and nonce not in self._view_nonces,
+                 "A fresh unique authority view nonce is required")
+        # A timeout does not permit reuse. Views may be retried only with a new
+        # nonce so a replayed response cannot impersonate the new observation.
+        self._view_nonces.add(nonce)
+        return nonce
 
     def capabilities(self):
         """Authenticated identity/protocol only; explicitly not runtime readiness."""
@@ -398,8 +525,36 @@ class ScoutAuthorityClient:
         return receipt
 
     def readiness(self):
-        """The published v1 capability route does not prove loaded readiness."""
-        raise AuthorityProtocolError("Atlas readiness route and schema have not been published")
+        """Obtain and retain one fresh noncommitting account-writer observation."""
+        body = {"request_nonce": self._view_nonce()}
+        requested = _now(self.clock())
+        response = self._call("POST", "/v1/readiness", body)
+        received = _now(self.clock())
+        _readiness_response(response, self.binding, request_nonce=body["request_nonce"],
+            requested_at=requested, received_at=received, now=received)
+        receipt = self._save("readiness", "readiness:" + body["request_nonce"], body, response, requested_at=requested)
+        validate_readiness_receipt(receipt, self.binding, now=self.clock())
+        return receipt
+
+    def accounting(self, request):
+        """Save a validated original-request view; never change lifecycle state."""
+        from .scout_accounting import validate_accounting_response, validate_accounting_receipt
+        self._request(request)
+        body = dict(**_bound(request), request_nonce=self._view_nonce())
+        requested = _now(self.clock())
+        response = self._call("POST", "/v1/accounting", body)
+        received = _now(self.clock())
+        try:
+            validate_accounting_response(response, request, self.binding, request_nonce=body["request_nonce"],
+                requested_at=requested, received_at=received, now=received)
+        except ValueError as error:
+            raise AuthorityProtocolError("Canonical accounting response failed exact validation") from error
+        receipt = self._save("accounting", request.request_id, body, response, requested_at=requested)
+        try:
+            validate_accounting_receipt(request, receipt, self.binding, now=self.clock())
+        except ValueError as error:
+            raise AuthorityProtocolError("Saved canonical accounting receipt failed exact validation") from error
+        return receipt
 
     def _ready_transport(self):
         if self._capabilities is None:

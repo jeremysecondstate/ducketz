@@ -1,7 +1,9 @@
 from dataclasses import replace
 from datetime import timedelta
 from types import SimpleNamespace
+import json
 import sqlite3
+import uuid
 
 import pytest
 
@@ -9,6 +11,25 @@ from ml.intraday import scout_runtime_gate as gate
 from ml.intraday.prediction import ContractError, TARGET_VERSION, digest, encoded, instant
 from ml.intraday.scout_protocol import Grant, Request
 from ml.intraday.store import ShadowStore
+
+
+def saved_readiness(tmp_path, now, *, binding=None, changes=None, sink=None):
+    """Save exact offline service-view bytes; never call a production endpoint."""
+    from test_intraday_scout_authority import binding as authority_binding, readiness_response
+    from ml.intraday.scout_authority import AuthorityReceipt, RECEIPT_VERSION
+    from ml.intraday.scout_books import ScoutBooks
+    binding = binding or replace(authority_binding(tmp_path), symbols=("DOCU",))
+    nonce = "fixture:" + uuid.uuid4().hex
+    response = readiness_response(binding, instant(now), nonce)
+    response.update(changes or {})
+    books = sink or ScoutBooks(tmp_path / "books", account_fingerprint=binding.account_fingerprint)
+    payload = dict(version=RECEIPT_VERSION, binding_sha256=binding.sha256, operation="readiness",
+                   request={"request_nonce": nonce}, response=response,
+                   requested_at=instant(now).isoformat(), received_at=instant(now).isoformat())
+    saved = books.save_receipt(kind="authority:readiness", request_id="readiness:" + nonce, payload=payload)
+    receipt = AuthorityReceipt(json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False),
+                               saved["sha256"], saved["path"])
+    return binding, receipt
 
 
 def make_case(tmp_path, *, reference="2026-10-08T17:00:00Z", pc="Scout", mode="live",
@@ -41,11 +62,13 @@ def make_case(tmp_path, *, reference="2026-10-08T17:00:00Z", pc="Scout", mode="l
         session_id, 1, 2, "reservation", (ref + timedelta(minutes=16, seconds=4)).isoformat(),
         forecast["target_close"])
     state = SimpleNamespace(now=at, stop=False, manual=True, proof=True)
+    authority_binding, readiness_receipt = saved_readiness(tmp_path / "readiness", at)
     kwargs = dict(forecast=forecast, forecast_path=store.path, session_id=session_id,
         session_started=started, local_symbols=frozenset({"DOCU"}), account_fingerprint="a" * 64,
         quote_observed_at=at - timedelta(seconds=quote_age), max_quote_age_seconds=60,
         expected_time_in_force="DAY", manual_authority=lambda: state.manual,
         stopped=lambda: state.stop, authorization_current=lambda req, granted: state.proof,
+        authority_binding=authority_binding, readiness_receipt=readiness_receipt,
         clock=lambda: state.now)
     return SimpleNamespace(store=store, forecast=forecast, request=request, grant=grant,
                            state=state, kwargs=kwargs)
@@ -154,10 +177,71 @@ def test_time_restrictions_are_checked_even_with_a_fresh_quote(tmp_path, now, re
 def test_strict_1645_pacific_cutoff_before_and_after_dst(tmp_path, reference, cutoff):
     case = make_case(tmp_path, reference=reference)
     case.state.now = instant(cutoff) - timedelta(microseconds=1)
+    _, case.kwargs["readiness_receipt"] = saved_readiness(tmp_path / "fresh-readiness", case.state.now,
+                                                        binding=case.kwargs["authority_binding"])
     assert check(case, quote_observed_at=case.state.now, expected_time_in_force="PM")
     case.state.now = instant(cutoff)
     with pytest.raises(ContractError, match="submission_cutoff"):
         check(case, quote_observed_at=case.state.now, expected_time_in_force="PM")
+
+
+def test_positive_send_callback_cannot_replace_saved_readiness(tmp_path):
+    case = make_case(tmp_path)
+    with pytest.raises(ContractError):
+        check(case, readiness_receipt={"ready": True, "authenticated": True})
+
+
+def test_readiness_expiry_blocks_while_quote_and_forecast_remain_current(tmp_path):
+    case = make_case(tmp_path)
+    case.state.now = instant(case.kwargs["readiness_receipt"].response["expires_at"])
+    with pytest.raises(ContractError):
+        check(case, quote_observed_at=case.state.now)
+
+
+def test_readiness_is_rechecked_after_saved_forecast_read(tmp_path, monkeypatch):
+    case = make_case(tmp_path)
+    read = gate._saved_forecast
+    def delayed(*args, **kwargs):
+        read(*args, **kwargs)
+        case.state.now = instant(case.kwargs["readiness_receipt"].response["expires_at"])
+    monkeypatch.setattr(gate, "_saved_forecast", delayed)
+    with pytest.raises(ContractError):
+        check(case)
+
+
+def test_valid_receipt_for_different_symbol_partition_does_not_pass_local_gate(tmp_path):
+    case = make_case(tmp_path)
+    other = replace(case.kwargs["authority_binding"], symbols=("MSFT",))
+    _, receipt = saved_readiness(tmp_path / "other", case.state.now, binding=other)
+    with pytest.raises(ContractError, match="account or symbols"):
+        check(case, authority_binding=other, readiness_receipt=receipt)
+
+
+def test_final_gate_never_refreshes_readiness_over_network(tmp_path, monkeypatch):
+    from ml.intraday.scout_authority import ScoutAuthorityClient
+    case = make_case(tmp_path)
+    monkeypatch.setattr(ScoutAuthorityClient, "readiness", lambda *_: pytest.fail("Remote readiness refresh forbidden"))
+    assert check(case)
+
+
+def test_valid_negative_readiness_is_evidence_but_not_submission_permission(tmp_path):
+    case = make_case(tmp_path)
+    writers = case.kwargs["readiness_receipt"].response["writers"]
+    writers["atlas"].update(ready=False, compatibility_state="blocked", reason_codes=["WRITER_STALE"])
+    _, receipt = saved_readiness(tmp_path / "blocked", case.state.now,
+        binding=case.kwargs["authority_binding"], changes={"ready":False, "writers":writers,
+                                                        "reason_codes":["ATLAS:WRITER_STALE"]})
+    with pytest.raises(ContractError, match="account writers are not ready"):
+        check(case, readiness_receipt=receipt)
+
+
+def test_authenticated_verified_absence_is_accepted_writer_evidence(tmp_path):
+    case = make_case(tmp_path)
+    writers = case.kwargs["readiness_receipt"].response["writers"]
+    writers["atlas"]["compatibility_state"] = "absent"
+    _, receipt = saved_readiness(tmp_path / "absent", case.state.now,
+        binding=case.kwargs["authority_binding"], changes={"writers":writers})
+    assert check(case, readiness_receipt=receipt)
 
 
 @pytest.mark.parametrize("reference", ["2026-10-10T17:00:00Z", "2026-10-08T08:00:00Z"])

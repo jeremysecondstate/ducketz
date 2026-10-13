@@ -469,11 +469,13 @@ def scout_manual_fixture(tmp_path, monkeypatch, *, proof_changes=None):
             assert kwargs["local_symbols"] == ("DOCU",)
             executors.append(self)
         def preflight(self):
+            from test_intraday_scout_runtime_gate import saved_readiness
             calls.append("preflight")
             assert not self.kwargs["manual_authority"]()
-            return {"ready":True,"authenticated":True,"protocol_compatible":True,
-                    "participant_id":"pc-new","stream":"scout-15m",
-                    "session_id":self.kwargs["session_id"],"protocol":"offline-fixture-v1",**(proof_changes or {})}
+            changes = dict(proof_changes or {})
+            session = changes.pop("session_id", self.kwargs["session_id"])
+            binding, receipt = saved_readiness(tmp_path / "authority-proof", self.kwargs["clock"](), changes=changes)
+            return {"readiness_receipt":receipt,"authority_binding":binding,"session_id":session}
         def step(self, value):
             calls.append("step")
             assert value["pc"] == "Scout"
@@ -527,6 +529,9 @@ def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path
     logs=[json.loads(line) for line in (session_root/"events.jsonl").read_text().splitlines()]
     assert [row["status"] for row in logs if row["event"] == "session_status"] == ["STARTING","RUNNING","STOPPING","STOPPED"]
     assert {row["event"] for row in logs} >= {"authority_ready","forecast_published","execution_disposition"}
+    proof = next(row for row in logs if row["event"] == "authority_ready")
+    assert proof["writers"]["atlas"]["ready"] is True and proof["writers"]["gameplan"]["ready"] is True
+    assert not {"authority_binding", "account_fingerprint", "readiness_receipt"} & set(proof)
     assert all(row["session_id"] == result["session_id"] and row["pc"] == "Scout" for row in logs)
     assert "Scout 15m manual session running" in capsys.readouterr().out
     prior_bytes=(session_root/"status.json").read_bytes()
@@ -537,16 +542,31 @@ def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path
 
 @pytest.mark.parametrize("changes", [{"ready":False},{"authenticated":False},{"protocol_compatible":False},
     {"participant_id":"pc-original"},{"stream":"gameplan"},{"session_id":"another-session"},
-    {"protocol":""},{"ready":1}])
+    {"protocol_version":""},{"ready":1},{"writers":{}},{"expires_at":"2026-10-08T17:17:00Z"}])
 def test_scout_rejects_unbound_preflight_before_history_provider_or_training(tmp_path,monkeypatch,changes):
+    from ml.intraday.scout_authority import AuthorityProtocolError
     kwargs,calls,_=scout_manual_fixture(tmp_path,monkeypatch,proof_changes=changes)
-    with pytest.raises(ContractError,match="authenticated, protocol-compatible"):
+    with pytest.raises((ContractError, AuthorityProtocolError)):
         live_session.run_manual(**kwargs)
     assert calls == ["preflight"]
     status=json.loads((tmp_path/"intraday/manual-session.json").read_text())
     assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
     assert status["broker_orders_automatically_cancelled"] is False
     assert status["schema_version"] == live_session.SCOUT_VERSION
+
+
+def test_scout_positive_dictionary_does_not_substitute_for_saved_readiness(tmp_path, monkeypatch):
+    kwargs,calls,_=scout_manual_fixture(tmp_path,monkeypatch)
+    import sys
+    executor_type=sys.modules["ml.intraday.scout_execution"].ScoutAccountExecutor
+    def unbound(self):
+        return dict(ready=True, authenticated=True, protocol_compatible=True, participant_id="pc-new",
+                    stream="scout-15m", session_id=self.kwargs["session_id"], protocol="intraday-shared-admission-v1")
+    monkeypatch.setattr(executor_type,"preflight",unbound)
+    with pytest.raises(ContractError,match="authenticated, protocol-compatible"):
+        live_session.run_manual(**kwargs)
+    assert not calls
+    assert json.loads((tmp_path/"intraday/manual-session.json").read_text())["status"] == "FAILED"
 
 
 def test_scout_protocol_exception_stays_startup_failure_without_fallback(tmp_path,monkeypatch):

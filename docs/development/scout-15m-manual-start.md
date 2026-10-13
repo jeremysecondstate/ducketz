@@ -61,11 +61,32 @@ account writers, original books and authenticated connection/readiness. Private
 connection receipts are under
 `C:\dev\ducketz\scratch\scout-15m-prestart\authority-receipts`.
 
+Readiness uses the authenticated, noncommitting `/v1/readiness` view with a
+fresh request nonce. Scout verifies the saved reply against its pinned server,
+account and participant binding, exact protocol and current observation expiry.
+Both Atlas and Gameplan must have compatible loaded-writer evidence or verified
+absence. A capability reply, positive dictionary or source file on disk does
+not establish that readiness. A readiness receipt never reserves capacity or
+authorizes an order. The final submission gate validates the saved readiness
+receipt again locally; it does not refresh remote evidence during the broker
+effect boundary.
+
 Without `--check-connection`, the check stays local: a successful result has
 `local_checks_passed: true` but `ready: false` and connection `not_requested`.
 That result does not establish service readiness. A failed prerequisite exits
 2 and reports a sanitized `check`, `type` and `message`; do not bypass it by
 editing controls, fabricating a manifest or substituting a successful callback.
+
+Private enrollment uses the published
+[Atlas production interface](intraday-production-interface.md) and the existing
+private exchange. Keep its accepted v1 binding and offer/request/response files
+unchanged. `ml.intraday.scout_enrollment` constructs a separate v2 binding using
+the retained, independently pinned offer receipt, original enrollment dates and
+identity, and the exact server leaf DER hash. It rechecks the local key and
+certificate pair and never starts a connection or creates an order commitment.
+The installed environment includes the reviewed `admission-tls` dependency.
+Enrollment inputs and resulting bindings stay private; the manual trading
+command does not enroll or replace credentials.
 
 Once the prerequisite succeeds and the human chooses to start, paste:
 
@@ -83,7 +104,8 @@ Atlas execution or shadow-only operation.
 ## Startup and permitted times
 
 Startup first records `STARTING`. Successful Scout authority preflight emits an
-`authority_ready` JSON event with authenticated participant/protocol evidence.
+`authority_ready` JSON event with authenticated participant/protocol evidence,
+readiness expiry and each account writer's compatibility state and proof hash.
 After histories/provider and workers are prepared it records `RUNNING` and
 prints:
 
@@ -173,6 +195,7 @@ trader in the first terminal.
 | Data acquisition and waits | `C:\DATASTORE\intraday\acquisition.sqlite3`; exact interval attempts and durable provider-recovery evidence. |
 | Original private orders/fills | `C:\DATASTORE\intraday\scout\inventory.json` selects original journals in `journals`; `records`, lifecycle evidence, exact broker IDs, cumulative fills and cancellation attempts. Never guess a journal filename. |
 | Shared-authority evidence | `C:\DATASTORE\intraday\scout\receipts`; saved authenticated request/status/evidence replies. Atlas's authority database remains on Atlas. |
+| Detailed private accounting | `C:\DATASTORE\intraday\scout\accounting`; current indexes of saved authority observations, matched to original requests, grants, fills and allocation provenance. Older observations remain in immutable pages under `accounting-history`. Each index retains the latest valid snapshot and explicit pending status when a refresh fails. |
 | Model artifacts | `C:\DATASTORE\intraday\models`; original local fitted artifacts and manifests. |
 | Errors | Terminal/startup status plus forecast store `events` such as `execution_retry`, `order_recovery_retry`, worker failures and acquisition/model events. The JSONL summary does not contain every detailed event. |
 
@@ -181,6 +204,13 @@ exact broker cumulative-fill evidence. `probability_not_down` is a forecast
 probability, not measured historical accuracy. Scored, synthetic and pending
 outcomes remain distinct. A cancellation acknowledgment is not terminal order
 evidence, and raw local audit-event counts are not a wire backlog.
+
+Accounting refreshes are separate from immediate order recovery. Failed or
+stale detail observations retain the last valid snapshot and cannot release
+capacity, repeat a submission or block exact cancellation recovery. Gross fill
+cost/proceeds are supported by exact fills; unavailable fees, cost basis and
+realized profit remain unknown. A terminal order does not mean that all later
+accounting provenance has arrived.
 
 For independent inspection, use saved files and SQLite URI `mode=ro` with
 `PRAGMA query_only=ON`. Do not instantiate production stores/clients, copy whole

@@ -6,6 +6,8 @@ already saved facts for the exact request and grant. It must also bind the froze
 sizing hash, original desired quantity/side and current rounded quote limit, and
 the account writers' current compatibility proof. The callback must use only
 nonblocking local evidence and explicitly return True; an event ACK is not proof.
+The separately required saved readiness receipt is validated against the local
+authority binding and current time at both ends of the final eligibility check.
 
 Forecast reads use the existing store's immutable validators through SQLite
 mode=ro/query_only with zero lock wait. No production store or provider/broker is
@@ -31,6 +33,23 @@ from .store import ShadowStore
 
 
 _FORECAST_COLUMNS = "id,pc,symbol,cycle_id,reference_at,issued_at,payload"
+
+
+def readiness_gate(receipt, binding, *, now):
+    """Validate saved authenticated writer readiness without refreshing it.
+
+    A valid negative readiness response remains useful private evidence, but
+    does not pass this gate. Capabilities and arbitrary positive dictionaries
+    cannot substitute for the client's exact saved, unexpired receipt.
+    """
+    from .scout_authority import validate_readiness_receipt
+    proof = validate_readiness_receipt(receipt, binding, now=instant(now))
+    if (not isinstance(proof, Mapping) or proof.get("ready") is not True
+            or proof.get("protocol_compatible") is not True
+            or set(proof.get("writers", {})) != {"atlas", "gameplan"}
+            or any(proof["writers"][name].get("ready") is not True for name in ("atlas", "gameplan"))):
+        raise ContractError("Authenticated compatible account writers are not ready")
+    return proof
 
 
 def _affirm(callback, *args, message):
@@ -108,7 +127,7 @@ def _saved_forecast(path, forecast, *, session_id, session_started):
 def local_gate(request, grant, *, forecast, forecast_path, session_id, session_started,
                local_symbols, account_fingerprint, quote_observed_at,
                max_quote_age_seconds, expected_time_in_force, manual_authority,
-               stopped, authorization_current, clock):
+               stopped, authorization_current, readiness_receipt, authority_binding, clock):
     """Return True only for an exact, still eligible Scout POST; fail closed.
 
     All bindings, callbacks and the configured quote-age limit are explicit.
@@ -123,7 +142,8 @@ def local_gate(request, grant, *, forecast, forecast_path, session_id, session_s
             account_fingerprint=account_fingerprint, quote_observed_at=quote_observed_at,
             max_quote_age_seconds=max_quote_age_seconds, expected_time_in_force=expected_time_in_force,
             manual_authority=manual_authority, stopped=stopped,
-            authorization_current=authorization_current, clock=clock)
+            authorization_current=authorization_current, readiness_receipt=readiness_receipt,
+            authority_binding=authority_binding, clock=clock)
     except ContractError:
         raise
     except (ProtocolError, sqlite3.Error, OSError, ValueError, TypeError, KeyError, OverflowError) as exc:
@@ -133,7 +153,7 @@ def local_gate(request, grant, *, forecast, forecast_path, session_id, session_s
 def _local_gate(request, grant, *, forecast, forecast_path, session_id, session_started,
                 local_symbols, account_fingerprint, quote_observed_at,
                 max_quote_age_seconds, expected_time_in_force, manual_authority,
-                stopped, authorization_current, clock):
+                stopped, authorization_current, readiness_receipt, authority_binding, clock):
     if type(request) is not Request or type(grant) is not Grant:
         raise ContractError("Exact Request and Grant required")
     grant.validate(request)
@@ -196,6 +216,10 @@ def _local_gate(request, grant, *, forecast, forecast_path, session_id, session_
         window = stock_execution_window(current, allow_open_queue=False, allow_premarket_queue=False)
         if not window.executable or window.time_in_force != expected_time_in_force:
             raise ContractError("Current stock execution window or time-in-force changed")
+        readiness = readiness_gate(readiness_receipt, authority_binding, now=current)
+        if (readiness["account_fingerprint"] != account_fingerprint
+                or request.symbol not in authority_binding.symbols):
+            raise ContractError("Readiness differs from the exact bound Scout account or symbols")
 
     _controls(manual_authority, stopped)
     current_time()
