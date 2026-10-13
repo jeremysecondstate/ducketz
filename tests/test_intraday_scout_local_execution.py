@@ -15,7 +15,7 @@ from ml.stock_trader.contracts import PortfolioState, QuoteState
 from test_intraday_scout_broker import Broker, GENERATION, ACCOUNT
 
 
-def forecast(env, *, advance=False, probability=.72):
+def forecast(env, *, advance=False, probability=.72, snapshot=None):
     if advance:
         env.reference += timedelta(minutes=15)
         env.state.now = env.reference + timedelta(minutes=16, seconds=10)
@@ -23,13 +23,17 @@ def forecast(env, *, advance=False, probability=.72):
     env.store.begin_cycle(cycle, dict(pc='Scout', mode='live', experiment=env.executor.session_id,
         started_at=(env.reference + timedelta(minutes=15)).isoformat(), reference_at=env.reference.isoformat(),
         symbols=['DOCU'], configuration_hash='c' * 64))
-    snapshot_hash, _ = env.store.freeze_inputs(cycle, 'DOCU', {'input': 'immutable'})
+    snapshot_hash, _ = env.store.freeze_inputs(cycle, 'DOCU', snapshot or {'input': 'immutable'})
     return env.store.save_forecast(dict(pc='Scout', symbol='DOCU', cycle_id=cycle,
-        reference_at=env.reference.isoformat(), reference_open='100',
+        reference_at=env.reference.isoformat(),
+        reference_open=str(snapshot['inference']['reference_open']) if snapshot else '100',
+        source_id=snapshot['inference']['source'] if snapshot else None,
+        source_dataset=snapshot['inference']['source_dataset'] if snapshot else None,
         target_open=(env.reference + timedelta(minutes=30)).isoformat(),
         target_close=(env.reference + timedelta(minutes=45)).isoformat(),
         issued_at=(env.reference + timedelta(minutes=16, seconds=2)).isoformat(),
         information_available_at=(env.reference + timedelta(minutes=15, seconds=3)).isoformat(),
+        training_cutoff=(env.reference + timedelta(minutes=15, seconds=3)).isoformat(),
         data_through=(env.reference + timedelta(minutes=15)).isoformat(), target_version=TARGET_VERSION,
         snapshot_hash=snapshot_hash, mode='live', availability_basis='observed',
         probability_not_down=probability, configured_count=2, successful_count=2,
@@ -101,6 +105,45 @@ def test_zero_cash_still_records_full_intention_then_zero_capacity(env):
     assert value['disposition'] == 'no_purchasing_capacity'
     assert env.executor.intents.get(env.forecast['forecast_id'])['desired_quantity'] == 4
     assert env.broker.posts == []
+
+
+@pytest.mark.parametrize('quote_age', [0, 61])
+def test_real_sizing_preserves_captured_equity_provenance_and_quote_freshness(env, monkeypatch, quote_age):
+    from ml.intraday.starter_sizing import size_forecast
+    from test_intraday_starter_sizing import fixture as sizing_fixture
+
+    _, snapshot, _, _ = sizing_fixture(symbol='DOCU')
+    reference = env.reference + timedelta(minutes=15)
+    offset = reference - instant(snapshot['inference']['reference_at'])
+    for candle in snapshot['candles']:
+        for key in ('opened_at', 'available_at', 'session_open', 'session_close'):
+            candle[key] = (instant(candle[key]) + offset).isoformat()
+        candle['session_id'] = instant(candle['session_open']).date().isoformat()
+    snapshot['cutoff'] = (instant(snapshot['cutoff']) + offset).isoformat()
+    snapshot['inference']['reference_at'] = reference.isoformat()
+    env.forecast = forecast(env, advance=True, snapshot=snapshot)
+    env.cash, env.quote_age = 0, quote_age
+    monkeypatch.setattr(execution, 'size_forecast', size_forecast)
+
+    result = env.executor.step(env.forecast)
+    if quote_age:
+        assert result['kind'] == 'sizing_unavailable'
+        sizing = result['evidence']['sizing']
+        assert sizing['reason'] == 'quote_stale_or_future'
+        assert env.executor.intents.get(env.forecast['forecast_id']) is None
+    else:
+        intention = env.executor.intents.get(env.forecast['forecast_id'])
+        assert intention is not None, result
+        sizing = intention['sizing']
+        assert sizing['status'] == 'sized' and intention['desired_quantity'] > 0
+        assert result['disposition'] == 'no_purchasing_capacity'
+        assert sizing['indicator_snapshot']['forecast_snapshot_hash'] == env.forecast['snapshot_hash']
+    equity = sizing['reference_context']['account_equity']
+    assert equity['value'] == 10000 and equity['source'] == 'schwab-liquidation-equity'
+    assert equity['available_at'] == env.state.now.isoformat()
+    assert equity['evidence'] == dict(account_fingerprint=ACCOUNT,
+        snapshot_identity=GENERATION, snapshot_sha256='d' * 64, observed_at=env.state.now.isoformat())
+    assert env.broker.posts == [] and env.broker.deletes == []
 
 
 def test_real_prepared_post_uses_local_durable_permit_and_net_cash_once(env):
