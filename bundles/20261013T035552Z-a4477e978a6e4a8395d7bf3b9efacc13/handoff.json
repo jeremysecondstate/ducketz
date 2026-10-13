@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T03:55:52.586510Z",
+  "id": "20261013T035552Z-a4477e978a6e4a8395d7bf3b9efacc13",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Focused PR83 follow-up rejects incompatible protocol headers before service operations and supplies durable expired negative admission proof when canonical books prove no reservation or send claim."
+}
