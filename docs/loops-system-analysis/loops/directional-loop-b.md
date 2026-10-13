@@ -1,5 +1,34 @@
 # Directional Loop B
 
+## Atlas current-state revision: October 11, 2026
+
+Atlas's MODEL REVIEW/TRAINING/PREDICTING native checkpoint is **Monday-Friday
+03:00 America/Los_Angeles**. It is a supervision opportunity: the dispatcher
+can advance the numerical segment earlier when its prerequisites are complete.
+The older unconditional stage-2 description below is historical. See the
+[Atlas alignment report](../../development/atlas-loop-schedule-alignment-2026-10-11.md)
+for current schedules and the complete responsibility map.
+
+In the installed split workflow, datastore catch-up completes before the
+separate Stats stage and substantive model review. The model responsibility
+then runs directional Loop B, Gameplan evaluation, independent Gameplan
+publication and stock enrichment. Loop B itself is only the directional
+`ml.prediction_runtime --once` stage: it takes the shared datastore-cycle lock,
+requires the current Loop A record to be `COMPLETE`, and publishes its verified
+directional output. The later Gameplan publication and enrichment are distinct
+numerical stages. Stock-only preparation omits Strategy-profit training and
+Strategy generation without redefining the Loop A acquisition boundary.
+
+The separate GAMEPLAN responsibility begins trade planning from the exact
+accepted publication; DISPLAY verifies saved results and packages the local
+handoff. Scout performs numerical synthesis and Atlas verifies/adopts the exact
+returned combined plan and Stats. Reconciliation and completed-chat cleanup
+are separate support responsibilities. None of those duties is an additional
+directional Loop B cycle, and a scheduled wake does not prove numerical or
+handoff completion.
+
+## Preserved deployment and capability reference
+
 > **Current deployment (2026-09-04):** Directional Loop B runs once as stage 2
 > of the sequential overnight owner. The former 30-minute supervisor is stopped;
 > cadence details below are legacy implementation capability.
