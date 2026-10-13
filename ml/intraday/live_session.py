@@ -40,8 +40,10 @@ def eligible_reference(reference):
 
 
 class ExecutionQueue:
-    def __init__(self, store, session_id):
-        self.store, self.session_id = store, session_id
+    def __init__(self, store, session_id, *, pc="Atlas"):
+        if pc not in {"Atlas", "Scout"}:
+            raise ContractError("Explicit Atlas or Scout execution queue required")
+        self.store, self.session_id, self.pc = store, session_id, pc
         with store.connect() as db:
             db.executescript("""
               CREATE TABLE IF NOT EXISTS intraday_live_queue(
@@ -52,6 +54,8 @@ class ExecutionQueue:
             """)
 
     def enqueue(self, forecast):
+        if forecast["pc"] != self.pc:
+            raise ContractError("Forecast belongs to another participant")
         if forecast["mode"] != "live":
             raise ContractError("Only newly issued live forecasts enter manual execution")
         if forecast.get("execution_blocked_reason") or instant(forecast["issued_at"]) >= instant(forecast["target_close"]):
@@ -61,8 +65,12 @@ class ExecutionQueue:
             return
         with self.store.connect() as db:
             cycle = db.execute("SELECT payload FROM cycles WHERE id=?", (forecast["cycle_id"],)).fetchone()
-            if cycle is not None and json.loads(cycle[0]).get("experiment") != self.session_id:
-                raise ContractError("Forecast belongs to another manual session")
+            if cycle is not None:
+                source = json.loads(cycle[0])
+                if source.get("experiment") != self.session_id:
+                    raise ContractError("Forecast belongs to another manual session")
+                if source.get("pc") != self.pc:
+                    raise ContractError("Cycle belongs to another participant")
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT session_id,symbol,issued_at FROM intraday_live_queue WHERE forecast_id=?",
                              (forecast["forecast_id"],)).fetchone()
@@ -85,14 +93,14 @@ class ExecutionQueue:
         with self.store.connect() as db:
             # Newer forecasts supersede unsent queued work for the same symbol.
             rows = db.execute("""SELECT q.forecast_id FROM intraday_live_queue q JOIN forecasts f ON f.id=q.forecast_id
-                WHERE q.session_id=? AND q.status='pending' AND q.next_attempt_at<=?
+                WHERE q.session_id=? AND f.pc=? AND q.status='pending' AND q.next_attempt_at<=?
                 AND NOT EXISTS(SELECT 1 FROM intraday_live_queue n JOIN forecasts nf ON nf.id=n.forecast_id
-                    WHERE n.session_id=q.session_id AND n.symbol=q.symbol
+                    WHERE n.session_id=q.session_id AND nf.pc=f.pc AND n.symbol=q.symbol
                     AND (nf.reference_at>f.reference_at OR (nf.reference_at=f.reference_at AND n.issued_at>q.issued_at)))
                 ORDER BY f.reference_at,q.symbol""",
-                              (self.session_id,current)).fetchall()
+                              (self.session_id,self.pc,current)).fetchall()
         ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc="Atlas") if f["forecast_id"] in ids]
+        return [f for f in self.store.forecasts(pc=self.pc) if f["forecast_id"] in ids]
 
     def broker_due(self, now):
         with self.store.connect() as db:
@@ -107,30 +115,32 @@ class ExecutionQueue:
     def defer(self, forecast_id, *, now, seconds, broker_wait=False):
         due = (instant(now) + timedelta(seconds=max(3.0,float(seconds)))).isoformat()
         with self.store.connect() as db:
-            db.execute("UPDATE intraday_live_queue SET next_attempt_at=? WHERE forecast_id=? AND session_id=?",
-                       (due,forecast_id,self.session_id))
-        if broker_wait:
+            changed = db.execute("""UPDATE intraday_live_queue SET next_attempt_at=? WHERE forecast_id=? AND session_id=?
+                AND forecast_id IN (SELECT id FROM forecasts WHERE pc=?)""",
+                       (due,forecast_id,self.session_id,self.pc)).rowcount
+        if broker_wait and changed:
             self.broker_wait(now=now,seconds=seconds)
 
     def complete(self, forecast_id, status):
         with self.store.connect() as db:
-            db.execute("UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=?",
-                       (status,forecast_id,self.session_id))
+            db.execute("""UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=?
+                AND forecast_id IN (SELECT id FROM forecasts WHERE pc=?)""",
+                       (status,forecast_id,self.session_id,self.pc))
 
 
-def _session_cycles(store, session_id):
+def _session_cycles(store, session_id, *, pc="Atlas"):
     # Recovery identity lives in the existing cycle payload, not a lost Python
     # cursor. Never adopt another human session's pending work for execution.
     with store.connect() as db:
         rows = db.execute("SELECT id,payload FROM cycles ORDER BY rowid").fetchall()
     return [(identity, value) for identity, raw in rows
             if (value := json.loads(raw)).get("mode") == "live"
-            and value.get("pc") == "Atlas" and value.get("experiment") == session_id]
+            and value.get("pc") == pc and value.get("experiment") == session_id]
 
 
-def _pending_cycle_passes(store, session_id, now):
+def _pending_cycle_passes(store, session_id, now, *, pc="Atlas"):
     result = []
-    for identity, cycle in _session_cycles(store, session_id):
+    for identity, cycle in _session_cycles(store, session_id, pc=pc):
         if cycle.get("status") == "completed":
             continue
         missing = [symbol for symbol in cycle["symbols"] if store.forecast(identity, symbol) is None]
@@ -157,7 +167,8 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
     outputs remain immutable, and older recovered outputs never enter execution.
     No missed-quarter forecast or older fitted model is invented.
     """
-    saved = _session_cycles(runner.store, queue.session_id)
+    pc = getattr(queue, "pc", "Atlas")
+    saved = _session_cycles(runner.store, queue.session_id, pc=pc)
     last = max((instant(c["reference_at"]) for _, c in saved), default=None)
     while not stopped():
         newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
@@ -174,7 +185,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                                    {"reference_at":reference.isoformat(),"orders_submitted":0})
                 pause(1); continue
         else:
-            pending = _pending_cycle_passes(runner.store, queue.session_id, clock())
+            pending = _pending_cycle_passes(runner.store, queue.session_id, clock(), pc=pc)
             if not pending:
                 pause(1); continue
             _, cycle, retry_symbols = pending[0]
@@ -190,7 +201,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
 
 
 def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
-                 clock=utcnow, pause=time.sleep):
+                 clock=utcnow, pause=time.sleep, pc="Atlas"):
     """Fetch exact due outcomes independently, including after the last entry.
 
     Acquisition retry evidence is durable. This never submits an order, changes
@@ -198,6 +209,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     Local copies of the history mapping keep scoring out of the training writer.
     """
     from .data import synthetic_continuity_verified
+    if pc not in {"Atlas", "Scout"}:
+        raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
     while not stopped():
         latest_observed = {}
@@ -210,7 +223,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     audited.add(key)
                 continue
             latest_observed[(candle["symbol"],candle.get("source_id"),instant(candle["opened_at"]))] = candle
-        for forecast in store.forecasts(pc="Atlas"):
+        for forecast in store.forecasts(pc=pc):
             if stopped():
                 return
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
