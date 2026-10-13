@@ -258,6 +258,9 @@ class AdmissionRequestHandler(BaseHTTPRequestHandler):
             self._reply(error_response(405, "method_not_allowed"))
             return
         try:
+            if (self.command == "POST" and _one_header(
+                    self.headers, "X-Admission-Protocol", required=True) != PROTOCOL_VERSION):
+                raise _fail("invalid_request")
             if any(self.headers.get_all(name) for name in (
                     "Transfer-Encoding", "Content-Encoding", "Expect")):
                 raise _fail("invalid_request")

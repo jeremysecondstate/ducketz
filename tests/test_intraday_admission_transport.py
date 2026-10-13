@@ -150,7 +150,9 @@ def handler(*, method="POST", path="/v1/reserve", raw=b"{}", supplied_headers=No
     instance.connection = SimpleNamespace(version=lambda: version,
         getpeercert=lambda binary_form: certificate)
     instance.server = SimpleNamespace(participants=bindings(), dispatcher=transport.AdmissionDispatcher(service))
-    instance.headers = supplied_headers or headers(("Content-Type", "application/json"), ("Content-Length", str(len(raw))))
+    instance.headers = supplied_headers if supplied_headers is not None else headers(
+        ("Content-Type", "application/json"), ("Content-Length", str(len(raw))),
+        ("X-Admission-Protocol", transport.PROTOCOL_VERSION))
     instance.rfile = BytesIO(raw)
     responses = []
     instance._reply = responses.append
@@ -172,6 +174,7 @@ def handler(*, method="POST", path="/v1/reserve", raw=b"{}", supplied_headers=No
     (headers(("Content-Length", "3"), ("Content-Type", "application/json")), b"{}"),
 ])
 def test_http_rejects_ambiguous_framing_before_service(supplied_headers, raw):
+    supplied_headers["X-Admission-Protocol"] = transport.PROTOCOL_VERSION
     instance, service, responses = handler(supplied_headers=supplied_headers, raw=raw)
     instance._handle()
     assert responses[0].status == 400
@@ -201,6 +204,41 @@ def test_http_exact_json_request_and_capability_probe():
     assert responses[0].status == 200
     assert service.calls == [("reserve", "pc-new", {})]
     instance, service, responses = handler(method="GET", path="/v1/capabilities", raw=b"")
+    instance._handle()
+    assert responses[0].status == 200
+    assert service.calls == [("capabilities", "pc-new")]
+
+
+@pytest.mark.parametrize("path", list(transport._POST_ROUTES))
+@pytest.mark.parametrize("protocol_headers", [
+    (),
+    (("X-Admission-Protocol", ""),),
+    (("X-Admission-Protocol", "intraday-shared-admission-v2"),),
+    (("X-Admission-Protocol", transport.PROTOCOL_VERSION),
+     ("x-admission-protocol", transport.PROTOCOL_VERSION)),
+    (("X-Admission-Protocol", transport.PROTOCOL_VERSION),
+     ("X-Admission-Protocol", "intraday-shared-admission-v2")),
+], ids=["missing", "empty", "incompatible", "duplicate-same", "duplicate-conflicting"])
+def test_every_post_requires_one_exact_protocol_header_before_body_or_service(path, protocol_headers):
+    supplied = headers(("Content-Type", "application/json"), ("Content-Length", "2"), *protocol_headers)
+    instance, service, responses = handler(path=path, supplied_headers=supplied)
+    instance._handle()
+    assert responses[0].status == 400
+    assert service.calls == []
+    assert instance.rfile.tell() == 0
+
+
+@pytest.mark.parametrize("path,operation", list(transport._POST_ROUTES.items()))
+def test_every_post_accepts_exact_protocol_header_after_authentication(path, operation):
+    instance, service, responses = handler(path=path)
+    instance._handle()
+    assert responses[0].status == 200
+    assert service.calls == [(operation, "pc-new", {})]
+
+
+def test_read_only_capabilities_remains_available_without_protocol_header():
+    instance, service, responses = handler(method="GET", path="/v1/capabilities", raw=b"",
+                                           supplied_headers=headers(("Content-Length", "0")))
     instance._handle()
     assert responses[0].status == 200
     assert service.calls == [("capabilities", "pc-new")]

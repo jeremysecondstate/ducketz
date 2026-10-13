@@ -93,6 +93,12 @@ The client does not follow redirects or automatically retry POSTs. JSON is
 bounded to one MiB and rejects duplicate keys and nonfinite numbers. Successful
 replies are service dictionaries; transport errors are sanitized.
 
+Every POST must carry exactly one `X-Admission-Protocol` header equal to
+`intraday-shared-admission-v1`. Missing, duplicate or different versions are
+rejected before reading the body or invoking the service. Mutual TLS identity
+verification is independently required. The read-only capabilities GET remains
+available without this request header; it still authenticates the participant.
+
 | Operation | Route | Request body |
 | --- | --- | --- |
 | Read-only capabilities | `GET /v1/capabilities` | None |
@@ -117,6 +123,46 @@ Other replies include protocol, request ID/hash and a status. A reserve decision
 is `GRANTED` with a PR #81 grant and capacity decision, or `DECLINED` without a
 grant. Replays after a state transition report the current book status; they do
 not recreate permission to send. `status` never returns send authorization.
+
+### Expired requests that never obtained admission
+
+An expired original request can receive durable negative admission evidence
+when no admission plan or prior decision exists and Atlas verifies that both
+canonical books and retained reservation/send-claim history contain no matching
+admission. This handles a failed capture before planning, or an original
+request whose first delivery occurs after expiry. Replay the full original
+payload to `reserve`; for an already stored request, `status` with its exact
+request ID, hash and session can produce the same result. No fresh account or
+provider capture is needed for this proof. The normal authenticated participant,
+compatible-writer and canonical locked-book requirements still apply.
+
+The immutable reply has `status: DECLINED`,
+`reason: expired_before_admission`, `terminal: true`, `admitted: false`,
+`send_authorized: false` and `capacity_released: false`, with the original
+`session_id`, request ID and hash. Its `negative_admission_proof` contains:
+
+* `version: intraday-negative-admission-v1`, `server_identity`,
+  `account_fingerprint`, `participant_id` and `stream`;
+* `request_id`, `request_sha256`, `session_id`, `valid_until` and `decided_at`;
+* `canonical_account_absent`, `canonical_native_absent` and
+  `send_claim_absent`, all exactly `true`.
+
+`negative_admission_proof_sha256` is the existing protocol canonical JSON hash
+of that proof. Scout must validate the authenticated original-request bindings
+and durably save this explicit result before using it to clear an unresolved
+PREPARED request. A transport acknowledgment or Scout's local `NOT_SENT` label
+does not substitute for it. The proof revokes no reservation and authorizes no
+send. Exact retries return the same decision, including after a restart or
+clock rollback, and recheck canonical absence before returning it. Later
+contradictory book evidence blocks the reply. Existing plans, partial pairs,
+grants and uncertain claims retain their established recovery paths;
+`release-unsent` is unchanged.
+
+Retained order, submission and fill evidence also prevents an absence proof
+when its canonical reservation is missing. Unattributable orphan effects fail
+closed; this recovery path does not reconstruct or discard them. Unrelated
+effects with intact canonical reservations do not block an otherwise valid
+negative decision.
 
 ## Scout submission and recovery sequence
 
@@ -160,6 +206,17 @@ four focused test modules and this document. Preserve Scout's reviewed adapter
 and session work, eleven-symbol configuration, credentials, local journals and
 private operating settings. Resolve overlaps explicitly; do not cherry-pick
 the entire earlier PR chain again.
+
+The focused protocol/negative-admission follow-up is based on exact PR #83,
+`c994188563a547b4f711b6ada6ee359fb5b5a5b0`. Its owned changes are only the two
+service/transport modules, their two test modules and this document. Reuse the
+PR #83 shared accounting/stream compatibility closure. Scout's PR #82/#84
+adapter, session, journal and books changes are separate sibling work to
+compose explicitly; these follow-up checks do not claim to verify that combined
+tree. Authenticated noncommitting writer-readiness and native accounting
+projection endpoints remain Atlas-owned integration work, alongside the
+production bindings above. Do not treat capabilities or the new negative proof
+as evidence those endpoints or loaded writers are ready.
 
 The completion record is the authoritative exact-byte manifest, dependency map
 and check receipt. Tests use temporary ledgers, synthetic captures and fake

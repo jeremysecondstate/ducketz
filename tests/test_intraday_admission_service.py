@@ -10,7 +10,7 @@ import pytest
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import AccountAuthority, AuthorityError, Fill, OrderEvidence
 from ml.intraday.admission_service import AdmissionService, AdmissionError, BookOperation, BookSnapshot
-from ml.intraday.scout_protocol import Grant, Request
+from ml.intraday.scout_protocol import Grant, Request, canonical_sha256
 from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence
 from tests.test_intraday_account_authority import ACCOUNT, ATLAS, SCOUT, BINDING, Clock, snapshot
 
@@ -392,3 +392,229 @@ def test_stored_grant_never_replays_when_canonical_account_reservation_is_missin
     with pytest.raises(AdmissionError, match="CANONICAL_RESERVATION_PAIR_MISSING"):
         env.service.reserve("pc-new", value.payload())
     assert env.ledger.snapshot().reservations[0].status == "RESERVED"
+
+
+def expired(env):
+    env.clock.value += timedelta(minutes=20)
+
+
+@pytest.mark.parametrize("publish_snapshot", [False, True])
+@pytest.mark.parametrize("recover_with", ["reserve", "status"])
+def test_failed_capture_before_plan_gets_durable_expired_negative_proof(env, publish_snapshot, recover_with):
+    value = request()
+    original = env.service.refresh
+
+    def failed_refresh(operation):
+        if publish_snapshot:
+            original(operation)
+        raise RuntimeError("synthetic fresh capture failed")
+
+    env.service.refresh = failed_refresh
+    with pytest.raises(RuntimeError, match="capture failed"):
+        env.service.reserve("pc-new", value.payload())
+    assert env.service.status("pc-new", bound(value))["status"] == "PENDING"
+    expired(env)
+    response = (env.service.reserve("pc-new", value.payload()) if recover_with == "reserve"
+                else env.service.status("pc-new", bound(value)))
+    assert response["status"] == "DECLINED" and response["reason"] == "expired_before_admission"
+    assert response["terminal"] is True and response["admitted"] is False
+    assert response["session_id"] == value.session_id and response["request_sha256"] == value.sha256
+    assert response["capacity_released"] is response["send_authorized"] is False
+    proof = response["negative_admission_proof"]
+    assert proof["canonical_account_absent"] is proof["canonical_native_absent"] is proof["send_claim_absent"] is True
+    assert env.authority.read_state()["reservations"] == [] and env.ledger.snapshot().reservations == ()
+    assert env.service.reserve("pc-new", value.payload()) == response
+    assert env.service.status("pc-new", bound(value)) == response
+    assert env.captures == int(publish_snapshot)
+    _, plan, stored = env.service._stored(value.request_id)
+    assert plan is None and stored == response
+
+
+def test_never_received_until_expiry_is_irrevocably_declined_across_restarts_and_clock_rollback(env):
+    value = request()
+    original_time = env.clock()
+    expired(env)
+    response = env.service.reserve("pc-new", value.payload())
+    assert response["reason"] == "expired_before_admission" and "grant" not in response
+    assert env.captures == 0
+    restarted = env.make_service()
+    # Even if this service's clock becomes eligible again, the authority keeps
+    # its monotonic clock and the exact saved terminal decision cannot rearm.
+    restarted.clock = lambda: original_time
+    assert restarted.reserve("pc-new", value.payload()) == response
+    assert restarted.status("pc-new", bound(value)) == response
+    with pytest.raises(AdmissionError, match="DURABLE_GRANT_REQUIRED"):
+        restarted.authorize_send("pc-new", bound(value, claim_id="must-never-send"))
+    with pytest.raises(AdmissionError, match="DIFFERENT_BYTES"):
+        restarted.reserve("pc-new", replace(value, session_id="new-session").payload())
+    assert env.captures == 0 and env.authority.read_state()["reservations"] == []
+
+
+@pytest.mark.parametrize("changes", [{"symbol": "AAPL"}, {"account_fingerprint": "b" * 64}, {"limit_price": "10.001"}])
+def test_invalid_expired_scope_never_receives_negative_proof(env, changes):
+    value = request(**changes)
+    expired(env)
+    with pytest.raises(AdmissionError):
+        env.service.reserve("pc-new", value.payload())
+    with pytest.raises(AdmissionError):
+        env.service.status("pc-new", bound(value))
+    assert env.service._stored(value.request_id)[2] is None
+
+
+def test_negative_proof_bound_to_exact_session_hash_and_readback_integrity(env):
+    value = request()
+    expired(env)
+    env.service.reserve("pc-new", value.payload())
+    with pytest.raises(AdmissionError, match="SESSION_MISMATCH"):
+        env.service.status("pc-new", {**bound(value), "session_id": "other-session"})
+    with pytest.raises(AdmissionError, match="SESSION_MISMATCH"):
+        env.service.status("pc-new", {**bound(value), "request_sha256": "b" * 64})
+    with sqlite3.connect(env.service.path) as db:
+        raw = json.loads(db.execute("SELECT response FROM requests").fetchone()[0])
+        raw["payload"]["negative_admission_proof"]["session_id"] = "other-session"
+        db.execute("UPDATE requests SET response=?", (json.dumps(raw),))
+    with pytest.raises(AdmissionError, match="JOURNAL_VALUE_CHANGED"):
+        env.service.reserve("pc-new", value.payload())
+
+
+def test_expired_native_first_partial_pair_keeps_existing_recovery_without_absence_proof(env, monkeypatch):
+    value = request()
+    original = env.authority.reserve_remote_intraday
+    monkeypatch.setattr(env.authority, "reserve_remote_intraday", lambda *args, **kwargs: (_ for _ in ()).throw(SystemExit("native first crash")))
+    with pytest.raises(SystemExit):
+        env.service.reserve("pc-new", value.payload())
+    monkeypatch.setattr(env.authority, "reserve_remote_intraday", original)
+    expired(env)
+    status = env.service.status("pc-new", bound(value))
+    assert status["status"] == "PENDING" and "negative_admission_proof" not in status
+    response = env.service.reserve("pc-new", value.payload())
+    assert response["reason"] == "interrupted_before_paired_admission"
+    assert "negative_admission_proof" not in response
+    assert env.ledger.snapshot().reservations[0].status == "REJECTED"
+
+
+@pytest.mark.parametrize("remove_live_rows", [False, True])
+def test_uncertain_claim_or_its_retained_history_cannot_be_negatively_certified(env, remove_live_rows):
+    value, grant, claim = env.claim()
+    with sqlite3.connect(env.service.path) as db:
+        db.execute("UPDATE requests SET plan=NULL,response=NULL WHERE id=?", (value.request_id,))
+    if remove_live_rows:
+        with sqlite3.connect(env.authority.path) as db:
+            db.execute("DELETE FROM reservations WHERE id=?", (grant.reservation_id,))
+        with sqlite3.connect(env.ledger.path) as db:
+            db.execute("DELETE FROM reservations")
+    expired(env)
+    with pytest.raises(AdmissionError, match="PRIOR_ADMISSION_EVIDENCE"):
+        env.service.reserve("pc-new", value.payload())
+    assert env.service._stored(value.request_id)[2] is None
+    if not remove_live_rows:
+        assert env.authority.remote_claim(grant.reservation_id, participant_id="pc-new", request_sha256=value.sha256) == claim
+
+
+def test_negative_proof_replay_rejects_a_later_orphan_claim(env):
+    value = request()
+    expired(env)
+    env.service.reserve("pc-new", value.payload())
+    orphan = {"reservation_id": "orphan-account-row", "request_sha256": value.sha256,
+              "participant_id": "pc-new", "claim_id": "possible-earlier-send"}
+    with sqlite3.connect(env.authority.path) as db:
+        db.execute("INSERT INTO remote_submission_claims VALUES(?,?)", (orphan["reservation_id"], json.dumps(orphan)))
+    for operation in (lambda: env.service.reserve("pc-new", value.payload()),
+                      lambda: env.service.status("pc-new", bound(value))):
+        with pytest.raises(AdmissionError, match="PRIOR_ADMISSION_EVIDENCE"):
+            operation()
+
+
+def test_no_response_without_plan_does_not_hide_a_corrupt_partial_pair(env):
+    value, grant = env.grant()
+    with sqlite3.connect(env.service.path) as db:
+        db.execute("UPDATE requests SET plan=NULL,response=NULL WHERE id=?", (value.request_id,))
+    with sqlite3.connect(env.authority.path) as db:
+        db.execute("DELETE FROM reservations WHERE id=?", (grant.reservation_id,))
+    expired(env)
+    with pytest.raises(AdmissionError, match="PRIOR_ADMISSION_EVIDENCE"):
+        env.service.status("pc-new", bound(value))
+    assert env.service._stored(value.request_id)[2] is None
+
+
+def test_negative_proof_replay_validates_scope_even_with_recomputed_journal_hash(env):
+    value = request()
+    expired(env)
+    env.service.reserve("pc-new", value.payload())
+    with sqlite3.connect(env.service.path) as db:
+        raw = json.loads(db.execute("SELECT response FROM requests").fetchone()[0])
+        raw["payload"]["negative_admission_proof"]["canonical_native_absent"] = False
+        raw["payload"]["negative_admission_proof_sha256"] = canonical_sha256(raw["payload"]["negative_admission_proof"])
+        raw["sha256"] = canonical_sha256(raw["payload"])
+        db.execute("UPDATE requests SET response=?", (json.dumps(raw),))
+    with pytest.raises(AdmissionError, match="NEGATIVE_ADMISSION_PROOF_CHANGED"):
+        env.service.status("pc-new", bound(value))
+
+
+def test_corrupt_retained_native_reservation_history_cannot_certify_absence(env):
+    value, grant = env.grant()
+    with sqlite3.connect(env.service.path) as db:
+        db.execute("UPDATE requests SET plan=NULL,response=NULL WHERE id=?", (value.request_id,))
+    with sqlite3.connect(env.authority.path) as db:
+        db.execute("DELETE FROM reservations WHERE id=?", (grant.reservation_id,))
+    with sqlite3.connect(env.ledger.path) as db:
+        db.execute("DELETE FROM reservations")
+        db.execute("UPDATE evidence SET payload='[]' WHERE kind='reservation'")
+    expired(env)
+    with pytest.raises(AdmissionError, match="NATIVE_RESERVATION_HISTORY_INVALID"):
+        env.service.status("pc-new", bound(value))
+    assert env.service._stored(value.request_id)[2] is None
+
+
+@pytest.mark.parametrize("retained", ["native-submission", "native-order", "native-fills", "native-submission-time",
+                                      "authority-submission", "authority-order", "authority-fills"])
+def test_retained_effect_alone_prevents_negative_proof_when_reservation_history_is_lost(env, retained):
+    value, grant, claim = env.accepted()
+    evidence = OrderEvidence("retained-fill", grant.reservation_id, ACCOUNT, "201", env.clock().isoformat(),
+                            "CANCELLED", grant.quantity, 1, 0, (Fill("retained-f1", 1, "10", env.clock().isoformat()),), complete=True)
+    env.service.evidence("pc-new", bound(value, event_id="retained-fill-event", kind="ORDER_STATUS",
+        claim_id=claim["claim_id"], order_evidence=json.loads(json.dumps(asdict(evidence)))))
+    with sqlite3.connect(env.service.path) as db:
+        db.execute("UPDATE requests SET plan=NULL,response=NULL WHERE id=?", (value.request_id,))
+    with sqlite3.connect(env.ledger.path) as db:
+        db.execute("DELETE FROM reservations")
+        db.execute("DELETE FROM evidence WHERE kind != ?", ({"native-submission": "submission", "native-order": "order"}.get(retained, "keep-none"),))
+        if retained != "native-fills":
+            db.execute("DELETE FROM fills")
+        if retained != "native-submission-time":
+            db.execute("DELETE FROM order_submission_times")
+    with sqlite3.connect(env.authority.path) as db:
+        for table in ("reservations", "events", "remote_submission_claims"):
+            db.execute(f"DELETE FROM {table}")
+        if retained != "authority-order":
+            db.execute("DELETE FROM order_evidence")
+        if retained != "authority-fills":
+            db.execute("DELETE FROM fills")
+        if retained == "authority-submission":
+            now = env.clock().isoformat()
+            receipt = {"version": "account-exact-submission-receipt-v1", "reservation_id": grant.reservation_id,
+                "account_fingerprint": ACCOUNT, "request_sha256": value.sha256, "broker_order_id": "201",
+                "outcome": "ACCEPTED", "gate_used": True, "no_send_error_type": None, "submission_epoch": 1,
+                "submission_holder_id": "synthetic-holder", "submission_started_at": now, "gate_epoch": 1,
+                "gate_holder_id": "synthetic-holder", "gate_at": now, "received_at": now}
+            db.execute("INSERT INTO submission_receipts VALUES(?,?,?,?,?)", (grant.reservation_id, "201",
+                canonical_sha256(receipt), now, json.dumps(receipt)))
+    expired(env)
+    for operation in (lambda: env.service.reserve("pc-new", value.payload()),
+                      lambda: env.service.status("pc-new", bound(value))):
+        # Authority lease acquisition already rejects an orphan exact callback
+        # receipt before the service can certify absence.
+        error = AuthorityError if retained == "authority-submission" else AdmissionError
+        match = "RESERVATION_NOT_FOUND" if retained == "authority-submission" else "RETAINED_OR_ORPHAN_EFFECT"
+        with pytest.raises(error, match=match):
+            operation()
+    assert env.service._stored(value.request_id)[2] is None
+
+
+def test_unrelated_retained_effect_with_intact_canonical_reservation_does_not_block_absence_proof(env):
+    env.accepted()
+    value = request(request_id="never-admitted-other-forecast", forecast_id="b" * 64, forecast_sha256="b" * 64)
+    expired(env)
+    result = env.service.reserve("pc-new", value.payload())
+    assert result["reason"] == "expired_before_admission"
+    assert result["negative_admission_proof"]["request_sha256"] == value.sha256
