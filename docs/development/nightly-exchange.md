@@ -291,3 +291,71 @@ is the activation and worker-start action; the normal worker obtains current
 account evidence and reconciles native ownership and orders before submission.
 Planning completion, source publication, account activation and a running worker
 remain separate facts.
+
+## Reviewed intraday client installation during a pending exchange
+
+An already applied exchange repair may retain ownership while the ordinary
+exchange waits for a fresh account snapshot. A reviewed client installation can
+continue under that same owner without manufacturing a failed preparation,
+refreshing the snapshot, starting synthesis, or resolving the pending exchange.
+Use `prepare_application_transition` and `apply_application_transition` on the
+reviewed helper. These functions are also CLI operation names, using the existing
+`--config`, `--request` and `--reviewed` arguments. The shared apply function is
+the sole source writer; a private client adapter may validate its publication
+provenance but must not invoke a separate source installer afterward.
+
+The preparation request contains `claim_path`, `owner`, a distinct stable
+`continuation_id`, isolated full-source `candidate`, `installation_input` and
+its exact `installation_input_sha256`, `framework`, `checks`, `rationale` and
+`runtime_implications`. `framework` contains `record` and `publication`, each an
+exact `{path, sha256}` reference to the new helper's reviewed, pushed publication.
+The client input uses `scout-final-install-input-v1`, including its own reviewed
+publication, Completion-Record and complete explicit operation map. Keep the
+client and helper publication identities separate. Checks use the existing
+`command`, `log`, `exit_code`, `started_at`, `completed_at` and full candidate
+`source_files` evidence. Capture genuine passing offline execution before
+preparation; the helper verifies exact published blobs locally without fetching.
+
+The only client production paths supported here are individual Python files in
+`ml/intraday/`, plus `pyproject.toml`, the two intraday production-interface and
+Scout manual-start documents, and intraday tests/fixtures. Only the exact input
+operations are copied. The new `ml/nightly_exchange_repair.py` is an additional
+explicit operation proven by the separate framework publication. All other
+production source and private bindings retain their current bytes. Non-Python
+operations remain part of the verified endpoint even though the application
+Python inventory does not include them.
+
+Preparation writes a separate immutable specification under
+`sessions/<action-date>/source-repairs/<continuation-id>/`. It does not replace
+the original claim, token, Completion-Record, specification, applied receipt or
+completed preparation. A sealed plan is initially **unarmed**: the old helper
+does not understand it, and unchanged ordinary exchange work may still proceed.
+Apply rechecks current protected state and all before bytes under the existing
+workflow, exchange, repair, overnight, direct-operation and three stock-session
+lifetime locks. It atomically installs the reviewed helper first. The ordinary
+adapter acquires its nonblocking workflow and exchange locks before importing
+the repair helper, so fresh invocations cannot wait with an old helper import.
+The new helper then recognizes the pending continuation and blocks dispatch
+without modifying status or failure evidence. Existing process/liveness guards
+remain mandatory; this transition never stops or restarts a worker.
+
+A crash before the first helper write leaves application source unchanged.
+Protected-state drift refuses apply rather than overwriting ordinary progress.
+If that happens, `retire_unarmed_application_transition(config, spec_path,
+owner=..., reason=..., reviewed=True)` preserves a separate immutable disposition
+only after proving every source operation, binding and source-chain entry is
+still at its original before state. A fresh continuation ID can then capture the
+new current state under the same original owner. An armed or partly installed
+plan cannot retire; retry its original apply with the same specification.
+
+After helper installation, apply resumes only exact before/after bytes, writes
+the immutable applied receipt, then appends its endpoint exactly once. The chain
+entry's historical `repair_id` slot identifies the continuation; its explicit
+`parent_repair_id` and `repository_claim` retain the original repair ownership.
+Result fields include `continuation_id`, client and framework Completion-Records,
+the original repository claim, specification path/checksum, and before/after
+source and binding. The specification retains every exact operation. Completed
+apply retries verify the endpoint without replaying writes. Mutable exchange
+status is protected during installation but is not frozen as a permanent source
+binding. Ordinary exchange may subsequently advance and `resolve` still requires
+the exact verified `COMPLETE` result before releasing the original owner.

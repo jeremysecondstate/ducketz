@@ -88,6 +88,309 @@ def applied(env, spec):
     return repair.apply(env["config"], spec, owner="Scout source reconciliation", reviewed=True, now=NOW)
 
 
+@pytest.fixture
+def application(env, monkeypatch):
+    """Actual files and immutable publication refs; no providers or processes."""
+    from ml import nightly_stage_repair
+    original_spec = prepared(env)
+    applied(env, original_spec)
+    write(env["status"], {"actor": "Scout", "action_date": DAY, "review_session": "2026-10-08",
+                          "status": "PENDING", "reason": "FRESH_ACCOUNT_SNAPSHOT"})
+    shutil.copytree(env["repo"], env["candidate"], dirs_exist_ok=True)
+    operations = {}
+    for name in ("ml/intraday/scout_accounting.py", "ml/intraday/live_session.py", "pyproject.toml",
+                 "docs/development/scout-15m-manual-start.md", "tests/test_intraday_scout_accounting.py"):
+        path = env["candidate"] / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# reviewed client " + name + "\n")
+        operations[name] = {"operation": "add", "before_sha256": None, "after_sha256": file_checksum(path)}
+    (env["candidate"] / repair.APPLICATION_HELPER).write_text("# new reviewed application continuation helper\n")
+    fingerprints = {name: row["after_sha256"] for name, row in operations.items()}
+    root = env["repo"].parent / "publications"
+    def publication(identifier, files, commit):
+        record = write(root / (identifier + "-record.json"), {"id": identifier, "actor": "Scout", "ready": True,
+            "reviewed": True, "base_commit": "a" * 40, "fingerprints": files,
+            "tests": [{"exit_code": 0, "tested_fingerprints": files}]})
+        published = write(root / (identifier + "-publication.json"), {"id": identifier,
+            "record_sha256": file_checksum(record), "commit_sha": commit, "remote_sha": commit,
+            "source_stage": "pushed", "branch": "codex/scout/" + identifier})
+        return {"record": {"path": str(record), "sha256": file_checksum(record)},
+                "publication": {"path": str(published), "sha256": file_checksum(published)}}
+    client = publication("reviewed-client", fingerprints, "b" * 40)
+    framework = publication("reviewed-framework", {repair.APPLICATION_HELPER:
+        file_checksum(env["candidate"] / repair.APPLICATION_HELPER)}, "c" * 40)
+    install_input = write(root / "client-input.json", {"version": "scout-final-install-input-v1",
+        "owner_chat_id": "existing-client-owner", "reviewed_base_commit": "a" * 40,
+        "completion_record": client["record"], "publication": client["publication"], "operations": operations})
+    # Publication proof is tested separately from source transition mechanics.
+    blobs = {("b" * 40, name): digest for name, digest in fingerprints.items()}
+    blobs[("c" * 40, repair.APPLICATION_HELPER)] = file_checksum(env["candidate"] / repair.APPLICATION_HELPER)
+    monkeypatch.setattr(nightly_stage_repair, "_published_blob", lambda root, commit, name: blobs.get((commit, name)))
+    monkeypatch.setattr(nightly_stage_repair, "_trader_running", lambda root: False)
+    request = dict(claim_path=original_spec.with_name("claim.json"), owner="Scout source reconciliation",
+        continuation_id="reviewed-client-install", candidate=env["candidate"], installation_input=str(install_input),
+        installation_input_sha256=file_checksum(install_input), framework=framework,
+        checks=[{"command": ["python", "-B", "-m", "pytest", "fixture"], "log": str(env["log"]), "exit_code": 0,
+                 "started_at": NOW, "completed_at": NOW, "source_files": repair._inventory(env["candidate"])}],
+        rationale="Reviewed client handoff under retained exchange owner", runtime_implications="Source installation only",
+        reviewed=True, now=NOW)
+    return {**env, "original_spec": original_spec, "request": request, "operations": operations,
+            "input": install_input, "blobs": blobs}
+
+
+def application_prepare(application, **updates):
+    return repair.prepare_application_transition(application["config"], **{**application["request"], **updates})
+
+
+def application_apply(application, spec):
+    return repair.apply_application_transition(application["config"], spec,
+        owner="Scout source reconciliation", reviewed=True, now=NOW)
+
+
+def test_application_transition_preserves_original_owner_receipts_and_pending_state(application, monkeypatch):
+    original = application["original_spec"].parent
+    preserved = {p: p.read_bytes() for p in (original / "claim.json", original / "spec.json", original / "applied.json",
+        application["session"] / "repair-claim.json", application["work"] / "repair-owner.json",
+        application["prep"], application["status"], application["budget"], application["selection"], application["partial"])}
+    entries = repair._transition_entries(application["session"])
+    before = repair._inventory(application["repo"])
+    spec = application_prepare(application)
+    assert repair._inventory(application["repo"]) == before  # SEALED/UNARMED has no source effects.
+    repair.verify_transition(application["config"], application["state"], repair._read(application["original_binding"]))
+    assert application_prepare(application) == spec
+    result = application_apply(application, spec)
+    assert result["status"] == "APPLICATION_TRANSITION_APPLIED"
+    assert result["parent_repair_id"] == "exchange-repair-first"
+    assert result["framework_completion_record"] == "reviewed-framework"
+    assert result["client_completion_record"] == "reviewed-client"
+    assert result["repository_claim"]["completion_record"] == "actual-queue-id"
+    assert all(p.read_bytes() == value for p, value in preserved.items())
+    assert repair._transition_entries(application["session"])[:-1] == entries
+    assert repair.pending_claim(application["config"], DAY) is None
+    assert application_apply(application, spec)["status"] == "APPLICATION_TRANSITION_ALREADY_APPLIED"
+    write(application["status"], {"actor": "Scout", "action_date": DAY, "status": "PENDING", "reason": "OTHER_INPUT"})
+    repair.verify_transition(application["config"], application["state"], repair._read(application["original_binding"]))
+    from tools import nightly_exchange
+    monkeypatch.setattr(nightly_exchange, "_completed_result", lambda *args: {"status": "PENDING"})
+    with pytest.raises(ValueError, match="completed exchange"):
+        repair.resolve(application["config"], action_date=DAY, owner="Scout source reconciliation", verified_result={"status": "PENDING"})
+    completed = {"status": "COMPLETE", "action_date": DAY}
+    monkeypatch.setattr(nightly_exchange, "_completed_result", lambda *args: completed)
+    repair.resolve(application["config"], action_date=DAY, owner="Scout source reconciliation", verified_result=completed, now=NOW)
+    assert registry.read(application["work"]) is None
+    assert all(p.read_bytes() == value for p, value in preserved.items()
+               if p not in {application["work"] / "repair-owner.json", application["status"]})
+
+
+@pytest.mark.parametrize("phase", ["before_helper", "after_helper", "after_client", "before_receipt", "after_receipt", "after_append"])
+def test_application_bootstrap_and_interrupted_install_resume_exactly(application, monkeypatch, phase):
+    spec = application_prepare(application)
+    install, atomic = repair._install_file, repair._atomic
+    before = repair._inventory(application["repo"])
+    preserved_status = application["status"].read_bytes()
+    seen = []
+    def faulty_install(target, raw):
+        relative = target.relative_to(application["repo"]).as_posix()
+        seen.append(relative)
+        if phase == "before_helper":
+            raise OSError("injected before bootstrap")
+        install(target, raw)
+        if (phase == "after_helper" and relative == repair.APPLICATION_HELPER
+                or phase == "after_client" and relative != repair.APPLICATION_HELPER):
+            raise OSError("injected source interruption")
+    def faulty_atomic(path, raw, **kwargs):
+        if Path(path).parent == spec.parent and Path(path).name == "applied.json":
+            if phase == "before_receipt":
+                raise OSError("injected before receipt")
+            if phase == "after_receipt":
+                atomic(path, raw, **kwargs)
+                raise OSError("injected after receipt")
+        if Path(path).name == "repair-transitions.json" and phase == "after_append":
+            atomic(path, raw, **kwargs)
+            raise OSError("injected after append")
+        return atomic(path, raw, **kwargs)
+    monkeypatch.setattr(repair, "_install_file", faulty_install)
+    monkeypatch.setattr(repair, "_atomic", faulty_atomic)
+    with pytest.raises(OSError, match="injected"):
+        application_apply(application, spec)
+    assert seen[0] == repair.APPLICATION_HELPER
+    assert application["status"].read_bytes() == preserved_status
+    if phase == "before_helper":
+        assert repair._inventory(application["repo"]) == before
+        repair.verify_transition(application["config"], application["state"], repair._read(application["original_binding"]))
+    elif phase != "after_append":
+        assert repair.dispatch_guard(application["config"], DAY)["reason"] == "SOURCE_REPAIR_OWNED"
+    monkeypatch.setattr(repair, "_install_file", install)
+    monkeypatch.setattr(repair, "_atomic", atomic)
+    application_apply(application, spec)
+    assert len(repair._transition_entries(application["session"])) == 2
+    assert application["status"].read_bytes() == preserved_status
+
+
+def test_application_unarmed_status_drift_can_be_retired_without_changing_owner(application):
+    spec = application_prepare(application)
+    owner = registry.read(application["work"])
+    write(application["status"], {"actor": "Scout", "action_date": DAY, "status": "PENDING", "reason": "NEXT_INPUT"})
+    changed_status = application["status"].read_bytes()
+    with pytest.raises(ValueError, match="Protected"):
+        application_apply(application, spec)
+    assert file_checksum(application["repo"] / repair.APPLICATION_HELPER) == repair._read(spec)["before_files"][repair.APPLICATION_HELPER]
+    repair.retire_unarmed_application_transition(application["config"], spec, owner=owner["owner"],
+        reason="Ordinary exchange advanced before bootstrap", reviewed=True, now=NOW)
+    assert repair.pending_claim(application["config"], DAY) is None
+    with pytest.raises(ValueError, match="Retired"):
+        application_apply(application, spec)
+    next_spec = application_prepare(application, continuation_id="reviewed-client-install-recapture")
+    application_apply(application, next_spec)
+    assert registry.read(application["work"]) == owner
+    assert application["status"].read_bytes() == changed_status
+
+
+def test_application_seal_interruption_completes_original_prepared_marker(application, monkeypatch):
+    atomic = repair._atomic
+    def fail_marker(path, raw, **kwargs):
+        if Path(path).name == "prepared.json":
+            raise OSError("injected prepare interruption")
+        return atomic(path, raw, **kwargs)
+    monkeypatch.setattr(repair, "_atomic", fail_marker)
+    with pytest.raises(OSError):
+        application_prepare(application)
+    monkeypatch.setattr(repair, "_atomic", atomic)
+    spec = application_prepare(application)
+    application_apply(application, spec)
+
+
+@pytest.mark.parametrize("path", ["ml/nightly_synthesis.py", "ml/intraday/../nightly_workflow.py", ".env", "tools/nightly_account_snapshot.py", "tests/test_unrelated.py", "docs/unrelated.md"])
+def test_application_scope_rejects_neighboring_sources(application, path):
+    value = repair._read(application["input"])
+    value["operations"][path] = next(iter(value["operations"].values()))
+    write(application["input"], value)
+    with pytest.raises(ValueError, match="scope|source path"):
+        application_prepare(application, installation_input_sha256=file_checksum(application["input"]))
+
+
+@pytest.mark.parametrize("phase", ["prepare", "apply"])
+@pytest.mark.parametrize("name", repair.STOCK_SESSION_LOCKS)
+def test_application_holds_each_session_lifetime_gate(application, phase, name):
+    spec = application_prepare(application) if phase == "apply" else None
+    with repair.exclusive_runtime_lock(application["data"] / "locks" / name, process_name="fixture live session"):
+        with pytest.raises(Exception, match="[Ll]ock|already running"):
+            application_apply(application, spec) if spec else application_prepare(application)
+
+
+@pytest.mark.parametrize("phase", ["prepare", "apply"])
+@pytest.mark.parametrize("mode", ["active", "unverifiable"])
+def test_application_actual_process_guard_fails_closed(application, monkeypatch, phase, mode):
+    from ml import nightly_stage_repair
+    spec = application_prepare(application) if phase == "apply" else None
+    def observed(root):
+        if mode == "unverifiable":
+            raise ValueError("Unverifiable process inventory")
+        return True
+    monkeypatch.setattr(nightly_stage_repair, "_trader_running", observed)
+    with pytest.raises(ValueError, match="Active trader|Unverifiable"):
+        application_apply(application, spec) if spec else application_prepare(application)
+
+
+@pytest.mark.parametrize("mutate", ["candidate", "log", "input", "pyproject", "unrelated_source"])
+def test_application_frozen_evidence_and_unrelated_source_reject_mutation(application, mutate):
+    spec = application_prepare(application)
+    value = repair._read(spec)
+    target = {"candidate": spec.parent / "candidate" / "ml/intraday/scout_accounting.py",
+              "log": Path(value["checks"][0]["log"]), "input": application["input"],
+              "pyproject": application["repo"] / "pyproject.toml",
+              "unrelated_source": application["repo"] / "ml/immutable_policy.py"}[mutate]
+    target.write_text("unreviewed mutation")
+    with pytest.raises(ValueError):
+        application_apply(application, spec)
+
+
+def test_application_non_python_endpoint_remains_bound_after_install(application):
+    spec = application_prepare(application)
+    application_apply(application, spec)
+    (application["repo"] / "pyproject.toml").write_text("unreviewed environment change")
+    with pytest.raises(ValueError, match="Protected"):
+        repair.verify_transition(application["config"], application["state"], repair._read(application["original_binding"]))
+
+
+def test_application_rejects_client_bytes_installed_before_bootstrap(application):
+    spec = application_prepare(application)
+    name = "ml/intraday/scout_accounting.py"
+    target = application["repo"] / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes((spec.parent / "candidate" / name).read_bytes())
+    with pytest.raises(ValueError, match="before application helper"):
+        application_apply(application, spec)
+
+
+def test_application_armed_plan_cannot_be_retired(application, monkeypatch):
+    spec = application_prepare(application)
+    install = repair._install_file
+    def interrupt(target, raw):
+        install(target, raw)
+        raise OSError("armed")
+    monkeypatch.setattr(repair, "_install_file", interrupt)
+    with pytest.raises(OSError):
+        application_apply(application, spec)
+    with pytest.raises(ValueError, match="unchanged unarmed"):
+        repair.retire_unarmed_application_transition(application["config"], spec,
+            owner="Scout source reconciliation", reason="Cannot retire armed source", reviewed=True, now=NOW)
+
+
+@pytest.mark.parametrize("phase", ["prepare", "apply"])
+def test_application_other_source_compatible_exchange_is_not_stranded(application, phase):
+    spec = application_prepare(application) if phase == "apply" else None
+    other = {**application["state"], "action_date": "2026-10-10",
+             "source_identity": repair.workflow.source_identity(application["repo"])}
+    write(application["work"] / "runs/2026-10-10/state.json", other)
+    write(application["exchange"] / "sessions/2026-10-10/status.json", {"status": "PENDING"})
+    with pytest.raises(ValueError, match="Another unfinished source-compatible"):
+        application_apply(application, spec) if spec else application_prepare(application)
+
+
+@pytest.mark.parametrize("phase", ["prepare", "apply"])
+def test_application_lifetime_locks_remain_held_after_process_snapshot(application, monkeypatch, phase):
+    from ml import nightly_stage_repair
+    spec = application_prepare(application) if phase == "apply" else None
+    def racing_session(root):
+        for name in repair.STOCK_SESSION_LOCKS:
+            with pytest.raises(Exception, match="[Ll]ock|already running"):
+                with repair.exclusive_runtime_lock(application["data"] / "locks" / name, process_name="racing session"):
+                    pass
+        return False
+    monkeypatch.setattr(nightly_stage_repair, "_trader_running", racing_session)
+    application_apply(application, spec) if spec else application_prepare(application)
+
+
+def test_application_ordinary_adapter_locks_before_repair_import_and_blocks_without_status_write(application, monkeypatch):
+    from tools import nightly_exchange
+    spec = application_prepare(application)
+    install = repair._install_file
+    def after_helper(target, raw):
+        install(target, raw)
+        raise OSError("armed interruption")
+    monkeypatch.setattr(repair, "_install_file", after_helper)
+    with pytest.raises(OSError):
+        application_apply(application, spec)
+    status = application["status"].read_bytes()
+    monkeypatch.setattr(nightly_exchange.workflow, "load_config", lambda path: application["native"])
+    monkeypatch.setattr(nightly_exchange.workflow, "verify_installation", lambda config: None)
+    monkeypatch.setattr(nightly_exchange, "_context", lambda now: (DAY, "2026-10-08"))
+    monkeypatch.setattr(nightly_exchange, "_completed_result", lambda *args: None)
+    original_guard = repair.dispatch_guard
+    def guard(config, action_date, **kwargs):
+        for path in (application["work"] / "workflow.lock", application["exchange"] / "exchange.lock"):
+            with pytest.raises(Timeout):
+                with FileLock(str(path), timeout=0):
+                    pass
+        return original_guard(config, action_date, **kwargs)
+    monkeypatch.setattr(repair, "dispatch_guard", guard)
+    result = nightly_exchange._run_once(application["config"], now=NOW)
+    assert result["reason"] == "SOURCE_REPAIR_OWNED"
+    assert application["status"].read_bytes() == status
+    assert not (application["session"] / "failure.json").exists()
+
+
 def test_claim_precedes_source_edits_and_completion_binding_is_one_way(env):
     path = claimed(env)
     saved = path.read_bytes()
