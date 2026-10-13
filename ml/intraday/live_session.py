@@ -1,10 +1,11 @@
-"""Human-started Atlas 15m session. No scheduler, autostart or Gameplan activation.
+"""Human-started Atlas or Scout 15m session. No scheduler or Gameplan activation.
 
 The default command only reports readiness. --live is explicit manual operating
 intent. Forecast/model work and serialized broker steps run independently, with
 durable forecast identities, retry times and original targets.
 """
 import argparse
+from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -13,12 +14,15 @@ import threading
 import time
 import uuid
 
+import psutil
+
 from datafetching.runtime_lock import exclusive_runtime_lock
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
 from .runtime import ResearchConfig, ShadowRunner, LiveHistories, local_symbols, recorded_symbol_failures
 from .store import ShadowStore, utcnow
 
 VERSION = "manual-atlas-15m-session-v1"
+SCOUT_VERSION = "manual-scout-15m-session-v1"
 
 
 def latest_completed_reference(now, *, publication_offset_seconds):
@@ -40,8 +44,11 @@ def eligible_reference(reference):
 
 
 class ExecutionQueue:
-    def __init__(self, store, session_id):
-        self.store, self.session_id = store, session_id
+    def __init__(self, store, session_id, *, pc="Atlas", event_sink=None):
+        if pc not in {"Atlas", "Scout"}:
+            raise ContractError("Explicit Atlas or Scout execution queue required")
+        self.store, self.session_id, self.pc = store, session_id, pc
+        self.event_sink = event_sink or (lambda value: print(json.dumps(value),flush=True))
         with store.connect() as db:
             db.executescript("""
               CREATE TABLE IF NOT EXISTS intraday_live_queue(
@@ -52,6 +59,8 @@ class ExecutionQueue:
             """)
 
     def enqueue(self, forecast):
+        if forecast["pc"] != self.pc:
+            raise ContractError("Forecast belongs to another participant")
         if forecast["mode"] != "live":
             raise ContractError("Only newly issued live forecasts enter manual execution")
         if forecast.get("execution_blocked_reason") or instant(forecast["issued_at"]) >= instant(forecast["target_close"]):
@@ -61,8 +70,12 @@ class ExecutionQueue:
             return
         with self.store.connect() as db:
             cycle = db.execute("SELECT payload FROM cycles WHERE id=?", (forecast["cycle_id"],)).fetchone()
-            if cycle is not None and json.loads(cycle[0]).get("experiment") != self.session_id:
-                raise ContractError("Forecast belongs to another manual session")
+            if cycle is not None:
+                source = json.loads(cycle[0])
+                if source.get("experiment") != self.session_id:
+                    raise ContractError("Forecast belongs to another manual session")
+                if source.get("pc") != self.pc:
+                    raise ContractError("Cycle belongs to another participant")
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT session_id,symbol,issued_at FROM intraday_live_queue WHERE forecast_id=?",
                              (forecast["forecast_id"],)).fetchone()
@@ -72,11 +85,12 @@ class ExecutionQueue:
             inserted = db.execute("INSERT OR IGNORE INTO intraday_live_queue VALUES(?,?,?,?,?,'pending')",
                        (forecast["forecast_id"],*value,value[2])).rowcount
         if inserted:
-            print(json.dumps({"event":"forecast_published","symbol":forecast["symbol"],
+            self.event_sink({"event":"forecast_published","symbol":forecast["symbol"],
+                "forecast_id":forecast["forecast_id"],
                 "issued_at":forecast["issued_at"],"reference_at":forecast["reference_at"],
                 "target_close":forecast["target_close"],"probability_not_down":forecast["probability_not_down"],
                 "successful_models":forecast["successful_count"],"configured_models":forecast["configured_count"],
-                "ensemble_status":forecast["ensemble_status"]}),flush=True)
+                "ensemble_status":forecast["ensemble_status"]})
 
     def due(self, now):
         current = instant(now).isoformat()
@@ -85,14 +99,14 @@ class ExecutionQueue:
         with self.store.connect() as db:
             # Newer forecasts supersede unsent queued work for the same symbol.
             rows = db.execute("""SELECT q.forecast_id FROM intraday_live_queue q JOIN forecasts f ON f.id=q.forecast_id
-                WHERE q.session_id=? AND q.status='pending' AND q.next_attempt_at<=?
+                WHERE q.session_id=? AND f.pc=? AND q.status='pending' AND q.next_attempt_at<=?
                 AND NOT EXISTS(SELECT 1 FROM intraday_live_queue n JOIN forecasts nf ON nf.id=n.forecast_id
-                    WHERE n.session_id=q.session_id AND n.symbol=q.symbol
+                    WHERE n.session_id=q.session_id AND nf.pc=f.pc AND n.symbol=q.symbol
                     AND (nf.reference_at>f.reference_at OR (nf.reference_at=f.reference_at AND n.issued_at>q.issued_at)))
                 ORDER BY f.reference_at,q.symbol""",
-                              (self.session_id,current)).fetchall()
+                              (self.session_id,self.pc,current)).fetchall()
         ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc="Atlas") if f["forecast_id"] in ids]
+        return [f for f in self.store.forecasts(pc=self.pc) if f["forecast_id"] in ids]
 
     def broker_due(self, now):
         with self.store.connect() as db:
@@ -107,30 +121,32 @@ class ExecutionQueue:
     def defer(self, forecast_id, *, now, seconds, broker_wait=False):
         due = (instant(now) + timedelta(seconds=max(3.0,float(seconds)))).isoformat()
         with self.store.connect() as db:
-            db.execute("UPDATE intraday_live_queue SET next_attempt_at=? WHERE forecast_id=? AND session_id=?",
-                       (due,forecast_id,self.session_id))
-        if broker_wait:
+            changed = db.execute("""UPDATE intraday_live_queue SET next_attempt_at=? WHERE forecast_id=? AND session_id=?
+                AND forecast_id IN (SELECT id FROM forecasts WHERE pc=?)""",
+                       (due,forecast_id,self.session_id,self.pc)).rowcount
+        if broker_wait and changed:
             self.broker_wait(now=now,seconds=seconds)
 
     def complete(self, forecast_id, status):
         with self.store.connect() as db:
-            db.execute("UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=?",
-                       (status,forecast_id,self.session_id))
+            db.execute("""UPDATE intraday_live_queue SET status=? WHERE forecast_id=? AND session_id=?
+                AND forecast_id IN (SELECT id FROM forecasts WHERE pc=?)""",
+                       (status,forecast_id,self.session_id,self.pc))
 
 
-def _session_cycles(store, session_id):
+def _session_cycles(store, session_id, *, pc="Atlas"):
     # Recovery identity lives in the existing cycle payload, not a lost Python
     # cursor. Never adopt another human session's pending work for execution.
     with store.connect() as db:
         rows = db.execute("SELECT id,payload FROM cycles ORDER BY rowid").fetchall()
     return [(identity, value) for identity, raw in rows
             if (value := json.loads(raw)).get("mode") == "live"
-            and value.get("pc") == "Atlas" and value.get("experiment") == session_id]
+            and value.get("pc") == pc and value.get("experiment") == session_id]
 
 
-def _pending_cycle_passes(store, session_id, now):
+def _pending_cycle_passes(store, session_id, now, *, pc="Atlas"):
     result = []
-    for identity, cycle in _session_cycles(store, session_id):
+    for identity, cycle in _session_cycles(store, session_id, pc=pc):
         if cycle.get("status") == "completed":
             continue
         missing = [symbol for symbol in cycle["symbols"] if store.forecast(identity, symbol) is None]
@@ -157,7 +173,8 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
     outputs remain immutable, and older recovered outputs never enter execution.
     No missed-quarter forecast or older fitted model is invented.
     """
-    saved = _session_cycles(runner.store, queue.session_id)
+    pc = getattr(queue, "pc", "Atlas")
+    saved = _session_cycles(runner.store, queue.session_id, pc=pc)
     last = max((instant(c["reference_at"]) for _, c in saved), default=None)
     while not stopped():
         newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
@@ -174,7 +191,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                                    {"reference_at":reference.isoformat(),"orders_submitted":0})
                 pause(1); continue
         else:
-            pending = _pending_cycle_passes(runner.store, queue.session_id, clock())
+            pending = _pending_cycle_passes(runner.store, queue.session_id, clock(), pc=pc)
             if not pending:
                 pause(1); continue
             _, cycle, retry_symbols = pending[0]
@@ -190,7 +207,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
 
 
 def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
-                 clock=utcnow, pause=time.sleep):
+                 clock=utcnow, pause=time.sleep, pc="Atlas"):
     """Fetch exact due outcomes independently, including after the last entry.
 
     Acquisition retry evidence is durable. This never submits an order, changes
@@ -198,6 +215,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     Local copies of the history mapping keep scoring out of the training writer.
     """
     from .data import synthetic_continuity_verified
+    if pc not in {"Atlas", "Scout"}:
+        raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
     while not stopped():
         latest_observed = {}
@@ -210,7 +229,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                     audited.add(key)
                 continue
             latest_observed[(candle["symbol"],candle.get("source_id"),instant(candle["opened_at"]))] = candle
-        for forecast in store.forecasts(pc="Atlas"):
+        for forecast in store.forecasts(pc=pc):
             if stopped():
                 return
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
@@ -245,9 +264,19 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
         pause(3)
 
 
+def _scout_startup_proof(executor, session_id):
+    """Require the authenticated executor's bound result, never a local bypass."""
+    proof = executor.preflight()
+    if (not isinstance(proof, Mapping) or proof.get("ready") is not True
+            or proof.get("authenticated") is not True or proof.get("protocol_compatible") is not True
+            or proof.get("participant_id") != "pc-new" or proof.get("stream") != "scout-15m"
+            or proof.get("session_id") != session_id or not isinstance(proof.get("protocol"), str)
+            or not proof["protocol"].strip()):
+        raise ContractError("Scout startup requires authenticated, protocol-compatible authority bound to this participant and session")
+    return {key:proof[key] for key in ("ready", "authenticated", "protocol_compatible", "participant_id", "stream", "protocol")}
+
+
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
-    from .account_execution import IntradayAccountExecutor
-    from .runtime_compatibility import read_gameplan_runtime_compatibility
     from .data import AcquisitionJournal, load_local_history
     from .cancellation import retry_delay
     from app.services.schwab import SchwabSession
@@ -255,34 +284,60 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     from dotenv import load_dotenv
     root, repository = Path(datastore),Path(repository)
     pc,symbols = local_symbols(profile,watchlist,root)
-    if pc != "Atlas":
-        raise ContractError("Scout live execution is not enabled")
+    if pc not in {"Atlas", "Scout"}:
+        raise ContractError("Manual execution requires an explicitly bound Atlas or Scout participant")
     config.validate()
     if config.source_dataset != "EQUS.MINI":
         raise ContractError("Existing single-source live provider binding required")
-    def compatibility():
-        return read_gameplan_runtime_compatibility(root,repository,as_of=clock(),
-            maximum_heartbeat_age_seconds=120,allow_verified_absence=True)
-    proof = compatibility()
-    if not proof["ready"]:
-        raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
+    if pc == "Atlas":
+        from .account_execution import IntradayAccountExecutor
+        from .runtime_compatibility import read_gameplan_runtime_compatibility
+        def compatibility():
+            return read_gameplan_runtime_compatibility(root,repository,as_of=clock(),
+                maximum_heartbeat_age_seconds=120,allow_verified_absence=True)
+        proof = compatibility()
+        if not proof["ready"]:
+            raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
     started = instant(clock())
-    session_id = "manual-atlas-15m:" + uuid.uuid4().hex
+    session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
+    process_create_time = psutil.Process(os.getpid()).create_time()
     stopped = threading.Event()
     worker_errors = []
     store = ShadowStore(root / "intraday/shadow.sqlite3")
-    queue = ExecutionQueue(store,session_id)
     status_path = root / "intraday/manual-session.json"
+    session_root = root / "intraday/sessions" / session_id.replace(":", "-")
+    session_status = session_root / "status.json"
+    log_path = session_root / "events.jsonl"
+    evidence_paths = {"status":str(status_path), "session_status":str(session_status),
+                      "log":str(log_path), "forecasts":str(store.path),
+                      "acquisition":str(root / "intraday/acquisition.sqlite3")}
+    log_lock = threading.Lock()
+    previous_status = [None]
+    def emit(value):
+        event = {"recorded_at":instant(clock()).isoformat(),"session_id":session_id,"pc":pc,**value}
+        with log_lock:
+            with log_path.open("a",encoding="utf-8") as log:
+                log.write(encoded(event) + "\n")
+        print(json.dumps(event),flush=True)
+    queue = ExecutionQueue(store,session_id,pc=pc,event_sink=emit)
     def status(state, **extra):
-        value = dict(schema_version=VERSION,session_id=session_id,pid=os.getpid(),started_at=started.isoformat(),
-                     heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,**extra)
-        temporary = status_path.with_name(status_path.name + "." + uuid.uuid4().hex + ".tmp")
-        temporary.write_text(encoded(value),encoding="utf-8")
-        os.replace(temporary,status_path)
+        value = dict(schema_version=VERSION if pc == "Atlas" else SCOUT_VERSION,session_id=session_id,pc=pc,
+                     pid=os.getpid(),process_create_time=process_create_time,started_at=started.isoformat(),
+                     heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,
+                     evidence_paths=evidence_paths,**extra)
+        for destination in (session_status,status_path):
+            temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
+            temporary.write_text(encoded(value),encoding="utf-8")
+            os.replace(temporary,destination)
+        if previous_status[0] != state:
+            emit({"event":"session_status","status":state,**extra})
+            previous_status[0] = state
     def manual_authority():
         try:
             value = json.loads(status_path.read_text(encoding="utf-8"))
-            return value["session_id"] == session_id and value["pid"] == os.getpid() and value["status"] == "RUNNING" and not stopped.is_set()
+            return (value["session_id"] == session_id and value["pc"] == pc
+                    and value["pid"] == os.getpid() and value["process_create_time"] == process_create_time
+                    and value["status"] == "RUNNING" and not stopped.is_set())
         except (OSError,ValueError,KeyError):
             return False
     def pause(seconds):
@@ -292,9 +347,22 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 raise InterruptedError("Manual session stopped; acquisition recovery retained")
             sleep(min(1,max(0,end-time.monotonic())))
     with exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"):
+        session_root.mkdir(parents=True,exist_ok=False)
         status("STARTING")
         try:
             load_dotenv(repository / ".env")
+            if pc == "Scout":
+                from .scout_execution import ScoutAccountExecutor
+                executor = ScoutAccountExecutor(repository=repository,profile=profile,datastore=root,store=store,
+                    broker=SchwabSession(),local_symbols=symbols,session_started_at=started,session_id=session_id,
+                    clock=clock,manual_authority=manual_authority,stopped=stopped.is_set)
+                startup = _scout_startup_proof(executor,session_id)
+                executor_paths = getattr(executor,"evidence_paths",{})
+                if not isinstance(executor_paths,Mapping) or any(not isinstance(key,str) or not isinstance(value,str)
+                        for key,value in executor_paths.items()):
+                    raise ContractError("Scout executor evidence paths must be a string mapping")
+                evidence_paths.update({"executor_" + key:value for key,value in executor_paths.items()})
+                emit({"event":"authority_ready",**startup})
             histories = {}
             for symbol in symbols:
                 try:
@@ -306,13 +374,14 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 raise ContractError("Provider binding differs from selected single source")
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,stopped=stopped.is_set)
-            executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
-                session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=stopped.is_set)
+            if pc == "Atlas":
+                executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
+                    session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=stopped.is_set)
         except BaseException as exc:
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) else "FAILED",
                    stop_reason="manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
-                   error_type=type(exc).__name__,broker_orders_automatically_cancelled=False)
+                   error_type=type(exc).__name__,error_message=str(exc),broker_orders_automatically_cancelled=False)
             store.event(session_id,"manual_startup_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
             if isinstance(exc,KeyboardInterrupt):
                 return {"session_id":session_id,"status":"STOPPED"}
@@ -331,7 +400,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         def score_work():
             try:
                 scoring_loop(store,histories=histories,provider=provider,journal=journal,session_id=session_id,
-                             stopped=stopped.is_set,clock=clock,pause=pause)
+                             stopped=stopped.is_set,clock=clock,pause=pause,pc=pc)
             except InterruptedError:
                 pass
             except BaseException as exc:
@@ -341,7 +410,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         scorer = threading.Thread(target=score_work,name="intraday-manual-scoring",daemon=True)
         worker.start()
         scorer.start()
-        print("Atlas 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
+        print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
+        print(f"Session status: {status_path}\nSession log: {log_path}",flush=True)
         next_recovery = instant(clock())
         try:
             while not stopped.is_set():
@@ -354,9 +424,10 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     try:
                         result = executor.step(forecast)
                         store.event(session_id,"execution_step",result,symbol=forecast["symbol"])
-                        print(json.dumps({"event":"execution_disposition","symbol":forecast["symbol"],
+                        emit({"event":"execution_disposition","symbol":forecast["symbol"],
+                            "forecast_id":forecast["forecast_id"],
                             **{key:result.get(key) for key in ("side","desired_quantity","adjusted_quantity",
-                                "disposition","submission_status","submitted_quantity","filled_quantity")}}),flush=True)
+                                "disposition","submission_status","submitted_quantity","filled_quantity")}})
                         disposition = result["disposition"]
                         if disposition == "previous_intention_reconciliation" or result["evidence"].get("proven_unsent_retry_eligible"):
                             queue.defer(forecast["forecast_id"],now=clock(),seconds=result["evidence"].get("retry_after_seconds") or 3,broker_wait=True)

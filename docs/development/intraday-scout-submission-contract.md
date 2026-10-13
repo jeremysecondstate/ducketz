@@ -1,45 +1,46 @@
-# Scout submission foundation: proposed contract
+# Scout local submission and shared admission contract
 
-This is a dormant library and an interface proposal for Atlas review, **not an
-agreed production wire protocol or evidence that Scout is ready to trade**.
-There is no network adapter, broker adapter, service startup, launcher wiring,
-account activation or runtime deployment in this change.
+Scout's integration composes the existing forecasting, sizing, scoring and
+recovery implementation with an authenticated admission client, durable private
+journals and a participant-aware manual launcher. Source completion is distinct
+from installed bytes, a deployed Atlas service, compatible loaded writers and
+manual-start readiness. The [manual-start runbook](scout-15m-manual-start.md)
+defines the acceptance evidence and human-controlled start/stop procedure.
 
-Reuse the reviewed forecasting, exact target, scoring and independent sizing
-from [PR #78](https://github.com/jeremysecondstate/ducketz/pull/78)
-(`53aea68a29ebb136faa4378e89261109100652e3`) and the native compatibility repair
-in [PR #80](https://github.com/jeremysecondstate/ducketz/pull/80)
-(`a56413a8628e4789aa98852ad607e582267441c0`). No forecasting rebuild or new
-sizing policy is proposed. The governing design remains
-[sections 5–7 and 12](../15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md#5-shared-purchasing-capacity-and-working-quantities)
-and [the preserved two-PC architecture](../15m-trading-system/15M-ARCHITECTURE-CHANGE.md#9-preserve-existing-two-pc-and-account-architecture).
+The reviewed lineage is [PR #78](https://github.com/jeremysecondstate/ducketz/pull/78)
+(`53aea68a29ebb136faa4378e89261109100652e3`), the compatibility repair in
+[PR #80](https://github.com/jeremysecondstate/ducketz/pull/80)
+(`a56413a8628e4789aa98852ad607e582267441c0`), and the foundation in
+[PR #81](https://github.com/jeremysecondstate/ducketz/pull/81)
+(`31d6551329b8aeac0eb382db1e352a87541853fa`). The governing design remains
+[the 15m system design](../15m-trading-system/INTRADAY_15M_SYSTEM_DESIGN.md)
+and [the preserved two-PC architecture](../15m-trading-system/15M-ARCHITECTURE-CHANGE.md).
+Coordination reuses request `scout-15m-live-readiness-20261012`.
 
-**Scout submits and manages its own orders locally.** Atlas hosts the one shared
-cash/share reservation pool for Gameplan, Atlas 15m and Scout 15m. This proposal
-does not transfer Scout submission to an Atlas execution gateway or delegate
-separate cash budgets. SQLite databases stay host-local; telemetry and nightly
-file exchange do not supply a live order protocol.
+## Ownership and shared capacity
 
-The human relayed that Atlas has no newer admission service. Atlas's response
-was not published because approval review blocked it; this statement is not a
-durable peer receipt. Correlated setup request
-`scout-15m-live-readiness-20261012` remains the coordination identity for reuse,
-interface agreement and division of ownership.
+Scout submits and manages its own orders locally. Atlas owns the serialized
+authenticated admission boundary and its existing account authority/native
+ledgers. Gameplan, Atlas 15m and Scout 15m share one actual cash/share pool.
+Quantities may shrink, including to zero, and eligible same-symbol shares may
+come from different horizons under existing ownership/reservation rules. No
+stream budget, protected cash allocation or new contention priority is added.
 
-Keep live communication small: reservation/fence requests and replies, exact
-acceptance identities, fills, cancellation/status changes and confirmed releases.
-Preserve detailed local logs and exchange full analytical history separately.
-After-the-fact logs cannot prevent two streams committing the same cash/shares.
-Do not reuse telemetry payloads as execution commands or add an unrelated framework.
+Scout owns its local adapter, journal collection, orchestration and private
+transport binding. Atlas's databases remain Atlas-local; Scout neither copies
+them nor creates an Atlas coordinator identity. Participant authentication does
+not authorize Scout to manage Atlas or Gameplan orders. Immediate communication
+carries reservation, send and exact order-lifecycle facts. Detailed analytical
+history and accounting exchange remain separate from live admission.
 
-## Current values and injected interfaces
+## Stable request/grant values
 
-[scout_protocol.py](../../ml/intraday/scout_protocol.py) exposes frozen `Request`
-and `Grant` dataclasses, `payload()`, `from_payload(mapping)`, `.sha256`,
-`Grant.validate(request)`, `canonical_sha256(mapping)` and `ProtocolError`.
-Both payloads have exact keys and fixed `schema_version` =
-`scout-intraday-admission-proposal-v1`, `participant_id` = `pc-new`,
-`stream` = `scout-15m`, and `kind` = `request` or `grant`.
+[scout_protocol.py](../../ml/intraday/scout_protocol.py) supplies immutable
+`Request` and `Grant` values, exact payload parsing and canonical SHA256 hashes.
+Their encoding retains `schema_version = scout-intraday-admission-proposal-v1`,
+`participant_id = pc-new`, `stream = scout-15m` and `kind = request` or `grant`.
+The historical `proposal-v1` discriminator is retained for byte compatibility;
+the enclosing authenticated wire protocol is separately versioned.
 
 | Value | Required dataclass fields |
 |---|---|
@@ -49,110 +50,166 @@ Both payloads have exact keys and fixed `schema_version` =
 | Grant identity | `grant_id`, `request_id`, `request_sha256`, `account_fingerprint`, `session_id`, `reservation_id` |
 | Grant scope | `authority_epoch`, `quantity`, `issued_at`, `expires_at` |
 
-IDs are bounded ASCII; fingerprints are lowercase 64-hex hashes. Forecast ID
-equals its forecast hash. Positive integer fields are at most `2**63-1`, with
-booleans rejected. Limit price is a positive canonical decimal **string**, at
-most 32 characters and eight fractional digits; no exponent, leading integer
-zeros or trailing fractional zeros. This is an encoding bound, not new broker
-tick policy. Aware timestamps normalize to UTC ISO strings in the attributes.
-Request times require `reference < issued < valid_until <= target_close`.
-A grant binds the exact request hash/account/session/ID, cannot increase its
-quantity, and requires `request.issued_at <= grant.issued_at < expires_at <=
-request.valid_until`. There are no grant side/price override fields.
+IDs are bounded ASCII and fingerprints lowercase 64-hex strings. Forecast ID
+equals its forecast hash. Positive integer fields reject booleans and exceed
+neither `2**63-1` nor the original desired quantity. Limit price is a positive
+canonical decimal string with bounded length/precision, not a float. Aware
+timestamps normalize to UTC. Request ordering is
+`reference < issued < valid_until <= target_close`; grant expiry cannot exceed
+request validity. A grant binds the exact request/account/session and supplies
+no side or price override. Sorted compact UTF-8 JSON hashes detect changed bytes;
+they are not authentication or RFC 8785 canonicalization.
 
-Hashes use sorted compact UTF-8 JSON; this is not RFC 8785 or authentication.
-Wire values contain no floats. Unknown/missing fields, malformed offsets and
-nonfinite values are rejected. Neither a valid grant nor a payload boolean
-proves an authenticated Atlas service or permission to submit.
+The injected [scout_client.py](../../ml/intraday/scout_client.py) foundation
+supports positive admitted grants and one-use submission. Its generic
+`admit`/`deliver` interface is not the complete production wire protocol.
+Zero capacity and declines remain service decisions, never invalid zero-sized
+positive grants. Their original forecasts and intentions stay scoreable.
 
-[scout_client.py](../../ml/intraday/scout_client.py) takes a journal, an injected
-`AuthorityTransport`, account/session/symbol bindings, an authority epoch and
-an aware clock. The transport has `admit(request_payload) -> grant_payload`
-and `deliver(outbox_envelope) -> {event_id, event_sha256}`. It has no supplied
-network implementation. `ScoutClient.admit(request)` persists before transport,
-then validates current request/grant times, exact binding and the configured
-epoch. Lost admission replies leave the same request available for retry.
+## Authenticated authority client and send boundary
 
-This is only the **positive admitted-grant subset**. Declines, zero-permitted
-responses, allocation-source assignments, renewed grants and release/status
-operations are not defined. Actual capacity may still clip desired size to
-zero; the existing forecast/intention must remain saved and scoreable. These
-missing responses cannot be invented by changing the immutable positive grant.
+[scout_authority.py](../../ml/intraday/scout_authority.py) implements Scout's
+client for `intraday-shared-admission-v1`, following the
+[Atlas service contract](intraday-shared-admission-service.md). HTTPS requires
+the configured CA, server hostname validation and Scout client certificate/key.
+The private binding pins account, participant, stream, symbols and authority
+identity. Foreign streams, changed duplicate requests and incompatible protocol
+versions fail closed. A payload's participant name cannot replace transport
+authentication.
 
-## Durable local transitions
+Scout persists its immutable request before reservation. A positive reservation
+is followed by a durable local send claim and Atlas's durable authenticated send
+authorization before Scout's prepared broker POST. Only the successful current
+`SEND_AUTHORIZED_ONCE` reply authorizes that invocation. Retrying a claim,
+recovering a lost reply or reading status cannot supply another send permission.
+A lost authorization reply retains the commitment and requires reconciliation.
+The service's pre-POST `SUBMITTING` state and native `UNKNOWN` projection are
+ordinary in-flight evidence; neither alone proves a stranded order.
 
-[scout_journal.py](../../ml/intraday/scout_journal.py) provides `ScoutJournal`:
+The binding lives privately at `DATASTORE/intraday/scout/authority-binding.json`.
+Validated authority replies are saved under `DATASTORE/intraday/scout/receipts`.
+Saved content hashes detect alteration; authenticated transport and exact
+request/response validation establish the reply's origin and scope. Endpoints,
+private keys, account fingerprints and order data stay out of shared source and
+public coordination messages.
 
-| Method | Durable effect |
+Capability discovery establishes authenticated identity/protocol support. A
+separate readiness check must establish actual compatible loaded Atlas account
+writers or verified absence. The client remains fail-closed while the exact
+readiness route/schema is unpublished or unavailable. A constant successful
+callback is only a test fixture. New files on disk do not prove loaded code.
+
+## Durable local submission and original-session books
+
+[scout_journal.py](../../ml/intraday/scout_journal.py) commits each submission
+transition with its immutable event using SQLite `EXTRA` synchronization.
+
+| Operation | Durable effect |
 |---|---|
-| `prepare(request)` | Create `PREPARED`; repeating the exact request is idempotent. |
-| `grant(grant)` | `PREPARED -> GRANTED`; pin grant/reservation IDs and exact hash. |
-| `claim_send(request_id)` | `GRANTED -> SENDING`; commit one random send token before returning it. |
-| `outcome(request_id, token, broker_order_id)` | Record caller-supplied broker identity as `ACCEPTED`; `None` records `UNKNOWN`. |
-| `revoke_unsent(request_id, reason)` | Only `PREPARED`/`GRANTED -> NOT_SENT`; no Atlas capacity release. |
-| `pending_events()` / `acknowledge(id, hash)` | Deliver/acknowledge immutable transition evidence; no order/capacity transition. |
+| `prepare(request)` | Create `PREPARED`; an exact duplicate is idempotent. |
+| `grant(grant)` | `PREPARED -> GRANTED`; pin exact grant/reservation identity. |
+| `claim_send(request_id)` | `GRANTED -> SENDING`; consume one send token before returning. |
+| `outcome(request_id, token, broker_order_id)` | Persist exact acceptance as `ACCEPTED`; absent reliable ID becomes `UNKNOWN`. |
+| `revoke_unsent(request_id, reason)` | Only `PREPARED`/`GRANTED -> NOT_SENT`; no authority capacity release. |
+| Event acknowledgment | Clear exact event-ID/hash delivery work; no order or capacity transition. |
 
-An exact late broker receipt can move `SENDING` or `UNKNOWN` to `ACCEPTED`.
-`ACCEPTED` cannot be demoted or rebound. `SENDING`/`UNKNOWN` never return to a
-sendable state. Journal replay checks schema, immutable records and a hash-linked
-outbox. Each transition and its event commit together with SQLite `EXTRA`
-synchronization. Outbox envelopes contain token hashes, not send tokens.
-Hashes detect corruption; they do not authenticate peers or protect against a
-malicious local administrator. Never replace an outstanding journal with a new
-file to recover operation; restore and reconcile its original identity/history.
+An exact late broker receipt may move `SENDING`/`UNKNOWN` to `ACCEPTED`.
+Acceptance cannot be demoted or rebound. Neither `SENDING` nor `UNKNOWN` becomes
+sendable again, including after a crash or lost claim return. Generic journal ID
+storage alone is not a broker receipt. The prepared adapter validates the exact
+Schwab HTTPS Location, prepared account and canonical order ID. Missing or
+malformed acceptance retains uncertainty; it never triggers a repeat POST or a
+symbol/price/balance-based guess.
 
-`ScoutClient.submit(request_id, send=..., final_gate=...)` checks the gate,
-persists the one send claim, checks the gate again, then invokes the injected
-sender with the exact request and grant. Only `True` passes this callback gate;
-that return value is not implemented runtime proof. The sender must use the
-bound symbol/side/price and granted quantity and verify its exact broker receipt.
-The client requires its returned order ID to be a canonical positive integer
-string of at most 64 digits; malformed/missing IDs leave `UNKNOWN`, never resend.
-The journal's generic ID storage alone does not prove an authentic broker receipt.
-Exceptions after claiming conservatively retain uncertainty; process exit can
-leave `SENDING`. Even a lost claim return consumes the claim. No path retries
-the sender for that durable request. `flush_outbox()` accepts only the exact
-event ID/hash acknowledgment. Delivery acknowledgment never releases capacity.
+[scout_books.py](../../ml/intraday/scout_books.py) inventories original journals
+under `DATASTORE/intraday/scout`. `inventory.json` pins each session's account,
+participant, stream, filename and immutable journal ID. A later manual session
+audits every original before registering its own journal. Missing, replaced,
+corrupted, unregistered or residual journal files block startup for repair.
+Registered journals open with `create=False` and their expected original ID;
+starting a new session cannot erase an earlier one-use claim.
 
-## Required integration before a human Scout start
+The local lifecycle retains exact accepted-order observations, complete
+cumulative fills and cancellation intent/attempt evidence. Fill totals cannot
+regress or change identity, and terminal evidence cannot be demoted. A recognized
+legacy journal requires explicit migration preserving original claims and
+outbox bytes. Unchanged observations advance an indexed latest receipt without
+duplicating full replay events. The local reservation projection serves the
+existing cancellation interface; it is not a second allocation ledger.
 
-Atlas owns the service, private authenticated transport binding, durable shared
-commitments and complete stream isolation. The service must authenticate both
-peers, persist idempotent request results, assign and track allocation sources,
-manage authority epochs/fences, count broker/native commitments once, and retain
-unknown sends and fills while balances catch up. Proposed sales create no cash.
-Define atomic prepare/final-send/receipt/release transitions and partition
-behavior: a remote grant alone cannot fence Scout's later local broker POST.
-Do not expire/reclaim possibly sent capacity or issue a duplicate sender.
+## Local orchestration and cancellation
 
-Scout owns its local client/journal integration and broker submission/recovery.
-Before **any new same-symbol grant**, resolve the prior stream commitment:
-working/partial/unknown orders need exact status, intervening fills and confirmed
-terminal cancellation; an unsent reservation needs confirmed Atlas release.
-`NOT_SENT` and outbox acknowledgment alone prove neither release nor nonadmission.
-Unknown POST without a reliable broker ID retains commitment and never resends
-or matches by symbol/price/balance. Broker-supported ambiguous-ID recovery remains
-open. Reuse the existing exact-ID Schwab status/cancellation machinery.
+[scout_execution.py](../../ml/intraday/scout_execution.py) composes existing
+sizing, capacity validation, the prepared broker adapter and exact-ID recovery.
+It keeps original sizing and dispositions in the existing forecast store.
+Before replacement for a symbol, it resolves prior commitments across the
+original Scout session journals. Working/partial orders require exact status,
+intervening fills and terminal cancellation evidence. Unsent reservations
+require confirmed authority release. A local `NOT_SENT` event or message ACK
+does not prove either nonadmission or released capacity.
 
-The real final gate must verify current manual session and authority fence,
-account/producer/symbol ownership, newest eligible live forecast, full ensemble,
-observed availability, exact target/version/grid, original sizing evidence,
-fresh account/quote data, prior-order reconciliation and strict submission
-**before 16:45 Pacific**. The DTO lifetime does not implement these conditions.
-No same-forecast repricing timer, Gameplan timeout/expiry, replenishment order,
-protected cash share, confidence hurdle or contention priority is selected here.
-Temporary failures need durable provider-aware waits; no arbitrary retry ceiling.
+Cancellation persists intent before DELETE and records the attempt separately
+from broker status. An explicit proved-before-DELETE retry permission is consumed
+durably before reentering transport. Its send-claim event is an in-flight attempt,
+not an acknowledgment or terminal result. Lost/ambiguous effects retain the
+commitment. A DELETE acknowledgment never releases capacity; exact cumulative
+terminal evidence must reach the authority before replacement can use capacity.
+Recovery continues to honor original journal/session/order identity after reload.
 
-Require compatible loaded-code/process/session evidence on both hosts and for
-every Atlas account/native writer, including Gameplan and Atlas 15m. New files
-on disk and offline passing checks cannot establish that proof. Preserve active
-Atlas workers during preparation; coordinate reviewed adoption separately.
-Only the human's eventual Scout manual start may invoke the live path.
+Only `ACCEPTED`/`UNKNOWN` outbox events represent actionable lifecycle deliveries
+in the current wrapper. `PREPARED`, `GRANTED`, `SENDING` and `NOT_SENT` are local
+audit facts; reserve/claim/release facts travel through dedicated authenticated
+RPCs and receipts. Raw unacknowledged event counts are not a wire-backlog count.
+An event ACK clears delivery work only. An authenticated `NOT_SUBMITTED` release
+can clear shared capacity while the local `UNKNOWN` fence remains permanently
+non-sendable. Local terminal evidence alone does not prove authority release.
 
-Offline protocol/journal/client tests use synthetic state and injected callbacks.
-They cover schema/scope/lifetime failures, concurrent one-claim behavior,
-restart/corruption, dropped admission replies, send ambiguity and exact outbox
-acknowledgments. Future joint tests must cover all three streams sharing capacity,
-fence expiry and partitions at every send boundary, exact partial fills/cancel
-races, confirmed releases and old-loaded-writer rejection. No test here proves
-a deployed service, real authentication, broker readiness or live permission.
+For an expired original request that never obtained admission, Scout validates
+and saves Atlas's exact `intraday-negative-admission-v1` proof before changing
+its grantless `PREPARED` record. The proof binds the original request, session,
+account and authenticated server, and certifies absence from both canonical
+books and retained send-claim history. It neither releases an existing
+reservation nor rearms a local send claim. Missing, contradictory or future
+proof fails closed; a local `NOT_SENT` label cannot substitute for it.
+
+Each startup and guarded operation verifies Scout-local account-writer absence
+while holding the existing `stock-trader-hourly.lock` through the protected
+operation. Gameplan remains Atlas-owned. Atlas independently checks its own
+writers under its authority lock. A point-in-time unlocked prestart absence
+check cannot fence a later scheduled writer; runtime locks and fresh checks do.
+
+## Runtime gates and preparation evidence
+
+[scout_runtime_gate.py](../../ml/intraday/scout_runtime_gate.py) checks exact saved
+Scout forecasts, original session, immutable snapshot/target, current manual
+controls, quote freshness, market window and strict submission before 16:45
+Pacific. Local SQLite checks use `mode=ro`, `query_only` and zero lock wait.
+A newer full current-session forecast supersedes an older one even when it
+arrives during preceding account IO. The executor also verifies original sizing,
+rounded quote limit, authenticated send receipt, compatible writers and prior
+order clearance. Account verification finishes before the final local gate.
+Reconciliation and exact cancellation may continue after cutoff or target expiry.
+
+The shared [manual launcher](../../ml/intraday/live_session.py) preserves Atlas
+defaults and explicitly selects Scout's executor from the local profile. Scout
+requires authenticated, protocol-compatible readiness before provider
+construction, history loading, model work and `RUNNING` status. Each session
+records PID/birth time, participant and actual evidence paths. No permissive
+fallback replaces failed readiness. Ctrl+C withdraws manual authority and waits
+for active computation; it does not automatically cancel orders or release books.
+
+[scout_prestart.py](../../ml/intraday/scout_prestart.py) checks the pinned release,
+Scout profile, final exact installed manifest, dependency metadata, private
+binding, local process absence and original journals. Book inspection uses raw
+SQLite `mode=ro`/`query_only`; it never constructs production stores or
+broker/provider clients. Optional connection checks call only authenticated
+capabilities/readiness and save dedicated private prestart receipts. No trading
+commitment is created.
+
+Offline tests must cover the exact final dependency closure: shared capacity
+contention/reduction, participant isolation, mutated duplicates, one-use claims,
+crash/lost replies, cumulative fills, cancellation races, release evidence,
+controls, freshness and incompatible writers. Historical test counts do not
+cover later bytes. Publication, installation, non-ordering service connectivity
+and post-start session evidence must remain separate completion facts. Only the
+human's eventual manual start invokes the real-order session.

@@ -37,6 +37,28 @@ def test_live_queue_retains_retry_wait_across_restart_and_never_consumes_old_ses
         fresh.enqueue(f)
 
 
+def test_scout_queue_reuses_engine_but_rejects_foreign_participant(tmp_path):
+    store = ShadowStore(tmp_path / "forecast.sqlite3")
+    scout = store.save_forecast(forecast(mode="live", pc="Scout", symbol="DOCU"))
+    atlas = store.save_forecast(forecast(mode="live", pc="Atlas", symbol="AAPL"))
+    queue = live_session.ExecutionQueue(store, "scout-manual", pc="Scout")
+    queue.enqueue(scout)
+    with pytest.raises(ContractError, match="another participant"):
+        queue.enqueue(atlas)
+    assert queue.due("2026-10-08T17:17:00Z") == [scout]
+    queue.defer(scout["forecast_id"], now="2026-10-08T17:17:00Z", seconds=30)
+    restored = live_session.ExecutionQueue(store, "scout-manual", pc="Scout")
+    assert restored.due("2026-10-08T17:17:29Z") == []
+    assert restored.due("2026-10-08T17:17:30Z") == [scout]
+    foreign = live_session.ExecutionQueue(store, "scout-manual", pc="Atlas")
+    assert foreign.due("2026-10-08T17:18:00Z") == []
+    foreign.defer(scout["forecast_id"], now="2026-10-08T17:18:00Z", seconds=900, broker_wait=True)
+    foreign.complete(scout["forecast_id"], "foreign-completed")
+    assert restored.due("2026-10-08T17:18:00Z") == [scout]
+    with pytest.raises(ContractError):
+        live_session.ExecutionQueue(store, "manual", pc="unbound")
+
+
 def test_newest_symbol_forecast_supersedes_queued_intention(tmp_path):
     store = ShadowStore(tmp_path/"forecast.sqlite3")
     first = store.save_forecast(forecast(mode="live"))
@@ -112,6 +134,21 @@ def test_pending_reconstruction_is_same_session_due_data_only(tmp_path):
     saved_pending_cycle(store,"manual","2026-10-12T16:45:00Z",retryable=False)
     assert [item[0] for item in live_session._pending_cycle_passes(store,"manual","2026-10-12T17:16:00Z")]==[wanted]
     assert live_session._pending_cycle_passes(store,"manual","2026-10-12T17:15:29Z")==[]
+
+
+def test_pending_scout_cycle_recovery_preserves_participant_and_session(tmp_path):
+    store = ShadowStore(tmp_path / "pending.sqlite3")
+    atlas = saved_pending_cycle(store, "manual", "2026-10-12T17:00:00Z")
+    for key, session in (("scout", "manual"), ("older-scout", "older-manual")):
+        store.begin_cycle(key, {"pc": "Scout", "symbols": ["DOCU"],
+            "reference_at": "2026-10-12T17:00:00Z", "mode": "live", "experiment": session,
+            "configuration_hash": "fixture", "started_at": "2026-10-12T17:15:30Z", "status": "running"})
+    due = live_session._pending_cycle_passes(store, "manual", "2026-10-12T17:16:00Z", pc="Scout")
+    assert [(key, symbols) for key, _, symbols in due] == [("scout", ["DOCU"])]
+    assert [key for key, _, _ in live_session._pending_cycle_passes(store, "manual", "2026-10-12T17:16:00Z")] == [atlas]
+    foreign = store.save_forecast(forecast(mode="live", pc="Scout", symbol="DOCU", cycle_id=atlas))
+    with pytest.raises(ContractError, match="Cycle belongs to another participant"):
+        live_session.ExecutionQueue(store, "manual", pc="Scout").enqueue(foreign)
 
 
 def test_crash_after_permanent_failure_event_before_summary_does_not_retry_model(tmp_path):
@@ -193,11 +230,14 @@ def test_no_closed_or_unspecified_opening_target():
     assert not live_session.eligible_reference("2026-10-12T23:30:00Z")  # 16:45 issue
 
 
-def test_scoring_acquires_exact_outcome_after_cutoff_without_execution(tmp_path, monkeypatch):
+@pytest.mark.parametrize("pc", ["Atlas", "Scout"])
+def test_scoring_acquires_exact_outcome_after_cutoff_without_execution(tmp_path, monkeypatch, pc):
     import pandas as pd
     from tests.test_intraday_store import candle
     store = ShadowStore(tmp_path/"forecast.sqlite3")
-    f = store.save_forecast(forecast(mode="live"))
+    f = store.save_forecast(forecast(mode="live", pc=pc))
+    foreign = store.save_forecast(forecast(mode="live", cycle_id="foreign",
+        pc="Scout" if pc == "Atlas" else "Atlas"))
     calls, done = [], []
     class Incoming:
         def __init__(self, **kw):
@@ -212,10 +252,11 @@ def test_scoring_acquires_exact_outcome_after_cutoff_without_execution(tmp_path,
     monkeypatch.setattr(live_session,"LiveHistories",Incoming)
     live_session.scoring_loop(store,histories={"AAPL":object()},provider=object(),journal=object(),
         session_id="manual",stopped=lambda:bool(done),clock=lambda:"2026-10-09T00:01:00Z",
-        pause=lambda seconds:done.append(True))
+        pause=lambda seconds:done.append(True), pc=pc)
     assert calls[0]["reference_at"] == f["target_open"]
     result = store.revisions(f["forecast_id"])[-1]
     assert result["status"] == "scored" and result["reference_to_target_return"] == "0.01"
+    assert store.revisions(foreign["forecast_id"]) == []
 
 
 def test_scoring_audits_legacy_synthetic_and_continues_after_unavailable_target(tmp_path,monkeypatch):
@@ -396,3 +437,129 @@ def test_broker_retry_after_fences_next_symbol_and_recovery_in_same_batch(tmp_pa
         assert wait==started+timedelta(seconds=120)
         status=db.execute("SELECT status FROM intraday_live_queue WHERE symbol='AAPL'").fetchone()[0]
         assert status==("submission_recovery_required" if first_disposition=="submission_recovery_required" else "no_purchasing_capacity")
+
+
+def scout_manual_fixture(tmp_path, monkeypatch, *, proof_changes=None):
+    """All execution, provider and model boundaries are offline fixtures."""
+    import sys
+    import dotenv
+    from ml.intraday import runtime_compatibility, data, account_execution
+    from app.services import schwab, databento_market_data
+    calls, executors = [], []
+    monkeypatch.setattr(live_session,"local_symbols",lambda *args:("Scout",("DOCU",)))
+    monkeypatch.setattr(dotenv,"load_dotenv",lambda *args:None)
+    monkeypatch.setattr(runtime_compatibility,"read_gameplan_runtime_compatibility",
+        lambda *a,**k:pytest.fail("Scout must use authenticated remote compatibility"))
+    monkeypatch.setattr(account_execution,"IntradayAccountExecutor",
+        lambda **kw:pytest.fail("Scout must not instantiate Atlas execution stores"))
+    monkeypatch.setattr(schwab,"SchwabSession",lambda:SimpleNamespace(offline_broker_fixture=True))
+    def history(*args,**kwargs):
+        calls.append("history")
+        return object()
+    def provider():
+        calls.append("provider")
+        return SimpleNamespace(dataset="EQUS.MINI")
+    monkeypatch.setattr(data,"load_local_history",history)
+    monkeypatch.setattr(databento_market_data,"DatabentoMarketDataProvider",provider)
+    class Executor:
+        def __init__(self, **kwargs):
+            self.kwargs=kwargs
+            self.evidence_paths={"journal":str(tmp_path/"scout-journal.sqlite3")}
+            assert kwargs["broker"].offline_broker_fixture
+            assert kwargs["local_symbols"] == ("DOCU",)
+            executors.append(self)
+        def preflight(self):
+            calls.append("preflight")
+            assert not self.kwargs["manual_authority"]()
+            return {"ready":True,"authenticated":True,"protocol_compatible":True,
+                    "participant_id":"pc-new","stream":"scout-15m",
+                    "session_id":self.kwargs["session_id"],"protocol":"offline-fixture-v1",**(proof_changes or {})}
+        def step(self, value):
+            calls.append("step")
+            assert value["pc"] == "Scout"
+            assert self.kwargs["manual_authority"]()
+            return {"kind":"execution_disposition","disposition":"no_purchasing_capacity","evidence":{}}
+        def recover(self):
+            calls.append("recover")
+    monkeypatch.setitem(sys.modules,"ml.intraday.scout_execution",SimpleNamespace(ScoutAccountExecutor=Executor))
+    class InlineThread:
+        def __init__(self,*,target,**kwargs):
+            self.target=target
+        def start(self):
+            self.target()
+        def is_alive(self):
+            return False
+        def join(self,**kwargs):
+            pass
+    monkeypatch.setattr(live_session.threading,"Thread",InlineThread)
+    def publish(runner,**kwargs):
+        calls.append("forecast")
+        queue=kwargs["queue"]
+        assert queue.pc == "Scout"
+        saved=runner.store.save_forecast(forecast(mode="live",pc="Scout",symbol="DOCU",cycle_id=queue.session_id))
+        queue.enqueue(saved)
+    def score(*args,**kwargs):
+        calls.append("scoring")
+        assert kwargs["pc"] == "Scout"
+    monkeypatch.setattr(live_session,"forecasting_loop",publish)
+    monkeypatch.setattr(live_session,"scoring_loop",score)
+    def stop(seconds):
+        raise KeyboardInterrupt()
+    return dict(repository=tmp_path,datastore=tmp_path,profile=tmp_path/"profile.json",
+        watchlist=tmp_path/"watchlist.txt",config=live_session.ResearchConfig(),
+        clock=lambda:"2026-10-08T17:17:00Z",sleep=stop),calls,executors
+
+
+def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path,monkeypatch,capsys):
+    kwargs,calls,executors=scout_manual_fixture(tmp_path,monkeypatch)
+    result=live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED" and result["session_id"].startswith("manual-scout-15m:")
+    assert calls[:3] == ["preflight","history","provider"]
+    assert calls[3:] == ["forecast","scoring","step","recover"]
+    assert not executors[0].kwargs["manual_authority"]()
+    status=json.loads((tmp_path/"intraday/manual-session.json").read_text())
+    assert status["pc"] == "Scout" and status["process_create_time"] > 0
+    assert status["broker_orders_automatically_cancelled"] is False
+    assert status["stop_reason"] == "manual_stop"
+    assert status["evidence_paths"]["executor_journal"] == str(tmp_path/"scout-journal.sqlite3")
+    session_root=tmp_path/"intraday/sessions"/result["session_id"].replace(":","-")
+    assert json.loads((session_root/"status.json").read_text()) == status
+    logs=[json.loads(line) for line in (session_root/"events.jsonl").read_text().splitlines()]
+    assert [row["status"] for row in logs if row["event"] == "session_status"] == ["STARTING","RUNNING","STOPPING","STOPPED"]
+    assert {row["event"] for row in logs} >= {"authority_ready","forecast_published","execution_disposition"}
+    assert all(row["session_id"] == result["session_id"] and row["pc"] == "Scout" for row in logs)
+    assert "Scout 15m manual session running" in capsys.readouterr().out
+    prior_bytes=(session_root/"status.json").read_bytes()
+    second=live_session.run_manual(**kwargs)
+    assert second["session_id"] != result["session_id"]
+    assert (session_root/"status.json").read_bytes() == prior_bytes
+
+
+@pytest.mark.parametrize("changes", [{"ready":False},{"authenticated":False},{"protocol_compatible":False},
+    {"participant_id":"pc-original"},{"stream":"gameplan"},{"session_id":"another-session"},
+    {"protocol":""},{"ready":1}])
+def test_scout_rejects_unbound_preflight_before_history_provider_or_training(tmp_path,monkeypatch,changes):
+    kwargs,calls,_=scout_manual_fixture(tmp_path,monkeypatch,proof_changes=changes)
+    with pytest.raises(ContractError,match="authenticated, protocol-compatible"):
+        live_session.run_manual(**kwargs)
+    assert calls == ["preflight"]
+    status=json.loads((tmp_path/"intraday/manual-session.json").read_text())
+    assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
+    assert status["broker_orders_automatically_cancelled"] is False
+    assert status["schema_version"] == live_session.SCOUT_VERSION
+
+
+def test_scout_protocol_exception_stays_startup_failure_without_fallback(tmp_path,monkeypatch):
+    kwargs,calls,executors=scout_manual_fixture(tmp_path,monkeypatch)
+    import sys
+    executor_type=sys.modules["ml.intraday.scout_execution"].ScoutAccountExecutor
+    def fail(self):
+        raise ConnectionError("authority unavailable fixture")
+    monkeypatch.setattr(executor_type,"preflight",fail)
+    with pytest.raises(ConnectionError,match="authority unavailable fixture"):
+        live_session.run_manual(**kwargs)
+    assert calls == []
+    status=json.loads((tmp_path/"intraday/manual-session.json").read_text())
+    assert status["status"] == "FAILED"
+    assert status["error_type"] == "ConnectionError"
+    assert not executors[0].kwargs["manual_authority"]()
