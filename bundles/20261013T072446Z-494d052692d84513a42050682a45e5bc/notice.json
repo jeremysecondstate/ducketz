@@ -1,0 +1,112 @@
+{
+  "action_date": "2026-10-13",
+  "ancestry": {
+    "disposition": "Correlate this shared repair and dependency composition with the existing request and producer ancestry. Retain the prior resolved Scout Stats repair and frozen output receipts; this notice creates no replacement request, repair claim or replay.",
+    "predecessor_scout_completion_record": "20261013T053359Z-76606b166fad496398fdc3ea3d8e1edb",
+    "predecessor_scout_source": "6fc33eae689e80074b97557bd2a8d2afd58110e5",
+    "related_request_id": "scout-prestats-source-transition-20261013",
+    "reviewed_scout_completion_record": "20261013T062349Z-32cc503081af428f99800f8458777bad",
+    "reviewed_scout_source": "ed3c752872d7b40e5bb3ea3b56650b29e58f568b"
+  },
+  "author": "Atlas",
+  "change_id": "20261013T070830Z-35ad01561469433aad18142f73eef15d",
+  "changes": [
+    "Nightly planning reads the tagged 15m native ownership stream and exact sell-slice/fill attribution while retaining fail-closed checks and original ledger bytes.",
+    "Protected 15m stock remains outside Gameplan own-horizon, free-stock, expiry and fallback sales. Pending cash reservations remain protected, and the verified ownership stream is preserved in the existing private snapshot export.",
+    "The repair composes independently reviewed Scout helper ed3c752872d7b40e5bb3ea3b56650b29e58f568b, preserving its independent-session lifetime lock and verified original reconstruction inventory protections.",
+    "The guarded repair scope permits the two exact existing planning readers. Ordinary source-repair prepare/apply holds all three execution-session lifetime locks through the installation boundary, closing the manual-start race while preserving supported live-safe orchestration."
+  ],
+  "completion_record": "20261013T070830Z-35ad01561469433aad18142f73eef15d",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_snapshot.py",
+      "sha256": "23c61fe70eedb953fe172aa4d3853a358f4308c576373f25c2ed5fb34520ec33"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py",
+      "sha256": "c2109fae8772434121f4782c838a597ff84e6829b534c5a4c9fcf95a83d1b473"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_intraday_ownership.py",
+      "sha256": "d6b5f6aaa746b387dbbbf65c4c0367276fb67d9645d53d291aa94760fcac5c44"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/nightly_account_snapshot.py",
+      "sha256": "3b9d9fb44a6c1c2f498d9c337935b7de247cc99f8d336ff3680a5a33bfdef1f7"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "9008460f746d53eb1e602ec24c592bb70003ecb8a7a9f6b8b7f015f26c62bc65"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_stage_repair.py",
+      "sha256": "7355f45088db5f916422021c7f73884bb0795dbbd68de73df45ed42e69346a23"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_stage_repair.py",
+      "sha256": "05ab6a1c9ccd86d41895ea9b9c6ee4484b7936dd48616b593c2fafafca0bf8a2"
+    }
+  ],
+  "installation": {
+    "atlas": "SOURCE_REPAIR_APPLIED at 2026-10-13T07:23:46.406340Z; all five production file hashes read back exactly. Same original claim and completion record, preserved model review and completed stages, no invalidation.",
+    "scout": "Pending reviewed guarded adoption; no Scout installation is asserted."
+  },
+  "limitations": [
+    "The optional legacy multi-producer ownership-envelope path remains fail-closed for 15m; the current sole-coordinator native nightly path is covered.",
+    "Offline corrected replay uses saved failure evidence and a read-only ledger; it does not establish fresh broker readiness.",
+    "Publication, main integration, local installation, peer adoption and loaded runtime are separate facts.",
+    "Existing unrelated publication-base dependency differences are preserved and require the publication candidate's own checks."
+  ],
+  "owner": "atlas-priority-source-reconciliation",
+  "peer_applicability": {
+    "applies_to": [
+      "Atlas local Gameplan preparation",
+      "Scout combined Gameplan synthesis"
+    ],
+    "required_adoption": "Before joint synthesis accepts Atlas exported 15m ownership, Scout must review and adopt the shared protected-15m cash-ledger behavior and required dependency closure through its existing guarded adoption owner.",
+    "scope_boundary": "Protected ownership handling only; no expansion of 15m forecasts or authority to write ledgers, change controls or operate a trader.",
+    "verification": "Use the exact published source and dependency fingerprints, reconcile retained local changes, run relevant combined offline checks and verify installed bytes. Preserve existing frozen preparation, completed outputs, recovery identity and deadlines."
+  },
+  "publication": {
+    "integration_status": "No main integration asserted.",
+    "remote_sha": "cb13f0107198f8b81df1bae2cd14016ce786d9e6",
+    "remote_sha_verified": true,
+    "status": "PUBLISHED_REMOTE_SHA_VERIFIED"
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/89",
+  "repair_id": "atlas-local-gameplan-ownership-20261013-v1",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base_commit": "53aea68a29ebb136faa4378e89261109100652e3",
+  "runtime": {
+    "required_verification": "After supported installation, the retained owner continues the same dated ordinary preparation and verifies saved output, then the existing handoff owners verify exact combined Gameplan/Stats receipts and default readers.",
+    "status": "Ordinary installed-application Gameplan resume launched at 2026-10-13T07:24:04Z; resumed saved-result success and combined readiness are still pending."
+  },
+  "runtime_implications": "Requires separate exact-source guarded installation and ordinary dated continuation under the retained Atlas repair identity. Preserve completed model outputs, deadlines, ownership locks, original ledgers and manual trader controls. Scout's protected-15m cash-ledger adoption is required before joint synthesis accepts the exported ownership. This source handoff supplies no order, provider, ledger-write or runtime-control authority.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261013T070830Z-35ad01561469433aad18142f73eef15d",
+  "source_commit": "cb13f0107198f8b81df1bae2cd14016ce786d9e6",
+  "summary": "Preserve protected 15m ownership in nightly Gameplan planning and joint synthesis",
+  "task": "Atlas Priority Source Reconciliation",
+  "tests": {
+    "evidence_scope": "Synthetic offline cases and read-only replay of saved failure evidence; no broker/provider readiness is established.",
+    "final_source_checks": "753 passing offline tests on the sealed final repair candidate, including protected ownership, planning, private snapshot export, joint interoperation, source-transition reconstruction and session-start race regressions.",
+    "independent_review": "Whole owned diff and dependency closure reviewed; exact seven owned source hashes retained above.",
+    "offline_tests_passed": 753,
+    "publication_candidate_checks": {
+      "completed_at_utc": "2026-10-13T07:22:02.138696Z",
+      "exit_code": 0,
+      "output_sha256": "94918c2ea130f31f937648e8a0b9ea0588f4937b4d364ce5dd5514237ef2b70a",
+      "started_at_utc": "2026-10-13T07:17:27.839295Z",
+      "tests_passed": 753
+    },
+    "queue_dependency_paths": 776,
+    "superseded_evidence": "The earlier 744-test checkpoint is retained historically and is superseded by the final 753-test evidence."
+  }
+}

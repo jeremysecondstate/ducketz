@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-13T07:24:46.691527Z",
+  "id": "20261013T072446Z-494d052692d84513a42050682a45e5bc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Preserve protected 15m ownership in nightly Gameplan planning and joint synthesis"
+}
