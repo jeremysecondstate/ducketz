@@ -61,7 +61,9 @@ def configured(tmp_path, monkeypatch):
     root = tmp_path / "data"
     root.mkdir()
     monkeypatch.setattr("ml.nightly_workflow.utc_timestamp", lambda value=None: NOW if value is None else pd.Timestamp(value))
+    # These fixtures exercise historical bounded recovery; continuation opts in explicitly.
     return {"actor": "Scout", "repository": str(repo), "datastore": str(root),
+            "continue_until_complete": False,
             "state_root": str(tmp_path / "state"), "local_profile": str(profile)}
 
 
@@ -113,16 +115,41 @@ def test_failure_resumes_completed_steps_without_renewing_deadline(configured):
     assert resumed["steps"]["prepare_stats"] == before["steps"]["prepare_stats"]
 
 
-def test_retry_cannot_rewrite_expired_recovery(configured, monkeypatch):
-    with pytest.raises(RuntimeError):
-        run(configured, lambda *args: (_ for _ in ()).throw(RuntimeError("failed")))
-    path = Path(configured["state_root"]) / "runs/2026-10-09/recovery.json"
+def test_retry_continues_expired_recovery_without_rewriting_evidence(configured, monkeypatch):
+    # Preserve a historical bounded attempt, then apply standing continuation.
+    configured["continue_until_complete"] = False
+    def interrupted(config, state, step, save):
+        if step == "model_review":
+            raise RuntimeError("interrupted preparation")
+        return {"files": {}}
+    with pytest.raises(RuntimeError, match="interrupted preparation"):
+        run(configured, interrupted)
+    directory = Path(configured["state_root"]) / "runs/2026-10-09"
+    path = directory / "recovery.json"
     before = path.read_bytes()
+    saved = json.loads((directory / "state.json").read_text())
+    completed = {step: entry for step, entry in saved["steps"].items()
+                 if entry["status"] == "COMPLETE"}
+    assert completed
     later = NOW + pd.Timedelta(hours=8)
+    assert later > pd.Timestamp(saved["effective_deadline_at"])
     monkeypatch.setattr("ml.nightly_workflow.utc_timestamp", lambda value=None: later if value is None else pd.Timestamp(value))
-    with pytest.raises(ValueError, match="expired"):
-        run_workflow(configured, now=later, catch_up=True, recovery_reason="retry",
-                     identity=identity, supervise=False, execute_step=lambda *args: pytest.fail("Expired run launched"))
+    configured["continue_until_complete"] = True
+    calls = []
+    def finish(config, state, step, save):
+        assert step not in completed
+        calls.append(step)
+        return {"files": {}}
+    resumed = run_workflow(configured, now=later, resume_action_date="2026-10-09",
+                           identity=identity, supervise=False, execute_step=finish)
+    assert resumed["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert calls == [step for step in STEPS if step not in completed]
+    assert resumed["run_id"] == saved["run_id"]
+    assert resumed["action_date"] == saved["action_date"] == "2026-10-09"
+    assert resumed["deadline_at"] == saved["deadline_at"]
+    assert resumed["effective_deadline_at"] == saved["effective_deadline_at"]
+    assert resumed["recovery"] == saved["recovery"]
+    assert {step: resumed["steps"][step] for step in completed} == completed
     assert path.read_bytes() == before
 
 

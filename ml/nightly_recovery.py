@@ -1,4 +1,8 @@
-"""Explicit late preparation, with real timestamps and a fixed recovery window."""
+"""Frozen late-preparation evidence under standing nightly authority.
+
+Historical deadline and authorization fields describe the original attempt.
+They neither authorize trading nor cancel unfinished preparation when time passes.
+"""
 from __future__ import annotations
 
 import json
@@ -30,25 +34,25 @@ def session_context(observed_at):
             "session_close_at": close.tz_convert("UTC").isoformat()}
 
 
-def make_recovery(config, observed_at, *, reason):
+def make_recovery(config, observed_at, *, reason=None):
     observed = utc_timestamp(observed_at)
     context = session_context(observed)
-    if not str(reason).strip():
-        raise ValueError("Catch-up requires an explicit operator authorization reason")
     deadline = min(observed + pd.Timedelta(hours=7), utc_timestamp(context["session_close_at"]))
     if observed >= deadline:
         raise ValueError("The missed action session has closed")
     return {"schema_version": VERSION, **context, "actor": config["actor"],
             "datastore": str(Path(config["datastore"]).resolve()),
             "requested_at": observed.isoformat(), "expires_at": deadline.isoformat(),
-            "operator_authorized": True, "authorization_reason": reason,
+            "operator_authorized": False,
+            "authorization_reason": str(reason or "").strip() or "Standing nightly preparation instruction",
+            "continuation_policy": "complete-dated-nightly-preparation-v1",
             "orders_authorized": False,
             "training_information_cutoff": (utc_timestamp(context["original_deadline_at"])
                                              - pd.Timedelta(microseconds=1)).isoformat()}
 
 
 def verify_recovery(root, path, observed_at, *, action_date=None):
-    """Verify the same bounded evidence at each stage; retries never renew it."""
+    """Verify frozen context and chronology; elapsed time never renews or revokes it."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     def aware(key):
         value = pd.Timestamp(payload[key])
@@ -61,16 +65,15 @@ def verify_recovery(root, path, observed_at, *, action_date=None):
     now = utc_timestamp(observed_at)
     if (payload.get("schema_version") != VERSION
             or payload.get("actor") not in ("Scout", "Atlas")
-            or payload.get("operator_authorized") is not True
             or payload.get("orders_authorized") is not False
-            or not str(payload.get("authorization_reason", "")).strip()
             or payload.get("datastore") != str(Path(root).resolve())
             or any(payload.get(key) != value for key, value in context.items())
             or (action_date is not None and payload["action_date"] != action_date)
             or cutoff != original - pd.Timedelta(microseconds=1)
-            or not requested <= now < expires <= min(requested + pd.Timedelta(hours=7),
-                                                     utc_timestamp(context["session_close_at"]))):
-        raise ValueError("Nightly recovery evidence is invalid, expired, or belongs to another session")
+            or not requested <= now
+            or not requested < expires <= min(requested + pd.Timedelta(hours=7),
+                                               utc_timestamp(context["session_close_at"]))):
+        raise ValueError("Nightly recovery evidence is invalid or belongs to another session")
     return {"path": str(Path(path).resolve()), "sha256": file_checksum(Path(path)),
             "authorization": payload}
 

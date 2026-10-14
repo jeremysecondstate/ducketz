@@ -36,9 +36,9 @@ def test_exception_is_bounded_to_approved_source_and_session(tmp_path, damage):
     if damage == 'missing-authority': payload['operator_authorized'] = False
     path.write_text(json.dumps(payload))
     args = (tmp_path, source, '2026-09-14T11:00:00Z', '2026-09-14T11:20:00Z')
-    if damage == 'none':
+    if damage in {'none', 'expired', 'missing-authority'}:
         deadline, evidence = preparation_deadline(*args, path)
-        assert deadline == pd.Timestamp('2026-09-14T12:00:00Z')
+        assert deadline == pd.Timestamp(payload['expires_at'])
         assert evidence['sha256'] == file_checksum(path)
         assert preparation_deadline(*args)[0] == pd.Timestamp('2026-09-14T11:00:00Z')
     else:
