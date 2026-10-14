@@ -185,27 +185,26 @@ def _native_outputs(run: Path) -> dict:
 
 @contextmanager
 def _supervision(root: Path):
-    from ml.overnight_runtime import claim_supervision, overnight_status, request_stage_stop
+    from ml.overnight_runtime import claim_supervision
     token = str(uuid.uuid4())
-    if claim_supervision(root, token)["status"] != "ACQUIRED":
-        raise RuntimeError("Another operator owns overnight supervision")
     stopped, lost = threading.Event(), threading.Event()
+    try:
+        if claim_supervision(root, token)["status"] != "ACQUIRED":
+            lost.set()
+    except Exception:
+        lost.set()
 
     def renew():
         while not stopped.wait(30):
             try:
                 if claim_supervision(root, token)["status"] == "ACQUIRED":
+                    lost.clear()
                     continue
             except Exception:
                 pass
             lost.set()
-            try:
-                status = overnight_status(root)
-                if status.get("owner_pid") == os.getpid() and status.get("status") == "RUNNING":
-                    request_stage_stop(root, Path(status["run_path"]), "Workflow supervision lease lost")
-            except Exception:
-                pass
-            return
+            # The exclusive runtime lock retains this worker's ownership.
+            # Retry this advisory lease without cancelling useful preparation.
 
     thread = threading.Thread(target=renew, name="nightly-supervision", daemon=True)
     thread.start()
@@ -214,7 +213,10 @@ def _supervision(root: Path):
     finally:
         stopped.set()
         thread.join(timeout=5)
-        claim_supervision(root, token, release=True)
+        try:
+            claim_supervision(root, token, release=True)
+        except Exception:
+            lost.set()
 
 
 def _run_native(config: dict, state: dict, step: str, save) -> dict:
@@ -228,10 +230,14 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         archive_history=config.get("archive_history", True), stats_first=True,
         probability_target_contract=_intended_probability_target(config),
         review_action_date=state["source_session"])
-    if state.get("recovery") and not state.get("planning_tail_continuation"):
+    continuing = config.get("continue_until_complete", True) is True
+    if continuing:
+        arguments["deadline"] = state["deadline_at"]
+        arguments["continuation_action_date"] = state["action_date"]
+    if not continuing and state.get("recovery") and not state.get("planning_tail_continuation"):
         arguments["recovery_spec"] = Path(state["recovery"]["path"])
         arguments["deadline"] = state["deadline_at"]
-    if state.get("scheduled_recovery") and not state.get("planning_tail_continuation"):
+    if not continuing and state.get("scheduled_recovery") and not state.get("planning_tail_continuation"):
         arguments["workflow_recovery"] = Path(state["scheduled_recovery"]["path"])
         arguments["deadline"] = state["deadline_at"]
     if step in ("train_and_plan", "local_gameplan"):
@@ -244,9 +250,9 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
             if not pinned or pinned.get("action_date") != state["action_date"]:
                 raise ValueError("Planning requires this workflow's accepted prediction publication")
             arguments["pinned_gameplan"] = pinned
-        if state.get("planning_tail_continuation"):
+        if not continuing and state.get("planning_tail_continuation"):
             arguments["deadline_exception"] = Path(state["planning_tail_continuation"]["path"])
-        if state.get("recovery_deadline_at"):
+        if not continuing and state.get("recovery_deadline_at"):
             arguments["late_action_date"] = state["action_date"]
     if previous:
         run = Path(previous)
@@ -326,8 +332,9 @@ def run_reviewer(config: dict, feedback: Path, deadline: str) -> dict:
         'model_reasoning_effort="' + config["reviewer"]["reasoning_effort"] + '"',
         "--output-schema", str(feedback / "review-schema.json"),
         "--output-last-message", str(answer), "--json", "-"]
-    timeout = min(config["reviewer"].get("timeout_seconds", 1800),
-                  (utc_timestamp(deadline) - utc_timestamp()).total_seconds())
+    timeout = config["reviewer"].get("timeout_seconds", 1800)
+    if config.get("continue_until_complete", True) is not True:
+        timeout = min(timeout, (utc_timestamp(deadline) - utc_timestamp()).total_seconds())
     if timeout <= 0:
         raise TimeoutError("Original preparation deadline reached before model review")
     with (feedback / (answer.stem + ".jsonl")).open("wb") as log:
@@ -735,7 +742,8 @@ def _repository_repair_gate(config, state, owner):
 def run_workflow(config: dict, *, resume_action_date: str | None = None,
                  recover_action_date: str | None = None, recovery_deadline=None, now=None,
                  execute_step=None, identity=None, supervise=True, planning_tail_exception=None,
-                 responsibility=None, catch_up=False, recovery_reason: str | None = None) -> dict:
+                 responsibility=None, catch_up=False, recovery_reason: str | None = None,
+                 human_resume_source: str | None = None) -> dict:
     from ml.overnight_runtime import scheduled_session_eligibility, next_action_deadline
     root, repository, state_root = map(Path, (config["datastore"], config["repository"], config["state_root"]))
     state_root.mkdir(parents=True, exist_ok=True)
@@ -749,6 +757,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
     if responsibility is not None and responsibility not in RESPONSIBILITIES:
         raise ValueError("Unknown nightly responsibility")
     explicit_catch_up = catch_up and recovery_reason is not None
+    continuing = config.get("continue_until_complete", True) is True
     if recovery_reason is not None and not catch_up:
         raise ValueError("An explicit recovery reason requires catch-up")
     if explicit_catch_up:
@@ -765,7 +774,8 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
         raise ValueError("A planning continuation requires the existing recovery action date")
     with FileLock(str(state_root / "workflow.lock"), timeout=0):
         if catch_up:
-            selection = intended_session(observed)
+            from ml.nightly_dispatch import continuation_session
+            selection = continuation_session(config, observed) if continuing else intended_session(observed)
             path = state_root / "runs" / selection["action_date"] / "state.json"
             if not selection["eligible"]:
                 return {"status": "WAITING_KICKOFF", **selection}
@@ -857,7 +867,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     _verify_outputs(completed["output"])
             if state["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING":
                 return state
-            if explicit_catch_up and observed >= utc_timestamp(state["deadline_at"]) and not state.get("recovery"):
+            if not continuing and explicit_catch_up and observed >= utc_timestamp(state["deadline_at"]) and not state.get("recovery"):
                 from ml.nightly_recovery import make_recovery, verify_recovery
                 evidence_path = path.parent / "recovery.json"
                 if not evidence_path.exists():
@@ -876,7 +886,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                 blocked = retry_disposition(config, state, observed)
                 if blocked:
                     return {"status": blocked, "action_date": state["action_date"], "failure": state["failure"]}
-                if observed >= utc_timestamp(state["deadline_at"]) and not state.get("recovery_deadline_at") and not state.get("recovery"):
+                if not continuing and observed >= utc_timestamp(state["deadline_at"]) and not state.get("recovery_deadline_at") and not state.get("recovery"):
                     # Seal interrupted native evidence before binding recovery.
                     from ml.overnight_runtime import recover_interrupted_run
                     for entry in state["steps"].values():
@@ -892,10 +902,14 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     state.update(scheduled_recovery=evidence, recovery_started_at=record["approved_at"],
                         recovery_deadline_at=record["expires_at"], recovery_reason=record["authorization"])
                     save()
-            cutoff = _planning_tail_continuation(config, state, planning_tail_exception, observed)
-            _verify_saved_recovery(config, state, observed, continuation=bool(state.get("planning_tail_continuation")))
-            if observed >= cutoff:
-                raise TimeoutError("Original nightly preparation deadline reached")
+            if continuing:
+                _verify_saved_recovery(config, state, observed, continuation=True)
+                state["continuation_policy"] = "complete-dated-nightly-preparation-v1"
+            else:
+                cutoff = _planning_tail_continuation(config, state, planning_tail_exception, observed)
+                _verify_saved_recovery(config, state, observed, continuation=bool(state.get("planning_tail_continuation")))
+                if observed >= cutoff:
+                    raise TimeoutError("Original nightly preparation deadline reached")
             state.update(status="RUNNING", owner_pid=os.getpid())
             state.pop("error", None)
             state.pop("failed_at", None)
@@ -917,7 +931,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                         return state
                     state["current_step"] = step
                     if lost.is_set():
-                        raise RuntimeError("Overnight supervision ownership was lost")
+                        state["supervision_status"] = "LEASE_RENEWAL_RETRY"
                     _verify_symbol_binding(config, state)
                     _verify_configuration_binding(config, state)
                     entry.setdefault("started_at", utc_timestamp().isoformat())
@@ -933,17 +947,21 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                         state["failure"].update(disposition="RESOLVED", resolved_at=utc_timestamp().isoformat())
                     save()
                 if lost.is_set():
-                    raise RuntimeError("Overnight supervision ownership was lost")
+                    state["supervision_status"] = "LEASE_RENEWAL_RETRY"
                 _verify_symbol_binding(config, state)
                 _verify_configuration_binding(config, state)
+            if lost.is_set():
+                state["supervision_status"] = "LEASE_RENEWAL_OR_RELEASE_RETRY"
             state.update(status="LOCAL_COMPLETE_PEER_SETUP_PENDING", current_step=None, owner_pid=None,
                 completed_at=utc_timestamp().isoformat(), joint_ready=False,
                 joint_status="Local preparation complete; cross-PC enablement pending; no communication or synthesis attempted")
             save()
             return state
         except BaseException as error:
+            from ml.overnight_runtime import HumanRequestedStop
             failure = ("TIMED_OUT" if isinstance(error, TimeoutError) else
-                       "CANCELLED" if isinstance(error, (InterruptedError, KeyboardInterrupt, SystemExit)) else "FAILED")
+                       "CANCELLED" if isinstance(error, HumanRequestedStop) else
+                       "INTERRUPTED" if isinstance(error, (InterruptedError, KeyboardInterrupt, SystemExit)) else "FAILED")
             message = f"{type(error).__name__}: {error}"
             failed_at = observed + pd.Timedelta(microseconds=int(max(0, monotonic() - started_tick) * 1_000_000))
             state.update(status=failure, error=message, failed_at=failed_at.isoformat(), owner_pid=None)
@@ -982,7 +1000,9 @@ def dispatch_status(config, *, now=None):
     """Read-only dispatch decision; expensive jobs run only after prerequisites."""
     from ml.nightly_dispatch import intended_session, next_responsibility, TERMINAL, authority, retry_disposition
     authority(config)
-    selection = intended_session(now)
+    from ml.nightly_dispatch import continuation_session
+    continuing = config.get("continue_until_complete", True) is True
+    selection = continuation_session(config, now) if continuing else intended_session(now)
     current = status(config, action_date=selection["action_date"])
     result = {**selection, "actor": config["actor"], "status": current["status"]}
     root = Path(config["state_root"])
@@ -1000,10 +1020,10 @@ def dispatch_status(config, *, now=None):
     if blocked:
         return {**result, "status": blocked, "dispatch": False, "failure": current["failure"]}
     cutoff = current.get("effective_deadline_at", current.get("recovery_deadline_at"))
-    if current.get("planning_tail_continuation"):
+    if not continuing and current.get("planning_tail_continuation"):
         cutoff = _planning_tail_continuation(config, current, None, utc_timestamp(now))
         _verify_saved_recovery(config, current, utc_timestamp(now), continuation=True)
-    if cutoff and utc_timestamp(now) >= utc_timestamp(cutoff):
+    if not continuing and cutoff and utc_timestamp(now) >= utc_timestamp(cutoff):
         return {**result, "status": "RECOVERY_EXPIRED", "dispatch": False,
                 "reason": "Retain the fixed cutoff; reviewed planning-tail continuation or human input is required"}
     owner = next_responsibility(current) if current["status"] != "NOT_STARTED" else "datastore"
@@ -1027,6 +1047,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--resume-action-date")
+    parser.add_argument("--human-resume-source", help="Reference to Jeremy's explicit instruction to resume a stopped night")
     parser.add_argument("--recover-action-date", help="Explicit operator recovery of today's missing nightly run")
     parser.add_argument("--recovery-deadline", help="Fixed zoned deadline for an explicitly requested recovery")
     parser.add_argument("--planning-tail-exception", type=Path, help="Explicit source-bound continuation record for a failed recovery tail")
@@ -1088,6 +1109,8 @@ def main(argv=None) -> int:
                 command += ["--recovery-reason", args.recovery_reason]
             if args.resume_action_date:
                 command += ["--resume-action-date", args.resume_action_date]
+            if args.human_resume_source:
+                command += ["--human-resume-source", args.human_resume_source]
             if args.planning_tail_exception:
                 command += ["--planning-tail-exception", str(args.planning_tail_exception.resolve())]
             if args.recover_action_date:
@@ -1105,6 +1128,7 @@ def main(argv=None) -> int:
                                   recover_action_date=args.recover_action_date,
                                   recovery_deadline=args.recovery_deadline,
                                   planning_tail_exception=args.planning_tail_exception,
+                                  human_resume_source=args.human_resume_source,
                                   responsibility=args.responsibility, catch_up=args.catch_up, recovery_reason=args.recovery_reason)
         print(json.dumps(result, indent=2, default=str))
         return 0

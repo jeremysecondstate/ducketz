@@ -78,7 +78,7 @@ def test_workflow_passes_late_mode_only_for_recovery(tmp_path, monkeypatch):
     monkeypatch.setattr(runtime, "run_overnight_pipeline", lambda *args, **kwargs: calls.append(kwargs) or tmp_path)
     monkeypatch.setattr(workflow, "_native_outputs", lambda *args: {"files": {}})
     monkeypatch.setattr(workflow, "_intended_probability_target", lambda *args: "raw-price-direction-v1")
-    config = {"datastore": str(tmp_path), "repository": str(tmp_path)}
+    config = {"datastore": str(tmp_path), "repository": str(tmp_path), "continue_until_complete": False}
     state = {"deadline_at": "2026-10-09T11:00Z", "recovery_deadline_at": "2026-10-09T19:00Z",
         "action_date": "2026-10-09", "source_session": "2026-10-08", "steps": {
             "train_and_plan": {}, "model_review": {"output": {"proposal": str(tmp_path / "proposal.json")}}}}
