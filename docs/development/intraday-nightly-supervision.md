@@ -79,13 +79,28 @@ An installation receipt is separate from source publication or a running
 process's loaded version.
 
 The manual trader entrypoint enables supervised settings. Each new live cycle
-freezes its selected specifications and hash, then refits on current causal
-data. Recovery uses that cycle's original frozen selection. A new policy affects
+freezes its selected specifications, active-policy identity and evaluated
+synthetic-label/history-window scope before constructing its causal dataset.
+The active policy carries only these scope fields from the frozen assessment
+manifest. Historical v1 policies without them retain their actual evaluated
+scope: synthetic labels excluded, with all available history. Symbols without
+a qualified policy retain the explicit configured defaults.
+
+Recovery uses that cycle's original frozen selection and dataset scope. Existing
+cycles from before scope binding retain their saved configuration for unfinished
+symbols, and existing input snapshots retain their actual bytes and population.
+Recorded dataset scope describes the actual snapshot. A new policy affects
 subsequent cycles in a process that has loaded this implementation. Existing
 historical/research runs retain their explicit configuration. Missing qualified
 policies retain the configured defaults; a corrupt or incompatible policy is
 an explicit error. No stale fitted model or fabricated probability substitutes
 for a failed fit.
+
+Research and supervision membership comes only from this PC's installed
+profile and its pinned watchlist, in profile order. Other traders' account
+configuration is not read and cannot block this independent workflow. Scout
+retains its existing supervisor entrypoint, per-symbol policy store and native
+task; incoming source does not register another supervisor or change its state.
 
 The prior-session review reads only this PC's saved live forecasts, observed
 outcome revisions and latest execution projections. It records missing outcomes,

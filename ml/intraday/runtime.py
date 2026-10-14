@@ -50,9 +50,8 @@ class ResearchConfig:
 def local_symbols(profile_path, watchlist_path, datastore):
     """Validate research membership without creating or activating trading state.
 
-    An installed profile and its exact local watchlist bind research on a PC
-    that has no account Gameplan configuration. If account configuration exists,
-    it must also agree; invalid or conflicting account state never falls back.
+    Only the installed local profile and its exact watchlist bind research.
+    Other trader configuration is outside this runtime.
     """
     profile = json.loads(Path(profile_path).read_text(encoding="utf-8"))
     watch = tuple(x.strip() for x in Path(watchlist_path).read_text(encoding="utf-8").splitlines()
@@ -64,17 +63,9 @@ def local_symbols(profile_path, watchlist_path, datastore):
             not symbols or len(set(symbols)) != len(symbols) or
             not watch or len(set(watch)) != len(watch) or set(watch) != set(symbols)):
         raise ContractError("Local profile and watchlist research membership disagree")
-    binding_path = Path(datastore) / "state/account-gameplan/config.json"
-    if not binding_path.exists():
-        pinned_watchlist = profile.get("symbol_profile_path")
-        if not pinned_watchlist or Path(pinned_watchlist).resolve() != Path(watchlist_path).resolve():
-            raise ContractError("Research requires the installed profile's exact local watchlist")
-        return profile["actor"], symbols
-    binding = json.loads(binding_path.read_text(encoding="utf-8"))
-    symbols = tuple(binding["participants"][machine])
-    if (binding["machine_id"] != machine or len(set(symbols)) != len(symbols) or
-            set(watch) != set(symbols) or set(profile["symbols"]) != set(symbols)):
-        raise ContractError("Local profile, watchlist and existing ownership disagree")
+    pinned_watchlist = profile.get("symbol_profile_path")
+    if not pinned_watchlist or Path(pinned_watchlist).resolve() != Path(watchlist_path).resolve():
+        raise ContractError("Research requires the installed profile's exact local watchlist")
     return profile["actor"], symbols
 
 
@@ -152,25 +143,59 @@ def recorded_symbol_failures(store, cycle_id):
     return {symbol:json.loads(payload) for symbol,payload in rows}
 
 
-def _supervised_cycle_policy(store, cycle_id, *, pc, symbols):
-    """Resolve once per live cycle; a retry retains the original selected specs."""
+def _dataset_scope(value):
+    if not isinstance(value, dict) or not {"synthetic_policy", "lookback_days"} <= value.keys():
+        raise ContractError("Frozen dataset scope is invalid")
+    scope = {"synthetic_policy": value.get("synthetic_policy"), "lookback_days": value.get("lookback_days")}
+    if (not isinstance(scope["synthetic_policy"], str) or scope["synthetic_policy"] not in {"include", "exclude"} or
+            scope["lookback_days"] is not None and
+            (type(scope["lookback_days"]) is not int or scope["lookback_days"] <= 0)):
+        raise ContractError("Frozen dataset scope is invalid")
+    return scope
+
+
+def _frozen_supervised_policy(saved, *, symbols):
+    policy = saved.get("supervised_model_policy")
+    if not isinstance(policy, dict):
+        raise ContractError("Supervised cycle is missing its frozen model policy")
+    evidence = {key: value for key, value in policy.items() if key != "sha256"}
+    if digest(evidence) != policy.get("sha256"):
+        raise ContractError("Frozen supervised model policy hash changed")
+    if "dataset_scope_by_symbol" not in policy:
+        # A pre-scope cycle already used its original ResearchConfig population.
+        # Its unfinished symbols must use that same population, including when
+        # active legacy policies now derive a different scope for new cycles.
+        configuration = saved.get("configuration")
+        if not isinstance(configuration, dict):
+            raise ContractError("Legacy supervised cycle is missing its original dataset configuration")
+        scope = _dataset_scope(configuration)
+        return {**policy, "dataset_scope_by_symbol": {symbol: dict(scope) for symbol in symbols}}
+    if not isinstance(policy["dataset_scope_by_symbol"], dict):
+        raise ContractError("Frozen supervised cycle dataset scopes are invalid")
+    for symbol in symbols:
+        if symbol not in policy["dataset_scope_by_symbol"]:
+            raise ContractError("Frozen supervised cycle is missing a symbol dataset scope")
+        _dataset_scope(policy["dataset_scope_by_symbol"][symbol])
+    return policy
+
+
+def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration):
+    """Freeze selected specs, their policy identities and populations per cycle."""
     with store.connect() as db:
         row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
     if row:
-        policy = json.loads(row[0]).get("supervised_model_policy")
-        if not isinstance(policy, dict):
-            raise ContractError("Supervised cycle is missing its frozen model policy")
-        evidence = {key: value for key, value in policy.items() if key != "sha256"}
-        if digest(evidence) != policy.get("sha256"):
-            raise ContractError("Frozen supervised model policy hash changed")
-        return policy
+        return _frozen_supervised_policy(json.loads(row[0]), symbols=symbols)
     from .data import FEATURE_NAMES
-    from .model_policy import load_active_models
-    policy = {"pc": pc, "feature_names": list(FEATURE_NAMES), "models_by_symbol": {}}
+    from .model_policy import load_active_policy
+    policy = {"pc": pc, "feature_names": list(FEATURE_NAMES), "models_by_symbol": {},
+              "dataset_scope_by_symbol": {}, "policy_identities_by_symbol": {}}
+    default_scope = _dataset_scope(configuration)
     for symbol in symbols:
-        selected = load_active_models(store.path.parent / "supervision", pc=pc, symbol=symbol,
+        selected = load_active_policy(store.path.parent / "supervision", pc=pc, symbol=symbol,
                                       feature_names=FEATURE_NAMES)
-        policy["models_by_symbol"][symbol] = [asdict(spec) for spec in selected] if selected else None
+        policy["models_by_symbol"][symbol] = [asdict(spec) for spec in selected["models"]] if selected else None
+        policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(selected["dataset_scope"] if selected else default_scope)
+        policy["policy_identities_by_symbol"][symbol] = selected["sha256"] if selected else None
     policy["sha256"] = digest(policy)
     return policy
 
@@ -215,7 +240,8 @@ class ShadowRunner:
         configuration_hash = digest(configuration)
         cycle_id = digest(dict(pc=self.pc,reference_at=reference.isoformat(),configuration_hash=configuration_hash,
                                mode=mode,experiment=experiment))
-        supervised_policy = (_supervised_cycle_policy(self.store, cycle_id, pc=self.pc, symbols=self.symbols)
+        supervised_policy = (_supervised_cycle_policy(self.store, cycle_id, pc=self.pc, symbols=self.symbols,
+                                                     configuration=configuration)
                              if self.config.use_supervised_models and mode == "live" else None)
         initial = dict(pc=self.pc,symbols=list(self.symbols),reference_at=reference.isoformat(),mode=mode,
                        experiment=experiment,configuration_hash=configuration_hash,configuration=configuration,
@@ -227,7 +253,8 @@ class ShadowRunner:
                        overrun_policy="latest_completed_no_backlog_orders" if mode == "live" else
                                       "record_overrun_no_automatic_live_execution")
         saved = self.store.begin_cycle(cycle_id,initial)
-        supervised_policy = saved.get("supervised_model_policy")
+        supervised_policy = (_frozen_supervised_policy(saved, symbols=self.symbols)
+                             if supervised_policy is not None else None)
         existing = {symbol: self.store.forecast(cycle_id, symbol) for symbol in self.symbols}
         reused = {symbol: forecast for symbol, forecast in existing.items() if forecast is not None}
         selected = set(self.symbols if retry_symbols is None else retry_symbols)
@@ -334,8 +361,10 @@ class ShadowRunner:
                 cutoff=instant(self.clock())
             from .data import build_dataset
             builder=self.dataset_builder or build_dataset
+            scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
+                     else _dataset_scope(asdict(self.config)))
             dataset=builder(_frame(history),cutoff=cutoff,reference_at=reference,
-                            lookback_days=self.config.lookback_days,synthetic_policy=self.config.synthetic_policy)
+                            **scope)
             inference=_jsonable(dataset.inference)
             if mode in {"shadow", "live"} and inference.get("availability_kind")!="actual":
                 raise ContractError("Current shadow cycle requires actually observed reference availability")
@@ -344,6 +373,7 @@ class ShadowRunner:
                       "feature_names":list(dataset.feature_names),"label_available_at":_jsonable(dataset.label_available_at),
                       "reference_at":_jsonable(dataset.reference_at),"target_close_at":_jsonable(dataset.target_close_at),
                       "manifest":_jsonable(dataset.manifest),"cutoff":cutoff.isoformat(),
+                      "dataset_scope": dict(scope),
                       "source_manifest":_jsonable(getattr(history,"manifest",{}))}
             if supervised_policy is not None:
                 selected_specs = supervised_policy["models_by_symbol"][symbol]
@@ -351,6 +381,7 @@ class ShadowRunner:
                     raise ContractError("Selected model policy features differ from the current dataset")
                 snapshot["model_selection"] = {"models": selected_specs,
                     "policy_sha256": supervised_policy["sha256"],
+                    "active_policy_sha256": supervised_policy.get("policy_identities_by_symbol", {}).get(symbol),
                     "selection": "supervised" if selected_specs is not None else "configured_defaults"}
             # Retain the actual observations used, rather than only transformed features.
             frame=_frame(history)
@@ -359,6 +390,13 @@ class ShadowRunner:
             snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
         snapshot_hash,snapshot=frozen
+        # Immutable inputs and their actual manifest take precedence on retry,
+        # including snapshots created before dataset scope was recorded.
+        fallback_scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
+                          else _dataset_scope(asdict(self.config)))
+        dataset_scope = _dataset_scope({**fallback_scope, **snapshot.get("dataset_scope", {}),
+                                       **{key: snapshot["manifest"][key] for key in fallback_scope
+                                          if key in snapshot["manifest"]}})
         prep_seconds=time.perf_counter()-begun
         inf=snapshot["inference"]
         if instant(inf["reference_at"]) != reference:
@@ -382,7 +420,7 @@ class ShadowRunner:
                        label_available_at=snapshot["label_available_at"],feature_names=snapshot["feature_names"],
                        artifact_dir=self.artifact_root,run_id=f"{cycle_id[:16]}-{symbol}-{attempt}",
                        reference_at=snapshot["reference_at"],target_close_at=snapshot["target_close_at"],
-                       dataset_metadata={**snapshot["manifest"],
+                       dataset_metadata={**snapshot["manifest"], **dataset_scope, "dataset_scope": dataset_scope,
                            **({"model_selection": snapshot["model_selection"]} if "model_selection" in snapshot else {})})
         finished=instant(self.clock())
         self.store.event(cycle_id,"models_completed",{"attempt":attempt,"result":fitted},symbol=symbol)
@@ -407,7 +445,8 @@ class ShadowRunner:
                  "model_selection":snapshot.get("model_selection"),
                  "execution_blocked_reason":"recovered_older_cycle" if not allow_execution else
                      "issue_after_target" if issued>=reference+3*STEP else None,
-                 "synthetic_policy":self.config.synthetic_policy,"features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
+                 "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
+                 "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
         persistence_start=time.perf_counter()
         forecast=self.store.save_forecast(payload,intent=intent)

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -50,18 +50,22 @@ def test_research_membership_rejects_unbound_or_conflicting_scope(tmp_path, chan
     with pytest.raises(ContractError): local_symbols(profile, watch, tmp_path)
 
 
-def test_existing_account_membership_is_checked_without_research_fallback(tmp_path):
+def test_research_membership_is_independent_of_account_state_and_keeps_profile_order(tmp_path, monkeypatch):
     from ml.intraday.runtime import local_symbols
     profile, watch = research_binding(tmp_path)
     binding = tmp_path / "state/account-gameplan/config.json"
     binding.parent.mkdir(parents=True)
-    binding.write_text(json.dumps(dict(machine_id="pc-new", participants={"pc-new": ["AAA", "CCC"]})))
-    with pytest.raises(ContractError, match="ownership disagree"):
-        local_symbols(profile, watch, tmp_path)
-    binding.write_text(json.dumps(dict(machine_id="pc-new", participants={"pc-new": ["BBB", "AAA"]})))
+    saved = json.loads(profile.read_text())
+    saved["symbols"] = ["BBB", "AAA"]
+    profile.write_text(json.dumps(saved))
+    binding.write_text("invalid unrelated account json")
+    original_read = Path.read_text
+    def read(path, *args, **kwargs):
+        assert path != binding, "Independent membership must not read Gameplan account state"
+        return original_read(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", read)
     assert local_symbols(profile, watch, tmp_path) == ("Scout", ("BBB", "AAA"))
-    binding.write_text("invalid json")
-    with pytest.raises(ValueError): local_symbols(profile, watch, tmp_path)
+    assert binding.read_bytes() == b"invalid unrelated account json"
 
 
 @pytest.mark.parametrize("mode", [["--mode", "shadow"], ["--watch"]])
@@ -87,7 +91,7 @@ def dataset(frame,*,cutoff,reference_at,**kwargs):
 
 
 def trained(*args,config,**kwargs):
-    return dict(outputs=[dict(name=name,status="success",probability_not_down=.6,version="fixture",training_seconds=0,inference_seconds=0) for name in config],
+    return dict(outputs=[dict(name=getattr(name,"name",name),status="success",probability_not_down=.6,version="fixture",training_seconds=0,inference_seconds=0) for name in config],
                 configured_count=len(config),successful_count=len(config),complete=True,probability_not_down=.6,training_seconds=0,inference_seconds=0)
 
 
@@ -490,8 +494,9 @@ def test_live_supervised_specs_are_frozen_for_retry_and_new_cycle_adopts_latest(
     loads, fits = [], []
     def load(root, *, pc, symbol, feature_names):
         loads.append((root, pc, symbol, tuple(feature_names)))
-        return tuple(selected) if symbol == "AAPL" else None
-    monkeypatch.setattr(policy_module, "load_active_models", load)
+        return dict(models=tuple(selected), dataset_scope=dict(synthetic_policy="exclude", lookback_days=None),
+                    sha256=selected[0].name) if symbol == "AAPL" else None
+    monkeypatch.setattr(policy_module, "load_active_policy", load)
     fail_ionq = [True]
     def train(*args, config, run_id, **kwargs):
         fits.append((run_id, config, kwargs["dataset_metadata"]))
@@ -525,7 +530,7 @@ def test_live_supervised_specs_are_frozen_for_retry_and_new_cycle_adopts_latest(
 @pytest.mark.parametrize("mode", ["shadow", "historical_replay"])
 def test_supervised_adoption_is_limited_to_explicit_live_mode(tmp_path, monkeypatch, mode):
     import ml.intraday.model_policy as policy_module
-    monkeypatch.setattr(policy_module, "load_active_models", lambda *a, **k: pytest.fail("research adopted live policy"))
+    monkeypatch.setattr(policy_module, "load_active_policy", lambda *a, **k: pytest.fail("research adopted live policy"))
     r = runner(tmp_path, trainer=trained)
     r.config = replace(r.config, use_supervised_models=True)
     result = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode=mode)
@@ -538,13 +543,14 @@ def test_invalid_supervised_policy_and_mismatched_features_never_fit_defaults(tm
     from ml.intraday.models import ModelSpec
     def invalid(*args, **kwargs):
         raise ContractError("Active policy evidence is invalid")
-    monkeypatch.setattr(policy_module, "load_active_models", invalid)
+    monkeypatch.setattr(policy_module, "load_active_policy", invalid)
     r = runner(tmp_path, trainer=lambda *a, **k: pytest.fail("invalid policy triggered fitting"))
     r.config = replace(r.config, use_supervised_models=True)
     with pytest.raises(ContractError, match="policy evidence"):
         r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
-    monkeypatch.setattr(policy_module, "load_active_models", lambda *a, **k:
-                        (ModelSpec("qualified", family="logistic", probability_calibration="sigmoid"),))
+    monkeypatch.setattr(policy_module, "load_active_policy", lambda *a, **k: dict(
+        models=(ModelSpec("qualified", family="logistic", probability_calibration="sigmoid"),),
+        dataset_scope=dict(synthetic_policy="exclude", lookback_days=None), sha256="qualified"))
     result = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
     assert result["successful_symbols"] == 0 and not result["forecasts"]
     assert all("features differ" in failure["message"] for failure in result["failures"].values())
@@ -552,7 +558,7 @@ def test_invalid_supervised_policy_and_mismatched_features_never_fit_defaults(tm
 
 def test_supervised_cycle_detects_changed_frozen_policy(tmp_path, monkeypatch):
     import ml.intraday.model_policy as policy_module
-    monkeypatch.setattr(policy_module, "load_active_models", lambda *a, **k: None)
+    monkeypatch.setattr(policy_module, "load_active_policy", lambda *a, **k: None)
     r = runner(tmp_path, trainer=trained)
     r.config = replace(r.config, use_supervised_models=True)
     first = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
@@ -562,3 +568,199 @@ def test_supervised_cycle_detects_changed_frozen_policy(tmp_path, monkeypatch):
         db.execute("UPDATE cycles SET payload=? WHERE id=?", (json.dumps(row), first["cycle_id"]))
     with pytest.raises(ContractError, match="policy hash changed"):
         r.run_cycle({}, reference_at=REF, mode="live")
+
+
+def install_live_policy(tmp_path, symbol, *, feature_names=("x",), synthetic_policy="exclude", lookback_days=None,
+                        legacy=False):
+    from ml.intraday.model_policy import install_selection
+    from ml.intraday.models import ModelSpec
+    from ml.intraday.prediction import digest
+    result = install_selection(tmp_path / "supervision", pc="Atlas", symbol=symbol,
+        report=dict(status="promoted", selected_specs=[asdict(ModelSpec(
+            "qualified-" + symbol, family="logistic", probability_calibration="sigmoid"))]),
+        feature_names=feature_names, installed_at="2026-10-14T08:00Z",
+        dataset_manifest=dict(synthetic_policy=synthetic_policy, lookback_days=lookback_days))
+    if legacy:
+        path = tmp_path / "supervision" / "active" / ("Atlas-" + symbol + ".json")
+        value = json.loads(path.read_text())
+        value.pop("dataset_scope")
+        value.pop("sha256")
+        value["sha256"] = digest(value)
+        path.write_text(json.dumps(value))
+        return value["sha256"]
+    return result["policy_sha256"]
+
+
+def population_history(symbol):
+    rows = []
+    for days_ago in (1, 0):
+        start = REF - timedelta(days=days_ago, hours=10)
+        for index in range(42):
+            op = start + timedelta(minutes=15 * index)
+            price = 100 + index % 7 / 10
+            rows.append(dict(symbol=symbol, opened_at=op, available_at=op + timedelta(minutes=15),
+                availability_kind="actual", open=price, high=price + 1, low=price - 1,
+                close=price + .1, volume=100 + index, source_id="fixture:EQUS.MINI", source_dataset="EQUS.MINI",
+                session_id=str(start.date()), session_open=start.isoformat(),
+                session_close=(start + timedelta(hours=12)).isoformat(), synthetic=index == 30, no_trade=False))
+    return pd.DataFrame(rows)
+
+
+def test_live_policy_scope_drives_actual_population_and_next_cycle_adopts_new_scope(tmp_path):
+    from ml.intraday.data import FEATURE_NAMES, build_dataset
+    policy_id = install_live_policy(tmp_path, "AAPL", feature_names=FEATURE_NAMES, lookback_days=1)
+    fits = {}
+    def train(X, y, inference_X, *, config, run_id, **kwargs):
+        symbol = "AAPL" if "AAPL" in run_id else "IONQ"
+        fits[symbol] = (len(X), kwargs["dataset_metadata"])
+        return trained(X, y, inference_X, config=tuple(getattr(spec, "name", spec) for spec in config), **kwargs)
+    r = runner(tmp_path, trainer=train)
+    r.dataset_builder = None
+    r.config = replace(r.config, use_supervised_models=True)
+    histories = {symbol: population_history(symbol) for symbol in r.symbols}
+    first = r.run_cycle(histories, reference_at=REF, mode="live")
+    assert first["successful_symbols"] == 2
+    selected, defaults = first["forecasts"]["AAPL"], first["forecasts"]["IONQ"]
+    assert selected["dataset_scope"] == dict(synthetic_policy="exclude", lookback_days=1)
+    assert defaults["dataset_scope"] == dict(synthetic_policy="include", lookback_days=None)
+    assert selected["synthetic_policy"] == fits["AAPL"][1]["synthetic_policy"] == "exclude"
+    assert selected["model_selection"]["active_policy_sha256"] == policy_id
+    assert selected["dataset_manifest"]["synthetic_labels_excluded"] > 0
+    assert defaults["dataset_manifest"]["synthetic_labels_included"] > 0
+    assert fits["AAPL"][0] < fits["IONQ"][0]
+    expected = build_dataset(histories["AAPL"], reference_at=REF, cutoff=REF + timedelta(minutes=16),
+                             synthetic_policy="exclude", lookback_days=1)
+    assert fits["AAPL"][0] == len(expected.X)
+    with r.store.connect() as db:
+        saved = json.loads(db.execute("SELECT payload FROM cycles WHERE id=?", (first["cycle_id"],)).fetchone()[0])
+    assert saved["supervised_model_policy"]["dataset_scope_by_symbol"]["AAPL"] == selected["dataset_scope"]
+    assert saved["supervised_model_policy"]["policy_identities_by_symbol"]["AAPL"] == policy_id
+    newer_id = install_live_policy(tmp_path, "AAPL", feature_names=FEATURE_NAMES, synthetic_policy="include")
+    r.clock = lambda: (REF + timedelta(minutes=31)).isoformat()
+    newer = r.run_cycle(histories, reference_at=REF + timedelta(minutes=15), mode="live")
+    assert newer["successful_symbols"] == 2
+    assert newer["forecasts"]["AAPL"]["dataset_scope"] == defaults["dataset_scope"]
+    assert newer["forecasts"]["AAPL"]["model_selection"]["active_policy_sha256"] == newer_id != policy_id
+    assert fits["AAPL"][0] == fits["IONQ"][0]
+
+
+def test_live_scope_retry_keeps_frozen_inputs_and_scope_for_not_yet_acquired_symbols(tmp_path, monkeypatch):
+    import ml.intraday.data as data_module
+    monkeypatch.setattr(data_module, "FEATURE_NAMES", ("x",))
+    original_id = install_live_policy(tmp_path, "AAPL", lookback_days=7)
+    fail = [True]
+    builds, fits = [], []
+    def build(frame, **kwargs):
+        builds.append((frame.iloc[0].symbol, kwargs["synthetic_policy"], kwargs["lookback_days"]))
+        value = dataset(frame, **kwargs)
+        value.manifest.update(synthetic_policy=kwargs["synthetic_policy"], lookback_days=kwargs["lookback_days"])
+        return value
+    def train(*args, config, run_id, **kwargs):
+        fits.append(kwargs["dataset_metadata"])
+        if fail[0]:
+            return dict(outputs=[], successful_count=0)
+        return trained(*args, config=tuple(getattr(spec, "name", spec) for spec in config), **kwargs)
+    class Histories:
+        def get(self, symbol):
+            if symbol == "IONQ" and fail[0]:
+                raise ContractError("Temporary local history fixture failure")
+            return history(symbol)
+    r = runner(tmp_path, trainer=train)
+    r.dataset_builder = build
+    r.config = replace(r.config, use_supervised_models=True, lookback_days=30)
+    first = r.run_cycle(Histories(), reference_at=REF, mode="live")
+    assert first["failed_symbols"] == 2 and builds == [("AAPL", "exclude", 7)]
+    frozen = r.store.inputs(first["cycle_id"], "AAPL")
+    assert r.store.inputs(first["cycle_id"], "IONQ") is None
+    install_live_policy(tmp_path, "AAPL", synthetic_policy="include", lookback_days=14)
+    install_live_policy(tmp_path, "IONQ", lookback_days=1)
+    fail[0] = False
+    repeated = r.run_cycle(Histories(), reference_at=REF, mode="live")
+    assert repeated["successful_symbols"] == 2
+    assert r.store.inputs(first["cycle_id"], "AAPL") == frozen
+    assert builds == [("AAPL", "exclude", 7), ("IONQ", "include", 30)]
+    assert repeated["forecasts"]["AAPL"]["model_selection"]["active_policy_sha256"] == original_id
+    assert repeated["forecasts"]["IONQ"]["model_selection"]["selection"] == "configured_defaults"
+    assert repeated["forecasts"]["AAPL"]["dataset_scope"] == dict(synthetic_policy="exclude", lookback_days=7)
+    assert all(metadata["dataset_scope"] == dict(synthetic_policy="exclude", lookback_days=7)
+               for metadata in fits if metadata.get("model_selection", {}).get("selection") == "supervised")
+
+
+def test_legacy_active_policy_derives_scope_only_for_new_live_cycles(tmp_path, monkeypatch):
+    import ml.intraday.data as data_module
+    from ml.intraday.prediction import digest
+    from ml.intraday.runtime import _supervised_cycle_policy
+    monkeypatch.setattr(data_module, "FEATURE_NAMES", ("x",))
+    policy_id = install_live_policy(tmp_path, "AAPL", legacy=True)
+    r = runner(tmp_path, trainer=trained)
+    r.config = replace(r.config, use_supervised_models=True, lookback_days=30)
+    configuration = asdict(r.config)
+    cycle_id = digest(dict(pc=r.pc, reference_at=REF.isoformat(), configuration_hash=digest(configuration),
+                           mode="live", experiment="primary"))
+    # This saved cycle predates scope-aware adoption and has not acquired IONQ.
+    frozen_policy = _supervised_cycle_policy(r.store, cycle_id, pc=r.pc, symbols=r.symbols,
+                                              configuration=configuration)
+    frozen_policy.pop("dataset_scope_by_symbol")
+    frozen_policy.pop("policy_identities_by_symbol")
+    frozen_policy.pop("sha256")
+    frozen_policy["sha256"] = digest(frozen_policy)
+    r.store.begin_cycle(cycle_id, dict(pc=r.pc, symbols=list(r.symbols), reference_at=REF.isoformat(),
+        configuration=configuration, configuration_hash=digest(configuration), mode="live", status="running",
+        supervised_model_policy=frozen_policy, started_at=(REF + timedelta(minutes=16)).isoformat(),
+        training_cutoff=(REF + timedelta(minutes=16)).isoformat()))
+    builds = []
+    def build(frame, **kwargs):
+        builds.append((frame.iloc[0].symbol, kwargs["synthetic_policy"], kwargs["lookback_days"]))
+        return dataset(frame, **kwargs)
+    r.dataset_builder = build
+    old = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
+    assert old["successful_symbols"] == 2
+    assert sorted(builds) == [("AAPL", "include", 30), ("IONQ", "include", 30)]
+    assert old["forecasts"]["AAPL"]["synthetic_policy"] == "include"
+    with r.store.connect() as db:
+        persisted = json.loads(db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()[0])
+    assert persisted["supervised_model_policy"] == frozen_policy
+    builds.clear()
+    r.clock = lambda: (REF + timedelta(minutes=31)).isoformat()
+    new = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF + timedelta(minutes=15), mode="live")
+    assert new["successful_symbols"] == 2
+    assert sorted(builds) == [("AAPL", "exclude", None), ("IONQ", "include", 30)]
+    assert new["forecasts"]["AAPL"]["model_selection"]["active_policy_sha256"] == policy_id
+
+
+def test_legacy_cycle_hash_is_checked_before_scope_derivation(tmp_path, monkeypatch):
+    from ml.intraday.runtime import _frozen_supervised_policy
+    from ml.intraday.prediction import digest
+    policy = dict(pc="Atlas", feature_names=["x"], models_by_symbol={"AAPL": None})
+    policy["sha256"] = digest(policy)
+    policy["models_by_symbol"]["AAPL"] = [{"name": "changed"}]
+    # Missing configuration would otherwise fail during legacy derivation.
+    with pytest.raises(ContractError, match="policy hash changed"):
+        _frozen_supervised_policy(dict(supervised_model_policy=policy), symbols=("AAPL",))
+
+
+@pytest.mark.parametrize("scope", [None, [], {}, {"synthetic_policy": "include"},
+    {"lookback_days": None}, {"synthetic_policy": [], "lookback_days": None},
+    {"synthetic_policy": "unknown", "lookback_days": None},
+    {"synthetic_policy": "include", "lookback_days": True},
+    {"synthetic_policy": "include", "lookback_days": 0},
+    {"synthetic_policy": "include", "lookback_days": 1.5}])
+def test_frozen_supervised_scope_rejects_malformed_values(tmp_path, scope):
+    from ml.intraday.runtime import _frozen_supervised_policy
+    from ml.intraday.prediction import digest
+    policy = dict(pc="Atlas", feature_names=["x"], models_by_symbol={"AAPL": None},
+                  dataset_scope_by_symbol={"AAPL": scope})
+    policy["sha256"] = digest(policy)
+    with pytest.raises(ContractError, match="dataset scope"):
+        _frozen_supervised_policy(dict(supervised_model_policy=policy), symbols=("AAPL",))
+
+
+@pytest.mark.parametrize("scopes", [None, [], "invalid", {}])
+def test_frozen_supervised_cycle_requires_scope_mapping_for_every_symbol(scopes):
+    from ml.intraday.runtime import _frozen_supervised_policy
+    from ml.intraday.prediction import digest
+    policy = dict(pc="Atlas", feature_names=["x"], models_by_symbol={"AAPL": None},
+                  dataset_scope_by_symbol=scopes)
+    policy["sha256"] = digest(policy)
+    with pytest.raises(ContractError, match="dataset scope"):
+        _frozen_supervised_policy(dict(supervised_model_policy=policy), symbols=("AAPL",))
