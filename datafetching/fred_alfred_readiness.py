@@ -45,6 +45,7 @@ FRED_ALFRED_BOOTSTRAP_RECEIPT_VERSION = "fred-alfred-bootstrap-readiness-receipt
 FRED_ALFRED_MINIMUM_COVERAGE = 0.95
 FRED_ALFRED_INCREMENTAL_OVERLAP_DAYS = 7
 FRED_ALFRED_INCREMENTAL_MAX_REALTIME_DAYS = 130
+FRED_ALFRED_PROVIDER_TIMEZONE = "America/Chicago"
 FRED_ALFRED_MODEL_HORIZONS = (
     "1d",
     "1w",
@@ -111,6 +112,8 @@ def derive_fred_alfred_backfill_plan(
 
     root = Path(datastore_root).resolve()
     observed = utc_timestamp(as_of)
+    # FRED rejects a real-time end after its current Central calendar date.
+    provider_date = observed.tz_convert(FRED_ALFRED_PROVIDER_TIMEZONE).date()
     decision_source, decisions = _selected_decisions(root, bootstrap_decisions)
     earliest = pd.Timestamp(decisions["decision_timestamp"].min())
 
@@ -131,9 +134,9 @@ def derive_fred_alfred_backfill_plan(
     return FredAlfredRequestPlan(
         mode="BACKFILL",
         realtime_start=observation_start,
-        realtime_end=observed.date(),
+        realtime_end=provider_date,
         observation_start=observation_start,
-        observation_end=observed.date(),
+        observation_end=provider_date,
         earliest_eligible_decision=earliest,
         decision_source=decision_source,
     )
@@ -148,6 +151,7 @@ def derive_fred_alfred_incremental_plan(
 
     root = Path(datastore_root).resolve()
     observed = utc_timestamp(as_of)
+    provider_date = observed.tz_convert(FRED_ALFRED_PROVIDER_TIMEZONE).date()
     base = derive_fred_alfred_backfill_plan(root, as_of=observed)
     vintages, _ = read_persisted_fred_vintages(
         root,
@@ -181,9 +185,9 @@ def derive_fred_alfred_incremental_plan(
     return FredAlfredRequestPlan(
         mode="INCREMENTAL",
         realtime_start=realtime_start,
-        realtime_end=observed.date(),
+        realtime_end=provider_date,
         observation_start=base.observation_start,
-        observation_end=observed.date(),
+        observation_end=provider_date,
         earliest_eligible_decision=base.earliest_eligible_decision,
         decision_source=base.decision_source,
     )
