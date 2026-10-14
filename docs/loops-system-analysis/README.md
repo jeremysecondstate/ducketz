@@ -171,6 +171,7 @@ the current scheduler.
 
 ## Index
 
+- [Proposed intraday 15m system and future activity/accuracy tab](INTRADAY_15M_SYSTEM_DESIGN.md)
 - [Overnight immutable gameplan](NIGHTLY_GAMEPLAN.md)
 - [Retired hourly automation](HOURLY_AUTOMATION.md)
 - [System functionality](SYSTEM_FUNCTIONALITY.md)
