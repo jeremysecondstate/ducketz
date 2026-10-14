@@ -268,6 +268,32 @@ def test_historical_features_do_not_use_earlier_observation_received_later():
     assert frame.opened_at.iloc[30] in data.reference_at
 
 
+def test_late_reference_correction_cannot_backdate_joint_training_sample_availability():
+    from ml.intraday.models import purged_chronological_split
+    frame = candles()
+    reference = frame.opened_at.iloc[39]
+    corrected_reference = frame.opened_at.iloc[22]
+    correction_receipt = frame.opened_at.iloc[36] + pd.Timedelta(seconds=5)
+    # The target24 result was observed before the corrected reference22 inputs.
+    original_target_receipt = frame.available_at.iloc[24]
+    frame.loc[22, "available_at"] = correction_receipt
+    before = frame.copy(deep=True)
+    data = build_dataset(frame, cutoff=reference + STEP, reference_at=reference)
+    row = int(data.reference_at.get_loc(corrected_reference))
+    assert original_target_receipt < correction_receipt
+    assert data.label_available_at[row] == correction_receipt
+    assert data.manifest["label_availability_policy"] == "max_target_and_feature_receipt"
+    assert "joint_information_receipts" in data.manifest["validation_requirement"]
+    # Later row36 starts validation before the correction receipt; its target
+    # close alone would have incorrectly admitted corrected_reference22.
+    train, calibration = purged_chronological_split(data.reference_at, data.target_close_at,
+        label_available_at=data.label_available_at, fraction=0.4)
+    assert data.reference_at[calibration[0]] == frame.opened_at.iloc[36]
+    assert data.target_close_at[row] <= data.reference_at[calibration[0]] < correction_receipt
+    assert row not in train
+    pd.testing.assert_frame_equal(frame, before)
+
+
 def test_late_computation_does_not_move_cycle_reference():
     frame = candles()
     reference = frame.opened_at.iloc[32]

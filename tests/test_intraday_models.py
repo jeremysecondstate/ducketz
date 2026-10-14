@@ -7,7 +7,8 @@ import numpy as np
 import pytest
 
 from ml.intraday.models import (
-    DEFAULT_MODELS, ModelSpec, build_estimator, configured_models, fit_ensemble,
+    DEFAULT_MODELS, DEFAULT_PARAMETERS, ModelSpec, build_estimator, configured_models, fit_ensemble,
+    fit_calibrated_estimator,
     probability_not_down, purged_chronological_split, registry_status,
 )
 from ml.intraday.prediction import ContractError, TARGET_VERSION
@@ -51,6 +52,54 @@ def test_additional_real_probability_adapters(family):
     result = fit_ensemble(X, y, inference, config=[family], **kwargs)
     assert result["complete"], result["outputs"]
     assert 0 <= result["probability_not_down"] <= 1
+
+
+@pytest.mark.parametrize("rows", [2, 7, 8, 9, 10, 14, 15, 16])
+def test_knn_uses_available_causal_rows_and_records_effective_neighbors(rows):
+    X, _, inference, kwargs = dataset(rows)
+    y = np.arange(rows) % 2
+    result = fit_ensemble(X, y, inference + 0.1, config=["knn"], **kwargs)
+    output = result["outputs"][0]
+    assert result["complete"], output
+    assert 0 <= output["probability_not_down"] <= 1
+    assert output["metadata"]["training_rows"] == rows
+    assert output["metadata"]["requested_n_neighbors"] == 15
+    assert output["metadata"]["neighbor_count_policy"] == "cap_to_training_rows"
+    assert output["metadata"]["effective_parameters"]["n_neighbors"] == min(15, rows)
+    assert output["metadata"]["spec"]["parameters"] == {}
+    assert DEFAULT_PARAMETERS["knn"]["n_neighbors"] == 15
+
+
+@pytest.mark.parametrize("requested", [3, 7, 20])
+def test_knn_custom_request_matches_saved_estimator_and_metadata(tmp_path, requested):
+    X, _, inference, kwargs = dataset(7)
+    y = np.arange(7) % 2
+    spec = ModelSpec("custom_knn", family="knn", parameters={"n_neighbors": requested})
+    result = fit_ensemble(X, y, inference + 0.1, config=[spec], artifact_dir=tmp_path,
+                          run_id="knn-small-snapshot", **kwargs)
+    output = result["outputs"][0]
+    assert result["complete"], output
+    saved = joblib.load(output["artifact_path"])
+    assert saved["estimator"].named_steps["model"].n_neighbors == min(requested, 7)
+    assert saved["metadata"] == output["metadata"]
+    assert saved["version"] == output["version"]
+    assert saved["metadata"]["effective_parameters"]["n_neighbors"] == min(requested, 7)
+    assert saved["metadata"]["requested_n_neighbors"] == requested
+    assert saved["metadata"]["spec"]["parameters"] == spec.parameters == {"n_neighbors": requested}
+    assert probability_not_down(saved["estimator"], inference + 0.1) == pytest.approx(output["probability_not_down"])
+
+
+@pytest.mark.parametrize("requested", [0, -1, 1.5, 20.5, True, "15", None])
+def test_knn_invalid_neighbor_request_is_not_repaired_by_clamping(requested):
+    X, _, inference, kwargs = dataset(7)
+    spec = ModelSpec("invalid_knn", family="knn", parameters={"n_neighbors": requested})
+    result = fit_ensemble(X, np.arange(7) % 2, inference, config=[spec], **kwargs)
+    output = result["outputs"][0]
+    assert not result["complete"] and result["probability_not_down"] is None
+    assert output["error"]["phase"] == "training"
+    assert output["error"]["type"] == "ContractError"
+    assert "positive integer" in output["error"]["message"]
+    assert output["artifact_path"] is None
 
 
 def test_learned_preprocessing_is_fitted_only_on_training_rows(tmp_path):
@@ -104,7 +153,7 @@ def test_model_failure_is_saved_and_incomplete_consensus_is_explicit():
 
 def test_single_class_has_failure_without_constant_model_fallback():
     X, y, inference, kwargs = dataset()
-    result = fit_ensemble(X, np.ones_like(y), inference, config=["logistic", "gaussian_nb"], **kwargs)
+    result = fit_ensemble(X, np.ones_like(y), inference, config=["logistic", "gaussian_nb", "knn"], **kwargs)
     assert result["consensus_status"] == "failed" and result["successful_count"] == 0
     assert result["probability_not_down"] is None
     assert all(o["error"]["type"] == "ContractError" for o in result["outputs"])
@@ -117,8 +166,9 @@ def test_non_probability_adapters_use_purged_chronological_calibration(family):
     assert result["complete"], result["outputs"]
     calibration = result["outputs"][0]["metadata"]["calibration"]
     assert calibration["method"] == "purged_chronological_sigmoid"
-    assert calibration["purged_rows"] == 2
+    assert calibration["purged_rows"] == 3  # target receipt follows the boundary close.
     assert calibration["base_latest_target"] <= calibration["first_calibration_reference"]
+    assert calibration["base_latest_label_available_at"] <= calibration["first_calibration_reference"]
     kwargs.pop("target_close_at")
     failed = fit_ensemble(X, y, inference, config=[family], **kwargs)
     assert failed["outputs"][0]["error"]["type"] == "ContractError"
@@ -167,3 +217,92 @@ def test_registry_import_has_no_broker_dependencies():
     assert "ml.account_gameplan" not in source
     assert "stock_trader" not in source
     assert "schwab" not in source.lower()
+
+
+@pytest.mark.parametrize("family", ["logistic", "gaussian_nb", "knn", "lda", "qda", "random_forest",
+    "extra_trees", "hist_gradient_boosting", "gradient_boosting", "adaboost", "mlp", "xgboost", "lightgbm", "catboost"])
+def test_explicit_sigmoid_supports_real_probability_families_and_saved_inference(tmp_path, family):
+    if family in {"xgboost", "lightgbm", "catboost"} and importlib.util.find_spec(family) is None:
+        pytest.skip(f"{family} absent")
+    X, y, inference, kwargs = dataset()
+    spec = ModelSpec("selected", family=family, probability_calibration="sigmoid")
+    result = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id=family, **kwargs)
+    output = result["outputs"][0]
+    assert result["complete"], output
+    calibration = output["metadata"]["calibration"]
+    assert calibration["base_rows"] + calibration["purged_rows"] + calibration["calibration_rows"] == len(y)
+    assert calibration["base_latest_label_available_at"] <= calibration["first_calibration_reference"]
+    assert calibration["score_interface"] in {"decision_function", "predict_proba_log_odds"}
+    saved = joblib.load(output["artifact_path"])
+    assert probability_not_down(saved["estimator"], inference) == pytest.approx(output["probability_not_down"])
+
+
+def test_calibration_preprocessing_and_knn_cap_use_only_purged_base_partition():
+    X, y, _, kwargs = dataset(40)
+    X[32:] += 1000
+    spec = ModelSpec("calibrated_knn", family="knn", parameters={"n_neighbors": 100}, probability_calibration="sigmoid")
+    fitted, evidence = fit_calibrated_estimator(spec, X, y, **kwargs)
+    train, calibration = purged_chronological_split(kwargs["reference_at"], kwargs["target_close_at"],
+                                                   label_available_at=kwargs["label_available_at"])
+    assert evidence["effective_parameters"]["n_neighbors"] == len(train)
+    assert fitted.base.named_steps["model"].n_samples_fit_ == len(train)
+    assert np.allclose(fitted.base.named_steps["scale"].mean_, X[train].mean(axis=0))
+    assert not np.allclose(fitted.base.named_steps["scale"].mean_, X.mean(axis=0))
+    assert evidence["calibration"]["calibration_rows"] == len(calibration)
+
+
+def test_late_received_labels_are_purged_even_when_target_already_closed():
+    _, _, _, kwargs = dataset(40)
+    boundary = kwargs["reference_at"][32]
+    kwargs["label_available_at"][1] = boundary + timedelta(seconds=1)
+    train, _ = purged_chronological_split(kwargs["reference_at"], kwargs["target_close_at"],
+                                         label_available_at=kwargs["label_available_at"])
+    assert 1 not in train and 0 in train
+
+
+def test_calibration_failure_never_reuses_an_uncalibrated_or_previous_fit(tmp_path):
+    X, y, inference, kwargs = dataset()
+    spec = ModelSpec("selected", family="gaussian_nb", probability_calibration="sigmoid")
+    first = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id="qualified", **kwargs)
+    assert first["complete"]
+    y[128:] = 1
+    failed = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id="failed", **kwargs)
+    output = failed["outputs"][0]
+    assert not failed["complete"] and failed["probability_not_down"] is None
+    assert "both target classes" in output["error"]["message"]
+    assert output["artifact_path"] is None and not (tmp_path / "failed").exists()
+    kwargs.pop("label_available_at")
+    with pytest.raises(ContractError, match="timestamps"):
+        fit_calibrated_estimator(spec, X, y, **kwargs)
+    with pytest.raises(ContractError, match="none or sigmoid"):
+        ModelSpec("bad", probability_calibration="display_cap")
+
+
+def test_fitting_and_live_artifact_preserve_selected_newest_row_window(tmp_path):
+    X, y, inference, kwargs = dataset()
+    spec = ModelSpec("bounded", family="logistic", probability_calibration="sigmoid", training_max_rows=80)
+    first = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id="bounded", **kwargs)
+    output = first["outputs"][0]
+    assert first["complete"], output
+    metadata = output["metadata"]
+    assert metadata["input_training_rows"] == 160 and metadata["training_rows"] == 80
+    assert metadata["training_window"]["first_reference"] == kwargs["reference_at"][-80].isoformat()
+    assert metadata["training_window"]["excluded_rows"] == 80
+    trimmed = {key: value[-80:] if key != "training_cutoff" else value for key, value in kwargs.items()}
+    expected, evidence = fit_calibrated_estimator(spec, X[-80:], y[-80:], **trimmed)
+    saved = joblib.load(output["artifact_path"])["estimator"]
+    assert probability_not_down(saved, inference) == pytest.approx(probability_not_down(expected, inference))
+    assert metadata["calibration"] == evidence["calibration"]
+    X[:80] += 1e9
+    changed = fit_ensemble(X, y, inference, config=[spec], **kwargs)
+    assert changed["probability_not_down"] == pytest.approx(first["probability_not_down"])
+    y[-80:] = 1
+    failed = fit_ensemble(X, y, inference, config=[spec], **kwargs)
+    assert failed["probability_not_down"] is None and not failed["complete"]
+    assert "Newest training row window" in failed["outputs"][0]["error"]["message"]
+
+
+@pytest.mark.parametrize("limit", [True, 0, 3, 4.5, "80"])
+def test_model_spec_rejects_invalid_training_window(limit):
+    with pytest.raises(ContractError, match="Training row limit"):
+        ModelSpec("invalid_window", training_max_rows=limit)

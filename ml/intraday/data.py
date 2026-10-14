@@ -1123,7 +1123,7 @@ class Dataset:
     y: np.ndarray
     inference_X: np.ndarray
     feature_names: tuple[str, ...]
-    label_available_at: pd.DatetimeIndex
+    label_available_at: pd.DatetimeIndex  # Joint feature/reference and target-label receipt.
     training_reference_at: pd.DatetimeIndex
     target_close_at: pd.DatetimeIndex
     inference: dict
@@ -1136,7 +1136,11 @@ class Dataset:
 
 def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days: float | None = None,
                   synthetic_policy: str | None = None) -> Dataset:
-    """Labels are >= reference OPEN at exact third CLOSE, mature by receipt.
+    """Labels are >= reference OPEN at exact third CLOSE, mature by joint receipt.
+
+    Training sample availability includes its features/reference as well as the
+    target observation. A late reference correction cannot backdate a sample to
+    an earlier target receipt when calibration or validation purges information.
 
     Explicit ``include``/``exclude`` synthetic policy is required when any
     otherwise eligible reference or target is synthetic. No default decides
@@ -1205,7 +1209,7 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         y.append(int(float(outcome.close) >= float(row.open)))
         references.append(ref)
         closes.append(finish)
-        available.append(outcome.available_at)
+        available.append(max(outcome.available_at, own_cutoff))
     if not X:
         raise ContractError("No matured finite training labels for this cycle/window")
     causal_input_rows = frame.tail(21)
@@ -1237,12 +1241,13 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         "snapshot": snapshot, "snapshot_sha256": fingerprint}
     manifest = {"target_version": TARGET_VERSION, "feature_version": FEATURE_VERSION, "training_cutoff": cutoff.isoformat(),
         "training_rows": len(X), "label_available_at_max": max(available).isoformat(),
+        "label_availability_policy": "max_target_and_feature_receipt",
         "first_training_reference": min(references).isoformat(), "last_training_reference": max(references).isoformat(),
         "lookback_days": lookback_days, "synthetic_policy": synthetic_policy, "synthetic_labels_excluded": synthetic_excluded,
         "synthetic_labels_included": synthetic_included,
         "availability_kinds": sorted(frame.availability_kind.unique().tolist()), "source_history": attrs,
         "feature_policy": "trailing_observed_steps_explicit_elapsed_gaps_no_fitted_global_preprocessing",
-        "validation_requirement": "chronological_purge_training_targets_before_validation_decisions"}
+        "validation_requirement": "chronological_purge_targets_and_joint_information_receipts_before_validation_decisions"}
     return Dataset(np.asarray(X, dtype=float), np.asarray(y, dtype=np.uint8), inference_values.reshape(1, -1),
                    FEATURE_NAMES, pd.DatetimeIndex(available), pd.DatetimeIndex(references), pd.DatetimeIndex(closes),
                    inference, manifest)

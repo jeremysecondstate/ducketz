@@ -74,12 +74,22 @@ def test_newest_symbol_forecast_supersedes_queued_intention(tmp_path):
     assert len(store.forecasts()) == 2
 
 
-def test_default_cli_never_starts_worker(monkeypatch, capsys):
+def test_default_cli_never_starts_worker(monkeypatch, capsys, tmp_path):
     from ml.intraday import readiness
     monkeypatch.setattr(readiness,"inspect_readiness",lambda **kw:{"manual_live_start_ready":False})
     monkeypatch.setattr(live_session,"run_manual",lambda **kw:pytest.fail("manual worker called"))
-    assert live_session.main([]) == 2
+    assert live_session.main(["--repository", str(tmp_path)]) == 2
     assert json.loads(capsys.readouterr().out)["manual_live_start_ready"] is False
+
+
+def test_manual_live_entrypoint_enables_supervised_model_policies(monkeypatch, tmp_path):
+    captured = {}
+    def manual(**kwargs):
+        captured.update(kwargs)
+        return {"status": "STOPPED"}
+    monkeypatch.setattr(live_session, "run_manual", manual)
+    assert live_session.main(["--repository", str(tmp_path), "--live"]) == 0
+    assert captured["config"].use_supervised_models is True
 
 
 def test_later_issue_of_older_reference_never_supersedes_newer_reference(tmp_path):

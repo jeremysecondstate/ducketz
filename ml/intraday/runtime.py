@@ -29,10 +29,13 @@ class ResearchConfig:
     synthetic_policy: str = "include"
     source_dataset: str = "EQUS.MINI"
     retraining_minutes: int = 15
+    use_supervised_models: bool = False
 
     def validate(self):
         if self.retraining_minutes != 15:
             raise ContractError("Primary benchmark fully retrains every 15 minutes")
+        if type(self.use_supervised_models) is not bool:
+            raise ContractError("Supervised model adoption must be an explicit boolean")
         if type(self.symbol_workers) is not int or self.symbol_workers < 1:
             raise ContractError("Explicit positive symbol worker count required")
         if not 0 <= self.publication_offset_seconds < 900:
@@ -149,6 +152,29 @@ def recorded_symbol_failures(store, cycle_id):
     return {symbol:json.loads(payload) for symbol,payload in rows}
 
 
+def _supervised_cycle_policy(store, cycle_id, *, pc, symbols):
+    """Resolve once per live cycle; a retry retains the original selected specs."""
+    with store.connect() as db:
+        row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
+    if row:
+        policy = json.loads(row[0]).get("supervised_model_policy")
+        if not isinstance(policy, dict):
+            raise ContractError("Supervised cycle is missing its frozen model policy")
+        evidence = {key: value for key, value in policy.items() if key != "sha256"}
+        if digest(evidence) != policy.get("sha256"):
+            raise ContractError("Frozen supervised model policy hash changed")
+        return policy
+    from .data import FEATURE_NAMES
+    from .model_policy import load_active_models
+    policy = {"pc": pc, "feature_names": list(FEATURE_NAMES), "models_by_symbol": {}}
+    for symbol in symbols:
+        selected = load_active_models(store.path.parent / "supervision", pc=pc, symbol=symbol,
+                                      feature_names=FEATURE_NAMES)
+        policy["models_by_symbol"][symbol] = [asdict(spec) for spec in selected] if selected else None
+    policy["sha256"] = digest(policy)
+    return policy
+
+
 class ShadowRunner:
     def __init__(self, *, store, pc, symbols, config=None, artifact_root=None, clock=utcnow,
                  trainer=None, dataset_builder=None, stopped=lambda: False):
@@ -189,8 +215,11 @@ class ShadowRunner:
         configuration_hash = digest(configuration)
         cycle_id = digest(dict(pc=self.pc,reference_at=reference.isoformat(),configuration_hash=configuration_hash,
                                mode=mode,experiment=experiment))
+        supervised_policy = (_supervised_cycle_policy(self.store, cycle_id, pc=self.pc, symbols=self.symbols)
+                             if self.config.use_supervised_models and mode == "live" else None)
         initial = dict(pc=self.pc,symbols=list(self.symbols),reference_at=reference.isoformat(),mode=mode,
                        experiment=experiment,configuration_hash=configuration_hash,configuration=configuration,
+                       supervised_model_policy=supervised_policy,
                        started_at=started.isoformat(),training_cutoff=training_cutoff.isoformat(),
                        candle_close=(reference+STEP).isoformat(),scheduled_acquisition=scheduled.isoformat(),
                        acquisition=acquisition or {},status="running",full_retrain=True,
@@ -198,6 +227,7 @@ class ShadowRunner:
                        overrun_policy="latest_completed_no_backlog_orders" if mode == "live" else
                                       "record_overrun_no_automatic_live_execution")
         saved = self.store.begin_cycle(cycle_id,initial)
+        supervised_policy = saved.get("supervised_model_policy")
         existing = {symbol: self.store.forecast(cycle_id, symbol) for symbol in self.symbols}
         reused = {symbol: forecast for symbol, forecast in existing.items() if forecast is not None}
         selected = set(self.symbols if retry_symbols is None else retry_symbols)
@@ -223,7 +253,7 @@ class ShadowRunner:
         with ThreadPoolExecutor(max_workers=self.config.symbol_workers,thread_name_prefix="intraday-research") as pool:
             futures = {pool.submit(self._symbol, cycle_id, symbol, lambda s=symbol: histories.get(s), reference,
                         training_cutoff, mode, (intent_by_symbol or {}).get(symbol), on_published, start_perf,
-                        allow_execution): symbol for symbol in self.symbols if symbol in selected}
+                        allow_execution, supervised_policy): symbol for symbol in self.symbols if symbol in selected}
             for future in as_completed(futures):
                 symbol = futures[future]
                 try:
@@ -274,7 +304,7 @@ class ShadowRunner:
         return {"cycle_id":cycle_id,**summary,"forecasts":results}
 
     def _symbol(self,cycle_id,symbol,history,reference,cutoff,mode,intent,on_published,cycle_started_perf,
-                allow_execution=True):
+                allow_execution=True,supervised_policy=None):
         if self.stopped():
             raise InterruptedError("Manual stop before symbol work; no model or forecast substituted")
         existing=self.store.forecast(cycle_id,symbol)
@@ -315,6 +345,13 @@ class ShadowRunner:
                       "reference_at":_jsonable(dataset.reference_at),"target_close_at":_jsonable(dataset.target_close_at),
                       "manifest":_jsonable(dataset.manifest),"cutoff":cutoff.isoformat(),
                       "source_manifest":_jsonable(getattr(history,"manifest",{}))}
+            if supervised_policy is not None:
+                selected_specs = supervised_policy["models_by_symbol"][symbol]
+                if selected_specs is not None and list(dataset.feature_names) != supervised_policy["feature_names"]:
+                    raise ContractError("Selected model policy features differ from the current dataset")
+                snapshot["model_selection"] = {"models": selected_specs,
+                    "policy_sha256": supervised_policy["sha256"],
+                    "selection": "supervised" if selected_specs is not None else "configured_defaults"}
             # Retain the actual observations used, rather than only transformed features.
             frame=_frame(history)
             available=pd.to_datetime(frame.available_at,utc=True)
@@ -329,21 +366,24 @@ class ShadowRunner:
         availability_basis="observed" if inf.get("availability_kind")=="actual" else "assumed_historical"
         if mode in {"shadow", "live"} and availability_basis!="observed":
             raise ContractError("Current shadow cycle requires actually observed reference availability")
-        from .models import fit_ensemble
+        from .models import configured_models, fit_ensemble
         if self.stopped():
             raise InterruptedError("Manual stop before training; original snapshot preserved")
         trainer=self.trainer or fit_ensemble
+        selected_specs = snapshot.get("model_selection", {}).get("models")
+        model_config = configured_models(selected_specs) if selected_specs is not None else self.config.models
         attempt=uuid.uuid4().hex
         training_start=instant(self.clock())
         self.store.event(cycle_id,"training_started",{"attempt":attempt,"snapshot_hash":snapshot_hash,
                          "training_cutoff":snapshot["cutoff"],"validated_data_ready":training_start.isoformat()},symbol=symbol)
         fitted=trainer(np.asarray(snapshot["X"],dtype=float),np.asarray(snapshot["y"]),
-                       np.asarray(snapshot["inference_X"],dtype=float),config=self.config.models,
+                       np.asarray(snapshot["inference_X"],dtype=float),config=model_config,
                        target_version=TARGET_VERSION,training_cutoff=snapshot["cutoff"],
                        label_available_at=snapshot["label_available_at"],feature_names=snapshot["feature_names"],
                        artifact_dir=self.artifact_root,run_id=f"{cycle_id[:16]}-{symbol}-{attempt}",
                        reference_at=snapshot["reference_at"],target_close_at=snapshot["target_close_at"],
-                       dataset_metadata=snapshot["manifest"])
+                       dataset_metadata={**snapshot["manifest"],
+                           **({"model_selection": snapshot["model_selection"]} if "model_selection" in snapshot else {})})
         finished=instant(self.clock())
         self.store.event(cycle_id,"models_completed",{"attempt":attempt,"result":fitted},symbol=symbol)
         if not fitted["successful_count"]:
@@ -364,6 +404,7 @@ class ShadowRunner:
                  "inference_seconds":fitted["inference_seconds"],"symbol_seconds_before_persistence":measured,
                  "training_started_at":training_start.isoformat(),"training_completed_at":finished.isoformat(),
                  "issue_after_target":issued>=reference+3*STEP,"dataset_manifest":snapshot["manifest"],
+                 "model_selection":snapshot.get("model_selection"),
                  "execution_blocked_reason":"recovered_older_cycle" if not allow_execution else
                      "issue_after_target" if issued>=reference+3*STEP else None,
                  "synthetic_policy":self.config.synthetic_policy,"features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
