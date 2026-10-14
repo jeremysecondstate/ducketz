@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T04:43:09.609117Z",
+  "id": "20261014T044309Z-e2a6e46a6eda45acb155137b072e0ff9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas ALFRED calendar-date repair is locally installed and published as draft PR 106"
+}

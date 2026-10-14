@@ -1,0 +1,26 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T043914Z-f1bd0700887e424384021ed25d217bb8",
+  "change_id": "20261014T043914Z-f1bd0700887e424384021ed25d217bb8",
+  "files": [
+    "datafetching/fred_alfred_readiness.py",
+    "tests/test_fred_alfred_provider_calendar.py"
+  ],
+  "limitations": [
+    "Main integration is pending review.",
+    "Peer installation is not established."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/106",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Backfill and incremental request end dates follow America/Chicago while acquisition timestamps stay UTC. Local one-shot ALFRED catch-up completed after installation; no trader controls or schedule changes.",
+  "scope": "shared",
+  "source_sha": "198a5ca31ab260e4a78bd8e14e68bd339f77170c",
+  "summary": "Atlas ALFRED calendar-date repair is locally installed and published as draft PR 106",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-14T04:41:03.220051Z",
+      "output_sha256": "3b0faed2a87d097f961da055b0afaf2a6c5c2bc81f4968e9e7d01ee55f42df85",
+      "result": "34 offline tests passed"
+    }
+  ]
+}
