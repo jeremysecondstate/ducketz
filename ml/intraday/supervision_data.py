@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .data import build_dataset, equity_sessions, utc, validate_candles
+from .data import InsufficientTrainingData, build_dataset, equity_sessions, utc, validate_candles
 from .prediction import ContractError, STEP
 
 
@@ -74,6 +74,34 @@ def _available_frame(history, as_of):
     if not {"session_open", "session_close"} <= set(frame):
         raise ContractError("Supervision requires explicit exchange session boundaries")
     return frame
+
+
+def assessment_readiness(refresh, *, symbol, completed_session):
+    """Prior-session assessment needs published coverage, not today's live bar.
+
+    Advertised availability is not proof that every minute traded. Missing
+    observations remain in the independent history audit and sample gates.
+    """
+    result = {"ready": False, "policy": "successful_refresh_through_completed_session_close",
+              "session_id": completed_session["session_id"],
+              "required_available_end": completed_session["closed_at"],
+              "provider_available_end": None}
+    requests = [row for row in refresh.get("requests", []) if row.get("symbol") == symbol]
+    persisted = refresh.get("results", {}).get(symbol, {})
+    if (refresh.get("status") not in {"complete", "partial"}
+            or refresh.get("source_dataset") != "EQUS.MINI"
+            or refresh.get("source_schema") != "ohlcv-1m" or len(requests) != 1
+            or persisted.get("error_files") != 0):
+        return {**result, "reason": "successful_scoped_refresh_required"}
+    request = requests[0]
+    result["provider_available_end"] = request.get("provider_available_end")
+    if (request.get("status") != "fetched" or request.get("error_type") is not None
+            or request.get("source_schema") != "ohlcv-1m"
+            or not result["provider_available_end"]):
+        return {**result, "reason": "successful_scoped_refresh_required"}
+    if utc(result["provider_available_end"]) < utc(completed_session["closed_at"]):
+        return {**result, "reason": "completed_session_not_yet_published"}
+    return {**result, "ready": True, "reason": "completed_session_available"}
 
 
 def _training_reference(frame):
@@ -143,7 +171,7 @@ creates research data only; it issues no forecast or trading instruction.
     frame = _available_frame(history, cutoff)
     reference = _training_reference(frame)
     if reference is None:
-        raise ContractError("No completed session-eligible supervision reference")
+        raise InsufficientTrainingData("No completed session-eligible supervision reference")
     manifest = getattr(history, "manifest", {})
     frame.attrs["intraday_history"] = manifest
     dataset = build_dataset(frame, cutoff=cutoff, reference_at=reference,
@@ -178,7 +206,7 @@ creates research data only; it issues no forecast or trading instruction.
         mask = (dataset.training_reference_at < completed_close) & (dataset.target_close_at <= completed_close)
         current_labels_excluded = int((~mask).sum())
         if not mask.any():
-            raise ContractError("No matured training labels through the completed supervision session")
+            raise InsufficientTrainingData("No matured training labels through the completed supervision session")
         dataset = replace(dataset, X=dataset.X[mask], y=dataset.y[mask],
             label_available_at=dataset.label_available_at[mask],
             training_reference_at=dataset.training_reference_at[mask],

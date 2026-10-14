@@ -18,6 +18,14 @@ from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
 SCHEMA = "intraday-nightly-supervision-v1"
 
 
+def _insufficient_selection(session_id, now, reason):
+    return {"status": "insufficient_data", "holdout_session": session_id,
+            "as_of": now.isoformat(), "target_version": TARGET_VERSION,
+            "holdout_policy": "intended_completed_session_only_no_older_substitution",
+            "holdout_reuse_policy": "persist_and_reuse_this_report_for_session_do_not_retune_on_same_holdout",
+            "selected_specs": [], "reasons": [reason], "holdout_rows": 0}
+
+
 def scheduled_window(as_of):
     local = instant(as_of).astimezone(PACIFIC)
     minutes = local.hour * 60 + local.minute
@@ -102,6 +110,7 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
     root = Path(datastore) / "intraday/supervision"
     report = dict(schema=SCHEMA, pc=pc, as_of=now.isoformat(), execute=execute,
                   schedule="Monday-Friday 01:00,01:30,02:00,02:30,03:00,03:30 America/Los_Angeles",
+                  completion_scope="completed_session_assessment_only_not_live_input_readiness",
                   status="inspected", symbols={})
     if not execute:
         return {**report, "status": "dry_run", "local_symbols": list(symbols),
@@ -111,9 +120,9 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
     root.mkdir(parents=True, exist_ok=True)
     try:
         with FileLock(str(root / "supervisor.lock"), timeout=0):
-            from .data import load_local_history
+            from .data import FEATURE_NAMES, InsufficientTrainingData, load_local_history
             from .model_selection import evaluate_candidates
-            from .supervision_data import audit_history, build_supervision_dataset, refresh_training_data
+            from .supervision_data import assessment_readiness, audit_history, build_supervision_dataset, refresh_training_data
             refresh = refresh or refresh_training_data
             loader = loader or load_local_history
             auditor = auditor or audit_history
@@ -135,7 +144,10 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
                     if session is None:
                         raise ContractError("No completed trading session available")
                     sid = session["session_id"]
-                    item = {"data": audit, "session_review": review_session(datastore, pc=pc, symbol=symbol,
+                    readiness = assessment_readiness(report["refresh"], symbol=symbol, completed_session=session)
+                    item = {"data": audit, "assessment_readiness": readiness,
+                            "current_inputs_fresh": bool(audit["freshness_ok"]),
+                            "session_review": review_session(datastore, pc=pc, symbol=symbol,
                                 session_id=sid, as_of=now)}
                     report["symbols"][symbol] = item
                     cache_path = root / "decisions" / pc / symbol / f"{sid}.json"
@@ -147,17 +159,30 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
                         selection = cached["selection"]
                         feature_names = cached["feature_names"]
                         item["decision_reused"] = True
-                    elif not audit["freshness_ok"]:
+                    elif not readiness["ready"]:
                         item.update(status="waiting_for_fresh_data", decision_reused=False)
                         continue
                     else:
-                        dataset = builder(history, as_of=now, completed_session=session, lookback_days=None)
-                        feature_names = list(dataset.feature_names)
+                        selection = None
+                        try:
+                            dataset = builder(history, as_of=now, completed_session=session, lookback_days=None)
+                            feature_names = list(dataset.feature_names)
+                            dataset_manifest = dataset.manifest
+                        except InsufficientTrainingData as exc:
+                            feature_names = list(FEATURE_NAMES)
+                            dataset_manifest = {"completed_session_id": sid,
+                                                "selection_label_scope": "completed_sessions_only",
+                                                "insufficient_evidence": str(exc)}
+                            selection = _insufficient_selection(sid, now, str(exc))
                         incumbent = load_active_models(root, pc=pc, symbol=symbol, feature_names=feature_names)
                         if incumbent is None:
                             from .models import configured_models
                             incumbent = configured_models()
-                        selection = evaluator(dataset, as_of=now, incumbent_specs=incumbent)
+                        if selection is None:
+                            intended_rows = sum(instant(value).astimezone(PACIFIC).date().isoformat() == sid
+                                                for value in dataset.training_reference_at)
+                            selection = (evaluator(dataset, as_of=now, incumbent_specs=incumbent) if intended_rows
+                                         else _insufficient_selection(sid, now, "intended_completed_session_has_no_matured_labels"))
                         # Never accidentally evaluate an incomplete current session as the final holdout.
                         if str(selection.get("holdout_session")) != sid:
                             raise ContractError("Model assessment holdout differs from most recent completed session")
@@ -165,7 +190,7 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
                             item.update(status="failed", selection=selection, resumes_next_wake=True)
                             continue
                         cached = dict(pc=pc, symbol=symbol, session_id=sid, selection=selection,
-                                      feature_names=feature_names, dataset_manifest=dataset.manifest,
+                                      feature_names=feature_names, dataset_manifest=dataset_manifest,
                                       decided_at=now.isoformat())
                         cached["sha256"] = digest(cached)
                         write_json(cache_path, cached)
@@ -179,7 +204,7 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
                         item["installation"] = install_selection(root, pc=pc, symbol=symbol, report=selection,
                             feature_names=feature_names, installed_at=cached["decided_at"])
                         write_json(receipt_path, item["installation"])
-                    item["status"] = "complete" if audit["freshness_ok"] else "waiting_for_fresh_data"
+                    item["status"] = "complete" if readiness["ready"] else "waiting_for_fresh_data"
                 except Exception as exc:
                     item = report["symbols"].setdefault(symbol, {})
                     item.update(status="failed", error_type=type(exc).__name__, error=str(exc), resumes_next_wake=True)

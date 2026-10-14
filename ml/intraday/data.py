@@ -30,6 +30,10 @@ _PROVIDER_LOCKS = {}
 _PROVIDER_LOCKS_GUARD = threading.Lock()
 
 
+class InsufficientTrainingData(ContractError):
+    """Valid observed history has too few matured samples for assessment."""
+
+
 class AcquisitionPending(ContractError):
     """An exact live interval/prerequisite remains unavailable, without a cap."""
     def __init__(self, reason, retry_after_seconds=4.0):
@@ -1211,7 +1215,7 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         closes.append(finish)
         available.append(max(outcome.available_at, own_cutoff))
     if not X:
-        raise ContractError("No matured finite training labels for this cycle/window")
+        raise InsufficientTrainingData("No matured finite training labels for this cycle/window")
     causal_input_rows = frame.tail(21)
     records = []
     for record in causal_input_rows.to_dict(orient="records"):

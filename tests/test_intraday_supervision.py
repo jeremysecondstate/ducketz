@@ -25,11 +25,16 @@ def test_default_is_offline_and_does_not_create_state(tmp_path, monkeypatch):
 def helpers(monkeypatch):
     monkeypatch.setattr(s, "local_scope", lambda *args: ("Scout", ("ABCL", "DBX")))
     def audit(history, **kwargs):
-        return {"freshness_ok": history != "stale", "completed_session": {"session_id": "2026-10-13"}}
+        return {"freshness_ok": history != "stale", "completed_session": {
+            "session_id": "2026-10-13", "closed_at": "2026-10-14T00:00:00Z"}}
     return dict(repository="unused", as_of="2026-10-14T08:00Z", execute=True,
-        refresh=lambda *args, **kwargs: {"status": "complete"},
+        refresh=lambda *args, **kwargs: {"status": "complete", "source_dataset": "EQUS.MINI",
+            "source_schema": "ohlcv-1m", "results": {symbol: {"error_files": 0} for symbol in args[2]},
+            "requests": [{"symbol": symbol, "status": "fetched", "source_schema": "ohlcv-1m",
+                "error_type": None, "provider_available_end": "2026-10-14T00:00:00Z"} for symbol in args[2]]},
         loader=lambda root, symbol, **kwargs: symbol, auditor=audit,
-        builder=lambda *args, **kwargs: SimpleNamespace(feature_names=("a",), manifest={}))
+        builder=lambda *args, **kwargs: SimpleNamespace(feature_names=("a",), manifest={},
+            training_reference_at=("2026-10-13T17:00:00Z",)))
 
 
 def test_repeat_wakes_refresh_but_never_retest_same_holdout(tmp_path, monkeypatch):
@@ -45,15 +50,17 @@ def test_repeat_wakes_refresh_but_never_retest_same_holdout(tmp_path, monkeypatc
     assert result["symbols"]["ABCL"]["decision_reused"] is True
 
 
-def test_stale_symbol_cannot_train_but_other_symbol_progresses(tmp_path, monkeypatch):
+def test_stale_active_inputs_do_not_block_completed_session_assessment(tmp_path, monkeypatch):
     kwargs = helpers(monkeypatch)
     kwargs["loader"] = lambda root, symbol, **kw: "stale" if symbol == "ABCL" else symbol
     calls = []
     result = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: calls.append(1) or
         {"status": "retained", "holdout_session": "2026-10-13"}, **kwargs)
-    assert result["symbols"]["ABCL"]["status"] == "waiting_for_fresh_data"
+    assert result["symbols"]["ABCL"]["status"] == "complete"
+    assert result["symbols"]["ABCL"]["current_inputs_fresh"] is False
+    assert result["symbols"]["ABCL"]["data"]["freshness_ok"] is False
     assert result["symbols"]["DBX"]["status"] == "complete"
-    assert len(calls) == 1
+    assert len(calls) == 2
 
 
 def test_technical_failure_resumes_and_does_not_freeze_rejection(tmp_path, monkeypatch):
@@ -81,9 +88,62 @@ def test_saved_decision_does_not_hide_later_stale_data(tmp_path, monkeypatch):
     assert s.supervise(datastore=tmp_path, evaluator=evaluator, **kwargs)["status"] == "complete"
     kwargs["loader"] = lambda *a, **kw: "stale"
     result = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: pytest.fail("retuned holdout"), **kwargs)
-    assert result["status"] == "incomplete"
+    assert result["status"] == "complete"
     assert result["symbols"]["ABCL"]["decision_reused"] is True
-    assert result["symbols"]["ABCL"]["status"] == "waiting_for_fresh_data"
+    assert result["symbols"]["ABCL"]["current_inputs_fresh"] is False
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_unpublished_or_failed_refresh_cannot_freeze(tmp_path, monkeypatch, failed):
+    kwargs = helpers(monkeypatch)
+    refresh = kwargs["refresh"]
+    def incomplete(*args, **kw):
+        value = refresh(*args, **kw)
+        if failed:
+            value["status"] = "failed"
+        else:
+            for request in value["requests"]:
+                request["provider_available_end"] = "2026-10-13T23:59:00Z"
+        return value
+    kwargs["refresh"] = incomplete
+    result = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: pytest.fail("fitted unpublished session"), **kwargs)
+    assert result["status"] == "incomplete"
+    assert all(item["status"] == "waiting_for_fresh_data" for item in result["symbols"].values())
+    assert not list((tmp_path / "intraday/supervision/decisions").rglob("*.json"))
+
+
+def test_missing_intended_holdout_freezes_insufficiency_without_older_assessment(tmp_path, monkeypatch):
+    kwargs = helpers(monkeypatch)
+    kwargs["builder"] = lambda *a, **kw: SimpleNamespace(feature_names=("a",), manifest={},
+        training_reference_at=("2026-10-12T17:00:00Z",))
+    for _ in range(2):
+        result = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: pytest.fail("assessed older session"), **kwargs)
+        assert result["status"] == "complete"
+    item = result["symbols"]["ABCL"]
+    assert item["selection"]["status"] == "insufficient_data"
+    assert item["selection"]["holdout_session"] == "2026-10-13"
+    assert item["installation"]["status"] == "retained"
+    assert item["decision_reused"] is True
+
+
+@pytest.mark.parametrize("statistical", [False, True])
+def test_only_typed_insufficiency_is_a_terminal_decision(tmp_path, monkeypatch, statistical):
+    from ml.intraday.data import InsufficientTrainingData
+    from ml.intraday.prediction import ContractError
+    kwargs = helpers(monkeypatch)
+    def unavailable(*a, **kw):
+        raise (InsufficientTrainingData("No matured finite training labels for this cycle/window")
+               if statistical else ContractError("Canonical raw identity changed"))
+    kwargs["builder"] = unavailable
+    result = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: pytest.fail("fitted invalid dataset"), **kwargs)
+    assert result["status"] == ("complete" if statistical else "incomplete")
+    item = result["symbols"]["ABCL"]
+    if statistical:
+        assert item["selection"]["holdout_session"] == "2026-10-13"
+        assert item["selection"]["status"] == "insufficient_data"
+    else:
+        assert item["error_type"] == "ContractError"
+        assert not list((tmp_path / "intraday/supervision/decisions").rglob("*.json"))
 
 
 def test_review_reads_latest_outcome_and_execution_without_counting_revisions(tmp_path):
