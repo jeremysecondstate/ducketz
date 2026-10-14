@@ -1,4 +1,4 @@
-"""Explicit, source-bound operator exceptions for a late non-trading tail."""
+"""Frozen source and deadline evidence for a late non-trading preparation tail."""
 from __future__ import annotations
 
 import json
@@ -21,10 +21,11 @@ def _aware(value):
 
 def preparation_deadline(root: Path, gameplan_run: Path, original_deadline,
                          observed_at, exception_path: Path | None = None):
-    """Keep the original deadline unless an explicitly supplied record verifies.
+    """Read an existing attempt's recorded target without renewing it.
 
     This does not grant execution authority, change a forecast or replay slots.
-    Only callers in the planning/actuals tail support this exception.
+    Historical operator fields and elapsed targets do not revoke standing nightly
+    authority. Callers retain dated-continuation policy separately from evidence.
     """
     original, now = _aware(original_deadline), _aware(observed_at)
     if exception_path is None:
@@ -57,16 +58,14 @@ def preparation_deadline(root: Path, gameplan_run: Path, original_deadline,
             raise ValueError('Recovery continuation must preserve both original deadlines')
     if (payload.get('schema_version') not in {VERSION, RECOVERY_VERSION}
             or payload.get('scope') != 'PINNED_STOCK_PLANNING_AND_ACTUALS_ONLY'
-            or payload.get('operator_authorized') is not True
-            or not str(payload.get('authorization_text', '')).strip()
-            or not str(payload.get('authorization_source', '')).strip()
             or payload.get('orders_authorized') is not False
             or payload.get('gameplan_run') != source.relative_to(root).as_posix()
             or payload.get('gameplan_receipt_sha256') != file_checksum(source/'receipt.json')
             or payload.get('action_date') != session
             or _aware(payload.get('original_deadline_at')) != original
             or (not recovery and original != opening.tz_convert('UTC'))
-            or not original <= approved <= now < expires <= close.tz_convert('UTC')):
-        raise ValueError('Preparation deadline exception is invalid, expired, or has a different source')
+            or not original <= approved <= now
+            or not approved < expires <= close.tz_convert('UTC')):
+        raise ValueError('Preparation deadline evidence is invalid or has a different source')
     return expires, {'path':str(Path(exception_path).resolve()),
                      'sha256':file_checksum(Path(exception_path)), 'authorization':payload}
