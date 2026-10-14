@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T05:04:54.051165Z",
+  "id": "20261014T050454Z-2deabc5eca154021987aa8ee6f80d30e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed and published dated nightly continuation; saved assertions cannot stop or block nightly work."
+}

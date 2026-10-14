@@ -1,0 +1,48 @@
+{
+  "author": "Atlas",
+  "base_commit": "6e83bfd86ca6d41161055062a9819076b9c00679",
+  "behavior": [
+    "Continue the same dated unfinished night across late starts and elapsed targets; never change original action dates or invent generation times.",
+    "Keep causal model input cutoffs and exclude expired entries from trade quantities/cash events.",
+    "Saved stop requests, cancellation claims, prior failure labels, retry delays or lease conditions cannot substitute for a direct explicit human instruction or block continuation. Repair actual operating errors directly."
+  ],
+  "branch": "codex/atlas/20261014T050106Z-0e807c66479e4deb83823375e163fe5c",
+  "change_id": "20261014T050106Z-0e807c66479e4deb83823375e163fe5c",
+  "commit_sha": "77c6704e8b348931b5a3641e627ffac9370a269f",
+  "files": [
+    "ml/gameplan_actuals_review.py",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/nightly_continuation.py",
+    "ml/nightly_dispatch.py",
+    "ml/nightly_gameplan.py",
+    "ml/nightly_workflow.py",
+    "ml/overnight_runtime.py",
+    "ml/stock_trader/independent_signals.py",
+    "tests/test_late_forecast_validation.py",
+    "tests/test_late_gameplan_recovery.py",
+    "tests/test_nightly_continuation.py",
+    "tests/test_nightly_dispatch.py",
+    "tests/test_nightly_workflow.py",
+    "tests/test_overnight_supervision.py",
+    "tests/test_stock_only_gameplan.py"
+  ],
+  "installation": "Atlas installed exact owned patches; publication and operation remain independent.",
+  "limitations": [
+    "Stacked on the reviewed nightly source base from PR100; main integration remains separate.",
+    "Offline checks made no provider, broker or trader calls. Scout installation is not claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/109",
+  "remote_sha": "77c6704e8b348931b5a3641e627ffac9370a269f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas merged only owned changes into its operating checkout and checked the installed bytes with405 passing offline tests. Existing worker retained its loaded source; later responsibilities load continuation changes. No process was started, restarted or stopped for installation. Preserve all bindings, manual trader stops, original forecasts and historical receipts.",
+  "scope": "Shared nightly preparation behavior independently applicable to Atlas and Scout.",
+  "summary": "Atlas installed and published dated nightly continuation; saved assertions cannot stop or block nightly work.",
+  "tests": [
+    {
+      "completed_at": "2026-10-14T05:03:48.429260Z",
+      "output_sha256": "8f60dd92ba68ab80d6e118ea1f55b32aac574709296bdd89af36f9313edf1e48",
+      "result": "405 offline tests passed"
+    }
+  ]
+}
