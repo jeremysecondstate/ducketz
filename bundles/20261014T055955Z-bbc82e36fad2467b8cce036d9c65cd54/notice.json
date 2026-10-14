@@ -1,0 +1,77 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T055212Z-f63cd552ecdf49a086853a95ff696c93",
+  "change_id": "20261014T055212Z-f63cd552ecdf49a086853a95ff696c93",
+  "commit_sha": "775052967f4a17d2598e413c9ed369959fe3b1f4",
+  "details": [
+    "Actor Scout; task source reconciliation; shared preparation behavior applicable independently to Atlas and Scout.",
+    "Adopt Atlas continuation Completion-Record 20261014T050106Z-0e807c66479e4deb83823375e163fe5c from 77c6704e8b348931b5a3641e627ffac9370a269f with explicit local overlap resolution.",
+    "Retain unfinished logical action dates, completed outputs and real publication timestamps while excluding expired entry quantities.",
+    "Remove obsolete local source-identity and repair-claim operating gates under permanent nightly authority; source publication remains separate from operation.",
+    "Preserve saved-balance arithmetic, native cash/share reservations, native-run datastore containment and idempotent timed-out recovery evidence.",
+    "Retain stacked base Completion-Record 20261013T201011Z-bb838715086b4c07b991a1518f249a4a; broader common-main base composition remains separately tracked.",
+    "Preserve manual trader controls, independent logs, local symbols and private operating originals."
+  ],
+  "files": [
+    "ml/gameplan_actuals_review.py",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/nightly_continuation.py",
+    "ml/nightly_dispatch.py",
+    "ml/nightly_gameplan.py",
+    "ml/nightly_workflow.py",
+    "ml/overnight_runtime.py",
+    "ml/stock_trader/independent_signals.py",
+    "tests/test_late_forecast_validation.py",
+    "tests/test_late_gameplan_recovery.py",
+    "tests/test_nightly_continuation.py",
+    "tests/test_nightly_dispatch.py",
+    "tests/test_nightly_workflow.py",
+    "tests/test_overnight_supervision.py",
+    "tests/test_stock_only_gameplan.py",
+    "tests/test_gameplan_cash_ledger.py",
+    "tests/test_gameplan_trade_planning.py"
+  ],
+  "installation_stage": "installed_exact_and_offline_checked",
+  "integration_stage": "pending_base_composition",
+  "limitations": [
+    "Offline fixtures with network-disabled candidate verification; no live broker/provider calls, fitting production models or trader operation.",
+    "This source unit is stacked on previously published nightly preparation source; current main lacks separately reviewed base dependencies and is not claimed integrated.",
+    "Installed source does not establish the version loaded by an existing process; no process restart or scheduler change."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/114",
+    "https://github.com/jeremysecondstate/ducketz/pull/109"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T050106Z-0e807c66479e4deb83823375e163fe5c",
+    "20261013T201011Z-bb838715086b4c07b991a1518f249a4a"
+  ],
+  "runtime_implications": "Install only reviewed owned source/test bytes while preserving existing workers, private bindings, schedules, manual stops and original operating data. Later responsibilities load the continuation behavior without a restart.",
+  "scope": "Shared preparation source applicable independently to Atlas and Scout; local symbols and bindings preserved.",
+  "summary": "Scout adopted and installed nightly continuation with saved-balance preservation and timed-out evidence recovery; tested stacked source published.",
+  "tests": [
+    {
+      "check": "Nightly continuation sealed-source",
+      "completed_at_utc": "2026-10-14T05:53:30.744772Z",
+      "output_sha256": "e9931799791625a52c8bc41a1de1bc862c9a02200cdab6bae00aeac4e4ef3230",
+      "result": "465 passed, no skips; 40 joblib NumPy deprecation warnings",
+      "started_at_utc": "2026-10-14T05:52:12.867280Z"
+    },
+    {
+      "check": "Nightly continuation isolated-source",
+      "completed_at_utc": "2026-10-14T05:55:21.191317Z",
+      "output_sha256": "514d4c4b62119f2b1d5189ed013ea868f74887df347626f2dd0f517c80b7d06e",
+      "result": "465 passed, no skips; 40 joblib NumPy deprecation warnings",
+      "started_at_utc": "2026-10-14T05:54:07.508262Z"
+    },
+    {
+      "check": "Nightly continuation installed-scout",
+      "completed_at_utc": "2026-10-14T05:57:42.887631Z",
+      "output_sha256": "f17a9e20e57a20c57e32d73931aeefa8267c6825f9f393431ddb8ea488319e20",
+      "result": "465 passed, no skips; 40 joblib NumPy deprecation warnings",
+      "started_at_utc": "2026-10-14T05:56:31.785545Z"
+    }
+  ]
+}

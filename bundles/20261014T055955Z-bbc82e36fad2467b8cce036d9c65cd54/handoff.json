@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T05:59:55.955862Z",
+  "id": "20261014T055955Z-bbc82e36fad2467b8cce036d9c65cd54",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted and installed nightly continuation with saved-balance preservation and timed-out evidence recovery; tested stacked source published."
+}
