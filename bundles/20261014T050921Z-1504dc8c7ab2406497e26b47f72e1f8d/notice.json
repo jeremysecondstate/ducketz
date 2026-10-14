@@ -1,0 +1,57 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T050528Z-3157af85ab44487aa7c270bcd9ad2294",
+  "change_id": "20261014T050528Z-3157af85ab44487aa7c270bcd9ad2294",
+  "commit_sha": "b83f9fea84094b9b6257fabaef5c13fadaeb3a2a",
+  "details": [
+    "Backfill and incremental request ends follow the America/Chicago date after UTC rollover; UTC acquisition timestamps and overlap remain unchanged.",
+    "Exact two-file peer blobs retained; 45 source/dependency fingerprints bound in each check."
+  ],
+  "files": [
+    "datafetching/fred_alfred_readiness.py",
+    "tests/test_fred_alfred_provider_calendar.py"
+  ],
+  "installation_stage": "locally_installed_and_offline_checked",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Network-disabled fixture validation; no real provider call or production catch-up result claimed.",
+    "Pinned checker used process-local PYTHONSAFEPATH=1 to avoid helper-name shadowing; immutable release unchanged.",
+    "Existing process-loaded version remains unclaimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/106",
+    "https://github.com/jeremysecondstate/ducketz/pull/110"
+  ],
+  "main_commit_sha": "9752a7c7178b1f74f30abc803bdb727bc2c02462",
+  "peer_source_commit": "198a5ca31ab260e4a78bd8e14e68bd339f77170c",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T043914Z-f1bd0700887e424384021ed25d217bb8"
+  ],
+  "runtime_implications": "Source installed for subsequent ALFRED processes. No restart, trader action, scheduler, binding or data change. Nightly production continues independently.",
+  "scope": "Shared source applicable to Atlas and Scout; existing local bindings and symbols preserved.",
+  "summary": "Scout installed Atlas ALFRED provider-calendar repair and integrated exact reviewed source on common main.",
+  "tests": [
+    {
+      "check": "ALFRED offline suites: isolated-source",
+      "completed_at_utc": "2026-10-14T05:06:08.662615Z",
+      "output_sha256": "9bd162027a89774a8ddeaf052b8f5378b71584e9c31f7e7fb11250034e7bf03c",
+      "result": "34 passed; no skips or warnings",
+      "started_at_utc": "2026-10-14T05:06:03.368718Z"
+    },
+    {
+      "check": "ALFRED offline suites: main-candidate",
+      "completed_at_utc": "2026-10-14T05:07:23.913968Z",
+      "output_sha256": "d5724adff435beaf6859dc88117d223f525ff993e2f862aaebb68f64db830ae3",
+      "result": "34 passed; no skips or warnings",
+      "started_at_utc": "2026-10-14T05:07:18.359728Z"
+    },
+    {
+      "check": "ALFRED offline suites: installed-scout",
+      "completed_at_utc": "2026-10-14T05:07:58.672325Z",
+      "output_sha256": "d979d2e91ba3530989755477e585fcf1377347c93e28ffcbaa2ffc0b7c320d40",
+      "result": "34 passed; no skips or warnings",
+      "started_at_utc": "2026-10-14T05:07:53.123700Z"
+    }
+  ]
+}
