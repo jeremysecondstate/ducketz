@@ -28,7 +28,7 @@ def forecast(symbol="AAPL", hour=4, *, direction="BEARISH", change=-.01, probabi
             "actual_end_observed_at": end.isoformat() if evaluated else None}
 
 
-def write_review(root: Path, rows=None, *, session="2026-09-11", version="01", latest=True):
+def write_review(root: Path, rows=None, *, session="2026-09-11", version="01", latest=True, coverage_status=None):
     if rows is None:
         rows = [forecast(session=session),
                 forecast(hour=5, direction="BULLISH", change=-.02, probability=.8, session=session),
@@ -42,6 +42,8 @@ def write_review(root: Path, rows=None, *, session="2026-09-11", version="01", l
     pd.DataFrame(rows).to_parquet(run / "forecast-results.parquet", index=False)
     report = {"schema_version": "gameplan-actuals-review-v1", "status": "COMPLETE", "action_date": session,
               "reviewed_at": f"{session}T22:15:00-07:00", "outcomes_through": f"{session}T17:00:00-07:00"}
+    if coverage_status is not None:
+        report["coverage_status"] = coverage_status
     (run / "report.json").write_text(json.dumps(report), encoding="utf-8")
     (run / "Gameplan-results.md").write_text(f"# Verified results {session}\n", encoding="utf-8")
     write_manifest(run, run_timestamp=report["reviewed_at"], input_files=[],
