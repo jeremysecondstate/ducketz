@@ -1,0 +1,67 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T052425Z-4ac0b20b74fe4c60a989a74fb9528f0f",
+  "change_id": "20261014T052425Z-4ac0b20b74fe4c60a989a74fb9528f0f",
+  "commit_sha": "333c9c90196043fe13a1f278c0094c92c4909382",
+  "details": [
+    "Actor Scout; task source-reconciliation; nine-file shared foundation applicable independently to both fifteen-minute traders.",
+    "Publish exact completed source from eb24c5b9dfa436ae5d795c1c62fad0d3d25857d7 onto current main; no application source overwrite.",
+    "Preserve causal observed data, exact acquisition evidence and durable provider retry state without inventing missing bars.",
+    "Keep original desired sizing independent of cash capacity and preserve immutable intentions and append-only outcome projections.",
+    "Retain original Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4; remaining executor composition is separate.",
+    "No cross-trader admission, shared execution state, peer availability or loaded-compatibility prerequisites."
+  ],
+  "files": [
+    "ml/intraday/data.py",
+    "ml/intraday/sizing.py",
+    "ml/intraday/technical_sizing.py",
+    "ml/intraday/starter_sizing.py",
+    "ml/intraday/intentions.py",
+    "tests/test_intraday_data.py",
+    "tests/test_intraday_intentions.py",
+    "tests/test_intraday_starter_sizing.py",
+    "tests/test_intraday_technical_sizing.py"
+  ],
+  "installation_stage": "already_installed_exact_and_offline_checked",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic data, mocked provider and temporary SQLite fixtures only; no real broker, provider, production data or model training.",
+    "Explicitly deselect test_live_histories_genuine_availability_integration_without_order_side_effects because runtime source is outside this bounded composition; preserve test bytes for later full-runtime checks.",
+    "Full executor and runtime integration remains unfinished; this source unit does not claim a process-loaded version."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/111"
+  ],
+  "main_commit_sha": "6ccaf975ed97b7ff8ea2d5353dab42a0a689b0e9",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261013T210413Z-363c920429d74e7e9a82f3cdc6391742",
+    "20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4"
+  ],
+  "runtime_implications": "Exact nine-file source is already installed on Scout. No trader startup, restart, stop clearing, native schedule, symbols, binding or operating data changes.",
+  "scope": "Shared source applicable independently to Atlas and Scout; local symbols and bindings preserved.",
+  "summary": "Scout integrated causal intraday data, independent sizing and durable intentions on common main; installed source matches.",
+  "tests": [
+    {
+      "check": "Intraday data and sizing: isolated-source",
+      "completed_at_utc": "2026-10-14T05:25:50.722410Z",
+      "output_sha256": "0c857c23112e7e72c5e181f1741228f6245402629915b4d1b6c86cfa7e4c0ee6",
+      "result": "139 passed, one explicitly deselected runtime integration test; no skips or warnings",
+      "started_at_utc": "2026-10-14T05:25:43.777678Z"
+    },
+    {
+      "check": "Intraday data and sizing: main-candidate",
+      "completed_at_utc": "2026-10-14T05:26:52.290125Z",
+      "output_sha256": "44a958e5f2dcab7cdb14f7f6187230d46fb6c673b3ef0aac973ba1f14b6fc3ec",
+      "result": "139 passed, one explicitly deselected runtime integration test; no skips or warnings",
+      "started_at_utc": "2026-10-14T05:26:45.648072Z"
+    },
+    {
+      "check": "Intraday data and sizing: installed-scout",
+      "completed_at_utc": "2026-10-14T05:25:15.708877Z",
+      "output_sha256": "5ba8e127f66ac1c7216e2a9646e2018e3a58b6f9ba089a8915188e52f293504f",
+      "result": "139 passed, one explicitly deselected runtime integration test; no skips or warnings",
+      "started_at_utc": "2026-10-14T05:25:08.424118Z"
+    }
+  ]
+}
