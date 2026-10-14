@@ -103,7 +103,7 @@ def test_claim_precedes_source_edits_and_completion_binding_is_one_way(env):
         registry.bind_completion(env["work"], original, "substitute-id")
 
 
-def test_adapter_repair_before_first_export_keeps_original_binding_anchor(env, monkeypatch):
+def test_adapter_first_export_freezes_current_binding_and_preserves_historical_anchor(env, monkeypatch):
     from tools import nightly_exchange as exchange
     env["original_binding"].unlink()
     output = env["state"]["steps"]["local_handoff"]["output"]
@@ -113,15 +113,19 @@ def test_adapter_repair_before_first_export_keeps_original_binding_anchor(env, m
     spec = prepared(env, path="tools/nightly_exchange.py")
     applied(env, spec)
     assert repair.original_binding(env["config"], DAY) == original
+    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_ALREADY_APPLIED"
+    retained = {path: path.read_bytes() for path in (spec, spec.with_name("applied.json"),
+               env["session"] / "repair-transitions.json", env["prep"])}
     monkeypatch.setattr(exchange, "_binding", repair._binding)
     def pending_before_export(*args):
         raise exchange.Pending("fixture verified first binding before private export")
     monkeypatch.setattr(exchange, "_owners", pending_before_export)
     with pytest.raises(exchange.Pending, match="first binding"):
         exchange._run(env["config"], env["native"], DAY, "2026-10-08", lambda: NOW, False)
-    assert repair._read(env["original_binding"]) == original
+    assert repair._read(env["original_binding"]) == repair._binding(env["config"])
     assert original != repair._binding(env["config"])
-    assert applied(env, spec)["status"] == "EXCHANGE_REPAIR_ALREADY_APPLIED"
+    assert repair._transition_entries(env["session"])[0]["before_binding"] == original
+    assert all(path.read_bytes() == raw for path, raw in retained.items())
     assert exchange._local_state(env["config"], env["native"], DAY, "2026-10-08") == env["state"]
 
 
@@ -424,14 +428,16 @@ def test_unreviewed_public_dependency_additions_are_rejected_before_resume(env, 
         repair.verify_transition(env["config"], env["state"], repair._read(env["original_binding"]))
 
 
-def test_normal_adapter_verifies_full_dependency_chain_after_source_free_restoration(env):
+def test_normal_adapter_preserves_completed_preparation_after_source_change(env):
     from tools import nightly_exchange
     applied(env, prepared(env, risk="external_dependency"))
+    retained = {path: path.read_bytes() for path in (env["original_binding"], env["prep"],
+               env["session"] / "repair-transitions.json")}
     path = env["repo"] / "signals/unknown.py"
     path.parent.mkdir()
     path.write_text("# unreviewed dependency")
-    with pytest.raises(ValueError, match="dependency source change"):
-        nightly_exchange._local_state(env["config"], env["native"], DAY, "2026-10-08")
+    assert nightly_exchange._local_state(env["config"], env["native"], DAY, "2026-10-08") == env["state"]
+    assert all(path.read_bytes() == raw for path, raw in retained.items())
 
 
 def test_blocked_exchange_cli_reports_nonzero_without_replaying_work(env, monkeypatch, capsys):
