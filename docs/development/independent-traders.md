@@ -53,6 +53,11 @@ and preserve real unresolved coverage gaps rather than inventing success. This
 standing instruction applies to every subsequent night until Jeremy explicitly
 directs otherwise.
 
+Software-only stop requests and CANCELLED records are invalid and have no
+effect on nightly execution or resumption. Only Jeremy's actual explicit
+instruction authorizes cancellation; a software label or automatic control
+never supplies that authority.
+
 Every night, produce the two Gameplan research packages, synthesize those
 Gameplans once, publish the combined Gameplan and Stats, and prepare each
 machine's independent 15-minute trader for manual start. Atlas can complete the

@@ -278,7 +278,12 @@ def test_between_stage_failure_preserves_completed_outputs_and_records_failure(s
         else:
             lost.set()
         return {"files": {}}
-    with pytest.raises((RuntimeError, ValueError), match="source changed|ownership was lost"):
+    if reason == "supervision":
+        result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
+        assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+        assert calls == list(STEPS)
+        return
+    with pytest.raises(ValueError, match="source changed"):
         run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
     failed = _saved_state(setup)
     assert calls == ["prepare_stats"]
@@ -295,9 +300,9 @@ def test_interrupt_is_recorded_without_erasing_prior_stage_completion(setup):
     with pytest.raises(KeyboardInterrupt):
         _run(setup, interrupt)
     failed = _saved_state(setup)
-    assert failed["status"] == "CANCELLED"
+    assert failed["status"] == "INTERRUPTED"
     assert failed["steps"]["prepare_stats"]["status"] == "COMPLETE"
-    assert failed["steps"]["model_review"]["status"] == "CANCELLED"
+    assert failed["steps"]["model_review"]["status"] == "INTERRUPTED"
 
 
 def _feedback(root):

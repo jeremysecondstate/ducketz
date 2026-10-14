@@ -24,6 +24,7 @@ from filelock import FileLock, Timeout
 
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import file_checksum, utc_timestamp
+from ml.nightly_cancellation import ExplicitNightlyCancellation, validate_cancellation
 
 VERSION = "ducketz-nightly-workflow-v1"
 STEPS = ("prepare_stats", "model_review", "train_and_plan", "verify_display", "local_handoff")
@@ -185,7 +186,7 @@ def _native_outputs(run: Path) -> dict:
 
 @contextmanager
 def _supervision(root: Path):
-    from ml.overnight_runtime import claim_supervision, overnight_status, request_stage_stop
+    from ml.overnight_runtime import claim_supervision
     token = str(uuid.uuid4())
     if claim_supervision(root, token)["status"] != "ACQUIRED":
         raise RuntimeError("Another operator owns overnight supervision")
@@ -199,12 +200,8 @@ def _supervision(root: Path):
             except Exception:
                 pass
             lost.set()
-            try:
-                status = overnight_status(root)
-                if status.get("owner_pid") == os.getpid() and status.get("status") == "RUNNING":
-                    request_stage_stop(root, Path(status["run_path"]), "Workflow supervision lease lost")
-            except Exception:
-                pass
+            # Lease observations do not carry human cancellation authority.
+            # The workflow and native process locks still retain this owner.
             return
 
     thread = threading.Thread(target=renew, name="nightly-supervision", daemon=True)
@@ -218,7 +215,7 @@ def _supervision(root: Path):
 
 
 def _run_native(config: dict, state: dict, step: str, save) -> dict:
-    from ml.overnight_runtime import run_overnight_pipeline, overnight_status, recover_interrupted_run
+    from ml.overnight_runtime import run_overnight_pipeline, overnight_status, recover_interrupted_run, _validated_run
     root, repository = Path(config["datastore"]), Path(config["repository"])
     entry = state["steps"][step]
     previous = entry.get("native_run")
@@ -249,10 +246,13 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         if state.get("recovery_deadline_at"):
             arguments["late_action_date"] = state["action_date"]
     if previous:
-        run = Path(previous)
+        run = _validated_run(root.resolve(), Path(previous))
         if not (run / "receipt.json").exists():
             recover_interrupted_run(root, run, "Previous workflow worker exited before its native receipt")
         receipt = _json(run / "receipt.json")
+        if (validate_cancellation(receipt.get("cancellation"), run_id=run.name)
+                and Path(receipt["cancellation"]["run_path"]).resolve() == run.resolve()):
+            raise ExplicitNightlyCancellation(receipt["cancellation"])
         if receipt.get("status") == "COMPLETE":
             return _native_outputs(run)
         arguments["resume_run"] = run
@@ -672,7 +672,7 @@ def _planning_tail_continuation(config, state, requested, observed):
             or any(state["steps"].get(name, {}).get("status") != "COMPLETE"
                    for name in workflow_steps(state)[:workflow_steps(state).index(planning_step)])
             or not entry.get("native_run")
-            or (saved is None and (state["status"] not in {"FAILED", "TIMED_OUT", "CANCELLED"}
+            or (saved is None and (state["status"] not in {"FAILED", "TIMED_OUT", "CANCELLED", "INTERRUPTED"}
                 or Path(entry["native_run"]).resolve() != origin
                 or entry.get("status") == "COMPLETE"))):
         raise ValueError("Planning continuation does not match this failed recovery tail")
@@ -716,9 +716,43 @@ def _verify_saved_recovery(config, state, observed, *, continuation=False):
             raise ValueError("Frozen scheduled recovery belongs to another workflow")
 
 
+def _interruption_repair_owner(config, state, owner):
+    """Read the exact owner's original night when a later night sees its claim."""
+    if owner is None or owner.get("domain") != "preparation":
+        return None
+    original = state
+    if owner.get("action_date") != state.get("action_date"):
+        path = Path(config["state_root"]) / "runs" / owner["action_date"] / "state.json"
+        if not path.is_file():
+            return None
+        original = _json(path)
+    if original.get("actor") != config["actor"] or original.get("action_date") != owner.get("action_date"):
+        return None
+    from ml.nightly_dispatch import interruption_repair_invalidation
+    invalidation = interruption_repair_invalidation(original, owner)
+    if invalidation is None:
+        return None
+    snapshot = (Path(config["state_root"]) / "runs" / owner["action_date"] /
+                "source-repairs" / owner["repair_id"] / "before-state.json")
+    if not snapshot.is_file():
+        return None
+    frozen = _json(snapshot)
+    if (frozen.get("actor") != config["actor"] or frozen.get("action_date") != owner["action_date"]
+            or frozen.get("failure") != invalidation["failure"]):
+        return None
+    digest = file_checksum(snapshot)
+    from ml.nightly_stage_repair import _repository_claim
+    if _repository_claim(owner["owner"], owner["repair_id"], owner["action_date"],
+                         digest, owner["completion_record"]) != owner:
+        return None
+    return {**invalidation, "original_state_sha256": digest}
+
+
 def _repository_repair_gate(config, state, owner):
     """Caller holds workflow.lock; a source installation alone is not recovery."""
     if owner is None:
+        return None
+    if _interruption_repair_owner(config, state, owner) is not None:
         return None
     reason = "One repository repair owner is preserving this unfinished repair"
     if owner["domain"] == "preparation" and owner["action_date"] == state.get("action_date"):
@@ -730,6 +764,79 @@ def _repository_repair_gate(config, state, owner):
             reason = str(error)
     return {"status": "REPAIR_IN_PROGRESS", "action_date": state.get("action_date"),
             "repository_repair_owner": owner, "reason": reason}
+
+
+def _retire_software_repair(config, state, invalidation):
+    """Caller holds workflow.lock; preserve exact originals before retirement."""
+    from ml import nightly_repair_registry as registry
+    claim = invalidation["repair_claim"]
+    original_path = Path(config["state_root"]) / "runs" / invalidation["action_date"] / "state.json"
+    original = state if state.get("action_date") == invalidation["action_date"] else _json(original_path)
+    if original.get("repair_claim") != claim:
+        raise ValueError("Software-derived repair claim changed before invalidation")
+    source_snapshot = original_path.parent / "source-repairs" / claim["token"] / "before-state.json"
+    if (not source_snapshot.is_file() or _json(source_snapshot).get("failure") != invalidation["failure"]):
+        raise ValueError("Original software-cancellation failure evidence changed")
+    identity = {key: invalidation[key] for key in ("action_date", "repair_claim")}
+    digest = sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+    directory = Path(config["state_root"]) / "software-cancellation-invalidations" / digest
+    record_path = directory / "invalidation.json"
+    stage_owner_path = original_path.parent / "repair-owner.json"
+    stage_owner_raw = stage_owner_path.read_bytes() if stage_owner_path.is_file() else None
+    intent_bytes = {name: source_snapshot.parent.joinpath(name).read_bytes()
+                    for name in ("claim.json", "intent.json", "transition-review.json", "spec.json")
+                    if source_snapshot.parent.joinpath(name).is_file()}
+    if stage_owner_raw is not None:
+        stage_owner = json.loads(stage_owner_raw)
+        if (stage_owner.get("owner") != claim["owner"] or stage_owner.get("repair_id") != claim["token"]
+                or stage_owner.get("failure", {}).get("fingerprint") != claim["failure_fingerprint"]
+                or stage_owner.get("state_sha256") != file_checksum(source_snapshot)):
+            raise ValueError("Another stage repair owner holds this failure")
+    if record_path.is_file():
+        record = _json(record_path)
+        if (record.get("disposition") != "INVALIDATED_SOFTWARE_CANCELLATION"
+                or record.get("repair_claim") != claim
+                or record.get("failure") != invalidation["failure"]
+                or record.get("action_date") != invalidation["action_date"]
+                or record.get("intent_files") != {name: sha256(raw).hexdigest() for name, raw in intent_bytes.items()}
+                or (stage_owner_raw is not None
+                    and sha256(stage_owner_raw).hexdigest() != record.get("stage_repair_owner_sha256"))
+                or (invalidation.get("repository_owner") is not None
+                    and record.get("repository_owner") != invalidation["repository_owner"])):
+            raise ValueError("Frozen software-cancellation invalidation differs")
+    else:
+        before = original_path.read_bytes()
+        registry._immutable_invalidation(directory / "before-state.json", before)
+        record = {**invalidation, "disposition": "INVALIDATED_SOFTWARE_CANCELLATION",
+            "original_state_sha256": sha256(before).hexdigest(),
+            "failure_snapshot": {"path": str(source_snapshot.resolve()), "sha256": file_checksum(source_snapshot)},
+            "intent_files": {name: sha256(raw).hexdigest() for name, raw in intent_bytes.items()}}
+        for name, raw in intent_bytes.items():
+            registry._immutable_invalidation(directory / "source-intents" / name, raw)
+        if stage_owner_raw is not None:
+            registry._immutable_invalidation(directory / "stage-repair-owner.json", stage_owner_raw)
+            record["stage_repair_owner_sha256"] = sha256(stage_owner_raw).hexdigest()
+        registry._immutable_invalidation(record_path,
+            (json.dumps(record, indent=2, sort_keys=True) + "\n").encode())
+    if (file_checksum(directory / "before-state.json") != record["original_state_sha256"]
+            or file_checksum(source_snapshot) != record["failure_snapshot"]["sha256"]):
+        raise ValueError("Preserved software-cancellation originals changed")
+    evidence = {"path": str(record_path.resolve()), "sha256": file_checksum(record_path)}
+    registry._immutable_invalidation(source_snapshot.parent / "invalidated-software-cancellation.json",
+        (json.dumps({"disposition": "INVALIDATED_SOFTWARE_CANCELLATION", "evidence": evidence}, sort_keys=True) + "\n").encode())
+    owner = record.get("repository_owner")
+    if owner is not None:
+        registry.invalidate_software_cancellation(config["state_root"], owner, evidence=evidence, verified=True)
+    if stage_owner_raw is not None:
+        if stage_owner_path.read_bytes() != stage_owner_raw:
+            raise ValueError("Stage repair owner changed during cancellation invalidation")
+        stage_owner_path.unlink()
+    audit = original.setdefault("invalidated_software_repair_claims", [])
+    entry = {**record, "evidence": evidence}
+    if entry not in audit:
+        audit.append(entry)
+    original.pop("repair_claim")
+    _write(original_path, original)
 
 
 def run_workflow(config: dict, *, resume_action_date: str | None = None,
@@ -745,7 +852,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
     executor = execute_step or _execute_step
     from ml.nightly_dispatch import (LAYOUT, RESPONSIBILITIES, OWNERS, TERMINAL,
         intended_session, next_responsibility, authority, recovery_record, validate_recovery,
-        failure_record, retry_disposition)
+        failure_record, retry_disposition, cancellation_requested, interruption_repair_invalidation)
     if responsibility is not None and responsibility not in RESPONSIBILITIES:
         raise ValueError("Unknown nightly responsibility")
     explicit_catch_up = catch_up and recovery_reason is not None
@@ -842,6 +949,12 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
         if state.get("schema_version") != VERSION or state.get("actor") != config["actor"]:
             raise ValueError("Workflow state identity differs")
+        if cancellation_requested(state):
+            return {**state, "status": "CANCELLED_BY_HUMAN"}
+        ignored_claim = interruption_repair_invalidation(state)
+        ignored_owner = _interruption_repair_owner(config, state, repository_repair_owner)
+        if ignored_owner is not None:
+            repository_repair_owner = None
         def resolve_repository_repair():
             nonlocal repository_repair_owner
             if (repository_repair_owner is not None
@@ -866,9 +979,16 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
         repair_gate = _repository_repair_gate(config, state, repository_repair_owner)
         if repair_gate:
             return repair_gate
-        if state.get("repair_claim"):
+        if state.get("repair_claim") and ignored_claim is None:
             return {"status": "REPAIR_IN_PROGRESS", "action_date": state["action_date"],
                     "repair_claim": state["repair_claim"]}
+        invalidations = [ignored_owner] if ignored_owner is not None else []
+        if (ignored_claim is not None and not any(
+                item["action_date"] == ignored_claim["action_date"]
+                and item["repair_claim"] == ignored_claim["repair_claim"] for item in invalidations)):
+            invalidations.append(ignored_claim)
+        for invalidation in invalidations:
+            _retire_software_repair(config, state, invalidation)
         try:
             _verify_configuration_binding(config, state)
             _verify_symbol_binding(config, state)
@@ -939,8 +1059,6 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                         save()
                         return state
                     state["current_step"] = step
-                    if lost.is_set():
-                        raise RuntimeError("Overnight supervision ownership was lost")
                     if state["source_identity"] != identity(repository):
                         raise ValueError("Application source changed during the nightly run")
                     _verify_symbol_binding(config, state)
@@ -958,8 +1076,6 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                         state["failure"].update(disposition="RESOLVED", resolved_at=utc_timestamp().isoformat())
                     save()
                     resolve_repository_repair()
-                if lost.is_set():
-                    raise RuntimeError("Overnight supervision ownership was lost")
                 if state["source_identity"] != identity(repository):
                     raise ValueError("Application source changed during the nightly run")
                 _verify_symbol_binding(config, state)
@@ -970,11 +1086,16 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             save()
             return state
         except BaseException as error:
+            explicit = isinstance(error, ExplicitNightlyCancellation) and cancellation_requested(
+                {**state, "cancellation": error.request})
             failure = ("TIMED_OUT" if isinstance(error, TimeoutError) else
-                       "CANCELLED" if isinstance(error, (InterruptedError, KeyboardInterrupt, SystemExit)) else "FAILED")
+                       "CANCELLED" if explicit else
+                       "INTERRUPTED" if isinstance(error, (InterruptedError, KeyboardInterrupt, SystemExit)) else "FAILED")
             message = f"{type(error).__name__}: {error}"
             failed_at = observed + pd.Timedelta(microseconds=int(max(0, monotonic() - started_tick) * 1_000_000))
             state.update(status=failure, error=message, failed_at=failed_at.isoformat(), owner_pid=None)
+            if explicit:
+                state["cancellation"] = error.request
             current = state["steps"].get(state.get("current_step"))
             if current is not None and current.get("status") != "COMPLETE":
                 current.update(status=failure, error=message)
@@ -1003,12 +1124,17 @@ def status(config: dict, *, action_date: str | None = None, now=None, current_se
     if (state.get("action_date") != action_date or state.get("actor") != config["actor"]
             or state.get("schema_version") != VERSION):
         raise ValueError("Saved nightly identity differs from the intended session")
+    from ml.nightly_dispatch import cancellation_requested
+    if state.get("status") in {"CANCELLED", "CANCELLED_BY_HUMAN"} and not cancellation_requested(state):
+        # Preserve original on-disk evidence while invalidating its authority.
+        state["status"] = "INTERRUPTED"
     return state
 
 
 def dispatch_status(config, *, now=None):
     """Read-only dispatch decision; expensive jobs run only after prerequisites."""
-    from ml.nightly_dispatch import intended_session, next_responsibility, TERMINAL, authority, retry_disposition
+    from ml.nightly_dispatch import (intended_session, next_responsibility, TERMINAL,
+                                    authority, retry_disposition, cancellation_requested, interruption_repair_invalidation)
     authority(config)
     selection = intended_session(now)
     current = status(config, action_date=selection["action_date"])
@@ -1020,9 +1146,12 @@ def dispatch_status(config, *, now=None):
     repair_registry.read(root)
     if current["status"] in TERMINAL:
         return {**result, "dispatch": False, "reason": "Retain completed session and its original receipts"}
+    if cancellation_requested(current):
+        return {**result, "status": "CANCELLED_BY_HUMAN", "dispatch": False,
+                "reason": "Jeremy explicitly requested cancellation", "cancellation": current["cancellation"]}
     if not selection["eligible"]:
         return {**result, "status": "WAITING_KICKOFF", "dispatch": False}
-    if current.get("repair_claim"):
+    if current.get("repair_claim") and interruption_repair_invalidation(current) is None:
         return {**result, "status": "REPAIR_IN_PROGRESS", "dispatch": False,
                 "repair_claim": current["repair_claim"]}
     root.mkdir(parents=True, exist_ok=True)

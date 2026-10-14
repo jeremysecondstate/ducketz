@@ -294,7 +294,7 @@ def test_saved_continuation_recovers_native_save_boundaries_without_duplicate_wo
     assert {p.name:p.read_bytes() for p in origin.iterdir()} == original
     assert exception.read_bytes() == authorization
     receipt = json.loads((current/'receipt.json').read_text())
-    assert receipt['status'] == ('COMPLETE' if completed else 'CANCELLED')
+    assert receipt['status'] == ('COMPLETE' if completed else 'INTERRUPTED')
     assert len(list((Path(config['datastore'])/'ml/overnight-runs').iterdir())) == (2 if completed else 3)
     workflow.run_workflow(config, resume_action_date='2026-10-07', now='2026-10-07T19:20Z',
         identity=_identity, supervise=False, execute_step=lambda *a: pytest.fail('Completed tail dispatched again'))

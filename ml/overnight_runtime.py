@@ -21,6 +21,10 @@ from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from datafetching.symbol_universe import configured_watchlist_path
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp
+from ml.nightly_cancellation import (
+    CANCELLATION_AUTHORITY, CANCELLATION_VERSION, ExplicitNightlyCancellation,
+    read_cancellation_request, validate_cancellation,
+)
 
 
 OVERNIGHT_RUNTIME_VERSION = "supervised-overnight-gameplan-runtime-v2"
@@ -678,7 +682,15 @@ def run_overnight_pipeline(
                     raise RuntimeError(f"{stage} exited with code {exit_code}; inspect {log_path}")
             except BaseException as exc:
                 stage_error = exc
-                status = "TIMED_OUT" if isinstance(exc, TimeoutError) else "CANCELLED" if isinstance(exc, (InterruptedError, KeyboardInterrupt)) else "FAILED"
+                if (isinstance(exc, ExplicitNightlyCancellation)
+                        and validate_cancellation(exc.request, run_id=run.name)
+                        and Path(exc.request["run_path"]).resolve() == run):
+                    status = "CANCELLED"
+                    report["cancellation"] = exc.request
+                elif isinstance(exc, (InterruptedError, KeyboardInterrupt, SystemExit)):
+                    status = "INTERRUPTED"
+                else:
+                    status = "TIMED_OUT" if isinstance(exc, TimeoutError) else "FAILED"
             result = StageResult(stage, command, started.isoformat(), utc_timestamp().isoformat(),
                 time.monotonic() - monotonic_started, exit_code, status, log_path.name,
                 f"{type(stage_error).__name__}: {stage_error}" if stage_error else None)
@@ -709,6 +721,7 @@ def run_overnight_pipeline(
             "completed_at": report["completed_at"], "failed_stage": report.get("failed_stage"),
             "stage_report_size": report_path.stat().st_size,
             "stage_report_checksum_sha256": file_checksum(report_path), "logs": logs,
+            **({"cancellation": report["cancellation"]} if report.get("cancellation") else {}),
             "broker_orders_enabled": False, "orders_placed": 0,
         })
     if error:
@@ -734,8 +747,9 @@ def _run_stage(command: Sequence[str], *, repository: Path, log_path: Path,
         raise ValueError("poll_seconds must be positive")
     if utc_timestamp() >= deadline:
         raise TimeoutError("Next session's 04:00 PT publication deadline has passed")
-    if stop_request.is_file():
-        raise InterruptedError("A supervisor stop request was recorded before stage launch")
+    cancellation = read_cancellation_request(stop_request, run_path=log_path.parent)
+    if cancellation is not None:
+        raise ExplicitNightlyCancellation(cancellation)
     environment = dict(os.environ, PYTHONUNBUFFERED="1", DUCKETZ_TRAINING_PROGRESS="1")
     flags = {"creationflags": subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
     with log_path.open("wb") as output:
@@ -775,8 +789,9 @@ def _run_stage(command: Sequence[str], *, repository: Path, log_path: Path,
                 progress(payload)
                 if exited:
                     return int(process.returncode)
-                if stop_request.is_file():
-                    raise InterruptedError(f"Supervisor requested stop: {stop_request.read_text(encoding='utf-8')[:1000]}")
+                cancellation = read_cancellation_request(stop_request, run_path=log_path.parent)
+                if cancellation is not None:
+                    raise ExplicitNightlyCancellation(cancellation)
                 remaining = (deadline - now).total_seconds()
                 if remaining <= 0:
                     raise TimeoutError("Next session's 04:00 PT publication deadline reached")
@@ -826,7 +841,7 @@ def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
     run = _validated_run(root, run)
     report_path = run / "stage-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    terminal = report.get("status") in {"FAILED", "CANCELLED"}
+    terminal = report.get("status") in {"FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"}
     if not reason.strip():
         raise RuntimeError("Recovery needs an interrupted running attempt and a reason")
     if terminal:
@@ -869,7 +884,7 @@ def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
     failed_stage = unfinished[0] if unfinished else None
     if failed_stage is not None and failed_stage not in ALL_STAGE_ORDER:
         raise RuntimeError("Interrupted stage cannot be identified")
-    status = "CANCELLED" if unfinished else "COMPLETE"
+    status = "INTERRUPTED" if unfinished else "COMPLETE"
     report.update(status=status, failed_stage=failed_stage, completed_at=now,
                   heartbeat_at=now, error="Supervisor process exited: " + reason)
     _write_json_atomic(report_path, report)
@@ -916,11 +931,16 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
     if (receipt.get("schema_version") != OVERNIGHT_RUNTIME_VERSION
         or receipt.get("run_path") != run.relative_to(root).as_posix()
-        or receipt.get("status") not in {"FAILED", "CANCELLED", "TIMED_OUT"}
+        or receipt.get("status") not in {"FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"}
         or receipt.get("status") != report.get("status")
         or receipt.get("stage_report_checksum_sha256") != file_checksum(run / "stage-report.json")
         or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
         raise RuntimeError("Only a verified failed or stopped overnight attempt can resume")
+    cancellation = report.get("cancellation")
+    if (report.get("status") == "CANCELLED"
+            and validate_cancellation(cancellation, run_id=run.name)
+            and Path(cancellation["run_path"]).resolve() == run):
+        raise ExplicitNightlyCancellation(cancellation)
     effective_deadline = utc_timestamp(report['deadline_at'])
     exception_original = effective_deadline
     exception_evidence = None
@@ -988,6 +1008,11 @@ def overnight_status(root: Path) -> dict[str, object]:
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
     status = {**report, "run_path": str(run), "receipt_present": (run / "receipt.json").is_file(),
               "supervision": _read_supervision(root)}
+    cancellation = report.get("cancellation")
+    if (report.get("status") == "CANCELLED"
+            and not (validate_cancellation(cancellation, run_id=run.name)
+                     and Path(cancellation["run_path"]).resolve() == run)):
+        status.update(status="INTERRUPTED", recorded_status="CANCELLED")
     if report["status"] == "RUNNING":
         age = (utc_timestamp() - utc_timestamp(report.get("heartbeat_at", report["run_timestamp"]))).total_seconds()
         status["heartbeat_age_seconds"] = age
@@ -1021,15 +1046,31 @@ def claim_supervision(root: Path, token: str, *, release: bool = False,
         return {"status": "RELEASED" if release else "ACQUIRED", **payload}
 
 
-def request_stage_stop(root: Path, run: Path, reason: str) -> Path:
+def request_stage_stop(root: Path, run: Path, reason: str, *,
+                       human_instruction: str | None = None,
+                       human_request_ref: str | None = None) -> Path:
+    """Record an actual Jeremy cancellation; automatic stop reasons are inert.
+
+    Both keyword fields must come from Jeremy's direct request. A supervisor,
+    deadline, exception, or historical cancellation status cannot supply them.
+    """
     run = _validated_run(root, run)
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
     if report.get("status") != "RUNNING" or (run / "receipt.json").exists():
         raise RuntimeError("Only a running overnight attempt can be stopped")
     if not reason.strip():
         raise ValueError("A stop reason is required")
+    record = {
+        "schema_version": CANCELLATION_VERSION, "authority": CANCELLATION_AUTHORITY,
+        "requested_by": "Jeremy", "explicit_human_request": True, "action": "cancel",
+        "human_instruction": human_instruction, "human_request_ref": human_request_ref,
+        "requested_at": utc_timestamp().isoformat(), "reason": reason,
+        "run_id": run.name, "run_path": str(run),
+    }
+    if not validate_cancellation(record, run_id=run.name):
+        raise ValueError("Only Jeremy's explicit cancellation instruction and source reference may stop nightly operations")
     request = run / "stop-request.json"
-    _write_json_atomic(request, {"requested_at": utc_timestamp().isoformat(), "reason": reason})
+    _write_json_atomic(request, record)
     return request
 
 
@@ -1080,7 +1121,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--status", action="store_true", help="Read the latest overnight progress without starting work")
     parser.add_argument("--archive-history", action="store_true", default=None,
                         help="Use the verified full XNAS feature archive and extend missing minute-label history; preserved on resume")
-    parser.add_argument("--request-stop-run", type=Path, help="Ask the owner to stop its current stage")
+    parser.add_argument("--request-stop-run", type=Path, help="Record Jeremy's explicit cancellation for this overnight run")
+    parser.add_argument("--human-instruction", help="Actual explicit nightly stop/cancel instruction from Jeremy")
+    parser.add_argument("--human-request-ref", help="Source reference for Jeremy's direct cancellation request")
     parser.add_argument("--recover-run", type=Path, help="Recover an attempt whose supervisor process exited")
     parser.add_argument("--claim-supervision", metavar="UUID", help="Acquire/renew this Scheduled operator's three-minute supervision lease")
     parser.add_argument("--release-supervision", metavar="UUID", help="Release this Scheduled operator's supervision lease")
@@ -1114,7 +1157,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result))
         return 0
     if args.request_stop_run:
-        print(request_stage_stop(root, args.request_stop_run, args.reason))
+        print(request_stage_stop(root, args.request_stop_run, args.reason,
+                                 human_instruction=args.human_instruction,
+                                 human_request_ref=args.human_request_ref))
         return 0
     repository = Path(__file__).resolve().parents[1]
     lock = root / ".ducketz-overnight-runtime.lock"

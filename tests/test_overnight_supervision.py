@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from ml.artifacts import file_checksum, utc_timestamp
+from ml.nightly_cancellation import ExplicitNightlyCancellation
 from ml.overnight_runtime import (
     STAGE_ORDER, _run_stage, next_action_deadline, overnight_status,
     claim_supervision, recover_interrupted_run, request_stage_stop, run_overnight_pipeline,
@@ -124,17 +125,75 @@ def test_deadline_stops_only_owned_child_and_writes_receipt(tmp_path, monkeypatc
     assert state["receipt_present"]
 
 
-def test_controlled_stop_is_receipted_and_resumable(tmp_path, monkeypatch):
+def test_explicit_human_stop_is_receipted_and_blocks_automatic_resume(tmp_path, monkeypatch):
     original = _run_stage
     def stop(_command, **kwargs):
-        request_stage_stop(tmp_path, kwargs["log_path"].parent, "test verified stalled stage")
+        request_stage_stop(tmp_path, kwargs["log_path"].parent, "human requested stop",
+                           human_instruction="Cancel tonight's nightly operations.",
+                           human_request_ref="test://jeremy/direct-cancellation")
         return original([sys.executable, "-c", "import time; time.sleep(30)"], **kwargs)
     monkeypatch.setattr("ml.overnight_runtime._run_stage", stop)
-    with pytest.raises(InterruptedError):
+    with pytest.raises(ExplicitNightlyCancellation):
         run(tmp_path, poll_seconds=0.03)
     state = overnight_status(tmp_path)
     assert state["status"] == "CANCELLED"
     assert state["receipt_present"]
+    assert state["cancellation"]["human_request_ref"] == "test://jeremy/direct-cancellation"
+    receipt = json.loads((Path(state["run_path"]) / "receipt.json").read_text())
+    assert receipt["cancellation"] == state["cancellation"]
+    with pytest.raises(ExplicitNightlyCancellation):
+        run(tmp_path, resume_run=Path(state["run_path"]))
+
+
+def test_automatic_stop_api_cannot_create_request_or_cancel(tmp_path, monkeypatch):
+    def continue_stage(command, **kwargs):
+        directory = kwargs["log_path"].parent
+        with pytest.raises(ValueError, match="Only Jeremy's explicit cancellation"):
+            request_stage_stop(tmp_path, directory, "supervisor decided early run should stop")
+        assert not (directory / "stop-request.json").exists()
+        return 0
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", continue_stage)
+    directory = run(tmp_path, stop_after=STAGE_ORDER[0])
+    assert json.loads((directory / "receipt.json").read_text())["status"] == "COMPLETE"
+
+
+def test_cancellation_exception_from_different_local_run_cannot_cancel(tmp_path, monkeypatch):
+    def unrelated_request(command, **kwargs):
+        from ml.nightly_cancellation import CANCELLATION_AUTHORITY, CANCELLATION_VERSION
+        current = kwargs["log_path"].parent
+        request = {
+            "schema_version": CANCELLATION_VERSION, "authority": CANCELLATION_AUTHORITY,
+            "requested_by": "Jeremy", "explicit_human_request": True, "action": "cancel",
+            "human_instruction": "Cancel nightly operations for the other run.",
+            "human_request_ref": "test://jeremy/other-run", "requested_at": utc_timestamp().isoformat(),
+            "run_id": current.name, "run_path": str(tmp_path / "other-datastore" / current.name),
+        }
+        raise ExplicitNightlyCancellation(request)
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", unrelated_request)
+    with pytest.raises(ExplicitNightlyCancellation):
+        run(tmp_path, stop_after=STAGE_ORDER[0])
+    state = overnight_status(tmp_path)
+    assert state["status"] == "INTERRUPTED"
+    assert "cancellation" not in state
+
+
+@pytest.mark.parametrize("exception", [InterruptedError("automatic interruption"), KeyboardInterrupt(), SystemExit(1)])
+def test_software_interruption_is_resumable_without_cancellation_authority(tmp_path, monkeypatch, exception):
+    def interrupt(command, **kwargs):
+        kwargs["log_path"].write_text("interrupted software stage")
+        raise exception
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", interrupt)
+    with pytest.raises(type(exception)):
+        run(tmp_path, stop_after=STAGE_ORDER[0])
+    state = overnight_status(tmp_path)
+    assert state["status"] == "INTERRUPTED"
+    assert "cancellation" not in state
+    prior = Path(state["run_path"])
+    before = _evidence_snapshot(prior)
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda *a, **kw: 0)
+    resumed = run(tmp_path, resume_run=prior)
+    assert json.loads((resumed / "receipt.json").read_text())["status"] == "COMPLETE"
+    assert _evidence_snapshot(prior) == before
 
 
 def test_recovery_refuses_to_interrupt_a_living_owner(tmp_path, monkeypatch):
@@ -166,7 +225,7 @@ def test_dead_owner_recovery_does_not_replay_completed_stage(tmp_path, monkeypat
     recover_interrupted_run(tmp_path, run_path, "verified supervisor exited")
     result = json.loads(report_path.read_text())
     assert result["failed_stage"] == STAGE_ORDER[1]
-    assert result["status"] == "CANCELLED"
+    assert result["status"] == "INTERRUPTED"
 
 
 def test_recovery_refuses_reused_child_pid(tmp_path, monkeypatch):
@@ -224,7 +283,7 @@ def _evidence_snapshot(run_path):
             for path in run_path.iterdir() if path.is_file()}
 
 
-@pytest.mark.parametrize("status", ["FAILED", "CANCELLED"])
+@pytest.mark.parametrize("status", ["FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"])
 def test_terminal_recovery_is_idempotent_and_preserves_all_evidence(tmp_path, monkeypatch, status):
     run_path = _terminal_attempt(tmp_path, monkeypatch, status=status)
     before = _evidence_snapshot(run_path)
@@ -235,6 +294,22 @@ def test_terminal_recovery_is_idempotent_and_preserves_all_evidence(tmp_path, mo
     assert recover_interrupted_run(tmp_path, run_path, "verified supervisor exit") == run_path
     assert recover_interrupted_run(tmp_path, run_path, "repeat verified recovery") == run_path
     assert _evidence_snapshot(run_path) == before
+
+
+def test_legacy_cancelled_receipt_has_no_blocking_authority_and_resumes(tmp_path, monkeypatch):
+    prior = _terminal_attempt(tmp_path, monkeypatch, status="CANCELLED")
+    (prior / "stop-request.json").write_text(json.dumps({"reason": "supervisor cancellation"}))
+    before = _evidence_snapshot(prior)
+    effective = overnight_status(tmp_path)
+    assert effective["status"] == "INTERRUPTED"
+    assert effective["recorded_status"] == "CANCELLED"
+    assert _evidence_snapshot(prior) == before
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda *a, **kw: 0)
+    resumed = run(tmp_path, resume_run=prior)
+    report = json.loads((resumed / "stage-report.json").read_text())
+    assert report["status"] == "COMPLETE"
+    assert report["completed_stages_from_previous_attempt"] == [STAGE_ORDER[0]]
+    assert _evidence_snapshot(prior) == before
 
 
 @pytest.mark.parametrize("live,reason", [

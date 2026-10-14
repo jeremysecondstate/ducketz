@@ -1190,3 +1190,341 @@ def test_hidden_process_name_uses_native_evidence_and_unknown_python_fails_close
             repair._trader_running(Path("unused"))
     else:
         assert repair._trader_running(Path("unused")) is expected
+
+
+@pytest.fixture
+def transition_env(env, tmp_path, monkeypatch):
+    """Three generations, saved native receipt and real local Git publication."""
+    import subprocess
+    repo = env["repo"]
+    trading = repo / "ml/intraday/orders.py"
+    trading.parent.mkdir()
+    trading.write_text("# original trading\n")
+    for name in ("datafetching/orchestrate.py", "ml/stock_target_history.py",
+                 "datafetching/options_history.py", "datafetching/datastore_hygiene.py"):
+        path = repo / name; path.parent.mkdir(exist_ok=True); path.write_text("# saved producer\n")
+    watchlist = repo / "watchlist.local.txt"
+    watchlist.write_text("EXAMPLE\n")
+    original = tmp_path / "original"
+    shutil.copytree(repo, original)
+    before = repair._inventory(original)
+    native = env["root"] / "ml/overnight-runs/original-datastore"
+    native.mkdir(parents=True)
+    report = {"status": "COMPLETE", "owner_pid": None, "stages": [
+        {"stage": "loop_a_close_fetch", "status": "COMPLETE", "exit_code": 0,
+         "command": ["python", "-u", "-m", "datafetching.orchestrate", "--watchlist", str(watchlist), "--once"]},
+        {"stage": "stock_target_history", "status": "COMPLETE", "exit_code": 0,
+         "command": ["python", "-u", "-m", "ml.stock_target_history", "--execute"]}]}
+    write(native / "stage-report.json", report)
+    write(native / "receipt.json", {"status": "COMPLETE", "stage_report_checksum_sha256": file_checksum(native / "stage-report.json"), "logs": {}})
+    state = env["state"]
+    state.update(current_step="prepare_stats", source_identity=repair.workflow.source_identity(repo),
+                 symbol_binding={"path": str(watchlist), "sha256": file_checksum(watchlist), "symbols": ["EXAMPLE"]},
+                 steps={"datastore_catchup": {"status": "COMPLETE", "native_run": str(native),
+                                            "output": repair.workflow._native_outputs(native)},
+                        "prepare_stats": {"status": "FAILED", "attempts": 0}})
+    write(env["state_path"], state)
+    snapshot = tmp_path / "source-snapshot.json"
+    write(snapshot, {"checkout_head": "a" * 40, "actual_shared_bytes": before})
+    def ref(path):
+        return {"path": str(path), "sha256": file_checksum(path)}
+    workflow_config, exchange_config = tmp_path / "workflow-config.json", tmp_path / "exchange-config.json"
+    write(workflow_config, env["config"])
+    exchange_root = tmp_path / "exchange"; exchange_root.mkdir()
+    write(exchange_config, {"schema_version": "nightly-exchange-config-v1", "actor": "Scout",
+        "state_root": str(exchange_root), "workflow_config": str(workflow_config)})
+    monkeypatch.setattr(repair.workflow, "load_config", lambda p: repair.workflow._json(p))
+    def git(*args):
+        return subprocess.check_output(["git", *args], cwd=repo).decode().strip()
+    git("init", "-q")
+    git("config", "core.autocrlf", "false")
+    trading.write_text("installed trading\n")
+    git("add", ".")
+    git("-c", "user.name=Offline Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "installed fixture")
+    installed_commit = git("rev-parse", "HEAD")
+    installed = repair._inventory(repo)
+    record = tmp_path / "record.json"
+    write(record, {"id": "installed-completion", "ready": True, "reviewed": True})
+    publication = tmp_path / "publication.json"
+    write(publication, {"id": "installed-completion", "record_sha256": file_checksum(record),
+                        "commit_sha": installed_commit, "remote_sha": installed_commit})
+    operations = {"ml/intraday/orders.py": {"operation": "modify", "before_sha256": before["ml/intraday/orders.py"],
+                                            "after_sha256": installed["ml/intraday/orders.py"]}}
+    plan = {"operations": operations, "source_commit": installed_commit, "verified_remote_sha": installed_commit,
+            "completion_record": "installed-completion", "publication_path": str(publication),
+            "publication_sha256": file_checksum(publication), "record_path": str(record), "record_sha256": file_checksum(record)}
+    plan_hash = hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    installation = tmp_path / "installation.json"
+    write(installation, {"plan": plan, "plan_sha256": plan_hash, "completed": list(operations)})
+    receipt = tmp_path / "installed.json"
+    write(receipt, {"version": "scout-runtime-installed-checkpoint-v1", "source_commit": installed_commit,
+        "verified_remote_sha": installed_commit, "completion_record": "installed-completion", "plan_sha256": plan_hash,
+        "operations": operations, "installation_state": str(installation), "installation_state_sha256": file_checksum(installation),
+        "active_affected_execution_workers": [], "installed_at_utc": "2026-10-09T18:00:00Z"})
+    # The final publication repairs the same file again and adds the helper.
+    trading.write_text("final trading\n")
+    (repo / "ml/nightly_stage_repair.py").write_text("new transition helper\n")
+    git("add", ".")
+    git("-c", "user.name=Offline Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "final fixture")
+    final_commit = git("rev-parse", "HEAD")
+    shutil.rmtree(env["candidate"])
+    shutil.copytree(repo, env["candidate"], ignore=shutil.ignore_patterns(".git"))
+    trading.write_text("installed trading\n")
+    (repo / "ml/nightly_stage_repair.py").unlink()
+    final_record, final_publication = tmp_path / "final-record.json", tmp_path / "final-publication.json"
+    write(final_record, {"id": env["request"]["completion_record"], "reviewed": True, "ready": True})
+    write(final_publication, {"id": env["request"]["completion_record"], "commit_sha": final_commit,
+                             "remote_sha": final_commit, "record_sha256": file_checksum(final_record)})
+    protected = {name: digest for name, digest in before.items() if not name.startswith("ml/intraday/")}
+    request = {**env["request"], "risk": "model", "invalidate_from": "prepare_stats",
+        "changes": {"ml/intraday/orders.py": "modify", "ml/nightly_stage_repair.py": "add"},
+        "checks": [{**env["request"]["checks"][0], "source_files": repair._inventory(env["candidate"])}],
+        "installed_transition": {"original": str(original), "source_snapshot": ref(snapshot), "installations": [ref(receipt)],
+            "exchange_config": ref(exchange_config),
+            "candidate_publication": {"record": ref(final_record), "publication": ref(final_publication)},
+            "preservation": {"policy": "datastore-before-stats-v1", "completed_entry": state["steps"]["datastore_catchup"],
+                             "source_files": protected, "input_files": {str(watchlist): file_checksum(watchlist)}}}}
+    return {**env, "request": request, "original": original, "snapshot": snapshot, "receipt": receipt,
+            "installation": installation, "publication": publication, "record": record, "ref": ref,
+            "installed": installed, "final_commit": final_commit, "watchlist": watchlist}
+
+
+def transition_prepare(env, **changes):
+    return repair.prepare_installed_transition(env["config"], **{**env["request"], **changes})
+
+
+def test_installed_transition_original_intermediate_final_and_real_resume(transition_env):
+    env = transition_env
+    original = env["state_path"].read_bytes()
+    with pytest.raises(ValueError, match="Original source"):
+        repair.claim(env["config"], action_date=env["state"]["action_date"], repair_id="regular-rejected", owner="same")
+    spec = transition_prepare(env)
+    assert repair.registry.read(env["config"]["state_root"])["owner"] == env["request"]["owner"]
+    assert apply(env, spec)["status"] == "SOURCE_REPAIR_APPLIED"
+    saved = repair.workflow._json(env["state_path"])
+    assert (spec.parent / "before-state.json").read_bytes() == original
+    assert saved["steps"]["datastore_catchup"] == env["state"]["steps"]["datastore_catchup"]
+    assert saved["steps"]["prepare_stats"]["status"] == "READY"
+    for field in ("run_id", "action_date", "source_session", "deadline_at", "effective_deadline_at", "recovery"):
+        assert saved[field] == env["state"][field]
+    assert repair._inventory(env["repo"]) == repair._inventory(env["candidate"])
+    owner = repair.registry.read(env["config"]["state_root"])
+    assert repair.verified_resume(env["config"], owner, saved)
+    assert repair.resolve_verified(env["config"], owner, saved) is False
+    assert apply(env, spec)["status"] == "SOURCE_REPAIR_ALREADY_APPLIED"
+    claim = repair.workflow._json(spec.parent / "claim.json")
+    assert claim["claim_origin"] == "reviewed_installed_transition"
+    assert claim["before_source"] != claim["installed_source"]
+    assert claim["claimed_at"] == repair.utc_timestamp(NOW).isoformat()
+    saved["steps"]["prepare_stats"] = {"status": "COMPLETE", "output": {"files": {}}}
+    write(env["state_path"], saved)
+    assert repair.resolve_verified(env["config"], owner, saved)
+    resolution = repair.workflow._json(spec.parent / "resolved.json")
+    assert resolution["repository_claim"]["owner"] == claim["claim"]["owner"]
+    assert resolution["repository_claim"]["repair_id"] == claim["claim"]["repair_id"]
+    assert resolution["repository_claim"]["token"] == repair._repository_claim(
+        claim["claim"]["owner"], claim["claim"]["repair_id"], claim["action_date"], claim["claim"]["state_sha256"])["token"]
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+@pytest.mark.parametrize("mutation", ["snapshot_omission", "original_change", "installed_change", "candidate_change",
+    "receipt_hash", "publication_remote", "before_hash", "missing_path", "not_completed", "worker_receipt",
+    "retained_dependency", "missing_dependency", "input_change", "input_relabel", "another_completed_stage",
+    "wrong_invalidation", "different_completion", "wrong_owner"])
+def test_installed_transition_rejects_unproved_or_conflicting_input_before_claim(transition_env, mutation):
+    env = transition_env
+    request = copy.deepcopy(env["request"])
+    proof = request["installed_transition"]
+    if mutation == "snapshot_omission":
+        value = repair.workflow._json(env["snapshot"]); value["actual_shared_bytes"].pop("ml/nightly_recovery.py")
+        write(env["snapshot"], value); proof["source_snapshot"] = env["ref"](env["snapshot"])
+    elif mutation == "original_change":
+        (env["original"] / "ml/nightly_recovery.py").write_text("unproven original")
+    elif mutation == "installed_change":
+        (env["repo"] / "ml/intraday/orders.py").write_text("unproven installed")
+    elif mutation == "candidate_change":
+        (env["candidate"] / "ml/intraday/orders.py").write_text("unpublished final")
+    elif mutation == "receipt_hash":
+        env["receipt"].write_text("{}")
+    elif mutation == "publication_remote":
+        value = repair.workflow._json(env["publication"]); value["remote_sha"] = "b" * 40
+        write(env["publication"], value)
+    elif mutation in ("before_hash", "missing_path", "not_completed", "worker_receipt"):
+        value = repair.workflow._json(env["receipt"])
+        if mutation == "before_hash": value["operations"]["ml/intraday/orders.py"]["before_sha256"] = "a" * 64
+        elif mutation == "missing_path": value["operations"] = {}
+        elif mutation == "worker_receipt": value["active_affected_execution_workers"] = [{"pid": 123}]
+        else:
+            install = repair.workflow._json(env["installation"]); install["completed"] = []
+            write(env["installation"], install); value["installation_state_sha256"] = file_checksum(env["installation"])
+        write(env["receipt"], value); proof["installations"] = [env["ref"](env["receipt"])]
+    elif mutation == "retained_dependency":
+        (env["candidate"] / "ml/nightly_recovery.py").write_text("changed completed dependency")
+    elif mutation == "missing_dependency":
+        proof["preservation"]["source_files"].pop("ml/nightly_recovery.py")
+    elif mutation == "input_change":
+        env["watchlist"].write_text("OTHER\n")
+    elif mutation == "input_relabel":
+        env["watchlist"].write_text("OTHER\n")
+        proof["preservation"]["input_files"][str(env["watchlist"])] = file_checksum(env["watchlist"])
+    elif mutation == "another_completed_stage":
+        state = repair.workflow._json(env["state_path"]); state["steps"]["model_review"] = {"status": "COMPLETE", "output": {"files": {}}}; write(env["state_path"], state)
+    elif mutation == "wrong_invalidation": request["invalidate_from"] = "model_review"
+    elif mutation == "different_completion": request["completion_record"] = "unpublished-id"
+    elif mutation == "wrong_owner":
+        repair.registry.acquire(env["config"]["state_root"], repair._repository_claim("other", "different-repair", "2026-10-09", "a" * 64))
+    before = env["state_path"].read_bytes()
+    with pytest.raises(ValueError):
+        repair.prepare_installed_transition(env["config"], **request)
+    assert env["state_path"].read_bytes() == before
+    if mutation != "wrong_owner": assert repair.registry.read(env["config"]["state_root"]) is None
+    else:
+        assert not (env["state_path"].parent / "source-repairs" / request["repair_id"] / "claim.json").exists()
+
+
+@pytest.mark.parametrize("moment", ["owner", "intent", "copy", "state", "applied"])
+def test_installed_transition_crash_and_exact_retry(transition_env, monkeypatch, moment):
+    env = transition_env
+    if moment in ("owner", "intent"):
+        function = repair.registry.acquire if moment == "owner" else repair._immutable
+        def fail(*args, **kwargs):
+            result = function(*args, **kwargs)
+            if moment == "owner" or Path(args[0]).name == "intent.json": raise OSError("injected crash")
+            return result
+        target, attr = (repair.registry, "acquire") if moment == "owner" else (repair, "_immutable")
+        monkeypatch.setattr(target, attr, fail)
+        with pytest.raises(OSError, match="injected"): transition_prepare(env)
+        monkeypatch.setattr(target, attr, function)
+        spec = transition_prepare(env)
+    else:
+        spec = transition_prepare(env)
+        target, attr = ((repair, "_install_file") if moment == "copy" else
+                        (repair.workflow, "_write") if moment == "state" else (repair, "_immutable"))
+        function = getattr(target, attr)
+        def fail(*args, **kwargs):
+            result = function(*args, **kwargs)
+            if moment == "copy" or (moment == "state" and Path(args[0]) == env["state_path"]
+                and args[1].get("status") == "READY") or (moment == "applied" and Path(args[0]).name == "applied.json"):
+                raise OSError("injected crash")
+            return result
+        monkeypatch.setattr(target, attr, fail)
+        with pytest.raises(OSError, match="injected"): apply(env, spec)
+        monkeypatch.setattr(target, attr, function)
+    assert apply(env, spec)["status"] in {"SOURCE_REPAIR_APPLIED", "SOURCE_REPAIR_ALREADY_APPLIED"}
+    assert apply(env, spec)["status"] == "SOURCE_REPAIR_ALREADY_APPLIED"
+    assert len(repair.workflow._json(env["state_path"])["source_repairs"]) == 1
+
+
+@pytest.mark.parametrize("mutation", ["rollback", "unexpected", "evidence", "completed_output", "deadline", "active_trader"])
+def test_installed_transition_apply_refuses_drift(transition_env, monkeypatch, mutation):
+    env = transition_env; spec = transition_prepare(env)
+    if mutation == "rollback":
+        (env["repo"] / "ml/intraday/orders.py").write_bytes((env["original"] / "ml/intraday/orders.py").read_bytes())
+    elif mutation == "unexpected": (env["repo"] / "ml/new.py").write_text("competing source")
+    elif mutation == "evidence": (spec.parent / "provenance/0-receipt.json").write_text("{}")
+    elif mutation == "completed_output":
+        Path(env["state"]["steps"]["datastore_catchup"]["native_run"]).joinpath("receipt.json").write_text("{}")
+    elif mutation == "deadline":
+        state = repair.workflow._json(env["state_path"]); state["deadline_at"] = "2027-01-01T00:00:00Z"; write(env["state_path"], state)
+    else: monkeypatch.setattr(repair, "_trader_running", lambda p: True)
+    with pytest.raises(ValueError): apply(env, spec)
+    assert not (spec.parent / "applied.json").exists()
+
+
+@pytest.mark.parametrize("lock", ["intraday-manual-session.lock", "stock-trader-hourly.lock"])
+def test_installed_transition_account_worker_lifetime_lock_excludes_prepare(transition_env, lock):
+    env = transition_env
+    with repair.exclusive_runtime_lock(env["root"] / "locks" / lock, process_name="fixture account worker"):
+        with pytest.raises(Exception, match="already|lock|running|owned|active"):
+            transition_prepare(env)
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+def test_installed_transition_other_unfinished_run_blocks_even_without_live_worker(transition_env):
+    env = transition_env
+    other = Path(env["config"]["state_root"]) / "runs/2026-10-08/state.json"
+    write(other, {"status": "FAILED", "owner_pid": None, "current_step": "model_review"})
+    with pytest.raises(ValueError, match="Another unfinished"):
+        transition_prepare(env)
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+@pytest.mark.parametrize("status", ["LOCAL_COMPLETE_PEER_SETUP_PENDING", "COMPLETE", "HANDOFF_VERIFIED_LOCAL"])
+def test_installed_transition_all_supported_completed_run_labels_preserve_outputs(transition_env, status):
+    env = transition_env
+    other = Path(env["config"]["state_root"]) / "runs/2026-10-08/state.json"
+    write(other, {**env["state"], "action_date": "2026-10-08", "status": status, "current_step": None,
+                  "steps": {stage: {"status": "COMPLETE", "output": {
+                      "files": {str(env["root"] / "completed-stats.json"): file_checksum(env["root"] / "completed-stats.json")}}}
+                      for stage in repair.SPLIT}})
+    before = other.read_bytes()
+    assert apply(env, transition_prepare(env))["status"] == "SOURCE_REPAIR_APPLIED"
+    assert other.read_bytes() == before
+
+
+@pytest.mark.parametrize("defect", ["missing_stage", "current_step", "claim", "wrong_actor", "wrong_date",
+                                  "missing_run_id", "missing_source", "bad_source_hash", "bad_source_session"])
+def test_installed_transition_terminal_label_is_not_completion_evidence(transition_env, defect):
+    env = transition_env
+    other = Path(env["config"]["state_root"]) / "runs/2026-10-08/state.json"
+    state = {**env["state"], "action_date": "2026-10-08", "status": "COMPLETE", "current_step": None,
+             "steps": {stage: {"status": "COMPLETE", "output": {"files": {}}} for stage in repair.SPLIT}}
+    if defect == "missing_stage": state["steps"].pop("prepare_stats")
+    elif defect == "current_step": state["current_step"] = "prepare_stats"
+    elif defect == "claim": state["repair_claim"] = {"owner": "other"}
+    elif defect == "wrong_actor": state["actor"] = "Atlas"
+    elif defect == "wrong_date": state["action_date"] = "2026-10-07"
+    elif defect == "missing_run_id": state.pop("run_id")
+    elif defect == "missing_source": state.pop("source_identity")
+    elif defect == "bad_source_hash": state["source_identity"] = {"commit": "a" * 40, "source_sha256": "invalid"}
+    else: state["source_session"] = "unspecified"
+    write(other, state)
+    with pytest.raises(ValueError, match="complete saved workflow"):
+        transition_prepare(env)
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+def test_installed_transition_durable_review_before_owner_fences_competing_identity(transition_env, monkeypatch):
+    env = transition_env
+    immutable = repair._immutable
+    def stop(path, raw):
+        immutable(path, raw)
+        if Path(path).name == "transition-review.json": raise OSError("before owner")
+    monkeypatch.setattr(repair, "_immutable", stop)
+    with pytest.raises(OSError, match="before owner"): transition_prepare(env)
+    monkeypatch.setattr(repair, "_immutable", immutable)
+    assert repair.registry.read(env["config"]["state_root"]) is None
+    with pytest.raises(ValueError, match="Another unresolved"):
+        transition_prepare(env, repair_id="competing-repair-identity")
+    assert not (env["state_path"].parent / "source-repairs/competing-repair-identity/claim.json").exists()
+    assert apply(env, transition_prepare(env))["status"] == "SOURCE_REPAIR_APPLIED"
+
+
+@pytest.mark.parametrize("operation", ["exchange", "synthesis", "handoff"])
+def test_installed_transition_exchange_locks_exclude_prepare(transition_env, operation):
+    env = transition_env
+    binding, _ = repair._evidence(env["request"]["installed_transition"]["exchange_config"])
+    root = Path(binding["state_root"])
+    if operation == "exchange":
+        lock = FileLock(str(root / "exchange.lock"), timeout=0)
+    else:
+        session = root / "sessions/2026-10-09"
+        write(session / "status.json", {"status": "PENDING"})
+        lock = repair.exclusive_runtime_lock(session / operation / (operation + ".lock"), process_name="fixture")
+    with lock:
+        with pytest.raises(Exception): transition_prepare(env)
+    assert repair.registry.read(env["config"]["state_root"]) is None
+
+
+def test_datastore_static_graph_covers_conditional_relative_and_subprocess_imports_without_execution(tmp_path):
+    files = {"datafetching/__init__.py": "raise RuntimeError('must not import')\n",
+        "datafetching/orchestrate.py": "def provider():\n    from . import helper\n",
+        "datafetching/helper.py": "from ml.stock_trader import contracts\n",
+        "datafetching/options_history.py": "import datafetching.option_provider\n",
+        "datafetching/option_provider.py": "# dynamic producer dependency\n",
+        "datafetching/datastore_hygiene.py": "# subprocess\n", "ml/__init__.py": "",
+        "ml/stock_target_history.py": "# second root\n", "ml/stock_trader/__init__.py": "",
+        "ml/stock_trader/contracts.py": "# shared constants\n"}
+    for name, source in files.items():
+        p = tmp_path / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text(source)
+    assert set(repair._datastore_dependencies(tmp_path, repair._inventory(tmp_path))) == set(files)

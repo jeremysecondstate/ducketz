@@ -21,6 +21,11 @@ missing data after unscheduled fetches; retain unresolved gaps truthfully. A
 technical interruption is an operating exception to recover, never evidence of
 a human cancellation. This instruction applies to every subsequent night.
 
+Software-only stop requests and CANCELLED records are invalid and have no
+effect on nightly execution or resumption. Only Jeremy's actual explicit
+instruction authorizes cancellation; a software label or automatic control
+never supplies that authority.
+
 Gameplan, Atlas 15m and Scout 15m execute independently and keep their own logs.
 Each trader obtains actual capacity from its own existing broker connection and
 manages only its own orders. No trader waits for another trader's state, service,
