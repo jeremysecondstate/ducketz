@@ -269,6 +269,58 @@ def test_loader_rejects_wrong_dataset_and_unclassified_warning(tmp_path, monkeyp
         archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=pd.Timestamp("2026-09-24T00:00Z"))
 
 
+def test_late_archive_acquisition_does_not_advance_information_cutoff(tmp_path, monkeypatch):
+    part = _partition(tmp_path)
+    # Use an actual boundary inside the fixture rather than assuming its dates.
+    original = pd.read_parquet(part.normalized_path)
+    cutoff = pd.Timestamp(original.ts_event.iloc[12]) + pd.Timedelta(days=1, minutes=5)
+    acquired = pd.Timestamp("2026-09-24T01:00Z")
+    part.manifest["published_at"] = acquired.isoformat()
+    monkeypatch.setattr(archive, "discover_archive_partitions", lambda *a, **k: (part,))
+    with pytest.raises(ValueError, match="published after"):
+        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff)
+    frame, _, _, _ = archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d",
+        as_of=cutoff, evidence_available_at=acquired)
+    assert len(frame) == 13
+    assert (frame.timestamp + pd.Timedelta(days=1, minutes=5)).le(cutoff).all()
+    with pytest.raises(ValueError, match="published after"):
+        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
+                             evidence_available_at=acquired - pd.Timedelta(seconds=1))
+    with pytest.raises(ValueError, match="precedes"):
+        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
+                             evidence_available_at=cutoff - pd.Timedelta(seconds=1))
+
+
+def test_public_loader_preserves_causal_features_and_both_publication_clocks(tmp_path, monkeypatch):
+    part = _partition(tmp_path)
+    original = pd.read_parquet(part.normalized_path)
+    cutoff = pd.Timestamp(original.ts_event.iloc[22]) + pd.Timedelta(days=1, minutes=5)
+    acquired = pd.Timestamp(part.manifest["published_at"])
+    monkeypatch.setattr(archive, "discover_archive_partitions",
+        lambda *a, schema, **k: (part,) if schema == "ohlcv-1d" else ())
+    before = {path: path.read_bytes() for path in (part.normalized_path, part.directory / "provider.dbn.zst")}
+    result = archive.load_archive_feature_sources(tmp_path, symbols=("AAPL",),
+        available_at=cutoff, evidence_available_at=acquired)
+    assert not result.sources.empty
+    assert result.report["information_cutoff"] == cutoff.isoformat()
+    assert result.report["evidence_available_at"] == acquired.isoformat()
+    assert pd.to_datetime(result.sources.information_available_at, utc=True).le(cutoff).all()
+    assert result.sources.source_session.max() == original.ts_event.iloc[22].date()
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    with pytest.raises(ValueError, match="published after"):
+        archive.load_archive_feature_sources(tmp_path, symbols=("AAPL",), available_at=cutoff)
+
+
+@pytest.mark.parametrize("field", ["available_at", "evidence_available_at"])
+@pytest.mark.parametrize("invalid", ["NaT", pd.NaT, "2026-09-24T00:00:00"])
+def test_public_loader_rejects_missing_or_naive_recovery_clocks(tmp_path, field, invalid):
+    clocks = {"available_at": pd.Timestamp("2026-09-24T00:00Z"),
+              "evidence_available_at": pd.Timestamp("2026-09-24T01:00Z")}
+    clocks[field] = invalid
+    with pytest.raises(ValueError, match="timezone aware"):
+        archive.load_archive_feature_sources(tmp_path, symbols=("AAPL",), **clocks)
+
+
 def test_provider_quality_days_keep_exact_evidence(tmp_path):
     part = _partition(tmp_path)
     part.manifest["provider_warnings"] = [{"message": "Reduced quality: 2021-07-07 (degraded), 2022-09-19 (degraded)."}]
