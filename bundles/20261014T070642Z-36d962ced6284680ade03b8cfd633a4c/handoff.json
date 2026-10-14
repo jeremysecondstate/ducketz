@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T07:06:42.201283Z",
+  "id": "20261014T070642Z-36d962ced6284680ade03b8cfd633a4c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed frozen recovery evidence and added successful continuation-after-expiry coverage."
+}

@@ -1,0 +1,60 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T065645Z-bee2c5a8b4ac4fe894a4ab2c3dd8f02f",
+  "change_id": "20261014T065645Z-bee2c5a8b4ac4fe894a4ab2c3dd8f02f",
+  "commit_sha": "62a8698fc7c54bc4815ab9700a5d48b7bfcd4706",
+  "files": [
+    "ml/nightly_recovery.py",
+    "ml/preparation_deadline.py",
+    "tests/test_nightly_recovery.py",
+    "tests/test_preparation_deadline.py",
+    "tests/test_preparation_recovery_evidence.py"
+  ],
+  "installation_stage": "five_reviewed_paths_installed_and_offline_checked",
+  "integration_stage": "tested_stacked_pr",
+  "limitations": [
+    "Offline temporary fixtures and injected callbacks; no production replay or loaded-runtime claim.",
+    "The two helpers already exist on common main; this composition adds a regression on the published Atlas continuation base.",
+    "An unrelated local OPRA metadata timeout and request-label improvement is preserved locally. Source checks bind the original base version; installed checks bind the actual local version. These suites make no provider request.",
+    "Legacy callers outside dated continuation retain recorded deadline comparisons."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/120",
+    "https://github.com/jeremysecondstate/ducketz/pull/117"
+  ],
+  "main_integration_limitation": "Current main does not descend from this reviewed Atlas continuation base. No source publication condition delays nightly operation.",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T062717Z-a9bad9ad3004431687f3540595009b13",
+    "20261014T060845Z-976e0a2e51f543578f4a4878ae4f0b36"
+  ],
+  "runtime_implications": "Recovery evidence does not expire due to elapsed targets or historical operator assertions. Exact source/session hashes, chronology and nontrading scope remain. Current workers and manual trader controls are preserved.",
+  "scope": "shared",
+  "summary": "Atlas installed frozen recovery evidence and added successful continuation-after-expiry coverage.",
+  "tests": [
+    {
+      "check": "sealed-source",
+      "completed_at_utc": "2026-10-14T06:56:53.828831Z",
+      "exit_code": 0,
+      "output_sha256": "354cb78f21edc9cafcad51d657ac714a44b2fec6cd249361cfef705fa462eb5e",
+      "result": "........................................................................ [ 68%]\r\n.................................                                        [100%]\r\n105 passed in 6.75s",
+      "started_at_utc": "2026-10-14T06:56:45.584706Z"
+    },
+    {
+      "check": "isolated-publication",
+      "completed_at_utc": "2026-10-14T07:03:52.575356Z",
+      "exit_code": 0,
+      "output_sha256": "55e5d51613cca819bd32c2498d7077330233fe07dc6e53e4875380f34c64a66f",
+      "result": "........................................................................ [ 68%]\r\n.................................                                        [100%]\r\n105 passed in 7.01s",
+      "started_at_utc": "2026-10-14T07:03:43.962086Z"
+    },
+    {
+      "check": "installed-atlas",
+      "completed_at_utc": "2026-10-14T06:57:37.628823Z",
+      "exit_code": 0,
+      "output_sha256": "fc6337666612c257ec960f4406cc9ec990d4da4097fcc7af3129c40c682449b1",
+      "result": "........................................................................ [ 68%]\r\n.................................                                        [100%]\r\n105 passed in 7.10s",
+      "started_at_utc": "2026-10-14T06:57:28.824847Z"
+    }
+  ]
+}
