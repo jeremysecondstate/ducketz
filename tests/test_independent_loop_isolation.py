@@ -4,6 +4,7 @@ import os
 import time
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -37,8 +38,7 @@ def test_loop_a_external_modes_never_enter_slow_failing_cme_or_options_lanes(
             (include_cme, include_options, include_schwab_price_history)
         )
         if include_cme or include_options:
-            time.sleep(0.5)
-            raise TimeoutError("deliberately slow external provider")
+            pytest.fail("External-only mode entered a disabled CME or options lane")
         return {
             symbol: (
                 FetchResult("databento", 0, 0, 0),
@@ -48,7 +48,6 @@ def test_loop_a_external_modes_never_enter_slow_failing_cme_or_options_lanes(
         }
 
     monkeypatch.setattr(orchestration, "run_symbols_fetch", provider_batch)
-    started = time.perf_counter()
     failures = orchestration.run_cycle(
         ("GOOG", "NVDA"),
         ParquetStore(tmp_path),
@@ -62,11 +61,8 @@ def test_loop_a_external_modes_never_enter_slow_failing_cme_or_options_lanes(
         datastore_target=None,
         datastore_path=tmp_path,
     )
-    elapsed = time.perf_counter() - started
-
     assert failures == 0
     assert observed == [(False, False, False)]
-    assert elapsed < 0.25
 
 
 def test_writer_lock_rejects_double_writer_and_recovers_dead_owner(
@@ -157,7 +153,7 @@ def test_loop_supervisor_lock_never_reclaims_live_or_unverifiable_owner(
     payload = (
         "process=existing test owner\n"
         f"pid={owner}\n"
-        "started_at=2026-09-03T00:00:00+00:00\n"
+        f"started_at={datetime.now(timezone.utc).isoformat()}\n"
         "token=existing\n"
     )
     lock.write_text(payload, encoding="utf-8")
@@ -246,6 +242,7 @@ def test_loop_a_schwab_quote_only_mode_never_builds_price_history_specs(
     result = schwab_fetch.fetch(
         "GOOG",
         ParquetStore(tmp_path),
+        session=object(),  # type: ignore[arg-type]  # No broker session is used in quote-only mode.
         provider=QuoteFailureProvider(),  # type: ignore[arg-type]
         include_options=False,
         include_price_history=False,
