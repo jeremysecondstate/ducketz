@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:21:35.190490Z",
+  "id": "20261014T102135Z-cfb9260f69364b658748ac1a69064e51",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout causal archive recovery APIs integrated on common main and restored regression suites installed."
+}

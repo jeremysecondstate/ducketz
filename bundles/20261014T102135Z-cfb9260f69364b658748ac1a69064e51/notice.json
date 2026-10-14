@@ -1,0 +1,67 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T101655Z-fbc04e53e6d64de199d4d4c7932bb843",
+  "change_id": "20261014T101655Z-fbc04e53e6d64de199d4d4c7932bb843",
+  "commit_sha": "1656db471cc37bed6318402520a4286b1e543c21",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared saved archive reader APIs apply independently to Atlas and Scout.",
+    "Compose optional evidence_available_at onto common main. Late recovery can verify genuinely acquired saved evidence while every feature, second and completed minute remains bounded by the frozen information cutoff.",
+    "Preserve default single-clock behavior, publication checks, checksum and native request/header verification, original data and model outputs.",
+    "Load the Databento SDK only when a verified saved DBN partition needs decoding; retain actual compressed DBN header tests and isolated offline SDK fixture.",
+    "Restore dropped clock regressions and extend boundary, invalid-clock and source-preservation coverage using temporary archives without provider access.",
+    "Retain clock Completion-Record 20261009T182830Z-bafca648331d458bab9a029c5849fd43 and saved-reader Completion-Record 20261009T223856Z-968a99094c344758a422956bd1980402.",
+    "Retain continuation and independent executor identities; larger source composition is separate and never holds up nightly production."
+  ],
+  "files": [
+    "ml/gameplan_archive_features.py",
+    "ml/gameplan_archive_seconds.py",
+    "tests/test_gameplan_archive_features.py",
+    "tests/test_gameplan_archive_seconds.py"
+  ],
+  "installation_stage": "production_apis_already_match_exact_regressions_installed",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic saved archive checks and real compressed DBN metadata decoding; no provider/broker call, training, production replay or trading.",
+    "This source unit installs regression coverage only because the production API implementations already match Scout. No process restart or scheduler change.",
+    "Broader nightly and independent executor source composition retains its existing identities and remains separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/127"
+  ],
+  "main_commit": "098b6c9c54662f9d241c6e93ff4d8f48f5a74cf8",
+  "remaining_source_work": "Broader nightly and independent executor source composition retains prior records. New independent model-supervision source handoffs retain their own owners. Source backlog creates no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Archive consumers may pass actual evidence acquisition time without advancing information cutoff. Scout already has the reviewed APIs; install exact regressions only. Running process versions remain separate; no production wait or trader launch is introduced.",
+  "scope": "Shared archive reader source applies independently to Atlas and Scout; original operating outputs and bindings retained.",
+  "summary": "Scout causal archive recovery APIs integrated on common main and restored regression suites installed.",
+  "tests": [
+    {
+      "check": "Archive reader sealed source",
+      "completed_at_utc": "2026-10-14T10:17:04.343936Z",
+      "output_sha256": "f0719ffb8e4812b3b0545264871493c3b2077b048d2f4db159765d157a817879",
+      "result": "82 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:16:55.697754Z"
+    },
+    {
+      "check": "Archive reader isolated source",
+      "completed_at_utc": "2026-10-14T10:17:51.900423Z",
+      "output_sha256": "35186f1f19dafcc4c8c4c34e4245341f29f3be054ba2708db67a9ed262fae8e6",
+      "result": "82 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:17:43.673957Z"
+    },
+    {
+      "check": "Archive reader main candidate",
+      "completed_at_utc": "2026-10-14T10:18:46.661729Z",
+      "output_sha256": "39d559293e0844ca73479e50d134643aa97a18354dbb04865f9a64e2f646258d",
+      "result": "82 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:18:38.396582Z"
+    },
+    {
+      "check": "Archive reader installed Scout",
+      "completed_at_utc": "2026-10-14T10:19:40.428262Z",
+      "output_sha256": "fb5ff7dda69ebbac634ffffc1671b1c93ff2e74f1421ffc0b0b06e30e7784b16",
+      "result": "82 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:19:31.783728Z"
+    }
+  ]
+}
