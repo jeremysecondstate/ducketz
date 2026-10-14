@@ -1,0 +1,67 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T192805Z-2b1c1f3f21ea43daac2747fd0f37aa0f",
+  "change_id": "20261014T192805Z-2b1c1f3f21ea43daac2747fd0f37aa0f",
+  "commit_sha": "4fe0f7a3626796188611bf7d9a1e17f357c9523f",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared broker evidence leaf applies independently to Atlas and Scout.",
+    "Compose the existing reviewed broker wire timestamp/source capture and optional private rejection description onto current common main, without copying local ledger streams, timeouts, retry policy or unrelated changes.",
+    "Keep original fill identifiers, normalized fill times, quantities, prices and cumulative fill validation; tie-break identical derived fill metadata so response reordering stays stable.",
+    "Validate exact provenance schema, complete fill membership and equivalent timestamps. Classify explicit whole-second wire strings separately from fractional strings including zero fractions.",
+    "Persist optional new metadata only in new private local order evidence. Missing metadata preserves legacy serialized shape and immutable historical payload replay; invalid metadata rolls back the transaction.",
+    "Retain executor Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4. Broader independent executor/nightly source composition remains separate.",
+    "Scout production implementations already contain this reviewed leaf. Preserve their broader locally owned source and operating originals; install only the new standalone regression after source publication."
+  ],
+  "files": [
+    "ml/stock_trader/horizon_broker.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "tests/test_fill_time_provenance.py",
+    "tests/test_stock_horizon_broker.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "268f8444f005532181a6e775fa3d60dd5dbe80be",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "138 offline synthetic/temporary-database checks passed without skips or exclusions; no production broker response or live process verification.",
+    "No provider/broker request, production acquisition/training, trader start/restart, manual-stop clearing, scheduler change or private export.",
+    "This is a dependency leaf; broader independent executor/nightly main composition remains retained source work and creates no production wait."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/134"
+  ],
+  "remaining_source_work": "Broader independent executor and nightly common-main composition retain original identities. Atlas alternate supervisor findings remain separate from the canonical Scout pipeline; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded broker normalization retains original timestamp precision/source and private status detail in local evidence. Historical fills and ledger identity remain intact. No process is restarted and no trader is enabled.",
+  "scope": "Shared source independently applicable to Atlas and Scout; all actual order/account evidence and operating state stay private and local.",
+  "summary": "Fill timestamp provenance and private broker rejection detail composed on main; Scout production leaf preserved.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-14T19:28:10.302226Z",
+      "output_sha256": "91652299dae94253ae6a3450cde43cb2c046307a480222d13b79670444f1982c",
+      "result": "138 passed without skips/exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T19:28:05.577085Z"
+    },
+    {
+      "check": "isolated source",
+      "completed_at_utc": "2026-10-14T19:29:01.624400Z",
+      "output_sha256": "68fb2683de7e54ba6f2a5c567d5036893f90f71982a4455bf9dcdefe09ed546c",
+      "result": "138 passed without skips/exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T19:28:57.041565Z"
+    },
+    {
+      "check": "fresh common main",
+      "completed_at_utc": "2026-10-14T19:29:52.808973Z",
+      "output_sha256": "817ebda7bba0a6561df7bcf88e2870227521fa6e54f75d1c19c64e03e153f0ac",
+      "result": "138 passed without skips/exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T19:29:48.369664Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-14T19:30:41.207500Z",
+      "output_sha256": "ea6f0a87c003250006c924b5c5bc4beac272c9802798dd9c3bb82c923c7ed7a7",
+      "result": "138 passed without skips/exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T19:30:36.289530Z"
+    }
+  ]
+}

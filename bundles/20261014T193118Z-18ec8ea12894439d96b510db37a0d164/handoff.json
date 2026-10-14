@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T19:31:18.910370Z",
+  "id": "20261014T193118Z-18ec8ea12894439d96b510db37a0d164",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Fill timestamp provenance and private broker rejection detail composed on main; Scout production leaf preserved."
+}
