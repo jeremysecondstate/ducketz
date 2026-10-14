@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T07:04:08.123881Z",
+  "id": "20261014T070408Z-70c1f95ce4fa4e8a910bbccc1f6bc185",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed automatic stale model-review recovery and preservation of completed native results."
+}

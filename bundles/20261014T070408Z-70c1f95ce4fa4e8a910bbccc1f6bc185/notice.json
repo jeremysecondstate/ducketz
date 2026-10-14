@@ -1,0 +1,55 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T065031Z-537dd4101cdc4349a599c473a3c5a81c",
+  "change_id": "20261014T065031Z-537dd4101cdc4349a599c473a3c5a81c",
+  "commit_sha": "86d32df66f2829dfb179eceb27d9f1810efb2499",
+  "details": [
+    "Actor Scout; task Gameplan synthesis; shared nightly coordinator recovery applies independently to Atlas and Scout.",
+    "Build additively on parent Completion-Record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93; retain all parent source and immutable publication history.",
+    "Refresh genuinely stale model-review bindings through the existing coordinator while retaining the same dated run, completed datastore and Stats, failed attempts and original model files.",
+    "Reuse verified frozen model-review evidence after completed training so a later source change does not replay fitted work.",
+    "Preserve manual trader controls, native schedules, local symbols and private operating state."
+  ],
+  "files": [
+    "ml/nightly_workflow.py",
+    "tests/test_nightly_feedback_recovery.py"
+  ],
+  "installation_stage": "installed_exact_and_offline_checked",
+  "integration_stage": "stacked_draft_pr",
+  "limitations": [
+    "Offline checks; no main integration or peer installation claim.",
+    "Original source lineage remains on the independently published parent nightly coordinator branch."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/118"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T055212Z-f63cd552ecdf49a086853a95ff696c93"
+  ],
+  "runtime_implications": "Subsequent existing coordinator wakes load the recovery; no worker or trader was restarted and no schedule changed.",
+  "scope": "Shared nightly coordinator behavior for Atlas and Scout; private local symbols and operating bindings retained.",
+  "summary": "Scout installed automatic stale model-review recovery and preservation of completed native results.",
+  "tests": [
+    {
+      "check": "sealed-source",
+      "completed_at_utc": "2026-10-14T06:50:58.269519Z",
+      "output_sha256": "037fa1defaff42001214aa8ccce7c681982ef84d5e5c1c280421ade2bb3f0181",
+      "result": "142 passed; no skips",
+      "started_at_utc": "2026-10-14T06:50:31.919895Z"
+    },
+    {
+      "check": "isolated-publication",
+      "completed_at_utc": "2026-10-14T06:52:18.382777Z",
+      "output_sha256": "56254eeece865be319bdf7f516dc6603c060f794dd0779ca67e1b43bb5b9ab10",
+      "result": "142 passed; no skips",
+      "started_at_utc": "2026-10-14T06:51:52.232074Z"
+    },
+    {
+      "check": "installed-Scout",
+      "completed_at_utc": "2026-10-14T06:56:40.917108+00:00",
+      "output_sha256": "d54f3847b5ea0c74419bf19585cadd8b5ab2bf9db17fd22535a4f1c784b15a56",
+      "result": "142 passed; no skips"
+    }
+  ]
+}
