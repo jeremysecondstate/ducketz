@@ -491,6 +491,15 @@ class ShadowRunner:
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
+        reference_rows=[row for row in snapshot.get("candles", [])
+                        if instant(row["opened_at"]) == reference]
+        if reference_rows:
+            candle=reference_rows[-1]
+            payload["reference_provenance"]={
+                "reference_at":reference.isoformat(),
+                **{field:candle.get(field) for field in (
+                    "observed_constituents", "synthetic_constituents", "synthetic",
+                    "no_trade", "source_id", "availability_kind")}}
         persistence_start=time.perf_counter()
         forecast=self.store.save_forecast(payload,intent=intent)
         self.store.event(cycle_id,"forecast_persisted",{"forecast_id":forecast["forecast_id"],
@@ -549,7 +558,8 @@ class ShadowRunner:
 
 class LiveHistories:
     """Read-only existing Databento access; original DATASTORE files stay intact."""
-    def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False):
+    def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False,
+                 stopped=None,reuse_saved=False):
         self.histories=histories
         self.provider=provider
         self.store=store
@@ -558,8 +568,12 @@ class LiveHistories:
         self.clock=clock
         self.sleep=sleep
         self.bounded=bounded
+        self.stopped=stopped or (lambda: False)
+        self.reuse_saved=reuse_saved
         self.cycle_id=None
         for symbol in tuple(histories):
+            if self.stopped():
+                raise InterruptedError("Candle acquisition stopped before history restoration")
             self._refresh_symbol(symbol)
 
     def _refresh_symbol(self, symbol):
@@ -597,6 +611,8 @@ class LiveHistories:
     def get(self,symbol):
         from .data import AcquisitionPending
         while True:
+            if self.stopped():
+                raise InterruptedError("Candle acquisition stopped before the next attempt")
             try:
                 return self._get_step(symbol)
             except AcquisitionPending as exc:
@@ -606,10 +622,35 @@ class LiveHistories:
 
     def _get_step(self,symbol):
         from .data import (History,equity_sessions,recover_databento_candle_step,
-                           resolve_minute_candle,AcquisitionPending)
+                           resolve_minute_candle,AcquisitionPending,synthetic_continuity_verified,
+                           completed_15m_observation)
         self._refresh_symbol(symbol)
         history=self.histories[symbol]
         frame=_frame(history)
+        if self.stopped():
+            raise InterruptedError("Candle acquisition stopped before the next provider request")
+        if self.reuse_saved:
+            # Reuse only durable, actually received and provenance-validated
+            # observations. Historical close-time assumptions cannot satisfy
+            # a live collector's completed slot.
+            durable=next((c for c in reversed(self.store.observed_candles(symbol))
+                          if instant(c["opened_at"]) == self.reference
+                          and instant(c["available_at"]) <= instant(self.clock())
+                          and c.get("source_dataset") == self.provider.dataset
+                          and c.get("source_id") == f"databento:{self.provider.dataset}:ohlcv-1m"
+                          and completed_15m_observation(c)
+                          and synthetic_continuity_verified(c)), None)
+            if durable is not None and self.reference+STEP <= instant(self.clock()):
+                # A later invalid same-opening row must not override the
+                # independently validated durable 15m observation we selected.
+                addition=pd.DataFrame([durable])
+                for column in ("opened_at","available_at"):
+                    addition[column]=pd.to_datetime(addition[column],utc=True)
+                prior=frame.loc[pd.to_datetime(frame.opened_at,utc=True).ne(pd.Timestamp(self.reference))]
+                merged=pd.concat([prior,addition],ignore_index=True).sort_values("opened_at").reset_index(drop=True)
+                merged.attrs["intraday_history"]=history.manifest
+                self.histories[symbol]=History(merged,history.manifest)
+                return self.histories[symbol]
         sessions=equity_sessions(self.reference,self.reference+STEP)
         session=next((s for s in sessions if s.contains(self.reference)),None)
         if session is None:
@@ -636,7 +677,7 @@ class LiveHistories:
             break
         begin=instant(self.clock());tick=time.perf_counter()
         kwargs=dict(symbol=symbol,opened_at=requested,journal=self.journal,session=session,
-                    previous=previous,clock=self.clock)
+                    previous=previous,clock=self.clock,stopped=self.stopped)
         result=recover_databento_candle_step(self.provider,**kwargs)
         if result.get("candle") is None:
             if result.get("status") == "retry":
