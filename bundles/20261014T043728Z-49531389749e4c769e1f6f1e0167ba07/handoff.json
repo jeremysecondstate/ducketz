@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T04:37:28.374037Z",
+  "id": "20261014T043728Z-49531389749e4c769e1f6f1e0167ba07",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published the direct human nightly continuation policy; only an explicit Jeremy instruction cancels nightly work."
+}

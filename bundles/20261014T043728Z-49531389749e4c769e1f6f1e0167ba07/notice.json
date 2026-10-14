@@ -1,0 +1,27 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T043607Z-535041a575e0485cb92e1b64daedfd24",
+  "change_id": "20261014T043607Z-535041a575e0485cb92e1b64daedfd24",
+  "commit_sha": "fe2768ae3c10548d3a1e6ae2f4ece1ee344e8ac8",
+  "files": [
+    "AGENTS.md"
+  ],
+  "limitations": [
+    "Documentation only; no claim of nightly production completion.",
+    "Main integration and peer installation remain separate facts."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/105",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Preserve completed data and resume unfinished nightly steps. Assistant records and supervisor status do not supply human cancellation authority. Trader starts and manual stops remain controlled by Jeremy.",
+  "scope": "Shared documentation for Atlas and Scout. Late starts, partial or morning fetches, missed schedules and elapsed target times require continuation, overlap/deduplication and repair of actual errors.",
+  "summary": "Atlas published the direct human nightly continuation policy; only an explicit Jeremy instruction cancels nightly work.",
+  "tests": [
+    {
+      "check": "tests/check_markdown_documents.py AGENTS.md",
+      "completed_at_utc": "2026-10-14T04:36:40.053585Z",
+      "output_sha256": "92a69209079319725e4ac3e154699299a3ba23b83f0404ece0bb821a7e5a0b61",
+      "result": "passed",
+      "started_at_utc": "2026-10-14T04:36:39.570131Z"
+    }
+  ]
+}
