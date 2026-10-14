@@ -1,11 +1,25 @@
 from __future__ import annotations
 
 import json
+import shutil
 
 import pytest
 
 from app.ui.gameplan_stats_data import GameplanStatsError, load_gameplan_stats, review_sessions
+from ml.artifacts import file_checksum
 from gameplan_stats_fixture import forecast, write_review
+
+
+def test_empty_preopen_coverage_is_preserved_without_hiding_prior_results(tmp_path):
+    write_review(tmp_path)
+    write_review(tmp_path, [], session="2026-09-14", coverage_status="NO_SAVED_INDEPENDENT_GAMEPLAN")
+    current = load_gameplan_stats(tmp_path)
+    assert current.session == "2026-09-14"
+    assert current.coverage_status == "NO_SAVED_INDEPENDENT_GAMEPLAN"
+    assert current.outcomes == () and current.metrics().total == 0
+    assert review_sessions(tmp_path) == ("2026-09-14", "2026-09-11")
+    historical = load_gameplan_stats(tmp_path, "2026-09-11")
+    assert historical.coverage_status is None and historical.metrics().total == 7
 
 
 def test_separate_direction_probability_and_incomplete_populations(tmp_path):
@@ -157,3 +171,128 @@ def test_missing_and_empty_reports_have_no_invented_metrics(tmp_path):
     write_review(tmp_path, [])
     review = load_gameplan_stats(tmp_path)
     assert review.metrics().accuracy is None and review.metrics().total == 0
+
+
+def _saved_tree(root):
+    """Observe bytes and modification times, including empty directories."""
+    if not root.exists():
+        return None
+    return tuple((path.relative_to(root).as_posix(), path.is_dir(), path.stat().st_mtime_ns,
+                  None if path.is_dir() else path.read_bytes())
+                 for path in (root, *sorted(root.rglob("*"))))
+
+
+@pytest.mark.parametrize("pointer_state", ["replaced", "moved", "deleted", "malformed"])
+@pytest.mark.parametrize("session", [None, "2026-09-11"])
+def test_frozen_review_uses_original_receipt_after_display_pointers_change(tmp_path, pointer_state, session):
+    original = write_review(tmp_path, [forecast()])
+    receipt_hash = file_checksum(original / "receipt.json")
+    replacement = write_review(tmp_path, [forecast(change=.01)], version="02")
+    latest = write_review(tmp_path, [forecast(session="2026-09-14")], session="2026-09-14")
+    assert load_gameplan_stats(tmp_path).run_directory == latest
+    assert load_gameplan_stats(tmp_path, "2026-09-11").run_directory == replacement
+    pointers = (tmp_path / "ml/gameplan-actuals-review-latest/run.json",
+                tmp_path / "ml/gameplan-actuals-review-by-date/2026-09-11/run.json")
+    for pointer in pointers:
+        if pointer_state == "moved":
+            pointer.rename(pointer.with_suffix(".old"))
+        elif pointer_state == "deleted":
+            pointer.unlink()
+        elif pointer_state == "malformed":
+            pointer.write_text("not a publication pointer", encoding="utf-8")
+    before = _saved_tree(tmp_path)
+    review = load_gameplan_stats(tmp_path, session, run_directory=original,
+                                expected_receipt_sha256=receipt_hash)
+    assert review.run_directory == original and review.session == "2026-09-11"
+    assert review.metrics().accuracy == 1
+    assert review.report_path == original / "Gameplan-results.md"
+    assert _saved_tree(tmp_path) == before
+
+
+def test_frozen_review_rejects_a_different_requested_session_without_writes(tmp_path):
+    run = write_review(tmp_path)
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError, match="No verified results.*2026-09-14"):
+        load_gameplan_stats(tmp_path, "2026-09-14", run_directory=run,
+                            expected_receipt_sha256=file_checksum(run / "receipt.json"))
+    assert _saved_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize("filename", ["receipt.json", "manifest.json", "report.json",
+                                      "forecast-results.parquet", "Gameplan-results.md"])
+def test_frozen_review_rejects_mutated_original_evidence_without_repairing_it(tmp_path, filename):
+    run = write_review(tmp_path)
+    receipt_hash = file_checksum(run / "receipt.json")
+    path = run / filename
+    # Receipt whitespace remains valid JSON, but changes the pinned exact bytes.
+    # Other mutations keep the recorded size, requiring checksum verification.
+    original = path.read_bytes()
+    path.write_bytes(original + b"\n" if filename == "receipt.json"
+                     else original[:-1] + bytes([original[-1] ^ 1]))
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError):
+        load_gameplan_stats(tmp_path, run_directory=run, expected_receipt_sha256=receipt_hash)
+    assert _saved_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize("arguments", [
+    pytest.param({}, id="missing"),
+    pytest.param({"expected_receipt_sha256": None}, id="null"),
+    pytest.param({"expected_receipt_sha256": ""}, id="empty"),
+    pytest.param({"expected_receipt_sha256": "0" * 63}, id="short"),
+    pytest.param({"expected_receipt_sha256": "0" * 65}, id="long"),
+    pytest.param({"expected_receipt_sha256": "g" * 64}, id="nonhex"),
+    pytest.param({"expected_receipt_sha256": "A" * 64}, id="uppercase"),
+    pytest.param({"expected_receipt_sha256": 123}, id="nonstring"),
+])
+def test_frozen_review_requires_an_exact_hash_without_writes(tmp_path, arguments):
+    run = write_review(tmp_path)
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError, match="exact receipt hash"):
+        load_gameplan_stats(tmp_path, run_directory=run, **arguments)
+    assert _saved_tree(tmp_path) == before
+
+
+def test_frozen_review_rejects_a_wrong_well_formed_hash_without_writes(tmp_path):
+    run = write_review(tmp_path)
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError, match="receipt does not match"):
+        load_gameplan_stats(tmp_path, run_directory=run, expected_receipt_sha256="0" * 64)
+    assert _saved_tree(tmp_path) == before
+
+
+def test_frozen_hash_without_a_run_cannot_fall_back_to_latest(tmp_path):
+    run = write_review(tmp_path)
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError, match="explicit saved run"):
+        load_gameplan_stats(tmp_path, expected_receipt_sha256=file_checksum(run / "receipt.json"))
+    assert _saved_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize("location", ["outside", "nested", "sibling"])
+def test_frozen_review_rejects_valid_artifacts_outside_its_immediate_runs_directory(tmp_path, location):
+    root = tmp_path / "datastore"
+    original = write_review(root)
+    targets = {"outside": tmp_path / "outside-run",
+               "nested": original.parent / "nested" / "copied-run",
+               "sibling": root / "ml/gameplan-actuals-review-runs-other/copied-run"}
+    run = targets[location]
+    shutil.copytree(original, run)
+    receipt = json.loads((run / "receipt.json").read_text(encoding="utf-8"))
+    receipt["run_path"] = (run.relative_to(root) if run.is_relative_to(root) else run).as_posix()
+    (run / "receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError, match="saved run"):
+        load_gameplan_stats(root, run_directory=run,
+                            expected_receipt_sha256=file_checksum(run / "receipt.json"))
+    assert _saved_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize("existing_root", [True, False])
+def test_unavailable_frozen_review_does_not_create_or_change_an_empty_datastore(tmp_path, existing_root):
+    root = tmp_path if existing_root else tmp_path / "absent-datastore"
+    run = root / "ml/gameplan-actuals-review-runs/missing-run"
+    before = _saved_tree(tmp_path)
+    with pytest.raises(GameplanStatsError, match="not available"):
+        load_gameplan_stats(root, run_directory=run, expected_receipt_sha256="0" * 64)
+    assert _saved_tree(tmp_path) == before
