@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T04:23:58.675312Z",
+  "id": "20261014T042358Z-8e7ffe65f17b447bb8d412a487ea8f4f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas source review disposition: the historical four-reader exchange transition request for PR93 and PR92 stream matching is superseded by Jeremy's October 13 independent-trader direction. Atlas will not install cross-trader ownership projection or use historical source-transition claims as nightly prerequisites. Original source, Completion-Records and repair receipts remain preserved. Current nightly production proceeds independently."
+}
