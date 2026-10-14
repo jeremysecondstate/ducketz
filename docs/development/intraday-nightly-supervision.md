@@ -57,6 +57,19 @@ estimator fit already in progress can exceed the soft time limit. This is not
 a guarantee that missing provider data or insufficient history can be repaired
 before 04:00.
 
+Completed-session assessment waits for a successful scoped refresh whose
+advertised source availability reaches that session's close. It does not wait
+for today's premarket bar. Advertised availability does not prove observations
+exist in every minute: coverage gaps remain explicit and all sample, class,
+calibration and held-out gates still apply. When the intended completed session
+has no matured labels, the supervisor freezes an insufficient-data decision for
+that session and retains existing settings; it never substitutes an older
+held-out day. Typed sample insufficiency is terminal statistical evidence;
+integrity errors remain resumable failures. The report's completion scope is
+completed-session assessment only. Current input freshness remains visible
+separately, and completion does not establish live trader readiness or relax any
+manual-start, acquisition or live-cycle gate.
+
 Qualified model **specifications** install atomically under
 `DATASTORE/intraday/supervision/active/`. Immutable revisions remain under
 `policies/`, final decisions under `decisions/`, and dated audit logs under

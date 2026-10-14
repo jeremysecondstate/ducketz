@@ -69,6 +69,23 @@ def test_stale_prior_session_and_future_rows_do_not_pass_freshness():
     assert r["latest_reference_at"] == "2026-10-12T23:45:00+00:00"
 
 
+def test_completed_assessment_uses_published_close_not_active_bar():
+    session = {"session_id": "2026-10-13", "closed_at": "2026-10-14T00:00:00Z"}
+    refresh = {"status": "partial", "source_dataset": "EQUS.MINI", "source_schema": "ohlcv-1m",
+        "results": {"ABCL": {"error_files": 0}}, "requests": [{"symbol": "ABCL",
+            "status": "fetched", "source_schema": "ohlcv-1m", "error_type": None,
+            "provider_available_end": "2026-10-14T00:00:00Z"}]}
+    audit = subject.audit_history(history("2026-10-13"), as_of="2026-10-14T10:30:00Z")
+    assert not audit["freshness_ok"]
+    assert audit["gaps"][1]["count"] == 10
+    assert subject.assessment_readiness(refresh, symbol="ABCL", completed_session=session)["ready"]
+    refresh["requests"][0]["provider_available_end"] = "2026-10-13T23:59:00Z"
+    assert not subject.assessment_readiness(refresh, symbol="ABCL", completed_session=session)["ready"]
+    refresh["requests"][0]["provider_available_end"] = "2026-10-14T00:00:00Z"
+    refresh["results"]["ABCL"]["error_files"] = 1
+    assert not subject.assessment_readiness(refresh, symbol="ABCL", completed_session=session)["ready"]
+
+
 def test_dataset_reports_terminal_label_limitation_then_recovers_with_current_reference():
     h = history("2026-10-12", "2026-10-13", "2026-10-14")
     before = subject.build_supervision_dataset(h, as_of="2026-10-14T08:00:00Z", completed_session="2026-10-13")
