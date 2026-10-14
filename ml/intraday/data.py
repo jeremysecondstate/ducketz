@@ -407,6 +407,50 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
         return False
 
 
+def completed_15m_observation(candle: Mapping) -> bool:
+    """Require positive full-quarter evidence before reusing a saved observation.
+
+    Native rows and incomplete aggregates cannot finish a 15m collection or
+    score its target. Legacy explicit 900-second bars remain valid; current
+    aggregates carry constituent counts and the exact fifteen-minute grid.
+    Synthetic price continuity is a separate check at each calling boundary.
+    """
+    try:
+        opened, available = utc(candle["opened_at"]), utc(candle["available_at"])
+        if opened != opened.floor("15min") or available < opened + STEP:
+            return False
+        proof = False
+        if "interval_seconds" in candle:
+            if candle["interval_seconds"] != 900:
+                return False
+            proof = True
+        count_fields = ("observed_constituents", "synthetic_constituents")
+        if any(field in candle for field in count_fields):
+            counts = [candle.get(field) for field in count_fields]
+            if any(isinstance(value, (bool, np.bool_))
+                   or not isinstance(value, (int, float, np.integer, np.floating))
+                   or not math.isfinite(float(value)) or not float(value).is_integer()
+                   or not 0 <= value <= 15 for value in counts) or sum(counts) != 15:
+                return False
+            proof = True
+        raw_evidence = candle.get("evidence_json", "{}")
+        if raw_evidence is None or (isinstance(raw_evidence, (float, np.floating)) and math.isnan(float(raw_evidence))):
+            evidence = {}  # Optional legacy evidence becomes null after DataFrame concatenation.
+        else:
+            evidence = raw_evidence if isinstance(raw_evidence, Mapping) else json.loads(raw_evidence)
+        if isinstance(evidence, Mapping) and "constituents" in evidence:
+            constituents = evidence["constituents"]
+            if not isinstance(constituents, list) or len(constituents) != 15:
+                return False
+            if any(not isinstance(row, Mapping) or utc(row["opened_at"]) != opened + index * MINUTE
+                   for index, row in enumerate(constituents)):
+                return False
+            proof = True
+        return proof
+    except (KeyError, ValueError, TypeError, OverflowError, ContractError, json.JSONDecodeError):
+        return False
+
+
 def _wait_for_persisted_retry(journal: AcquisitionJournal, *, slot: Mapping,
                               sleep: Callable[[float], None], clock: Callable):
     """Honor the last exact-slot waiting rule even after a process restart."""
@@ -454,7 +498,8 @@ def recover_interval(fetch: Callable[[], IntervalResponse], *, journal: Acquisit
 
 
 def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attempt_id: str,
-                                    clock: Callable = lambda: datetime.now(timezone.utc)) -> IntervalResponse:
+                                    clock: Callable = lambda: datetime.now(timezone.utc),
+                                    stopped: Callable = lambda: False) -> IntervalResponse:
     """Read the exact 15m native-minute range through an existing provider.
 
     Caller supplies its already-authorized configured provider; construction,
@@ -476,15 +521,24 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
     source_id = f"databento:{dataset}:ohlcv-1m"
     coverage = None
     try:
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before metadata request")
         specs = [spec for spec in provider.native_specs() if spec.schema == "ohlcv-1m" and spec.frequency == "1m"]
         if len(specs) != 1:
             raise ContractError("One native ohlcv-1m provider spec is required")
-        advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=provider.dataset_range())
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before dataset range request")
+        dataset_range = provider.dataset_range()
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before schema range request")
+        advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=dataset_range)
         coverage = (utc(advertised.start).isoformat(), utc(advertised.end).isoformat())
         if utc(advertised.start) > op or utc(advertised.end) < cl:
             return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
                 begin.isoformat(), utc(clock()).isoformat(), "unavailable_coverage", coverage_open=coverage[0],
                 coverage_close=coverage[1], error="requested_interval_outside_advertised_schema_range")
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before price request")
         results, selected = provider.fetch_native_bars_range([symbol], specs[0], start=op.to_pydatetime(),
                                                             end=cl.to_pydatetime(), available_range=advertised)
         if symbol not in results or utc(selected.start) != op or utc(selected.end) != cl:
@@ -497,7 +551,7 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
         return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
             begin.isoformat(), utc(clock()).isoformat(), "success", native, coverage[0], coverage[1],
             "Databento native OHLCV omits intervals with no trades; successful exact-range response is within advertised coverage")
-    except ContractError:
+    except (ContractError, InterruptedError):
         raise
     except Exception as exc:
         from app.services.databento_retry import is_retryable_databento_error, _retry_after_seconds, _http_status
@@ -663,7 +717,8 @@ def _provider_request_lock(journal):
 
 def recover_databento_candle_step(provider, *, symbol, opened_at, journal: AcquisitionJournal,
                                   session: SessionBounds, previous: Mapping | None,
-                                  clock: Callable = lambda: datetime.now(timezone.utc)) -> dict:
+                                  clock: Callable = lambda: datetime.now(timezone.utc),
+                                  stopped: Callable = lambda: False) -> dict:
     """One bounded exact attempt or durable wait; no internal sleep or retry cap.
 
     Provider temporary errors wait at least four seconds across all Databento
@@ -709,7 +764,7 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
                     "candle":None, "retry_after_seconds":max(exact_wait,provider_wait),
                     "evidence":[asdict(item) for item in attempts]}
         attempt = fetch_databento_interval_attempt(provider,symbol=symbol,opened_at=op,
-                                                   attempt_id=uuid.uuid4().hex,clock=clock)
+                                                   attempt_id=uuid.uuid4().hex,clock=clock,stopped=stopped)
         actual = dict(symbol=attempt.symbol,source_id=attempt.source_id,
                       interval_open=attempt.interval_open,interval_close=attempt.interval_close)
         if journal.slot(**actual) != journal.slot(**slot) or attempt.source_dataset != dataset.strip():

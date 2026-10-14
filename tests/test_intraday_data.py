@@ -655,7 +655,10 @@ def test_journal_closes_connections_deterministically(tmp_path, monkeypatch):
 
 
 
-def _bounded_attempt(provider, *, symbol, opened_at, attempt_id, clock, status="success", wait=0, empty=False):
+def _bounded_attempt(provider, *, symbol, opened_at, attempt_id, clock, status="success", wait=0, empty=False,
+                     stopped=lambda: False):
+    if stopped():
+        raise InterruptedError("Fixture acquisition stopped")
     op = pd.Timestamp(opened_at)
     at = pd.Timestamp(clock())
     native = candles(15, start=op.isoformat(), minutes=True)

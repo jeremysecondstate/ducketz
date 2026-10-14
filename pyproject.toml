@@ -66,6 +66,7 @@ ml = [
     "psutil>=6,<8",
 ]
 ml-tree = [
+    "catboost>=1.2,<2",
     "lightgbm>=4.3,<5",
     "xgboost>=2.1,<4",
 ]
