@@ -1,0 +1,39 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T042403Z-c519075ca23e48feb97330feb8a4f882",
+  "change_id": "20261014T042403Z-c519075ca23e48feb97330feb8a4f882",
+  "commit_sha": "8001f90ac70bee784c3418e44d7294f792490ed6",
+  "files": [
+    "ml/intraday/__init__.py",
+    "ml/intraday/prediction.py",
+    "ml/intraday/models.py",
+    "tests/test_intraday_models.py"
+  ],
+  "installation_stage": "existing_local_bytes_verified",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "The broader PR101 quote-timing and PR102 execution-clock dependency composition is not complete; original source records are retained.",
+    "Synthetic offline evidence only; no production model fitting or runtime-loaded version claim."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/104"
+  ],
+  "main_commit_sha": "daf0af969b4efc3c20b1871a03ff3d8e540081ad",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4",
+    "20261013T210413Z-363c920429d74e7e9a82f3cdc6391742"
+  ],
+  "runtime_implications": "Exact files already exist on Scout; no application recopy, trader start or restart, manual-stop change, provider or broker call, binding or scheduler change. Nightly production continues independently.",
+  "scope": "Shared source model foundation applicable to both independent fifteen-minute traders; no local symbols or private state are part of the change.",
+  "summary": "Scout integrated the causal intraday model foundation and small-sample KNN repair into common main; exact files already match Scout installation.",
+  "tests": [
+    {
+      "check": "Network-disabled synthetic intraday model suite",
+      "completed_at_utc": "2026-10-14T04:26:01.028143Z",
+      "output_sha256": "13ce8977cf40a6f2ec3df1b2ac7f102cd9bc705d02406388188b8d4e158bd14c",
+      "result": "36 passed, no skips, 39 existing dependency deprecation warnings in queue, isolated source and fresh main candidates",
+      "started_at_utc": "2026-10-14T04:25:53.940223Z"
+    }
+  ]
+}
