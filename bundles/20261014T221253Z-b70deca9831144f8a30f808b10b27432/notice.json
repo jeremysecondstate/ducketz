@@ -1,0 +1,149 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8",
+  "change_id": "20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8",
+  "commit_sha": "06ddb6aae59089b3245c7fdcbe7ba4ec4c645005",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/intraday_models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-model-supervision.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-model-supervisor-prompt.txt"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/full_model_selection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/model_selection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/selected_config.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/supervisor.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/telemetry.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "pyproject.toml"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_full_catalog_fits.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_full_model_selection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_metric_cohorts.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_model_selection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_research_view.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_selected_models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_supervisor.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_telemetry.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_ui.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_register_intraday_model_supervisor.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/register_intraday_model_supervisor.ps1"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures test genuine exact-target fits and both source interfaces; private empirical model research remains local and does not establish improved unseen accuracy.",
+    "Fourteen neural family names lack genuine exact-target adapters; no substitute output is fabricated.",
+    "Existing native holdout/incumbent and research budgets remain statistical policies, independent of operating authorization or manual trader starts.",
+    "Already-running processes keep their loaded code; existing selections and old cycle identities are not rewritten."
+  ],
+  "local_installation": "completed_owned_and_required_reviewed_dependencies",
+  "main_integration": "draft_PR_pending",
+  "peer_applicability": "Shared candidate coverage, probability quality diagnostics and read-only timing cohorts; independent local selection formats and execution state preserved.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/136",
+  "remote_sha": "06ddb6aae59089b3245c7fdcbe7ba4ec4c645005",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_deployment": "not_restarted",
+  "runtime_implications": "Atlas source installed with reviewed main dependencies; 492 installed offline checks passed. Existing active selections, private history, schedules and manual controls preserved. No trader or application restart, broker/provider request or source-main merge. Peer adoption uses its own existing local bindings under standing human authority; no reciprocal acceptance or operating wait.",
+  "scope": "shared",
+  "source_publication": "pushed_remote_sha_verified",
+  "summary": "Atlas installed full-catalog independent 15-minute model research and accurate timing/outcome display cohorts; reviewed source published with preserved main calibration and policy APIs.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-14T22:03:25.698584Z",
+      "offline": true,
+      "output_sha256": "7cf0b435c9ac3e6c1859011303516f5346e5895a1ac9d563548fdc0ce1a135f3",
+      "result": "544 passed",
+      "started_at_utc": "2026-10-14T22:02:37.175402Z"
+    }
+  ]
+}

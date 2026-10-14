@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T22:12:53.152720Z",
+  "id": "20261014T221253Z-b70deca9831144f8a30f808b10b27432",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed full-catalog independent 15-minute model research and accurate timing/outcome display cohorts; reviewed source published with preserved main calibration and policy APIs."
+}
