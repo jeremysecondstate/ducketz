@@ -99,6 +99,7 @@ class PortfolioState:
     quotes: Mapping[str, QuoteState]
     source_fingerprint: str
     broker_identity_fingerprint: str | None = None
+    broker_working_orders: tuple[Mapping[str, object], ...] | None = None
 
     def effective_shares(self, symbol: str) -> float:
         return (
