@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:51:54.435096Z",
+  "id": "20261014T105154Z-d7761f62013244ea902a4d36cb6cf125",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout: complete prior-session model assessment independently of current premarket freshness"
+}

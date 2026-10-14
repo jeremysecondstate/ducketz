@@ -1,0 +1,59 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T104752Z-21dd3694738c437bbff9aa7d4eb5824e",
+  "change_id": "20261014T104752Z-21dd3694738c437bbff9aa7d4eb5824e",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/supervision.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/supervision_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_supervision.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_supervision_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/development/intraday-nightly-supervision.md"
+    }
+  ],
+  "limitations": [
+    "Offline fixture checks do not prove fresh live market inputs, broker access, prediction quality or trading profitability.",
+    "This is a stacked repair on the reviewed supervision source; main integration retains the preceding source dependencies.",
+    "New qualified specifications remain conditional on unchanged chronological sample, class, calibration and held-out gates."
+  ],
+  "local_installation": "Six exact reviewed owned source files installed on Scout; source availability is separate from runtime deployment.",
+  "manual_controls": "No trader start, restart or order submission.",
+  "predecessor_completion_record": "20261014T101440Z-8776bf544ad74e9192b5486a2fe20ec1",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/130",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed local source installation fixes nightly preparation; existing manual start controls and live acquisition gates remain in force. No running worker is started or restarted.",
+  "scope": "shared",
+  "source_commit": "1cdaa289b9f3bcf1dfc44a8082475e0f22cd5bc3",
+  "summary": "Scout: complete prior-session model assessment independently of current premarket freshness",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-14T10:49:02.545199Z",
+      "description": "Eight offline intraday data, models, runtime, policy, selection, supervision and manual-session suites",
+      "output_sha256": "2a8ef8d73f87a2dc5cb4601b4258c2a8276892ebe35d8edd912525abd549cc84",
+      "result": "272 passed, 1 skipped; optional CatBoost absent"
+    }
+  ]
+}
