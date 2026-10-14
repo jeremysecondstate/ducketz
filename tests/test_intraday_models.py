@@ -8,6 +8,7 @@ import pytest
 
 from ml.intraday.models import (
     DEFAULT_MODELS, DEFAULT_PARAMETERS, ModelSpec, build_estimator, configured_models, fit_ensemble,
+    fit_calibrated_estimator,
     probability_not_down, purged_chronological_split, registry_status,
 )
 from ml.intraday.prediction import ContractError, TARGET_VERSION
@@ -165,8 +166,9 @@ def test_non_probability_adapters_use_purged_chronological_calibration(family):
     assert result["complete"], result["outputs"]
     calibration = result["outputs"][0]["metadata"]["calibration"]
     assert calibration["method"] == "purged_chronological_sigmoid"
-    assert calibration["purged_rows"] == 2
+    assert calibration["purged_rows"] == 3  # target receipt follows the boundary close.
     assert calibration["base_latest_target"] <= calibration["first_calibration_reference"]
+    assert calibration["base_latest_label_available_at"] <= calibration["first_calibration_reference"]
     kwargs.pop("target_close_at")
     failed = fit_ensemble(X, y, inference, config=[family], **kwargs)
     assert failed["outputs"][0]["error"]["type"] == "ContractError"
@@ -215,3 +217,92 @@ def test_registry_import_has_no_broker_dependencies():
     assert "ml.account_gameplan" not in source
     assert "stock_trader" not in source
     assert "schwab" not in source.lower()
+
+
+@pytest.mark.parametrize("family", ["logistic", "gaussian_nb", "knn", "lda", "qda", "random_forest",
+    "extra_trees", "hist_gradient_boosting", "gradient_boosting", "adaboost", "mlp", "xgboost", "lightgbm", "catboost"])
+def test_explicit_sigmoid_supports_real_probability_families_and_saved_inference(tmp_path, family):
+    if family in {"xgboost", "lightgbm", "catboost"} and importlib.util.find_spec(family) is None:
+        pytest.skip(f"{family} absent")
+    X, y, inference, kwargs = dataset()
+    spec = ModelSpec("selected", family=family, probability_calibration="sigmoid")
+    result = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id=family, **kwargs)
+    output = result["outputs"][0]
+    assert result["complete"], output
+    calibration = output["metadata"]["calibration"]
+    assert calibration["base_rows"] + calibration["purged_rows"] + calibration["calibration_rows"] == len(y)
+    assert calibration["base_latest_label_available_at"] <= calibration["first_calibration_reference"]
+    assert calibration["score_interface"] in {"decision_function", "predict_proba_log_odds"}
+    saved = joblib.load(output["artifact_path"])
+    assert probability_not_down(saved["estimator"], inference) == pytest.approx(output["probability_not_down"])
+
+
+def test_calibration_preprocessing_and_knn_cap_use_only_purged_base_partition():
+    X, y, _, kwargs = dataset(40)
+    X[32:] += 1000
+    spec = ModelSpec("calibrated_knn", family="knn", parameters={"n_neighbors": 100}, probability_calibration="sigmoid")
+    fitted, evidence = fit_calibrated_estimator(spec, X, y, **kwargs)
+    train, calibration = purged_chronological_split(kwargs["reference_at"], kwargs["target_close_at"],
+                                                   label_available_at=kwargs["label_available_at"])
+    assert evidence["effective_parameters"]["n_neighbors"] == len(train)
+    assert fitted.base.named_steps["model"].n_samples_fit_ == len(train)
+    assert np.allclose(fitted.base.named_steps["scale"].mean_, X[train].mean(axis=0))
+    assert not np.allclose(fitted.base.named_steps["scale"].mean_, X.mean(axis=0))
+    assert evidence["calibration"]["calibration_rows"] == len(calibration)
+
+
+def test_late_received_labels_are_purged_even_when_target_already_closed():
+    _, _, _, kwargs = dataset(40)
+    boundary = kwargs["reference_at"][32]
+    kwargs["label_available_at"][1] = boundary + timedelta(seconds=1)
+    train, _ = purged_chronological_split(kwargs["reference_at"], kwargs["target_close_at"],
+                                         label_available_at=kwargs["label_available_at"])
+    assert 1 not in train and 0 in train
+
+
+def test_calibration_failure_never_reuses_an_uncalibrated_or_previous_fit(tmp_path):
+    X, y, inference, kwargs = dataset()
+    spec = ModelSpec("selected", family="gaussian_nb", probability_calibration="sigmoid")
+    first = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id="qualified", **kwargs)
+    assert first["complete"]
+    y[128:] = 1
+    failed = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id="failed", **kwargs)
+    output = failed["outputs"][0]
+    assert not failed["complete"] and failed["probability_not_down"] is None
+    assert "both target classes" in output["error"]["message"]
+    assert output["artifact_path"] is None and not (tmp_path / "failed").exists()
+    kwargs.pop("label_available_at")
+    with pytest.raises(ContractError, match="timestamps"):
+        fit_calibrated_estimator(spec, X, y, **kwargs)
+    with pytest.raises(ContractError, match="none or sigmoid"):
+        ModelSpec("bad", probability_calibration="display_cap")
+
+
+def test_fitting_and_live_artifact_preserve_selected_newest_row_window(tmp_path):
+    X, y, inference, kwargs = dataset()
+    spec = ModelSpec("bounded", family="logistic", probability_calibration="sigmoid", training_max_rows=80)
+    first = fit_ensemble(X, y, inference, config=[spec], artifact_dir=tmp_path, run_id="bounded", **kwargs)
+    output = first["outputs"][0]
+    assert first["complete"], output
+    metadata = output["metadata"]
+    assert metadata["input_training_rows"] == 160 and metadata["training_rows"] == 80
+    assert metadata["training_window"]["first_reference"] == kwargs["reference_at"][-80].isoformat()
+    assert metadata["training_window"]["excluded_rows"] == 80
+    trimmed = {key: value[-80:] if key != "training_cutoff" else value for key, value in kwargs.items()}
+    expected, evidence = fit_calibrated_estimator(spec, X[-80:], y[-80:], **trimmed)
+    saved = joblib.load(output["artifact_path"])["estimator"]
+    assert probability_not_down(saved, inference) == pytest.approx(probability_not_down(expected, inference))
+    assert metadata["calibration"] == evidence["calibration"]
+    X[:80] += 1e9
+    changed = fit_ensemble(X, y, inference, config=[spec], **kwargs)
+    assert changed["probability_not_down"] == pytest.approx(first["probability_not_down"])
+    y[-80:] = 1
+    failed = fit_ensemble(X, y, inference, config=[spec], **kwargs)
+    assert failed["probability_not_down"] is None and not failed["complete"]
+    assert "Newest training row window" in failed["outputs"][0]["error"]["message"]
+
+
+@pytest.mark.parametrize("limit", [True, 0, 3, 4.5, "80"])
+def test_model_spec_rejects_invalid_training_window(limit):
+    with pytest.raises(ContractError, match="Training row limit"):
+        ModelSpec("invalid_window", training_max_rows=limit)
