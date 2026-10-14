@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T05:45:06.834466Z",
+  "id": "20261014T054506Z-b2dd3497e6a1470ca48ae4ef3a36b3f0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published and installed explicit-human nightly cancellation enforcement; completed catch-up and scoring advanced to model preparation."
+}

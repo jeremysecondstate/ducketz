@@ -1,0 +1,205 @@
+{
+  "actor": "Scout",
+  "author": "Scout",
+  "behavior": [
+    "Only Jeremy explicit stop or cancel instruction, with its reference and exact owned native run binding, carries nightly cancellation authority.",
+    "Software stop files, cancellation labels, supervisor interruptions and foreign run evidence cannot cancel nightly preparation.",
+    "Preserve completed outputs and resume unfinished work. Invalid software-derived repair claims are archived with exact evidence and receive the distinct INVALIDATED_SOFTWARE_CANCELLATION disposition.",
+    "Unrelated genuine source defects and independent active repair owners retain their own evidence and ownership."
+  ],
+  "change_id": "20261014T053708Z-0ce315ff06c345958338db8fd7660e63:nightly-cancellation-enforcement",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "AGENTS.md",
+      "sha256": "dcbb5970b9f12871ff0e226b82eb6339f6d28098feec9a3588aab138398e765f"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/development/independent-traders.md",
+      "sha256": "2b082727f2b4b9f2f483a1883a1f0c6093105e9e6fa76635503e5d2b99cce81b"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_deployment.py",
+      "sha256": "7ce55b8f4ede67656afd09ecd2ebc5cb0dd58c4a64b46e8f150e1a1aceadfa73"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py",
+      "sha256": "22791574dfc57b8b30255d65bb65a0775533a08207c12118ea2d944dff6c2153"
+    },
+    {
+      "operation": "add",
+      "path": "ml/nightly_cancellation.py",
+      "sha256": "26e5974e93d7af58b1bd7395185abf2ec0f5df57627787b2991c2bb84e4924ce"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_dispatch.py",
+      "sha256": "5dafa0c58a3eb7a9fb9bf69bebda4b121e3758a75a8362b32cfa468b5fa6f7d9"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_repair_registry.py",
+      "sha256": "433482b2ec825221569fcbc80fff1144cde059e76b3312453de776e3faf9e1fe"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_stage_repair.py",
+      "sha256": "de77be315a6a5f652e138628ffd87c8e7187a09c723de949238be1228a4a8383"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_workflow.py",
+      "sha256": "7dc54a70659ce461f56215d69f4cc14f3af419232c80827cf425f6c7e20ec6eb"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/overnight_runtime.py",
+      "sha256": "8b453ba6dcdff9b35aeacbecfadecc3b325ee7e4b11c3dde9222e7a03b903d3a"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/conftest.py",
+      "sha256": "3976f2d6278cee593df88981882b3b7745ca55b6f7f2617f231915ee8f00acde"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/gameplan_fixture.py",
+      "sha256": "2a5cc649d270b8cb15d903a0a4a1ffb85fa2dbd086df91754a11138ece2a268b"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_account_gameplan_config.py",
+      "sha256": "88fe1cbe55c03c4bf27d79a30ee4c6c1e80692b968dd796123b5c15b19001f40"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_cross_pc_import_hygiene.py",
+      "sha256": "cb881a23bd9b43cc65351384070e0da91013e75c662623000cb6b14d109619e5"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_deployment_handoff.py",
+      "sha256": "a3035e84f414a22fb5f0bce62e9fefe9502661ee789390dfc2f786c8681cf31b"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_cancellation.py",
+      "sha256": "31c874fca476fdff62e3ba801b0f8ef262ad9218485a0124a1fe1e34082c6a79"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_dispatch.py",
+      "sha256": "53b8be99f297e0d747331b37c72e8756f7754123dec19711b9d393280a3ed00a"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_source_adoption.py",
+      "sha256": "75af0516b56168a17e4a022d04263ca921fd976fda43fe2ab0ef347e50f38a27"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_stage_repair.py",
+      "sha256": "97f615c4d3b7a9738989b603d07c508fbf4e807f2edfb41326d8ec5aaebb4cb8"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_watchdog.py",
+      "sha256": "c39e25a65864b99c7329b19ca6ca248dc23a048c2ffd631eb24636294c0093cf"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_workflow.py",
+      "sha256": "b4e7dac16dc8e2d9ba87d001d338d5720545550cbcb465e43403fe5179cf1609"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_overnight_supervision.py",
+      "sha256": "1364c80119114d82dd2ce6c6cd90d31bcaf256d073594d794fc74ce751806809"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_recovery_tail_continuation.py",
+      "sha256": "9e0a6faa27f62f3ce51ed07bfa5fcf23e11b9a0d13b7db8857167850a40ec07e"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/__init__.py",
+      "sha256": "4c57e2d144c9a4d98a467d9aa6316c64d1b8bdd9cc5845278f93305d1fd5d11a"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/cross_pc/test_runner.py",
+      "sha256": "678526c09686c814aa29a2cd0a075460c4d71383b913d74a3497e46872ab192a"
+    },
+    {
+      "operation": "add",
+      "path": "tools/nightly_source_adoption.py",
+      "sha256": "1857177b91cdd153da39b83b0e38b112a9e94a94d988fa2cc9fcf1d11be54682"
+    },
+    {
+      "operation": "modify",
+      "path": "tools/nightly_watchdog.py",
+      "sha256": "094cb41463c069fba9e7b203aaeded540f88a693f08eb8260b3cacd5d990cd6b"
+    }
+  ],
+  "limitations": [
+    "Draft is stacked on the existing framework/instruction branches; main integration and Atlas installation are not claimed.",
+    "471tests passed on sealed source and again on the isolated publication candidate. Offline fixtures do not assert broker outcomes or trader execution.",
+    "Separate exact local installation audit and new preparation-worker receipts establish Scout adoption; generic publication stage placeholders were not manually rewritten."
+  ],
+  "peer_applicability": "Atlas and Scout common nightly preparation; each PC retains its own symbols and private operating bindings.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": [
+    "Nightly preparation continues under Jeremy standing authority. Software stop/cancellation records are inert; only an actual explicit human cancellation instruction carries authority.",
+    "Existing scheduler identity, timing, private bindings, original history and manual trader controls are preserved.",
+    "Scout catch-up and completed-session scoring finished; model preparation resumed under the existing coordinator. No trader was started or restarted."
+  ],
+  "scope": "shared",
+  "shared": true,
+  "source": {
+    "base_commit": "a737cc3e64d85ecc51ff4634f6c1da39a23da05a",
+    "branch": "codex/scout/20261014T053708Z-0ce315ff06c345958338db8fd7660e63",
+    "commit_sha": "b5ecd42df6a0dd58439dc75752330b216e590dbf",
+    "commit_url": "https://github.com/jeremysecondstate/ducketz/commit/b5ecd42df6a0dd58439dc75752330b216e590dbf",
+    "completion_record": "20261014T053708Z-0ce315ff06c345958338db8fd7660e63",
+    "instruction_pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/112",
+    "local_installation": "Exact reviewed bytes installed and audited at the ordinary responsibility boundary; completed datastore outputs preserved. New preparation workers resumed Stats and model work.",
+    "main_integration": "Not integrated: main does not descend from this existing preparation framework source base; drafts are stacked for focused review. This does not hold up production.",
+    "pull_request_url": "https://github.com/jeremysecondstate/ducketz/pull/113",
+    "verified_remote_sha": "b5ecd42df6a0dd58439dc75752330b216e590dbf"
+  },
+  "summary": "Scout published and installed explicit-human nightly cancellation enforcement; completed catch-up and scoring advanced to model preparation.",
+  "task": "nightly-cancellation-enforcement",
+  "tests": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "tests/test_nightly_cancellation.py",
+        "tests/test_nightly_dispatch.py",
+        "tests/test_nightly_workflow.py",
+        "tests/test_overnight_supervision.py",
+        "tests/test_recovery_tail_continuation.py",
+        "tests/test_nightly_source_adoption.py",
+        "tests/test_nightly_watchdog.py",
+        "tests/test_nightly_stage_repair.py",
+        "tests/test_cross_pc_import_hygiene.py",
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "completed_at_utc": "2026-10-14T05:41:16.641546Z",
+      "dependency_binding": "All236fingerprints bound to network-disabled isolated candidate; no import provenance violations.",
+      "exit_code": 0,
+      "import_evidence_sha256": "a410086b65139b5faf2400afd7d54b95f4c77452d0c0764cd560354bd6908b1a",
+      "output_sha256": "302cec64452d6d3ceef5596496c791b6e06002fa324a332ed99d06323bf9acbb",
+      "result": "471 passed in 93.84s (0:01:33)",
+      "started_at_utc": "2026-10-14T05:39:40.969724Z"
+    }
+  ]
+}
