@@ -40,7 +40,7 @@ from threadpoolctl import threadpool_limits
 
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 
-REGISTRY_VERSION = "intraday-independent-tabular-v1"
+REGISTRY_VERSION = "intraday-independent-tabular-v2"
 
 # Ten independently fitted research candidates. These are explicit settings,
 # not a claim that this composition or its probabilities outperform alternatives.
@@ -95,6 +95,8 @@ class ModelSpec:
     random_state: int = 20261012
     parameters: Mapping[str, object] = field(default_factory=dict)
     calibration_fraction: float = 0.2
+    probability_calibration: str | None = "none"
+    training_max_rows: int | None = None
 
     def __post_init__(self):
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,79}", self.name):
@@ -103,6 +105,11 @@ class ModelSpec:
             object.__setattr__(self, "family", self.name)
         if not 0 < self.calibration_fraction < 1:
             raise ContractError("Calibration fraction must be between zero and one")
+        if self.probability_calibration not in {None, "none", "sigmoid"}:
+            raise ContractError("Probability calibration must be none or sigmoid (None is a legacy alias)")
+        if self.training_max_rows is not None and (isinstance(self.training_max_rows, bool)
+                or not isinstance(self.training_max_rows, int) or self.training_max_rows < 4):
+            raise ContractError("Training row limit must be an integer of at least four or None")
 
 
 def _json(value) -> str:
@@ -137,6 +144,7 @@ def registry_status() -> list[dict]:
         installed = importlib.util.find_spec(dependency) is not None
         result.append({"family": family, "status": "available" if installed else "dependency_unavailable",
                        "dependency": dependency,
+                       "optional_probability_calibration": "purged_chronological_sigmoid",
                        "probability_interface": "purged_chronological_sigmoid" if family in {"ridge", "passive_aggressive"}
                        else "predict_proba"})
     for family in _NEURAL:
@@ -201,7 +209,8 @@ def build_estimator(spec: ModelSpec) -> Pipeline:
     return Pipeline(steps)
 
 
-def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2):
+def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2,
+                               label_available_at=None):
     """No shuffle: prior label windows end before the held-out reference begins."""
     references = tuple(instant(x) for x in reference_at)
     targets = tuple(instant(x) for x in target_close_at)
@@ -212,7 +221,11 @@ def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2):
     if any(end <= start for start, end in zip(references, targets)):
         raise ContractError("Each label target must follow its reference")
     split = min(len(references) - 1, max(1, int(len(references) * (1 - fraction))))
-    train = np.array([i for i in range(split) if targets[i] <= references[split]], dtype=int)
+    available = tuple(instant(x) for x in label_available_at) if label_available_at is not None else targets
+    if len(available) != len(targets) or any(end > observed for end, observed in zip(targets, available)):
+        raise ContractError("Calibration label availability must follow each target close")
+    train = np.array([i for i in range(split) if targets[i] <= references[split]
+                      and available[i] <= references[split]], dtype=int)
     calibration = np.arange(split, len(references))
     if not len(train):
         raise ContractError("No label windows remain after chronological overlap purge")
@@ -229,13 +242,120 @@ class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
         if set(np.unique(y[train])) != {0, 1} or set(np.unique(y[calibration])) != {0, 1}:
             raise ContractError("Base and calibration partitions both require both target classes")
         self.base.fit(X[train], y[train])
-        scores = np.asarray(self.base.decision_function(X[calibration])).reshape(-1, 1)
+        scores = self._scores(X[calibration])
         self.sigmoid_ = LogisticRegression(C=1.0, max_iter=1000, random_state=self.random_state).fit(scores, y[calibration])
         self.classes_ = np.array([0, 1])
         return self
 
     def predict_proba(self, X):
-        return self.sigmoid_.predict_proba(np.asarray(self.base.decision_function(X)).reshape(-1, 1))
+        return self.sigmoid_.predict_proba(self._scores(X))
+
+    def _scores(self, X):
+        classes = np.asarray(self.base.classes_)
+        if classes.shape != (2,) or set(classes.tolist()) != {0, 1}:
+            raise ContractError("Calibration requires explicit binary class identity")
+        if hasattr(self.base, "decision_function"):
+            scores = np.asarray(self.base.decision_function(X), dtype=float)
+            if scores.shape != (len(X),) or not np.isfinite(scores).all():
+                raise ContractError("Calibration received invalid binary decision scores")
+            self.score_interface_ = "decision_function"
+            return (scores if classes[1] == 1 else -scores).reshape(-1, 1)
+        probabilities = np.asarray(self.base.predict_proba(X), dtype=float)
+        if (probabilities.shape != (len(X), 2) or not np.isfinite(probabilities).all()
+                or (probabilities < 0).any() or (probabilities > 1).any()
+                or not np.allclose(probabilities.sum(axis=1), 1, atol=1e-6)):
+            raise ContractError("Calibration received an invalid probability vector")
+        probability = probabilities[:, np.flatnonzero(classes == 1)[0]]
+        # The finite logit is an input to a fitted sigmoid, never a substitute
+        # prediction or a display-only cap on confidence.
+        probability = np.clip(probability, np.finfo(float).eps, 1 - np.finfo(float).eps)
+        self.score_interface_ = "predict_proba_log_odds"
+        return (np.log(probability) - np.log1p(-probability)).reshape(-1, 1)
+
+
+def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=None,
+                             label_available_at=None, training_cutoff=None):
+    """Fit a new pipeline and, when requested, a disjoint probability calibrator.
+
+    The base estimator's preprocessing fits only its own earlier partition.
+    Neither the base nor sigmoid sees later validation or inference rows. A
+    missing timestamp or one-class partition is a failure, with no fallback.
+    """
+    features, labels = np.asarray(X, dtype=float), np.asarray(y)
+    if (features.ndim != 2 or not len(features) or not features.shape[1]
+            or labels.shape != (len(features),) or not np.isin(labels, [0, 1]).all()
+            or np.isinf(features).any()):
+        raise ContractError("Fitting requires a numeric matrix and binary labels")
+    if set(np.unique(labels)) != {0, 1}:
+        raise ContractError("Training requires both target classes; no constant model substitution")
+    if label_available_at is not None:
+        available = tuple(instant(v) for v in label_available_at)
+        if len(available) != len(labels) or training_cutoff is None:
+            raise ContractError("Label availability requires matching rows and an explicit cutoff")
+        if any(v > instant(training_cutoff) for v in available):
+            raise ContractError("Every training label must be observable at the training cutoff")
+    else:
+        available = None
+    calibrated = spec.probability_calibration == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}
+    evidence = {"effective_parameters": _parameters(spec), "calibration": None}
+    references = tuple(instant(v) for v in reference_at) if reference_at is not None else None
+    targets = tuple(instant(v) for v in target_close_at) if target_close_at is not None else None
+    for timestamps in (references, targets):
+        if timestamps is not None and len(timestamps) != len(labels):
+            raise ContractError("Fitting timestamps must match training rows")
+    # Validate the complete supplied snapshot before a selected row window can
+    # hide bad clocks in excluded rows. Arrival order itself may be nonmonotonic.
+    if references is not None and any(b <= a for a, b in zip(references, references[1:])):
+        raise ContractError("Training references must be strictly chronological")
+    if targets is not None and available is not None and any(end > observed for end, observed in zip(targets, available)):
+        raise ContractError("Each training target must have closed before its label was available")
+    if references is not None and targets is not None and any(end != start + timedelta(minutes=45)
+                                                             for start, end in zip(references, targets)):
+        raise ContractError("Training label windows must match the exact 45-minute target")
+    if spec.training_max_rows is not None:
+        input_rows = len(features)
+        features, labels = features[-spec.training_max_rows:], labels[-spec.training_max_rows:]
+        references = references[-spec.training_max_rows:] if references is not None else None
+        targets = targets[-spec.training_max_rows:] if targets is not None else None
+        available = available[-spec.training_max_rows:] if available is not None else None
+        evidence.update(input_training_rows=input_rows, training_rows=len(features),
+            training_window={"policy": "newest_causal_rows", "max_rows": spec.training_max_rows,
+                "excluded_rows": input_rows - len(features),
+                "first_reference": references[0].isoformat() if references is not None else None,
+                "last_reference": references[-1].isoformat() if references is not None else None},
+            class_counts={str(i): int((labels == i).sum()) for i in (0, 1)})
+        if set(np.unique(labels)) != {0, 1}:
+            raise ContractError("Newest training row window requires both target classes")
+    if calibrated:
+        if references is None or targets is None or available is None:
+            raise ContractError("Probability calibration requires label-window and availability timestamps")
+        if len(references) != len(labels) or any(end != start + timedelta(minutes=45)
+                                                for start, end in zip(references, targets)):
+            raise ContractError("Training label windows must match the exact 45-minute target")
+        train, calibration = purged_chronological_split(references, targets,
+            fraction=spec.calibration_fraction, label_available_at=available)
+        evidence["calibration"] = {"method": "purged_chronological_sigmoid", "base_rows": len(train),
+            "calibration_rows": len(calibration), "purged_rows": len(labels) - len(train) - len(calibration),
+            "first_calibration_reference": references[calibration[0]].isoformat(),
+            "base_latest_target": max(targets[i] for i in train).isoformat(),
+            "base_latest_label_available_at": max(available[i] for i in train).isoformat(),
+            "base_latest_label_available": max(available[i] for i in train).isoformat()}
+        base_rows = len(train)
+    else:
+        base_rows = len(features)
+    estimator = build_estimator(spec)
+    if spec.family == "knn":
+        requested = evidence["effective_parameters"]["n_neighbors"]
+        effective = min(requested, base_rows)
+        evidence.update(requested_n_neighbors=requested, neighbor_count_policy="cap_to_training_rows")
+        evidence["effective_parameters"]["n_neighbors"] = effective
+        estimator.set_params(model__n_neighbors=effective)
+    if calibrated:
+        estimator = ChronologicalSigmoid(estimator, spec.random_state).fit_chronological(features, labels, train, calibration)
+        evidence["calibration"]["score_interface"] = estimator.score_interface_
+    else:
+        estimator.fit(features, labels)
+    return estimator, evidence
 
 
 def probability_not_down(estimator, inference_X) -> float:
@@ -357,34 +477,12 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                 raise ContractError("Training requires both target classes; no constant model substitution")
             metadata["effective_parameters"] = _parameters(spec)
             output["version"] = _sha(metadata)
-            estimator = build_estimator(spec)
-            if spec.family == "knn":
-                requested = metadata["effective_parameters"]["n_neighbors"]
-                effective = min(requested, len(features))
-                # A fresh causal snapshot may have fewer rows than configured
-                # neighbors. Use only its actual fitted rows, preserving the request.
-                metadata["requested_n_neighbors"] = requested
-                metadata["neighbor_count_policy"] = "cap_to_training_rows"
-                metadata["effective_parameters"]["n_neighbors"] = effective
-                estimator.set_params(model__n_neighbors=effective)
-                output["version"] = _sha(metadata)
             with threadpool_limits(limits=1), warnings.catch_warnings(record=True) as observed_warnings:
                 warnings.simplefilter("always")
-                if spec.family in {"ridge", "passive_aggressive"}:
-                    if reference_at is None or target_close_at is None:
-                        raise ContractError("Non-probability models require label-window timestamps for chronological calibration")
-                    train, calibration = purged_chronological_split(reference_at, target_close_at,
-                                                                    fraction=spec.calibration_fraction)
-                    if len(reference_at) != len(labels):
-                        raise ContractError("Calibration timestamps differ from training rows")
-                    metadata["calibration"] = {"method": "purged_chronological_sigmoid", "base_rows": len(train),
-                                               "calibration_rows": len(calibration),
-                                               "purged_rows": len(labels) - len(train) - len(calibration),
-                                               "first_calibration_reference": instant(reference_at[calibration[0]]).isoformat(),
-                                               "base_latest_target": instant(target_close_at[train[-1]]).isoformat()}
-                    estimator = ChronologicalSigmoid(estimator, spec.random_state).fit_chronological(features, labels, train, calibration)
-                else:
-                    estimator.fit(features, labels)
+                estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
+                    reference_at=reference_at, target_close_at=target_close_at,
+                    label_available_at=available, training_cutoff=cutoff)
+                metadata.update(fitting_evidence)
                 output["training_seconds"] = time.perf_counter() - start
                 output["training_completed_at"] = _now()
                 phase = "inference"
