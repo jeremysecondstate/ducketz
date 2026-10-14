@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T09:40:43.073940Z",
+  "id": "20261014T094043Z-8146916ecdff436f8dad0554b5d7de28",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed-session actuals and dated deadline leaf integrated on common main; validation fix and regressions installed locally."
+}

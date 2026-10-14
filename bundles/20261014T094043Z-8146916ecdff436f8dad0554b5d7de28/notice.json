@@ -1,0 +1,66 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T093729Z-f445364662b64a7a9880083116e4db9d",
+  "change_id": "20261014T093729Z-f445364662b64a7a9880083116e4db9d",
+  "commit_sha": "507055b3e04eb059260b3ca1fb2c12a5d10fdbab",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared completed-session Stats and deadline helper apply independently to Atlas and Scout.",
+    "Compose installed completed-session actuals and standalone CLI onto common main without successor fitting or Gameplan preparation; retain original preopen forecasts, saved estimates, genuine price gaps and pending longer windows.",
+    "Preserve action-day attribution across midnight, holidays and Pacific standard time. Reject NaT and empty explicit action dates before exchange-calendar access.",
+    "Compose the dated continuation leaf: original target times stay recorded; expiry bypass applies only to the selected Pacific action night.",
+    "Add 38 focused leaf-only cases and eight actuals validation/publication regressions. Deadline failures at entry, completion and publication retain original sources and displayed results. Isolate process environment in actuals tests.",
+    "Retain continuation records 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93 and 20261014T050106Z-0e807c66479e4deb83823375e163fe5c; the larger nightly and executor units keep their identities."
+  ],
+  "files": [
+    "ml/gameplan_actuals_review.py",
+    "ml/nightly_continuation.py",
+    "tests/test_gameplan_actuals_review.py",
+    "tests/test_nightly_continuation_context.py"
+  ],
+  "installation_stage": "validation_fix_and_exact_regressions_installed_existing_actuals_and_dated_leaf_retained",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary saved-artifact tests and injected prices; no providers, brokers, production replay, fitting or trading.",
+    "This unit composes actuals and the deadline leaf. Stats handoff and the remaining nightly/executor main composition are separate source work.",
+    "Historical operating outputs, account state and local bindings remain private."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/124"
+  ],
+  "main_commit": "e3e5a6d53bdb2dfb374029e4dfa43aa596eed64d",
+  "remaining_source_work": "Next bounded unit is the separate Stats handoff; remaining nightly/executor source retains prior records. Source backlog creates no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install the NaT validation guard and reviewed regressions on Scout. Existing completed-session implementation and dated leaf already present. Running workers are not restarted; process-loaded versions remain separate. Source publication creates no nightly prerequisite.",
+  "scope": "Shared source applies independently to Atlas and Scout; private operating outputs and bindings retained.",
+  "summary": "Scout completed-session actuals and dated deadline leaf integrated on common main; validation fix and regressions installed locally.",
+  "tests": [
+    {
+      "check": "Actuals sealed source",
+      "completed_at_utc": "2026-10-14T09:37:43.474454Z",
+      "output_sha256": "d7bbd8a4c01f22be835f5fc1a0dbeb3873769b98116e95188e41cc1a960af60d",
+      "result": "156 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:37:29.273825Z"
+    },
+    {
+      "check": "Actuals isolated source",
+      "completed_at_utc": "2026-10-14T09:38:40.033890Z",
+      "output_sha256": "425d4022b176405ec863c5d8a4bd5b954962e690c51c1d29d9ab0cccb9aa5fb2",
+      "result": "156 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:38:25.739334Z"
+    },
+    {
+      "check": "Actuals main candidate",
+      "completed_at_utc": "2026-10-14T09:39:37.258130Z",
+      "output_sha256": "fa9a12b214738dea25dd4f5a4836f6b02a914f4731968a2df5c5fb8569c00b0a",
+      "result": "156 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:39:23.218063Z"
+    },
+    {
+      "check": "Actuals installed Scout",
+      "completed_at_utc": "2026-10-14T09:40:12.162308Z",
+      "output_sha256": "af932ab291a377cd1201294db79f38b684b6e7d6b16033c234319d4fcc8a6d05",
+      "result": "156 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:39:57.958520Z"
+    }
+  ]
+}
