@@ -1,0 +1,67 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T110241Z-4cf28b76f0ff450ca79d30f97be97562",
+  "change_id": "20261014T110241Z-4cf28b76f0ff450ca79d30f97be97562",
+  "commit_sha": "75a46df7937eeda8d4e48e327c05506874b85cba",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared source applies independently to Atlas and Scout.",
+    "Bind evaluated synthetic-label and history-window scope into immutable active policies and per-symbol live cycle selections before dataset construction; freeze active policy identities and retain explicit unselected defaults.",
+    "Preserve original checksums and bytes of legacy active policies, cycles and input snapshots. New cycles derive historical policy selection scope; interrupted old cycles retain their actual saved configuration and population.",
+    "Recover pending installation from the original frozen session decision and dataset manifest without rebuilding data or evaluating the same holdout again.",
+    "Adopt Atlas independent local profile and pinned watchlist membership with profile order; other trader account configuration cannot block local research or supervision.",
+    "Carry exact already-reviewed common-main causal fitter and full-clock validation into this stacked source; preserve newer completed-session insufficiency/refresh repair.",
+    "Retain Scout supervision Completion-Record 20261014T101440Z-8776bf544ad74e9192b5486a2fe20ec1, Atlas supervision Completion-Record 20261014T101507Z-3c37467549f549aa84661551f14897fa, Scout completed-session repair 20261014T104752Z-21dd3694738c437bbff9aa7d4eb5824e and common model API 20261014T103931Z-459c241a85b54403970ed5a383bc3957.",
+    "Scout retains its existing canonical supervisor, per-symbol policy store and native task. Broader Atlas selector/receipt/recovery/native-state composition and common-main dependency closure remain separately owned; source backlog never delays nightly operation."
+  ],
+  "files": [
+    "docs/development/intraday-nightly-supervision.md",
+    "ml/intraday/model_policy.py",
+    "ml/intraday/models.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/supervision.py",
+    "tests/test_intraday_model_contracts.py",
+    "tests/test_intraday_model_policy.py",
+    "tests/test_intraday_runtime.py",
+    "tests/test_intraday_supervision.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integration_stage": "pending_dependency_composition",
+  "limitations": [
+    "Offline fixture validation only, including real synthetic/history-window population and durable retry behavior. Optional CatBoost absence remains an explicit skip; upstream joblib NumPy deprecation warnings retained.",
+    "Stacked on the exact completed-session handoff because common main lacks the full reviewed runtime/supervision dependency chain. No blind replacement, broad base merge or false integration claim.",
+    "No production data acquisition or model-training run, provider/broker call, trader start/restart, manual-stop clearing, process restart, task registration change or private export."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/132"
+  ],
+  "main_condition": "origin/main does not descend from the reviewed source base; intentional full runtime/supervision prerequisite composition remains source work, never an operating gate",
+  "main_reference": "ef2f14dcd8c231eac89870710270f141fe08aed9",
+  "remaining_source_work": "Retain original Atlas/Scout supervision identities and latest completed-session repair. Compose one intentional entrypoint/registry with joint feature receipts, valid incumbent recovery, equivalent fitting row/calibration partitions and existing native task state. Preserve independent traders and pending executor/nightly records.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A newly loaded implementation binds each new live supervised fit to its evaluated population. Existing frozen cycles and inputs retain their recorded population. Local source installation does not restart any process or start a trader.",
+  "scope": "Shared source independently applicable to Atlas and Scout. Local symbols, private policies, cycle artifacts, history and native task retained.",
+  "summary": "Supervised live model scope repaired, exact source published and installed on Scout.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-14T11:03:08.355851Z",
+      "output_sha256": "e32e0eaef64438a4591367dcfd62c181c6d4e4abc7c2f358aff292edc3404dca",
+      "result": "338 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:02:41.468976Z"
+    },
+    {
+      "check": "isolated source",
+      "completed_at_utc": "2026-10-14T11:04:23.813409Z",
+      "output_sha256": "5dd45d7fd7ca8035aeda7315684dfa67c606fbee4a10e8aa3878c19562e28808",
+      "result": "338 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:03:55.822993Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-14T11:05:17.276017Z",
+      "output_sha256": "565f8b26faf368361f412f65edcf0ccc69f7da5c878d5ac6298038cb1a579f2f",
+      "result": "338 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:04:48.377636Z"
+    }
+  ]
+}

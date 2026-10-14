@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T11:07:04.484119Z",
+  "id": "20261014T110704Z-9aaa48c9ef07476d90e9ba87fd012f36",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Supervised live model scope repaired, exact source published and installed on Scout."
+}
