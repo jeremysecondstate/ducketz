@@ -1,0 +1,64 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T095934Z-c1a826bccdd74a488174a0405f7f5201",
+  "change_id": "20261014T095934Z-c1a826bccdd74a488174a0405f7f5201",
+  "commit_sha": "8000d8290d05123ee343a77774addb55f9c6d0ec",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared Stats packages and display aggregation apply independently to Atlas and Scout.",
+    "Compose the existing local-only Stats handoff onto common main. Retain original forecasts, target semantics, research exclusions and explicit no-saved-Gameplan coverage without invented performance.",
+    "Revalidate the captured source receipt and outputs through the pinned immutable Stats reader, rejecting metadata or outcome replacement before snapshot export.",
+    "Require chronological observed endpoints for evaluated rows and the existing five-minute one-sided target boundary tolerance for all present observations, reversing the selectors for opening-gap research.",
+    "Add deterministic offline regression coverage for source mutation, rejected research, endpoint evidence, duplicate routes, incomplete ownership and invalid session/cutoff metadata; preserve published displays on rejection.",
+    "Preserve earlier continuation, cancellation and independent executor completion records; broader nightly and executor composition remains separate."
+  ],
+  "files": [
+    "ml/gameplan_stats_handoff.py",
+    "tests/test_gameplan_stats_handoff.py"
+  ],
+  "installation_stage": "handoff_validation_and_exact_regressions_installed",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary saved-artifact tests; no provider/broker call, training, production replay or trading.",
+    "Source-only local file APIs; this run does not export actual operating Stats, account state, source data or fitted models.",
+    "Broader nightly and independent executor source composition retains its existing identities and remains separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/125"
+  ],
+  "main_commit": "3d0405b4103df484f0201782aa3efc2e8a6203ec",
+  "remaining_source_work": "Broader nightly and independent executor source composition retains prior records. Source backlog creates no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install reviewed handoff validation and exact regressions on Scout under standing source-adoption authority. Running applications are not restarted; loaded versions remain separate. Source publication creates no nightly operating prerequisite.",
+  "scope": "Shared source applies independently to Atlas and Scout; original operating results and bindings retained.",
+  "summary": "Scout sanitized Stats handoff integrated on common main and validation fixes installed locally.",
+  "tests": [
+    {
+      "check": "Stats handoff sealed source",
+      "completed_at_utc": "2026-10-14T09:59:55.212666Z",
+      "output_sha256": "3365f9e32ab439e6dcaa3547cf3673dff324f185ad6d065544d8325e84e533d5",
+      "result": "159 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:59:34.687505Z"
+    },
+    {
+      "check": "Stats handoff isolated source",
+      "completed_at_utc": "2026-10-14T10:00:28.586803Z",
+      "output_sha256": "921118db2642c3496917ddbe4d1c81727dfd3f06b72049ddfe2d47228af14716",
+      "result": "159 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:00:07.881524Z"
+    },
+    {
+      "check": "Stats handoff main candidate",
+      "completed_at_utc": "2026-10-14T10:01:22.643702Z",
+      "output_sha256": "3332b1a8b35ed4f0f493884fafb8bd71a4e0b4f315081a6851ea607e263267a2",
+      "result": "159 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:01:02.281722Z"
+    },
+    {
+      "check": "Stats handoff installed Scout",
+      "completed_at_utc": "2026-10-14T10:02:19.359003Z",
+      "output_sha256": "f0f8799413f462d55c2a3ad09258942e5c12cab243c4eab92ed45863768d21ed",
+      "result": "159 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:01:57.912102Z"
+    }
+  ]
+}

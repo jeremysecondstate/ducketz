@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:02:35.675355Z",
+  "id": "20261014T100235Z-14431abb07df424cada7b8c613879821",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout sanitized Stats handoff integrated on common main and validation fixes installed locally."
+}
