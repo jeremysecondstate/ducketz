@@ -165,8 +165,10 @@ def test_non_probability_adapters_use_purged_chronological_calibration(family):
     assert result["complete"], result["outputs"]
     calibration = result["outputs"][0]["metadata"]["calibration"]
     assert calibration["method"] == "purged_chronological_sigmoid"
-    assert calibration["purged_rows"] == 2
+    # The label ending at the calibration reference arrives ten seconds later.
+    assert calibration["purged_rows"] == 3
     assert calibration["base_latest_target"] <= calibration["first_calibration_reference"]
+    assert calibration["base_latest_label_available"] <= calibration["first_calibration_reference"]
     kwargs.pop("target_close_at")
     failed = fit_ensemble(X, y, inference, config=[family], **kwargs)
     assert failed["outputs"][0]["error"]["type"] == "ContractError"
