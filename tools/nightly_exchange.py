@@ -190,11 +190,6 @@ def _local_state(config, native, action, review):
         raise Pending("LOCAL_PREPARATION")
     workflow._verify_configuration_binding(native, state)
     workflow._verify_symbol_binding(native, state)
-    session = Path(config["state_root"]) / "sessions" / action
-    if (state.get("source_identity") != workflow.source_identity(Path(native["repository"]))
-            or (session / "repair-transitions.json").exists()):
-        from ml.nightly_exchange_repair import original_binding, verify_transition
-        verify_transition(config, state, original_binding(config, action))
     for step in workflow.workflow_steps(state):
         entry = state.get("steps", {}).get(step, {})
         if entry.get("status") != "COMPLETE":
@@ -798,15 +793,16 @@ def _run(config, native, action, review, clock, allow_snapshot_refresh):
     local = _local_state(config, native, action, review)
     session = Path(config["state_root"]) / "sessions" / action
     # Waiting for preparation must not freeze a setup that has exported nothing.
-    # Once local evidence is complete, bind the operating/source bytes before
-    # the first private export and preserve that binding across every retry.
+    # Preserve the first binding as provenance. Later source installations do
+    # not change the private operating scope or the selected prepared plans.
     binding_path = session / "binding.json"
     current_binding = _binding(config)
-    if (session / "repair-transitions.json").exists():
-        from ml.nightly_exchange_repair import original_binding, verify_transition
-        frozen_binding = original_binding(config, action, current_binding=current_binding)
-        verify_transition(config, local, frozen_binding, current_binding=current_binding)
-        _frozen(binding_path, frozen_binding)
+    if binding_path.exists():
+        frozen_binding = _object(_read(binding_path))
+        provenance = {"adapter_sources", "coordination_active_sha256"}
+        if ({key: value for key, value in frozen_binding.items() if key not in provenance}
+                != {key: value for key, value in current_binding.items() if key not in provenance}):
+            raise ValueError("An immutable private exchange binding changed")
     else:
         _frozen(binding_path, current_binding)
     exported = local["steps"]["local_handoff"]["output"]
@@ -1043,16 +1039,21 @@ def _run_once(config, *, now=None, allow_snapshot_refresh=False):
         completed = _completed_result(config, native, action, review, common)
         if completed is not None:
             return completed
-        from ml.nightly_exchange_repair import dispatch_guard, record_failure
-        blocked = dispatch_guard(config, action, now=clock())
-        if blocked is not None:
-            return {**common, "status": "FAILED", **blocked}
+        from ml.nightly_exchange_repair import record_failure
         try:
             result = {**common, **_run(config, native, action, review, clock, allow_snapshot_refresh)}
         except Pending as pending:
             result = {**common, "status": "PENDING", "reason": str(pending)}
         except Exception as error:
-            failure = record_failure(config, action, error, now=clock())
+            try:
+                failure = record_failure(config, action, error, now=clock())
+            except Exception as diagnostic_error:
+                # Old repair metadata can itself be unreadable. Keep the real
+                # operating exception visible without repairing historical data.
+                _write(session / "status.json", _bytes({**common, "status": "FAILED",
+                    "error_type": type(error).__name__, "error": str(error),
+                    "failure_recording_error": f"{type(diagnostic_error).__name__}: {diagnostic_error}"}), replace=True)
+                raise error from diagnostic_error
             _write(session / "status.json", _bytes({**common, "status": "FAILED", "error_type": type(error).__name__,
                    "failure_fingerprint": failure["fingerprint"], "owner": failure["owner"]}), replace=True)
             raise
@@ -1061,18 +1062,7 @@ def _run_once(config, *, now=None, allow_snapshot_refresh=False):
 
 
 def run_once(config, *, now=None, allow_snapshot_refresh=False):
-    result = _run_once(config, now=now, allow_snapshot_refresh=allow_snapshot_refresh)
-    if result.get("status") == "COMPLETE":
-        from ml import nightly_exchange_repair as repair
-        native = workflow.load_config(Path(config["workflow_config"]))
-        owner = repair.registry.read(native["state_root"])
-        if (owner is not None and owner["domain"] == "exchange"
-                and owner["action_date"] == result["action_date"]):
-            # The exchange lock was released above; repair resolution always
-            # takes workflow then exchange locks, matching installation order.
-            repair.resolve(config, action_date=result["action_date"], owner=owner["owner"],
-                           verified_result=result, now=now)
-    return result
+    return _run_once(config, now=now, allow_snapshot_refresh=allow_snapshot_refresh)
 
 
 def main(argv=None):

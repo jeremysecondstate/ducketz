@@ -336,16 +336,64 @@ def test_pending_local_preparation_does_not_freeze_setup_bindings(exchange, monk
 
 
 
-def test_adapter_source_change_after_export_requires_review(exchange, monkeypatch):
-    wake(exchange, "scout")
+@pytest.mark.parametrize("provenance", ["adapter_sources", "coordination_active_sha256"])
+def test_source_provenance_change_preserves_original_binding_and_delivery(exchange, monkeypatch, provenance):
+    prepared(exchange)
+    originals = {Path(config["state_root"]) / "sessions" / DAY / "binding.json":
+                 (Path(config["state_root"]) / "sessions" / DAY / "binding.json").read_bytes()
+                 for config in exchange[0].values()}
     original = module._binding
     def changed(config):
         binding = original(config)
-        binding["adapter_sources"]["nightly_exchange.py"] = "0" * 64
+        if provenance == "adapter_sources":
+            binding[provenance]["nightly_exchange.py"] = "0" * 64
+        else:
+            binding[provenance] = "0" * 64
+        return binding
+    monkeypatch.setattr(module, "_binding", changed)
+    scout = wake(exchange, "scout")
+    atlas = wake(exchange, "atlas")
+    assert scout["status"] == atlas["status"] == "COMPLETE"
+    assert scout["joint_packet_sha256"] == atlas["joint_packet_sha256"]
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert not exchange[3]
+
+
+@pytest.mark.parametrize("field", ["workflow_config_sha256", "profile_sha256", "account_config_sha256"])
+def test_private_binding_hash_change_still_refuses_export(exchange, monkeypatch, field):
+    wake(exchange, "atlas")
+    config = exchange[0]["atlas"]
+    binding_path = Path(config["state_root"]) / "sessions" / DAY / "binding.json"
+    binding_before = binding_path.read_bytes()
+    shared_before = files(Path(config["exchange_root"]))
+    original = module._binding
+    def changed(config):
+        binding = original(config)
+        binding[field] = "0" * 64
         return binding
     monkeypatch.setattr(module, "_binding", changed)
     with pytest.raises(ValueError, match="immutable"):
-        wake(exchange, "scout")
+        wake(exchange, "atlas")
+    assert binding_path.read_bytes() == binding_before
+    assert files(Path(config["exchange_root"])) == shared_before
+
+
+def test_first_export_freezes_current_binding_without_reading_old_repair_metadata(exchange, monkeypatch):
+    from ml import nightly_exchange_repair as repair
+    config = exchange[0]["scout"]
+    session = Path(config["state_root"]) / "sessions" / DAY
+    metadata = session / "repair-transitions.json"
+    metadata.parent.mkdir(parents=True, exist_ok=True)
+    metadata.write_bytes(b"obsolete unreadable transition metadata\n")
+    before = metadata.read_bytes()
+    def forbidden(*args, **kwargs):
+        pytest.fail("Historical source repair metadata is not a nightly operating prerequisite")
+    for name in ("original_binding", "verify_transition", "dispatch_guard", "resolve"):
+        monkeypatch.setattr(repair, name, forbidden)
+    monkeypatch.setattr(repair.registry, "read", forbidden)
+    assert wake(exchange, "scout")["reason"] == "PREPARATION_ATLAS"
+    assert json.loads((session / "binding.json").read_text()) == module._binding(config)
+    assert metadata.read_bytes() == before
 
 
 
@@ -584,8 +632,8 @@ def test_complete_joint_handoff_never_requests_scout_history(exchange, monkeypat
 
 
 
-def test_audited_exchange_source_repair_resumes_same_partial_adoption_and_releases_owner(exchange, monkeypatch, tmp_path):
-    import shutil
+@pytest.mark.parametrize("old_transitions", [b"unreadable historical metadata\n", b'{"obsolete": true}\n'])
+def test_source_change_and_old_repair_metadata_resume_same_partial_adoption(exchange, monkeypatch, old_transitions):
     from ml import nightly_exchange_repair as repair
     from ml import nightly_repair_registry as registry
     configs, natives, states, captures = exchange
@@ -615,34 +663,60 @@ def test_audited_exchange_source_repair_resumes_same_partial_adoption_and_releas
     monkeypatch.setattr(nightly_synthesis, "_adopt_stats", defect)
     with pytest.raises(ValueError, match="deterministic"):
         wake(exchange, "scout")
-    assert wake(exchange, "scout")["reason"] == "REPAIR_REQUIRED" and len(attempts) == 1
+    assert len(attempts) == 1
     config, native = configs["scout"], natives["scout"]
     session = Path(config["state_root"]) / "sessions" / DAY
-    originals = {path: path.read_bytes() for path in (session / "binding.json", session / "synthesis-selection.json",
-                 Path(native["state_root"]) / "runs" / DAY / "state.json")}
-    claim = repair.claim(config, action_date=DAY, owner="Scout source reconciliation", repair_id="fixture-exchange-repair",
-                         reason="Exact reproduced source defect", reviewed=True, now=NOW)
-    assert wake(exchange, "scout")["reason"] == "SOURCE_REPAIR_OWNED"
-    candidate = tmp_path / "reviewed-candidate"
-    shutil.copytree(Path(native["repository"]), candidate)
-    (candidate / "ml/nightly_synthesis.py").write_text("# reviewed repair fixture source\n")
-    log = tmp_path / "source-check.log"
-    log.write_text("synthetic passing fixture runner evidence")
-    spec = repair.prepare(config, claim_path=claim, owner="Scout source reconciliation", candidate=candidate,
-        changes={"ml/nightly_synthesis.py": "modify"}, completion_record="actual-fixture-queue-record",
-        checks=[{"command": ["pytest", "fixture"], "exit_code": 0, "log": str(log), "started_at": NOW,
-                 "completed_at": NOW, "source_files": repair._inventory(candidate)}],
-        rationale="Fix adoption only", runtime_implications="No numerical inputs or active trader changes", reviewed=True, now=NOW)
-    repair.apply(config, spec, owner="Scout source reconciliation", reviewed=True, now=NOW)
+    retained_paths = [session / "synthesis-selection.json", session / "failure.json"]
+    for actor in ("scout", "atlas"):
+        actor_session = Path(configs[actor]["state_root"]) / "sessions" / DAY
+        transitions = actor_session / "repair-transitions.json"
+        transitions.write_bytes(old_transitions)
+        retained_paths.extend([transitions, actor_session / "binding.json",
+                               Path(natives[actor]["state_root"]) / "runs" / DAY / "state.json"])
+        retained_paths.extend(Path(path) for path in states[actor]["steps"]["local_handoff"]["output"]["files"])
+        (Path(natives[actor]["repository"]) / "ml/nightly_synthesis.py").write_text("# installed source after preparation\n")
+    claim = {"owner": "Scout source reconciliation", "repair_id": "historical-exchange-repair", "token": "a" * 64,
+             "action_date": DAY, "domain": "exchange", "completion_record": None}
+    registry.acquire(native["state_root"], claim)
+    retained_paths.append(registry.path(native["state_root"]))
+    originals = {path: path.read_bytes() for path in retained_paths}
+    failures_before = files(session / "failures")
+    def forbidden(*args, **kwargs):
+        pytest.fail("Source provenance and historical repair claims cannot gate nightly delivery")
+    monkeypatch.setattr(module.workflow, "source_identity", forbidden)
+    for name in ("original_binding", "verify_transition", "dispatch_guard", "resolve"):
+        monkeypatch.setattr(repair, name, forbidden)
+    monkeypatch.setattr(registry, "read", forbidden)
     monkeypatch.setattr(nightly_synthesis, "_adopt_stats", original_adopt)
-    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
-    assert wake(exchange, "atlas", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
-    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z")["status"] == "COMPLETE"
-    assert registry.read(native["state_root"]) is None
-    assert (spec.parent / "resolved.json").is_file()
+    scout = wake(exchange, "scout", now="2026-09-09T11:00:00Z")
+    atlas = wake(exchange, "atlas", now="2026-09-09T11:00:00Z")
+    assert scout["status"] == atlas["status"] == "COMPLETE"
+    assert scout["delivered"] and scout["joint_packet_sha256"] == atlas["joint_packet_sha256"]
+    assert wake(exchange, "scout", now="2026-09-09T11:00:00Z") == scout
     assert all(path.read_bytes() == raw for path, raw in originals.items())
+    assert files(session / "failures") == failures_before
     assert len(captures) == 0
-    assert (session / "failure.json").is_file()
+
+
+def test_actual_operating_error_remains_visible_when_old_repair_metadata_is_malformed(exchange, monkeypatch):
+    config = exchange[0]["scout"]
+    session = Path(config["state_root"]) / "sessions" / DAY
+    transitions = session / "repair-transitions.json"
+    transitions.parent.mkdir(parents=True, exist_ok=True)
+    transitions.write_bytes(b"malformed historical metadata\n")
+    failure = write(session / "failure.json", {"original": "preserved"})
+    originals = {path: path.read_bytes() for path in (transitions, failure)}
+    actual_error = ValueError("actual current operating failure")
+    def fail(*args):
+        raise actual_error
+    monkeypatch.setattr(module, "_run", fail)
+    with pytest.raises(ValueError, match="actual current operating failure") as caught:
+        wake(exchange, "scout")
+    assert caught.value is actual_error
+    status = json.loads((session / "status.json").read_text())
+    assert status["status"] == "FAILED" and status["error_type"] == "ValueError"
+    assert status["error"] == str(actual_error) and status["failure_recording_error"]
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
 
 
 @pytest.mark.parametrize("held,reason", [("workflow", "WORKFLOW_BUSY"), ("exchange", "EXCHANGE_BUSY")])
