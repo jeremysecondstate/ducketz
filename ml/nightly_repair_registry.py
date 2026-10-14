@@ -117,6 +117,117 @@ def release(state_root, record, *, verified=False):
     path(state_root).unlink()
 
 
+def _immutable_invalidation(target, raw):
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if target.read_bytes() != raw:
+            raise ValueError("Original software-cancellation invalidation evidence changed")
+        return
+    temporary = target.with_name(target.name + ".pending-" + uuid.uuid4().hex)
+    try:
+        with temporary.open("xb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temporary, target)
+        except FileExistsError:
+            if target.read_bytes() != raw:
+                raise ValueError("Original software-cancellation invalidation evidence changed")
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def invalidate_software_cancellation(state_root, record, *, evidence, verified=False):
+    """Archive and retire one proved invalid owner under existing workflow.lock.
+
+    This disposition means software had no cancellation authority. It does not
+    claim a source repair was completed, and cannot retire another owner.
+    """
+    validate(record)
+    if (verified is not True or not isinstance(evidence, dict)
+            or set(evidence) != {"path", "sha256"}):
+        raise ValueError("Verified software-cancellation invalidation evidence required")
+    proof = Path(evidence["path"])
+    if (not proof.is_absolute() or not proof.is_file()
+            or sha256(proof.read_bytes()).hexdigest() != evidence["sha256"]):
+        raise ValueError("Software-cancellation invalidation evidence changed")
+    audit = json.loads(proof.read_bytes())
+    if (audit.get("disposition") != "INVALIDATED_SOFTWARE_CANCELLATION"
+            or audit.get("repository_owner") != record):
+        raise ValueError("Invalidation belongs to another repository owner")
+    archive = proof.parent / "repository-owner.json"
+    current = read(state_root)
+    if current is None:
+        if archive.is_file() and validate(json.loads(archive.read_bytes())) == record:
+            return
+        raise ValueError("Original invalidated repository owner evidence is missing")
+    assert_owner(state_root, record)
+    raw = path(state_root).read_bytes()
+    _immutable_invalidation(archive, raw)
+    assert_owner(state_root, record)
+    if path(state_root).read_bytes() != raw:
+        raise ValueError("Repository owner changed during cancellation invalidation")
+    path(state_root).unlink()
+
+
+def invalidated_software_claim(state_root, directory):
+    """Accept only the exact archived void proof for a pending intent directory."""
+    directory = Path(directory).resolve()
+    marker = directory / "invalidated-software-cancellation.json"
+    if not marker.is_file() or marker.is_symlink():
+        return False
+    try:
+        value = json.loads(marker.read_bytes())
+        evidence = value["evidence"]
+        proof = Path(evidence["path"])
+        if (value.get("disposition") != "INVALIDATED_SOFTWARE_CANCELLATION"
+                or not proof.is_absolute() or proof.is_symlink()
+                or sha256(proof.read_bytes()).hexdigest() != evidence["sha256"]):
+            return False
+        record = json.loads(proof.read_bytes())
+        claim = record["repair_claim"]
+        identity = {key: record[key] for key in ("action_date", "repair_claim")}
+        digest = sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+        root = Path(state_root).resolve()
+        if (record.get("disposition") != "INVALIDATED_SOFTWARE_CANCELLATION"
+                or proof.resolve() != root / "software-cancellation-invalidations" / digest / "invalidation.json"
+                or directory != root / "runs" / record["action_date"] / "source-repairs" / claim["token"]):
+            return False
+        snapshot = directory / "before-state.json"
+        if (Path(record["failure_snapshot"]["path"]).resolve() != snapshot
+                or sha256(snapshot.read_bytes()).hexdigest() != record["failure_snapshot"]["sha256"]
+                or sha256(proof.parent.joinpath("before-state.json").read_bytes()).hexdigest() != record["original_state_sha256"]):
+            return False
+        frozen = json.loads(snapshot.read_bytes())
+        from ml.nightly_dispatch import interruption_repair_invalidation
+        if (frozen.get("failure") != record["failure"]
+                or interruption_repair_invalidation({**frozen, "repair_claim": claim}) is None):
+            return False
+        owner = record.get("repository_owner")
+        if owner is not None:
+            from ml.nightly_stage_repair import _repository_claim
+            if (validate(owner) != json.loads(proof.parent.joinpath("repository-owner.json").read_bytes())
+                    or _repository_claim(claim["owner"], claim["token"], record["action_date"],
+                                         record["failure_snapshot"]["sha256"], owner["completion_record"]) != owner):
+                return False
+        if (record.get("stage_repair_owner_sha256") is not None
+                and sha256(proof.parent.joinpath("stage-repair-owner.json").read_bytes()).hexdigest()
+                    != record["stage_repair_owner_sha256"]):
+            return False
+        files = {name for name in ("claim.json", "intent.json", "transition-review.json", "spec.json")
+                 if directory.joinpath(name).is_file()}
+        if files != set(record["intent_files"]):
+            return False
+        for name, checksum in record["intent_files"].items():
+            if (sha256(directory.joinpath(name).read_bytes()).hexdigest() != checksum
+                    or sha256(proof.parent.joinpath("source-intents", name).read_bytes()).hexdigest() != checksum):
+                return False
+        return True
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return False
+
+
 def continue_owner(state_root, previous, replacement, *, evidence, verified=False):
     """Continue one verified unsuccessful repair, without a release/takeover gap.
 

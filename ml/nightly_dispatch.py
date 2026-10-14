@@ -8,10 +8,12 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 
 import pandas as pd
 
 from ml.artifacts import file_checksum, utc_timestamp
+from ml.nightly_cancellation import ExplicitNightlyCancellation, validate_cancellation
 
 LAYOUT = "nightly-responsibilities-v1"
 RECOVERY = "scheduled-nightly-recovery-v1"
@@ -143,20 +145,105 @@ def failure_record(error, *, step, owner, now, state):
         "temporarily unavailable", "connection reset", "connection aborted", "rate limit", "timed out"))
     external = any(term in text for term in ("unauthorized", "authentication", "credentials", "quota", "not found",
         "usage limit", "usage exceeded", "cli is unavailable"))
-    kind = "EXTERNAL_DEPENDENCY" if external else "TRANSIENT" if transient else "SOURCE_DEFECT"
+    explicit = isinstance(error, ExplicitNightlyCancellation) and cancellation_requested(
+        {**state, "cancellation": error.request})
+    interrupted = (isinstance(error, (InterruptedError, KeyboardInterrupt, SystemExit))
+                   or automatic_interruption({"error": message}))
+    kind = ("HUMAN_CANCELLED" if explicit else "INTERRUPTION" if interrupted else
+            "EXTERNAL_DEPENDENCY" if external else "TRANSIENT" if transient else "SOURCE_DEFECT")
     fingerprint = sha256((str(step) + "\n" + message).encode()).hexdigest()
     return {"at": utc_timestamp(now).isoformat(), "step": step, "owner": owner,
             "kind": kind, "error": message, "fingerprint": fingerprint,
             "local_diagnostic_tail": detail,
             "retry_after": (utc_timestamp(now) + pd.Timedelta(minutes=5)).isoformat(),
             "source_identity": state["source_identity"], "disposition": "OPEN",
-            "corrective_action": ("Retry the same unfinished stage within its fixed deadline" if kind == "TRANSIENT"
+            "corrective_action": ("Honor Jeremy's explicit cancellation request" if explicit else
+                                  "Resume the same unfinished stage; software interruptions cannot cancel nightly operations" if interrupted else
+                                  "Retry the same unfinished stage within its fixed deadline" if kind == "TRANSIENT"
                                   else "Inspect evidence, repair or restore the dependency, verify, and resume this stage")}
 
 
+def automatic_interruption(failure):
+    """Legacy software cancellation has no retry or repair authority."""
+    if not isinstance(failure, dict):
+        return False
+    error = failure.get("error", "")
+    return failure.get("kind") in {"INTERRUPTION", "HUMAN_CANCELLED"} or (
+        isinstance(error, str) and (error.startswith(("InterruptedError:", "KeyboardInterrupt:", "SystemExit:"))
+        or error in {"RuntimeError: Overnight supervision ownership was lost"}
+        or error.startswith("RuntimeError: Supervisor process exited:")))
+
+
+def cancellation_requested(state):
+    """Honor human evidence only for a native attempt owned by this workflow."""
+    request = state.get("cancellation")
+    if not validate_cancellation(request):
+        return False
+    bound = Path(request["run_path"]).resolve()
+    binding = state.get("configuration_binding")
+    datastore = binding.get("datastore") if isinstance(binding, dict) else None
+    if (not isinstance(datastore, str) or not Path(datastore).is_absolute()
+            or bound.parent != Path(datastore).resolve() / "ml/overnight-runs"):
+        return False
+    return any(isinstance(entry, dict) and isinstance(entry.get("native_run"), str)
+               and Path(entry["native_run"]).resolve() == bound
+               for entry in state.get("steps", {}).values())
+
+
+def interruption_repair_invalidation(state, repository_owner=None):
+    """Identify only the repair claim created from this exact software failure.
+
+    Returned evidence can be retained on a normal workflow save. Original
+    claims, registry owners and immutable repair snapshots remain untouched.
+    """
+    if cancellation_requested(state):
+        return None
+    claim = state.get("repair_claim")
+    candidates = list(state.get("invalidated_software_repair_claims", []))
+    current_failure = state.get("failure")
+    candidates.append({"schema_version": "software-interruption-repair-invalidation-v1",
+        "action_date": state.get("action_date"), "repair_claim": claim,
+        "failure": dict(current_failure) if isinstance(current_failure, dict) else None,
+        "repository_owner": None})
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or candidate.get("schema_version") != "software-interruption-repair-invalidation-v1":
+            continue
+        saved_claim, failure = candidate.get("repair_claim"), candidate.get("failure")
+        software_error = (isinstance(failure, dict) and
+            (automatic_interruption({"error": failure.get("error", "")})
+             or str(failure.get("error", "")).startswith("ExplicitNightlyCancellation:")))
+        if (not isinstance(saved_claim, dict) or not isinstance(failure, dict)
+                or not software_error
+                or not all(isinstance(saved_claim.get(key), str) and saved_claim[key]
+                           for key in ("owner", "token", "failure_fingerprint"))
+                or re.fullmatch(r"[A-Za-z0-9_-]{8,100}", saved_claim["token"]) is None
+                or re.fullmatch(r"[0-9a-f]{64}", saved_claim["failure_fingerprint"]) is None
+                or saved_claim["failure_fingerprint"] != failure.get("fingerprint")):
+            continue
+        if repository_owner is None:
+            if saved_claim == claim and candidate.get("action_date") == state.get("action_date"):
+                return candidate
+            continue
+        saved_owner = candidate.get("repository_owner")
+        if saved_owner is not None:
+            if saved_owner == repository_owner:
+                return candidate
+            continue
+        if (repository_owner.get("domain") == "preparation"
+                and repository_owner.get("action_date") == candidate.get("action_date")
+                and repository_owner.get("owner") == saved_claim["owner"]
+                and repository_owner.get("repair_id") == saved_claim["token"]):
+            return {**candidate, "repository_owner": dict(repository_owner)}
+    return None
+
+
 def retry_disposition(config, state, now=None):
+    if cancellation_requested(state):
+        return "CANCELLED_BY_HUMAN"
     failure = state.get("failure")
     if not failure or failure.get("disposition") == "RESOLVED":
+        return None
+    if automatic_interruption(failure):
         return None
     entry = state.get("steps", {}).get(failure.get("step"), {})
     limit = authority(config).get("max_attempts", 3)

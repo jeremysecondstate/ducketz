@@ -8,13 +8,15 @@ deadline. Run the existing coordinator separately after SOURCE_REPAIR_APPLIED.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+import ast
+from contextlib import contextmanager, ExitStack
 from hashlib import sha256
 import json
 import math
 import os
 from pathlib import Path
 import re
+import subprocess
 
 from filelock import FileLock
 
@@ -140,14 +142,31 @@ def _regular(root, name, *, optional=False):
 
 
 @contextmanager
-def _locks(config):
+def _locks(config, *, execution=False, exchange_root=None):
     state_root = Path(config["state_root"])
     state_root.mkdir(parents=True, exist_ok=True)
-    with FileLock(str(state_root / "workflow.lock"), timeout=0):
+    with FileLock(str(state_root / "workflow.lock"), timeout=0), ExitStack() as exchange:
+        if exchange_root is not None:
+            exchange.enter_context(FileLock(str(exchange_root / "exchange.lock"), timeout=0))
         with FileLock(str(state_root / "stage-repair.lock"), timeout=0):
             with exclusive_runtime_lock(Path(config["datastore"]) / ".ducketz-overnight-runtime.lock",
                                         process_name="Audited nightly stage repair"):
-                yield
+                with ExitStack() as stack:
+                    if execution:
+                        for name in ("intraday-manual-session.lock", "stock-trader-hourly.lock"):
+                            stack.enter_context(exclusive_runtime_lock(
+                                Path(config["datastore"]) / "locks" / name,
+                                process_name="Reviewed installed-source transition"))
+                        if exchange_root is not None:
+                            for status in sorted((exchange_root / "sessions").glob("*/status.json")):
+                                saved = workflow._json(status)
+                                _assert_dead(saved)
+                                if saved.get("status") != "COMPLETE":
+                                    for operation in ("synthesis", "handoff"):
+                                        stack.enter_context(exclusive_runtime_lock(
+                                            status.parent / operation / (operation + ".lock"),
+                                            process_name="Reviewed installed-source transition"))
+                    yield
 
 
 def _process_created_at(pid):
@@ -201,7 +220,8 @@ def _trader_running(repository):
         try:
             command = process.info["cmdline"] or []
             text = " ".join(command).lower().replace("\\", "/")
-            if any(marker in text for marker in ("ml.stock_trader", "start-gameplan-trader", "stock_trader/")):
+            if any(marker in text for marker in ("ml.stock_trader", "start-gameplan-trader", "stock_trader/",
+                                                 "ml.intraday.live_session")):
                 return True
             name = process.info["name"]
             if not name:
@@ -458,9 +478,310 @@ def claim(config, *, action_date, repair_id, owner, completion_record=None, now=
                 "repository_claim": acquired, **repair_claim}
 
 
+def _evidence(reference):
+    if (not isinstance(reference, dict) or set(reference) != {"path", "sha256"}
+            or not isinstance(reference["path"], str)):
+        raise ValueError("Exact private evidence path and checksum required")
+    path = Path(reference["path"])
+    if (not path.is_absolute() or str(path).startswith(("\\\\", "//"))
+            or any(p.is_symlink() for p in (path, *path.parents)) or not path.is_file()
+            or file_checksum(path) != reference["sha256"]):
+        raise ValueError("Installed-transition evidence changed or is unavailable")
+    raw = path.read_bytes()
+    if sha256(raw).hexdigest() != reference["sha256"]:
+        raise ValueError("Installed-transition evidence changed during read")
+    return json.loads(raw, object_pairs_hook=registry._unique), raw
+
+
+def _published_blob(repository, commit, name):
+    if re.fullmatch(r"[0-9a-f]{40}", str(commit)) is None:
+        raise ValueError("Exact locally available publication commit required")
+    # No network, checkout, hook or executable from the referenced commit runs.
+    tree = subprocess.check_output(["git", "ls-tree", commit, "--", name], cwd=repository)
+    if not tree:
+        return None
+    if not tree.startswith(b"100644 blob "):
+        raise ValueError("Published source must be a regular nonexecutable blob")
+    raw = subprocess.check_output(["git", "cat-file", "blob", commit + ":" + name], cwd=repository)
+    return sha256(raw).hexdigest()
+
+
+def _transition_exchange(config, reference):
+    exchange, _ = _evidence(reference)
+    root = Path(exchange.get("state_root", ""))
+    if (exchange.get("schema_version") != "nightly-exchange-config-v1"
+            or exchange.get("actor") != config["actor"] or not root.is_absolute()
+            or any(p.is_symlink() for p in (root, *root.parents))
+            or workflow.load_config(Path(exchange.get("workflow_config", ""))) != config):
+        raise ValueError("Installed transition requires the exact local exchange/workflow binding")
+    return root
+
+
+def _transition_other_runs(config, action_date):
+    from ml.nightly_dispatch import TERMINAL
+    for path in (Path(config["state_root"]) / "runs").glob("*/state.json"):
+        if path.parent.name != action_date:
+            state = workflow._json(path)
+            _assert_dead(state)
+            if state.get("status") not in TERMINAL:
+                raise ValueError("Another unfinished source-bound nightly run prevents transition")
+            identity = state.get("source_identity")
+            if (state.get("current_step") is not None or state.get("repair_claim") is not None
+                    or state.get("schema_version") != workflow.VERSION or state.get("actor") != config["actor"]
+                    or state.get("action_date") != path.parent.name or set(state.get("steps", {})) != set(_layout(state))
+                    or not isinstance(state.get("run_id"), str) or not state["run_id"].strip()
+                    or re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(state.get("source_session", ""))) is None
+                    or not isinstance(identity, dict) or set(identity) != {"commit", "source_sha256"}
+                    or re.fullmatch(r"[0-9a-f]{40}", str(identity["commit"])) is None
+                    or re.fullmatch(r"[0-9a-f]{64}", str(identity["source_sha256"])) is None):
+                raise ValueError("Unrelated terminal run lacks complete saved workflow evidence")
+            for entry in state.get("steps", {}).values():
+                if entry.get("status") != "COMPLETE":
+                    raise ValueError("Completed unrelated run has an unfinished saved stage")
+                workflow._verify_outputs(entry["output"])
+
+
+def _datastore_dependencies(repository, inventory):
+    """Static over-approximation plus the reviewed producer subprocess roots."""
+    modules = {name.removesuffix(".py").replace("/", ".").removesuffix(".__init__"): name
+               for name in inventory}
+    roots = ("datafetching.orchestrate", "ml.stock_target_history",
+             "datafetching.options_history", "datafetching.datastore_hygiene")
+    if any(name not in modules for name in roots):
+        raise ValueError("Named datastore dependency roots are missing")
+    pending, found = list(roots), set()
+    while pending:
+        module = pending.pop()
+        name = modules.get(module)
+        if name is None or name in found:
+            continue
+        found.add(name)
+        parts = module.split(".")
+        pending.extend(".".join(parts[:n]) for n in range(1, len(parts)))
+        package = module if name.endswith("/__init__.py") else module.rpartition(".")[0]
+        for node in ast.walk(ast.parse((repository / name).read_bytes(), filename=name)):
+            if isinstance(node, ast.Import):
+                pending.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                prefix = package.split(".")[:len(package.split(".")) - node.level + 1] if node.level else []
+                target = ".".join([*prefix, *([node.module] if node.module else [])])
+                pending.append(target)
+                pending.extend(target + "." + alias.name for alias in node.names if alias.name != "*")
+    return sorted(found)
+
+
+def _datastore_preservation(state, original_files, expected_files, binding, dependencies):
+    """Named-stage review boundary, not a historical loaded-import assertion.
+
+    The provider pipeline and target-history producer are protected as complete
+    trees, together with all non-trading ml source and the shared contracts.
+    Execution-only subtrees are excluded; their package initializers are not.
+    This deliberately supports only the stopped seam immediately before Stats.
+    """
+    completed = {name: entry for name, entry in state.get("steps", {}).items()
+                 if entry.get("status") == "COMPLETE"}
+    if (state.get("current_step") != "prepare_stats" or set(completed) != {"datastore_catchup"}
+            or binding.get("policy") != "datastore-before-stats-v1"
+            or binding.get("completed_entry") != completed["datastore_catchup"]):
+        raise ValueError("Installed transition requires the exact completed pre-Stats datastore stage")
+    excluded = ("ml/intraday/", "ml/account_gameplan/", "ml/stock_trader/")
+    protected = {name: digest for name, digest in original_files.items()
+                 if (not name.startswith(excluded) and name != "ml/nightly_stage_repair.py")
+                 or name.endswith("/__init__.py") or name == "ml/stock_trader/contracts.py"
+                 or name in dependencies}
+    if (binding.get("source_files") != protected
+            or any(expected_files.get(name) != digest for name, digest in protected.items())
+            or any(name not in original_files for name in expected_files
+                   if not name.startswith(excluded) and name != "ml/nightly_stage_repair.py")):
+        raise ValueError("Completed datastore dependency inventory changed or is incomplete")
+    native = Path(completed["datastore_catchup"].get("native_run", ""))
+    if (not native.is_absolute() or workflow._native_outputs(native) != completed["datastore_catchup"]["output"]):
+        raise ValueError("Completed datastore native output differs")
+    stages = workflow._json(native / "stage-report.json").get("stages", [])
+    expected = [("loop_a_close_fetch", "datafetching.orchestrate"),
+                ("stock_target_history", "ml.stock_target_history")]
+    if len(stages) != len(expected):
+        raise ValueError("Completed datastore command set is unsupported")
+    input_paths = set()
+    for saved, (stage, module) in zip(stages, expected):
+        command = saved.get("command", [])
+        if (saved.get("stage") != stage or saved.get("status") != "COMPLETE"
+                or type(saved.get("exit_code")) is not int or saved["exit_code"] != 0
+                or command.count("-m") != 1 or command[command.index("-m") + 1:][:1] != [module]):
+            raise ValueError("Completed datastore command evidence differs")
+        if "--watchlist" in command:
+            offset = command.index("--watchlist") + 1
+            if offset >= len(command):
+                raise ValueError("Completed datastore input path is missing")
+            input_paths.add(command[offset])
+    inputs = binding.get("input_files")
+    symbols = state.get("symbol_binding", {})
+    frozen_inputs = {symbols.get("path"): symbols.get("sha256")}
+    if (not isinstance(inputs, dict) or set(inputs) != input_paths
+            or inputs != frozen_inputs
+            or any(not Path(name).is_absolute() or not Path(name).is_file()
+                   or Path(name).is_symlink() or file_checksum(Path(name)) != digest
+                   for name, digest in inputs.items())):
+        raise ValueError("Completed datastore input binding changed")
+
+
+def _installed_transition(config, state, candidate, request, observed, completion_record):
+    """Validate past installation facts before acquiring any incident ownership."""
+    if not isinstance(request, dict) or set(request) != {"original", "source_snapshot", "installations", "preservation", "candidate_publication", "exchange_config"}:
+        raise ValueError("Complete reviewed installed-transition evidence required")
+    repository = Path(config["repository"]).resolve()
+    original = Path(request["original"])
+    if (not original.is_absolute() or str(original).startswith(("\\\\", "//"))
+            or original.resolve() in (repository, candidate)
+            or any(p.is_symlink() for p in (original, *original.parents))):
+        raise ValueError("Original source reconstruction must be an isolated local directory")
+    original = original.resolve()
+    before, installed, expected = _inventory(original), _inventory(repository), _inventory(candidate)
+    snapshot, raw = _evidence(request["source_snapshot"])
+    historical = snapshot.get("actual_shared_bytes", {})
+    historical = {name: digest for name, digest in historical.items() if digest is not None
+                  and Path(name).suffix == ".py" and Path(name).parts[0] in SOURCE_ROOTS}
+    source_files = {name: digest for name, digest in before.items()
+                    if Path(name).parts[0] in ("ml", "app", "datafetching")}
+    frozen_digest = sha256(json.dumps(source_files, sort_keys=True).encode()).hexdigest()
+    if (not before or before != historical or frozen_digest != state["source_identity"]["source_sha256"]
+            or snapshot.get("checkout_head") != state["source_identity"]["commit"]
+            or workflow.source_identity(repository)["commit"] != state["source_identity"]["commit"]):
+        raise ValueError("Complete original source inventory does not match the frozen workflow")
+    for root, inventory in ((original, before), (repository, installed), (candidate, expected)):
+        for name in inventory:
+            path = root / name
+            if any(p.is_symlink() for p in (path, *path.parents)):
+                raise ValueError("Source inventories cannot contain linked paths")
+    delta = {name for name in set(before) | set(installed) if before.get(name) != installed.get(name)}
+    if not delta or not isinstance(request["installations"], list) or not request["installations"]:
+        raise ValueError("Installed transition requires an actual proven source delta")
+    _, exchange_raw = _evidence(request["exchange_config"])
+    covered, blobs = set(), {"provenance/source-snapshot.json": raw, "provenance/exchange-config.json": exchange_raw}
+    final = request["candidate_publication"]
+    if not isinstance(final, dict) or set(final) != {"record", "publication"}:
+        raise ValueError("Final candidate requires reviewed queue and publication evidence")
+    final_record, final_record_raw = _evidence(final["record"])
+    final_publication, final_publication_raw = _evidence(final["publication"])
+    final_commit = final_publication.get("commit_sha")
+    if (final_record.get("id") != completion_record or final_record.get("ready") is not True
+            or final_record.get("reviewed") is not True or final_publication.get("id") != completion_record
+            or final_publication.get("remote_sha") != final_commit
+            or final_publication.get("record_sha256") != final["record"]["sha256"]):
+        raise ValueError("Final candidate publication identity differs")
+    for name in set(before) | set(expected):
+        if before.get(name) != expected.get(name) and _published_blob(repository, final_commit, name) != expected.get(name):
+            raise ValueError("Final candidate source differs from exact published bytes")
+    blobs.update({"provenance/final-record.json": final_record_raw,
+                  "provenance/final-publication.json": final_publication_raw})
+    for index, reference in enumerate(request["installations"]):
+        receipt, receipt_raw = _evidence(reference)
+        installation, installation_raw = _evidence({"path": receipt["installation_state"],
+                                                   "sha256": receipt["installation_state_sha256"]})
+        plan = installation["plan"]
+        plan_hash = sha256(json.dumps(plan, sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+        publication, publication_raw = _evidence({"path": plan["publication_path"], "sha256": plan["publication_sha256"]})
+        record, record_raw = _evidence({"path": plan["record_path"], "sha256": plan["record_sha256"]})
+        commit, completion = receipt["source_commit"], receipt["completion_record"]
+        if (receipt.get("version") != "scout-runtime-installed-checkpoint-v1"
+                or receipt.get("active_affected_execution_workers") != []
+                or receipt.get("verified_remote_sha") != commit or plan.get("source_commit") != commit
+                or plan.get("verified_remote_sha") != commit or publication.get("commit_sha") != commit
+                or publication.get("remote_sha") != commit or record.get("reviewed") is not True
+                or record.get("ready") is not True or record.get("id") != completion
+                or publication.get("id") != completion or plan.get("completion_record") != completion
+                or publication.get("record_sha256") != plan["record_sha256"]
+                or plan_hash != receipt.get("plan_sha256") or plan_hash != installation.get("plan_sha256")
+                or receipt.get("operations") != plan.get("operations")
+                or not set(receipt["operations"]) <= set(installation.get("completed", []))
+                or utc_timestamp(receipt["installed_at_utc"]) > observed):
+            raise ValueError("Reviewed installation/publication provenance differs")
+        for name in delta.intersection(receipt["operations"]):
+            operation = receipt["operations"][name]
+            kind = "add" if name not in before else "delete" if name not in installed else "modify"
+            if (name in covered or operation != {"operation": kind, "before_sha256": before.get(name),
+                                                 "after_sha256": installed.get(name)}
+                    or _published_blob(repository, commit, name) != installed.get(name)):
+                raise ValueError("Installed source path has missing or conflicting exact publication proof")
+            covered.add(name)
+        for suffix, content in (("receipt", receipt_raw), ("installation", installation_raw),
+                                ("publication", publication_raw), ("record", record_raw)):
+            blobs[f"provenance/{index}-{suffix}.json"] = content
+    if covered != delta:
+        raise ValueError("Every installed source delta requires exact publication/install proof")
+    dependencies = _datastore_dependencies(original, before)
+    _datastore_preservation(state, before, installed, request["preservation"], dependencies)
+    _datastore_preservation(state, before, expected, request["preservation"], dependencies)
+    if _trader_running(repository):
+        raise ValueError("Active trader prevents installed-source transition")
+    return original, before, {"version": "nightly-installed-source-transition-v1",
+        "installed_files": installed, "installed_source": workflow.source_identity(repository),
+        "exchange_config": request["exchange_config"],
+        "datastore_dependencies": dependencies,
+        "preservation": request["preservation"],
+        "evidence": {name: sha256(content).hexdigest() for name, content in blobs.items()}}, blobs
+
+
 def prepare(config, *, action_date, repair_id, candidate, changes, completion_record,
             checks, owner, risk, rationale, runtime_implications, review_binding="preserved",
             invalidate_from=None, reviewed=False, now=None):
+    return _prepare(config, action_date=action_date, repair_id=repair_id, candidate=candidate,
+        changes=changes, completion_record=completion_record, checks=checks, owner=owner, risk=risk,
+        rationale=rationale, runtime_implications=runtime_implications, review_binding=review_binding,
+        invalidate_from=invalidate_from, reviewed=reviewed, now=now)
+
+
+def prepare_installed_transition(config, *, installed_transition, **request):
+    """Explicit reviewed adoption; never relax the normal pre-edit claim guard."""
+    return _prepare(config, installed_transition=installed_transition, **request)
+
+
+def _verify_installed_transition(spec, directory, original):
+    transition = spec["installed_transition"]
+    if (transition.get("version") != "nightly-installed-source-transition-v1"
+            or spec["invalidate_from"] != "prepare_stats" or spec["review_binding"] != "preserved"):
+        raise ValueError("Unknown installed-transition preservation contract")
+    if (file_checksum(directory / "claim.json") != transition.get("claim_sha256")
+            or workflow._json(directory / "claim.json").get("claim_origin") != "reviewed_installed_transition"):
+        raise ValueError("Actual installed-transition ownership evidence changed")
+    for name, digest in transition["evidence"].items():
+        path = Path(name)
+        if path.is_absolute() or ".." in path.parts or path.parts[0] != "provenance":
+            raise ValueError("Invalid frozen transition evidence path")
+        if file_checksum(directory / path) != digest:
+            raise ValueError("Frozen installed-transition provenance changed")
+    _datastore_preservation(original, spec["before_files"], spec["expected_files"], transition["preservation"],
+                            transition["datastore_dependencies"])
+    actual = _inventory(Path(spec["config"]["repository"]))
+    installed = transition["installed_files"]
+    if set(actual) - (set(installed) | set(spec["expected_files"])):
+        raise ValueError("Unreviewed installed-transition source addition")
+    for name in set(installed) | set(spec["expected_files"]):
+        if actual.get(name) not in (installed.get(name), spec["expected_files"].get(name)):
+            raise ValueError("Already installed source changed or was rolled back")
+
+
+def _allowed_install_bytes(spec, record):
+    allowed = (record["before_sha256"], record["after_sha256"])
+    if spec.get("installed_transition") is not None:
+        # The proven intermediate may differ from both the original frozen
+        # source and a later reviewed repair. Never accept rollback to original.
+        allowed = (spec["installed_transition"]["installed_files"].get(record["path"]),
+                   record["after_sha256"])
+    return allowed
+
+
+def _unresolved_repair_intents(state_root, destination):
+    return [pending for pending in destination.parent.iterdir() if (
+        pending != destination and pending.is_dir() and not (pending / "resolved.json").exists()
+        and any((pending / name).exists() for name in ("claim.json", "transition-review.json", "intent.json"))
+        and not registry.invalidated_software_claim(state_root, pending))] if destination.parent.exists() else []
+
+
+def _prepare(config, *, action_date, repair_id, candidate, changes, completion_record,
+             checks, owner, risk, rationale, runtime_implications, review_binding="preserved",
+             invalidate_from=None, reviewed=False, now=None, installed_transition=None):
     """Freeze review and evidence. checks entries bind runner exit code and log.
 
     This does not execute supplied commands. Actual offline commands and exit
@@ -482,9 +803,12 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
     state_path = Path(config["state_root"]).resolve() / "runs" / action_date / "state.json"
     destination = state_path.parent / "source-repairs" / repair_id
     observed = utc_timestamp(now)
-    with _locks(config):
+    exchange_root = (_transition_exchange(config, installed_transition.get("exchange_config"))
+                     if isinstance(installed_transition, dict) else None)
+    with _locks(config, execution=installed_transition is not None, exchange_root=exchange_root):
         state = workflow._json(state_path)
         current_raw = state_path.read_bytes()
+        observed_state_raw = current_raw
         existing_claim = state.get("repair_claim")
         repair_claim = {"owner": owner, "token": repair_id,
                         "failure_fingerprint": state.get("failure", {}).get("fingerprint")}
@@ -499,9 +823,16 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
                 raise ValueError("Claimed failed state changed")
             state, current_raw = original, saved_original.read_bytes()
         native_files = _validate_state(config, state, observed)
-        if state["action_date"] != action_date or state["source_identity"] != workflow.source_identity(repository):
+        transition, transition_blobs, original_repository = None, {}, repository
+        if installed_transition is not None:
+            _transition_other_runs(config, action_date)
+            original_repository, original_files, transition, transition_blobs = _installed_transition(
+                config, state, candidate, installed_transition, observed, completion_record)
+            if invalidate_from != "prepare_stats" or review_binding != "preserved":
+                raise ValueError("Installed pre-Stats transition must invalidate Stats and retain the datastore binding")
+        if state["action_date"] != action_date or (transition is None and state["source_identity"] != workflow.source_identity(repository)):
             raise ValueError("Reviewed original source/action date differs")
-        if changes and not (destination / "claim.json").is_file():
+        if changes and transition is None and not (destination / "claim.json").is_file():
             raise ValueError("Source-changing preparation requires the original pre-edit claim")
         claim_path = state_path.parent / "repair-owner.json"
         claim = {"repair_id": repair_id, "owner": owner, "completion_record": completion_record,
@@ -515,7 +846,7 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
         retry_epochs = _retry_epochs(state, invalidated or [state["current_step"]])
         if not set(changes) <= LIVE_TRADER_SAFE and _trader_running(repository):
             raise ValueError("Active trader requires a separately supported safe installation transition")
-        before_files = _inventory(repository)
+        before_files = _inventory(original_repository)
         if (destination / "claim.json").exists():
             frozen_claim = workflow._json(destination / "claim.json")
             if (frozen_claim.get("config") != config or frozen_claim.get("action_date") != action_date
@@ -529,9 +860,10 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
                               if (destination / "claim.json").exists() else None)
         repository_claim = _repository_claim(owner, repair_id, action_date,
             claim["state_sha256"], initial_completion)
-        _claim_repository(config, repository_claim, state, current_raw, destination)
+        if transition is None:
+            _claim_repository(config, repository_claim, state, current_raw, destination)
         expected_files = dict(before_files)
-        records, blobs = [], {}
+        records, blobs = [], dict(transition_blobs)
         selector = Path(config["datastore"]).resolve() / "ml/overnight-latest/run.json"
         native_selector = None
         if str(selector) in native_files:
@@ -544,7 +876,7 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
         for name, operation in changes.items():
             if operation not in ("add", "modify", "delete"):
                 raise ValueError("Explicit add/modify/delete operation required")
-            target = _regular(repository, name, optional=True)
+            target = _regular(original_repository, name, optional=True)
             if target.exists() != (operation != "add"):
                 raise ValueError("Source operation differs from installed existence")
             before = file_checksum(target) if target.exists() else None
@@ -565,6 +897,11 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
         # Candidate must be the exact source dependency closure being installed.
         if _inventory(candidate) != expected_files:
             raise ValueError("Candidate contains missing or unreviewed source dependency changes")
+        if transition is not None:
+            # All validation precedes persistent incident ownership. A retry
+            # after ownership acquisition must retain these exact inputs.
+            if _inventory(repository) != transition["installed_files"]:
+                raise ValueError("Installed source changed during transition review")
         check_records = []
         for index, check in enumerate(checks):
             log = Path(check["log"]).resolve()
@@ -581,6 +918,43 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
                 raise ValueError("Check timestamps are reversed")
             blobs[f"checks/{index}.log"] = log.read_bytes()
             check_records.append({**check, "log": f"checks/{index}.log", "sha256": file_checksum(log)})
+        if transition is not None:
+            if (state_path.read_bytes() != observed_state_raw
+                    or _inventory(repository) != transition["installed_files"]
+                    or _inventory(candidate) != expected_files
+                    or any(file_checksum(Path(name)) != digest for name, digest in native_files.items())):
+                raise ValueError("Transition state, source or completed evidence changed before ownership")
+            for record in records:
+                for prefix, key in (("originals/", "before_sha256"), ("candidate/", "after_sha256")):
+                    if record[key] is not None and sha256(blobs[prefix + record["path"]]).hexdigest() != record[key]:
+                        raise ValueError("Transition source changed while freezing evidence")
+            current_owner = registry.read(config["state_root"])
+            if current_owner is not None and (
+                    any(current_owner[key] != repository_claim[key] for key in registry.FIELDS - {"completion_record"})
+                    or current_owner["completion_record"] not in (None, completion_record)):
+                raise ValueError("Another repair owner holds the repository")
+            if _unresolved_repair_intents(config["state_root"], destination):
+                raise ValueError("Another unresolved repair intent holds this failure")
+            # Freeze the entire intended review before taking persistent
+            # ownership, including a crash before the state-level claim saves.
+            preclaim = {"request": installed_transition, "before_state_sha256": claim["state_sha256"],
+                        "before_files": before_files, "expected_files": expected_files,
+                        "changes": records, "checks": check_records, "completion_record": completion_record,
+                        "owner": owner, "risk": risk, "rationale": rationale,
+                        "runtime_implications": runtime_implications, "transition": transition}
+            _immutable(destination / "transition-review.json", _encoded(preclaim))
+            adoption_claim_path = destination / "claim.json"
+            claimed_at = workflow._json(adoption_claim_path)["claimed_at"] if adoption_claim_path.exists() else observed.isoformat()
+            # This is a present-day adoption claim, explicitly not a claim
+            # predating the installation which caused the frozen-source drift.
+            _immutable(adoption_claim_path, _encoded({"schema_version": VERSION, "config": config,
+                "action_date": action_date, "claim": {**claim, "completion_record": None}, "repair_claim": repair_claim,
+                "claim_origin": "reviewed_installed_transition", "claimed_at": claimed_at,
+                "before_source": state["source_identity"], "before_files": before_files,
+                "installed_source": transition["installed_source"], "native_files": native_files,
+                "reviewed_completion_record": completion_record}))
+            transition["claim_sha256"] = file_checksum(adoption_claim_path)
+            _claim_repository(config, repository_claim, state, current_raw, destination)
         repository_claim = registry.bind_completion(config["state_root"], repository_claim, completion_record)
         # The intent is written first. An interrupted prepare can resume exactly
         # these frozen inputs, but cannot silently take new candidate/test bytes.
@@ -595,6 +969,8 @@ def prepare(config, *, action_date, repair_id, candidate, changes, completion_re
             "failure": state.get("failure"), "claim": claim, "repair_claim": repair_claim,
             "prior_retry_epochs": retry_epochs, "repository_claim": repository_claim,
             "source_roots": list(SOURCE_ROOTS), "native_selector": native_selector}
+        if transition is not None:
+            spec["installed_transition"] = transition
         _immutable(destination / "intent.json", _encoded(spec))
         workflow._write(claim_path, claim)
         _immutable(destination / "before-state.json", current_raw)
@@ -636,7 +1012,11 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
     if (directory / "intent.json").read_bytes() != spec_path.read_bytes():
         raise ValueError("Repair specification differs from the original intent")
     repository = Path(config["repository"]).resolve()
-    with _locks(config):
+    adoption = spec.get("installed_transition")
+    exchange_root = _transition_exchange(config, adoption["exchange_config"]) if adoption is not None else None
+    with _locks(config, execution=adoption is not None, exchange_root=exchange_root):
+        if adoption is not None:
+            _transition_other_runs(config, spec["action_date"])
         _verify_selector_snapshot(config, spec, directory)
         repository_claim = spec.get("repository_claim") or _repository_claim(
             owner, spec["repair_id"], spec["action_date"], spec["before_state_sha256"], spec["completion_record"])
@@ -649,6 +1029,8 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
             registry.assert_owner(config["state_root"], repository_claim)
         state = workflow._json(state_path)
         original = workflow._json(directory / "before-state.json")
+        if spec.get("installed_transition") is not None:
+            _verify_installed_transition(spec, directory, original)
         spec_sha = file_checksum(spec_path)
         transitions = [*state.get("source_repairs", []), *state.get("dependency_restorations", [])]
         completed = next((entry for entry in transitions if entry.get("spec_sha256") == spec_sha), None)
@@ -691,7 +1073,7 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
             name = record["path"]
             target = _regular(repository, name, optional=True)
             present = file_checksum(target) if target.exists() else None
-            if present not in (record["before_sha256"], record["after_sha256"]):
+            if present not in _allowed_install_bytes(spec, record):
                 raise ValueError("Installed file has unreviewed bytes")
             if record["before_sha256"] is None:
                 actual.pop(name, None)
@@ -748,7 +1130,7 @@ def apply(config, spec_path, *, owner, reviewed=False, now=None):
         for record in spec["changes"]:
             target = _regular(repository, record["path"], optional=True)
             present = file_checksum(target) if target.exists() else None
-            if present not in (record["before_sha256"], record["after_sha256"]):
+            if present not in _allowed_install_bytes(spec, record):
                 raise ValueError("Installed file acquired unreviewed bytes during source installation")
             if present != record["after_sha256"]:
                 raw = None if record["after_sha256"] is None else (directory / "candidate" / record["path"]).read_bytes()
@@ -820,6 +1202,8 @@ def verified_resume(config, registry_record, state):
         raise ValueError("Repair transition identity is duplicated")
     transition = matched[0]
     spec = workflow._json(spec_path)
+    if spec.get("installed_transition") is not None:
+        _verify_installed_transition(spec, directory, workflow._json(directory / "before-state.json"))
     expected = _repository_claim(spec["owner"], spec["repair_id"], spec["action_date"],
                                  spec["before_state_sha256"], spec["completion_record"])
     if (registry_record != expected or spec.get("repository_claim", expected) != expected
@@ -928,6 +1312,8 @@ def main(argv=None):
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--claim", type=Path, help="Reserve failure before editing; JSON action_date, repair_id, optional null completion_record")
     modes.add_argument("--prepare", type=Path, help="Reviewed local request JSON")
+    modes.add_argument("--prepare-installed-transition", type=Path,
+                       help="Reviewed pre-Stats already-installed source provenance and final candidate")
     modes.add_argument("--apply", type=Path, help="Exact frozen repair spec")
     args = parser.parse_args(argv)
     config = workflow.load_config(args.config)
@@ -937,6 +1323,9 @@ def main(argv=None):
     elif args.prepare:
         request = workflow._json(args.prepare)
         result = {"spec": str(prepare(config, owner=args.owner, reviewed=args.reviewed, **request))}
+    elif args.prepare_installed_transition:
+        request = workflow._json(args.prepare_installed_transition)
+        result = {"spec": str(prepare_installed_transition(config, owner=args.owner, reviewed=args.reviewed, **request))}
     else:
         result = apply(config, args.apply, owner=args.owner, reviewed=args.reviewed)
     print(json.dumps(result, indent=2))

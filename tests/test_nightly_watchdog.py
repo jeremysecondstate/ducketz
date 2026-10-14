@@ -110,3 +110,17 @@ def test_verified_bootstrap_resolution_preserves_original_failure(tmp_path):
     watchdog._resolve_bootstrap_failure(config)
     assert json.loads((tmp_path / "watchdog/bootstrap-status.json").read_text())["disposition"] == "RESOLVED"
     assert Path(failure["evidence"]).read_bytes() == evidence
+
+
+@pytest.mark.parametrize("adoption_status", ["PENDING", "REFUSED", "INSTALLED"])
+def test_source_adoption_never_prevents_ordinary_dispatch(monkeypatch, tmp_path, adoption_status):
+    config = setup(monkeypatch, tmp_path)
+    calls = []
+    monkeypatch.setattr(watchdog, "attempt_pending", lambda c: {"status": adoption_status})
+    def runner(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout=json.dumps({"status": "RUNNING"}), stderr="")
+    result = watchdog.run_once(config, runner=runner)
+    assert len(calls) == 1 and calls[0][-1] == "--dispatch"
+    assert result["decision"]["status"] == "RUNNING"
+    assert result["source_adoption"]["status"] == adoption_status

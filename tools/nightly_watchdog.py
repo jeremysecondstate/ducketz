@@ -17,6 +17,7 @@ from filelock import FileLock, Timeout
 
 from ml import nightly_workflow as workflow
 from ml.artifacts import utc_timestamp
+from tools.nightly_source_adoption import attempt_pending
 
 
 def _bootstrap_failure(config_path: Path, error: Exception) -> dict:
@@ -69,6 +70,7 @@ def run_once(config_path: Path, *, runner=None, now=None) -> dict:
     observed = utc_timestamp(now)
     runner = runner or subprocess.run
     with FileLock(str(root / "wake.lock"), timeout=0):
+        adoption = attempt_pending(config)
         command = [sys.executable, "-B", "-m", "ml.nightly_workflow",
                    "--config", str(config_path.resolve()), "--dispatch"]
         try:
@@ -101,10 +103,12 @@ def run_once(config_path: Path, *, runner=None, now=None) -> dict:
                   ("status", "action_date", "responsibility", "reason", "error")}
         stable["failure"] = {k: decision.get("failure", {}).get(k) for k in
                              ("fingerprint", "kind", "owner", "step", "disposition")}
+        stable["source_adoption"] = {key: adoption.get(key) for key in
+                                     ("status", "completion_record", "error", "reason")}
         fingerprint = sha256(json.dumps(stable, sort_keys=True).encode()).hexdigest()
         previous = workflow._json(root / "last.json") if (root / "last.json").exists() else {}
         changed = previous.get("fingerprint") != fingerprint
-        receipt = {"at": observed.isoformat(), "fingerprint": fingerprint,
+        receipt = {"at": observed.isoformat(), "fingerprint": fingerprint, "source_adoption": adoption,
                    "changed": changed, "decision": decision}
         workflow._write(root / "last.json", receipt)
         if changed:
