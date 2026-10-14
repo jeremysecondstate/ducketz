@@ -1,0 +1,57 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T044508Z-c35580fba58442d5a9e8c0de4060b033",
+  "change_id": "20261014T044508Z-c35580fba58442d5a9e8c0de4060b033",
+  "commit_sha": "f2f07c9d77cdbffde9eef0915611d73b72860021",
+  "details": [
+    "Exact integer-ratio flooring prevents Decimal context rounding from allowing four shares against cash 199.99 at price 50.",
+    "Immutable forecasts, frozen inputs and corrected outcome revisions retain original evidence."
+  ],
+  "files": [
+    "ml/intraday/store.py",
+    "ml/intraday/capacity.py",
+    "tests/test_intraday_store.py",
+    "tests/test_intraday_capacity.py"
+  ],
+  "installation_stage": "locally_installed_and_offline_checked",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Foundation only; remaining executor composition from PR101 and PR102 remains source work with original identities retained.",
+    "Tests use temporary SQLite and arithmetic fixtures; no production runtime-loaded version claim."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/107"
+  ],
+  "main_commit_sha": "2862660d6e577c5f163c11cb6c02eff0162b372a",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261013T210413Z-363c920429d74e7e9a82f3cdc6391742",
+    "20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4"
+  ],
+  "runtime_implications": "Capacity arithmetic and its regression installed on Scout; store files already matched. No provider, broker, model fitting, trader start/restart, manual-stop, binding or schedule changes. Nightly work proceeds independently.",
+  "scope": "Shared source applicable to both independent fifteen-minute traders; local symbols and account state remain private.",
+  "summary": "Scout integrated immutable forecast storage and exact cash-capacity arithmetic on main; arithmetic repair installed locally.",
+  "tests": [
+    {
+      "check": "Offline store and capacity suites: isolated-source",
+      "completed_at_utc": "2026-10-14T04:46:43.856659Z",
+      "output_sha256": "eb0537c1f53598424446fc3b4590a4a6a42709ffb96af1198ba5662b34e29c62",
+      "result": "37 passed; no skips or warnings",
+      "started_at_utc": "2026-10-14T04:46:42.615253Z"
+    },
+    {
+      "check": "Offline store and capacity suites: main-candidate",
+      "completed_at_utc": "2026-10-14T04:47:45.486667Z",
+      "output_sha256": "997e6b5f723af8d81a8bd8dde28e089f00cc1502ffb7287b9c6f9facf62bc6e8",
+      "result": "37 passed; no skips or warnings",
+      "started_at_utc": "2026-10-14T04:47:44.247352Z"
+    },
+    {
+      "check": "Offline store and capacity suites: installed-scout",
+      "completed_at_utc": "2026-10-14T04:48:50.203864Z",
+      "output_sha256": "2515d2d8ccf7bbbc596a87c6d11dbb0df04623bec92ab7538aee7a6aa51f95ac",
+      "result": "37 passed; no skips or warnings",
+      "started_at_utc": "2026-10-14T04:48:48.936014Z"
+    }
+  ]
+}
