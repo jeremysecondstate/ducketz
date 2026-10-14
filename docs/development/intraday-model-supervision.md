@@ -35,9 +35,14 @@ labels available at the frozen training cutoff. There is no external options,
 macro, broker-account or peer-training input in this lane. A future feature
 must acquire and record its own causal availability before it can participate.
 
-The default research grid includes regularized logistic and Gaussian models,
-KNN, LDA, shallow random forests and extra trees, gradient boosting variants,
-and single-layer and two-layer MLP architectures with different penalties.
+The default research grid attempts 21 configurations covering every one of the
+16 implemented exact-target families: logistic, Gaussian NB, KNN, LDA, QDA,
+random forest, extra trees, histogram/gradient/AdaBoost boosting, XGBoost,
+LightGBM, CatBoost, Ridge, Passive Aggressive and MLP. Optional dependencies are
+included in the research attempts; an unavailable dependency is recorded as a
+failure, never silently skipped or replaced. Install the `ml-tree` extra for the
+three optional boosting libraries. Multiple regularized logistic, Gaussian,
+forest and MLP configurations compete within their genuine families.
 Candidates are compared using expanding chronological validation folds. Label
 windows and label availability are purged at partition boundaries; probability
 calibration uses a separate chronological partition. A final holdout is reported
@@ -47,6 +52,13 @@ cannot move into that night's search folds.
 
 The selector ranks probability quality against a training-only class-frequency
 baseline and records each candidate's success, exception or rejection reason.
+The default selection limit is 16 instead of four, retaining one qualifying
+configuration per family. A local `selection.max_selected` or explicit
+`candidates` override remains explicit. More candidates do not guarantee a
+better ensemble: validation advantage, overfit gaps and fold stability still
+determine statistical selection. Catalog coverage, missing dependencies,
+unsupported adapters, fit failures, validation rejections, duplicate-family
+exclusions and configured limits are saved with each report.
 It activates selected model specifications atomically per symbol. If there is
 no qualifying selection, insufficient history, a fetch failure or another real
 error, the previous complete selection survives and the error remains in the
@@ -57,6 +69,36 @@ The forecast runtime reads the locally selected specifications, fits them
 fresh at its own causal forecast cutoff and records selection provenance with
 its saved forecasts. Research objects are not reused as fitted live models.
 The supervisor does not claim that selected models guarantee profits.
+
+Fourteen additional neural family names are recorded as
+`adapter_not_implemented`. Legacy network code and installed Torch do not
+constitute a genuine exact-target 15-minute adapter. Reuse requires causal
+sequence windows, training-only preprocessing, exact matured labels and
+probability/artifact contracts; existing checkpoints are not substituted.
+
+## Saved display and performance cohorts
+
+The 15-Minute Duckets Model research tab shows the local saved nightly report:
+all candidate results, validation scores, selection/exclusion reasons,
+unsupported families and report-only holdout scores. Those research rows are
+distinct from the consensus bars, which retain the models actually fitted for
+the selected saved forecast. Older reports lacking catalog coverage remain
+labelled as older evidence. Missing or damaged reports never trigger training
+or silently masquerade as a new successful run.
+
+Performance displays default to observed outcomes from forecasts issued before
+target open. The score cohort is applied before the requested window and to
+accuracy, calibration, correlations and regime diagnostics. Forecasts issued
+during the target candle, at/after its close, synthetic outcomes and unknown
+timing remain selectable separately; All saved outcomes retains the historical
+combined view. Consensus and the prediction matrix retain all original rows.
+Timing comes from the saved timestamps, not a mutable late-issue flag.
+
+The majority-class baseline describes the same scored cohort and is not a
+forecast or a return. Small timely samples and late acquisition/recovery remain
+visible limitations. Removing a model-count cap cannot itself fix missing or
+late inputs, and a confidence percentage is not observed accuracy. No display
+or statistical selection changes a manual trader start/stop or execution state.
 
 ## Local bindings and evidence
 

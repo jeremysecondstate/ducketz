@@ -10,7 +10,7 @@ import pytest
 from ml.intraday.model_selection import (
     SelectionConfig, _fit, default_candidates, probability_metrics, select_models,
 )
-from ml.intraday.models import ModelSpec, configured_models
+from ml.intraday.models import ModelSpec, UnsupportedModelError, configured_models, registry_status
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 
 
@@ -105,6 +105,7 @@ def test_real_unregularized_tree_overfit_is_rejected_and_logged():
     assert not result.selected_models
     record = result.report["candidates"][0]
     assert record["status"] == "rejected"
+    assert record["selection_reason"] == "validation_rejected" and not record["selected"]
     assert "training_validation_brier_gap" in record["rejection_reasons"]
     assert all(fold["raw_training"]["brier"] == 0 for fold in record["folds"])
     assert record["summary"]["maximum_brier_generalization_gap"] > .2
@@ -127,6 +128,8 @@ def test_candidate_failures_remain_explicit_while_other_candidates_continue():
     failed = result.report["candidates"][0]
     assert failed["status"] == "failed"
     assert failed["error"]["type"] == "UnsupportedModelError"
+    assert failed["catalog_status"] == failed["selection_reason"] == "adapter_not_implemented"
+    assert not failed["selected"]
     assert len(result.report["candidates"]) == 2
     json.dumps(result.report, allow_nan=False)
 
@@ -157,6 +160,8 @@ def test_insufficient_history_is_honest_no_selection_and_not_an_exception():
     assert result.report["status"] == "insufficient_history"
     assert result.selected_models == ()
     assert "Insufficient" in result.report["reason"]
+    assert result.report["candidate_coverage"]["attempted_variant_count"] == 0
+    assert result.report["candidates"][0]["selection_reason"] == "insufficient_history"
 
 
 def test_trimmed_history_cannot_move_a_retained_holdout_boundary():
@@ -217,14 +222,94 @@ def test_invalid_selection_parameters_are_rejected(config):
 
 def test_default_grid_has_real_regularized_architectures_and_json_portability():
     specs = default_candidates()
-    assert 8 <= len(specs) <= 16
+    assert len(specs) == 21
     families = {spec.family for spec in specs}
-    assert {"logistic", "gaussian_nb", "random_forest", "hist_gradient_boosting", "mlp"} <= families
+    implemented = {item["family"] for item in registry_status() if item["status"] != "adapter_not_implemented"}
+    assert len(families) == 16 and families == implemented
+    assert SelectionConfig().max_selected == len(families)
     architectures = {tuple(spec.parameters["hidden_layer_sizes"]) for spec in specs if spec.family == "mlp"}
     assert len(architectures) == 3
     assert all(spec.probability_calibration == "sigmoid" for spec in specs)
     encoded = json.loads(json.dumps([asdict(spec) for spec in specs], allow_nan=False))
     assert len(configured_models(encoded)) == len(specs)
+
+
+class _CatalogFixtureModel:
+    """Deterministic signal predictions; no estimators or real training occur."""
+    classes_ = np.array([0, 1])
+
+    def __init__(self):
+        self.base = self
+
+    def predict_proba(self, X):
+        probability = np.where(X[:, 0] > 0, .85, .15)
+        return np.column_stack((1-probability, probability))
+
+
+def _mock_catalog_fits(monkeypatch, *, unavailable=()):
+    from ml.intraday import model_selection
+    catalog = registry_status()
+    for item in catalog:
+        if item["status"] != "adapter_not_implemented":
+            item["status"] = "dependency_unavailable" if item["family"] in unavailable else "available"
+    monkeypatch.setattr(model_selection, "registry_status", lambda: [dict(item) for item in catalog])
+    attempts = []
+
+    def fit(spec, *args):
+        attempts.append(spec.name)
+        if spec.family in unavailable:
+            raise UnsupportedModelError(f"{spec.family} fixture dependency is unavailable")
+        return _CatalogFixtureModel(), []
+
+    monkeypatch.setattr(model_selection, "_fit", fit)
+    return attempts
+
+
+def test_full_catalog_attempts_omitted_families_and_records_unavailable_dependency(monkeypatch):
+    attempts = _mock_catalog_fits(monkeypatch, unavailable={"catboost"})
+    result = select_models(fixture_dataset())
+    specs = default_candidates()
+    assert {spec.name for spec in specs} <= set(attempts)
+    assert len(result.selected_models) == 15  # All remaining genuine families qualify, including more than four.
+    assert len({spec.family for spec in result.selected_models}) == 15
+    coverage = result.report["candidate_coverage"]
+    assert coverage["configured_variant_count"] == coverage["attempted_variant_count"] == 21
+    assert coverage["implemented_family_count"] == coverage["configured_family_count"] == 16
+    assert coverage["attempted_family_count"] == 16
+    assert coverage["available_family_count"] == 15
+    assert coverage["unconfigured_implemented_families"] == []
+    assert coverage["dependency_unavailable_families"] == ["catboost"]
+    records = {item["spec"]["family"]: item for item in result.report["candidates"]}
+    assert records["catboost"]["status"] == "failed"
+    assert records["catboost"]["selection_reason"] == "dependency_unavailable"
+    assert records["catboost"]["error"]["type"] == "UnsupportedModelError"
+    catalog = {item["family"]: item for item in result.report["model_catalog"]}
+    assert catalog["catboost"]["configured"]
+    assert len(coverage["adapter_not_implemented_families"]) == 14
+    for family in coverage["adapter_not_implemented_families"]:
+        assert catalog[family]["status"] == catalog[family]["nonselection_reason"] == "adapter_not_implemented"
+        assert not catalog[family]["configured"] and catalog[family]["candidate_names"] == []
+    assert result.report["holdout"]["purpose"] == "report_only_no_selection_or_activation_gate"
+    json.dumps(result.report, allow_nan=False)
+
+
+def test_duplicate_families_and_explicit_cap_have_separate_nonselection_reasons(monkeypatch):
+    _mock_catalog_fits(monkeypatch)
+    specs = (ModelSpec("a_logistic", family="logistic"), ModelSpec("b_logistic", family="logistic"),
+             ModelSpec("c_nb", family="gaussian_nb"), ModelSpec("d_lda", family="lda"))
+    result = select_models(fixture_dataset(), candidates=specs,
+                           config=replace(SelectionConfig(), max_selected=2))
+    records = {item["spec"]["name"]: item for item in result.report["candidates"]}
+    assert [spec.name for spec in result.selected_models] == ["a_logistic", "c_nb"]
+    assert records["a_logistic"]["selection_reason"] == "selected_validation_rank"
+    assert records["c_nb"]["selected"] is True
+    assert records["b_logistic"]["selection_reason"] == "duplicate_family"
+    assert records["d_lda"]["selection_reason"] == "configured_cap"
+    assert not records["b_logistic"]["selected"] and not records["d_lda"]["selected"]
+    coverage = result.report["candidate_coverage"]
+    assert coverage["configured_variant_count"] == coverage["attempted_variant_count"] == 4
+    assert coverage["configured_family_count"] == coverage["attempted_family_count"] == 3
+    assert "catboost" in coverage["unconfigured_implemented_families"]
 
 
 def _live_selection_fixture(tmp_path, symbols):

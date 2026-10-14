@@ -19,7 +19,7 @@ import numpy as np
 from sklearn.metrics import balanced_accuracy_score, brier_score_loss, log_loss
 from threadpoolctl import threadpool_limits
 
-from .models import ChronologicalSigmoid, ModelSpec, build_estimator, configured_models
+from .models import ChronologicalSigmoid, ModelSpec, build_estimator, configured_models, registry_status
 from .prediction import ContractError, TARGET_VERSION, instant
 
 SELECTION_VERSION = "intraday-purged-calibrated-selection-v1"
@@ -36,7 +36,7 @@ class SelectionConfig:
     holdout_fraction: float = 0.2
     validation_fraction: float = 0.15
     calibration_fraction: float = 0.2
-    max_selected: int = 4
+    max_selected: int = 16
     max_brier_gap: float = 0.06
     min_brier_improvement: float = 0.001
     max_fold_brier_std: float = 0.04
@@ -68,7 +68,11 @@ class SelectionResult:
 
 
 def default_candidates() -> tuple[ModelSpec, ...]:
-    """Explicit modest CPU grid; architecture names describe actual adapters."""
+    """Research every genuine tabular family with modest regularized CPU fits.
+
+    Optional dependencies stay in the grid: an unavailable library is recorded
+    as a real failed candidate, rather than silently removing its family.
+    """
     definitions = (
         ("logistic_strong", "logistic", {"C": 0.05}),
         ("logistic_moderate", "logistic", {"C": 0.3}),
@@ -83,12 +87,48 @@ def default_candidates() -> tuple[ModelSpec, ...]:
                                                           "min_samples_leaf": 30, "l2_regularization": 10.0}),
         ("gradient_boost_shallow", "gradient_boosting", {"n_estimators": 50, "max_depth": 1,
                                                         "min_samples_leaf": 30}),
+        ("adaboost_regularized", "adaboost", {"n_estimators": 50, "learning_rate": 0.05}),
+        ("xgboost_shallow", "xgboost", {"n_estimators": 64, "max_depth": 2,
+                                         "min_child_weight": 24, "reg_lambda": 10.0}),
+        ("lightgbm_shallow", "lightgbm", {"n_estimators": 64, "max_depth": 3,
+                                           "num_leaves": 7, "min_child_samples": 30,
+                                           "reg_lambda": 10.0}),
+        ("catboost_shallow", "catboost", {"iterations": 64, "depth": 3, "l2_leaf_reg": 10.0}),
+        ("qda_regularized", "qda", {"reg_param": 0.5}),
+        ("ridge_regularized", "ridge", {"alpha": 10.0}),
+        ("passive_aggressive_regularized", "passive_aggressive", {"C": 0.05, "max_iter": 500}),
         ("mlp_single_layer", "mlp", {"hidden_layer_sizes": (16,), "alpha": 1.0, "max_iter": 120}),
         ("mlp_two_layers", "mlp", {"hidden_layer_sizes": (24, 8), "alpha": 3.0, "max_iter": 120}),
         ("mlp_compact", "mlp", {"hidden_layer_sizes": (8, 4), "alpha": 10.0, "max_iter": 120}),
     )
     return tuple(ModelSpec(name, family=family, parameters=params,
                            probability_calibration="sigmoid") for name, family, params in definitions)
+
+
+def _catalog_report(specs):
+    """Expose adapter availability separately from configured/attempted fits."""
+    catalog = registry_status()
+    known = {item["family"] for item in catalog}
+    for family in sorted({spec.family for spec in specs} - known):
+        catalog.append({"family": family, "status": "adapter_not_implemented",
+                        "dependency": "No registered exact-target training adapter"})
+    for item in catalog:
+        item["candidate_names"] = [spec.name for spec in specs if spec.family == item["family"]]
+        item["configured"] = bool(item["candidate_names"])
+        if not item["configured"]:
+            item["nonselection_reason"] = ("adapter_not_implemented" if item["status"] == "adapter_not_implemented"
+                                            else "not_configured")
+    implemented = [item for item in catalog if item["status"] != "adapter_not_implemented"]
+    coverage = {"configured_variant_count": len(specs), "attempted_variant_count": 0,
+                "configured_family_count": len({spec.family for spec in specs}),
+                "attempted_family_count": 0, "implemented_family_count": len(implemented),
+                "available_family_count": sum(item["status"] == "available" for item in implemented),
+                "unconfigured_implemented_families": [item["family"] for item in implemented if not item["configured"]],
+                "dependency_unavailable_families": [item["family"] for item in implemented
+                                                    if item["status"] == "dependency_unavailable"],
+                "adapter_not_implemented_families": [item["family"] for item in catalog
+                                                     if item["status"] == "adapter_not_implemented"]}
+    return catalog, coverage
 
 
 def _probabilities(estimator, X):
@@ -187,11 +227,14 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
     # Deployment must use the same disjoint calibration as candidate research.
     specs = tuple(replace(spec, probability_calibration="sigmoid",
                           calibration_fraction=config.calibration_fraction) for spec in specs)
+    catalog, coverage = _catalog_report(specs)
+    catalog_status = {item["family"]: item["status"] for item in catalog}
     X, y, references, targets, available = _validated_dataset(dataset)
     admitted = np.arange(max(0, len(X)-config.max_rows), len(X), dtype=int)
     report = {"selection_version": SELECTION_VERSION, "status": "insufficient_history",
               "configuration": asdict(config), "input_rows": len(X), "admitted_rows": len(admitted),
               "candidate_count": len(specs), "candidates": [], "selected_models": [], "holdout": None,
+              "model_catalog": catalog, "candidate_coverage": coverage,
               "selection_policy": "purged_expanding_validation_only_then_report_only_final_holdout",
               "deployment_policy": "portable_specs_fresh_fit_with_disjoint_chronological_sigmoid",
               "source": dict(dataset.manifest), "limitations": [
@@ -237,7 +280,8 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
         final_train, final_calibration = _fit_partitions(search, references, targets, available, config)
     except ContractError as exc:
         report["reason"] = str(exc)
-        report["candidates"] = [{"spec": asdict(spec), "status": "not_run",
+        report["candidates"] = [{"spec": asdict(spec), "status": "not_run", "selected": False,
+                                 "selection_reason": "insufficient_history", "catalog_status": catalog_status[spec.family],
                                  "reason": str(exc), "folds": []} for spec in specs]
         return SelectionResult((), report, holdout_start)
 
@@ -262,7 +306,8 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
     for spec in specs:
         started = time.perf_counter()
         record = {"spec": asdict(spec), "status": "failed", "folds": [], "warnings": [],
-                  "rejection_reasons": [], "seconds": 0.0}
+                  "rejection_reasons": [], "seconds": 0.0, "selected": False,
+                  "selection_reason": "fit_failed", "catalog_status": catalog_status[spec.family]}
         try:
             for number, (train, calibration, validation) in enumerate(folds):
                 model, observed = _fit(spec, X, y, train, calibration)
@@ -305,12 +350,17 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
             if summary["fold_brier_std"] > config.max_fold_brier_std:
                 record["rejection_reasons"].append("unstable_chronological_fold_brier")
             record["status"] = "rejected" if record["rejection_reasons"] else "supported"
+            record["selection_reason"] = "validation_rejected" if record["rejection_reasons"] else "qualified"
             if record["status"] == "supported":
                 supported.append((spec, record))
         except Exception as exc:
             record["error"] = {"type": type(exc).__name__, "message": str(exc)}
+            if catalog_status[spec.family] in {"dependency_unavailable", "adapter_not_implemented"}:
+                record["selection_reason"] = catalog_status[spec.family]
         record["seconds"] = time.perf_counter()-started
         report["candidates"].append(record)
+    coverage["attempted_variant_count"] = len(report["candidates"])
+    coverage["attempted_family_count"] = len({item["spec"]["family"] for item in report["candidates"]})
 
     ranked = sorted(supported, key=lambda item: (item[1]["summary"]["mean_brier"],
                                                 item[1]["summary"]["mean_log_loss"], item[0].name))
@@ -318,11 +368,16 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
     # within their genuine family and every candidate's results remain logged.
     winners, families = [], set()
     for spec, record in ranked:
-        if spec.family in families or len(winners) >= config.max_selected:
+        if spec.family in families:
+            record["selection_reason"] = "duplicate_family"
+            continue
+        if len(winners) >= config.max_selected:
+            record["selection_reason"] = "configured_cap"
             continue
         families.add(spec.family)
         winners.append(spec)
         record["selected"] = True
+        record["selection_reason"] = "selected_validation_rank"
     selected = tuple(winners)  # Membership is now fixed before touching holdout values.
     report["selected_models"] = [asdict(s) for s in selected]
     report["status"] = "selected" if selected else "no_supported_candidate"
