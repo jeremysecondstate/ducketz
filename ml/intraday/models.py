@@ -95,6 +95,7 @@ class ModelSpec:
     random_state: int = 20261012
     parameters: Mapping[str, object] = field(default_factory=dict)
     calibration_fraction: float = 0.2
+    probability_calibration: str | None = None
 
     def __post_init__(self):
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,79}", self.name):
@@ -103,6 +104,8 @@ class ModelSpec:
             object.__setattr__(self, "family", self.name)
         if not 0 < self.calibration_fraction < 1:
             raise ContractError("Calibration fraction must be between zero and one")
+        if self.probability_calibration not in {None, "sigmoid"}:
+            raise ContractError("Probability calibration must be sigmoid or omitted")
 
 
 def _json(value) -> str:
@@ -201,7 +204,7 @@ def build_estimator(spec: ModelSpec) -> Pipeline:
     return Pipeline(steps)
 
 
-def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2):
+def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2, label_available_at=None):
     """No shuffle: prior label windows end before the held-out reference begins."""
     references = tuple(instant(x) for x in reference_at)
     targets = tuple(instant(x) for x in target_close_at)
@@ -212,7 +215,11 @@ def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2):
     if any(end <= start for start, end in zip(references, targets)):
         raise ContractError("Each label target must follow its reference")
     split = min(len(references) - 1, max(1, int(len(references) * (1 - fraction))))
-    train = np.array([i for i in range(split) if targets[i] <= references[split]], dtype=int)
+    available = tuple(instant(x) for x in label_available_at) if label_available_at is not None else targets
+    if len(available) != len(targets) or any(a < t for a, t in zip(available, targets)):
+        raise ContractError("Calibration requires matching observable label receipts")
+    train = np.array([i for i in range(split) if targets[i] <= references[split]
+                      and available[i] <= references[split]], dtype=int)
     calibration = np.arange(split, len(references))
     if not len(train):
         raise ContractError("No label windows remain after chronological overlap purge")
@@ -229,13 +236,25 @@ class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
         if set(np.unique(y[train])) != {0, 1} or set(np.unique(y[calibration])) != {0, 1}:
             raise ContractError("Base and calibration partitions both require both target classes")
         self.base.fit(X[train], y[train])
-        scores = np.asarray(self.base.decision_function(X[calibration])).reshape(-1, 1)
+        scores = self._scores(X[calibration])
         self.sigmoid_ = LogisticRegression(C=1.0, max_iter=1000, random_state=self.random_state).fit(scores, y[calibration])
         self.classes_ = np.array([0, 1])
         return self
 
     def predict_proba(self, X):
-        return self.sigmoid_.predict_proba(np.asarray(self.base.decision_function(X)).reshape(-1, 1))
+        return self.sigmoid_.predict_proba(self._scores(X))
+
+    def _scores(self, X):
+        if hasattr(self.base, "decision_function"):
+            return np.asarray(self.base.decision_function(X)).reshape(-1, 1)
+        classes = np.asarray(self.base.classes_)
+        probabilities = np.asarray(self.base.predict_proba(X), dtype=float)
+        if (set(classes.tolist()) != {0, 1} or probabilities.shape != (len(X), 2)
+                or not np.isfinite(probabilities).all() or (probabilities < 0).any()
+                or (probabilities > 1).any() or not np.allclose(probabilities.sum(axis=1), 1)):
+            raise ContractError("Calibration requires valid binary model probabilities")
+        probability = np.clip(probabilities[:, np.flatnonzero(classes == 1)[0]], 1e-12, 1 - 1e-12)
+        return np.log(probability / (1 - probability)).reshape(-1, 1)
 
 
 def probability_not_down(estimator, inference_X) -> float:
@@ -370,17 +389,22 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                 output["version"] = _sha(metadata)
             with threadpool_limits(limits=1), warnings.catch_warnings(record=True) as observed_warnings:
                 warnings.simplefilter("always")
-                if spec.family in {"ridge", "passive_aggressive"}:
+                if spec.family in {"ridge", "passive_aggressive"} or spec.probability_calibration == "sigmoid":
                     if reference_at is None or target_close_at is None:
                         raise ContractError("Non-probability models require label-window timestamps for chronological calibration")
                     train, calibration = purged_chronological_split(reference_at, target_close_at,
-                                                                    fraction=spec.calibration_fraction)
+                        fraction=spec.calibration_fraction, label_available_at=available)
                     if len(reference_at) != len(labels):
                         raise ContractError("Calibration timestamps differ from training rows")
+                    if spec.family == "knn":
+                        effective = min(metadata["requested_n_neighbors"], len(train))
+                        metadata["effective_parameters"]["n_neighbors"] = effective
+                        estimator.set_params(model__n_neighbors=effective)
                     metadata["calibration"] = {"method": "purged_chronological_sigmoid", "base_rows": len(train),
                                                "calibration_rows": len(calibration),
                                                "purged_rows": len(labels) - len(train) - len(calibration),
                                                "first_calibration_reference": instant(reference_at[calibration[0]]).isoformat(),
+                                               "base_latest_label_available": max(available[i] for i in train).isoformat(),
                                                "base_latest_target": instant(target_close_at[train[-1]]).isoformat()}
                     estimator = ChronologicalSigmoid(estimator, spec.random_state).fit_chronological(features, labels, train, calibration)
                 else:
