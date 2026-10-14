@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -478,3 +479,86 @@ def test_resource_snapshot_counts_real_module_workers_without_exposing_arguments
                            "system_cpu_percent","python_process_count","process_count","gameplan_worker_processes_observed"}
     assert private_argument not in str(snapshot)
     assert "cmdline" not in snapshot and "active_session" not in snapshot
+
+
+def test_live_supervised_specs_are_frozen_for_retry_and_new_cycle_adopts_latest(tmp_path, monkeypatch):
+    import ml.intraday.data as data_module
+    import ml.intraday.model_policy as policy_module
+    from ml.intraday.models import ModelSpec
+    monkeypatch.setattr(data_module, "FEATURE_NAMES", ("x",))
+    selected = [ModelSpec("qualified_a", family="logistic", probability_calibration="sigmoid")]
+    loads, fits = [], []
+    def load(root, *, pc, symbol, feature_names):
+        loads.append((root, pc, symbol, tuple(feature_names)))
+        return tuple(selected) if symbol == "AAPL" else None
+    monkeypatch.setattr(policy_module, "load_active_models", load)
+    fail_ionq = [True]
+    def train(*args, config, run_id, **kwargs):
+        fits.append((run_id, config, kwargs["dataset_metadata"]))
+        if "IONQ" in run_id and fail_ionq[0]:
+            return dict(outputs=[dict(name="fixture_a", status="failed")], successful_count=0)
+        names = tuple(spec.name if isinstance(spec, ModelSpec) else spec for spec in config)
+        return trained(*args, config=names, **kwargs)
+    r = runner(tmp_path, trainer=train)
+    r.config = replace(r.config, use_supervised_models=True)
+    first = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
+    assert first["failed_symbols"] == 1 and len(loads) == 2
+    forecast = first["forecasts"]["AAPL"]
+    assert forecast["model_selection"]["models"][0]["name"] == "qualified_a"
+    _, snapshot = r.store.inputs(first["cycle_id"], "AAPL")
+    assert snapshot["model_selection"] == forecast["model_selection"]
+    assert any(kwargs["model_selection"] == forecast["model_selection"] for _, _, kwargs in fits)
+    selected[:] = [ModelSpec("qualified_b", family="random_forest", probability_calibration="sigmoid")]
+    fail_ionq[0] = False
+    repeated = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
+    assert repeated["cycle_id"] == first["cycle_id"] and len(loads) == 2
+    assert repeated["forecasts"]["AAPL"] == forecast
+    assert repeated["forecasts"]["IONQ"]["model_selection"]["selection"] == "configured_defaults"
+    r.clock = lambda: (REF + timedelta(minutes=31)).isoformat()
+    newer = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF + timedelta(minutes=15), mode="live")
+    assert len(loads) == 4 and newer["cycle_id"] != first["cycle_id"]
+    assert newer["forecasts"]["AAPL"]["model_selection"]["models"][0]["name"] == "qualified_b"
+    assert newer["forecasts"]["AAPL"]["model_selection"]["policy_sha256"] != forecast["model_selection"]["policy_sha256"]
+    assert all(path == tmp_path / "supervision" for path, _, _, _ in loads)
+
+
+@pytest.mark.parametrize("mode", ["shadow", "historical_replay"])
+def test_supervised_adoption_is_limited_to_explicit_live_mode(tmp_path, monkeypatch, mode):
+    import ml.intraday.model_policy as policy_module
+    monkeypatch.setattr(policy_module, "load_active_models", lambda *a, **k: pytest.fail("research adopted live policy"))
+    r = runner(tmp_path, trainer=trained)
+    r.config = replace(r.config, use_supervised_models=True)
+    result = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode=mode)
+    assert result["successful_symbols"] == 2
+    assert all(value["model_selection"] is None for value in result["forecasts"].values())
+
+
+def test_invalid_supervised_policy_and_mismatched_features_never_fit_defaults(tmp_path, monkeypatch):
+    import ml.intraday.model_policy as policy_module
+    from ml.intraday.models import ModelSpec
+    def invalid(*args, **kwargs):
+        raise ContractError("Active policy evidence is invalid")
+    monkeypatch.setattr(policy_module, "load_active_models", invalid)
+    r = runner(tmp_path, trainer=lambda *a, **k: pytest.fail("invalid policy triggered fitting"))
+    r.config = replace(r.config, use_supervised_models=True)
+    with pytest.raises(ContractError, match="policy evidence"):
+        r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
+    monkeypatch.setattr(policy_module, "load_active_models", lambda *a, **k:
+                        (ModelSpec("qualified", family="logistic", probability_calibration="sigmoid"),))
+    result = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
+    assert result["successful_symbols"] == 0 and not result["forecasts"]
+    assert all("features differ" in failure["message"] for failure in result["failures"].values())
+
+
+def test_supervised_cycle_detects_changed_frozen_policy(tmp_path, monkeypatch):
+    import ml.intraday.model_policy as policy_module
+    monkeypatch.setattr(policy_module, "load_active_models", lambda *a, **k: None)
+    r = runner(tmp_path, trainer=trained)
+    r.config = replace(r.config, use_supervised_models=True)
+    first = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode="live")
+    with r.store.connect() as db:
+        row = json.loads(db.execute("SELECT payload FROM cycles WHERE id=?", (first["cycle_id"],)).fetchone()[0])
+        row["supervised_model_policy"]["models_by_symbol"]["AAPL"] = [{"name": "tampered"}]
+        db.execute("UPDATE cycles SET payload=? WHERE id=?", (json.dumps(row), first["cycle_id"]))
+    with pytest.raises(ContractError, match="policy hash changed"):
+        r.run_cycle({}, reference_at=REF, mode="live")

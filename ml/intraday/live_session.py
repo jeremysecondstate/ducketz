@@ -523,7 +523,7 @@ def main(argv=None):
         return 2
     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
         scout_admission=args.scout_admission,config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
-            symbol_workers=args.symbol_workers,lookback_days=args.lookback_days))
+            symbol_workers=args.symbol_workers,lookback_days=args.lookback_days,use_supervised_models=True))
     print(json.dumps(result,sort_keys=True))
     return 1 if result["status"] == "FAILED" else 0
 
