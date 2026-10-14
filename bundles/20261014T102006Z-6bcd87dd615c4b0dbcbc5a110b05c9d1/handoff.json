@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:20:06.844566Z",
+  "id": "20261014T102006Z-6bcd87dd615c4b0dbcbc5a110b05c9d1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published independent 15-minute model supervision and configured GPT-6.1-Sol Ultra weekday preparation."
+}

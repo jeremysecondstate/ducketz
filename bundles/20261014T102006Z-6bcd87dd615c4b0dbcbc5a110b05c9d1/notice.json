@@ -1,0 +1,99 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T101507Z-3c37467549f549aa84661551f14897fa",
+  "change_id": "20261014T101507Z-3c37467549f549aa84661551f14897fa",
+  "commit_sha": "2658f4c9588065e342a4d33c293c6942025a2c67",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/selected_config.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/model_selection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/supervisor.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_selected_models.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_model_selection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_supervisor.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/register_intraday_model_supervisor.ps1"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_register_intraday_model_supervisor.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-model-supervision.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-model-supervisor-prompt.txt"
+    }
+  ],
+  "limitations": [
+    "Offline fixture checks; no provider or broker request and no production training was performed for verification.",
+    "Only the existing canonical minute OHLCV source is refreshed; present training features derive from OHLCV.",
+    "Statistical thresholds are explicit heuristics; validation and holdout results cannot establish profitable trading.",
+    "Source publication, configured schedule, actual nightly selection and manual trader operation remain distinct."
+  ],
+  "loaded_runtime": "not_restarted_or_verified",
+  "local_installation": "owned_application_source_and_active_schedule",
+  "main_integration": "draft_PR_pending",
+  "peer_applicability": "common code; each PC retains its own symbols, input source, models, execution state and task identity",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/128",
+  "remote_sha": "2658f4c9588065e342a4d33c293c6942025a2c67",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas source installed in its existing checkout; one active local GPT-6.1-Sol Ultra Codex automation prepares its independent trader at six weekday Pacific wakes from 01:00 through 03:30. Actual production selection has not been run for verification. Traders remain manually started. Scout applicability is independent model preparation using its own bindings and scheduler; no shared models, private state, cross-trader gate or duplicate scheduler. Main integration and Scout installation are not claimed.",
+  "scope": "shared",
+  "source_publication": "pushed_remote_sha_verified",
+  "summary": "Atlas published independent 15-minute model supervision and configured GPT-6.1-Sol Ultra weekday preparation.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-14T10:17:52.648992Z",
+      "offline": true,
+      "output_sha256": "d3c31130cfc3c91094044db34abc0c7a00f98cced4f644bd21e45ac62bcc1a66",
+      "result": "181 passed",
+      "started_at_utc": "2026-10-14T10:17:25.296366Z"
+    }
+  ]
+}
