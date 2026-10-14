@@ -406,9 +406,13 @@ def _display(config: dict, state: dict) -> dict:
     native_output = state["steps"]["train_and_plan"]["output"]
     _verify_outputs(review_output)
     _verify_outputs(native_output)
-    reviewed = load_feedback_review(root, Path(review_output["proposal"]), require_latest_stats=False)
     native_run = Path(native_output["native_run"])
     _native_outputs(native_run)
+    if state["steps"]["train_and_plan"].get("status") == "COMPLETE":
+        reviewed = _frozen_model_feedback(root, review_output,
+            completed_at=state["steps"]["train_and_plan"].get("completed_at"))[0]
+    else:
+        reviewed = load_feedback_review(root, Path(review_output["proposal"]), require_latest_stats=False)
     pinned = _json(native_run / "stage-report.json").get("enrichment_gameplan", {})
     source = (root / str(pinned.get("run_path", ""))).resolve()
     if (source.parent != root / "ml/nightly-gameplan-runs"
@@ -465,9 +469,13 @@ def _completed_feedback(root: Path, state: dict) -> dict:
     from ml import gameplan_model_feedback as feedback
     from ml.nightly_dispatch import TERMINAL
     output = state["steps"]["model_review"]["output"]
-    proposal = Path(output["proposal"]).resolve()
     if state.get("status") not in TERMINAL:
-        return feedback.load_feedback_review(root, proposal, require_latest_stats=False)
+        training = state["steps"].get("train_and_plan", {})
+        if training.get("status") == "COMPLETE":
+            _verify_outputs(training["output"])
+            _native_outputs(Path(training["output"]["native_run"]))
+            return _frozen_model_feedback(root, output, completed_at=training.get("completed_at"))[0]
+        return feedback.load_feedback_review(root, Path(output["proposal"]), require_latest_stats=False)
     if any(state["steps"].get(step, {}).get("status") != "COMPLETE" for step in workflow_steps(state)):
         raise ValueError("Historical model review requires every original workflow stage complete")
     identity = state.get("source_identity", {})
@@ -475,6 +483,40 @@ def _completed_feedback(root: Path, state: dict) -> dict:
            or any(char not in "0123456789abcdef" for char in identity[key])
            for key, size in (("commit", 40), ("source_sha256", 64))):
         raise ValueError("Historical model review has no frozen source identity")
+    return _frozen_model_feedback(root, output, completed_at=state["completed_at"])[0]
+
+
+def _frozen_feedback_diagnostics(root: Path, diagnostics: dict) -> None:
+    """Check original evidence independently of today's training implementation."""
+    from ml import gameplan_model_feedback as feedback
+    training_code = diagnostics.get("training_code", {})
+    if (diagnostics.get("schema_version") != feedback.VERSION
+            or not isinstance(training_code, dict) or not training_code):
+        raise ValueError("Saved model diagnostics have an invalid training binding")
+    # Recorded file hashes authenticate the old policy inventory. A newly
+    # added/removed policy file is drift, not corruption of the original review.
+    for name, digest in training_code.items():
+        relative = Path(name) if isinstance(name, str) else None
+        if (relative is None or relative.is_absolute() or ".." in relative.parts
+                or relative.as_posix() != name or not name.endswith(".py")
+                or relative.parts[0] not in ("ml", "app", "datafetching")
+                or not isinstance(digest, str) or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest)):
+            raise ValueError("Saved model diagnostics have an invalid training binding")
+    review, actual = feedback._stats(root, frozen_binding=diagnostics["stats"])
+    if diagnostics["stats"] != actual or diagnostics.get("groups") != feedback._diagnostic_groups(review):
+        raise ValueError("Saved model diagnostics differ from their frozen Stats")
+    created = pd.Timestamp(diagnostics["created_at"])
+    if (created.tzinfo is None or created < pd.Timestamp(actual["reviewed_at"])
+            or created < pd.Timestamp(actual["outcomes_through"])):
+        raise ValueError("Saved model diagnostics have an invalid creation time")
+    feedback._intended_target(actual, diagnostics.get("intended_probability_target_contract"))
+
+
+def _frozen_model_feedback(root: Path, output: dict, *, completed_at=None) -> tuple[dict, dict]:
+    """Validate a recorded review without silently rebinding its original bytes."""
+    from ml import gameplan_model_feedback as feedback
+    proposal = Path(output["proposal"]).resolve()
     if proposal.parent.parent != root / "ml/gameplan-model-feedback-runs":
         raise ValueError("Historical model review is outside its immutable run directory")
     diagnostic_path = proposal.parent / "diagnostics.json"
@@ -483,27 +525,115 @@ def _completed_feedback(root: Path, state: dict) -> dict:
         raise ValueError("Historical model review lacks its exact original file hashes")
     _verify_outputs(output)
     payload, diagnostics = _json(proposal), _json(diagnostic_path)
-    training_code = diagnostics.get("training_code", {})
-    if (set(training_code) != set(feedback._POLICY_FILES)
-            or any(not isinstance(value, str) or len(value) != 64
-                   or any(char not in "0123456789abcdef" for char in value)
-                   for value in training_code.values())
-            or payload.get("schema_version") != feedback.VERSION
+    if (payload.get("schema_version") != feedback.VERSION
             or payload.get("status") != "REVIEWED"
             or payload.get("diagnostics_sha256") != file_checksum(diagnostic_path)):
         raise ValueError("Historical review or its original training binding is invalid")
-    review, actual = feedback._stats(root, frozen_binding=diagnostics["stats"])
-    if (diagnostics.get("schema_version") != feedback.VERSION or diagnostics.get("stats") != actual
-            or diagnostics.get("groups") != feedback._diagnostic_groups(review)):
-        raise ValueError("Historical review differs from its frozen UI Stats metrics")
+    _frozen_feedback_diagnostics(root, diagnostics)
     feedback._validate_proposal(payload["proposal"], diagnostics)
     reviewed, created = pd.Timestamp(payload["reviewed_at"]), pd.Timestamp(diagnostics["created_at"])
     if (reviewed.tzinfo is None or created.tzinfo is None or reviewed < created
-            or reviewed > utc_timestamp(state["completed_at"])):
+            or reviewed > utc_timestamp(completed_at)):
         raise ValueError("Historical model review has an invalid completion time")
-    intended = feedback._intended_target(actual, diagnostics.get("intended_probability_target_contract"))
-    return {**payload, "stats": actual, "path": str(proposal),
-            "intended_probability_target_contract": intended, "checksum_sha256": file_checksum(proposal)}
+    intended = feedback._intended_target(diagnostics["stats"], diagnostics.get("intended_probability_target_contract"))
+    return ({**payload, "stats": diagnostics["stats"], "path": str(proposal),
+             "intended_probability_target_contract": intended, "checksum_sha256": file_checksum(proposal)}, diagnostics)
+
+
+def _recover_stale_model_feedback(config: dict, state: dict, path: Path, save) -> bool:
+    """Caller holds both runtime locks; preserve evidence before refreshing unfinished work."""
+    from ml import gameplan_model_feedback as feedback
+    from ml.nightly_dispatch import TERMINAL
+    steps = state["steps"]
+    entry = steps.get("model_review", {})
+    if state.get("status") in TERMINAL or steps.get("train_and_plan", {}).get("status") == "COMPLETE":
+        return False
+    root = Path(config["datastore"]).resolve()
+    previous = steps.get("train_and_plan", {}).get("native_run")
+    if previous:
+        from ml.overnight_runtime import _validated_run, _resume_configuration, INDEPENDENT_TAIL_STAGES
+        native = _validated_run(root, Path(previous))
+        if not (native / "receipt.json").exists():
+            # The native coordinator owns interruption sealing and can retain
+            # a publication completed just before its receipt was written.
+            return False
+        if _json(native / "receipt.json").get("status") == "COMPLETE":
+            # A worker can finish the native segment before its workflow save.
+            # Let _run_native reconcile that exact completed receipt, not refit.
+            _native_outputs(native)
+            return False
+        if ((native / "stage-report.json").exists()
+                and _json(native / "stage-report.json").get("failed_stage") in INDEPENDENT_TAIL_STAGES):
+            retained = _resume_configuration(root, native, continuation_action_date=state["action_date"])
+            if "gameplan_publication" in retained["completed_stages"] and retained.get("enrichment_gameplan"):
+                # Native resume keeps the published Gameplan and continues only
+                # its pinned enrichment/planning tail; its review is historical.
+                return False
+    if entry.get("status") == "COMPLETE" and entry.get("output", {}).get("proposal"):
+        _, diagnostics = _frozen_model_feedback(root, entry["output"], completed_at=entry.get("completed_at"))
+    elif entry.get("feedback_run") and entry.get("feedback_diagnostics_sha256"):
+        run = Path(entry["feedback_run"]).resolve()
+        if run.parent != root / "ml/gameplan-model-feedback-runs":
+            raise ValueError("Pending model review is outside its immutable run directory")
+        diagnostic_path = run / "diagnostics.json"
+        if file_checksum(diagnostic_path) != entry["feedback_diagnostics_sha256"]:
+            raise ValueError("Pending model diagnostics changed since preparation")
+        diagnostics = _json(diagnostic_path)
+        _frozen_feedback_diagnostics(root, diagnostics)
+    else:
+        return False
+    _, current_stats = feedback._stats(root)
+    target = _intended_probability_target(config)
+    for binding in (diagnostics["stats"], current_stats):
+        if binding["session"] != state["source_session"] or set(binding["symbols"]) - set(state["symbols"]):
+            raise ValueError("Model review Stats belong to a different workflow session or symbol scope")
+        feedback._intended_target(binding, target)
+    current_code = feedback._code_binding()
+    if diagnostics["training_code"] == current_code and diagnostics["stats"] == current_stats:
+        return False
+    sequence = workflow_steps(state)
+    reset = sequence[sequence.index("model_review"):]
+    if any(steps.get(step, {}).get("status") == "COMPLETE" for step in reset if step != "model_review"):
+        raise ValueError("Stale review cannot replace already completed dependent preparation")
+    before = path.read_bytes()
+    if json.loads(before) != state:
+        raise ValueError("Saved workflow changed before model review recovery")
+    before_sha = sha256(before).hexdigest()
+    recovery_id = sha256(json.dumps({"before_state_sha256": before_sha,
+        "training_code": current_code, "stats": current_stats}, sort_keys=True).encode()).hexdigest()
+    directory = path.parent / "operational-recoveries" / ("stale-model-review-" + recovery_id)
+    directory.mkdir(parents=True, exist_ok=True)
+    record = {"schema_version": "nightly-model-feedback-recovery-v1", "workflow_run_id": state["run_id"],
+        "action_date": state["action_date"], "source_session": state["source_session"],
+        "before_state_sha256": before_sha, "reason": "Saved review basis changed before preparation completed",
+        "old_training_code": diagnostics["training_code"], "current_training_code": current_code,
+        "old_stats": diagnostics["stats"], "current_stats": current_stats,
+        "reset_steps": [step for step in reset if step in steps],
+        "retained_steps": [step for step in sequence if step not in reset and step in steps]}
+    for destination, raw in ((directory / "before-state.json", before),
+                             (directory / "recovery.json", (json.dumps(record, sort_keys=True, indent=2) + "\n").encode())):
+        if destination.exists():
+            if destination.read_bytes() != raw:
+                raise ValueError("Original model review recovery evidence changed")
+        else:
+            temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
+            try:
+                with temporary.open("xb") as output:
+                    output.write(raw)
+                    output.flush()
+                    os.fsync(output.fileno())
+                os.replace(temporary, destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+    for step in reset:
+        if step in steps:
+            steps[step] = {key: value for key, value in steps[step].items()
+                           if key in ("attempts", "started_at", "owner", "responsibility")}
+    state.setdefault("operational_recoveries", []).append({"path": str(directory / "recovery.json"),
+        "sha256": file_checksum(directory / "recovery.json"), "at": utc_timestamp().isoformat()})
+    state.update(current_step="model_review", next_responsibility="model")
+    save()
+    return True
 
 
 def _verify_local_preparation(config: dict, state: dict) -> dict:
@@ -594,6 +724,10 @@ def _execute_step(config: dict, state: dict, step: str, save) -> dict:
         feedback = Path(entry["feedback_run"]) if entry.get("feedback_run") else prepare_feedback(
             Path(config["datastore"]), probability_target=_intended_probability_target(config))
         entry["feedback_run"] = str(feedback)
+        diagnostic_sha = file_checksum(feedback / "diagnostics.json")
+        if entry.get("feedback_diagnostics_sha256", diagnostic_sha) != diagnostic_sha:
+            raise ValueError("Pending model diagnostics changed since preparation")
+        entry["feedback_diagnostics_sha256"] = diagnostic_sha
         save()
         if _json(feedback / "diagnostics.json")["stats"]["session"] != state["source_session"]:
             raise ValueError("Model review Stats session differs from this workflow's completed session")
@@ -904,21 +1038,23 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     save()
             if continuing:
                 _verify_saved_recovery(config, state, observed, continuation=True)
-                state["continuation_policy"] = "complete-dated-nightly-preparation-v1"
             else:
                 cutoff = _planning_tail_continuation(config, state, planning_tail_exception, observed)
                 _verify_saved_recovery(config, state, observed, continuation=bool(state.get("planning_tail_continuation")))
                 if observed >= cutoff:
                     raise TimeoutError("Original nightly preparation deadline reached")
-            state.update(status="RUNNING", owner_pid=os.getpid())
-            state.pop("error", None)
-            state.pop("failed_at", None)
-            save()
             @contextmanager
             def no_supervision():
                 yield threading.Event()
             manager = _supervision(root) if supervise else no_supervision()
             with exclusive_runtime_lock(root / ".ducketz-overnight-runtime.lock", process_name="Nightly workflow"), manager as lost:
+                if continuing:
+                    _recover_stale_model_feedback(config, state, path, save)
+                    state["continuation_policy"] = "complete-dated-nightly-preparation-v1"
+                state.update(status="RUNNING", owner_pid=os.getpid())
+                state.pop("error", None)
+                state.pop("failed_at", None)
+                save()
                 for step in workflow_steps(state):
                     entry = state["steps"].setdefault(step, {})
                     if entry.get("status") == "COMPLETE":
