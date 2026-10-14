@@ -1,0 +1,38 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T040539Z-482f11951e9d4eac95fd53da82727e19",
+  "change_id": "20261014T040539Z-482f11951e9d4eac95fd53da82727e19",
+  "commit_sha": "2deede07eaab36fa81c1fb8fc727e009b652aa30",
+  "files": [
+    "ml/loop_b_research.py",
+    "ml/loop_b_research_features.py",
+    "tests/test_loop_b_research.py",
+    "tests/test_loop_b_research_features.py",
+    "docs/development/loop-b-feature-research.md"
+  ],
+  "installation_stage": "locally_installed",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Synthetic offline evidence only. Original private research outputs remain intact and are not revalidated by this source adoption."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/103"
+  ],
+  "main_commit_sha": "46e06523794edff6edd9b94269cdfd57468c3131",
+  "peer_source": "92d7fb55367c882a87b28a147abc8cfb893eb58d",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261012T011445Z-688ae07049f849c585129f29e48a9e1c",
+    "20261012T004655Z-7fa7bf8271a74de9a92620b5f640fcfc"
+  ],
+  "runtime_implications": "Research source installed on Scout. No production feature promotion, operating model training, provider or broker call, trader start or restart, manual-stop change, scheduler change or application restart.",
+  "scope": "shared research-only source; each PC independently retains its private research provenance",
+  "summary": "Scout installed the reviewed causal Loop B research handoff and integrated its exact five-file composition on common main.",
+  "tests": [
+    {
+      "check": "Network-disabled synthetic Loop B suites",
+      "evidence": "Immutable completion and integration records retain complete fingerprints, actual test times and output hashes",
+      "result": "35 passed, 1 Windows symlink-permission skip on sealed queue, isolated source candidate, fresh main candidate and Scout local installation"
+    }
+  ]
+}
