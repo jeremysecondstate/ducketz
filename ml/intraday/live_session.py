@@ -294,6 +294,10 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     config.validate()
     if config.source_dataset != "EQUS.MINI":
         raise ContractError("Existing single-source live provider binding required")
+    # A manual experiment recipe is latched once at startup. Existing sessions
+    # retain their loaded configuration and active supervised policies.
+    from .live_model_recipe import prepare_manual_models
+    config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols)
     if pc == "Atlas":
         from .account_execution import IntradayAccountExecutor
         from .runtime_compatibility import read_gameplan_runtime_compatibility
@@ -389,7 +393,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             if provider.dataset != config.source_dataset:
                 raise ContractError("Provider binding differs from selected single source")
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
-            runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,stopped=stopped.is_set)
+            runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
+                                  stopped=stopped.is_set,**model_runtime)
             if pc == "Atlas":
                 executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
                     session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=stopped.is_set)
