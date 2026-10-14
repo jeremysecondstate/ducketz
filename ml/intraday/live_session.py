@@ -166,7 +166,7 @@ def _pending_cycle_passes(store, session_id, now, *, pc="Atlas"):
 
 
 def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
-                     clock=utcnow, pause=time.sleep):
+                     clock=utcnow, pause=time.sleep, history_source=None):
     """New quarters first; durable acquisition retries get bounded fair passes.
 
     Only missing data prerequisites retry automatically. Already issued model
@@ -196,8 +196,9 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                 pause(1); continue
             _, cycle, retry_symbols = pending[0]
             reference = instant(cycle["reference_at"])
-        incoming = LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
-                                reference_at=reference,clock=clock,sleep=pause,bounded=True)
+        incoming = (history_source(reference) if history_source is not None else
+                    LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
+                                  reference_at=reference,clock=clock,sleep=pause,bounded=True))
         result = runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
                          on_published=queue.enqueue,acquisition={"kind":"existing_databento_exact_interval"},
                          retry_symbols=retry_symbols,allow_execution=reference == newest)
@@ -207,7 +208,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
 
 
 def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
-                 clock=utcnow, pause=time.sleep, pc="Atlas"):
+                 clock=utcnow, pause=time.sleep, pc="Atlas", history_source=None):
     """Fetch exact due outcomes independently, including after the last entry.
 
     Acquisition retry evidence is durable. This never submits an order, changes
@@ -244,8 +245,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             symbol = forecast["symbol"]
             if symbol not in histories:
                 continue
-            incoming = LiveHistories(histories=dict(histories),provider=provider,store=store,journal=journal,
-                reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True)
+            incoming = (history_source(forecast["target_open"]) if history_source is not None else
+                        LiveHistories(histories=dict(histories),provider=provider,store=store,journal=journal,
+                                      reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True))
             incoming.bind_cycle("score:" + forecast["forecast_id"])
             try:
                 history = incoming.get(symbol)
@@ -392,7 +394,14 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             provider = DatabentoMarketDataProvider()
             if provider.dataset != config.source_dataset:
                 raise ContractError("Provider binding differs from selected single source")
+            from .minute_persistence import PersistedMinuteProvider
+            from .minute_feed import QuarterHourMinuteFeed
+            provider = PersistedMinuteProvider(provider, datastore=root, pc=pc, symbols=symbols, clock=clock)
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
+            minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
+                pc=pc,symbols=symbols,session_id=session_id,clock=clock,
+                publication_offset_seconds=config.publication_offset_seconds,
+                on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                                   stopped=stopped.is_set,**model_runtime)
             if pc == "Atlas":
@@ -411,7 +420,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         def forecast_work():
             try:
                 forecasting_loop(runner,histories=histories,provider=provider,journal=journal,queue=queue,
-                                 stopped=stopped.is_set,clock=clock,pause=pause)
+                                 stopped=stopped.is_set,clock=clock,pause=pause,
+                                 history_source=minute_feed.history_source)
             except BaseException as exc:
                 store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
                 if not (isinstance(exc,InterruptedError) and stopped.is_set()):
@@ -421,7 +431,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         def score_work():
             try:
                 scoring_loop(store,histories=histories,provider=provider,journal=journal,session_id=session_id,
-                             stopped=stopped.is_set,clock=clock,pause=pause,pc=pc)
+                             stopped=stopped.is_set,clock=clock,pause=pause,pc=pc,
+                             history_source=minute_feed.history_source)
             except InterruptedError:
                 pass
             except BaseException as exc:
@@ -429,8 +440,19 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 worker_errors.append({"worker":"scoring","error_type":type(exc).__name__,"message":str(exc)})
                 stopped.set()
         scorer = threading.Thread(target=score_work,name="intraday-manual-scoring",daemon=True)
+        def data_work():
+            try:
+                minute_feed.run(stopped=stopped.is_set,pause=pause)
+            except InterruptedError:
+                pass
+            except BaseException as exc:
+                store.event(session_id,"minute_data_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
+                worker_errors.append({"worker":"minute_data","error_type":type(exc).__name__,"message":str(exc)})
+                stopped.set()
+        data_worker = threading.Thread(target=data_work,name="intraday-manual-minute-data",daemon=True)
         worker.start()
         scorer.start()
+        data_worker.start()
         print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
         print(f"Session status: {status_path}\nSession log: {log_path}",flush=True)
         next_recovery = instant(clock())
@@ -488,9 +510,10 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             status("STOPPING",broker_orders_automatically_cancelled=False,
                    stop_reason="worker_failure" if worker_errors else "manual_stop")
             print("15m order authority stopped. Waiting for active computation to finish; pending broker identities are retained.",flush=True)
-            while worker.is_alive() or scorer.is_alive():
+            while worker.is_alive() or scorer.is_alive() or data_worker.is_alive():
                 worker.join(timeout=1)
                 scorer.join(timeout=1)
+                data_worker.join(timeout=1)
                 status("STOPPING",broker_orders_automatically_cancelled=False,
                        stop_reason="worker_failure" if worker_errors else "manual_stop")
             status("FAILED" if worker_errors else "STOPPED",broker_orders_automatically_cancelled=False,

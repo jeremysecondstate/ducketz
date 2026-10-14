@@ -10,6 +10,19 @@ from ml.intraday.store import ShadowStore
 from tests.test_intraday_store import forecast
 
 
+@pytest.fixture(autouse=True)
+def isolate_minute_acquisition_in_execution_fixtures(monkeypatch):
+    """Execution fixtures own no market-data transport; feed behavior has its own tests."""
+    from ml.intraday import minute_feed
+    class FixtureFeed:
+        history_source = None
+        def __init__(self, **kwargs):
+            pass
+        def run(self, **kwargs):
+            pass
+    monkeypatch.setattr(minute_feed, "QuarterHourMinuteFeed", FixtureFeed)
+
+
 @pytest.mark.parametrize("now,expected", [
     ("2026-10-12T17:15:29Z","2026-10-12T16:45:00Z"),
     ("2026-10-12T17:15:30Z","2026-10-12T17:00:00Z"),
@@ -17,6 +30,127 @@ from tests.test_intraday_store import forecast
     ("2026-10-12T17:46:00Z","2026-10-12T17:30:00Z")])
 def test_start_latest_completed_on_quarter_grid(now, expected):
     assert live_session.latest_completed_reference(now, publication_offset_seconds=30) == instant(expected)
+
+
+def test_forecast_uses_independent_saved_history_without_a_provider_call(tmp_path, monkeypatch):
+    store = ShadowStore(tmp_path / "forecast.sqlite3")
+    references, calls = [], []
+    incoming = object()
+    def source(reference):
+        references.append(reference)
+        return incoming
+    def run(history, **kwargs):
+        assert history is incoming
+        calls.append(kwargs)
+    runner = SimpleNamespace(store=store, config=live_session.ResearchConfig(), run_cycle=run)
+    queue = live_session.ExecutionQueue(store, "saved-minute-session", pc="Scout")
+    monkeypatch.setattr(live_session, "LiveHistories", lambda **kw: pytest.fail("forecast fetched data"))
+    live_session.forecasting_loop(runner, histories={}, provider=object(), journal=object(), queue=queue,
+        stopped=lambda: bool(calls), clock=lambda: "2026-10-14T17:15:30Z", pause=lambda _: None,
+        history_source=source)
+    assert references == [instant("2026-10-14T17:00:00Z")]
+    assert calls[0]["allow_execution"] is True
+
+
+def test_scoring_consumes_saved_feed_candle_without_fetching_after_close(tmp_path, monkeypatch):
+    import pandas as pd
+    from tests.test_intraday_store import candle
+    store = ShadowStore(tmp_path / "forecast.sqlite3")
+    saved = store.save_forecast(forecast(mode="live", pc="Scout"))
+    calls, done = [], []
+    class Incoming:
+        def bind_cycle(self, identity):
+            assert identity == "score:" + saved["forecast_id"]
+        def get(self, symbol):
+            value = candle(close="101")
+            value["opened_at"] = pd.Timestamp(value["opened_at"])
+            return SimpleNamespace(frame=pd.DataFrame([value]))
+    def source(reference):
+        calls.append(reference)
+        return Incoming()
+    monkeypatch.setattr(live_session, "LiveHistories", lambda **kw: pytest.fail("scorer fetched after close"))
+    live_session.scoring_loop(store, histories={"AAPL": object()}, provider=object(), journal=object(),
+        session_id="saved-minute-session", stopped=lambda: bool(done), clock=lambda: "2026-10-09T00:01:00Z",
+        pause=lambda _: done.append(True), pc="Scout", history_source=source)
+    assert calls == [saved["target_open"]]
+    assert store.revisions(saved["forecast_id"])[-1]["status"] == "scored"
+
+
+def test_manual_scout_wires_persisted_minute_feed_into_both_consumers_without_new_orders(tmp_path, monkeypatch):
+    import dotenv
+    from app.services import databento_market_data, schwab
+    from ml.intraday import data, minute_feed, minute_persistence, scout_local_execution
+
+    calls, feeds, threads, executors = [], [], [], []
+    native_provider = SimpleNamespace(dataset="EQUS.MINI")
+    monkeypatch.setattr(live_session, "local_symbols", lambda *args: ("Scout", ("DOCU",)))
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *args: None)
+    monkeypatch.setattr(data, "load_local_history", lambda *args, **kwargs: object())
+    monkeypatch.setattr(databento_market_data, "DatabentoMarketDataProvider", lambda: native_provider)
+    monkeypatch.setattr(schwab, "SchwabSession", lambda: SimpleNamespace(offline_fixture=True))
+
+    class Executor:
+        evidence_paths = {}
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            executors.append(self)
+            assert kwargs["broker"].offline_fixture
+        def preflight(self):
+            return {"session_id": self.kwargs["session_id"], "mode": "scout-local-broker-account", "ready": True}
+        def step(self, forecast):
+            pytest.fail("Minute acquisition must not create an executable forecast or order")
+        def recover(self):
+            calls.append("existing_order_recovery")
+
+    class Feed:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.history_source = object()
+            feeds.append(self)
+            assert isinstance(kwargs["provider"], minute_persistence.PersistedMinuteProvider)
+            assert kwargs["provider"]._provider is native_provider
+            assert kwargs["pc"] == "Scout" and kwargs["symbols"] == ("DOCU",)
+        def run(self, **kwargs):
+            assert not kwargs["stopped"]()
+            calls.append("independent_minute_data")
+
+    class InlineThread:
+        def __init__(self, *, target, name, **kwargs):
+            self.target = target
+            threads.append(name)
+        def start(self):
+            self.target()
+        def is_alive(self):
+            return False
+        def join(self, **kwargs):
+            pass
+
+    def consume(kind, **kwargs):
+        assert kwargs["history_source"] is feeds[0].history_source
+        assert kwargs["provider"] is feeds[0].kwargs["provider"]
+        assert kwargs["histories"] is feeds[0].kwargs["histories"]
+        calls.append(kind)
+
+    def stop(seconds):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(scout_local_execution, "ScoutLocalAccountExecutor", Executor)
+    monkeypatch.setattr(minute_feed, "QuarterHourMinuteFeed", Feed)
+    monkeypatch.setattr(live_session.threading, "Thread", InlineThread)
+    monkeypatch.setattr(live_session, "forecasting_loop", lambda runner, **kwargs: consume("forecast", **kwargs))
+    monkeypatch.setattr(live_session, "scoring_loop", lambda store, **kwargs: consume("scoring", **kwargs))
+    result = live_session.run_manual(repository=tmp_path, datastore=tmp_path, profile=tmp_path / "profile.json",
+        watchlist=tmp_path / "watchlist.txt", config=live_session.ResearchConfig(),
+        clock=lambda: "2026-10-14T22:31:00Z", sleep=stop)
+    assert result["status"] == "STOPPED"
+    assert len(feeds) == len(executors) == 1
+    assert calls == ["forecast", "scoring", "independent_minute_data", "existing_order_recovery"]
+    assert threads == ["intraday-manual-forecast", "intraday-manual-scoring", "intraday-manual-minute-data"]
+    assert feeds[0].kwargs["session_id"] == result["session_id"]
+    assert feeds[0].kwargs["publication_offset_seconds"] == 30
+    assert not executors[0].kwargs["manual_authority"]()
+    with feeds[0].kwargs["store"].connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM intraday_live_queue").fetchone()[0] == 0
 
 
 def test_live_queue_retains_retry_wait_across_restart_and_never_consumes_old_session(tmp_path):
