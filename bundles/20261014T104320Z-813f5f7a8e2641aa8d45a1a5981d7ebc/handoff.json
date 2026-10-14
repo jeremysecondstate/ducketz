@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:43:20.654239Z",
+  "id": "20261014T104320Z-813f5f7a8e2641aa8d45a1a5981d7ebc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Common causal model-fitting APIs integrated and adopted on Scout."
+}

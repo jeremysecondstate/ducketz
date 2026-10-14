@@ -1,0 +1,65 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T103931Z-459c241a85b54403970ed5a383bc3957",
+  "change_id": "20261014T103931Z-459c241a85b54403970ed5a383bc3957",
+  "commit_sha": "116767bc5026647bd138563de3ab244f4e17b71d",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared model-fitting API applies independently to Atlas and Scout.",
+    "Compose calibrated fresh fitting, actual receipt-aware chronology, row-window preservation and explicit class-oriented probability validation from Scout with Atlas legacy configuration and receipt metadata compatibility.",
+    "Validate complete timestamp arrays before applying a selected newest-row cap; six regressions reproduce unordered, invalid horizon and early label receipt inputs hidden in excluded rows.",
+    "Preserve common main KNN positive-integer validation and cap to actual base rows, default model membership, optional adapters and immutable artifact evidence.",
+    "Retain Scout supervision Completion-Record 20261014T101440Z-8776bf544ad74e9192b5486a2fe20ec1, Atlas supervision Completion-Record 20261014T101507Z-3c37467549f549aa84661551f14897fa and KNN Completion-Record 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4.",
+    "Full runtime, selector and supervisor composition remains separately owned; do not replace local policy stores or duplicate native registration. Source work never delays nightly production."
+  ],
+  "files": [
+    "ml/intraday/models.py",
+    "tests/test_intraday_models.py",
+    "tests/test_intraday_model_contracts.py"
+  ],
+  "installation_stage": "common_model_api_installed",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "72 passing offline model/API checks; one optional CatBoost test skipped because CatBoost is absent. Upstream joblib emits NumPy shape deprecation warnings during artifact round trips.",
+    "Synthetic offline fits only; no provider, broker, production data/model training, trader start/restart or scheduler mutation.",
+    "Full supervisor scope, active-policy recovery and native scheduler composition remain separate reviewed source units."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/129"
+  ],
+  "main_commit": "ef2f14dcd8c231eac89870710270f141fe08aed9",
+  "remaining_source_work": "Full dual-supervisor composition retains original producer identities: bind evaluated dataset scope and actual feature receipts, preserve valid active-policy incumbents, use same row limits in selection, preserve native task enabled state. Source review creates no operating prerequisite.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Fresh common fits may opt into chronological sigmoid calibration and newest-row windows; legacy None and none configurations remain accepted. Invalid full clock snapshots fail before trimming. Local source adoption does not restart or launch any process.",
+  "scope": "Shared model source applies independently to Atlas and Scout; model policy stores and native registration preserved.",
+  "summary": "Common causal model-fitting APIs integrated and adopted on Scout.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-14T10:39:40.042354Z",
+      "output_sha256": "b397a05588ca91d794b936f056b8672ec641d4b03f77963abab24d17e68863cd",
+      "result": "72 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:39:31.818620Z"
+    },
+    {
+      "check": "isolated source",
+      "completed_at_utc": "2026-10-14T10:40:37.623314Z",
+      "output_sha256": "2616ba2d4a1827678db8537cda02a117a932f0e42883247973f86151f1c9b4dd",
+      "result": "72 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:40:28.326936Z"
+    },
+    {
+      "check": "main candidate",
+      "completed_at_utc": "2026-10-14T10:41:49.794435Z",
+      "output_sha256": "78bbe163493c228263e487d21956b4753068a46c1c678e466321b7ab4a4182de",
+      "result": "72 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:41:41.293665Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-14T10:42:35.030335Z",
+      "output_sha256": "d278b4d46dc2cc66f75712ffd526ee695df518bb58d12fd4e2346999929f200a",
+      "result": "72 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T10:42:26.354536Z"
+    }
+  ]
+}
