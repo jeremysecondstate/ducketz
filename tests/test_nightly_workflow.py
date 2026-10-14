@@ -28,7 +28,7 @@ def setup(tmp_path, monkeypatch):
     profile = tmp_path / "profile.json"
     profile.write_text(json.dumps({"actor": "Scout", "checkout": str(repository),
         "symbol_profile_path": str(repository / "datafetching/watchlist.local.txt"), "symbols": ["AAPL", "MSFT"]}))
-    config = {"schema_version": VERSION, "actor": "Scout", "repository": str(repository),
+    config = {"schema_version": VERSION, "actor": "Scout", "repository": str(repository), "continue_until_complete": False,
         "datastore": str(root), "state_root": str(tmp_path / "state"), "local_profile": str(profile)}
     return config
 
@@ -250,17 +250,30 @@ def test_runtime_lock_failure_is_durable_without_running_a_stage(setup, monkeypa
     assert failed["steps"] == {}
 
 
-def test_supervision_acquisition_failure_is_durable_and_releases_runtime_lock(setup, monkeypatch):
+def test_advisory_supervision_failure_does_not_block_runtime_lock_owner(setup, monkeypatch):
     monkeypatch.setattr("ml.overnight_runtime.claim_supervision", lambda *args, **kwargs: {"status": "DENIED"})
-    with pytest.raises(RuntimeError, match="owns overnight supervision"):
-        run_workflow(setup, now="2026-10-06T04:05:00Z", identity=_identity,
-                     execute_step=lambda *args: pytest.fail("No supervision acquired"))
-    assert _saved_state(setup)["status"] == "FAILED"
+    result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=_identity,
+                          execute_step=lambda *args: {"files": {}})
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert result["supervision_status"] == "LEASE_RENEWAL_OR_RELEASE_RETRY"
     assert not (Path(setup["datastore"]) / ".ducketz-overnight-runtime.lock").exists()
 
 
+def test_advisory_release_error_preserves_completed_work(setup, monkeypatch):
+    def claim(*args, **kwargs):
+        if kwargs.get("release"):
+            raise OSError("fixture unavailable advisory lease file")
+        return {"status": "ACQUIRED"}
+    monkeypatch.setattr("ml.overnight_runtime.claim_supervision", claim)
+    result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=_identity,
+                          execute_step=lambda *args: {"files": {}})
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert result["supervision_status"] == "LEASE_RENEWAL_OR_RELEASE_RETRY"
+    assert all(entry["status"] == "COMPLETE" for entry in result["steps"].values())
+
+
 @pytest.mark.parametrize("reason", ["source", "supervision"])
-def test_between_stage_failure_preserves_completed_outputs_and_records_failure(setup, monkeypatch, reason):
+def test_source_observation_and_advisory_lease_loss_preserve_nightly_progress(setup, monkeypatch, reason):
     lost = threading.Event()
     changed = False
     @contextmanager
@@ -278,19 +291,12 @@ def test_between_stage_failure_preserves_completed_outputs_and_records_failure(s
         else:
             lost.set()
         return {"files": {}}
-    if reason == "source":
-        result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
-        assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
-        assert result["source_identity"] == _identity(None)
-        assert all(entry["status"] == "COMPLETE" for entry in result["steps"].values())
-        return
-    with pytest.raises(RuntimeError, match="ownership was lost"):
-        run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
-    failed = _saved_state(setup)
-    assert calls == ["prepare_stats"]
-    assert failed["status"] == "FAILED" and failed["owner_pid"] is None
-    assert failed["steps"]["prepare_stats"]["status"] == "COMPLETE"
-    assert failed["steps"]["model_review"]["status"] == "FAILED"
+    result = run_workflow(setup, now="2026-10-06T04:05:00Z", identity=identity, execute_step=complete)
+    assert result["status"] == "LOCAL_COMPLETE_PEER_SETUP_PENDING"
+    assert result["source_identity"] == _identity(None)
+    assert all(entry["status"] == "COMPLETE" for entry in result["steps"].values())
+    if reason == "supervision":
+        assert result["supervision_status"] == "LEASE_RENEWAL_OR_RELEASE_RETRY"
 
 
 def test_interrupt_is_recorded_without_erasing_prior_stage_completion(setup):
@@ -301,9 +307,9 @@ def test_interrupt_is_recorded_without_erasing_prior_stage_completion(setup):
     with pytest.raises(KeyboardInterrupt):
         _run(setup, interrupt)
     failed = _saved_state(setup)
-    assert failed["status"] == "CANCELLED"
+    assert failed["status"] == "INTERRUPTED"
     assert failed["steps"]["prepare_stats"]["status"] == "COMPLETE"
-    assert failed["steps"]["model_review"]["status"] == "CANCELLED"
+    assert failed["steps"]["model_review"]["status"] == "INTERRUPTED"
 
 
 def _feedback(root):

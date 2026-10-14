@@ -16,6 +16,7 @@ from typing import Mapping
 import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, verify_manifest, write_manifest, utc_timestamp
+from ml.nightly_continuation import continuing, deadline_expired
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
 from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
@@ -162,6 +163,14 @@ same current cash being promised to several horizons or symbols.
                   "projected_trade_quantity": None, "projected_trade_budget": None,
                   "projected_trade_notional": None, "projected_quantity_reason": "NON_ENTRY_CONTEXT"}
         if row["execution_eligible"]:
+            if (snapshot.get("observed_at") is not None
+                    and utc(row["target_window_start"]) < utc(snapshot["observed_at"])):
+                result.update(trade_planning_reason="EXPIRED_BEFORE_PREPARATION",
+                              projected_quantity_reason="EXPIRED_BEFORE_PREPARATION",
+                              projected_trade_quantity=0, projected_trade_budget=0., projected_trade_notional=0.,
+                              scheduled_trade_quantity=0)
+                results[str(row["id"])] = result
+                continue
             result["projected_quantity_reason"] = "ACCOUNT_EVIDENCE_UNAVAILABLE"
             if evidence_ready:
                 result["projected_quantity_reason"] = "PRICE_RANGE_UNAVAILABLE"
@@ -451,11 +460,11 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
         verify_manifest(run)
         terminal = {**metadata, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
             "manifest_sha256": file_checksum(run / "manifest.json"), "forecast_rows": len(rows), "completed_at": utc(clock()).isoformat()}
-        if (utc(clock()) >= deadline_at or file_checksum(source / "receipt.json") != source_hash
+        if (deadline_expired(utc(clock()), deadline_at) or file_checksum(source / "receipt.json") != source_hash
                 or not binding_unchanged()):
             raise ValueError("Producer preparation source, binding or original deadline changed")
         _write_json(run / "receipt.json", terminal)
-        if utc(clock()) >= deadline_at or not binding_unchanged():
+        if deadline_expired(utc(clock()), deadline_at) or not binding_unchanged():
             raise ValueError("Producer preparation deadline or binding changed before publication")
         if (latest_pointer.read_bytes() if latest_pointer.exists() else None) != previous_pointer:
             raise ValueError("Producer price-plan pointer advanced independently")
@@ -470,7 +479,7 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
             committed_pointer = written_bytes
         if committed_pointer is None:
             raise ValueError("Producer price-plan pointer advanced during publication")
-        if (utc(clock()) >= deadline_at or not binding_unchanged()
+        if (deadline_expired(utc(clock()), deadline_at) or not binding_unchanged()
                 or file_checksum(source / "receipt.json") != source_hash or latest_pointer.read_bytes() != committed_pointer):
             raise ValueError("Producer price-plan deadline, source or binding changed during publication")
         return run
@@ -540,7 +549,11 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
     observed = utc(clock())
     original_deadline = expected_deadline.tz_convert("UTC")
-    if late_action_date is not None:
+    dated_continuation = continuing(action_date)
+    if dated_continuation:
+        if late_action_date not in (None, action_date) or deadline_at != original_deadline:
+            raise ValueError("Nightly planning must retain its original action date and target")
+    elif late_action_date is not None:
         close = (expected_deadline + pd.Timedelta(hours=13)).tz_convert("UTC")
         if (late_action_date != action_date
                 or config.get("publication_mode") != "LATE_RECOVERY"
@@ -577,7 +590,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         refresh_snapshot, refresh_asof, refresh_evidence, refresh_inputs, refresh_pointer_hash = _review_refresh_basis(
             root, refresh_plan, source, source_receipt_hash, action_date, observed)
         exception_evidence = None
-    if observed >= deadline_at:
+    if deadline_expired(observed, deadline_at):
         raise ValueError("Trade planning publication deadline has passed")
     symbols = tuple(config["symbols"])
     forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols,
@@ -718,7 +731,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         phase = "REVIEW_AND_PUBLICATION"
         _write_json(run / "report.json", report)
         (run / "Gameplan.md").write_text(render_trade_review(rows, report, model_reports, source_gameplan=source.as_posix()), encoding="utf-8")
-        if utc(clock()) >= deadline_at:
+        if deadline_expired(utc(clock()), deadline_at):
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         if file_checksum(source / "receipt.json") != source_receipt_hash:
             raise ValueError("PINNED_GAMEPLAN_RECEIPT_CHANGED")
@@ -738,7 +751,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                        "review_refresh": refresh_evidence,
                        "execution_authority": AUTHORITY, "broker_orders_enabled": False, "orders_placed": 0}, datastore_root=root)
         verify_manifest(run)
-        if utc(clock()) >= deadline_at:
+        if deadline_expired(utc(clock()), deadline_at):
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         terminal = {"schema_version": VERSION, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
                     **probability_metadata, **fallback_metadata,
@@ -748,7 +761,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                     "holding_policy": direction_projection["holding_policy"],
                     "execution_authority": AUTHORITY, "completed_at": utc(clock()).isoformat()}
         _write_json(run / "receipt.json", terminal)
-        if utc(clock()) >= deadline_at:
+        if deadline_expired(utc(clock()), deadline_at):
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         if refresh_pointer_hash is not None and file_checksum(root / "ml/gameplan-trade-plan-latest/run.json") != refresh_pointer_hash:
             raise ValueError("REFRESH_PLAN_CHANGED")

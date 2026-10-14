@@ -23,7 +23,7 @@ def config(tmp_path, monkeypatch):
         "symbol_profile_path": str(watchlist), "symbols": ["AAPL", "MSFT"]}))
     root = tmp_path / "data"
     root.mkdir()
-    return {"schema_version": workflow.VERSION, "actor": "Atlas", "repository": str(repository),
+    return {"schema_version": workflow.VERSION, "actor": "Atlas", "repository": str(repository), "continue_until_complete": False,
         "datastore": str(root), "state_root": str(tmp_path / "state"), "local_profile": str(profile),
         "automatic_recovery": {"enabled": True, "authorization": "Local human nightly operating authority", "max_attempts": 3},
         "responsibility_owners": {role: "native-" + role for role in dispatch.RESPONSIBILITIES}}

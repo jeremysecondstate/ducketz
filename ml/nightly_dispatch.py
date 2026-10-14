@@ -37,6 +37,29 @@ def intended_session(now=None):
             "eligible": now >= kickoff}
 
 
+def continuation_session(config, now=None):
+    """Retain the active logical night without replaying historical attempts."""
+    observed = utc_timestamp(now)
+    selection = intended_session(observed)
+    root = Path(config["state_root"])
+    pointer = root / "latest.json"
+    if pointer.is_file():
+        latest = json.loads(pointer.read_text(encoding="utf-8"))
+        path = Path(latest["state_path"]).resolve()
+        state = json.loads(path.read_text(encoding="utf-8"))
+        expected = (root / "runs" / state["action_date"] / "state.json").resolve()
+        if path != expected or state.get("actor") != config["actor"] or state.get("run_id") != latest.get("run_id"):
+            raise ValueError("Latest nightly pointer differs from its dated workflow")
+        if state.get("status") not in TERMINAL:
+            return {"action_date": state["action_date"], "source_session": state["source_session"],
+                    "deadline_at": state["deadline_at"], "kickoff_at": None, "eligible": True}
+    if not selection["eligible"]:
+        # Before the next kickoff, a missed prior night still owns its session.
+        selection = intended_session(observed - pd.Timedelta(days=1))
+        selection["eligible"] = observed >= utc_timestamp(selection["kickoff_at"])
+    return selection
+
+
 def next_responsibility(state):
     sequence = STEPS if state.get("workflow_layout") == LAYOUT else (
         "prepare_stats", "model_review", "train_and_plan", "verify_display", "local_handoff")
@@ -139,24 +162,30 @@ def failure_record(error, *, step, owner, now, state):
                 stream.seek(max(0, logs[-1].stat().st_size - 8192))
                 detail = stream.read().decode("utf-8", errors="replace")
     text = (message + "\n" + detail).lower()
-    transient = isinstance(error, (ConnectionError, TimeoutError)) or any(term in text for term in (
+    from ml.overnight_runtime import HumanRequestedStop
+    human_stop = isinstance(error, HumanRequestedStop)
+    transient = isinstance(error, (ConnectionError, TimeoutError, InterruptedError, KeyboardInterrupt, SystemExit)) or any(term in text for term in (
         "temporarily unavailable", "connection reset", "connection aborted", "rate limit", "timed out"))
     external = any(term in text for term in ("unauthorized", "authentication", "credentials", "quota", "not found",
         "usage limit", "usage exceeded", "cli is unavailable"))
-    kind = "EXTERNAL_DEPENDENCY" if external else "TRANSIENT" if transient else "SOURCE_DEFECT"
+    kind = "HUMAN_STOP" if human_stop else "EXTERNAL_DEPENDENCY" if external else "TRANSIENT" if transient else "SOURCE_DEFECT"
     fingerprint = sha256((str(step) + "\n" + message).encode()).hexdigest()
     return {"at": utc_timestamp(now).isoformat(), "step": step, "owner": owner,
             "kind": kind, "error": message, "fingerprint": fingerprint,
             "local_diagnostic_tail": detail,
             "retry_after": (utc_timestamp(now) + pd.Timedelta(minutes=5)).isoformat(),
             "source_identity": state["source_identity"], "disposition": "OPEN",
-            "corrective_action": ("Retry the same unfinished stage within its fixed deadline" if kind == "TRANSIENT"
+            "corrective_action": ("Resume the same unfinished stage under standing nightly authority" if kind == "TRANSIENT"
                                   else "Inspect evidence, repair or restore the dependency, verify, and resume this stage")}
 
 
 def retry_disposition(config, state, now=None):
     failure = state.get("failure")
     if not failure or failure.get("disposition") == "RESOLVED":
+        return None
+    # Persisted assertions cannot substitute for a direct human instruction.
+    # Normal scheduled continuation resumes interrupted work without artificial delay.
+    if config.get("continue_until_complete", True) is True:
         return None
     entry = state.get("steps", {}).get(failure.get("step"), {})
     limit = authority(config).get("max_attempts", 3)
@@ -168,7 +197,7 @@ def retry_disposition(config, state, now=None):
             or (epoch_id is not None and (not isinstance(epoch_id, str) or len(epoch_id) != 64
                 or any(character not in "0123456789abcdef" for character in epoch_id)))):
         raise ValueError("Invalid audited retry epoch; preserve its cumulative attempt evidence")
-    if failure["kind"] != "TRANSIENT" or attempts - epoch_start >= limit:
+    if failure["kind"] != "TRANSIENT" or (attempts - epoch_start >= limit and config.get("continue_until_complete", True) is not True):
         return "REPAIR_REQUIRED" if failure["kind"] == "SOURCE_DEFECT" else "DEPENDENCY_REQUIRED" if failure["kind"] == "EXTERNAL_DEPENDENCY" else "RETRY_LIMIT_REACHED"
     if failure.get("retry_after") and utc_timestamp(now) < utc_timestamp(failure["retry_after"]):
         return "RETRY_BACKOFF"

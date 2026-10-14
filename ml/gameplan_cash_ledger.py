@@ -224,6 +224,11 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 fallback_slots.add(key)
                 row["fallback_slot_quota"] = slot_quota(fallback_budgets[record["symbol"]],
                     record["model_group"], timestamp, day)
+            if (snapshot.get("observed_at") is not None
+                    and timestamp < _time(snapshot["observed_at"])):
+                row.update(direction_based_trade_quantity=0, direction_based_action="HOLD",
+                           direction_based_reason="EXPIRED_BEFORE_PREPARATION")
+                continue
             row.update(direction_based_trade_quantity=0, direction_based_action="HOLD",
                        direction_based_reason="NEUTRAL")
             if not signal_driven and record["model_status"] != "PROMOTED":
