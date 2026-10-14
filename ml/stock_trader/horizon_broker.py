@@ -16,6 +16,7 @@ from typing import Callable, Mapping, Protocol
 
 from ml.stock_trader.horizon_ledger import (
     FillEvidence, HorizonLedger, LedgerError, OrderEvidence, ReservationState, _utc,
+    validate_fill_time_provenance,
 )
 
 
@@ -71,7 +72,8 @@ def _walk_orders(rows):
 
 
 def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str,
-           broker_status: str, order_quantity: int, filled_quantity: int) -> tuple[FillEvidence, ...]:
+           broker_status: str, order_quantity: int, filled_quantity: int,
+           fill_time_sources: dict | None = None) -> tuple[FillEvidence, ...]:
     activities = raw.get("orderActivityCollection", ())
     if not isinstance(activities, (list, tuple)):
         raise OrderHistoryError("EXECUTION_ACTIVITY_COLLECTION_REQUIRED")
@@ -108,9 +110,17 @@ def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str,
             quantity = int(_number(leg.get("quantity"), whole=True, positive=True))
             price_number = _number(leg.get("price"), positive=not cancellation)
             price = format(price_number.normalize(), "f")
-            stamp = leg.get("time") or leg.get("executionTime") or activity.get("executionTime") or activity.get("time")
+            stamp, source_field = None, None
+            for record, field, source in ((leg, "time", "execution_leg.time"),
+                    (leg, "executionTime", "execution_leg.executionTime"),
+                    (activity, "executionTime", "activity.executionTime"), (activity, "time", "activity.time")):
+                if record.get(field):
+                    stamp, source_field = record[field], source
+                    break
             if not stamp:
                 raise OrderHistoryError("EXACT_EXECUTION_TIMESTAMP_REQUIRED")
+            if not isinstance(stamp, str):
+                raise OrderHistoryError("RAW_EXECUTION_TIMESTAMP_STRING_REQUIRED")
             executed_at = _utc(stamp)
             if executed_at > observed:
                 raise OrderHistoryError("EXECUTION_POSTDATES_CAPTURE_BOUNDARY")
@@ -137,7 +147,8 @@ def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str,
                 # Preserve repeated identical fills by ordinal within their
                 # complete economics, not their changing list/response order.
                 key = ("derived", broker_id, activity_id, leg_id, executed_at, quantity, price)
-            records.append((key, quantity, price, executed_at))
+            records.append((key, quantity, price, executed_at,
+                            {"raw_timestamp": stamp, "source_field": source_field}))
         if cancellation:
             if (int(_number(activity.get("quantity"), whole=True, positive=True)) != activity_cancelled_quantity
                     or _number(activity.get("orderRemainingQuantity"), whole=True) != 0):
@@ -150,10 +161,17 @@ def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str,
             raise OrderHistoryError("FILL_POSTDATES_TERMINAL_CANCELLATION")
     occurrences = Counter()
     output = []
-    for key, quantity, price, executed_at in sorted(records, key=lambda value: json.dumps(value[0])):
+    # Identical derived fill cores share stable ordinal IDs. Tie-break only
+    # their new metadata so response reordering cannot swap raw-time evidence;
+    # the existing core key, IDs, quantities, prices and timestamps stay intact.
+    for key, quantity, price, executed_at, time_source in sorted(records,
+            key=lambda value: (json.dumps(value[0]), value[4]["raw_timestamp"], value[4]["source_field"])):
         ordinal = occurrences[key]
         occurrences[key] += 1
-        output.append(FillEvidence("schwab-fill:" + _hash([key, ordinal]), quantity, price, executed_at))
+        fill_id = "schwab-fill:" + _hash([key, ordinal])
+        output.append(FillEvidence(fill_id, quantity, price, executed_at))
+        if fill_time_sources is not None:
+            fill_time_sources[fill_id] = time_source
     return tuple(output)
 
 
@@ -199,16 +217,30 @@ def normalize_order_evidence(raw: Mapping, reservation: ReservationState, *, acc
         # Replaced/unknown/suspended identities cannot silently release cash or
         # invent a successor order. Require explicit operator reconciliation.
         raise OrderHistoryError("UNSUPPORTED_OR_UNCERTAIN_BROKER_ORDER_STATUS")
+    fill_time_sources = {}
     fills = _fills(raw, broker_id=broker_id, order_leg_id=_text(leg.get("legId")) or "1", observed=observed,
-                   broker_status=broker_status, order_quantity=quantity, filled_quantity=filled)
+                   broker_status=broker_status, order_quantity=quantity, filled_quantity=filled,
+                   fill_time_sources=fill_time_sources)
     if sum(item.quantity for item in fills) != filled:
         raise OrderHistoryError("COMPLETE_PER_ORDER_FILL_EVIDENCE_REQUIRED")
+    provenance = None
+    if fills:
+        provenance, _ = validate_fill_time_provenance(
+            {"version": "schwab-execution-time-v1", "fills": fill_time_sources}, fills)
     payload = {"reservation_id": reservation.reservation_id, "account_fingerprint": account_fingerprint,
         "observed_at": observed, "broker_order_id": broker_id, "status": status, "order_quantity": quantity,
         "cumulative_filled_quantity": filled, "remaining_quantity": remaining,
         "fills": tuple(asdict(fill) for fill in fills), "broker_status": broker_status}
+    description = _text(raw.get("statusDescription")) or None
+    if description is not None:
+        # Private ledger evidence only; retain the actual provider explanation
+        # instead of losing it after the next reconciliation cycle.
+        payload["broker_status_description"] = description
+    if provenance is not None:
+        payload["fill_time_provenance"] = provenance
     return OrderEvidence("schwab-order:" + _hash(payload), reservation.reservation_id, account_fingerprint,
-                         observed, broker_id, status, quantity, filled, remaining, fills, broker_status)
+                         observed, broker_id, status, quantity, filled, remaining, fills, broker_status, description,
+                         provenance)
 
 
 def capture_order_evidence(session: OrderHistorySession, ledger: HorizonLedger, *,
