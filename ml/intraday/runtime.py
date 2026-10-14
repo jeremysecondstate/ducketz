@@ -29,6 +29,8 @@ class ResearchConfig:
     synthetic_policy: str = "include"
     source_dataset: str = "EQUS.MINI"
     retraining_minutes: int = 15
+    # This flag controls the per-symbol model_policy lane. The existing own v1
+    # model-supervision manifest remains automatic for default live/shadow fits.
     use_supervised_models: bool = False
 
     def validate(self):
@@ -157,20 +159,60 @@ def _frozen_supervised_policy(saved, *, symbols):
     return policy
 
 
-def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration):
+def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration,
+                             selected_config_path=None, selected_as_of=None, use_model_policy=True):
     """Freeze selected specs, their policy identities and populations per cycle."""
     with store.connect() as db:
         row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
     if row:
-        return _frozen_supervised_policy(json.loads(row[0]), symbols=symbols)
+        saved = json.loads(row[0])
+        if saved.get("supervised_model_policy") is None and not use_model_policy:
+            return None
+        return _frozen_supervised_policy(saved, symbols=symbols)
     from .data import FEATURE_NAMES
     from .model_policy import load_active_policy
     policy = {"pc": pc, "feature_names": list(FEATURE_NAMES), "models_by_symbol": {},
               "dataset_scope_by_symbol": {}, "policy_identities_by_symbol": {}}
     default_scope = _dataset_scope(configuration)
+    selections = {}
+    if selected_config_path is not None:
+        from .selected_config import load_selected_config
+        def selected_error(symbol, exc):
+            store.event(cycle_id, "selected_configuration_error",
+                {"error_type": type(exc).__name__, "message": str(exc),
+                 "configuration_used": "existing_own_policy_or_configured_defaults"}, symbol=symbol)
+        try:
+            selections = load_selected_config(selected_config_path, pc=pc, symbols=symbols,
+                source_dataset=configuration["source_dataset"], as_of=selected_as_of,
+                on_error=selected_error)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            selected_error(None, exc)
+        if selections:
+            policy["selected_config_by_symbol"] = selections
+    if not selections and not use_model_policy:
+        return None
     for symbol in symbols:
-        selected = load_active_policy(store.path.parent / "supervision", pc=pc, symbol=symbol,
-                                      feature_names=FEATURE_NAMES)
+        entry = selections.get(symbol)
+        if entry is not None:
+            policy["models_by_symbol"][symbol] = entry["models"]
+            policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(entry)
+            policy["policy_identities_by_symbol"][symbol] = entry["selection_id"]
+            # The explicitly chosen own manifest supplies this cycle. A second
+            # policy stays intact and is reported without becoming a wait or gate.
+            other = store.path.parent / "supervision/active" / f"{pc}-{symbol}.json"
+            if other.is_file():
+                details = {"selected_manifest": str(selected_config_path),
+                           "selection_id": entry["selection_id"], "other_policy_path": str(other),
+                           "policy_used": "selected_manifest", "other_policy_preserved": True}
+                try:
+                    other_value = json.loads(other.read_text(encoding="utf-8"))
+                    details["other_policy_newer"] = instant(other_value["installed_at"]) > instant(entry["selected_at"])
+                except (OSError, ValueError, KeyError, TypeError):
+                    details["other_policy_time_unknown"] = True
+                store.event(cycle_id, "selected_configuration_precedence", details, symbol=symbol)
+            continue
+        selected = (load_active_policy(store.path.parent / "supervision", pc=pc, symbol=symbol,
+                                       feature_names=FEATURE_NAMES) if use_model_policy else None)
         policy["models_by_symbol"][symbol] = [asdict(spec) for spec in selected["models"]] if selected else None
         policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(selected["dataset_scope"] if selected else default_scope)
         policy["policy_identities_by_symbol"][symbol] = selected["sha256"] if selected else None
@@ -180,7 +222,7 @@ def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration):
 
 class ShadowRunner:
     def __init__(self, *, store, pc, symbols, config=None, artifact_root=None, clock=utcnow,
-                 trainer=None, dataset_builder=None, stopped=lambda: False):
+                 trainer=None, dataset_builder=None, stopped=lambda: False, selected_config_path=None):
         self.store = store
         self.pc = pc
         self.symbols = tuple(symbols)
@@ -192,6 +234,8 @@ class ShadowRunner:
         self.trainer = trainer
         self.dataset_builder = dataset_builder
         self.stopped = stopped
+        self.selected_config_path = (Path(selected_config_path) if selected_config_path is not None else
+                                     self.store.path.parent / "model-supervision/active.json")
 
     def run_cycle(self, histories, *, reference_at, mode="shadow", cutoff=None, experiment="primary",
                   acquisition=None, intent_by_symbol=None, on_published=None, retry_symbols=None,
@@ -218,9 +262,19 @@ class ShadowRunner:
         configuration_hash = digest(configuration)
         cycle_id = digest(dict(pc=self.pc,reference_at=reference.isoformat(),configuration_hash=configuration_hash,
                                mode=mode,experiment=experiment))
+        from .models import DEFAULT_MODELS
+        default_models = tuple(self.config.models) == DEFAULT_MODELS
+        use_model_policy = self.config.use_supervised_models and mode == "live"
+        use_selected_manifest = mode in {"live", "shadow"} and default_models
         supervised_policy = (_supervised_cycle_policy(self.store, cycle_id, pc=self.pc, symbols=self.symbols,
-                                                     configuration=configuration)
-                             if self.config.use_supervised_models and mode == "live" else None)
+            configuration=configuration, selected_as_of=training_cutoff,
+            selected_config_path=self.selected_config_path if use_selected_manifest else None,
+            use_model_policy=use_model_policy)
+                             if use_model_policy or use_selected_manifest else None)
+        if supervised_policy is not None and supervised_policy.get("selected_config_by_symbol"):
+            # This overlay is excluded from the logical cycle identity. The
+            # first begin_cycle writer owns it; retries reuse that frozen choice.
+            configuration["selected_models_by_symbol"] = supervised_policy["selected_config_by_symbol"]
         initial = dict(pc=self.pc,symbols=list(self.symbols),reference_at=reference.isoformat(),mode=mode,
                        experiment=experiment,configuration_hash=configuration_hash,configuration=configuration,
                        supervised_model_policy=supervised_policy,
@@ -355,12 +409,21 @@ class ShadowRunner:
                       "source_manifest":_jsonable(getattr(history,"manifest",{}))}
             if supervised_policy is not None:
                 selected_specs = supervised_policy["models_by_symbol"][symbol]
-                if selected_specs is not None and list(dataset.feature_names) != supervised_policy["feature_names"]:
+                entry = supervised_policy.get("selected_config_by_symbol", {}).get(symbol)
+                selected_features = entry["feature_names"] if entry is not None else supervised_policy["feature_names"]
+                if selected_specs is not None and list(dataset.feature_names) != selected_features:
                     raise ContractError("Selected model policy features differ from the current dataset")
                 snapshot["model_selection"] = {"models": selected_specs,
                     "policy_sha256": supervised_policy["sha256"],
                     "active_policy_sha256": supervised_policy.get("policy_identities_by_symbol", {}).get(symbol),
                     "selection": "supervised" if selected_specs is not None else "configured_defaults"}
+                if entry is not None:
+                    tail = entry["max_training_rows"]
+                    for field in ("X", "y", "label_available_at", "reference_at", "target_close_at"):
+                        snapshot[field] = snapshot[field][-tail:]
+                    snapshot["manifest"] = {**snapshot["manifest"], "supervised_training_rows": len(snapshot["y"]),
+                        "max_training_rows": tail, "model_selection_id": entry["selection_id"]}
+                    snapshot["model_selection"].update(selection="selected_manifest", selection_id=entry["selection_id"])
             # Retain the actual observations used, rather than only transformed features.
             frame=_frame(history)
             available=pd.to_datetime(frame.available_at,utc=True)
@@ -387,7 +450,8 @@ class ShadowRunner:
             raise InterruptedError("Manual stop before training; original snapshot preserved")
         trainer=self.trainer or fit_ensemble
         selected_specs = snapshot.get("model_selection", {}).get("models")
-        model_config = configured_models(selected_specs) if selected_specs is not None else self.config.models
+        model_config = (selected_specs if snapshot.get("model_selection", {}).get("selection") == "selected_manifest"
+                        else configured_models(selected_specs)) if selected_specs is not None else self.config.models
         attempt=uuid.uuid4().hex
         training_start=instant(self.clock())
         self.store.event(cycle_id,"training_started",{"attempt":attempt,"snapshot_hash":snapshot_hash,
@@ -421,6 +485,7 @@ class ShadowRunner:
                  "training_started_at":training_start.isoformat(),"training_completed_at":finished.isoformat(),
                  "issue_after_target":issued>=reference+3*STEP,"dataset_manifest":snapshot["manifest"],
                  "model_selection":snapshot.get("model_selection"),
+                 "model_selection_id":snapshot.get("model_selection", {}).get("selection_id"),
                  "execution_blocked_reason":"recovered_older_cycle" if not allow_execution else
                      "issue_after_target" if issued>=reference+3*STEP else None,
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,

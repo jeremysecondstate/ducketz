@@ -42,8 +42,8 @@ class SelectionConfig:
     min_holdout_rows: int = 24
     min_class_count: int = 5
     min_calibration_rows: int = 32
-    max_selected: int = 3
-    max_candidates: int = 16
+    max_selected: int = 16
+    max_candidates: int = 21
     max_training_rows: int = 4096
     max_search_seconds: float = 180.0
     min_brier_improvement: float = 0.002
@@ -63,8 +63,8 @@ class SelectionConfig:
             value = getattr(self, field)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ContractError(f"{field} must be a positive integer")
-        if self.cv_folds > 5 or self.max_candidates > 24 or self.max_selected > 5:
-            raise ContractError("Research budget permits at most 5 folds, 24 candidates and 5 selected models")
+        if self.cv_folds > 5 or self.max_candidates > 24 or self.max_selected > 16:
+            raise ContractError("Research budget permits at most 5 folds, 24 candidates and 16 selected models")
         if self.max_training_rows < self.min_training_rows:
             raise ContractError("Training row budget is below the training minimum")
         for field in ("max_search_seconds", "min_brier_improvement", "min_log_loss_improvement",
@@ -80,11 +80,12 @@ class SelectionConfig:
 
 
 def default_candidates() -> tuple[ModelSpec, ...]:
-    """A fixed small search, with actual implemented adapters and two MLP shapes."""
+    """Research every genuine tabular family; unavailable libraries stay explicit."""
     definitions = (
         ("logistic_strong", "logistic", {"C": 0.05}),
         ("logistic_moderate", "logistic", {"C": 0.5}),
         ("nb_smooth", "gaussian_nb", {"var_smoothing": 1e-5}),
+        ("gaussian_nb_regularized", "gaussian_nb", {"var_smoothing": 0.1}),
         ("lda_shrunk", "lda", {"shrinkage": 0.8}),
         ("knn_uniform", "knn", {"n_neighbors": 31, "weights": "uniform"}),
         ("forest_shallow", "random_forest", {"n_estimators": 64, "max_depth": 3, "min_samples_leaf": 16}),
@@ -94,15 +95,70 @@ def default_candidates() -> tuple[ModelSpec, ...]:
          {"max_iter": 80, "max_leaf_nodes": 7, "l2_regularization": 5.0}),
         ("boost_shallow", "gradient_boosting",
          {"n_estimators": 64, "max_depth": 1, "min_samples_leaf": 16}),
+        ("adaboost_regularized", "adaboost", {"n_estimators": 50, "learning_rate": 0.05}),
+        ("catboost_shallow", "catboost", {"iterations": 64, "depth": 3, "l2_leaf_reg": 10.0}),
+        ("qda_regularized", "qda", {"reg_param": 0.5}),
+        ("ridge_regularized", "ridge", {"alpha": 10.0}),
+        ("passive_aggressive_regularized", "passive_aggressive", {"C": 0.05, "max_iter": 500}),
         ("mlp_small", "mlp", {"hidden_layer_sizes": (16,), "alpha": 1.0, "max_iter": 120}),
         ("mlp_two_layer", "mlp", {"hidden_layer_sizes": (32, 8), "alpha": 2.0, "max_iter": 120}),
+        ("mlp_compact", "mlp", {"hidden_layer_sizes": (8, 4), "alpha": 10.0, "max_iter": 120}),
         ("xgb_regularized", "xgboost", {"n_estimators": 80, "max_depth": 2, "reg_lambda": 5.0}),
         ("lightgbm_regularized", "lightgbm", {"n_estimators": 80, "num_leaves": 7, "reg_lambda": 5.0}),
     )
-    available = {row["family"] for row in registry_status() if row["status"] == "available"}
     return tuple(ModelSpec(name, family=family, parameters=parameters, calibration_fraction=0.25,
                            probability_calibration="sigmoid")
-                 for name, family, parameters in definitions if family in available)
+                 for name, family, parameters in definitions)
+
+
+def _catalog_report(specs):
+    """Separate adapter discovery from configured and actually attempted research."""
+    catalog = registry_status()
+    known = {item["family"] for item in catalog}
+    for family in sorted({spec.family for spec in specs} - known):
+        catalog.append({"family": family, "status": "adapter_not_implemented",
+                        "dependency": "No registered exact-target training adapter"})
+    for item in catalog:
+        item["candidate_names"] = [spec.name for spec in specs if spec.family == item["family"]]
+        item["configured"] = bool(item["candidate_names"])
+        if not item["configured"]:
+            item["nonselection_reason"] = ("adapter_not_implemented" if item["status"] == "adapter_not_implemented"
+                                            else "not_configured")
+    implemented = [item for item in catalog if item["status"] != "adapter_not_implemented"]
+    coverage = {"configured_variant_count": len(specs), "attempted_variant_count": 0,
+                "configured_family_count": len({spec.family for spec in specs}),
+                "attempted_family_count": 0, "implemented_family_count": len(implemented),
+                "available_family_count": sum(item["status"] == "available" for item in implemented),
+                "unconfigured_implemented_families": [item["family"] for item in implemented if not item["configured"]],
+                "dependency_unavailable_families": [item["family"] for item in implemented
+                                                    if item["status"] == "dependency_unavailable"],
+                "adapter_not_implemented_families": [item["family"] for item in catalog
+                                                     if item["status"] == "adapter_not_implemented"]}
+    return catalog, coverage
+
+
+def _finish_report(report, specs):
+    """Account for every configured candidate without changing promotion policy."""
+    statuses = {item["family"]: item["status"] for item in report["model_catalog"]}
+    recorded = {item["spec"]["name"] for item in report["candidates"]}
+    for spec in specs:
+        if spec.name not in recorded:
+            report["candidates"].append({"spec": asdict(spec), "status": "not_run", "folds": [],
+                "metrics": None, "reasons": list(report["reasons"]), "selected": False,
+                "shortlisted": False, "catalog_status": statuses[spec.family],
+                "selection_reason": "search_budget_exhausted" if report["status"] == "budget_exhausted"
+                                    else "insufficient_data"})
+    selected = {item["name"] for item in report["selected_specs"]}
+    for row in report["candidates"]:
+        row["selected"] = row["spec"]["name"] in selected
+        if row["selected"]:
+            row["selection_reason"] = "selected_validation_rank"
+        elif row.get("shortlisted"):
+            row["selection_reason"] = "proposal_not_promoted"
+    attempted = [item for item in report["candidates"] if item["status"] != "not_run"]
+    report["candidate_coverage"]["attempted_variant_count"] = len(attempted)
+    report["candidate_coverage"]["attempted_family_count"] = len({item["spec"]["family"] for item in attempted})
+    return report
 
 
 def _digest(value) -> str:
@@ -308,6 +364,8 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         raise ContractError("Candidate count exceeds the explicit research budget")
     if any(getattr(spec, "probability_calibration", "none") != "sigmoid" for spec in specs):
         raise ContractError("Selection candidates must explicitly use chronological sigmoid calibration")
+    catalog, coverage = _catalog_report(specs)
+    catalog_status = {item["family"]: item["status"] for item in catalog}
     incumbents = configured_models(incumbent_specs) if incumbent_specs else ()
     if len(incumbents) > 24:
         raise ContractError("Incumbent comparison exceeds the 24-model budget")
@@ -333,6 +391,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
               "historical_availability_limitation": ("Historical receipt timing includes explicit assumptions; results are conditional on them."
                   if any(kind != "actual" for kind in dataset.manifest.get("availability_kinds", [])) else None),
               "synthetic_policy": dataset.manifest.get("synthetic_policy"), "candidates": [], "folds": [],
+              "model_catalog": catalog, "candidate_coverage": coverage,
               "frozen_shortlist": [], "selected_specs": [], "holdout": None, "incumbent": None,
               "reasons": [], "limitation": "Probability validation does not establish trading profitability or future performance."}
     report["selection_id"] = _digest({"data": data_hash, "candidates": spec_dicts,
@@ -340,7 +399,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
     required_sessions = config.min_training_sessions + config.cv_folds + 1
     if len(ordered_sessions) < required_sessions:
         report["reasons"] = [f"need_at_least_{required_sessions}_sessions"]
-        return report
+        return _finish_report(report, specs)
     folds = []
     incumbent_folds = []
     incumbent_config = replace(config, max_training_rows=max(len(X), config.min_training_rows))
@@ -363,7 +422,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
     partition_reasons = [reason for partition in [*folds, holdout_partition] for reason in partition[2]["gate_reasons"]]
     if partition_reasons:
         report["reasons"] = sorted(set(partition_reasons))
-        return report
+        return _finish_report(report, specs)
     deadline = time.monotonic() + config.max_search_seconds
     cv_y = np.concatenate([y[validation] for _, validation, _ in folds])
     baseline_p = _baseline_predictions(folds, y)
@@ -372,7 +431,9 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
     report["cv_baselines"] = baselines
     predictions = {}
     for spec in specs:
-        row = {"spec": asdict(spec), "status": "failed", "folds": [], "metrics": None, "reasons": []}
+        row = {"spec": asdict(spec), "status": "failed", "folds": [], "metrics": None, "reasons": [],
+               "selected": False, "shortlisted": False, "selection_reason": "fit_failed",
+               "catalog_status": catalog_status[spec.family]}
         pieces = []
         try:
             for fold in folds:
@@ -391,25 +452,36 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
             if wins < math.ceil(config.min_winning_fold_fraction * len(folds)):
                 row["reasons"].append("too_few_folds_improve_baseline")
             row["status"] = "eligible_cv" if not row["reasons"] else "rejected_cv"
+            row["selection_reason"] = "qualified" if not row["reasons"] else "validation_rejected"
             predictions[spec.name] = p
         except Exception as exc:
             if isinstance(exc, InsufficientEvidenceError):
                 row["status"] = "insufficient_data"
+                row["selection_reason"] = "insufficient_data"
+            elif isinstance(exc, TimeoutError):
+                row["selection_reason"] = "search_budget_exhausted"
+            elif catalog_status[spec.family] in {"dependency_unavailable", "adapter_not_implemented"}:
+                row["selection_reason"] = catalog_status[spec.family]
             row["error"] = {"type": type(exc).__name__, "message": str(exc)}
         report["candidates"].append(row)
         if time.monotonic() >= deadline:
             report["status"] = "budget_exhausted"
             report["reasons"] = ["search_deadline_reached_no_promotion"]
-            return report
+            return _finish_report(report, specs)
     eligible_results = sorted((row for row in report["candidates"] if row["status"] == "eligible_cv"),
                               key=lambda row: (row["metrics"]["brier"], row["metrics"]["log_loss"], row["spec"]["name"]))
     shortlist, families = [], set()
     for row in eligible_results:
-        if row["spec"]["family"] not in families:
-            shortlist.append(next(spec for spec in specs if spec.name == row["spec"]["name"]))
-            families.add(row["spec"]["family"])
-        if len(shortlist) == config.max_selected:
-            break
+        if row["spec"]["family"] in families:
+            row["selection_reason"] = "duplicate_family"
+            continue
+        if len(shortlist) >= config.max_selected:
+            row["selection_reason"] = "configured_cap"
+            continue
+        shortlist.append(next(spec for spec in specs if spec.name == row["spec"]["name"]))
+        families.add(row["spec"]["family"])
+        row["shortlisted"] = True
+        row["selection_reason"] = "frozen_cv_shortlist"
     report["frozen_shortlist"] = [asdict(spec) for spec in shortlist]
     report["frozen_shortlist_sha256"] = _digest(report["frozen_shortlist"])
     report["status"] = "retained"
@@ -422,7 +494,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
             report["reasons"] = ["all_candidate_fits_failed"]
         else:
             report["reasons"] = ["no_candidate_passed_development_gates"]
-        return report
+        return _finish_report(report, specs)
     proposal_cv = metric(cv_y, np.mean([predictions[spec.name] for spec in shortlist], axis=0))
     report["proposal_cv"] = proposal_cv
     proposal_reasons = _metric_gates(proposal_cv, baselines, config)
@@ -440,7 +512,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
                     proposal_reasons.append(f"cv_{score}_worse_than_incumbent")
         if proposal_reasons:
             report["reasons"] = proposal_reasons
-            return report
+            return _finish_report(report, specs)
         # No holdout labels/scores have influenced fitting, ranking or this frozen proposal.
         held_y = y[holdout_rows]
         held_baselines = {name: metric(held_y, probabilities)
@@ -476,4 +548,4 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
                             else "insufficient_data" if isinstance(exc, InsufficientEvidenceError) else "failed")
         report["reasons"] = ["proposal_or_incumbent_fit_failed_no_promotion"]
         report["error"] = {"type": type(exc).__name__, "message": str(exc)}
-    return report
+    return _finish_report(report, specs)
