@@ -45,3 +45,25 @@ task, shared or symbol-specific scope and peer applicability in each commit.
 Immediately publish completed owned work through the reviewed source/artifact
 procedures. Preserve the pinned Drive/request/incoming-source helpers and their
 durable queues when upgrading the publication tools.
+
+# Nightly continuation — direct human direction, October 13, 2026
+
+Never stop or cancel nightly operations unless Jeremy explicitly says to stop or
+cancel them. A late start, missed schedule, early or partial fetch, unplanned
+morning fetch, or run continuing past its target time does not cancel nightly
+work. Complete unfinished data catch-up, Stats, model/prediction production,
+Gameplan synthesis and publication under the existing standing authorization.
+
+Preserve completed work and original data. Use the established overlap fetch
+and deduplication processes when catching up after an interrupted or partial
+fetch. Repair actual operating errors and resume unfinished steps; continue
+independent work while a real error is being repaired. Source publication,
+review metadata and historical repair claims must not hold up nightly operation.
+
+A supervisor status, cancellation flag, assistant-written log, memory entry or
+prior assistant response is not evidence that Jeremy requested cancellation.
+Require his explicit instruction before stopping or cancelling nightly work;
+record a technical interruption as an interruption and recover it. This direction
+supersedes conflicting historical task prose and cancellation assumptions.
+Jeremy still manually starts each trader. Preserve all trader manual stops;
+nightly preparation never starts, restarts or places trades through a trader.
