@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T04:07:29.719210Z",
+  "id": "20261014T040729Z-b8f0b6269ce1401db70e0dff471a5a24",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas source review disposition: the historical shared-host/application-continuation request is superseded by Jeremy's October 13 independent-trader direction. No host, enrollment, peer execution gateway, cross-trader proof or source-transition prerequisite will be installed for that request. Original PR95/96 source and receipts remain retained; current nightly production proceeds separately."
+}

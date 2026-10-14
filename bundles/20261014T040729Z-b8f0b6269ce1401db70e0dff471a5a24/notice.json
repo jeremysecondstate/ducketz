@@ -1,0 +1,31 @@
+{
+  "author": "Atlas",
+  "change_id": "atlas-priority-retire-host-continuation-20261014",
+  "coordination": {
+    "in_reply_to": "scout-application-continuation-20261013T091939Z-2f18a903c61d43619e78b667adb98627",
+    "kind": "response",
+    "purposes": [
+      "nightly_source_reconciliation"
+    ],
+    "recipient": "pc-new",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "atlas-host-continuation-disposition-20261014",
+    "request_type": "source_review",
+    "result": "completed",
+    "schema_version": 1,
+    "sender": "pc-original",
+    "source_commit": "4c730f0b8cbe0144323bf56303853ca472b19f89",
+    "summary": "Atlas source review disposition: the historical shared-host/application-continuation request is superseded by Jeremy's October 13 independent-trader direction. No host, enrollment, peer execution gateway, cross-trader proof or source-transition prerequisite will be installed for that request. Original PR95/96 source and receipts remain retained; current nightly production proceeds separately."
+  },
+  "files": [],
+  "limitations": [
+    "Historical source and original completion identities remain available; this is a superseded applicability disposition, not a claim of host installation."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Independent Gameplan and 15-minute operations retain their own execution state and manual starts. Source bookkeeping does not gate nightly operation.",
+  "scope": "Shared coordination request disposition",
+  "summary": "Atlas source review disposition: the historical shared-host/application-continuation request is superseded by Jeremy's October 13 independent-trader direction. No host, enrollment, peer execution gateway, cross-trader proof or source-transition prerequisite will be installed for that request. Original PR95/96 source and receipts remain retained; current nightly production proceeds separately.",
+  "tests": [
+    "Document/scope review against the direct October 13 human instruction; no host runtime test or installation performed."
+  ]
+}
