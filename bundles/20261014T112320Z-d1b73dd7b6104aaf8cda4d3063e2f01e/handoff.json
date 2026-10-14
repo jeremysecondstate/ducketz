@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T11:23:20.762286Z",
+  "id": "20261014T112320Z-d1b73dd7b6104aaf8cda4d3063e2f01e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Independent intraday supervision composed on main; cross-trader telemetry removed and installed on Scout."
+}

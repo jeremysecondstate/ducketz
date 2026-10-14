@@ -1,0 +1,79 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T111902Z-6f5f18c3c06a43ce86753d24e31a3e22",
+  "change_id": "20261014T111902Z-6f5f18c3c06a43ce86753d24e31a3e22",
+  "commit_sha": "d50c7eae80aaed9f48005a785ad0cbb84669590e",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared independent research and supervision source applies separately to Atlas and Scout.",
+    "Compose the existing Scout selector, per-symbol policy store, supervisor, research/runtime and offline evaluation APIs on exact current common main while preserving main model/store/prediction/provider helpers.",
+    "Retain receipt-aware chronological calibration, effective candidate row caps, one completed-session holdout gate, frozen per-session decisions and per-cycle model/population scope recovery.",
+    "Use only the installed local profile and pinned watchlist for membership. No peer service, another trader account or legacy admission/compatibility source is introduced.",
+    "Repair resource telemetry to read only current-process CPU and memory plus aggregate host metrics. Remove other-process enumeration and trader command-line inspection; preserve original saved measurement records.",
+    "Restore full LiveHistories genuine-availability integration coverage and the standalone point-in-time evaluation dependency instead of excluding the missing source.",
+    "Retain Scout supervision record 20261014T101440Z-8776bf544ad74e9192b5486a2fe20ec1, Atlas supervision 20261014T101507Z-3c37467549f549aa84661551f14897fa, completed-session repair 20261014T104752Z-21dd3694738c437bbff9aa7d4eb5824e, evaluated-scope repair 20261014T110241Z-4cf28b76f0ff450ca79d30f97be97562 and common model API 20261014T103931Z-459c241a85b54403970ed5a383bc3957.",
+    "Scout retains its existing single supervisor entrypoint, policy registry and native task. Atlas alternate selector/aggregate registry/native helper findings and broader executor/nightly composition remain separate source work; no production wait."
+  ],
+  "files": [
+    "docs/development/intraday-nightly-supervision.md",
+    "ml/intraday/data.py",
+    "ml/intraday/evaluation.py",
+    "ml/intraday/model_policy.py",
+    "ml/intraday/model_selection.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/supervision.py",
+    "ml/intraday/supervision_data.py",
+    "tests/test_intraday_data.py",
+    "tests/test_intraday_evaluation.py",
+    "tests/test_intraday_model_policy.py",
+    "tests/test_intraday_model_selection.py",
+    "tests/test_intraday_runtime.py",
+    "tests/test_intraday_supervision.py",
+    "tests/test_intraday_supervision_data.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "3cc04c9591f33cade28b7a8ada8a8359dc0117fe",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "330 passing offline synthetic/fixture checks; one optional CatBoost skip because the adapter is absent. Upstream joblib NumPy deprecation warnings remain visible.",
+    "No production data acquisition/model training, provider or broker request, trader start/restart, manual-stop clearing, process restart, task registration or private export.",
+    "This source unit supports explicit live callers but does not install a missing trader entrypoint on main or configure/start a trader. Separate Atlas aggregate supervisor review and broader executor/nightly source composition remain retained."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/133"
+  ],
+  "remaining_source_work": "Atlas alternate selector/aggregate registry/native helper findings remain separate from this canonical Scout pipeline. Broader executor/nightly main composition retains all original records; no production or independent-trader wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded runtime records own-process and aggregate host resource metrics without inspecting another trader. Independent supervised cycles bind the evaluated population and frozen policy. Local installation does not restart a process or enable a trader.",
+  "scope": "Shared source independently applicable to Atlas and Scout. Private policy/model/cycle/history state and native task retained.",
+  "summary": "Independent intraday supervision composed on main; cross-trader telemetry removed and installed on Scout.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-14T11:19:23.162720Z",
+      "output_sha256": "7c78c66b9846d2f07125defeeceec3f33b2454ef37a4706543a97268696522f1",
+      "result": "330 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:19:02.407981Z"
+    },
+    {
+      "check": "isolated source",
+      "completed_at_utc": "2026-10-14T11:20:33.132303Z",
+      "output_sha256": "e6dbd78262cc51bc0d2849fb0bff5c56e38319533edc52deb920c0a4fd02d5ce",
+      "result": "330 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:20:12.533792Z"
+    },
+    {
+      "check": "fresh common main",
+      "completed_at_utc": "2026-10-14T11:22:07.422688Z",
+      "output_sha256": "7e0261b6ddacf7b2a5ee6e0b0d937a431db16137faef32d135089dd20bd2fc2b",
+      "result": "330 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:21:46.918437Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-14T11:21:43.251613Z",
+      "output_sha256": "898905db1017220adc1db17ece0d13b8ef8d014ceaa68ae361a2aef2d8cbefb9",
+      "result": "330 passed, 1 optional CatBoost skip; no offline-verifier violations",
+      "started_at_utc": "2026-10-14T11:21:22.265432Z"
+    }
+  ]
+}
