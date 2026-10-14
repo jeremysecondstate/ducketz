@@ -1,0 +1,94 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T080427Z-27f6b768b2584dd7883ca38e144afadc",
+  "change_id": "20261014T080427Z-27f6b768b2584dd7883ca38e144afadc",
+  "commit_sha": "3ff148aa18b107b96cac16c6cb9059fb7962cd12",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared portfolio capture applies independently to Atlas and Scout.",
+    "Compose the installed canonical symbol API and optional working-order identity evidence onto current main without changing the local watchlist.",
+    "Preserve account-wide cash reservations, gross exposure, existing default universe and cash policy while explicit symbols select only quote and share maps.",
+    "Order identities come from the requesting trader existing broker session and bind its own portfolio fingerprint only when requested; no peer state or shared ledger is required.",
+    "Add raw fake-broker behavioral coverage for serial and parallel reads, malformed universes, foreign-symbol reserves, identity completeness and fingerprint binding.",
+    "Compose existing test-path hygiene from Completion-Record 20261014T053708Z-0ce315ff06c345958338db8fd7660e63 without replaying its historical runtime.",
+    "Retain executor Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4; broader executor and nightly composition remain separate."
+  ],
+  "files": [
+    "ml/stock_trader/state.py",
+    "ml/stock_trader/contracts.py",
+    "tests/test_stock_portfolio_scope.py",
+    "tests/conftest.py",
+    "tests/test_cross_pc_import_hygiene.py"
+  ],
+  "initial_verification_exception": "Exact peer suite initially had four import failures from pinned helper requests collision. Existing local test-path hygiene resolved all four without changing peer production helpers. Original failure evidence is retained privately.",
+  "installation_stage": "state_and_hygiene_already_exact_optional_contract_field_compatible_new_test_installed",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary fixtures and fake broker responses; no provider requests, production replay, live training or trader operation.",
+    "This is a compatible portfolio API foundation; remaining nightly display and full independent executor source composition are separate.",
+    "Shared baseline test symbols are bound only within the verification process; installed private watchlist and operating bindings remain unchanged."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/122",
+    "https://github.com/jeremysecondstate/ducketz/pull/120"
+  ],
+  "main_commit": "0ddf2c3c478a48a9aa83e90ddedb3541404960af",
+  "peer_adoption": {
+    "changed": [
+      "tests/test_nightly_recovery.py"
+    ],
+    "completion_record": "20261014T065645Z-bee2c5a8b4ac4fe894a4ab2c3dd8f02f",
+    "duplicate_source_or_pr": false,
+    "helpers_already_exact": true,
+    "retained_scout_record": "20261014T062717Z-a9bad9ad3004431687f3540595009b13",
+    "source": "62a8698fc7c54bc4815ab9700a5d48b7bfcd4706"
+  },
+  "remaining_source_work": "Next bounded source unit is Stats display and immutable receipt-pinned reader coverage; nightly orchestration and executor closure remain separate.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Portfolio source is already installed on Scout. Preserve its additional contract fields and all other writers; install only the new behavioral regression. No runtime restart or loaded-process claim.",
+  "scope": "Shared source applies independently to Atlas and Scout; private symbols and operating bindings retained.",
+  "summary": "Scout portfolio scope API is integrated on main; exact Atlas recovery regression is adopted locally.",
+  "tests": [
+    {
+      "check": "portfolio sealed source",
+      "completed_at_utc": "2026-10-14T08:04:40.140805Z",
+      "output_sha256": "cee0b4da5256da0ea33eab6beed3200a43b15f4cfbf4ca6e8db6612c4f8f8a2c",
+      "result": "78 passed; no skips or network verifier violations",
+      "started_at_utc": "2026-10-14T08:04:27.503054Z"
+    },
+    {
+      "check": "portfolio isolated source",
+      "completed_at_utc": "2026-10-14T08:05:39.528911Z",
+      "output_sha256": "5ecf2df73b1fd3f4cf8d79801e35f0c8d79f66944e4c99602c111987d7406000",
+      "result": "78 passed; no skips or network verifier violations",
+      "started_at_utc": "2026-10-14T08:05:26.653844Z"
+    },
+    {
+      "check": "portfolio main candidate",
+      "completed_at_utc": "2026-10-14T08:07:26.718681Z",
+      "output_sha256": "2ebc979b268828da63a0807df6b4a21694241fa29a9cc97b3d065664d421ee54",
+      "result": "78 passed; no skips or network verifier violations",
+      "started_at_utc": "2026-10-14T08:07:13.098049Z"
+    },
+    {
+      "check": "portfolio installed Scout",
+      "completed_at_utc": "2026-10-14T08:08:05.825190Z",
+      "output_sha256": "972bebb8c02e3f86df17865ce2e16224d24c093de74597e20b396ae14c2bc14a",
+      "result": "22 passed; no skips or network verifier violations",
+      "started_at_utc": "2026-10-14T08:08:00.535526Z"
+    },
+    {
+      "check": "peer recovery isolated composition",
+      "completed_at_utc": "2026-10-14T07:57:31.263284Z",
+      "output_sha256": "cbca7550d664ea7bb8488264aca57f598bbc93f160d78d8cea9dc622c09606b0",
+      "result": "105 passed; no skips or network verifier violations",
+      "started_at_utc": "2026-10-14T07:57:23.198401Z"
+    },
+    {
+      "check": "peer recovery installed Scout",
+      "completed_at_utc": "2026-10-14T07:58:22.494103Z",
+      "output_sha256": "a3e82a01d0e80459eb15689429c2f70d441f0575ef9cbd836bc9a380f5417aa9",
+      "result": "105 passed; no skips or network verifier violations",
+      "started_at_utc": "2026-10-14T07:58:14.674740Z"
+    }
+  ]
+}

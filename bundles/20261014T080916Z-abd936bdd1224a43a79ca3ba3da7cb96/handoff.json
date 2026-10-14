@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T08:09:16.846641Z",
+  "id": "20261014T080916Z-abd936bdd1224a43a79ca3ba3da7cb96",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout portfolio scope API is integrated on main; exact Atlas recovery regression is adopted locally."
+}
