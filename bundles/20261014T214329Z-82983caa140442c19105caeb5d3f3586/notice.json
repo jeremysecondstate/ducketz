@@ -1,0 +1,49 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T214015Z-aff2dc42e0b947d795fdc2cdbf99e082",
+  "change_id": "20261014T214015Z-aff2dc42e0b947d795fdc2cdbf99e082",
+  "commit_sha": "d3126cba354eb6bba82538ba794e6e2af4f0dca7",
+  "details": [
+    "Task observed-data-calibrated-model-experiment; actor Scout; common research tools applicable independently to either PC.",
+    "Exclude synthetic candles before features and labels while preserving exact targets, observed receipts, elapsed gaps and distinct feature provenance.",
+    "Compare a fixed calibrated two-model ensemble, prior-only reference-direction and prevalence baselines, and original default ensemble on identical chronological evaluation keys.",
+    "Freeze five-date development and final evaluation blocks; never promote, write model policies or control a trader."
+  ],
+  "files": [
+    "ml/intraday/observed_data.py",
+    "ml/intraday/observed_research.py",
+    "tests/test_intraday_observed_data.py",
+    "tests/test_intraday_observed_research.py"
+  ],
+  "limitations": [
+    "Offline fixture tests and fixed historical research comparisons do not establish profitability or future performance.",
+    "Original raw data, fitted models, symbol bindings, trading history and private reports remain local.",
+    "Five-date frozen research fits do not reproduce the live fifteen-minute retraining cadence."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/135"
+  ],
+  "remote_sha": "d3126cba354eb6bba82538ba794e6e2af4f0dca7",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Research-only additions with no live imports or active policy changes; no application restart, runtime deployment, trading or operating prerequisite.",
+  "scope": "shared",
+  "stages": {
+    "installed": false,
+    "main_integrated": false,
+    "runtime_deployed": false,
+    "source_published": true
+  },
+  "summary": "Observed-candle calibrated model research is published for review",
+  "tests": [
+    {
+      "check": "Observed dataset, fixed research evaluator and model adapter offline suites",
+      "completed_at_utc": "2026-10-14T21:41:47.638285Z",
+      "import_evidence_sha256": "73c6977ae0fa6dae6065d2277fc0a69d6eb89971f1c3dd0a03019d936b003cd5",
+      "output_sha256": "3c27f882887bc1f99e8b5f6c2295c87f761498396572cd3b79a923b68fa5337f",
+      "passed": 97,
+      "skip_reason": "Optional CatBoost dependency absent",
+      "skipped": 1,
+      "started_at_utc": "2026-10-14T21:41:34.853695Z"
+    }
+  ]
+}
