@@ -112,8 +112,8 @@ def test_asserted_stop_cannot_interrupt_child_during_failed_telemetry(tmp_path):
 
 
 def test_older_human_resume_does_not_authorize_later_stop(config, tmp_path, monkeypatch):
-    prior = tmp_path / "attempt"
-    prior.mkdir()
+    prior = Path(config["datastore"]) / "ml/overnight-runs/attempt"
+    prior.mkdir(parents=True)
     stop = prior / "stop-request.json"
     stop.write_text("new human stop")
     state = {"deadline_at": "2026-10-12T11:00Z", "action_date": "2026-10-12", "source_session": "2026-10-09",
