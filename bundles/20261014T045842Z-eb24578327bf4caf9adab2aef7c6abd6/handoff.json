@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T04:58:42.525855Z",
+  "id": "20261014T045842Z-eb24578327bf4caf9adab2aef7c6abd6",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Only Jeremy actual explicit request authorizes any disruption of nightly operation; stored claims and all substitute evidence provide no authority."
+}
