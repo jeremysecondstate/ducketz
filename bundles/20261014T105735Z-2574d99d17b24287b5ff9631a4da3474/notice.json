@@ -1,0 +1,37 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T105516Z-f359f17277e24f478d10994bea01ab07",
+  "change_id": "20261014T105516Z-f359f17277e24f478d10994bea01ab07",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    }
+  ],
+  "limitations": [
+    "Read-only source and saved-evidence checks do not authenticate to a broker/provider, establish live-data freshness or authorize orders.",
+    "Stacked source retains its prior intraday dependency chain and separate main integration."
+  ],
+  "local_installation": "Two exact reviewed diagnostic files installed on Scout; no live authority or runtime deployment claim.",
+  "predecessor_completion_record": "20261014T104752Z-21dd3694738c437bbff9aa7d4eb5824e",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/131",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install only reviewed diagnostic source; manual trading remains explicitly human-started, with runtime broker/provider/quote/account checks unchanged.",
+  "scope": "shared",
+  "source_commit": "e57d0826b7a696ff305976efa9e11b59e4b29452",
+  "summary": "Scout: align read-only readiness with delegated model fitting and independent broker-local manual start",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-14T10:55:59.907380Z",
+      "description": "Three offline readiness, Scout prestart and local-start suites",
+      "output_sha256": "af18bc67a669c638851a4bedf0d9e3abcd2e6c2a2dc2d6183cf0fb9a3a10d83a",
+      "result": "139 passed"
+    }
+  ]
+}

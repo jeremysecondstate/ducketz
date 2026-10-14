@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:57:35.773354Z",
+  "id": "20261014T105735Z-2574d99d17b24287b5ff9631a4da3474",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout: align read-only readiness with delegated model fitting and independent broker-local manual start"
+}
