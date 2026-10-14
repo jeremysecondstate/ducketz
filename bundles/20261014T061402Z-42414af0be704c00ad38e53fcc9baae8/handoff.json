@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T06:14:02.922628Z",
+  "id": "20261014T061402Z-42414af0be704c00ad38e53fcc9baae8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed narrow nightly recovery fixes; preserved continuation and independent trader behavior."
+}

@@ -1,0 +1,58 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T060845Z-976e0a2e51f543578f4a4878ae4f0b36",
+  "change_id": "20261014T060845Z-976e0a2e51f543578f4a4878ae4f0b36",
+  "commit_sha": "6e3e3995b690442add38424308cac66ae8456172",
+  "files": [
+    "ml/nightly_workflow.py",
+    "ml/overnight_runtime.py",
+    "tests/test_nightly_workflow.py",
+    "tests/test_overnight_supervision.py",
+    "tests/test_nightly_continuation.py"
+  ],
+  "installation_stage": "five_reviewed_paths_installed_and_offline_checked",
+  "integration_stage": "tested_stacked_pr",
+  "limitations": [
+    "Offline fixtures; no provider calls, broker operations or production reruns.",
+    "Stacked on the previously published nightly continuation source; main integration remains separate from operating preparation.",
+    "Installed source does not establish the version loaded by an existing process."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/116"
+  ],
+  "rejected_adoption": "Scout cancellation handoff b5ecd42df6a0dd58439dc75752330b216e590dbf would replace newer Atlas continuation with deadline termination, persisted stop authority, source/repair gates and cross-trader reservation dependencies. Those bytes were not installed.",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T055212Z-f63cd552ecdf49a086853a95ff696c93",
+    "20261014T050106Z-0e807c66479e4deb83823375e163fe5c"
+  ],
+  "runtime_implications": "Future preparation imports gain idempotent terminal recovery and local datastore containment; preserve current workers, schedules, private state and manual trader controls.",
+  "scope": "shared",
+  "summary": "Atlas installed narrow nightly recovery fixes; preserved continuation and independent trader behavior.",
+  "tests": [
+    {
+      "check": "sealed-source",
+      "completed_at_utc": "2026-10-14T06:09:13.103299Z",
+      "exit_code": 0,
+      "output_sha256": "9eb5c672726ce5a52d804315f817621c74365ea855c1151668e85778ae5d86b7",
+      "result": "........................................................................ [ 52%]\r\n................................................................         [100%]\r\n136 passed in 24.65s",
+      "started_at_utc": "2026-10-14T06:08:46.913011Z"
+    },
+    {
+      "check": "isolated-publication",
+      "completed_at_utc": "2026-10-14T06:10:53.895230Z",
+      "exit_code": 0,
+      "output_sha256": "6efd322877573babc6c4715ac26904e5c76519ab0611ed7f5b653075e2940ca6",
+      "result": "........................................................................ [ 52%]\r\n................................................................         [100%]\r\n136 passed in 24.49s",
+      "started_at_utc": "2026-10-14T06:10:27.916421Z"
+    },
+    {
+      "check": "installed-atlas",
+      "completed_at_utc": "2026-10-14T06:12:47.377614Z",
+      "exit_code": 0,
+      "output_sha256": "ca8347d52bf4f81ce5fff432513a711a575ed11f48140b324a46ac6400251a29",
+      "result": "........................................................................ [ 52%]\r\n................................................................         [100%]\r\n136 passed in 23.87s",
+      "started_at_utc": "2026-10-14T06:12:21.998150Z"
+    }
+  ]
+}
