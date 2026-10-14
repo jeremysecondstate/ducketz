@@ -10,6 +10,17 @@ sends the result to Atlas. Sending that completed result finishes the handoff;
 there is no third account snapshot, Atlas acceptance, cross-trader verification,
 reconciliation or readiness ceremony before completion or the next night's run.
 
+Nightly operations must persist until complete unless Jeremy explicitly says to
+stop or cancel them. Never infer cancellation from an early or late start, an
+unscheduled morning or partial fetch, a missed window or deadline, a chat/model
+interruption, silence, or a supervisor's stop/cancellation record. Preserve
+completed outputs, handle actual errors, and recover/resume unfinished fetching,
+Stats, model, Gameplan synthesis/delivery and display work under the existing
+standing authority. Use existing overlap fetching and deduplication to fill real
+missing data after unscheduled fetches; retain unresolved gaps truthfully. A
+technical interruption is an operating exception to recover, never evidence of
+a human cancellation. This instruction applies to every subsequent night.
+
 Gameplan, Atlas 15m and Scout 15m execute independently and keep their own logs.
 Each trader obtains actual capacity from its own existing broker connection and
 manages only its own orders. No trader waits for another trader's state, service,
