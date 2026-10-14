@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T23:35:06.185969Z",
+  "id": "20261014T233506Z-ec67cb67c868409b8b591efbbe1d1c26",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed independent 15-minute candle collection with delayed final-bar completion after 17:00 Pacific; exact reviewed source published."
+}

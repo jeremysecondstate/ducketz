@@ -1,0 +1,184 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261014T233031Z-85f62c5949ab473bac0bb75b51b13186",
+  "change_id": "20261014T233031Z-85f62c5949ab473bac0bb75b51b13186",
+  "commit_sha": "15d6850da9496b98d7d27ec97a6eab1373da12bf",
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Check-15m-Readiness.cmd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/intraday.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-live-candles.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/account_gameplan/__init__.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/book.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/cancellation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/candle_collection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/local_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/readiness.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/intraday_order_fixtures.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_account_authority.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_cancellation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_candle_close.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_candle_completion.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_candle_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_final_scoring.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_input_provenance.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_native_ledger.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_readiness.py"
+    }
+  ],
+  "limitations": [
+    "Reviewed source suite:688 passed. Fresh isolated suite:687 passed and one Tk initialization skip; installed focused checks:136 passed.",
+    "All checks use offline fixtures. No live provider/broker action or trader control was used for verification.",
+    "Existing intraday SQLite persistence and in-memory histories are used; historical Parquet exports are not rewritten.",
+    "Already running processes retain their loaded code until a human restarts them."
+  ],
+  "local_installation": "completed_exact_reviewed_owned_files",
+  "main_integration": "draft_PR_pending",
+  "peer_applicability": "Shared source applies independently to the peer own symbols and local bindings; no reciprocal acceptance or operating wait.",
+  "prior_source_completion": "20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/139",
+  "remote_sha": "15d6850da9496b98d7d27ec97a6eab1373da12bf",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_deployment": "not_restarted",
+  "runtime_implications": "Each human-started trader collects only its own symbols. At 17:00 America/Los_Angeles new forecast/order work ends while the collector finishes the final 16:45-17:00 candle, including delayed publication, scores saved final outcomes locally, then stops. Manual stops retain priority. No next-day autostart or cross-trader dependency. Existing bindings, active selections and histories are preserved.",
+  "scope": "shared",
+  "source_publication": "pushed_remote_sha_verified",
+  "summary": "Atlas installed independent 15-minute candle collection with delayed final-bar completion after 17:00 Pacific; exact reviewed source published.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-14T23:33:17.395061Z",
+      "output_sha256": "a3287b52cbd33dbfd62133fbb0276122a4f7e1a45e82f44d0ef6976277226d59",
+      "result": "........................................................................ [ 10%]\r\n........................................................................ [ 20%]\r\n........................................................................ [ 31%]\r\n........................................................................ [ 41%]\r\n.........................s.............................................. [ 52%]\r\n........................................................................ [ 62%]\r\n........................................................................ [ 73%]\r\n........................................................................ [ 83%]\r\n........................................................................ [ 94%]\r\n........................................                                 [100%]\r\n=========================== short test summary info ===========================\r\nSKIPPED [1] tests\\test_intraday_ui.py:446: Tk unavailable: invalid command name \"tcl_findLibrary\"\r\n687 passed, 1 skipped in 37.19s\r\n\n",
+      "started_at_utc": "2026-10-14T23:32:38.340905Z"
+    }
+  ]
+}
