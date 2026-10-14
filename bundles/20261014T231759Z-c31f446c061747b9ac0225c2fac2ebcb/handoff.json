@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T23:17:59.425949Z",
+  "id": "20261014T231759Z-c31f446c061747b9ac0225c2fac2ebcb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Independent quarter-hour native-minute persistence installed; final Pacific window drains before data closure"
+}

@@ -1,0 +1,52 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T231445Z-9a336c390a594b75b15cd92b3690dfe4",
+  "change_id": "20261014T231445Z-9a336c390a594b75b15cd92b3690dfe4",
+  "commit_sha": "61d4c37fc5b4fc76ffebcb96350dcc5a512dc448",
+  "details": [
+    "Actor Scout; task fresh-quarter-minute-feed; common source independently applicable to each PC with its own symbols and manual session.",
+    "Archive original one-minute responses and upsert canonical raw and normalized minute history before aggregation or model work.",
+    "Use a separate manual-session data worker for exact completed quarter-hour windows; model and scoring consumers read saved working frames.",
+    "Latch the Pacific trading date, retry unavailable intervals fairly, save the final 16:45-17:00 window after late publication, then close market-data acquisition without opening another day.",
+    "Retain missing native minutes and marked aggregate provenance, causal receipt times, existing model exclusions, and original forecasts and trading records."
+  ],
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/minute_persistence.py",
+    "ml/intraday/minute_feed.py",
+    "tests/test_intraday_live_session.py",
+    "tests/test_intraday_minute_persistence.py",
+    "tests/test_intraday_minute_feed.py"
+  ],
+  "limitations": [
+    "Offline mocked-provider tests establish data plumbing and timing, not model profitability or loaded process behavior.",
+    "Native provider omissions remain explicit; canonical history never gains fabricated minutes and the observed-only model retains its exclusions.",
+    "Canonical writes serialize within this process; other existing Parquet writers retain their separate file ownership.",
+    "Source is based on the published manual-trader/model branch; main integration and peer installation remain separate."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/138"
+  ],
+  "remote_sha": "61d4c37fc5b4fc76ffebcb96350dcc5a512dc448",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Jeremy authorized Scout local installation. The new data worker loads at the next human manual trader startup; no process is started or restarted by installation. Other PCs keep their own symbols, bindings and manual control.",
+  "scope": "shared",
+  "stages": {
+    "main_integrated": false,
+    "running_process_new_feed_loaded": false,
+    "scout_installed_offline_verified": true,
+    "source_published": true
+  },
+  "summary": "Independent quarter-hour native-minute persistence installed; final Pacific window drains before data closure",
+  "tests": [
+    {
+      "candidate_completed_at": "2026-10-14T23:15:41.335645Z",
+      "candidate_output_sha256": "4309660f32df375a086e70e4dcb2abfa2f23ff08a0d5a7bd02c9fdfe22aa9307",
+      "check": "Offline native persistence, acquisition timing/retries, manual startup wiring and model recipe",
+      "installed_completed_at": "2026-10-14T23:16:27.928886Z",
+      "installed_output_sha256": "9d903451756a4b3c1a4034d2f1c16b25879b20cea09d893e500a0ca6c7a2c811",
+      "passed": 108,
+      "skipped": 0
+    }
+  ]
+}
