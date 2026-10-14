@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T22:21:05.437840Z",
+  "id": "20261014T222105Z-4785562de8e64f42b1994e713062095b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Startup-latched observed-only calibrated manual model recipe published and locally installed"
+}

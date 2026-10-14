@@ -1,0 +1,49 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T221558Z-2a8c5a48360c4b8d82e674787c72a6c6",
+  "change_id": "20261014T221558Z-2a8c5a48360c4b8d82e674787c72a6c6",
+  "commit_sha": "0bf31282f606c1110ef8ad85abcf9c046782f2e6",
+  "details": [
+    "Actor Scout; task install-observed-calibrated-manual-models; common startup adapter is independently applicable to either PC.",
+    "Read the explicit local human experiment recipe once at manual startup and inject observed-only datasets plus the fixed two calibrated models.",
+    "Retain exact reference and target timing, newest causal row window, truthful sample insufficiency and complete two-member fit requirements.",
+    "Preserve running sessions, active supervision policies, manual stops, original orders and all execution logic; local installation and restart remain separate facts.",
+    "Adopt the exact observed-data adapter from Completion-Record 20261014T214015Z-aff2dc42e0b947d795fdc2cdbf99e082."
+  ],
+  "files": [
+    "ml/intraday/live_session.py",
+    "ml/intraday/observed_data.py",
+    "ml/intraday/live_model_recipe.py",
+    "tests/test_intraday_live_model_recipe.py"
+  ],
+  "limitations": [
+    "Offline fixture and mocked startup checks make no broker or provider calls and establish no profitability.",
+    "The reviewed base is the existing published manual-trader source branch; main integration is a separate operation.",
+    "Insufficient observed data remains explicit without synthetic or previous-model fallback."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/137"
+  ],
+  "remote_sha": "0bf31282f606c1110ef8ad85abcf9c046782f2e6",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Scout source and private startup recipe installed under direct human authorization. Existing process unchanged; new models activate at next human manual startup. Other PCs retain their own independent bindings and restart control.",
+  "scope": "shared",
+  "stages": {
+    "main_integrated": false,
+    "running_process_new_models_loaded": false,
+    "scout_installed_offline_verified": true,
+    "source_published": true
+  },
+  "summary": "Startup-latched observed-only calibrated manual model recipe published and locally installed",
+  "tests": [
+    {
+      "candidate_completed_at": "2026-10-14T22:16:29.109161Z",
+      "candidate_output_sha256": "bf6cd4727596fbf247964376a313b0ac5e4226c1a76cb88da1b6ae3e672a6bcf",
+      "check": "Offline recipe, fit and actual startup-hook tests; no client or process side effects",
+      "installed_completed_at": "2026-10-14T22:18:42.077830Z",
+      "installed_output_sha256": "b190a99b791c3ff19b82ffd012bf2b66b349214f6de796d6a410a6bd26430b1e",
+      "passed": 28,
+      "skipped": 0
+    }
+  ]
+}
