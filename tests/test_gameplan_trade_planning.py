@@ -163,6 +163,58 @@ def test_context_has_no_entry_quantity_and_high_price_does_not_invent_fractional
     assert result.projected_quantity_reason == "INSUFFICIENT_WHOLE_SHARE_CAPACITY"
 
 
+def test_expired_entry_does_not_reserve_cash_or_claim_the_remaining_horizon():
+    state = snapshot(cash=75)
+    state["observed_at"] = "2026-09-09T12:00:00Z"
+    frame = pd.DataFrame([forecast(hour=4), forecast(hour=5)])
+    result = plan_trade_rows(frame, state, bands(frame.to_dict("records")))
+    future = plan_trade_rows(frame.iloc[[1]], state, bands(frame.iloc[[1]].to_dict("records")))
+
+    for field in ("trade_quantity", "projected_trade_quantity", "projected_trade_budget",
+                  "projected_trade_notional", "scheduled_trade_quantity", "trade_notional_reserved"):
+        assert result.iloc[0][field] == 0
+    assert result.iloc[0].trade_planning_reason == "EXPIRED_BEFORE_PREPARATION"
+    # Equality with the observation clock remains a current opportunity.
+    assert result.iloc[1].trade_quantity == future.iloc[0].trade_quantity > 0
+    assert result.iloc[1].projected_trade_quantity == future.iloc[0].projected_trade_quantity
+    assert result.iloc[1].trade_planning_reason == "PROVISIONAL_BUY"
+
+
+def test_expired_entry_keeps_native_reservations_and_original_snapshot():
+    from copy import deepcopy
+    from ml.gameplan_trade_planning import _planning_snapshot
+    from ml.planning_reservations import PENDING
+
+    state = snapshot()
+    state.update(observed_at="2026-09-09T12:00:00Z", working_order_count=0,
+                 held_shares={"AAPL": 5}, symbol_exposure={"AAPL": 50},
+                 stock_market_value_by_symbol={"AAPL": 50}, gross_exposure=50,
+                 pending_buy_shares={"AAPL": 0}, pending_sell_shares={"AAPL": 0})
+    state["ownership"] = {"status": "REVIEW_REQUIRED", "safe_for_planning": False,
+        "reason_codes": [PENDING], "account_matches": True,
+        "last_saved_reconciliation_ready": True, "last_saved_reconciliation_at": "2026-09-09T00:00:00Z",
+        "current_broker_reconciliation_performed": False, "blocked_symbols": [],
+        "reserved_buy_cash_by_symbol": {"AAPL": 220},
+        "active_allocations": [{"symbol": "AAPL", "horizon": "15m", "stream": "scout-15m",
+            "allocation_id_sha256": "a" * 64, "owned_shares": 3,
+            "reserved_buy_shares": 2, "reserved_sell_shares": 1}]}
+    original = deepcopy(state)
+    planning, note = _planning_snapshot(state)
+    frame = pd.DataFrame([forecast(hour=4), forecast(hour=5)])
+    result = plan_trade_rows(frame, planning, bands(frame.to_dict("records")))
+
+    assert note is None and state == original
+    assert planning["available_cash"] == 780 and planning["reserved_cash"] == 220
+    assert planning["pending_buy_shares"] == {"AAPL": 2}
+    assert planning["pending_sell_shares"] == {"AAPL": 1}
+    assert planning["ownership"]["active_allocations"] == original["ownership"]["active_allocations"]
+    assert planning["ownership"]["current_broker_reconciliation_performed"] is False
+    assert result.iloc[0].trade_quantity == 0
+    assert result.iloc[0].trade_planning_reason == "EXPIRED_BEFORE_PREPARATION"
+    assert result.iloc[1].trade_quantity > 0
+    assert result.trade_notional_reserved.sum() <= planning["available_cash"] * .95
+
+
 def test_new_bullish_boundary_supplies_a_scheduled_entry():
     row = forecast(probability=.51)
     result = plan_trade_rows(pd.DataFrame([row]), snapshot(equity=100000), bands([row])).iloc[0]

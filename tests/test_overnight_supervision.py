@@ -112,29 +112,50 @@ def test_live_output_reports_error_before_process_finishes(tmp_path):
     assert "finished" not in str(alerted[0]["recent_output"])
 
 
-def test_deadline_stops_only_owned_child_and_writes_receipt(tmp_path, monkeypatch):
+@pytest.mark.parametrize("target_offset", [-1, 0.1])
+def test_publication_target_never_cancels_child(tmp_path, monkeypatch, target_offset):
     original = _run_stage
     def slow(_command, **kwargs):
-        return original([sys.executable, "-u", "-c", "import time; time.sleep(30)"], **kwargs)
+        return original([sys.executable, "-u", "-c", "import time; time.sleep(0.2); print('completed')"], **kwargs)
     monkeypatch.setattr("ml.overnight_runtime._run_stage", slow)
-    with pytest.raises(TimeoutError):
-        run(tmp_path, deadline=utc_timestamp() + pd.Timedelta(seconds=0.5), poll_seconds=0.03)
+    run(tmp_path, stop_after="loop_a_close_fetch",
+        deadline=utc_timestamp() + pd.Timedelta(seconds=target_offset), poll_seconds=0.03)
     state = overnight_status(tmp_path)
-    assert state["status"] == "TIMED_OUT"
+    assert state["status"] == "COMPLETE"
     assert state["receipt_present"]
+    report = json.loads((Path(state["run_path"]) / "stage-report.json").read_text())
+    assert report["publication_target_missed"] is True
 
 
-def test_controlled_stop_is_receipted_and_resumable(tmp_path, monkeypatch):
-    original = _run_stage
+def test_immediate_human_action_is_receipted(tmp_path, monkeypatch):
+    from ml.overnight_runtime import HumanRequestedStop
     def stop(_command, **kwargs):
-        request_stage_stop(tmp_path, kwargs["log_path"].parent, "test verified stalled stage")
-        return original([sys.executable, "-c", "import time; time.sleep(30)"], **kwargs)
+        raise HumanRequestedStop("fixture immediate direct human action")
     monkeypatch.setattr("ml.overnight_runtime._run_stage", stop)
     with pytest.raises(InterruptedError):
         run(tmp_path, poll_seconds=0.03)
     state = overnight_status(tmp_path)
     assert state["status"] == "CANCELLED"
     assert state["receipt_present"]
+
+
+def test_automatic_stop_request_is_rejected_before_writing(tmp_path):
+    with pytest.raises(PermissionError, match="explicit stop instruction"):
+        request_stage_stop(tmp_path, tmp_path, "Late start or missed target")
+    assert not (tmp_path / "stop-request.json").exists()
+
+
+@pytest.mark.parametrize("asserted_authority", [False, True])
+def test_historical_supervisor_stop_does_not_cancel_resumed_work(tmp_path, asserted_authority):
+    stop = tmp_path / "stop-request.json"
+    stop.write_text(json.dumps({"reason": "Historical supervisor request",
+        "human_authorized": asserted_authority, "authorization_source": "Software asserted a human request"}))
+    before = stop.read_bytes()
+    result = _run_stage([sys.executable, "-c", "print('retained work')"], repository=tmp_path,
+        log_path=tmp_path / "child.log", deadline=utc_timestamp() - pd.Timedelta(minutes=1),
+        stop_request=stop, progress=lambda _: None, poll_seconds=0.03)
+    assert result == 0
+    assert stop.read_bytes() == before
 
 
 def test_recovery_refuses_to_interrupt_a_living_owner(tmp_path, monkeypatch):
@@ -166,7 +187,7 @@ def test_dead_owner_recovery_does_not_replay_completed_stage(tmp_path, monkeypat
     recover_interrupted_run(tmp_path, run_path, "verified supervisor exited")
     result = json.loads(report_path.read_text())
     assert result["failed_stage"] == STAGE_ORDER[1]
-    assert result["status"] == "CANCELLED"
+    assert result["status"] == "INTERRUPTED"
 
 
 def test_recovery_refuses_reused_child_pid(tmp_path, monkeypatch):
@@ -224,7 +245,7 @@ def _evidence_snapshot(run_path):
             for path in run_path.iterdir() if path.is_file()}
 
 
-@pytest.mark.parametrize("status", ["FAILED", "CANCELLED"])
+@pytest.mark.parametrize("status", ["FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"])
 def test_terminal_recovery_is_idempotent_and_preserves_all_evidence(tmp_path, monkeypatch, status):
     run_path = _terminal_attempt(tmp_path, monkeypatch, status=status)
     before = _evidence_snapshot(run_path)
@@ -258,6 +279,18 @@ def test_terminal_recovery_leaves_reused_owner_pid_untouched(tmp_path, monkeypat
     monkeypatch.setattr("ml.overnight_runtime._process_created_at", lambda pid: 99.0 if pid == 11111111 else None)
     monkeypatch.setattr("psutil.Process", lambda *a, **k: pytest.fail("unrelated owner PID must not be manipulated"))
     assert recover_interrupted_run(tmp_path, run_path, "original owner creation identity exited") == run_path
+    assert _evidence_snapshot(run_path) == before
+
+
+def test_dead_supervisor_recovery_preserves_running_child(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    run_path = _terminal_attempt(tmp_path, monkeypatch, status="RUNNING")
+    (run_path / "receipt.json").unlink()
+    before = _evidence_snapshot(run_path)
+    monkeypatch.setattr("ml.overnight_runtime._process_created_at", lambda pid: 22.0 if pid == 22222222 else None)
+    monkeypatch.setattr("psutil.Process", lambda _: SimpleNamespace(create_time=lambda: 22.0))
+    with pytest.raises(RuntimeError, match="preserve its work"):
+        recover_interrupted_run(tmp_path, run_path, "Supervisor exited unexpectedly")
     assert _evidence_snapshot(run_path) == before
 
 

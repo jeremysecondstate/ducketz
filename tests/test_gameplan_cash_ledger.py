@@ -269,6 +269,52 @@ def test_signal_driven_consecutive_buys_accumulate_without_expiry_sales():
     assert [e["reason"] for e in report["events"]] == ["BULLISH_BUY", "BULLISH_BUY", "BEARISH_SELL"]
 
 
+def test_expired_rows_preserve_native_intraday_lots_and_reserved_shares():
+    from copy import deepcopy
+
+    state = snapshot(held=5)
+    state["observed_at"] = "2026-09-09T11:30:00Z"
+    state["pending_sell_shares"] = {"AAPL": 1}
+    state["ownership"]["active_allocations"] = [{
+        "symbol": "AAPL", "horizon": "15m", "stream": "scout-15m",
+        "owned_shares": 3, "reserved_sell_shares": 1,
+        "target_end": "2026-09-09T11:15:00Z",
+    }]
+    original = deepcopy(state)
+    frame = pd.DataFrame([forecast(hour=4, probability=.3), forecast(hour=5, probability=.3)])
+    rows, report = project_direction_trades(frame, state, path(), policy=POLICY, signal_driven=True)
+
+    assert rows.direction_based_trade_quantity.tolist() == [0, -2]
+    assert rows.iloc[0].direction_based_reason == "EXPIRED_BEFORE_PREPARATION"
+    assert len(report["events"]) == 1
+    assert report["events"][0]["timestamp"] == "2026-09-09T12:00:00+00:00"
+    assert report["ending_positions"] == {"AAPL": 3}
+    assert report["ending_allocations"][0]["stream"] == "scout-15m"
+    assert report["ending_allocations"][0]["reserved"] == 1
+    assert state == original
+
+
+def test_saved_balance_math_skips_expired_rows_without_peer_ledger_dependency():
+    from copy import deepcopy
+
+    state = snapshot(held=2)
+    state["observed_at"] = "2026-09-10T04:00:00Z"
+    state["ownership"] = {"safe_for_planning": False, "blocked_symbols": ["AAPL"],
+        "active_allocations": [{"symbol": "AAPL", "horizon": "15m",
+                                "stream": "scout-15m", "owned_shares": -999}]}
+    original = deepcopy(state)
+    frame = pd.DataFrame([forecast(hour=4, probability=.7), forecast(hour=10, probability=.3)])
+    rows, report = project_direction_trades(frame, state, path(), policy=POLICY,
+        signal_driven=True, saved_balance_math=True)
+
+    assert rows.direction_based_trade_quantity.eq(0).all()
+    assert rows.direction_based_reason.eq("EXPIRED_BEFORE_PREPARATION").all()
+    assert not report["events"]
+    assert report["ending_positions"] == {"AAPL": 2}
+    assert report["summary"]["ending_cash_base"] == 100
+    assert state == original
+
+
 def test_signal_driven_weekly_research_buy_survives_hourly_bearish_and_window_end():
     rows, report = project_direction_trades(pd.DataFrame([
         forecast(probability=.7, horizon="1w", promoted=False), forecast(hour=5, probability=.3)

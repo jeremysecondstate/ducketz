@@ -240,6 +240,20 @@ def verified_promoted_model_groups(publication) -> frozenset[str]:
 
 def late_publication_time(configuration: Mapping, receipt: Mapping):
     """Select explicit late-source evidence without changing any forecast time."""
+    if configuration.get("publication_mode") == "NIGHTLY_CONTINUATION":
+        from ml.nightly_continuation import POLICY
+        day = receipt.get("action_date")
+        if (not day or configuration.get("action_date") != day
+                or configuration.get("late_action_date") != day
+                or configuration.get("continuation_policy") != POLICY):
+            raise ValueError("Dated nightly publication has inconsistent source evidence")
+        published = pd.Timestamp(receipt.get("published_at"))
+        cutoff = pd.Timestamp(configuration.get("training_information_cutoff"))
+        opening = (pd.Timestamp(day).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)).tz_convert("UTC")
+        if (pd.isna(published) or published.tzinfo is None or pd.isna(cutoff) or cutoff.tzinfo is None
+                or cutoff >= opening or cutoff > published):
+            raise ValueError("Dated nightly publication requires causal inputs and truthful publication times")
+        return receipt["published_at"] if published >= opening else None
     recovery = configuration.get("late_preparation")
     if recovery is not None:
         # Local publication already verified this recovery record before its
@@ -340,7 +354,7 @@ def _validated_independent_forecasts(
         published = pd.Timestamp(late_publication_at)
         opening = (pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)).tz_convert("UTC")
         if (pd.isna(published) or published.tzinfo is None
-                or not opening <= published < opening + pd.Timedelta(hours=13)
+                or published < opening
                 or not data["frozen_at"].le(published).all()
                 or any(not data[column].lt(opening).all() for column in ("decision_timestamp", "information_available_at"))):
             raise ValueError("Late forecast publication requires causal pre-session inputs and truthful publication times")

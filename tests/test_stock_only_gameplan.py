@@ -192,7 +192,7 @@ def test_stock_only_keeps_publication_deadline(publication_fixture, monkeypatch,
 
 
 @pytest.mark.parametrize("price_source", ["canonical-equity-minute-v1", "xnas-itch-archive-v1"])
-@pytest.mark.parametrize("late", [False, True])
+@pytest.mark.parametrize("late", [False, True, "continued"])
 def test_independent_target_publication_uses_new_labels_and_preserves_native_contract(publication_fixture, monkeypatch, price_source, late):
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, stock_target_windows
 
@@ -200,6 +200,9 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
     sources = []
     if late:
         fixture.clock[0] = pd.Timestamp("2026-09-08T15:00Z")
+    if late == "continued":
+        monkeypatch.setenv("DUCKETZ_NIGHTLY_ACTION_DATE", "2026-09-08")
+        fixture.clock[0] = pd.Timestamp("2026-09-09T02:00Z")
     points = set()
     for day in (date(2026, 8, 17), ACTION_DATE):
         windows = stock_target_windows(day)
@@ -262,10 +265,15 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
     forecasts = pd.read_parquet(result.run_directory / "forecasts.parquet")
     intents = pd.read_parquet(result.run_directory / "option-strategy-intents.parquet")
     assert len(forecasts) == len(intents) == 168
-    assert publication.manifest["configuration"]["publication_mode"] == ("LATE_RECOVERY" if late else "NIGHTLY")
+    assert publication.manifest["configuration"]["publication_mode"] == (
+        "NIGHTLY_CONTINUATION" if late == "continued" else "LATE_RECOVERY" if late else "NIGHTLY")
     if late:
-        assert pd.Timestamp(publication.receipt["published_at"]) == pd.Timestamp("2026-09-08T15:00Z")
+        assert pd.Timestamp(publication.receipt["published_at"]) == fixture.clock[0]
         assert publication.receipt["action_date"] == "2026-09-08"
+    if late == "continued":
+        from ml.stock_trader.independent_signals import late_publication_time
+        timestamp = late_publication_time(publication.manifest["configuration"], publication.receipt)
+        assert timestamp == publication.receipt["published_at"]
     assert publication.manifest["configuration"]["target_contract_version"] == STOCK_TARGET_CONTRACT_VERSION
     assert publication.manifest["configuration"]["target_calendar_feature_contract"] == "independent-stock-known-calendar-inputs-v1"
     assert forecasts.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()

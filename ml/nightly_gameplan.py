@@ -177,6 +177,8 @@ def run_nightly_gameplan_once(
     probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
+    from ml.nightly_continuation import continuing, POLICY as CONTINUATION_POLICY
+    dated_continuation = continuing(late_action_date) and late_action_date is not None
     if late_action_date is not None and recovery_spec is not None:
         raise ValueError("Choose one date-pinned late recovery route")
     if late_action_date is not None and not independent_stock_horizons:
@@ -193,9 +195,9 @@ def run_nightly_gameplan_once(
         selected = pd.Timestamp(late_action_date)
         local = created.tz_convert(SCHEDULE_TIMEZONE)
         if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
-                or late_action_date != local.date().isoformat() or not 4 <= local.hour < 17):
+                or (not dated_continuation and (late_action_date != local.date().isoformat() or not 4 <= local.hour < 17))):
             raise ValueError("Late recovery must select today's open action session")
-        information_cutoff = _local_timestamp(selected.date(), ACTION_START_HOUR) - pd.Timedelta(microseconds=1)
+        information_cutoff = min(created, _local_timestamp(selected.date(), ACTION_START_HOUR) - pd.Timedelta(microseconds=1))
     feedback = None
     if model_feedback is not None:
         if not independent_stock_horizons:
@@ -515,7 +517,8 @@ def run_nightly_gameplan_once(
         "frozen_at": created.isoformat(),
         **({"late_preparation": recovery} if recovery else {}),
         **({"training_information_cutoff": information_cutoff.isoformat()} if recovery or late_action_date else {}),
-        "publication_mode": "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+        "publication_mode": "NIGHTLY_CONTINUATION" if dated_continuation else "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+        **({"continuation_policy": CONTINUATION_POLICY} if dated_continuation else {}),
         "late_action_date": late_action_date,
         "immutable": True,
         "execution_authority": EXECUTION_AUTHORITY,
@@ -649,7 +652,8 @@ def run_nightly_gameplan_once(
                 "archive_history": archive_history,
                 "source_selection": source_selection_report} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
-            "publication_mode": "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+            "publication_mode": "NIGHTLY_CONTINUATION" if dated_continuation else "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+            **({"continuation_policy": CONTINUATION_POLICY} if dated_continuation else {}),
             "late_action_date": late_action_date,
             "timezone": str(SCHEDULE_TIMEZONE),
             "execution_authority": EXECUTION_AUTHORITY,
@@ -671,7 +675,7 @@ def run_nightly_gameplan_once(
     if recovery:
         from ml.nightly_recovery import verify_saved_recovery
         verify_saved_recovery(root, recovery, published_at, action_date=action_date.isoformat())
-    if recovery is None and published_at >= (action_end if late_action_date else action_start):
+    if recovery is None and not dated_continuation and published_at >= (action_end if late_action_date else action_start):
         raise RuntimeError(
             ("The completed late gameplan missed the 17:00 PT publication boundary; " if late_action_date else
              "The completed gameplan missed the 04:00 PT publication boundary; ") +
@@ -803,10 +807,11 @@ def _current_overnight_sources(
     starts = pd.to_datetime(sources["source_action_start" if "source_action_start" in sources else "target_window_start"],
                             utc=True, errors="coerce")
     if late_action_date is not None:
+        from ml.nightly_continuation import continuing
         selected = pd.Timestamp(late_action_date)
         local = as_of.tz_convert(SCHEDULE_TIMEZONE)
         if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
-                or late_action_date != local.date().isoformat() or not 4 <= local.hour < 17):
+                or (not continuing(late_action_date) and (late_action_date != local.date().isoformat() or not 4 <= local.hour < 17))):
             raise ValueError("Late recovery must select today's open action session")
         future = sources.loc[sources["action_date"].eq(selected.date())].copy()
         boundary = _local_timestamp(selected.date(), ACTION_START_HOUR)
