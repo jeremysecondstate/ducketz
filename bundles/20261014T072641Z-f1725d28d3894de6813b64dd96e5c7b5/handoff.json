@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T07:26:41.899761Z",
+  "id": "20261014T072641Z-f1725d28d3894de6813b64dd96e5c7b5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed nightly exchange continuation across source changes and historical repair metadata."
+}

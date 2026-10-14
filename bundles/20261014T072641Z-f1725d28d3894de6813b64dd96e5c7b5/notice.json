@@ -1,0 +1,59 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T072005Z-bf38c4d76ff44c7db0c29f32d194923d",
+  "change_id": "20261014T072005Z-bf38c4d76ff44c7db0c29f32d194923d",
+  "commit_sha": "94599b56c9493331f024b330382421c41347d9ca",
+  "details": [
+    "Actor Scout; task Gameplan synthesis; shared nightly exchange behavior applies independently to Atlas and Scout.",
+    "Retain parent Completion-Record20261013T191637Z-0c57c4cf82f540cbb15abc3347b912c2 and original two-plan workflow.",
+    "Source updates and historical repair/failure metadata no longer hold ordinary preparation export, synthesis or completed delivery.",
+    "Retain exact original preparation, synthesis selectors, binding provenance and private operating field checks; no source rebind or fabricated completion.",
+    "Keep actual exception recording, existing workflow/exchange locks, manual trader controls, native schedules and private local symbols.",
+    "Update two obsolete ordinary-route assertions in the retained repair helper suite; direct helper APIs remain tested independently."
+  ],
+  "files": [
+    "tools/nightly_exchange.py",
+    "tests/test_nightly_exchange.py",
+    "tests/test_nightly_exchange_repair.py"
+  ],
+  "installation_stage": "installed_exact_and_offline_checked",
+  "integration_stage": "stacked_draft_pr",
+  "limitations": [
+    "Full132-test development suite passed; sealed and isolated checks focus on the changed operating path.",
+    "Main integration and peer installation are separate; both source units retain their existing parent baselines."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/121",
+    "https://github.com/jeremysecondstate/ducketz/pull/118"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261013T191637Z-0c57c4cf82f540cbb15abc3347b912c2",
+    "20261014T065031Z-537dd4101cdc4349a599c473a3c5a81c"
+  ],
+  "runtime_implications": "Existing exchange wakes load this source without source-repair waits or trader restarts. Original prepared packets, private binding bytes, source provenance and schedules remain intact.",
+  "scope": "Shared nightly two-plan exchange for Atlas and Scout; private operating scope retained.",
+  "summary": "Scout installed nightly exchange continuation across source changes and historical repair metadata.",
+  "tests": [
+    {
+      "check": "sealed-source",
+      "completed_at_utc": "2026-10-14T07:21:20.434031Z",
+      "output_sha256": "e04d81fc0a63da6197917d6088022b86d34e6c8e91b0ad15dab2bddf3b4e549e",
+      "result": "21 focused regressions passed;111 unrelated cases deselected",
+      "started_at_utc": "2026-10-14T07:20:05.939308Z"
+    },
+    {
+      "check": "isolated-publication",
+      "completed_at_utc": "2026-10-14T07:24:45.143430Z",
+      "output_sha256": "52c856601415bce048a9b82dfe8a160cca7a50b2ea84cbc8cee30bcf9f43149b",
+      "result": "21 focused regressions passed;111 unrelated cases deselected",
+      "started_at_utc": "2026-10-14T07:23:31.644892Z"
+    },
+    {
+      "check": "installed-Scout",
+      "completed_at_utc": "2026-10-14T07:19:26.379911+00:00",
+      "output_sha256": "55dfbbac640d18e3163b5544615b294268d887e32cc6c6e3b6e097276f6791a9",
+      "result": "110 passed;22 legacy cases deselected"
+    }
+  ]
+}
