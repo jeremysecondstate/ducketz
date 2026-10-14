@@ -1,0 +1,61 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T065312Z-202eba8257854a5f8b557ba5f5bcab40",
+  "change_id": "20261014T065312Z-202eba8257854a5f8b557ba5f5bcab40",
+  "commit_sha": "0f765d267dbbb0416c46bf8a5c6c19f597a64386",
+  "details": [
+    "Actor Scout; task source-reconciliation; shared cancellation regression and deployment evidence behavior applies independently to Atlas and Scout.",
+    "Retain continuation Completion-Records 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93 and 20261014T050106Z-0e807c66479e4deb83823375e163fe5c; retire the orphan helper left by 20261014T053708Z-0ce315ff06c345958338db8fd7660e63 without replaying its older runtime.",
+    "Add regressions proving persisted records, including a fully self-asserted human schema, neither block launch nor stop a child; preserve original record bytes.",
+    "Test immediate human action terminating only its owned child and preserve an unrelated process.",
+    "Compose the already-installed INTERRUPTED ancestor acceptance on the continuation source base; the current native attempt still requires COMPLETE and every original receipt/hash/source check.",
+    "The orphan helper is already absent from the reviewed base; its guarded local deletion needs no synthetic source deletion.",
+    "Source publication and common-main composition remain independent of nightly production and manual trader activation."
+  ],
+  "files": [
+    "ml/gameplan_deployment.py",
+    "tests/test_nightly_cancellation.py"
+  ],
+  "installation_stage": "installed_exact_and_offline_checked",
+  "integration_stage": "pending_existing_nightly_composition",
+  "limitations": [
+    "Offline fixture checks; no broker/provider calls, production replay/training, trading, application restart or schedule changes.",
+    "This source is stacked on the reviewed continuation base. Full nightly common-main dependency composition remains separate and incomplete.",
+    "Deleting the local orphan does not remove historical published copies or alter saved cancellation evidence."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/119"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T055212Z-f63cd552ecdf49a086853a95ff696c93",
+    "20261014T050106Z-0e807c66479e4deb83823375e163fe5c",
+    "20261014T053708Z-0ce315ff06c345958338db8fd7660e63"
+  ],
+  "runtime_implications": "Install the reviewed regression file, preserve the existing exact deployment source and retire the unreferenced local helper using backups and before-hash guards. Manual trader controls and saved history remain intact. No loaded-process claim.",
+  "scope": "Shared source applicable independently to Atlas and Scout; local symbols and operating bindings retained.",
+  "summary": "Scout retired orphan saved-cancellation authority and installed passing regression coverage; interrupted ancestor evidence remains usable.",
+  "tests": [
+    {
+      "check": "Nightly cancellation and ancestor evidence: sealed source",
+      "completed_at_utc": "2026-10-14T06:53:38.993295Z",
+      "output_sha256": "e0dd432ecc1f6a464d78d2a7d432a3d62269763a47ba3ff2fc02d37beb5c64aa",
+      "result": "125 passed; no skips, exclusions, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:53:13.078226Z"
+    },
+    {
+      "check": "Nightly cancellation and ancestor evidence: isolated source",
+      "completed_at_utc": "2026-10-14T06:54:52.416465Z",
+      "output_sha256": "e3b34bbd9c947c36afebd2cd9c9f2ed5d2df570dfa58756ee320d7db91aa0062",
+      "result": "125 passed; no skips, exclusions, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:54:27.061912Z"
+    },
+    {
+      "check": "Nightly cancellation and ancestor evidence: installed Scout",
+      "completed_at_utc": "2026-10-14T07:01:15.266831Z",
+      "output_sha256": "acbd1675beb8febf3fd9c226720a7fa3234e0c8fa7407a9653e715b83a428052",
+      "result": "125 passed; no skips, exclusions, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T07:00:48.600021Z"
+    }
+  ]
+}

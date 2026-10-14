@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T07:02:40.884448Z",
+  "id": "20261014T070240Z-7bc4c9862f8542f0a27b30974b39698f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retired orphan saved-cancellation authority and installed passing regression coverage; interrupted ancestor evidence remains usable."
+}
