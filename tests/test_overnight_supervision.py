@@ -245,7 +245,7 @@ def _evidence_snapshot(run_path):
             for path in run_path.iterdir() if path.is_file()}
 
 
-@pytest.mark.parametrize("status", ["FAILED", "CANCELLED"])
+@pytest.mark.parametrize("status", ["FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"])
 def test_terminal_recovery_is_idempotent_and_preserves_all_evidence(tmp_path, monkeypatch, status):
     run_path = _terminal_attempt(tmp_path, monkeypatch, status=status)
     before = _evidence_snapshot(run_path)

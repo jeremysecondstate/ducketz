@@ -220,7 +220,7 @@ def _supervision(root: Path):
 
 
 def _run_native(config: dict, state: dict, step: str, save) -> dict:
-    from ml.overnight_runtime import run_overnight_pipeline, overnight_status, recover_interrupted_run
+    from ml.overnight_runtime import run_overnight_pipeline, overnight_status, recover_interrupted_run, _validated_run
     root, repository = Path(config["datastore"]), Path(config["repository"])
     entry = state["steps"][step]
     previous = entry.get("native_run")
@@ -255,7 +255,7 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
         if not continuing and state.get("recovery_deadline_at"):
             arguments["late_action_date"] = state["action_date"]
     if previous:
-        run = Path(previous)
+        run = _validated_run(root.resolve(), Path(previous))
         if not (run / "receipt.json").exists():
             recover_interrupted_run(root, run, "Previous workflow worker exited before its native receipt")
         receipt = _json(run / "receipt.json")

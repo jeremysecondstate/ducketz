@@ -850,7 +850,7 @@ def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
     run = _validated_run(root, run)
     report_path = run / "stage-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    terminal = report.get("status") in {"FAILED", "CANCELLED", "INTERRUPTED"}
+    terminal = report.get("status") in {"FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"}
     if not reason.strip():
         raise RuntimeError("Recovery needs an interrupted running attempt and a reason")
     if terminal:

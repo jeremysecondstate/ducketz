@@ -407,6 +407,26 @@ def test_native_attempt_identity_is_durable_before_stage_work_can_run(setup, mon
     assert snapshots[0]["steps"]["prepare_stats"]["native_run"] == str(native)
 
 
+@pytest.mark.parametrize("receipt_status", [None, "COMPLETE", "FAILED"])
+def test_saved_native_run_must_belong_to_this_datastore_before_reuse(setup, monkeypatch, receipt_status):
+    root = Path(setup["datastore"])
+    foreign = root.parent / "another-datastore/ml/overnight-runs/attempt"
+    foreign.mkdir(parents=True)
+    if receipt_status is not None:
+        _write_native(foreign, status=receipt_status)
+    before = {path.name: path.read_bytes() for path in foreign.iterdir()}
+    state = {"deadline_at": "2026-10-06T11:00Z", "source_session": "2026-10-05",
+             "steps": {"prepare_stats": {"native_run": str(foreign)}}}
+    def forbidden(*args, **kwargs):
+        pytest.fail("A foreign native attempt cannot be recovered, reused or executed")
+    monkeypatch.setattr("ml.overnight_runtime.run_overnight_pipeline", forbidden)
+    monkeypatch.setattr("ml.overnight_runtime.recover_interrupted_run", forbidden)
+    monkeypatch.setattr("ml.nightly_workflow._native_outputs", forbidden)
+    with pytest.raises(ValueError, match="escapes its expected directory"):
+        _run_native(setup, state, "prepare_stats", forbidden)
+    assert {path.name: path.read_bytes() for path in foreign.iterdir()} == before
+
+
 def _display_fixture(root):
     from gameplan_fixture import write_plan
     stats, feedback, saved = _feedback(root)
