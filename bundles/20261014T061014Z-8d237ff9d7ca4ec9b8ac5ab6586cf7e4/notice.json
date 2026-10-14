@@ -1,0 +1,68 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T060637Z-72d4fb6098ce48c0b575ebd8ee61adbe",
+  "change_id": "20261014T060637Z-72d4fb6098ce48c0b575ebd8ee61adbe",
+  "commit_sha": "b0a74e3b8920b3044552b3d6dd6e945f54ecc902",
+  "details": [
+    "Actor Scout; task source-reconciliation; shared artifact-writer lock recovery applicable independently to Atlas and Scout.",
+    "Compose exact reviewed runtime_lock source from 003b9d9a57effd5c3b7d73e37139612efc7bb965 onto current main; retain Completion-Record 20261009T223856Z-968a99094c344758a422956bd1980402.",
+    "Recover locks only when the original process exited or its PID was demonstrably reused; preserve live, malformed, ambiguous, inaccessible and changed owner evidence.",
+    "Publish complete fsynced lock records via same-directory hard links; injected interrupted publication tests verify retry and absence of partial target files.",
+    "Extract standalone filesystem ownership cases; preserve original nightly integration test. Make isolation fixtures credential-free and assert forbidden-lane entry directly instead of a flaky wall-clock threshold.",
+    "This closes one continuation dependency. Retain continuation record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93; full nightly and independent-executor composition remains separate."
+  ],
+  "files": [
+    "datafetching/runtime_lock.py",
+    "tests/test_independent_loop_isolation.py",
+    "tests/test_runtime_lock_ownership.py"
+  ],
+  "installation_stage": "installed_exact_and_offline_checked",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary filesystem and mocked-provider tests; no broker/provider calls, production data, training or trader operation.",
+    "Hard-link atomicity verified on the local test filesystem; no loaded-process or remote-filesystem claim.",
+    "Full nightly workflow integration remains separate; its existing integration test is preserved."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/115"
+  ],
+  "main_commit_sha": "8f12a8c8cbe5f9d5043d3ee2505fb58f12cbc810",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261009T223856Z-968a99094c344758a422956bd1980402",
+    "20261014T055212Z-f63cd552ecdf49a086853a95ff696c93"
+  ],
+  "runtime_implications": "Runtime helper bytes already installed exactly on Scout; install only the added offline suite and inert test fixture. No worker/trader starts, restarts, manual-stop clearing, native schedule, symbols or private binding changes.",
+  "scope": "Shared runtime lock recovery applicable independently to Atlas and Scout; no local symbol or operating binding transfer.",
+  "summary": "Scout integrated atomic runtime lock and PID-reuse recovery into common main; exact source installed and offline checked.",
+  "tests": [
+    {
+      "check": "Runtime lock recovery: sealed-source",
+      "completed_at_utc": "2026-10-14T06:06:43.241921Z",
+      "output_sha256": "f1e1b28cb7e8a38e73f902ddd98db06bdb40b50b78f9162ca5d6cbb9c228cfa1",
+      "result": "38 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:06:37.964634Z"
+    },
+    {
+      "check": "Runtime lock recovery: isolated-source",
+      "completed_at_utc": "2026-10-14T06:07:29.101332Z",
+      "output_sha256": "1dbabe369936845ac205fb0590eb844fda3383eb960303592e72eb031545a066",
+      "result": "38 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:07:23.782531Z"
+    },
+    {
+      "check": "Runtime lock recovery: main-candidate",
+      "completed_at_utc": "2026-10-14T06:08:36.374521Z",
+      "output_sha256": "9d2428440f4363592d18e3b388c548e73846083e1dd8461062a9f3a86daf341b",
+      "result": "38 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:08:31.056272Z"
+    },
+    {
+      "check": "Runtime lock recovery: installed-scout",
+      "completed_at_utc": "2026-10-14T06:09:25.513700Z",
+      "output_sha256": "4e481cfe0a3df6af0e13917a36c762297544fccb38d19a2b6a585140eeb40a52",
+      "result": "38 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:09:19.851325Z"
+    }
+  ]
+}

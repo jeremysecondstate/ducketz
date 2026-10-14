@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T06:10:14.898310Z",
+  "id": "20261014T061014Z-8d237ff9d7ca4ec9b8ac5ab6586cf7e4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout integrated atomic runtime lock and PID-reuse recovery into common main; exact source installed and offline checked."
+}
