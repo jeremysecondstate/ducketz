@@ -1,0 +1,67 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T091751Z-25ee3bfa9171427a88d167094c5dff3f",
+  "change_id": "20261014T091751Z-25ee3bfa9171427a88d167094c5dff3f",
+  "commit_sha": "61f97c8b3cb5da70bcdab84e6793de81231f0fe5",
+  "details": [
+    "Actor Scout; task source-reconciliation-after-midnight; shared Stats display and reader apply independently to Atlas and Scout.",
+    "Compose installed coverage status into the Stats reader and display; explain missing preopen forecasts truthfully while retaining prior session results and original scoring.",
+    "Read a historical immutable saved run using its exact receipt hash independently of mutable display pointers, with matching session and immediate resolved run containment checks.",
+    "Add 29 behavioral reader cases covering pointer drift, byte corruption, invalid hashes, session mismatch, path containment and preservation of datastore bytes and modification times on success and failure.",
+    "Preserve existing installed Tk weak-reference cleanup so background UI fixture resources are reclaimed on their owning thread.",
+    "Retain continuation records 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93 and 20261014T050106Z-0e807c66479e4deb83823375e163fe5c; production and executor composition remain separate."
+  ],
+  "files": [
+    "app/ui/gameplan_stats.py",
+    "app/ui/gameplan_stats_data.py",
+    "tests/gameplan_stats_fixture.py",
+    "tests/test_gameplan_stats_data.py",
+    "tests/test_gameplan_stats_ui.py"
+  ],
+  "installation_stage": "reviewed_reader_path_alignment_and_regressions_installed_existing_display_and_fixtures_retained",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary saved-artifact and native Tk UI tests; no provider, broker, model fitting, production replay or trader operation.",
+    "This unit composes Stats display and reader only; completed-session Stats production and the remaining nightly/executor source retain their existing records.",
+    "Historical outputs and local operating bindings remain private and untouched."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/123"
+  ],
+  "main_commit": "e5d923de476efe118493750bbdb54669d57c554b",
+  "remaining_source_work": "Next bounded unit is completed-session actuals production with a deadline leaf and focused tests; separate Stats handoff and remaining nightly/executor source follow. No source backlog delays production.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install only the reviewed Stats reader path alignment and reader regression on Scout; existing display and fixture semantics are retained. Running application processes are not restarted and no loaded-runtime claim is made.",
+  "scope": "Shared source applies independently to Atlas and Scout; private historical outputs and operating bindings retained.",
+  "summary": "Scout Stats display and immutable review reader integrated on common main and installed locally.",
+  "tests": [
+    {
+      "check": "Stats sealed source",
+      "completed_at_utc": "2026-10-14T09:17:58.738122Z",
+      "output_sha256": "60f6bd85edb8517a329bbb13ba6177196adcdc1ccd760719a1e69b6431de2d88",
+      "result": "59 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:17:51.395080Z"
+    },
+    {
+      "check": "Stats isolated source",
+      "completed_at_utc": "2026-10-14T09:18:35.265094Z",
+      "output_sha256": "c1fa3bcc55d0b27caeb643531c81f025bd62f2507ca3fdbe6f5695e8de551856",
+      "result": "59 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:18:28.045112Z"
+    },
+    {
+      "check": "Stats main candidate",
+      "completed_at_utc": "2026-10-14T09:19:32.657221Z",
+      "output_sha256": "45c3046bf6c4129db564ecbd833524b023842842f200f80ccbe556983c86cf27",
+      "result": "59 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:19:25.283612Z"
+    },
+    {
+      "check": "Stats installed Scout",
+      "completed_at_utc": "2026-10-14T09:20:33.328307Z",
+      "output_sha256": "fcccf44c87dbafdc63270b29c8da1e735b51bd9eadce4fa294493ccade637c12",
+      "result": "59 passed; no skips or offline-verifier violations",
+      "started_at_utc": "2026-10-14T09:20:25.698261Z"
+    }
+  ]
+}

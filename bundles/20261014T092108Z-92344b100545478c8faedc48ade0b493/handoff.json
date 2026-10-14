@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T09:21:08.035363Z",
+  "id": "20261014T092108Z-92344b100545478c8faedc48ade0b493",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout Stats display and immutable review reader integrated on common main and installed locally."
+}
