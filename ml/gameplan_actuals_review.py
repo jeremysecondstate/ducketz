@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
+from ml.nightly_continuation import deadline_expired
 from ml.gameplan_price_bands import (
     SPARSE_PLANNING_PRICE_PATH_CONTRACT, _aware_timestamp, _observation, _source_identity,
 )
@@ -495,7 +496,7 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
     from ml.preparation_deadline import preparation_deadline
     original_deadline = deadline_at
     deadline_at, exception_evidence = preparation_deadline(root, successor.run_directory, deadline_at, now, deadline_exception)
-    if now >= deadline_at:
+    if deadline_expired(now, deadline_at):
         raise ValueError("Actuals review must retain the successor's original 04:00 deadline")
     # A one-time late successor may finish its preparation now. Historical
     # comparisons below still select only estimates saved before their opening.
@@ -533,7 +534,7 @@ def publish_completed_session_review(root: Path, *, action_date: str | None = No
     now = _aware_timestamp(clock() if reviewed_at is None else reviewed_at, "review time")
     context = completed_session_context(now, action_date)
     deadline_at = _aware_timestamp(deadline, "deadline") if deadline is not None else None
-    if deadline_at is not None and now >= deadline_at:
+    if deadline_at is not None and deadline_expired(now, deadline_at):
         raise ValueError("Actuals review publication deadline passed")
     report = {"schema_version": VERSION, "status": "COMPLETE", **context,
               "review_mode": "completed-session-before-training", "successor_gameplan_run": None,
@@ -583,7 +584,7 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
             # This is the new workflow's display/default contract, not an
             # invented historical forecast. The saved result remains empty.
             report.update(probability_target_metadata(RAW_DIRECTION_TARGET))
-    if deadline_at is not None and _aware_timestamp(clock(), "completion time") >= deadline_at:
+    if deadline_at is not None and deadline_expired(_aware_timestamp(clock(), "completion time"), deadline_at):
         raise ValueError("Actuals review publication deadline passed")
     run = create_timestamp_directory(root / RUNS, timestamp=now)
     results.to_parquet(run / "forecast-results.parquet", index=False)
@@ -595,7 +596,7 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
                    configuration={key: report[key] for key in ("schema_version", "action_date", "successor_gameplan_run", "outcomes_through", "review_mode", "probability_target_contract") if key in report},
                    datastore_root=root)
     verify_manifest(run)
-    if deadline_at is not None and _aware_timestamp(clock(), "publication time") >= deadline_at:
+    if deadline_at is not None and deadline_expired(_aware_timestamp(clock(), "publication time"), deadline_at):
         raise ValueError("Actuals review publication deadline passed")
     _write_json(run / "receipt.json", {"schema_version": VERSION, "status": "COMPLETE", "action_date": action_date,
                 "run_path": run.relative_to(root).as_posix(), "manifest_sha256": file_checksum(run / "manifest.json"),

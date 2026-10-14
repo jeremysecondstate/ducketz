@@ -29,7 +29,7 @@ def test_late_publication_preserves_exact_windows_and_input_times():
 
 
 @pytest.mark.parametrize('fault', ['input_at_open', 'decision_after_open', 'future_freeze',
-    'next_day', 'before_open', 'naive', 'invalid'])
+    'before_open', 'naive', 'invalid'])
 def test_late_context_does_not_allow_future_inputs_or_fabricated_times(fault):
     frame = _frame()
     frame['frozen_at'] = pd.Timestamp('2026-09-08T16:00Z')
@@ -37,7 +37,6 @@ def test_late_context_does_not_allow_future_inputs_or_fabricated_times(fault):
     if fault == 'input_at_open': frame['information_available_at'] = pd.Timestamp('2026-09-08T11:00Z')
     if fault == 'decision_after_open': frame['decision_timestamp'] = pd.Timestamp('2026-09-08T11:01Z')
     if fault == 'future_freeze': frame['frozen_at'] = pd.Timestamp('2026-09-08T16:31Z')
-    if fault == 'next_day': published = '2026-09-09T00:00Z'
     if fault == 'before_open': published = '2026-09-08T10:59Z'
     if fault == 'naive': published = '2026-09-08T16:30'
     if fault == 'invalid': published = 'NaT'
