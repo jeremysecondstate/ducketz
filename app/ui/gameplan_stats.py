@@ -335,7 +335,11 @@ class GameplanStatsTab:
         self.status_label.configure(foreground=MUTED_TEXT)
         self.status.set(f"Verified session {review.session} · Outcomes through {review.outcomes_through:%b %d, %H:%M %Z} · Reviewed {review.reviewed_at:%b %d, %H:%M %Z}")
         if not review.outcomes:
-            self.status.set(f"Session {review.session}: no saved approved forecasts are available to score.")
+            if review.coverage_status == "NO_SAVED_INDEPENDENT_GAMEPLAN":
+                self.status.set(f"Session {review.session}: no eligible forecasts were saved before the 04:00 Pacific opening. "
+                                "Later forecasts are not counted as pre-open predictions. Choose an earlier session for saved results.")
+            else:
+                self.status.set(f"Session {review.session}: no saved approved forecasts are available to score.")
         self.render()
 
     def render(self):
