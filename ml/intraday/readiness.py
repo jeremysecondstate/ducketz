@@ -51,7 +51,8 @@ SOURCE_INTERFACES = {
         "ShadowRunner._symbol": {"builder", "trainer", "freeze_inputs", "save_forecast"},
         "ShadowRunner.score_available": {"observe"}},
         "ml/intraday/store.py": {"ShadowStore.observe": {"record_candle"}},
-        "ml/intraday/models.py": {"fit_ensemble": {"build_estimator", "fit", "probability_not_down"}},
+        "ml/intraday/models.py": {"fit_ensemble": {"fit_calibrated_estimator", "probability_not_down"},
+            "fit_calibrated_estimator": {"build_estimator", "fit"}},
         "ml/intraday/data.py": {"recover_databento_candle": {"recover_databento_candle_step", "sleep"},
             "recover_databento_candle_step": {"fetch_databento_interval_attempt", "resolve_minute_candle", "provider_retry_due", "save"}}},
     "manual_session": {"ml/intraday/live_session.py": {
@@ -142,7 +143,12 @@ def _bindings(datastore, profile_path, watchlist_path):
         if set(watch) != set(symbols):
             raise ValueError("Membership mismatch")
         account_path = datastore / "state/account-gameplan/config.json"
-        if account_path.exists():
+        if actor == "Scout":
+            result["account_binding"] = "not_required_broker_local"
+            pinned = profile.get("symbol_profile_path")
+            if not isinstance(pinned, str) or Path(pinned).resolve() != watchlist_path.resolve():
+                raise ValueError("Missing pinned watchlist")
+        elif account_path.exists():
             result["account_binding"] = "invalid"
             account = _json(account_path)
             members = _symbols(account["participants"][machine])
@@ -556,6 +562,25 @@ def _runtime_compatibility_probe(datastore, repository, capabilities):
         return {**result,"status":"blocked","reason_codes":["GAMEPLAN_COMPATIBILITY_EVIDENCE_UNAVAILABLE"]}
 
 
+def _scout_local_prestart(repository, datastore):
+    """Check prepared local source/books only; never authenticate or start."""
+    result = {"module":"ml.intraday.scout_prestart", "mode":"broker-local",
+              "local_checks_passed":False, "connection_verified":False,
+              "required":["SCOUT_LOCAL_PRESTART_REQUIRED"]}
+    try:
+        from .scout_prestart import run_local_checks
+        checked = run_local_checks(repository, datastore)
+        prepared = (checked.get("ready") is True and checked.get("local_checks_passed") is True
+                    and checked.get("mode") == "broker-local"
+                    and checked.get("runtime_started") is False
+                    and checked.get("orders_or_commitments_created") is False
+                    and checked.get("atlas_connection_required") is False)
+        return {**result, "local_checks_passed":prepared,
+                "required":[] if prepared else result["required"]}
+    except (OSError,ValueError,TypeError,KeyError,AttributeError,ImportError,sqlite3.Error):
+        return result
+
+
 def inspect_readiness(*, repository, datastore, profile, watchlist, as_of=None):
     """Return a bounded local report. Caller-selected output never activates trading."""
     try:
@@ -567,11 +592,18 @@ def inspect_readiness(*, repository, datastore, profile, watchlist, as_of=None):
     binding = _bindings(datastore, profile, watchlist)
     saved = _forecast_store(datastore, binding, now)
     capabilities = _source_capabilities(repository)
-    compatibility = _runtime_compatibility_probe(datastore,repository,capabilities)
+    scout_local = binding["actor"] == "Scout"
+    compatibility = ({"status":"not_applicable_broker_local", "ready":True,
+        "loaded_code_proven":False, "reason_codes":[], "observed_at":datetime.now(timezone.utc).isoformat(),
+        "orders_placed":0, "workers_changed":False}
+        if scout_local else _runtime_compatibility_probe(datastore,repository,capabilities))
     gate = submission_gate(as_of=now, eligible_session=now.astimezone(PACIFIC).date())
     blockers = list(capabilities["missing_integration"])
-    if binding["actor"] == "Scout":
-        blockers.append("SCOUT_AUTHENTICATED_PRESTART_REQUIRED")
+    if scout_local:
+        capabilities["scout_prestart"] = _scout_local_prestart(repository,datastore)
+        blockers.extend(capabilities["scout_prestart"]["required"])
+        if binding["status"] != "verified":
+            blockers.append("VERIFIED_LOCAL_SCOUT_MEMBERSHIP_REQUIRED")
     elif binding["status"]!="verified" or binding["account_binding"]!="membership_verified" or binding["actor"]!="Atlas":
         blockers.append("VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED")
     if not compatibility["ready"]:

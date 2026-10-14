@@ -626,10 +626,80 @@ def test_scout_source_does_not_enable_scout_live_execution(local,monkeypatch):
     monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**kw:verified_absence(**kw))
     result=report(local)
     assert result["live_execution_implemented"] and not result["manual_live_source_ready"]
-    assert "SCOUT_AUTHENTICATED_PRESTART_REQUIRED" in result["reason_codes"]
+    assert "SCOUT_LOCAL_PRESTART_REQUIRED" in result["reason_codes"]
     assert "VERIFIED_EXISTING_ATLAS_ACCOUNT_MEMBERSHIP_REQUIRED" not in result["reason_codes"]
     assert result["capabilities"]["scout_prestart"]["connection_verified"] is False
     assert not result["execution_authorized"] and result["orders_placed"] == 0
+
+
+def scout_profile(local):
+    profile=json.loads(local["profile"].read_text())
+    profile.update(actor="Scout",machine="pc-new")
+    local["profile"].write_text(json.dumps(profile))
+
+
+def local_prestart_result(**changes):
+    return {"ready":True,"local_checks_passed":True,"mode":"broker-local",
+            "runtime_started":False,"orders_or_commitments_created":False,
+            "atlas_connection_required":False,**changes}
+
+
+def test_scout_prepared_manual_source_needs_no_atlas_state_or_process_probe(local,monkeypatch):
+    from ml.intraday import scout_prestart
+    installed_sources(local)
+    scout_profile(local)
+    path=local["datastore"] / "state/account-gameplan/config.json"
+    path.parent.mkdir(parents=True)
+    path.write_text("broken other-trader config")
+    monkeypatch.setattr(scout_prestart,"run_local_checks",lambda *a:local_prestart_result())
+    monkeypatch.setattr(readiness,"read_gameplan_runtime_compatibility",lambda *a,**k:pytest.fail("Other trader dependency"))
+    before=inventory(local["datastore"])
+    result=report(local)
+    assert result["manual_live_source_ready"] and result["status"]=="MANUAL_LIVE_PREFLIGHT_REQUIRED"
+    assert result["reason_codes"]==[]
+    assert result["gameplan_runtime_compatibility"]["status"]=="not_applicable_broker_local"
+    assert result["capabilities"]["scout_prestart"]["local_checks_passed"]
+    assert not result["manual_live_start_ready"] and result["manual_live_preflight_required"]
+    assert not result["execution_authorized"] and not result["provider_availability_verified"]
+    assert not result["broker_reconciliation_performed"] and result["orders_placed"]==0
+    assert inventory(local["datastore"])==before
+
+
+@pytest.mark.parametrize("changes",[{"ready":False},{"local_checks_passed":False},
+    {"runtime_started":True},{"orders_or_commitments_created":True},{"atlas_connection_required":True}])
+def test_scout_prestart_integrity_failure_still_blocks(local,monkeypatch,changes):
+    from ml.intraday import scout_prestart
+    installed_sources(local)
+    scout_profile(local)
+    monkeypatch.setattr(scout_prestart,"run_local_checks",lambda *a:local_prestart_result(**changes))
+    result=report(local)
+    assert not result["manual_live_source_ready"]
+    assert "SCOUT_LOCAL_PRESTART_REQUIRED" in result["reason_codes"]
+
+
+def test_scout_missing_prestart_evidence_is_private_and_blocked(local,monkeypatch):
+    from ml.intraday import scout_prestart
+    installed_sources(local)
+    scout_profile(local)
+    def missing(*args):
+        raise OSError(PRIVATE_VALUE)
+    monkeypatch.setattr(scout_prestart,"run_local_checks",missing)
+    result=report(local)
+    assert result["reason_codes"]==["SCOUT_LOCAL_PRESTART_REQUIRED"]
+    assert PRIVATE_VALUE not in json.dumps(result)
+
+
+def test_model_delegate_requires_actual_helper_fit_wiring(local):
+    installed_sources(local)
+    source=local["repository"] / "ml/intraday/models.py"
+    tree=ast.parse(source.read_text())
+    helper=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="fit_calibrated_estimator")
+    helper.body=[ast.Expr(value=ast.Constant(value="build_estimator fit")),ast.Pass()]
+    source.write_text(ast.unparse(tree))
+    result=readiness._source_capabilities(local["repository"])
+    assert "SOURCE_CAPABILITY_UNVERIFIED:forecasting_and_scoring" in result["missing_integration"]
+    check=result["source_component_checks"]["forecasting_and_scoring"]["interface_evidence"]["ml/intraday/models.py:fit_calibrated_estimator"]
+    assert not check["verified"] and check["required_calls_present"]==[]
 
 
 @pytest.mark.parametrize("method", ["reserve_intraday", "reserve_remote_intraday", "_reserve_intraday"])
