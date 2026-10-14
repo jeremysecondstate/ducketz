@@ -1,0 +1,124 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T101440Z-8776bf544ad74e9192b5486a2fe20ec1",
+  "change_id": "20261014T101440Z-8776bf544ad74e9192b5486a2fe20ec1",
+  "commit_sha": "34f510e55d9bb6650eb3eb4bb64a5a2cfa4fb11f",
+  "details": [
+    "Portable weekday schedule: 01:00,01:30,02:00,02:30,03:00,03:30 America/Los_Angeles, GPT-6.1 Sol Ultra. Scout local native registration is active and read back.",
+    "Fresh consolidated-minute inputs, prior completed-session review, diverse bounded calibrated candidate search, frozen chronological shortlist and held-out gate, durable decisions and atomic local specification installation.",
+    "Applies independently to each PC using its own existing profile, symbols and authenticated data connection.",
+    "Local implementation and scheduling are complete. No real-data model search or trader start/restart was performed as infrastructure verification. Source availability and canonical-main integration are separate."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/model_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/supervision.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/supervision_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/model_selection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_model_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_supervision.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_supervision_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_model_selection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_models.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-nightly-supervision.md"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic and fixture verification; no live provider, account, order or application restart calls.",
+    "Optional CatBoost adapter test is skipped when its dependency is absent.",
+    "Historical source publication timestamps are assumptions, not verified point-in-time replay evidence.",
+    "Search and wake deadlines are soft between fits; provider gaps and insufficient evidence may prevent qualification.",
+    "The isolated candidate retains the reviewed base cash-capacity implementation; separately reviewed concurrent capacity changes stay with their existing producer.",
+    "Native task registration is local only; peer scheduling and loaded runtime versions are separate facts.",
+    "Main integration helper rejected the prior dependency-base ancestry mismatch; stacked draft targets the reviewed intraday dependency branch and changes only the 17 owned files.",
+    "Peer task registration and loaded runtime adoption have not been verified."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/126",
+  "remote_sha": "34f510e55d9bb6650eb3eb4bb64a5a2cfa4fb11f",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The next manually started trader loads the supervised-policy integration. Qualified settings affect subsequent fresh-fit live cycles. No trader is started or restarted; private decisions and models remain local.",
+  "scope": "shared",
+  "summary": "Scout completed shared overnight 15-minute model supervision; reviewed source and draft PR available.",
+  "tests": [
+    {
+      "check": "Eight offline intraday data/model/runtime/supervision/manual-session suites",
+      "completed_at_utc": "2026-10-14T10:16:06.693954Z",
+      "output_sha256": "4ce19ac1da71fa82c0bb81d46f6ed1691bffa17782ddfabce7e4671de548fe30",
+      "result": "266 passed, 1 skipped; optional CatBoost absent",
+      "started_at_utc": "2026-10-14T10:15:39.921202Z"
+    }
+  ]
+}

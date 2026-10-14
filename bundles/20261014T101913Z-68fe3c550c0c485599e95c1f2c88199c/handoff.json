@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T10:19:13.622667Z",
+  "id": "20261014T101913Z-68fe3c550c0c485599e95c1f2c88199c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed shared overnight 15-minute model supervision; reviewed source and draft PR available."
+}
