@@ -50,6 +50,47 @@ def test_repeat_wakes_refresh_but_never_retest_same_holdout(tmp_path, monkeypatc
     assert result["symbols"]["ABCL"]["decision_reused"] is True
 
 
+@pytest.mark.parametrize("legacy", [False, True])
+def test_pending_install_reuses_reviewed_dataset_scope_without_retuning(tmp_path, monkeypatch, legacy):
+    from dataclasses import asdict
+    import json
+    from ml.intraday.model_policy import load_active_policy
+    from ml.intraday.models import ModelSpec
+    from ml.intraday.prediction import digest
+    kwargs = helpers(monkeypatch)
+    manifest = {"synthetic_policy": "exclude", "lookback_days": 45,
+                "private_review_detail": "retained only in local decision"}
+    kwargs["builder"] = lambda *a, **kw: SimpleNamespace(feature_names=("a",), manifest=manifest,
+        training_reference_at=("2026-10-13T17:00:00Z",))
+    proposal = dict(status="promoted", holdout_session="2026-10-13", selected_specs=[
+        asdict(ModelSpec("qualified-logistic", family="logistic", probability_calibration="sigmoid"))])
+    original_install = s.install_selection
+    monkeypatch.setattr(s, "install_selection", lambda *a, **kw: (_ for _ in ()).throw(OSError("fixture interrupted install")))
+    failed = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: proposal, **kwargs)
+    assert failed["status"] == "incomplete"
+    decisions = list((tmp_path / "intraday/supervision/decisions").rglob("*.json"))
+    assert len(decisions) == 2
+    if legacy:
+        for path in decisions:
+            value = json.loads(path.read_text())
+            value.pop("sha256")
+            value.pop("dataset_manifest")
+            value["sha256"] = digest(value)
+            path.write_text(json.dumps(value))
+    frozen = {path: path.read_bytes() for path in decisions}
+    monkeypatch.setattr(s, "install_selection", original_install)
+    kwargs["builder"] = lambda *a, **kw: pytest.fail("rebuilt frozen session decision")
+    complete = s.supervise(datastore=tmp_path, evaluator=lambda *a, **kw: pytest.fail("retuned frozen holdout"), **kwargs)
+    assert complete["status"] == "complete"
+    for symbol in ("ABCL", "DBX"):
+        assert complete["symbols"][symbol]["decision_reused"] is True
+        policy = load_active_policy(tmp_path / "intraday/supervision", pc="Scout", symbol=symbol)
+        assert policy["dataset_scope"] == {"synthetic_policy": "exclude", "lookback_days": None if legacy else 45}
+        raw_policy = json.loads((tmp_path / f"intraday/supervision/active/Scout-{symbol}.json").read_text())
+        assert "private_review_detail" not in raw_policy
+    assert {path: path.read_bytes() for path in decisions} == frozen
+
+
 def test_stale_active_inputs_do_not_block_completed_session_assessment(tmp_path, monkeypatch):
     kwargs = helpers(monkeypatch)
     kwargs["loader"] = lambda root, symbol, **kw: "stale" if symbol == "ABCL" else symbol

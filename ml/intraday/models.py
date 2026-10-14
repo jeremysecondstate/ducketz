@@ -95,7 +95,7 @@ class ModelSpec:
     random_state: int = 20261012
     parameters: Mapping[str, object] = field(default_factory=dict)
     calibration_fraction: float = 0.2
-    probability_calibration: str = "none"
+    probability_calibration: str | None = "none"
     training_max_rows: int | None = None
 
     def __post_init__(self):
@@ -105,8 +105,8 @@ class ModelSpec:
             object.__setattr__(self, "family", self.name)
         if not 0 < self.calibration_fraction < 1:
             raise ContractError("Calibration fraction must be between zero and one")
-        if self.probability_calibration not in {"none", "sigmoid"}:
-            raise ContractError("Probability calibration must be none or sigmoid")
+        if self.probability_calibration not in {None, "none", "sigmoid"}:
+            raise ContractError("Probability calibration must be none or sigmoid (None is a legacy alias)")
         if self.training_max_rows is not None and (isinstance(self.training_max_rows, bool)
                 or not isinstance(self.training_max_rows, int) or self.training_max_rows < 4):
             raise ContractError("Training row limit must be an integer of at least four or None")
@@ -303,6 +303,15 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     for timestamps in (references, targets):
         if timestamps is not None and len(timestamps) != len(labels):
             raise ContractError("Fitting timestamps must match training rows")
+    # Validate the complete supplied snapshot before a selected row window can
+    # hide bad clocks in excluded rows. Arrival order itself may be nonmonotonic.
+    if references is not None and any(b <= a for a, b in zip(references, references[1:])):
+        raise ContractError("Training references must be strictly chronological")
+    if targets is not None and available is not None and any(end > observed for end, observed in zip(targets, available)):
+        raise ContractError("Each training target must have closed before its label was available")
+    if references is not None and targets is not None and any(end != start + timedelta(minutes=45)
+                                                             for start, end in zip(references, targets)):
+        raise ContractError("Training label windows must match the exact 45-minute target")
     if spec.training_max_rows is not None:
         input_rows = len(features)
         features, labels = features[-spec.training_max_rows:], labels[-spec.training_max_rows:]
@@ -329,7 +338,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
             "calibration_rows": len(calibration), "purged_rows": len(labels) - len(train) - len(calibration),
             "first_calibration_reference": references[calibration[0]].isoformat(),
             "base_latest_target": max(targets[i] for i in train).isoformat(),
-            "base_latest_label_available_at": max(available[i] for i in train).isoformat()}
+            "base_latest_label_available_at": max(available[i] for i in train).isoformat(),
+            "base_latest_label_available": max(available[i] for i in train).isoformat()}
         base_rows = len(train)
     else:
         base_rows = len(features)

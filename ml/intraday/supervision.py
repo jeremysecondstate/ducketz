@@ -202,7 +202,8 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
                         item["installation"] = json.loads(receipt_path.read_text(encoding="utf-8"))
                     else:
                         item["installation"] = install_selection(root, pc=pc, symbol=symbol, report=selection,
-                            feature_names=feature_names, installed_at=cached["decided_at"])
+                            feature_names=feature_names, installed_at=cached["decided_at"],
+                            dataset_manifest=cached.get("dataset_manifest"))
                         write_json(receipt_path, item["installation"])
                     item["status"] = "complete" if readiness["ready"] else "waiting_for_fresh_data"
                 except Exception as exc:
