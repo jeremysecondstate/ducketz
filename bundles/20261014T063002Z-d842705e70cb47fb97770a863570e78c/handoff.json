@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-14T06:30:02.130228Z",
+  "id": "20261014T063002Z-d842705e70cb47fb97770a863570e78c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout integrated frozen recovery evidence without elapsed-time or operator prerequisites; exact source installed and offline checked."
+}

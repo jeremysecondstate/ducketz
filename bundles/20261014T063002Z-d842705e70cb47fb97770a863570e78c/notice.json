@@ -1,0 +1,69 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261014T062717Z-a9bad9ad3004431687f3540595009b13",
+  "change_id": "20261014T062717Z-a9bad9ad3004431687f3540595009b13",
+  "commit_sha": "0d63b894bb1a0b17364e91bc67ac9d6d3646887d",
+  "details": [
+    "Actor Scout; task source-reconciliation; shared preparation evidence applies independently to Atlas and Scout.",
+    "Compose missing nightly recovery and RECOVERY_VERSION format on current main, retaining continuation records 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93 and 20261014T050106Z-0e807c66479e4deb83823375e163fe5c.",
+    "Elapsed targets and historical operator assertions no longer invalidate frozen preparation evidence; standing human direction supplies authority outside the record.",
+    "Preserve exact saved hashes, original session and recovery targets, datastore containment, chronological information cutoff, future-time rejection and nontrading scope.",
+    "Recovery reasons are informational; newly created context does not invent one-time operator approval or renew existing evidence.",
+    "Retain native planning-tail regression and add direct late-evidence, mutation, schema, chronology and manifest binding tests."
+  ],
+  "files": [
+    "ml/nightly_recovery.py",
+    "ml/preparation_deadline.py",
+    "tests/test_preparation_recovery_evidence.py",
+    "tests/test_preparation_deadline.py"
+  ],
+  "installation_stage": "installed_exact_and_offline_checked",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary fixtures and injected native stages; no broker/provider calls, training, real production replay or trader operation.",
+    "This closes recovery-evidence APIs only; remaining nightly and independent-executor source composition is separate.",
+    "Legacy callers outside dated continuation can still compare the returned original deadline. No full production blockage or complete legacy-policy removal is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/117"
+  ],
+  "main_commit_sha": "347a63016f34a655a041f5a28bef7b1fd4d01f0a",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T055212Z-f63cd552ecdf49a086853a95ff696c93",
+    "20261014T050106Z-0e807c66479e4deb83823375e163fe5c"
+  ],
+  "runtime_implications": "Install the two reviewed preparation helpers and their offline tests on Scout with before-hash guards and backups. Preserve saved evidence, symbols, credentials, native schedules and manual trader controls; no worker restart or loaded-runtime claim.",
+  "scope": "Shared preparation evidence applicable independently to Atlas and Scout; no local symbol or operating binding transfer.",
+  "summary": "Scout integrated frozen recovery evidence without elapsed-time or operator prerequisites; exact source installed and offline checked.",
+  "tests": [
+    {
+      "check": "Preparation recovery evidence: sealed-source",
+      "completed_at_utc": "2026-10-14T06:27:21.157458Z",
+      "output_sha256": "00d091e7ab1b38013c148b8527e76304bc5c7e172e7a06f407f5bd03035e9911",
+      "result": "87 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:27:17.856381Z"
+    },
+    {
+      "check": "Preparation recovery evidence: isolated-source",
+      "completed_at_utc": "2026-10-14T06:27:49.826840Z",
+      "output_sha256": "5a64e0bfcf60967240ad0bb7b310ffc18c5e5af512ce1bcc6be0c7908e8515ff",
+      "result": "87 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:27:46.529681Z"
+    },
+    {
+      "check": "Preparation recovery evidence: main-candidate",
+      "completed_at_utc": "2026-10-14T06:28:57.639758Z",
+      "output_sha256": "21730705d099447c73f8e204e7201a0b72672eb52fab925086290cf125026d67",
+      "result": "87 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:28:54.328521Z"
+    },
+    {
+      "check": "Preparation recovery evidence: installed-scout",
+      "completed_at_utc": "2026-10-14T06:29:31.197642Z",
+      "output_sha256": "0ee7d2996bad16da3f1653fd477327c3fc20f6e98e00c69fdbf636ea91257387",
+      "result": "87 passed; no skips, deselections, warnings or network verifier violations",
+      "started_at_utc": "2026-10-14T06:29:27.298922Z"
+    }
+  ]
+}
