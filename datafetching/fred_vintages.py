@@ -204,15 +204,21 @@ def normalize_fred_vintage_rows(
             "FRED vintage rows contain unsupported availability basis: "
             + ", ".join(unsupported_basis)
         )
+    # A vintage can be acquired on its provider date before the conservative
+    # next-midnight availability clock. Keep the actual receipt while checking
+    # that the provider date itself has started; as-of joins use available_at.
+    acquired_provider_date = output.loc[alfred_vintage, "fetched_at"].dt.tz_convert(
+        "America/Chicago"
+    ).dt.date
     if (
         output.loc[alfred_vintage, "release_time_precision"].ne("DATE").any()
-        or output.loc[alfred_vintage, "fetched_at"].lt(
-            output.loc[alfred_vintage, "release_at"]
+        or acquired_provider_date.lt(
+            output.loc[alfred_vintage, "realtime_start"].dt.date
         ).any()
     ):
         raise ValueError(
             "ALFRED vintage rows require date-precision provider timing and "
-            "a later actual local acquisition"
+            "actual local acquisition on or after their provider date"
         )
     expected_alfred_release = output.loc[
         alfred_vintage, "realtime_start"
