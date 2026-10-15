@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T10:44:54.008055Z",
+  "id": "20261015T104454Z-fe8e5479d48d4ab2974935a8c0a7f036",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed explicit metric cohorts and malformed-receipt isolation; source and common-main publication complete."
+}

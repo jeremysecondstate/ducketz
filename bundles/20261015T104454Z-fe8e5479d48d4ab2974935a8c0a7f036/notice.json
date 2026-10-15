@@ -1,0 +1,89 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T104000Z-f417892610ba42fdb278757866fd9683",
+  "change_id": "20261015T104000Z-f417892610ba42fdb278757866fd9683",
+  "commit_sha": "7e0b9f0341ab7d998174893a1436971a622ee6f3",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; common read-only forecast display applicable to both PCs with independent local symbols and stores.",
+    "Selectively adopt Atlas PR136 metric cohorts, retaining Completion-Record 20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8, predecessor 20261014T213613Z-0d3d905992b9411fadb43ff907e3e705 and source 06ddb6aae59089b3245c7fdcbe7ba4ec4c645005.",
+    "Default metrics to observed forecasts issued before target open; expose during-target, after-close, unknown and all-outcomes cohorts, with cohort selection before time windows and same-sample majority baseline.",
+    "Keep every saved forecast in consensus and matrix views; apply selected cohort consistently to accuracy, calibration, correlations and regime diagnostics.",
+    "Isolate malformed receipt type errors as a per-source warning while continuing to load valid local sources.",
+    "Publish existing read-only UI component, unchanged passive telemetry helper and complete original regression suites because common main lacks them. No automatic transport, private export or cross-trader dependency is enabled.",
+    "Preserve Scout database binding behavior, original actor selection, existing shell integration, manual recipe, selected supervision, cutoff/data drain and model research reporting. Atlas research pane and main shell wiring are outside this component unit."
+  ],
+  "files": [
+    "app/ui/intraday.py",
+    "app/ui/intraday_data.py",
+    "tests/test_intraday_ui.py",
+    "tests/test_intraday_metric_cohorts.py",
+    "ml/intraday/telemetry.py",
+    "tests/test_intraday_telemetry.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "b7ae9db94fe2060ecb5adc6bc1c8a26d3a6b3a56",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixture and Tk widget checks; no real accounts, production data, provider or broker calls.",
+    "Main receives the complete component and test dependency closure; its app shell does not yet wire this tab. Scout already has its own existing shell wiring.",
+    "Historical receipt helpers remain passive; current independent-trader operation is unchanged. Source installation does not establish loaded-app adoption.",
+    "Initial installed run passed 101 with one intermittent Tk initialization skip; unchanged installed source passed all 102 in a fresh full run. Original skip evidence retained. Main-shell wiring and Atlas research pane remain separate source work; loaded app adoption unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/165",
+    "https://github.com/jeremysecondstate/ducketz/pull/136"
+  ],
+  "local_receipt": "Six reviewed files are exact on Scout; four required installation writes. All 233 optional installation-manifest files verify, preserving prior owner and unrelated entries. Each check binds 16 source/dependency files. No production or trader process action.",
+  "remaining_source_work": "Adapt Atlas PR136 research pane to Scout saved report schema before adoption; review existing app-shell integration closure for common main. Retain separate PR139 provider-call stop checks/provenance and nightly-continuation common-main composition. Preserve PR140 cutoff/final-data drain and all original completion identities; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed display source is available to normal UI loads. No trader start or restart, manual-stop change, native-task change or production wait.",
+  "scope": "Shared read-only forecast component for both PCs with independent local symbols and stores.",
+  "summary": "Scout installed explicit metric cohorts and malformed-receipt isolation; source and common-main publication complete.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T10:40:04.783143Z",
+      "fingerprints": 16,
+      "import_verifier_violations": 0,
+      "output_sha256": "f959ee4aedada7fa3f4f8fef7162c5f6cf95c332b006d71ab42fa1c6192073f1",
+      "result": "102 passed in 3.82s",
+      "started_at_utc": "2026-10-15T10:40:00.140880Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T10:40:35.570166Z",
+      "fingerprints": 16,
+      "import_verifier_violations": 0,
+      "output_sha256": "3371df5e0b84892dd1cda6a9b9d88b0cd66ae6dbdb7e189ba02c53e2d2161931",
+      "result": "102 passed in 3.78s",
+      "started_at_utc": "2026-10-15T10:40:30.940735Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-15T10:42:14.991720Z",
+      "fingerprints": 16,
+      "import_verifier_violations": 0,
+      "output_sha256": "3371df5e0b84892dd1cda6a9b9d88b0cd66ae6dbdb7e189ba02c53e2d2161931",
+      "result": "102 passed in 3.78s",
+      "started_at_utc": "2026-10-15T10:42:10.369129Z"
+    },
+    {
+      "check": "installed Scout first run",
+      "completed_at_utc": "2026-10-15T10:43:28.567464Z",
+      "fingerprints": 16,
+      "import_verifier_violations": 0,
+      "output_sha256": "3be2b6adaa0286f569833da4909cc0258f41b2cd1d3716f768faf744784b1d86",
+      "result": "101 passed, 1 skipped in 4.40s",
+      "started_at_utc": "2026-10-15T10:43:23.267790Z"
+    },
+    {
+      "check": "installed Scout fresh full rerun",
+      "completed_at_utc": "2026-10-15T10:43:46.635575Z",
+      "fingerprints": 16,
+      "import_verifier_violations": 0,
+      "output_sha256": "f959ee4aedada7fa3f4f8fef7162c5f6cf95c332b006d71ab42fa1c6192073f1",
+      "result": "102 passed in 3.82s",
+      "started_at_utc": "2026-10-15T10:43:41.966309Z"
+    }
+  ]
+}
