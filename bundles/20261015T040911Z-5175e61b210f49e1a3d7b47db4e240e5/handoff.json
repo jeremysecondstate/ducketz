@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T04:09:11.676371Z",
+  "id": "20261015T040911Z-5175e61b210f49e1a3d7b47db4e240e5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas ALFRED same-day acquisition repair applied locally and published as draft PR 144"
+}

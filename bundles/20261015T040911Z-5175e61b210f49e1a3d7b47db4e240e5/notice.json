@@ -1,0 +1,28 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261015T040723Z-826b6244c9484179a5a687efa407fa2a",
+  "change_id": "20261015T040723Z-826b6244c9484179a5a687efa407fa2a",
+  "files": [
+    "datafetching/fred_vintages.py",
+    "datafetching/fred_alfred_readiness.py",
+    "ml/datasets/families.py",
+    "tests/test_fred_alfred_same_day_acquisition.py"
+  ],
+  "limitations": [
+    "Main integration is pending review.",
+    "Peer installation is not established."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/144",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Preserve actual same-day ALFRED acquisition while retaining conservative availability and rejecting future provider dates. Authorized local import completed; no trader or schedule changes.",
+  "scope": "shared",
+  "source_sha": "90e1f5d1a9c15a77eddaa00a41bfd01416b5debb",
+  "summary": "Atlas ALFRED same-day acquisition repair applied locally and published as draft PR 144",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-15T04:07:58.675985Z",
+      "output_sha256": "10955ed5d0036b9f5843bf17973bed197cba53103a2cd911ec6707a40e83e612",
+      "result": "69 offline tests passed"
+    }
+  ]
+}
