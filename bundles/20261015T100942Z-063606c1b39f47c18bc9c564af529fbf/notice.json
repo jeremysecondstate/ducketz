@@ -1,0 +1,75 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T100120Z-9710938b8d354e759133eed2eddfb80c",
+  "change_id": "20261015T100120Z-9710938b8d354e759133eed2eddfb80c",
+  "commit_sha": "639f8c1a3b3ad55b3e722ada86561d1cba70bf8e",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared model research applicable to Atlas and Scout with independent local symbols and saved reports.",
+    "Selective composition of Atlas PR136 native model catalog and reporting; retain Completion-Record 20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8, extending 20261014T213613Z-0d3d905992b9411fadb43ff907e3e705, and source 06ddb6aae59089b3245c7fdcbe7ba4ec4c645005.",
+    "Cover 21 configurations across 16 implemented families, preserve explicit missing dependencies, permit up to 16 distinct qualifying families, and explain every selection outcome.",
+    "Correct the pre-fit deadline report so a candidate never fitted is not counted as attempted; preserve partial-fit and estimator-timeout evidence.",
+    "Preserve chronological calibration, availability purge, incumbent comparison, frozen shortlist and final holdout gate. Existing explicit recipe, selected supervisor, live session and native tasks are unchanged."
+  ],
+  "files": [
+    "ml/intraday/model_selection.py",
+    "tests/test_intraday_model_selection.py",
+    "tests/test_intraday_full_catalog_fits.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "26076a2f294ba3770c5aa6332be9e0518a537408",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixtures only; no provider or broker requests, production training or trader operation.",
+    "Unavailable optional adapter dependencies retain explicit skips and failure reports; no substitutes are fitted.",
+    "Existing explicit local research configuration remains in effect. Source installation is separate from loaded runtime.",
+    "Two CatBoost tests skipped because the optional dependency is unavailable; joblib NumPy deprecation warnings retained."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/164",
+    "https://github.com/jeremysecondstate/ducketz/pull/136"
+  ],
+  "local_receipt": "Three exact reviewed source/test files installed. All 230 optional installed-manifest files verify, preserving prior owner and unrelated entries. All checks bind 49 source/dependency files. No production or trader process action.",
+  "remaining_source_work": "Selectively compose PR136 prediction metric cohorts and the cohort UI controls using the saved precise review. Keep Atlas research pane separate until adapted to Scout report schema. PR139 provider-call stop checks/provenance and existing nightly-continuation common-main composition remain separate. Preserve PR140 cutoff/final-data drain; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Available for future normal model research under existing native operation; no restart, task change, trader start or production wait.",
+  "scope": "Shared native model research for both PCs with independent symbols and saved model evidence.",
+  "summary": "Scout adopted native model catalog and corrected pre-fit deadline attempt reporting; source, common main and installation complete.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T10:01:36.423901Z",
+      "fingerprints": 49,
+      "import_verifier_violations": 0,
+      "output_sha256": "228ca14cdd83e3fb4a2134de593d5eb5899c82a1896b6c960afd93cc6c36afa8",
+      "result": "194 passed, 2 skipped, 1968 warnings in 14.74s",
+      "started_at_utc": "2026-10-15T10:01:20.234743Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T10:03:13.076332Z",
+      "fingerprints": 49,
+      "import_verifier_violations": 0,
+      "output_sha256": "8ceca9054105eeb641b73c9ea09c5d0473f7b856fb8af3d76e3ec1b44c753bc0",
+      "result": "194 passed, 2 skipped, 1968 warnings in 14.13s",
+      "started_at_utc": "2026-10-15T10:02:57.423839Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-15T10:05:34.711744Z",
+      "fingerprints": 49,
+      "import_verifier_violations": 0,
+      "output_sha256": "c9c9f51b90a5c6fe457aab48ec59053ed7e8e7003d6ca20e56ad11f30bf0f655",
+      "result": "194 passed, 2 skipped, 1968 warnings in 15.33s",
+      "started_at_utc": "2026-10-15T10:05:17.788669Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T10:07:21.800827Z",
+      "fingerprints": 49,
+      "import_verifier_violations": 0,
+      "output_sha256": "9293c1a0260cdd173b39306e4c8d79bb7bef75ba546245990f70255a2ace9a7b",
+      "result": "194 passed, 2 skipped, 1968 warnings in 14.07s",
+      "started_at_utc": "2026-10-15T10:07:06.234845Z"
+    }
+  ]
+}

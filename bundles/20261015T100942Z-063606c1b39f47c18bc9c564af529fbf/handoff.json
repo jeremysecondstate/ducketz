@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T10:09:42.740995Z",
+  "id": "20261015T100942Z-063606c1b39f47c18bc9c564af529fbf",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted native model catalog and corrected pre-fit deadline attempt reporting; source, common main and installation complete."
+}
