@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sqlite3
+from types import SimpleNamespace
 
 from filelock import FileLock, Timeout
 import pytest
@@ -73,6 +74,194 @@ def test_begin_retains_prechange_evidence_and_preserves_incumbent(cycle):
     assert (cycle.directory / "before/ml/hyperliquid_models.py").read_text() == "# incumbent source\n"
     with pytest.raises(ValueError, match="Existing maintenance"):
         cycle.begin()
+
+
+def test_manual_fresh_mirror_reason_is_retained_without_a_performance_claim(cycle):
+    reason = "Human requested a fresh 1:1 mirror and performance baseline"
+    cycle.begin(reason=reason)
+    assert review.read_json(cycle.operation_path)["reason"] == reason
+    assert review.read_json(cycle.guard)["reason"] == reason
+    cycle.archive()
+    records = make_paper(cycle.root, stamp="2026-09-28T21:00:00+00:00", mirror=True)
+    publish(cycle.directory / "opening-verification.json",
+            review.verify_opening(cycle.root / "_paper", records))
+    cycle.phase(review.read_json(cycle.operation_path), "prepared")
+    accepted = cycle.accept()
+    assert accepted["reason"] == reason
+    assert not any(key in accepted for key in ("win", "loss", "performance_result"))
+
+
+@pytest.fixture
+def runtime_context(tmp_path):
+    root, project = tmp_path / "data", tmp_path / "project"
+    root.mkdir()
+    config = project / "configs"
+    publish(config / "hyperliquid-markets.json", {
+        "version": 1, "symbols": ["BTC"], "interval": "5m", "output_root": str(root)})
+    publish(config / "hyperliquid-models.json", {
+        "version": 1, "markets_config": "hyperliquid-markets.json", "horizons_bars": [1],
+        "retrain_before_predict": True})
+    publish(config / "hyperliquid-paper.json", {
+        "version": 1, "model_config": "hyperliquid-models.json", "data_root": str(root)})
+    now = datetime.now(timezone.utc)
+    stamp = lambda seconds: (now + timedelta(seconds=seconds)).isoformat()
+    owner = {"pid": 123, "status": "running", "mode": "paper", "interval": "5m", "horizon_bars": 1,
+             "retrain_before_predict": True, "once": False, "last_error": None,
+             "started_at_utc": stamp(-90), "updated_at_utc": stamp(-1),
+             "workers": {key: {"status": "running"} for key in ("data", "models", "paper")}}
+    publish(root / "_paper_loop/status.json", owner)
+    states = {}
+    for role, (relative, _, _, config_name) in review.RUNTIMES.items():
+        states[role] = {"pid": 123, "status": "running", "updated_at_utc": stamp(-1),
+                        "config_path": str(config / config_name)}
+        publish(root / relative / "status.json", states[role])
+    states["coordinator"] = {"pid": 123, "status": "running", "updated_at_utc": stamp(-1),
+                              "config_path": str(config / "hyperliquid-markets.json")}
+    command = ["python", "-B", "-m", review.PAPER_LOOP_MODULE]
+    process = SimpleNamespace(pid=123, cmdline=lambda: command, cwd=lambda: str(project),
+                              create_time=lambda: now.timestamp() - 100, parents=lambda: [])
+    return root, project, states, owner, process, now.timestamp()
+
+
+@pytest.mark.parametrize("role", ["paper", "models", "coordinator"])
+@pytest.mark.parametrize("explicit_config", [False, True])
+def test_unified_worker_identity_accepts_default_and_explicit_launcher_config(runtime_context, role, explicit_config):
+    root, project, states, owner, process, now = runtime_context
+    if explicit_config:
+        process.cmdline().extend(["--config", "configs/hyperliquid-paper.json"])
+    result = review.verify_runtime_identity(root, project, role, states[role], process=process, now=now)
+    assert result["identity_verified"] is True
+    assert result["process_owner"] == "paper_loop"
+    assert result["process_module"] == review.PAPER_LOOP_MODULE
+    assert result["config"] == states[role]["config_path"]
+
+
+@pytest.mark.parametrize("problem", ["pid", "stale", "worker", "stop", "cwd", "config", "source_config", "old_observation"])
+def test_unified_worker_identity_rejects_foreign_or_unproven_owner(runtime_context, problem):
+    root, project, states, owner, process, now = runtime_context
+    if problem == "pid":
+        owner["pid"] = 124
+    elif problem == "stale":
+        owner["updated_at_utc"] = datetime.fromtimestamp(now - 121, timezone.utc).isoformat()
+    elif problem == "worker":
+        owner["workers"]["paper"]["status"] = "stopped"
+    elif problem == "stop":
+        (root / "_paper_loop/stop.request").touch()
+    elif problem == "cwd":
+        process.cwd = lambda: str(root)
+    elif problem == "config":
+        process.cmdline().extend(["--config", "configs/other-paper.json"])
+    elif problem == "source_config":
+        path = project / "configs/hyperliquid-paper.json"
+        value = review.read_json(path)
+        value["data_root"] = str(root / "different")
+        publish(path, value)
+    else:
+        states["paper"]["updated_at_utc"] = datetime.fromtimestamp(now - 95, timezone.utc).isoformat()
+    publish(root / "_paper_loop/status.json", owner)
+    with pytest.raises(ValueError, match="identity|ownership|config|datastore"):
+        review.verify_runtime_identity(root, project, "paper", states["paper"], process=process, now=now)
+
+
+@pytest.mark.parametrize("explicit_config", [False, True])
+def test_standalone_worker_identity_is_preserved(runtime_context, explicit_config):
+    root, project, states, owner, process, now = runtime_context
+    command = ["python", "-m", "ml.hyperliquid_paper_runtime"]
+    if explicit_config:
+        command.extend(["--config", str(project / "configs/hyperliquid-paper.json")])
+    process.cmdline = lambda: command
+    result = review.verify_runtime_identity(root, project, "paper", states["paper"], process=process, now=now)
+    assert result["process_owner"] == "standalone"
+    assert result["identity_verified"] is True
+
+
+def test_verify_running_accepts_shared_unified_pid(runtime_context, monkeypatch):
+    root, project, states, owner, process, now = runtime_context
+    monkeypatch.setattr(review, "runtime_processes", lambda: [
+        {"pid": process.pid, "module": review.PAPER_LOOP_MODULE, "cmdline": process.cmdline()}])
+    monkeypatch.setattr(review.psutil, "Process", lambda pid: process)
+    result = review.verify_running(root, project)
+    assert set(result) == {"paper", "models"}
+    assert all(row["process_owner"] == "paper_loop" for row in result.values())
+
+
+def test_runtime_discovery_finds_unified_owner_but_not_script_argument_lookalikes(monkeypatch):
+    commands = [["python", "-B", "-m", review.PAPER_LOOP_MODULE],
+                ["python", "-c", "print('unrelated')", "-m", review.PAPER_LOOP_MODULE],
+                ["python", "unrelated.py", "-m", review.PAPER_LOOP_MODULE]]
+    processes = [SimpleNamespace(pid=index, info={"pid": index, "name": "python", "cmdline": command})
+                 for index, command in enumerate(commands, start=1)]
+    monkeypatch.setattr(review.psutil, "process_iter", lambda fields: processes)
+    assert [row["pid"] for row in review.runtime_processes()] == [1]
+
+
+def test_archive_rejects_unified_owner_before_moving_any_namespace(cycle, monkeypatch):
+    cycle.begin()
+    monkeypatch.setattr(review, "runtime_processes", lambda: [{"pid": 42, "module": review.PAPER_LOOP_MODULE}])
+    with pytest.raises(ValueError, match="runtime processes still exist"):
+        cycle.archive()
+    assert (cycle.root / "_paper/ledger.sqlite3").exists()
+    assert (cycle.root / "_models/weights.bin").exists()
+    assert not cycle.archive_path.exists()
+
+
+def fresh_cycle(tmp_path, monkeypatch):
+    root, project = tmp_path / "data", tmp_path / "project"
+    root.mkdir()
+    (project / "configs").mkdir(parents=True)
+    publish(project / "configs/hyperliquid-paper.json", {"mode": "paper"})
+    monkeypatch.setattr(review, "runtime_processes", lambda: [])
+    return review.ReviewCycle(root, project, "first-session")
+
+
+def test_bootstrap_preserves_data_and_claims_verified_opening_path(tmp_path, monkeypatch):
+    first = fresh_cycle(tmp_path, monkeypatch)
+    publish(first.root / "BTC/5m/latest.json", {"run_id": "retained"})
+    operation = first.bootstrap()
+    assert operation["first_session"] is True
+    assert operation["previous_experiment"] == {}
+    assert operation["archive_directory"] is None
+    assert first.operation("archived") == operation
+    assert not first.archive_path.exists()
+    assert review.read_json(first.root / "BTC/5m/latest.json") == {"run_id": "retained"}
+    assert not (first.root / "_paper").exists()
+    # The ordinary independent opening verification and acceptance still apply.
+    records = make_paper(first.root, stamp="2026-10-08T18:00:00+00:00", mirror=True)
+    opening = review.verify_opening(first.root / "_paper", records)
+    publish(first.directory / "opening-verification.json", opening)
+    first.phase(operation, "prepared")
+    accepted = first.accept()
+    assert accepted["superseded_experiment_id"] is None
+    assert accepted["preserved_previous_archive"] is None
+    assert accepted["immutable_opening_hashes"] == opening["immutable_opening_hashes"]
+    with pytest.raises(ValueError, match="Existing lifecycle"):
+        first.bootstrap()
+
+
+@pytest.mark.parametrize("existing", ["_paper", "_models", "_operations/paper-current-accepted.json",
+                                      "_operations/paper-maintenance.json",
+                                      "_operations/paper-improvement-cadence.json",
+                                      "_operations/paper-improvement/prior/operation.json",
+                                      "_paper_archives/prior/manifest.json"])
+def test_bootstrap_rejects_existing_or_incomplete_history(tmp_path, monkeypatch, existing):
+    first = fresh_cycle(tmp_path, monkeypatch)
+    path = first.root / existing
+    if existing in review.NAMESPACES:
+        path.mkdir()
+    else:
+        publish(path, {"preserve": True})
+    with pytest.raises(ValueError, match="forbids first-session"):
+        first.bootstrap()
+    assert path.exists()
+    assert not first.operation_path.exists()
+
+
+def test_bootstrap_rejects_live_runtime(tmp_path, monkeypatch):
+    first = fresh_cycle(tmp_path, monkeypatch)
+    monkeypatch.setattr(review, "runtime_processes", lambda: [{"pid": 42}])
+    with pytest.raises(ValueError, match="runtime exists"):
+        first.bootstrap()
+    assert not first.guard.exists()
 
 
 def test_other_owner_and_concurrent_stage_block(cycle):

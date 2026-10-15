@@ -35,6 +35,115 @@ RUNTIMES = {
     "paper": ("_paper/_runtime", ".paper.lock", "ml.hyperliquid_paper_runtime", "hyperliquid-paper.json"),
     "models": ("_models/_runtime", ".runtime.lock", "ml.hyperliquid_model_runtime", "hyperliquid-models.json"),
 }
+PAPER_LOOP_MODULE = "ml.hyperliquid_paper_loop"
+DEFAULT_REASON = "User-authorized Paper self-improvement and fresh account mirror"
+
+
+def _command_module(command):
+    # Module names in unrelated arguments do not establish a Python identity.
+    if not isinstance(command, (list, tuple)) or len(command) < 3:
+        return None
+    index = 1
+    flags = {"-B", "-u", "-E", "-I", "-s", "-S", "-O", "-OO", "-P", "-q", "-v", "-x"}
+    while index < len(command):
+        argument = command[index]
+        if argument == "-m":
+            return command[index + 1] if index + 1 < len(command) else None
+        if argument in flags:
+            index += 1
+        elif argument in {"-W", "-X"} and index + 1 < len(command):
+            index += 2
+        elif argument.startswith(("-W", "-X")) and len(argument) > 2:
+            index += 1
+        else:
+            return None
+    return None
+
+
+def _command_config(command, cwd, default):
+    values = []
+    for index, argument in enumerate(command[3:], start=3):
+        if argument == "--config":
+            if index + 1 == len(command):
+                raise ValueError("Command config argument is missing its path")
+            values.append(command[index + 1])
+        elif argument.startswith("--config="):
+            values.append(argument.split("=", 1)[1])
+    if len(values) > 1 or values and not values[0]:
+        raise ValueError("Command config is ambiguous")
+    path = Path(values[0]) if values else default
+    return safe_path(path if path.is_absolute() else cwd / path)
+
+
+def verify_runtime_identity(root, project, role, state, *, process=None, now=None):
+    """Verify standalone ownership or an exact worker of the unified launcher.
+
+    Reads process metadata, local status and configuration only. Never acquires
+    runtime locks, constructs a worker, or reaches a provider.
+    """
+    roles = {**{name: (row[2], row[3]) for name, row in RUNTIMES.items()},
+             "coordinator": ("ml.hyperliquid_coordinator", "hyperliquid-markets.json"),
+             "powder": ("ml.hyperliquid_powder_runtime", "hyperliquid-powder.json")}
+    module, config_name = roles[role]
+    root, project = safe_path(root), safe_path(project)
+    pid = state.get("pid")
+    if type(pid) is not int or pid <= 0:
+        raise ValueError(f"{role} runtime PID is invalid")
+    process = psutil.Process(pid) if process is None else process
+    if process.pid != pid:
+        raise ValueError(f"{role} process PID differs from saved ownership")
+    command = process.cmdline()
+    actual_module = _command_module(command)
+    unified = actual_module == PAPER_LOOP_MODULE and role != "powder"
+    if actual_module != module and not unified:
+        raise ValueError(f"{role} runtime process identity is unverified")
+    cwd = safe_path(process.cwd())
+    config = safe_path(project / "configs" / config_name)
+    if cwd != project or safe_path(state.get("config_path", "")) != config:
+        raise ValueError(f"{role} cwd/config identity mismatch")
+    command_default = project / "configs" / ("hyperliquid-paper.json" if unified else config_name)
+    if _command_config(command, cwd, command_default) != safe_path(command_default):
+        raise ValueError(f"{role} command config is unverified")
+    created = process.create_time()
+    observed = datetime.fromisoformat(state["updated_at_utc"])
+    if observed.tzinfo is None or observed.timestamp() < created - 5:
+        raise ValueError(f"{role} status predates its current process")
+    result = {"pid": pid, "module": module, "process_module": actual_module,
+              "config": str(config), "cwd": str(cwd), "command": command,
+              "identity_verified": True, "process_owner": "paper_loop" if unified else "standalone",
+              "created_at_utc": datetime.fromtimestamp(created, timezone.utc).isoformat(),
+              "observed_at_utc": state["updated_at_utc"]}
+    if unified:
+        owner = read_json(root / "_paper_loop/status.json")
+        current = datetime.now(timezone.utc).timestamp() if now is None else now
+        started = datetime.fromisoformat(owner["started_at_utc"])
+        updated = datetime.fromisoformat(owner["updated_at_utc"])
+        worker = "data" if role == "coordinator" else role
+        if (owner.get("pid") != pid or owner.get("status") != "running"
+                or owner.get("mode") != "paper" or owner.get("interval") != "5m"
+                or owner.get("horizon_bars") != 1 or owner.get("retrain_before_predict") is not True
+                or owner.get("once") is not False or owner.get("last_error")
+                or owner.get("workers", {}).get(worker, {}).get("status") != "running"
+                or started.tzinfo is None or updated.tzinfo is None
+                or not -5 <= current - updated.timestamp() <= 120
+                or started.timestamp() < created - 5 or updated < started or observed < started
+                or (root / "_paper_loop/stop.request").exists()):
+            raise ValueError(f"{role} unified worker ownership is unverified")
+        # Prove that this launcher's selected config actually owns this root
+        # and the component configs named in the saved worker observations.
+        from ml.hyperliquid_paper_policy import load_config as load_paper
+        from ml.hyperliquid_model_config import load_config as load_models
+        paper = load_paper(command_default)
+        models = load_models(paper.model_config)
+        markets = models.load_markets()
+        if (paper.data_root != root or markets.output_root != root
+                or paper.model_config != project / "configs/hyperliquid-models.json"
+                or models.markets_config != project / "configs/hyperliquid-markets.json"
+                or markets.interval != "5m" or models.horizons_bars != (1,)
+                or not models.retrain_before_predict):
+            raise ValueError(f"{role} unified configuration does not own this datastore")
+        result["owner_started_at_utc"] = owner["started_at_utc"]
+    return result
 
 
 def utc():
@@ -102,7 +211,7 @@ def inventory(root, namespaces=NAMESPACES):
 def runtime_processes():
     """Fail closed when a Python identity cannot be read; include launchers."""
     found, uncertain = [], []
-    modules = {row[2] for row in RUNTIMES.values()} | {"ml.hyperliquid_powder_runtime"}
+    modules = {row[2] for row in RUNTIMES.values()} | {"ml.hyperliquid_powder_runtime", PAPER_LOOP_MODULE}
     for process in psutil.process_iter(["pid", "name", "cmdline", "create_time", "ppid"]):
         try:
             info = process.info
@@ -111,9 +220,9 @@ def runtime_processes():
                 if "python" in (info.get("name") or "").lower():
                     uncertain.append(process.pid)
                 continue
-            matched = modules.intersection(command)
-            if matched:
-                found.append({**info, "module": sorted(matched)[0]})
+            module = _command_module(command)
+            if module in modules:
+                found.append({**info, "module": module})
         except (psutil.NoSuchProcess, psutil.ZombieProcess):
             continue
         except psutil.AccessDenied:
@@ -275,7 +384,10 @@ class ReviewCycle:
         write_json(self.guard, guard)
         return operation
 
-    def begin(self):
+    def begin(self, *, reason=DEFAULT_REASON):
+        if not isinstance(reason, str) or not reason.strip() or len(reason) > 2000:
+            raise ValueError("A concise nonempty maintenance reason is required")
+        reason = reason.strip()
         with self.lock():
             if self.guard.exists() and read_json(self.guard).get("status") == "in_progress":
                 raise ValueError("Existing maintenance must be resolved by its owner")
@@ -301,12 +413,48 @@ class ReviewCycle:
                          "root": str(self.root), "project": str(self.project),
                          "evidence_directory": str(self.directory), "archive_directory": str(self.archive_path),
                          "previous_experiment": previous, "before_provenance": provenance,
+                         "reason": reason,
                          "source_snapshot_note": "Snapshot records files on disk at begin; a running process may have imported earlier source. Bind retained incumbent source to the review/change record when applicable."}
             write_json(self.operation_path, operation, exclusive=True)
             write_json(self.guard, {"status": "in_progress", "owner": OWNER, "cycle_id": self.cycle_id,
                                    "requested_at_utc": utc(), "phase": "begun",
                                    "evidence_directory": str(self.directory), "archive": str(self.archive_path),
-                                   "reason": "User-authorized Paper self-improvement and fresh account mirror",
+                                   "reason": reason,
+                                   "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+                                   "expected_upstream_state": "data/model lifecycle operator-controlled; unified owner may pause together",
+                                   "powder": "inactive; no real account mutation"})
+            return operation
+
+    def bootstrap(self):
+        """Claim a human-authorized first session, never repair missing history.
+
+        No predecessor exists to archive. Existing operating namespaces or
+        lifecycle receipts require the ordinary review/recovery workflow.
+        """
+        with self.lock():
+            if self.guard.exists() or (self.operations / BASELINE_NAME).exists():
+                raise ValueError("Existing lifecycle state forbids first-session bootstrap")
+            if any(child(self.root, name).exists() for name in NAMESPACES):
+                raise ValueError("Existing Paper/model namespace forbids first-session bootstrap")
+            if (self.operations / "paper-improvement-cadence.json").exists():
+                raise ValueError("Existing cadence forbids first-session bootstrap")
+            if any(self.directory.parent.iterdir()) or any(self.archive_parent.iterdir()):
+                raise ValueError("Existing experiment history forbids first-session bootstrap")
+            if runtime_processes():
+                raise ValueError("Paper/model/Powder runtime exists before first-session bootstrap")
+            self.directory.mkdir()
+            provenance = snapshot_provenance(self.project, self.directory / "before")
+            operation = {"owner": OWNER, "cycle_id": self.cycle_id, "phase": "archived",
+                         "created_at_utc": utc(), "root": str(self.root), "project": str(self.project),
+                         "evidence_directory": str(self.directory), "archive_directory": None,
+                         "previous_experiment": {}, "before_provenance": provenance,
+                         "first_session": True,
+                         "archive_note": "No predecessor exists; no archive was created."}
+            write_json(self.operation_path, operation, exclusive=True)
+            write_json(self.guard, {"status": "in_progress", "owner": OWNER, "cycle_id": self.cycle_id,
+                                   "requested_at_utc": utc(), "phase": "archived",
+                                   "evidence_directory": str(self.directory), "archive": None,
+                                   "reason": "Human-authorized first local simulated Paper session",
                                    "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
                                    "expected_upstream_state": "data continues; models operator-controlled",
                                    "powder": "inactive; no real account mutation"})
@@ -470,8 +618,9 @@ class ReviewCycle:
                       "opening_verification_path": str(self.directory / "opening-verification.json"),
                       "source_verification_path": str(self.directory / "opening-public-account-reads.json"),
                       "immutable_opening_hashes": opening["immutable_opening_hashes"],
-                      "preserved_previous_archive": str(self.archive_path),
-                      "superseded_experiment_id": operation["previous_experiment"]["experiment_id"],
+                      "preserved_previous_archive": operation["archive_directory"],
+                      "superseded_experiment_id": operation["previous_experiment"].get("experiment_id"),
+                      "reason": operation.get("reason", DEFAULT_REASON),
                       "evidence_directory": str(self.directory), "provenance": provenance,
                       "config_sha256": {Path(row["relative_path"]).name: row["sha256"] for row in provenance["files"]
                                         if row["relative_path"].startswith("configs/")}}
@@ -650,34 +799,31 @@ def verify_running(root, project):
         if (state.get("status") != "running" or not -5 <= age <= 120
                 or state.get("last_error") or state.get("config_error") or (control / "stop.request").exists()):
             raise ValueError(f"{role} runtime is not clean and fresh")
-        matches = [row for row in processes if row["pid"] == state.get("pid") and row["module"] == module]
+        matches = [row for row in processes if row["pid"] == state.get("pid")
+                   and row["module"] in {module, PAPER_LOOP_MODULE}]
         if len(matches) != 1:
             raise ValueError(f"{role} runtime process identity is unverified")
-        process = psutil.Process(state["pid"])
-        command = matches[0]["cmdline"]
-        config = project / "configs" / config_name
-        if safe_path(process.cwd()) != project or safe_path(state["config_path"]) != config:
-            raise ValueError(f"{role} cwd/config identity mismatch")
-        if "--config" not in command or safe_path(command[command.index("--config") + 1]) != config:
-            raise ValueError(f"{role} explicit command config is unverified")
-        verified[role] = {"pid": state["pid"], "module": module, "config": str(config),
-                          "created_at_utc": datetime.fromtimestamp(process.create_time(), timezone.utc).isoformat(),
-                          "observed_at_utc": state["updated_at_utc"]}
+        verified[role] = verify_runtime_identity(root, project, role, state)
     return verified
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=("begin", "archive", "prepare", "accept", "complete"))
+    parser.add_argument("stage", choices=("bootstrap", "begin", "archive", "prepare", "accept", "complete"))
     parser.add_argument("--cycle-id", required=True)
     parser.add_argument("--root", type=Path, default=Path("C:/DATASTORE/hyperliquid"))
     parser.add_argument("--project", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--health-evidence", "--health-report", type=Path)
+    parser.add_argument("--reason", help="Actual human-authorized reason for begin; not a performance classification")
     args = parser.parse_args(argv)
     if args.stage == "complete" and not args.health_evidence:
         parser.error("complete requires --health-evidence JSON with result=passed")
+    if args.reason is not None and args.stage != "begin":
+        parser.error("--reason is only recorded at begin")
     cycle = ReviewCycle(args.root, args.project, args.cycle_id)
-    result = cycle.complete(args.health_evidence) if args.stage == "complete" else getattr(cycle, args.stage)()
+    result = (cycle.complete(args.health_evidence) if args.stage == "complete" else
+              cycle.begin(reason=args.reason if args.reason is not None else DEFAULT_REASON) if args.stage == "begin" else
+              getattr(cycle, args.stage)())
     print(json.dumps(result, indent=2, allow_nan=False))
     return 0
 

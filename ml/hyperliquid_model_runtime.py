@@ -1,8 +1,9 @@
 """Independent Hyperliquid research training, prediction and forward evaluation.
 
 Run with --once to benchmark one pass, or without it to follow completed candle
-snapshots. Model fitting runs in one background worker; prediction continues on
-the previously published bundle. This module has no order-execution capability.
+snapshots. Model fitting runs in one background worker. Strict sequencing waits
+for a fitted bundle from the exact prediction snapshot; legacy mode can continue
+on a previously published bundle. This module has no order-execution capability.
 """
 from __future__ import annotations
 
@@ -94,6 +95,7 @@ class ModelRuntime:
         self._predictors = {}
         self._slots = {}
         self._attempted = set()
+        self._published_this_run = set()
         self._cursor = 0
         self._once = False
         self._stopping = False
@@ -175,6 +177,12 @@ class ModelRuntime:
                 return True
         except (KeyError, ValueError, TypeError, OverflowError):
             return True
+        if self.config.retrain_before_predict:
+            # A corrected overlap is a new input even if its final candle did
+            # not advance. The source identity, rather than elapsed wall time,
+            # is the retraining boundary for the sequential Paper workflow.
+            return (candidate.get("source_run_id") != snapshot.run_id
+                    or age > self.config.max_model_age_seconds)
         progress = age
         if candidate.get("source_last_close_utc"):
             try:
@@ -251,6 +259,7 @@ class ModelRuntime:
                     self.output_root, job["snapshot"], job["settings"], result, now=self.clock(),
                 )
                 slot["candidate"] = candidate
+                self._published_this_run.add(key)
                 slot["last_error"] = None
                 slot["status"] = "trained"
                 slot["last_processed"] = None
@@ -301,6 +310,11 @@ class ModelRuntime:
 
     def _predictor_for(self, key, snapshot):
         # Cache fitted objects in memory, but recheck pointer versions and expiry.
+        if self.config.retrain_before_predict and self.force_train and key not in self._published_this_run:
+            return None
+        required_source = snapshot.run_id if self.config.retrain_before_predict else None
+        required_settings = (asdict(self.config.model_settings(key[2]))
+                             if self.config.retrain_before_predict else None)
         directory = model_dir(self.output_root, *key)
         versions = tuple((name, (directory / name).stat().st_mtime_ns if (directory / name).exists() else None)
                          for name in ("active.json", "candidate.json"))
@@ -309,11 +323,14 @@ class ModelRuntime:
             record = cached[1]
             age = self.clock() - pd.Timestamp(record["record"]["trained_at_utc"]).timestamp()
             if (0 <= age <= self.config.max_model_age_seconds
-                    and record["record"].get("feature_revision") == snapshot.feature_revision):
+                    and record["record"].get("feature_revision") == snapshot.feature_revision
+                    and (required_source is None or record["record"].get("source_run_id") == required_source)
+                    and (required_settings is None or record["record"].get("settings") == required_settings)):
                 return record
         record = load_predictor(self.output_root, *key, now=self.clock(),
                                 max_age_seconds=self.config.max_model_age_seconds,
-                                expected_feature_revision=snapshot.feature_revision)
+                                expected_feature_revision=snapshot.feature_revision,
+                                expected_source_run_id=required_source, expected_settings=required_settings)
         if record:
             self._predictors[key] = (versions, record)
         else:
@@ -327,12 +344,22 @@ class ModelRuntime:
             return
         slot["forward_metrics"] = score_matured(self.output_root, snapshot, key[2], now=self.clock())
         if predictor is None:
-            slot["status"] = "waiting_for_model"
+            if not slot["last_error"]:
+                slot["status"] = ("waiting_for_retraining" if self.config.retrain_before_predict
+                                  else "waiting_for_model")
+            if self.config.retrain_before_predict:
+                slot["last_prediction"] = None
             slot["last_processed"] = identity
             return
         prediction = self.predict_fn(predictor["bundle"], snapshot)
         metadata = {**predictor["record"], "role": predictor["role"]}
-        saved = record_prediction(self.output_root, *key, prediction, metadata, now=self.clock())
+        saved = record_prediction(self.output_root, *key, prediction, metadata, now=self.clock(),
+                                  require_source_match=self.config.retrain_before_predict)
+        if self.config.retrain_before_predict and (
+                saved.get("data_run_id") != snapshot.run_id
+                or saved.get("model_source_run_id") != snapshot.run_id
+                or saved.get("model_id") != metadata["model_id"]):
+            raise ValueError("The recorded forecast does not match this retrained source and model.")
         slot["last_prediction"] = saved
         slot["last_prediction_error"] = None
         slot["last_processed"] = identity
@@ -361,6 +388,9 @@ class ModelRuntime:
                     self._predict_and_score(key, snapshot, slot)
                 except Exception as exc:
                     slot["last_prediction_error"] = {"type": type(exc).__name__, "message": str(exc)}
+                    if self.config.retrain_before_predict:
+                        slot["status"] = "prediction_unavailable"
+                        slot["last_prediction"] = None
             except Exception as exc:
                 slot["status"] = "waiting_for_data"
                 slot["last_error"] = {"type": type(exc).__name__, "message": str(exc)}
@@ -400,6 +430,7 @@ class ModelRuntime:
             "config_path": str(self.config_path), "config_error": self._config_error,
             "data_root": str(self.output_root), "horizons_bars": list(self.config.horizons_bars),
             "retrain_seconds": self.config.retrain_seconds, "model_threads": self.config.model_threads,
+            "retrain_before_predict": self.config.retrain_before_predict,
             "training_market": self._key_name(self._job["key"]) if self._job else None,
             "elapsed_seconds": self.clock() - self._started,
             "completed_jobs": self._completed_jobs,

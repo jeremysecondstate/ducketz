@@ -8,7 +8,7 @@ import sqlite3
 import pytest
 
 from app.services.hyperliquid_paper_view import (
-    HyperliquidPaperViewService, filter_rows, journal_display_forecast,
+    HyperliquidPaperViewService, filter_rows, journal_display_forecast, _command_module, _process_matches,
 )
 from ml.hyperliquid_paper_ledger import PaperLedger
 
@@ -509,6 +509,163 @@ def test_dead_process_and_unknown_process_are_not_reported_running(paper_root):
     assert dead.runtime["status"] == "stopped"
     assert unknown.runtime["status"] == "partial"
     assert unknown.runtime["process_alive"] is None
+
+
+def unified_owner(root, **changes):
+    owner = {"status": "running", "pid": 1234, "started_at_utc": utc(NOW-600),
+             "updated_at_utc": utc(NOW-1), "mode": "paper", "interval": "5m",
+             "horizon_bars": 1, "retrain_before_predict": True,
+             "workers": {name: {"status": "running"} for name in ("data", "models", "paper")}, **changes}
+    write_json(root / "_paper_loop" / "status.json", owner)
+    return owner
+
+
+def unified_service(root, *, process_result=True):
+    return HyperliquidPaperViewService(root, clock=lambda: NOW,
+        process_probe=lambda pid, module: process_result if pid == 1234 and module == "hyperliquid_paper_loop" else False)
+
+
+def test_verified_unified_owner_identifies_three_threaded_workers_without_writes(paper_root, monkeypatch):
+    configure_five_minute(paper_root)
+    unified_owner(paper_root)
+    before = {str(path): path.read_bytes() for path in paper_root.rglob("*") if path.is_file()}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Viewing unified ownership must not initialize an execution ledger")
+
+    monkeypatch.setattr(PaperLedger, "__init__", forbidden)
+    snapshot = unified_service(paper_root).load_snapshot()
+    after = {str(path): path.read_bytes() for path in paper_root.rglob("*") if path.is_file()}
+    assert before == {path: after[path] for path in before}
+    # SQLite may create its existing WAL read-lock sidecars; no runtime or
+    # source artifacts may be created by this read-only view.
+    assert {Path(path).name for path in after.keys() - before.keys()} <= {"ledger.sqlite3-wal", "ledger.sqlite3-shm"}
+    assert snapshot.runtime["paper_loop"]["ownership_verified"] is True
+    assert snapshot.sources["paper_loop"].state == "fresh"
+    for key, row in (("paper", snapshot.runtime), ("models", snapshot.runtime["models"]),
+                     ("coordinator", snapshot.runtime["coordinator"])):
+        assert row["status"] == "running"
+        assert row["process_alive"] is True
+        assert row["process_owner"] == "paper_loop"
+        assert row["process_module"] == "ml.hyperliquid_paper_loop"
+        assert snapshot.sources[key].state == "fresh"
+    assert not snapshot.warnings
+
+
+@pytest.mark.parametrize("change", [
+    {"updated_at_utc": utc(NOW-60)}, {"status": "stopped"}, {"status": "starting"},
+    {"mode": "powder"}, {"interval": "15m"}, {"horizon_bars": True},
+    {"retrain_before_predict": False}, {"started_at_utc": "invalid"},
+    {"started_at_utc": utc(NOW+1)}, {"updated_at_utc": utc(NOW+60)},
+    {"last_error": "upstream failure"},
+])
+def test_incomplete_or_nonrunning_unified_owner_cannot_claim_live_workers(paper_root, change):
+    unified_owner(paper_root, **change)
+    snapshot = unified_service(paper_root).load_snapshot()
+    assert snapshot.runtime["paper_loop"]["ownership_verified"] is False
+    for key, row in (("paper", snapshot.runtime), ("models", snapshot.runtime["models"]),
+                     ("coordinator", snapshot.runtime["coordinator"])):
+        assert row["status"] != "running"
+        assert row["process_owner"] is None
+        assert snapshot.sources[key].state != "fresh"
+
+
+@pytest.mark.parametrize("process_result", [False, None])
+def test_dead_or_unverified_unified_process_cannot_make_saved_workers_running(paper_root, process_result):
+    unified_owner(paper_root)
+    snapshot = unified_service(paper_root, process_result=process_result).load_snapshot()
+    assert snapshot.runtime["paper_loop"]["ownership_verified"] is False
+    assert snapshot.runtime["status"] != "running"
+    assert snapshot.runtime["process_owner"] is None
+
+
+@pytest.mark.parametrize("change", [
+    {"pid": 9999}, {"updated_at_utc": utc(NOW-601)},
+    {"started_at_utc": utc(NOW-601)}, {"started_at_utc": "invalid"},
+])
+def test_unified_owner_cannot_adopt_unrelated_or_previous_worker_lifetime(paper_root, change):
+    unified_owner(paper_root)
+    path = paper_root / "_models" / "_runtime" / "status.json"
+    write_json(path, {**json.loads(path.read_text()), **change})
+    snapshot = unified_service(paper_root).load_snapshot()
+    assert snapshot.runtime["paper_loop"]["ownership_verified"] is True
+    assert snapshot.runtime["models"]["status"] != "running"
+    assert snapshot.runtime["models"]["process_owner"] is None
+    assert snapshot.runtime["status"] == "running"
+
+
+@pytest.mark.parametrize("worker", [None, {"status": "stopped"}, {"status": "failed"}])
+def test_unified_owner_requires_running_worker_membership(paper_root, worker):
+    owner = unified_owner(paper_root)
+    if worker is None:
+        owner["workers"].pop("models")
+    else:
+        owner["workers"]["models"] = worker
+    write_json(paper_root / "_paper_loop" / "status.json", owner)
+    snapshot = unified_service(paper_root).load_snapshot()
+    assert snapshot.runtime["models"]["status"] != "running"
+    assert snapshot.runtime["models"]["process_owner"] is None
+    assert snapshot.runtime["status"] == "running"
+
+
+@pytest.mark.parametrize("change, expected", [
+    ({"status": "stopped"}, "stopped"), ({"status": "degraded", "last_error": "fit failed"}, "partial"),
+    ({"updated_at_utc": utc(NOW-40)}, "stale"),
+])
+def test_unified_owner_does_not_hide_component_stop_error_or_stale_status(paper_root, change, expected):
+    unified_owner(paper_root)
+    path = paper_root / "_models" / "_runtime" / "status.json"
+    write_json(path, {**json.loads(path.read_text()), **change})
+    snapshot = unified_service(paper_root).load_snapshot()
+    assert snapshot.runtime["models"]["process_alive"] is True
+    assert snapshot.runtime["models"]["status"] == expected
+    assert snapshot.sources["models"].state == expected
+
+
+def test_legacy_processes_work_without_unified_owner_file(paper_root):
+    snapshot = service(paper_root).load_snapshot()
+    assert "paper_loop" not in snapshot.runtime
+    assert "paper_loop" not in snapshot.sources
+    assert snapshot.runtime["status"] == "running"
+    assert snapshot.runtime["process_owner"] is None
+    assert snapshot.runtime["process_module"] == "ml.hyperliquid_paper_runtime"
+
+
+def test_missing_or_malformed_owner_is_not_inferred_from_worker_pid(paper_root):
+    missing = unified_service(paper_root).load_snapshot()
+    assert missing.runtime["status"] != "running"
+    unified_owner(paper_root)
+    (paper_root / "_paper_loop" / "status.json").write_text("{broken", encoding="utf-8")
+    malformed = unified_service(paper_root).load_snapshot()
+    assert malformed.runtime["status"] != "running"
+    assert malformed.sources["paper_loop"].state == "partial"
+    assert malformed.warnings
+
+
+@pytest.mark.parametrize("argv, expected", [
+    (["python", "-B", "-m", "ml.hyperliquid_paper_loop"], "ml.hyperliquid_paper_loop"),
+    (["python", "-X", "utf8", "-W", "ignore", "-m", "ml.hyperliquid_model_runtime"], "ml.hyperliquid_model_runtime"),
+    (["python", "-mml.hyperliquid_paper_loop"], "ml.hyperliquid_paper_loop"),
+    (["python", "script.py", "-m", "ml.hyperliquid_paper_loop"], None),
+    (["python", "-c", "print('x')", "-m", "ml.hyperliquid_paper_loop"], None),
+    (["python", "-cprint('x')", "-m", "ml.hyperliquid_paper_loop"], None),
+    (["python", "--", "-m", "ml.hyperliquid_paper_loop"], None),
+    (["python", "-m"], None), ([], None),
+])
+def test_process_module_parser_uses_execution_arguments_only(argv, expected):
+    assert _command_module(argv) == expected
+
+
+@pytest.mark.parametrize("module, expected", [
+    ("ml.hyperliquid_paper_loop", True), ("ml.hyperliquid_paper_loop_backup", False),
+    ("ml.unrelated", False),
+])
+def test_process_match_requires_exact_executed_module(monkeypatch, module, expected):
+    import psutil
+    from types import SimpleNamespace
+    monkeypatch.setattr(psutil, "Process", lambda _: SimpleNamespace(
+        is_running=lambda: True, cmdline=lambda: ["python", "-B", "-m", module, "hyperliquid_paper_loop"]))
+    assert _process_matches(1234, "hyperliquid_paper_loop") is expected
 
 
 def test_prepared_opening_reports_intentional_stop_without_claiming_running(paper_root):
