@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T04:22:43.210331Z",
+  "id": "20261015T042243Z-02d6ddf9e7ac4ec99d1bc7c169405d72",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Standalone local forecast and Pacific submission-time helpers composed on main and installed on Scout."
+}

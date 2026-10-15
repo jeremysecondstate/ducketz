@@ -1,0 +1,66 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T041849Z-0f28f3ad59f24a8eb8c17508ce07295d",
+  "change_id": "20261015T041849Z-0f28f3ad59f24a8eb8c17508ce07295d",
+  "commit_sha": "2ed5fa97b296bc062ec714bf160413e19edf3779",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared submission-time API applies independently to Atlas and Scout, while forecast membership explicitly retains Scout scope.",
+    "Extract the existing pure 16:45 Pacific cutoff, immutable forecast disposition and read-only saved forecast validation into modules closed over the existing prediction and store APIs.",
+    "Preserve exact target clocks, complete-ensemble checks, manual-session identity, immutable stored hash and index validation, frozen snapshot binding, and offset-aware supersession.",
+    "Retain fixed local-drive, alternate-stream, symlink, reparse-point and standalone-file protections, read-only SQLite URI access, zero lock timeout and a single query-only transaction.",
+    "The public saved reader normalizes malformed, absent, locked and out-of-range timestamp evidence to ContractError; 58 standalone regressions cover behavioral boundaries and 17 existing store checks remain passing.",
+    "Retain independent executor Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4. This completes their retained forecast-helper extraction unit.",
+    "Install the new source leaves and regressions only. Existing executor and legacy caller wiring remain owned by the pending broader composition; source work imposes no production wait."
+  ],
+  "files": [
+    "ml/intraday/local_forecast.py",
+    "ml/intraday/submission_time.py",
+    "tests/test_intraday_local_forecast.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "8695d2ffb5a0323e7b82c9e6af9082ce26fc9e65",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic temporary-database checks; no production evidence, broker/provider calls or loaded-runtime validation.",
+    "The leaf APIs are installed but existing executor callers are not rewired in this source unit. Broader independent executor and nightly source composition retain their original completion identities.",
+    "No trader start/restart, manual-stop clearing, production acquisition/training, scheduler mutation or private output export."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/145"
+  ],
+  "remaining_source_work": "Full independent executor caller wiring and remaining journal/broker dependency composition retain original executor completion identities; nightly continuation and cancellation composition follow independently of production.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Independent callers can import forecast and submission-time validation without legacy peer-authority dependencies. Installing these leaves changes no existing caller or running process and does not enable a trader.",
+  "scope": "Shared source independently reusable by Atlas and Scout; forecast membership explicitly retains Scout scope.",
+  "summary": "Standalone local forecast and Pacific submission-time helpers composed on main and installed on Scout.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T04:18:52.270362Z",
+      "output_sha256": "ecd1b9e55c2e70c49a75efee2b1061a0b05a405ee58d6d34cf08b305789dba84",
+      "result": "75 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:18:49.380053Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T04:19:37.186020Z",
+      "output_sha256": "317ef70ca2f4705ab1c87193b836862db4ed4b275b19257de8aa2eb31d2cb64f",
+      "result": "75 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:19:34.600521Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T04:20:46.616327Z",
+      "output_sha256": "05185914a4402931f544f4a0326a88cc961ce0505eded62b0dab7e0f239b8c30",
+      "result": "75 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:20:43.830695Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T04:21:37.158115Z",
+      "output_sha256": "fcdc9391fcb0e778c987d7031d18a18b5d599385d029d6cfb3115baab4e00f10",
+      "result": "75 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:21:34.534502Z"
+    }
+  ]
+}
