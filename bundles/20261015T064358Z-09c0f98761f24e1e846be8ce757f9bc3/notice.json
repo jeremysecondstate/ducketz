@@ -1,0 +1,69 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T063916Z-27347b6080b54735a920f45ca881adcf",
+  "change_id": "20261015T063916Z-27347b6080b54735a920f45ca881adcf",
+  "commit_sha": "2ece843c875cf6f861bb261591dad43b7da6b99a",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared source with explicit independent Scout manual-session and broker binding applicability.",
+    "Compose the existing independent executor and full behavioral regressions on common main using standalone forecast, saved-evidence, session-books and strict order-status helpers.",
+    "Retain every executor executable statement except four dependency imports. Extract the original retry_delay helper without changing its AST or retry policy; preserve strict status reader AST.",
+    "Replace legacy-module monkeypatching in one existing isolation case with an import block; add direct import-boundary and retry-delay fixtures without deleting any behavioral case.",
+    "Retain original executor Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4 and all completed dependency records.",
+    "Preserve newer live model recipe, minute feed, order-stop and data-drain behavior, selected supervisor, manual start/stop and private history. Broader prestart source composition remains separate."
+  ],
+  "files": [
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_scout_local_execution.py",
+    "ml/intraday/exact_status.py",
+    "tests/test_intraday_local_executor_dependencies.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "38ff2d4c098ae894aea80f78f49ef06c720b0313",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic broker/account fixtures and temporary journals only. No provider/broker requests, production acquisition/training or loaded-runtime verification.",
+    "Legacy remote executor and cancellation helpers remain present for their original callers; no private-state migration or broad legacy authority-service adoption.",
+    "Broader prestart source closure remains a separate unit; current optional installation manifest is refreshed only for reviewed completed dependencies.",
+    "Import blocker regression covers direct caller imports; the sealed verifier independently binds every exercised transitive source import.",
+    "Installed Scout retains four existing trailing optional ReservationState fields; both sealed common-main and installed fixtures pass with each source representation."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/153"
+  ],
+  "local_receipt": "Optional 219-file source manifest includes the three completed standalone leaves and final owned bytes, preserves owner lineage and rejects a false forecast-helper fingerprint.",
+  "remaining_source_work": "Broader prestart source dependency composition, selected runtime entrypoint review and intentional legacy deduplication remain separate from production.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Selective local source installation preserves manual controls and order-journal identities. Does not start or restart a trader or alter native tasks.",
+  "scope": "Shared source; explicit independent Scout manual-session and local broker applicability. Atlas retains its own execution bindings.",
+  "summary": "Independent Scout executor composed, integrated and installed using standalone local dependencies.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T06:39:42.866724Z",
+      "output_sha256": "249a5adeb507fa6c5cce4eb79773ac5f540b910bc54fdf6cde5afec23945111f",
+      "result": "523 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:39:16.476345Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T06:40:41.166262Z",
+      "output_sha256": "2e1f4ba8f5fd15a08ec30dbde1605c3a78a08ed1c14db65b811daa1884d740ca",
+      "result": "523 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:40:14.538644Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T06:42:20.117636Z",
+      "output_sha256": "56b430b5faf78b4e75c75995bf113d34b459c9faf9a5d84ab3395b80e79055c8",
+      "result": "523 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:41:53.301457Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T06:43:04.550117Z",
+      "output_sha256": "fab900cc799b507dd2fefd700853aba584319e7aab24790ab9260b60fde473f9",
+      "result": "523 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:42:37.918665Z"
+    }
+  ]
+}

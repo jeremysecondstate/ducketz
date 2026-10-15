@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T06:43:58.663002Z",
+  "id": "20261015T064358Z-09c0f98761f24e1e846be8ce757f9bc3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Independent Scout executor composed, integrated and installed using standalone local dependencies."
+}
