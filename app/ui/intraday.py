@@ -13,6 +13,7 @@ from app.ui.intraday_data import (
     IntradaySnapshot, configured_actor, default_databases, error_correlations,
     filter_forecasts, forecast_metrics, latest_matrix, load_intraday_snapshot,
     metric_rows, model_metrics, prediction_timing, probability, probability_geometry, regime_metrics, source_dataset_label, timestamp,
+    reference_input_label, reference_input_provenance,
     window_rows,
 )
 from app.ui.intraday_models import load_model_research, research_choices, research_view
@@ -364,14 +365,17 @@ class IntradayTab:
             reference = f"${float(row.get('reference_open')):,.4f}"
         except (TypeError, ValueError):
             reference = "unavailable"
+        database = getattr(self, "database_paths", {}).get(row.get("source_label", "Local"))
+        input_label = reference_input_label(reference_input_provenance(row, database_path=database))
         self.consensus_meta.configure(text=(f"{row.get('successful_count', 0)}/{row.get('configured_count', 0)} enabled models succeeded · {row.get('ensemble_status', 'unknown')} ensemble · outcome {row['outcome_status']}\n"
+            f"{input_label}\n"
             f"Source dataset {source_dataset_label(row)} · source {row.get('source_id') or 'Unrecorded'}\n"
             f"Reference OPEN {reference} at {clock(row.get('reference_at'))} · target candle opens {clock(row.get('target_open'))}, closes {clock(row.get('target_close'))}\n"
             f"Issued {clock(row.get('issued_at'))} · data through {clock(row.get('data_through'))} · information available {clock(row.get('information_available_at'))}\n"
             f"Training completed {clock(row.get('training_completed_at'))} · {prediction_timing(row)}"
             f" · execution {row.get('execution_blocked_reason') or row.get('execution_eligibility') or 'not recorded'}\n"
             f"Stage seconds: preprocessing {numeric(row.get('preprocessing_seconds'))} · training {numeric(row.get('training_seconds'))} · inference {numeric(row.get('inference_seconds'))} · persistence {numeric(row.get('persistence_evidence', {}).get('persistence_seconds'))}\n"
-            f"Target {row.get('target_version', 'unknown')} · {row.get('mode', 'shadow')} · availability {row.get('availability_basis', 'unknown')} · forecast {row.get('forecast_id')}"))
+            f"Target {row.get('target_version', 'unknown')} · {row.get('mode', 'shadow')} · receipt availability {row.get('availability_basis', 'unknown')} · forecast {row.get('forecast_id')}"))
         for output in row.get("models", []):
             frame = tk.Frame(self.models_frame, bg=SURFACE)
             frame.pack(fill="x", pady=6)
