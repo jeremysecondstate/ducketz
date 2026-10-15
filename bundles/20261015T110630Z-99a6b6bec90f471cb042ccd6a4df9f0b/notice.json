@@ -1,0 +1,128 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T105929Z-0c825390da9e4f21baf7f6fae65367e4",
+  "change_id": "20261015T105929Z-0c825390da9e4f21baf7f6fae65367e4",
+  "commit_sha": "452d0443784bf52b26fbac0ca44e592c4c4b9b7b",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared read-only research display applicable independently to both PCs.",
+    "Adapt Atlas PR136 research pane while retaining Completion-Record 20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8, predecessor 20261014T213613Z-0d3d905992b9411fadb43ff907e3e705 and source 06ddb6aae59089b3245c7fdcbe7ba4ec4c645005.",
+    "Read each local producer saved report using its actual schema and paths. Keep native selection and activation status distinct, with no invented candidate duration, holdout score or live participation.",
+    "Expose saved research before the first manual-session forecast and honor local PC, symbol and dataset filters. Surface malformed latest evidence without silently replacing it with an older success.",
+    "Preserve existing forecast cohorts, local stores, selected supervision, source report bytes and all manual trader controls. No producer, broker or acquisition imports are added."
+  ],
+  "files": [
+    "app/ui/intraday.py",
+    "app/ui/intraday_models.py",
+    "tests/test_intraday_research_view.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "bf14e6f3e32c8b93a16e44960a5d71322e54cfda",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic report fixtures and Tk widget checks; no private reports, accounts, provider or broker calls.",
+    "Source installation does not establish loaded-app adoption. Existing Scout shell is wired; common-main shell integration remains a separate source unit.",
+    "Main full runs each passed 217 with one intermittent native Tk initialization skip in different cases. A targeted process passed consensus but repeated one actor-binding initialization skip; both actor bindings then passed in separate fresh processes. Installed first run passed 217 with one similar skip; unchanged full installed rerun passed all 218. Original evidence retained."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/166",
+    "https://github.com/jeremysecondstate/ducketz/pull/136"
+  ],
+  "local_receipt": "Three reviewed source paths installed with original bytes retained; exact offline checks and optional installation manifest verified. No production or trader process actions.",
+  "remaining_source_work": "Compose four existing local IntradayTab shell-wiring lines into common main with the matching eight-workspace mock-test update. Retain separate PR139 provider-call stop/provenance review and nightly-continuation common-main composition. Preserve PR140 cutoff/final-data drain and all completion identities; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Normal subsequent UI loads can display saved local research. No trader start or restart, manual-stop change, task registration or production wait.",
+  "scope": "Shared read-only research display for both PCs using their own local report formats and symbols.",
+  "summary": "Scout installed the saved research pane with native report adaptation; source and common-main publication complete.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-15T10:58:54.254332Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "4538ba871af2f5c6a42b6b49b80c356fa1352e0c53c4599d3d4fd70df40dc657",
+      "result": "218 passed in 4.89s",
+      "started_at_utc": "2026-10-15T10:58:48.525466Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T10:59:34.874766Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "4b2765be36ba1875d2d6aa4ef87a89e81cc73655c33d397436fe451bcafb8a22",
+      "result": "218 passed in 4.63s",
+      "started_at_utc": "2026-10-15T10:59:29.391715Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T11:00:03.720694Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "67e4ec199d89a8fcbc1af4da19d19d178805cb892d7334fbf400017207f23aa3",
+      "result": "218 passed in 4.99s",
+      "started_at_utc": "2026-10-15T10:59:57.790104Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-15T11:01:34.249995Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "172c7bdbacb8ba151617fab548131790c853b38e887d95b62b6317556e4f7065",
+      "result": "217 passed, 1 skipped in 5.24s",
+      "started_at_utc": "2026-10-15T11:01:28.080317Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T11:04:26.815934Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "e23eb39f1a85e7bbf5906eb6725ccc532f1cf41cd0722480da0981732b1581c9",
+      "result": "217 passed, 1 skipped in 5.00s",
+      "started_at_utc": "2026-10-15T11:04:20.777567Z"
+    },
+    {
+      "check": "installed Scout fresh rerun",
+      "completed_at_utc": "2026-10-15T11:04:48.574964Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "9c103288cf46ee886c93215f8c4d8627d3e1c0f9d78c7b5745314a2b5f7c1ee4",
+      "result": "218 passed in 5.12s",
+      "started_at_utc": "2026-10-15T11:04:42.460911Z"
+    },
+    {
+      "check": "common main fresh rerun",
+      "completed_at_utc": "2026-10-15T11:02:43.426826Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "3f08942b4e5883501bb4d3246e2ac71dd5f0d6ef2093f2595edbf16b9dfad8c0",
+      "result": "217 passed, 1 skipped in 5.08s",
+      "started_at_utc": "2026-10-15T11:02:37.393649Z"
+    },
+    {
+      "check": "common main affected widget cases fresh process",
+      "completed_at_utc": "2026-10-15T11:03:25.918328Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "a86b26937d1e7e50aeea3d189752e23ef67bfaca6f2d6507b2b8ff27cea3c0e5",
+      "result": "2 passed, 1 skipped in 0.64s",
+      "started_at_utc": "2026-10-15T11:03:24.378812Z"
+    },
+    {
+      "check": "common main actor binding in separate processes",
+      "completed_at_utc": "2026-10-15T11:03:52.774979Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "0a34355cb8d25038c3810b35c0ef413d5b9f5f3d562d61111d52fbad44893e56",
+      "result": "1 passed in 0.38s",
+      "started_at_utc": "2026-10-15T11:03:51.517927Z"
+    },
+    {
+      "check": "common main actor binding in separate processes",
+      "completed_at_utc": "2026-10-15T11:03:54.102937Z",
+      "fingerprints": 18,
+      "import_verifier_violations": 0,
+      "output_sha256": "6108c359bdce2cf0a00d4935a9d3f510b4258ca598c6d1b4172a8f514c793a22",
+      "result": "1 passed in 0.39s",
+      "started_at_utc": "2026-10-15T11:03:52.805114Z"
+    }
+  ]
+}

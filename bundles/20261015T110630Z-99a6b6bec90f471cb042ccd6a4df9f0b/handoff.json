@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T11:06:30.805984Z",
+  "id": "20261015T110630Z-99a6b6bec90f471cb042ccd6a4df9f0b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout installed the saved research pane with native report adaptation; source and common-main publication complete."
+}
