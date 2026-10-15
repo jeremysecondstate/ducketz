@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T08:32:34.110758Z",
+  "id": "20261015T083234Z-558a2aa91ddc41b5964ce99e8701cb14",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Require fresh fitting before five-minute Hyperliquid Paper forecasts"
+}

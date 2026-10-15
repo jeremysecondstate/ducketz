@@ -1,0 +1,130 @@
+{
+  "author": "Scout",
+  "base_commit": "f7beeb4f9dace1b6bc3d5ea1c0ff1e9e091c6bd5",
+  "branch": "codex/scout/20261015T082906Z-c69da5684a3145f1a6aee1c5efe9ac04",
+  "change_id": "20261015T082906Z-c69da5684a3145f1a6aee1c5efe9ac04",
+  "commit_sha": "a570d3a5e6c73941a0124eb41937a8112a73ee18",
+  "details": [
+    "Task hyperliquid-five-minute-paper-loop: exact source and recipe pairing enforces fetch, retain, preprocess, retrain, predict, then simulated execution for both PCs.",
+    "Retain existing real candle archive and immutable forecast history; fix initial window boundary and preserve overlap corrections.",
+    "Add one Paper workflow launcher with independent risk polling, lifecycle ownership and offline regression checks.",
+    "Preserve previously integrated model shrinkage, Paper policy and cadence documentation; stock symbols and operating bindings remain local."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_model_config.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_model_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_model_artifacts.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_paper_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_data_pipeline.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "configs/hyperliquid-models.json"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_model_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_model_artifacts.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_model_config.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_data_pipeline.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/hyperliquid_paper_loop.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_loop.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Start-Hyperliquid-Paper.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Stop-Hyperliquid-Paper.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Check-Hyperliquid-Paper.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/hyperliquid-system-analysis/FIVE_MINUTE_PAPER_LOOP.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/hyperliquid-system-analysis/README.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/hyperliquid-system-analysis/CHANGELOG.md"
+    }
+  ],
+  "limitations": [
+    "Offline checks establish ordering and persistence contracts, not exchange availability or strategy profitability.",
+    "The public candle API retains a rolling 5000-candle window; gaps outside it remain explicit.",
+    "Chronological calibration and assessment blocks remain excluded from fitting; full historical snapshots currently accumulate on disk."
+  ],
+  "publication_state": "source pushed and remote SHA verified; draft PR available; main not merged; peer installation unverified",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/158",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Enable strict five-minute Paper sequencing on restart through the new launcher. Runtime activation remains local and separately authorized. No live exchange execution is enabled.",
+  "scope": "shared",
+  "summary": "Require fresh fitting before five-minute Hyperliquid Paper forecasts",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-15T08:30:40.431340Z",
+      "network": "disabled",
+      "output_sha256": "a786f96dcab2c33792e13c07ab157d4b35b1e65d5424f8d741d9818e2a7d70f1",
+      "result": "611 passed",
+      "started_at_utc": "2026-10-15T08:30:15.184647Z"
+    }
+  ]
+}
