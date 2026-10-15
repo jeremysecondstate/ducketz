@@ -1,0 +1,68 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T074721Z-385cb94d8c4b4e40881a469f9bde70f5",
+  "change_id": "20261015T074721Z-385cb94d8c4b4e40881a469f9bde70f5",
+  "commit_sha": "79d5b3dba53e9a41f4ce2f3d4c0b2b154306b948",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared historical accounting reader applicable independently on either PC.",
+    "Extract the existing saved-history reader with all thirty-one function bodies preserved apart from coordinated import changes.",
+    "Use the standalone saved-authority binding and receipt constructors together with their exact validators; preserve historical formats, hashes, identities and strict projection validation.",
+    "Retain bounded page and receipt replay, original request attribution, legacy format reads, orphan evidence validation and caller deadline checks without file writers.",
+    "Public readers construct fresh read-only views and cannot enter the retained private runtime-cache branch. Historical evidence never grants current submission authority.",
+    "Existing accounting writers, runtime callers and full legacy suites stay intact. Add independent synthetic saved-history regressions.",
+    "Retain saved-authority record 20261015T072138Z-a8fe18facf924c7e9c1b868e5859b597 and accounting record 20261013T080844Z-43afb71aa8564dd7849fb42b90af54bb."
+  ],
+  "files": [
+    "ml/intraday/saved_accounting.py",
+    "tests/test_intraday_saved_accounting.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "f7beeb4f9dace1b6bc3d5ea1c0ff1e9e091c6bd5",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic saved bytes only; no private history, broker/provider request, production training or loaded-runtime verification.",
+    "Additive read-only dependency. Existing caller migration and intentional legacy helper deduplication remain separate reviewed work.",
+    "Historical binding syntax does not establish current certificate trust or operating authority. Per-request reads do not claim a complete orphan inventory.",
+    "Existing local symbols, optional dependency group and stock-contract/ledger extensions preserved and separately fingerprinted by installed checks. Broader contract behavior is not changed or newly claimed.",
+    "Legacy authority binding/receipt and exception class identities remain separate. Future caller migration must change constructors, validators and catches consistently."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/156"
+  ],
+  "local_receipt": "Both additive files installed exactly; optional manifest verifies 224 files and preserves all prior entries and owner lineage. All 399 original accounting, authority and books tests passed separately.",
+  "remaining_source_work": "Compose existing broker-local prestart directly, preserving full historical cases and selected manual-session recipe/17:00 stop-and-drain semantics.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Existing runtime paths and manual trader controls are unchanged. Source preparation creates no production prerequisite.",
+  "scope": "Shared historical accounting reader; independently applicable without peer or trader state.",
+  "summary": "Saved accounting reader composed independently of admission clients; source, common main and Scout installation complete.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T07:47:41.097782Z",
+      "output_sha256": "787ab7295debc30bf0f53d7459738185e7ece9aa73abb44977946e3add0431ec",
+      "result": "205 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T07:47:21.488226Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T07:48:45.849216Z",
+      "output_sha256": "cabdb3b70f6e0465490d949f6feb457dfc0128fcd28201da835d155a4dd882dd",
+      "result": "205 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T07:48:27.035559Z"
+    },
+    {
+      "check": "fresh main",
+      "completed_at_utc": "2026-10-15T07:50:35.762997Z",
+      "output_sha256": "a7140463343c035916a9d836049196189b7426a7e97faf4032dd6426bedcb90f",
+      "result": "205 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T07:50:15.597734Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T07:52:23.747724Z",
+      "output_sha256": "7289d9aba1bd32aaf740d547a3eb93802da4f53eb430ff8a6047944db9a870c0",
+      "result": "205 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T07:52:03.927797Z"
+    }
+  ]
+}

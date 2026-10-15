@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T07:53:42.738570Z",
+  "id": "20261015T075342Z-ce6ab7f7e596473f8a3809969483432c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Saved accounting reader composed independently of admission clients; source, common main and Scout installation complete."
+}
