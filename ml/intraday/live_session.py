@@ -31,6 +31,23 @@ def automatic_stop_deadline(started):
         hour=17, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
 
+def manual_wake_at(started):
+    """One manually selected operating day; never roll a finished session forward."""
+    from .data import equity_sessions
+    started = instant(started)
+    local = started.astimezone(PACIFIC)
+    # Preserve the established after-5pm Scout immediate-stop behavior.
+    if local.hour >= 17:
+        return local.replace(hour=4, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    for session in equity_sessions(started, started + timedelta(days=14)):
+        opened = instant(session.opened_at)
+        day = opened.astimezone(PACIFIC)
+        if day.date() >= local.date():
+            wake = day.replace(hour=4, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+            return max(wake, opened)
+    raise ContractError("No upcoming exchange session available for manual startup")
+
+
 def latest_completed_reference(now, *, publication_offset_seconds):
     offset = float(publication_offset_seconds)
     if not 0 <= offset < 900:
@@ -302,24 +319,18 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     config.validate()
     if config.source_dataset != "EQUS.MINI":
         raise ContractError("Existing single-source live provider binding required")
-    # A manual experiment recipe is latched once at startup. Existing sessions
-    # retain their loaded configuration and active supervised policies.
-    from .live_model_recipe import prepare_manual_models
-    config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols)
     if pc == "Atlas":
         from .account_execution import IntradayAccountExecutor
         from .runtime_compatibility import read_gameplan_runtime_compatibility
         def compatibility():
             return read_gameplan_runtime_compatibility(root,repository,as_of=clock(),
                 maximum_heartbeat_age_seconds=120,allow_verified_absence=True)
-        proof = compatibility()
-        if not proof["ready"]:
-            raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
     started = instant(clock())
+    wake_at = manual_wake_at(started)
     session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
     process_create_time = psutil.Process(os.getpid()).create_time()
     stopped = threading.Event()
-    automatic_stop_at = automatic_stop_deadline(started) if pc == "Scout" else None
+    automatic_stop_at = automatic_stop_deadline(max(started, wake_at)) if pc == "Scout" else None
     automatic_stop_requested_at = [None]
     stop_lock = threading.Lock()
     def should_stop():
@@ -365,6 +376,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         value = dict(schema_version=VERSION if pc == "Atlas" else SCOUT_VERSION,session_id=session_id,pc=pc,
                      pid=os.getpid(),process_create_time=process_create_time,started_at=started.isoformat(),
                      heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,
+                     wake_at=wake_at.isoformat(),
                       evidence_paths=evidence_paths,scout_admission=scout_admission if pc == "Scout" else None,
                       automatic_stop_at=automatic_stop_at.isoformat() if automatic_stop_at is not None else None,**extra)
         for destination in (session_status,status_path):
@@ -399,8 +411,27 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         session_root.mkdir(parents=True,exist_ok=False)
         status("STARTING")
         try:
+            waiting = instant(clock()) < wake_at
+            if waiting:
+                print(f"{pc} 15m waiting until {wake_at.astimezone(PACIFIC).isoformat()} America/Los_Angeles. "
+                      "Ctrl-C cancels this manual start; broker/data workers have not started.", flush=True)
+            while instant(clock()) < wake_at:
+                if should_stop():
+                    raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
+                status("WAITING")
+                sleep(min(60, max(0, (wake_at - instant(clock())).total_seconds())))
             if should_stop():
                 raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
+            if waiting:
+                status("STARTING")
+            # Read overnight-installed recipes and compatibility at wake, not
+            # when the operator first launches the sleeping process.
+            from .live_model_recipe import prepare_manual_models
+            config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols)
+            if pc == "Atlas":
+                proof = compatibility()
+                if not proof["ready"]:
+                    raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
             load_dotenv(repository / ".env")
             if pc == "Scout":
                 if scout_admission == "broker-local":
