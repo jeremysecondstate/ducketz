@@ -1,0 +1,46 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T013209Z-64b6986aaa8c4e3c8f5c09c382be6a22",
+  "change_id": "20261015T013209Z-64b6986aaa8c4e3c8f5c09c382be6a22",
+  "commit_sha": "e9d4addc9d76c5bb75c8b400811fce71543b3ffe",
+  "details": [
+    "ActorScout; taskautomatic-5pm-graceful-stop; sharedimplementation with Scout-only behavior; Atlas sessions unchanged.",
+    "Latch manual session Pacific date and DST-aware17:00 deadline; stop new orders/model/scoring work and retain active results.",
+    "Drain final native-minute windows after late publication; Ctrl-C duringdrain still joinsworkers and preserves original brokeridentities."
+  ],
+  "files": [
+    "docs/development/scout-local-15m-manual-start.md",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_live_session.py"
+  ],
+  "limitations": [
+    "Offline fixtures; no broker/provider or runtime controls used for verification.",
+    "Focused PR is stacked on fresh-minute prerequisite PR138; mainintegration is separate.",
+    "The already running process retains old loaded code."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/140"
+  ],
+  "remote_sha": "e9d4addc9d76c5bb75c8b400811fce71543b3ffe",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact source installed locally for next manual Scout launch. At17:00 order/modelauthority ends; final latchedday data can drain beyond17:00. Resting orders remain; no liquidation/restart/automatic launch. Atlas unaffected.",
+  "scope": "shared",
+  "stages": {
+    "current_running_process_new_code_loaded": false,
+    "main_integrated": false,
+    "scout_installed_offline_verified": true,
+    "source_published": true
+  },
+  "summary": "Scout 15m automatically revokes authority at5pm Pacific and drains final-day data before exit",
+  "tests": [
+    {
+      "candidate_completed_at": "2026-10-15T01:33:17.338077Z",
+      "candidate_output_sha256": "21f8a987ada5ebfa26201bc60374c60fae3c47ca2ed5e7fd6befdc72149c7dde",
+      "check": "Offline manual session, minute feed, minute persistence and live recipe",
+      "installed_completed_at": "2026-10-15T01:36:16.863284Z",
+      "installed_output_sha256": "db9ad7b752c97ac448d8ee75a4a7c3621173e1e03dd1f9c573adb06370815136",
+      "passed": 123,
+      "skipped": 0
+    }
+  ]
+}

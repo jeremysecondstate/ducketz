@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T01:37:11.566457Z",
+  "id": "20261015T013711Z-a7a7e40f5a6c442abce6092d743936dd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout 15m automatically revokes authority at5pm Pacific and drains final-day data before exit"
+}
