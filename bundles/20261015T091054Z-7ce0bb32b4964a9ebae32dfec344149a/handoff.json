@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T09:10:54.682192Z",
+  "id": "20261015T091054Z-7ce0bb32b4964a9ebae32dfec344149a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Independent Scout manual callers and recipe composed; source, main and local installation complete."
+}
