@@ -244,8 +244,10 @@ class QuarterHourMinuteFeed:
             self.pending[reference].discard(symbol)
         return True
 
-    def step(self):
+    def step(self, *, stopped=lambda: False):
         """At most one exact native-minute batch; never sleep or fit a model."""
+        if stopped():
+            raise InterruptedError("Minute feed manually stopped")
         if self.closed:
             return {"status": "closed", "retry_after_seconds": 0}
         now = instant(self.clock())
@@ -280,7 +282,9 @@ class QuarterHourMinuteFeed:
                 self.served[reference] = now
                 try:
                     responses = data.fetch_databento_interval_attempts(self.provider, symbols=ready,
-                        opened_at=reference, attempt_id=uuid.uuid4().hex, clock=self.clock)
+                        opened_at=reference, attempt_id=uuid.uuid4().hex, clock=self.clock, stopped=stopped)
+                except InterruptedError:
+                    raise
                 except Exception as exc:
                     due = instant(self.clock()) + timedelta(seconds=4)
                     self._request_error_due[reference] = due
@@ -320,9 +324,11 @@ class QuarterHourMinuteFeed:
 
     def run(self, *, stopped, pause):
         while not stopped():
-            result = self.step()
+            result = self.step(stopped=stopped)
             if result["status"] == "closed":
                 return result
+            if stopped():
+                break
             pause(min(4, max(.1, result.get("retry_after_seconds", 1))))
         return {"status": "manual_stop", "pending_windows_retained": True}
 
