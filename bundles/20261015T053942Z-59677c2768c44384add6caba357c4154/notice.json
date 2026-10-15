@@ -1,0 +1,62 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T053607Z-baf5350160e7402bab8781765f76e0d5",
+  "change_id": "20261015T053607Z-baf5350160e7402bab8781765f76e0d5",
+  "commit_sha": "342a11d661680f9b1306fd4df306355746e8e2cf",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared inventory source retains the explicit Scout stream binding. Each trader keeps its own broker capacity and manual controls.",
+    "Extract unchanged session inventory and immutable receipt methods into scout_session_books without the three legacy accounting delegates. Version, journal identities, filenames, receipt bytes, locking and one-send continuity remain intact.",
+    "Retain original Completion-Records 20261013T030409Z-9d95689ecbd54ff999c6a89f8e8b28e1, 20261013T041956Z-de5830bbda8044499c08acf0fa55224a, 20261013T080844Z-43afb71aa8564dd7849fb42b90af54bb, 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742, 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4.",
+    "Port the existing complete books regression suite to the standalone core; only its module import changes. Preserve all installed originals and existing runtime callers."
+  ],
+  "files": [
+    "ml/intraday/scout_session_books.py",
+    "tests/test_intraday_scout_session_books.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "c86afd591deceb3b15ac1d6a95277caa330d83c3",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline temporary inventories and synthetic journals only; no private operating books, broker or provider requests, production acquisition or training, or loaded runtime verification.",
+    "This adds a standalone local inventory core; existing books, legacy accounting wrappers, executor imports and prestart source manifest remain untouched. Deduplication and caller manifest composition belong to the later caller unit.",
+    "Broker exact-status helpers, executor wiring, newer model and minute-collection handoffs and nightly source composition remain separate. Source reconciliation does not gate nightly production or manual trading."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/150"
+  ],
+  "remaining_source_work": "Continue broker exact-status dependency extraction and broker composition, then independent executor caller wiring using the completed forecast, journal, client and standalone session-books leaves. Current callers, original books/accounting module and prestart remain untouched; include the new core in the reviewed caller source manifest when adopted and deduplicate intentionally. Avoid legacy authority-service transplantation. Review newer PR136-140 and alternate-supervisor PR146 exact source before older runtime composition; preserve selected Scout supervisor. Nightly continuation/cancellation source remains separate. Do not replay completed leaves.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adds source for later independent caller composition. Installing these two new files changes no current executor wiring, prestart manifest, live books, trader or native task.",
+  "scope": "Shared inventory source with existing Scout stream binding; independent broker capacity and manual controls.",
+  "summary": "Scout independent session books core integrated and installed; current callers and live state preserved.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T05:36:21.277094Z",
+      "output_sha256": "093db844e111264fcda87f27ab05269d35bf4e23969a23163db8890d99592059",
+      "result": "263 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:36:07.252587Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T05:37:04.748022Z",
+      "output_sha256": "e61db93746e8984a23b3348edaccbb3b174ec8a6d033d92aed256f9d3ebd85d9",
+      "result": "263 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:36:50.967296Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T05:38:16.477878Z",
+      "output_sha256": "69f4684de54f30ccb854df0d7d071a67ec5d243eaae0b644805422d87e72dba1",
+      "result": "263 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:38:02.501944Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T05:39:00.058791Z",
+      "output_sha256": "4cc1a6305ea0be28e1b12af8e12bce758c62f127ce37c823712b9ea5f71998bd",
+      "result": "263 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:38:46.133834Z"
+    }
+  ]
+}

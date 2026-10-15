@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T05:39:42.915559Z",
+  "id": "20261015T053942Z-59677c2768c44384add6caba357c4154",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout independent session books core integrated and installed; current callers and live state preserved."
+}
