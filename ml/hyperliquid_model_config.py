@@ -30,6 +30,7 @@ class ModelConfig:
     markets_config: Path = DEFAULT_MARKETS_CONFIG_PATH
     horizons_bars: tuple[int, ...] = (4,)
     retrain_seconds: float = 3600.0
+    retrain_before_predict: bool = False
     poll_seconds: float = 5.0
     retry_seconds: float = 60.0
     model_threads: int = 2
@@ -51,6 +52,8 @@ class ModelConfig:
     ensemble_probability_shrinkage: float = 1.0
 
     def __post_init__(self):
+        if type(self.retrain_before_predict) is not bool:
+            raise ValueError("retrain_before_predict must be a boolean.")
         shrinkage = self.ensemble_probability_shrinkage
         if (type(shrinkage) not in (int, float) or not math.isfinite(shrinkage)
                 or not 0 < shrinkage <= 1):
