@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T07:04:09.902967Z",
+  "id": "20261015T070409Z-e327e7860dbf43dc9badba78373660f1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Native-minute feed, persistence and observed-data dependencies composed on common main; installed runtime bytes preserved."
+}

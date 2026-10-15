@@ -1,0 +1,71 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T065843Z-8df91d7c66384a129e80c08307f93133",
+  "change_id": "20261015T065843Z-8df91d7c66384a129e80c08307f93133",
+  "commit_sha": "6870af80644185a6ecc7545239f0399f1c16a10e",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared source independently applicable to each PC with its own symbols, private storage and manual session.",
+    "Add exact already-published native-minute persistence, independent closed-quarter feed and observed-only dataset adapter to current common main. No executable source edits.",
+    "Preserve immutable response receipts, canonical observed-minute deduplication, missing-data truth, retry/continuity recovery, manual stop and final Pacific data-window completion.",
+    "Restore the complete original observed-data regression suite and retain both complete feed/persistence suites without exclusions.",
+    "Retain prior Completion-Records 20261014T214015Z-aff2dc42e0b947d795fdc2cdbf99e082, 20261014T221558Z-2a8c5a48360c4b8d82e674787c72a6c6, 20261014T231445Z-9a336c390a594b75b15cd92b3690dfe4, 20261015T013209Z-64b6986aaa8c4e3c8f5c09c382be6a22. Existing broader source records and their identities remain intact.",
+    "Preserve selected Scout manual-session recipe, supervisor and 17:00 order/model/scoring stop with data drain. Broader entrypoint composition and alternate Atlas intake remain separate."
+  ],
+  "files": [
+    "ml/intraday/minute_feed.py",
+    "ml/intraday/minute_persistence.py",
+    "ml/intraday/observed_data.py",
+    "tests/test_intraday_minute_feed.py",
+    "tests/test_intraday_minute_persistence.py",
+    "tests/test_intraday_observed_data.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "0375f10e06a8c28a54a9a178fa0103ac23e41894",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture provider responses and temporary storage only; no broker/provider request, production acquisition/training or loaded-runtime proof.",
+    "This composes published dependency source only; the broader manual-session/prestart entrypoint is not yet composed on main.",
+    "Installed production bytes already match the reviewed source and will be retained; only the restored regression needs installation.",
+    "Installed verification preserves the existing local watchlist, optional TLS dependency group and AST-equivalent runtime line endings; each stage binds its own exact bytes.",
+    "Parquet writes serialize within the adapter process; independent processes retain existing writer ownership."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/154"
+  ],
+  "local_receipt": "Five existing files already match published bytes. Only the full original observed-data regression suite was newly installed. Optional manifest verifies 220 files, preserving all prior entries and owner lineage.",
+  "remaining_source_work": "Recipe, broader prestart/manual-session caller composition and alternate Atlas intake remain separate from production.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No runtime change on Scout. Preserve private histories, bindings, selected recipe, native tasks and manual start/stop. No trader is started or restarted.",
+  "scope": "Shared source independently applicable to each PC using its own symbols, storage and manual session.",
+  "summary": "Native-minute feed, persistence and observed-data dependencies composed on common main; installed runtime bytes preserved.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T06:58:53.761563Z",
+      "output_sha256": "43f6d5dcb2ddb4b10bf46b799032a096baca75af05375ce4bb796430d3ec05cf",
+      "result": "126 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:58:43.370380Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T06:59:51.685306Z",
+      "output_sha256": "b13f81a2b574d1ae96fbf1d12e6a92e6594d3c937907cc52e15fc095188f5658",
+      "result": "126 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:59:41.508508Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T07:01:18.661986Z",
+      "output_sha256": "a8c5e3481f7775dcf700020ceb4b3daac991a5afec05d4e05bb2488bc148241f",
+      "result": "126 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T07:01:08.833300Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T07:03:16.741335Z",
+      "output_sha256": "53ab6829aa21c64f5cd7d9bba53d56e7ea292ddbf636e25a26dcf51613007bc6",
+      "result": "126 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T07:03:05.303732Z"
+    }
+  ]
+}
