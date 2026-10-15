@@ -295,6 +295,66 @@ def _archived(config: dict, thread_id: str, descendant_ids=()) -> bool | None:
         return None if len(rows) != len(ids) else all(row["archived"] == 1 for row in rows)
 
 
+def _foreign_writer_busy(config: dict, thread_ids) -> bool:
+    """Advisory Windows lease check without creating or changing lock files.
+
+    Native archive still takes its own atomic tree lease after this check.
+    Completed idle subagents can retain a writer lease in the desktop app.
+    """
+    if os.name != "nt":
+        return False
+    import ctypes
+    from ctypes import wintypes
+
+    class Overlapped(ctypes.Structure):
+        _fields_ = [("Internal", ctypes.c_size_t), ("InternalHigh", ctypes.c_size_t),
+                    ("Offset", wintypes.DWORD), ("OffsetHigh", wintypes.DWORD),
+                    ("hEvent", wintypes.HANDLE)]
+
+    native = ctypes.WinDLL("kernel32", use_last_error=True)
+    create = native.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+                       wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    lock = native.LockFileEx
+    lock.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD,
+                     wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(Overlapped)]
+    lock.restype = wintypes.BOOL
+    unlock = native.UnlockFileEx
+    unlock.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.DWORD, ctypes.POINTER(Overlapped)]
+    unlock.restype = wintypes.BOOL
+    close = native.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    for thread_id in thread_ids:
+        if not _uuid(thread_id):
+            raise CleanupError("Invalid native writer identity")
+        path = Path(config["codex_home"]) / "thread-writer-locks" / f"{thread_id}.lock"
+        # GENERIC_READ; share read/write/delete; OPEN_EXISTING. Never create,
+        # truncate or read bytes from a production writer-lock file.
+        handle = create(str(path), 0x80000000, 7, None, 3, 0x80, None)
+        if handle == ctypes.c_void_p(-1).value:
+            error = ctypes.get_last_error()
+            if error in {2, 3}:
+                continue
+            if error == 32:
+                return True
+            raise CleanupError(f"Native writer lock inspection failed ({error})")
+        try:
+            overlapped = Overlapped()
+            if not lock(handle, 3, 0, 0xffffffff, 0xffffffff, ctypes.byref(overlapped)):
+                error = ctypes.get_last_error()
+                if error == 33:
+                    return True
+                raise CleanupError(f"Native writer lease inspection failed ({error})")
+            if not unlock(handle, 0, 0xffffffff, 0xffffffff, ctypes.byref(overlapped)):
+                raise CleanupError("Native writer lease release failed")
+        finally:
+            close(handle)
+    return False
+
+
 def _write(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
@@ -411,6 +471,9 @@ def _run(config: dict, apply: bool, now: float, runner) -> dict:
             result["skipped"].append({"thread_id": thread_id, "reason": "CHANGED_AFTER_BUSY_ATTEMPT"})
             continue
         result["eligible"].append(candidate)
+        if apply and _foreign_writer_busy(config, [thread_id, *candidate["descendant_ids"]]):
+            result["skipped"].append({"thread_id": thread_id, "reason": "NATIVE_WRITER_BUSY"})
+            continue
         attempts += 1
         if not apply:
             continue

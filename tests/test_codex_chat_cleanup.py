@@ -1,6 +1,7 @@
 """Offline native-schema fixtures; no real chats, executables, or providers."""
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -247,6 +248,79 @@ def test_native_writer_busy_may_retry_unchanged_chat_on_later_wake(native):
     assert cleanup.run_once(native.config, apply=True, now=NOW + 60, runner=archive_runner(native, []))["archived"] == [THREAD]
 
 
+def test_writer_preflight_waits_without_attempt_receipt_and_revisits_after_release(native, monkeypatch):
+    monkeypatch.setattr(cleanup, "_foreign_writer_busy", lambda config, ids: True)
+    result = cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)
+    assert result["status"] == "OK"
+    assert result["archived"] == []
+    assert [candidate["thread_id"] for candidate in result["eligible"]] == [THREAD]
+    assert result["skipped"][-1]["reason"] == "NATIVE_WRITER_BUSY"
+    root = Path(native.config["state_dir"])
+    assert cleanup._receipt(root, THREAD) is None
+    assert not (root / "events.jsonl").exists()
+    monkeypatch.setattr(cleanup, "_foreign_writer_busy", lambda config, ids: False)
+    calls = []
+    result = cleanup.run_once(native.config, apply=True, now=NOW + 300, runner=archive_runner(native, calls))
+    assert result["archived"] == [THREAD]
+    assert len(calls) == 1
+
+
+def test_dry_run_does_not_inspect_or_acquire_native_writer_leases(native, monkeypatch):
+    monkeypatch.setattr(cleanup, "_foreign_writer_busy", never_run)
+    result = cleanup.run_once(native.config, now=NOW, runner=never_run)
+    assert result["status"] == "DRY_RUN"
+    assert [candidate["thread_id"] for candidate in result["eligible"]] == [THREAD]
+
+
+def test_writer_inspection_error_fails_closed_without_attempt(native, monkeypatch):
+    def fail_inspection(config, ids):
+        raise cleanup.CleanupError("Native writer lock inspection failed (fixture)")
+    monkeypatch.setattr(cleanup, "_foreign_writer_busy", fail_inspection)
+    with pytest.raises(cleanup.CleanupError, match="inspection failed"):
+        cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)
+    root = Path(native.config["state_dir"])
+    assert cleanup._receipt(root, THREAD) is None
+    assert json.loads((root / "last.json").read_text())["status"] == "FAILED"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows byte-range writer lease API")
+def test_windows_writer_preflight_reads_existing_lock_without_changing_bytes(native):
+    import msvcrt
+    directory = native.home / "thread-writer-locks"
+    directory.mkdir()
+    path = directory / f"{THREAD}.lock"
+    original = b"offline-writer-lock-fixture\x00\xff"
+    path.write_bytes(original)
+    with path.open("r+b") as stream:
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+        try:
+            assert cleanup._foreign_writer_busy(native.config, [THREAD])
+        finally:
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+    assert not cleanup._foreign_writer_busy(native.config, [THREAD])
+    assert path.read_bytes() == original
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows byte-range writer lease API")
+def test_windows_writer_preflight_does_not_create_missing_lock_files(native):
+    directory = native.home / "thread-writer-locks"
+    assert not cleanup._foreign_writer_busy(native.config, [THREAD])
+    assert not directory.exists()
+    directory.mkdir()
+    assert not cleanup._foreign_writer_busy(native.config, [THREAD])
+    assert list(directory.iterdir()) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows byte-range writer lease API")
+@pytest.mark.parametrize("identity", ["invalid-native-id", "../outside", None])
+def test_windows_writer_preflight_rejects_invalid_identities(native, identity):
+    with pytest.raises(cleanup.CleanupError, match="Invalid native writer identity"):
+        cleanup._foreign_writer_busy(native.config, [identity])
+    assert not (native.home / "thread-writer-locks").exists()
+
+
 @pytest.mark.parametrize("kind", ["zero_without_readback", "failed", "timeout"])
 def test_ambiguous_or_failed_attempt_is_not_blindly_retried(native, kind):
     def run(*args, **kwargs):
@@ -338,6 +412,24 @@ def test_completed_subagents_and_transitive_followups_can_be_archived_as_one_fam
     assert result["archived"] == [THREAD]
     assert [command[-1] for command, _ in calls] == [THREAD]
     assert cleanup._archived(native.config, THREAD, [CHILD, GRANDCHILD])
+
+
+@pytest.mark.parametrize("busy_id", [THREAD, CHILD, GRANDCHILD], ids=["root", "child", "grandchild"])
+def test_writer_preflight_covers_every_transitive_descendant(native, monkeypatch, busy_id):
+    add_completed_child(native)
+    add_completed_child(native, child=GRANDCHILD, parent=CHILD)
+    seen = []
+    def inspect_leases(config, ids):
+        seen.append(list(ids))
+        return busy_id in ids
+    monkeypatch.setattr(cleanup, "_foreign_writer_busy", inspect_leases)
+    result = cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)
+    assert len(seen) == 1
+    assert seen[0][0] == THREAD
+    assert set(seen[0]) == {THREAD, CHILD, GRANDCHILD}
+    assert result["archived"] == []
+    assert result["skipped"][-1]["reason"] == "NATIVE_WRITER_BUSY"
+    assert cleanup._receipt(Path(native.config["state_dir"]), THREAD) is None
 
 
 def test_partial_native_family_readback_is_not_reported_as_archived(native):

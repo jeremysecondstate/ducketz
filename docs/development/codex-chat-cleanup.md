@@ -40,6 +40,12 @@ codex.exe --no-daemon archive CHAT_UUID
 
 The separate native instance uses the thread writer lock. If the desktop or
 another process holds that lock, native archival fails without interrupting it.
+Before an attempt, an advisory Windows check opens only existing writer-lock
+files and briefly checks the same full-range lease without changing file bytes.
+A held root or child lease defers the chat without recording a failed attempt;
+later wakes revisit it. Completed idle subagents can retain such leases. This
+preflight does not replace the native atomic guard. Uncertain prior failures
+still require reviewed reconciliation rather than blind retries.
 The helper does not use the shared daemon, `set_thread_archived`, permanent
 deletion, or direct native database writes. Native archival retains the
 transcript so it can be restored. Once the helper has attempted a chat, its
