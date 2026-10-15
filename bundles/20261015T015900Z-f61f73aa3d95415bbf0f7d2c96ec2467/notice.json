@@ -1,0 +1,57 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T015413Z-66c2819dee9d44a0a77284f395c63e66",
+  "change_id": "20261015T015413Z-66c2819dee9d44a0a77284f395c63e66",
+  "check_evidence": [
+    {
+      "completed_at_utc": "2026-10-15T01:54:49.382523Z",
+      "exit_code": 0,
+      "output_sha256": "eb2bfd86a6d5285b9808c10bb2479794b0184d0fd7d2aec8f5ded4aacf824e3d",
+      "stage": "isolated_source",
+      "started_at_utc": "2026-10-15T01:54:41.333313Z"
+    },
+    {
+      "completed_at_utc": "2026-10-15T01:55:52.527067Z",
+      "exit_code": 0,
+      "output_sha256": "7aca064b8be070cc016cb3c5b0eec8622d978effb1ad4f22ff75377da8c594d5",
+      "stage": "main_integration",
+      "started_at_utc": "2026-10-15T01:55:44.184387Z"
+    },
+    {
+      "cases_passed": 7,
+      "completed_at_utc": "2026-10-15T01:39:57.589460+00:00",
+      "stage": "native_synthetic_probe",
+      "started_at_utc": "2026-10-15T01:39:52.104875+00:00"
+    }
+  ],
+  "files": [
+    "tools/codex_chat_cleanup.py",
+    "tools/probe_codex_archive.py",
+    "tools/register_codex_chat_cleanup.ps1",
+    "tests/test_codex_chat_cleanup.py",
+    "docs/development/codex-chat-cleanup.md"
+  ],
+  "limitations": [
+    "Native archive still refuses held root or subagent writer leases; those trees defer until leases release.",
+    "Each PC must bind its own local project identity and locally tested current native executable; no peer installation or operating-state change is inferred."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/142",
+    "https://github.com/jeremysecondstate/ducketz/pull/143"
+  ],
+  "main_sha": "050dd849336168b65674f83d9270d2686e81804a",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed maintenance helper installed on producer PC and existing dedicated Windows task action updated. Production readback verified five scheduled chats and nine descendants archived with transcripts retained; ten writer-held trees defer. No application restart, broker/provider call or trading operation.",
+  "scope": "shared",
+  "source_records": [
+    "20261015T014624Z-9f99598b7369424eb1f98eec333dd166",
+    "20261015T015413Z-66c2819dee9d44a0a77284f395c63e66"
+  ],
+  "source_sha": "96be96185a9c3e459c9ac4a1c294569da03c9ba6",
+  "summary": "Restore scheduled chat cleanup for current local project tasks and defer retained native writer leases",
+  "tests": [
+    "114 offline fixture tests passed on final sealed source, isolated source candidate and main integration candidate; includes an actual Windows writer lease fixture.",
+    "Seven synthetic native archive and transitive writer-lock probes passed against the producing PC current executable.",
+    "Local Windows task action readback preserves all original triggers, principal and settings; final bounded wake status OK and task result 0."
+  ]
+}

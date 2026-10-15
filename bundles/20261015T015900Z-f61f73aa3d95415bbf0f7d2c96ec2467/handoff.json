@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T01:59:00.427716Z",
+  "id": "20261015T015900Z-f61f73aa3d95415bbf0f7d2c96ec2467",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Restore scheduled chat cleanup for current local project tasks and defer retained native writer leases"
+}
