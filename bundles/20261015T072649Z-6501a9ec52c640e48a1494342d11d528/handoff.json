@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T07:26:49.944771Z",
+  "id": "20261015T072649Z-6501a9ec52c640e48a1494342d11d528",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Historical receipt validators isolated from admission transport and composed on common main."
+}
