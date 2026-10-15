@@ -1,0 +1,104 @@
+{
+  "author": "Atlas",
+  "base_commit": "4b1d62ab60d25f2692e03a7fc7c336953c2a27a1",
+  "behavior": [
+    "Native split workspace retains saved prediction scoring and adds bullish/bearish accuracy cards.",
+    "Separate saved Gameplan-only execution summary reports attempts, outcomes, fills, retries and observation coverage; absent or unreadable execution data cannot gate prediction Stats or nightly operation.",
+    "UI only reads saved summaries. The reporting writer reads the dedicated ledger in one consistent read-only transaction. No 15-minute trader dependencies."
+  ],
+  "branch": "codex/atlas/20261015T091438Z-0ec1c22c2a9b438c9fd5d43fc4506193",
+  "change_id": "20261015T091438Z-0ec1c22c2a9b438c9fd5d43fc4506193",
+  "commit_sha": "cea2c986bcfb538f98eb032e279bfdf6b6f3ac50",
+  "completion_record": "20261015T091438Z-0ec1c22c2a9b438c9fd5d43fc4506193",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/gameplan_stats.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/gameplan_execution_widgets.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "app/ui/gameplan_execution_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/gameplan_execution_report.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_actuals_review.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_gameplan_stats_ui.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_execution_report.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_execution_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_execution_integration.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_split_metrics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/visual_gameplan_execution_fixture.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/gameplan-stats-tab-design-ui/EXECUTION_REPORTING.md"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures and saved evidence only; no broker requests, trader starts, provider fetches or runtime deployment.",
+    "Execution summaries and screenshots remain private local evidence; no account activity is included in source publication.",
+    "Latest saved lifecycle outcomes may postdate the selected Pacific submission session; historical coverage is not a complete broker audit."
+  ],
+  "peer_applicability": "Review and locally adopt shared source under standing human authority while preserving the peer own bindings, symbols and private records; no reciprocal acceptance or nightly prerequisite is introduced.",
+  "privacy": "Only source and synthetic offline tests were published. Execution summaries, raw ledgers, account details and real-data screenshots remain local and are not added to forecast export packages.",
+  "publication_state": "Source branch pushed and exact remote SHA verified; draft PR open. Main integration and peer installation are unverified. No application or trader restart or deployment.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/161",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Updated local application source and optional report generation; a running application loads the new screen on its next normal launch. Source publication does not establish peer installation or runtime adoption.",
+  "scope": "Shared native Gameplan UI and reporting for Atlas and Scout; each PC retains its own symbols, local operating bindings and private execution records.",
+  "summary": "Atlas completed the approved split Gameplan Stats workspace and optional private execution reporting",
+  "tests": {
+    "coverage": [
+      "exact Gameplan attribution and identities",
+      "deduplication and retry relationships",
+      "partial fills and cancellation with partial fills",
+      "unknown statuses and local pre-submission stops",
+      "missing and stale records",
+      "Pacific session boundaries and carryover",
+      "unchanged directional scoring and bullish/bearish reconciliation",
+      "private summary separation from forecast exports"
+    ],
+    "exact_byte_queue": "250 passed, 1 intermittent Tk initialization skip",
+    "isolated_publication_candidate": "250 passed, 1 intermittent Tk initialization skip",
+    "reviewed_candidate": "251 passed, 0 skipped, offline",
+    "visual": "Real Tk Stats-only fixture inspected at 1180x760 and 1586x990, including all-company scrolling, order details and saved observation coverage; no production app initialization."
+  }
+}

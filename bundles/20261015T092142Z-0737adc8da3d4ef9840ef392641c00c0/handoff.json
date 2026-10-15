@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T09:21:42.920527Z",
+  "id": "20261015T092142Z-0737adc8da3d4ef9840ef392641c00c0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed the approved split Gameplan Stats workspace and optional private execution reporting"
+}
