@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from ml.intraday.data import Dataset
-from ml.intraday.models import ModelSpec
+from ml.intraday.models import ModelSpec, UnsupportedModelError, registry_status
 from ml.intraday.model_selection import SelectionConfig, default_candidates, evaluate_candidates, probability_metrics
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 
@@ -80,11 +80,145 @@ def fake_fitter(monkeypatch):
 
 def test_default_search_has_real_diverse_calibrated_families_and_neural_shapes():
     candidates = default_candidates()
-    assert 12 <= len(candidates) <= 14
-    assert len({candidate.family for candidate in candidates}) >= 9
+    implemented = {item["family"] for item in registry_status() if item["status"] != "adapter_not_implemented"}
+    assert len(candidates) == 21 and len(implemented) == 16
+    assert {candidate.family for candidate in candidates} == implemented
+    assert SelectionConfig().max_selected == 16 and SelectionConfig().max_candidates == 21
     assert all(candidate.probability_calibration == "sigmoid" for candidate in candidates)
-    assert {candidate.parameters["hidden_layer_sizes"] for candidate in candidates if candidate.family == "mlp"} == {(16,), (32, 8)}
+    assert {candidate.parameters["hidden_layer_sizes"] for candidate in candidates if candidate.family == "mlp"} == {(16,), (32, 8), (8, 4)}
     assert all(candidate.parameters.get("warm_start", False) is False for candidate in candidates)
+
+
+def test_full_catalog_research_records_missing_dependency_and_selects_more_than_four_families(monkeypatch):
+    import ml.intraday.model_selection as selection
+
+    dataset, sessions = fixture_data()
+    catalog = registry_status()
+    for item in catalog:
+        if item["status"] != "adapter_not_implemented":
+            item["status"] = "dependency_unavailable" if item["family"] == "catboost" else "available"
+    monkeypatch.setattr(selection, "registry_status", lambda: [dict(item) for item in catalog])
+    calls = []
+
+    def fit(model, X, y, **evidence):
+        calls.append(model.name)
+        if model.family == "catboost":
+            raise UnsupportedModelError("catboost fixture dependency is unavailable")
+        return SyntheticEstimator(.9), {"calibration": {"method": "fixture_chronological_sigmoid"}}
+
+    monkeypatch.setattr(selection, "fit_calibrated_estimator", fit)
+    report = evaluate_candidates(dataset, session_ids=sessions)
+    assert {candidate.name for candidate in default_candidates()} <= set(calls)
+    assert report["status"] == "promoted", report["reasons"]
+    assert len(report["selected_specs"]) == len({item["family"] for item in report["selected_specs"]}) == 15
+    coverage = report["candidate_coverage"]
+    assert coverage["configured_variant_count"] == coverage["attempted_variant_count"] == 21
+    assert coverage["configured_family_count"] == coverage["attempted_family_count"] == 16
+    assert coverage["implemented_family_count"] == 16 and coverage["available_family_count"] == 15
+    assert coverage["unconfigured_implemented_families"] == []
+    assert coverage["dependency_unavailable_families"] == ["catboost"]
+    failed = next(row for row in report["candidates"] if row["spec"]["family"] == "catboost")
+    assert failed["status"] == "failed" and failed["selection_reason"] == "dependency_unavailable"
+    assert failed["error"]["type"] == "UnsupportedModelError" and not failed["selected"]
+    unsupported = [row for row in report["model_catalog"] if row["status"] == "adapter_not_implemented"]
+    assert len(unsupported) == 14
+    assert all(row["nonselection_reason"] == "adapter_not_implemented" and not row["configured"] for row in unsupported)
+    assert report["holdout_policy"] == "one_final_gate_after_frozen_cv_shortlist_no_replacements"
+    json.dumps(report, allow_nan=False)
+
+
+def test_family_duplicates_and_explicit_cap_have_distinct_nonselection_reasons(monkeypatch):
+    dataset, sessions = fixture_data()
+    fake_fitter(monkeypatch)
+    choices = [spec("a_logistic"), spec("b_logistic"), spec("c_nb", family="gaussian_nb"), spec("d_lda", family="lda")]
+    report = evaluate_candidates(dataset, candidates=choices, config=small_config(max_selected=2), session_ids=sessions)
+    rows = {row["spec"]["name"]: row for row in report["candidates"]}
+    assert [item["name"] for item in report["selected_specs"]] == ["a_logistic", "c_nb"]
+    assert rows["a_logistic"]["selected"] and rows["a_logistic"]["selection_reason"] == "selected_validation_rank"
+    assert rows["b_logistic"]["selection_reason"] == "duplicate_family" and not rows["b_logistic"]["selected"]
+    assert rows["d_lda"]["selection_reason"] == "configured_cap" and not rows["d_lda"]["selected"]
+    assert report["candidate_coverage"]["attempted_variant_count"] == 4
+    assert "catboost" in report["candidate_coverage"]["unconfigured_implemented_families"]
+
+
+def test_explicit_candidate_budget_still_rejects_an_oversized_catalog_before_fitting(monkeypatch):
+    dataset, sessions = fixture_data()
+    calls = fake_fitter(monkeypatch)
+    with pytest.raises(ContractError, match="Candidate count exceeds"):
+        evaluate_candidates(dataset, config=small_config(max_candidates=20), session_ids=sessions)
+    assert calls == []
+
+
+def test_budget_skips_are_reported_without_inventing_candidate_fits(monkeypatch):
+    dataset, sessions = fixture_data()
+    calls = fake_fitter(monkeypatch)
+    ticks = itertools.count()
+    monkeypatch.setattr("ml.intraday.model_selection.time.monotonic", lambda: next(ticks))
+    report = evaluate_candidates(dataset, candidates=[spec("first"), spec("second", family="lda")],
+                                 config=small_config(max_search_seconds=.5), session_ids=sessions)
+    assert report["status"] == "budget_exhausted" and calls == []
+    assert report["selected_specs"] == [] and len(report["candidates"]) == 2
+    assert report["candidates"][1]["status"] == "not_run"
+    assert report["candidates"][1]["selection_reason"] == "search_budget_exhausted"
+    assert not report["candidates"][1]["selected"]
+    assert all(row["status"] == "not_run" for row in report["candidates"])
+    assert report["candidate_coverage"]["attempted_variant_count"] == 0
+    assert report["candidate_coverage"]["attempted_family_count"] == 0
+
+
+def test_budget_after_first_fold_preserves_attempt_and_defers_remaining_candidates(monkeypatch):
+    import ml.intraday.model_selection as selection
+
+    dataset, sessions = fixture_data()
+    calls = fake_fitter(monkeypatch)
+    wrapped_fit = selection.fit_calibrated_estimator
+    elapsed = [0.0]
+
+    def fit(*args, **kwargs):
+        result = wrapped_fit(*args, **kwargs)
+        elapsed[0] = 11.0
+        return result
+
+    monkeypatch.setattr(selection, "fit_calibrated_estimator", fit)
+    monkeypatch.setattr(selection.time, "monotonic", lambda: elapsed[0])
+    report = evaluate_candidates(dataset, candidates=[spec("first"), spec("second", family="lda")],
+                                 config=small_config(max_search_seconds=10), session_ids=sessions)
+    assert report["status"] == "budget_exhausted" and report["selected_specs"] == []
+    assert [call["name"] for call in calls] == ["first"]
+    first, second = report["candidates"]
+    assert first["status"] == "failed" and len(first["folds"]) == 1
+    assert first["selection_reason"] == "search_budget_exhausted" and not first["selected"]
+    assert second["status"] == "not_run" and second["folds"] == []
+    assert second["selection_reason"] == "search_budget_exhausted" and not second["selected"]
+    assert report["candidate_coverage"]["attempted_variant_count"] == 1
+    assert report["candidate_coverage"]["attempted_family_count"] == 1
+
+
+def test_estimator_timeout_before_first_completed_fold_still_counts_attempt(monkeypatch):
+    import ml.intraday.model_selection as selection
+
+    dataset, sessions = fixture_data()
+    calls = []
+    elapsed = [0.0]
+
+    def fit(model, X, y, **evidence):
+        calls.append(model.name)
+        elapsed[0] = 11.0
+        raise TimeoutError("Fixture estimator timed out after starting")
+
+    monkeypatch.setattr(selection, "fit_calibrated_estimator", fit)
+    monkeypatch.setattr(selection.time, "monotonic", lambda: elapsed[0])
+    report = evaluate_candidates(dataset, candidates=[spec("first"), spec("second", family="lda")],
+                                 config=small_config(max_search_seconds=10), session_ids=sessions)
+    assert report["status"] == "budget_exhausted" and report["selected_specs"] == []
+    assert calls == ["first"]
+    first, second = report["candidates"]
+    assert first["status"] == "failed" and first["folds"] == []
+    assert first["error"]["type"] == "TimeoutError"
+    assert first["selection_reason"] == "search_budget_exhausted" and not first["selected"]
+    assert second["status"] == "not_run" and not second["selected"]
+    assert report["candidate_coverage"]["attempted_variant_count"] == 1
+    assert report["candidate_coverage"]["attempted_family_count"] == 1
 
 
 def test_probability_scores_reveal_extreme_wrong_predictions_and_include_one_in_bins():
@@ -295,6 +429,7 @@ def test_completed_holdout_fit_that_overruns_budget_remains_retryable(monkeypatc
 
 
 @pytest.mark.parametrize("field,value", [("cv_folds", 6), ("max_candidates", 25), ("min_class_count", True),
+                                         ("max_selected", 17),
                                          ("max_search_seconds", np.nan), ("max_ece", 1.1),
                                          ("extreme_probability", .5)])
 def test_invalid_search_budget_and_probability_gates_rejected(field, value):
