@@ -1,0 +1,69 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261015T042346Z-6fc2b650f51f44908c1a1fd808c5e270",
+  "change_id": "20261015T042346Z-6fc2b650f51f44908c1a1fd808c5e270",
+  "commit_sha": "8d631ec5e0425274e9201512bc1239eb91c1e769",
+  "details": [
+    "Actor Atlas; task priority source reconciliation; shared independent model-supervisor fixes apply to both PCs without changing their selected entrypoints.",
+    "Retain Atlas PR128 Completion-Record 20261014T101507Z-3c37467549f549aa84661551f14897fa and PR136 Completion-Record 20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8.",
+    "Record training-row availability after both its target and actual own-feature receipt; preserve original observations.",
+    "Recover malformed active-model entries independently, retaining valid incumbents and the complete original metadata evidence.",
+    "Evaluate candidates with the shared calibrated live fitter and newest-row cap, retaining causal base and calibration partitions in score evidence.",
+    "Preserve exported native Enabled state in both planning and registration and reject concurrent definition changes.",
+    "New offline regressions reproduced ten failures across all four reported defects before repair."
+  ],
+  "files": [
+    "ml/intraday/supervisor.py",
+    "ml/intraday/full_model_selection.py",
+    "tools/register_intraday_model_supervisor.ps1",
+    "tests/test_intraday_supervisor.py",
+    "tests/test_intraday_full_model_selection.py",
+    "tests/test_register_intraday_model_supervisor.py"
+  ],
+  "installation_stage": "six_reviewed_paths_installed_and_offline_checked",
+  "integration_stage": "tested_stacked_draft_pr",
+  "limitations": [
+    "Offline synthetic histories, temporary files and mocked native scheduler APIs only; no production data acquisition or fitted-model publication.",
+    "Source is stacked on the existing Atlas alternate-supervisor publication; common-main composition remains separate.",
+    "Previously saved selections and model artifacts retain their original meaning until the ordinary next preparation."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/146",
+    "https://github.com/jeremysecondstate/ducketz/pull/136"
+  ],
+  "main_integration_limitation": "Installed helper reports main does not descend from the existing reviewed Atlas supervisor base; no operating wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_records": [
+    "20261014T101507Z-3c37467549f549aa84661551f14897fa",
+    "20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8"
+  ],
+  "runtime_implications": "Future imports use corrected preparation source. Existing workers, model artifacts, native task definitions, independent trader state and manual starts/stops remain unchanged.",
+  "scope": "Shared model preparation source; both PCs retain their own selected supervisor entrypoint and manual trader controls.",
+  "summary": "Atlas repaired four confirmed independent model-supervisor defects and installed the reviewed source.",
+  "tests": [
+    {
+      "check": "sealed-source",
+      "completed_at_utc": "2026-10-15T04:24:20.147323Z",
+      "exit_code": 0,
+      "output_sha256": "8e61982a4a51bb0d01dd087b61b58592acaf2640bdfd234b968517e9ea1bae2d",
+      "result": "161 passed; existing upstream joblib/NumPy deprecation warnings; no skips or offline-verifier violations.",
+      "started_at_utc": "2026-10-15T04:23:46.936343Z"
+    },
+    {
+      "check": "isolated-publication",
+      "completed_at_utc": "2026-10-15T04:25:18.559341Z",
+      "exit_code": 0,
+      "output_sha256": "6051ac62562a3ffdb79e586fa9a8e4d6b52d8299e2fa479172be03ae1d7b9896",
+      "result": "161 passed; existing upstream joblib/NumPy deprecation warnings; no skips or offline-verifier violations.",
+      "started_at_utc": "2026-10-15T04:24:45.670583Z"
+    },
+    {
+      "check": "installed-Atlas",
+      "completed_at_utc": "2026-10-15T04:26:20.398681Z",
+      "exit_code": 0,
+      "output_sha256": "254a9831355762bb8ebda740043866b6a24bdec4879f2e61628d2c4311af6d55",
+      "result": "161 passed; existing upstream joblib/NumPy deprecation warnings; no skips or offline-verifier violations.",
+      "started_at_utc": "2026-10-15T04:25:47.075310Z"
+    }
+  ]
+}
