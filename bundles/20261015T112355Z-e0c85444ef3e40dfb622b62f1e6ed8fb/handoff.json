@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T11:23:55.710558Z",
+  "id": "20261015T112355Z-e0c85444ef3e40dfb622b62f1e6ed8fb",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published and installed the independent intraday desktop workspace wiring and eight-workspace shell regression."
+}

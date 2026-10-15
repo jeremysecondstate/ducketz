@@ -1,0 +1,82 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T111744Z-f0c627a87d3d4e3a9368d64f4b99563d",
+  "change_id": "20261015T111744Z-f0c627a87d3d4e3a9368d64f4b99563d",
+  "commit_sha": "43cba1c3963e7a38916dca8917181639e0f55db0",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared desktop UI wiring applicable independently to both PCs.",
+    "Publish the four existing Scout IntradayTab registration lines: import, unique frame, notebook label after Gameplan and constructor.",
+    "Update the existing shell regression to mock and verify all eight workspaces while preserving order, root identity and unique parent/frame assertions.",
+    "Build on saved research Completion-Record 20261015T105929Z-0c825390da9e4f21baf7f6fae65367e4 and cohort record 20261015T104000Z-f417892610ba42fdb278757866fd9683; retain Atlas PR136 record 20261014T220010Z-38361333407d4a2b94f3ea766e6b6fc8.",
+    "The workspace displays saved local forecasts and research. It does not launch a trader, perform synthesis or depend on another trader."
+  ],
+  "files": [
+    "app/ui/ducket_bucket.py",
+    "tests/test_ducket_bucket_app.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "95e03c6d44c82e4dd2b3d772b6daf1ec14088f26",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline mocked shell and synthetic saved-data/UI tests; loaded-application adoption is unverified.",
+    "Scout shell already contains the exact four wiring lines; local installation changes only the stale test fixture.",
+    "Initial tests passed 190 but dependency verifier rejected two unlisted dynamically imported visual fixtures. Dependency capture was corrected without source changes. Bound initial recheck passed 189 with one intermittent native Tk initialization skip. All four subsequent source/publication/main/installed stages passed all 190, with zero verifier violations. Original failed and skip evidence retained."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/167",
+    "https://github.com/jeremysecondstate/ducketz/pull/166"
+  ],
+  "local_receipt": "Two reviewed paths are exact on Scout; only the stale shell test needed writing. Original bytes retained, 237 manifest entries verified, unrelated installed changes preserved with 255 actual dependency fingerprints. No production or trader process actions.",
+  "remaining_source_work": "Review only PR139 provider-call stop checks, completed_15m_observation and input-minute provenance against exact peer source; preserve PR140 cutoff and final-data drain. Keep installed nightly-continuation common-main composition separate; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Future normal UI loads expose the 15-Minute Duckets tab from shared source. No application or trader restart, provider/broker call, real account read, manual-stop change or native-task mutation.",
+  "scope": "Shared desktop shell for both PCs; each uses its own local saved data and symbols.",
+  "summary": "Scout published and installed the independent intraday desktop workspace wiring and eight-workspace shell regression.",
+  "tests": [
+    {
+      "check": "initial bound recheck",
+      "completed_at_utc": "2026-10-15T11:17:30.703242Z",
+      "fingerprints": 225,
+      "import_verifier_violations": 0,
+      "output_sha256": "7508cb9308ec76eb90308bf77a7de2ea31f35a44fab20838554e33004f0c49d8",
+      "result": "189 passed, 1 skipped in 22.57s",
+      "started_at_utc": "2026-10-15T11:17:05.538609Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T11:18:10.629466Z",
+      "fingerprints": 225,
+      "import_verifier_violations": 0,
+      "output_sha256": "11ab15d8c7729d1b30cc303ca4a14d0ae3cf8624f9e2880bec08f12bd92c1eda",
+      "result": "190 passed in 23.24s",
+      "started_at_utc": "2026-10-15T11:17:44.913469Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T11:20:02.947028Z",
+      "fingerprints": 225,
+      "import_verifier_violations": 0,
+      "output_sha256": "ea5f0a02910d6b21eec232f3730e6d15fe10948da8861becb1760e8dc7481743",
+      "result": "190 passed in 22.20s",
+      "started_at_utc": "2026-10-15T11:19:38.300125Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-15T11:21:50.345252Z",
+      "fingerprints": 225,
+      "import_verifier_violations": 0,
+      "output_sha256": "fbd2e34a91d6bbf0f35f49865fc87df88af47e8e0dafa3206353b8b999ff0cab",
+      "result": "190 passed in 22.18s",
+      "started_at_utc": "2026-10-15T11:21:25.887687Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T11:22:46.009993Z",
+      "fingerprints": 255,
+      "import_verifier_violations": 0,
+      "output_sha256": "77274251c6fa0a2f63e1b0d999195ea1af179a4efa0a226790b813e0b78d6a3f",
+      "result": "190 passed in 22.61s",
+      "started_at_utc": "2026-10-15T11:22:20.992437Z"
+    }
+  ]
+}
