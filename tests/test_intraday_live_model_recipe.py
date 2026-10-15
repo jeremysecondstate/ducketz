@@ -347,7 +347,7 @@ def test_runner_uses_observed_recipe_metadata_and_two_models_in_frozen_forecast(
     assert result["forecasts"]["ABCL"]["synthetic_policy"] == "exclude"
 
 
-def test_manual_entrypoint_latches_recipe_before_any_session_or_client_side_effect(tmp_path, monkeypatch):
+def test_manual_entrypoint_latches_recipe_before_operating_client_side_effects(tmp_path, monkeypatch):
     from ml.intraday import data, live_session
     value = recipe()
     path = save(tmp_path, value)
@@ -360,9 +360,6 @@ def test_manual_entrypoint_latches_recipe_before_any_session_or_client_side_effe
         setattr(fake, attribute, forbidden)
         monkeypatch.setitem(sys.modules, name, fake)
     monkeypatch.setattr(live_session, "local_symbols", lambda *a: ("Scout", ("ABCL", "DBX")))
-    monkeypatch.setattr(live_session, "ShadowStore", forbidden)
-    monkeypatch.setattr(live_session, "ExecutionQueue", forbidden)
-    monkeypatch.setattr(live_session.psutil, "Process", forbidden)
     monkeypatch.setattr(data, "AcquisitionJournal", forbidden)
     monkeypatch.setattr(data, "load_local_history", forbidden)
     actual = recipes.prepare_manual_models
@@ -377,10 +374,14 @@ def test_manual_entrypoint_latches_recipe_before_any_session_or_client_side_effe
     with pytest.raises(StartupSelected):
         live_session.run_manual(repository=tmp_path, datastore=tmp_path,
             profile=tmp_path / "unused-profile", watchlist=tmp_path / "unused-watchlist",
-            config=ResearchConfig(use_supervised_models=True), clock=forbidden)
+            config=ResearchConfig(use_supervised_models=True), clock=lambda: "2026-10-15T18:00:00Z")
     assert captured["kwargs"] == {"datastore": tmp_path, "pc": "Scout", "symbols": ("ABCL", "DBX")}
     assert captured["config"].models == tuple(value["models"])
     assert captured["config"].use_supervised_models is False
     assert set(captured["adapters"]) == {"trainer", "dataset_builder"}
-    assert set(tmp_path.rglob("*")) == before
+    # Local session evidence can exist while waiting. Operating clients still
+    # cannot open until the current recipe has been selected after wake.
+    assert before <= set(tmp_path.rglob("*"))
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
     assert json.loads(path.read_text(encoding="utf-8")) == value

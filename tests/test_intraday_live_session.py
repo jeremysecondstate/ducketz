@@ -517,7 +517,8 @@ def test_manual_startup_failure_has_failed_status_and_never_constructs_broker(tm
     monkeypatch.setattr(schwab,"SchwabSession",lambda:pytest.fail("broker constructed after failed setup"))
     with pytest.raises(RuntimeError,match="configuration fixture"):
         live_session.run_manual(repository=tmp_path,datastore=tmp_path,profile=tmp_path/"profile.json",
-            watchlist=tmp_path/"watchlist.txt",config=live_session.ResearchConfig())
+            watchlist=tmp_path/"watchlist.txt",config=live_session.ResearchConfig(),
+            clock=lambda: "2026-10-15T18:00:00Z")
     status=json.loads((tmp_path/"intraday/manual-session.json").read_text())
     assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
 
@@ -539,7 +540,8 @@ def test_forecast_worker_failure_is_not_a_successful_manual_stop(tmp_path,monkey
     monkeypatch.setattr(live_session,"forecasting_loop",fail)
     monkeypatch.setattr(live_session,"scoring_loop",lambda *a,**kw:None)
     result=live_session.run_manual(repository=tmp_path,datastore=tmp_path,profile=tmp_path/"profile.json",
-        watchlist=tmp_path/"watchlist.txt",config=live_session.ResearchConfig())
+        watchlist=tmp_path/"watchlist.txt",config=live_session.ResearchConfig(),
+        clock=lambda: "2026-10-15T18:00:00Z")
     status=json.loads((tmp_path/"intraday/manual-session.json").read_text())
     assert result["status"] == status["status"] == "FAILED"
     assert status["stop_reason"] == "worker_failure" and status["worker_errors"][0]["worker"] == "forecast"
