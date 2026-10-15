@@ -104,25 +104,31 @@ class Harness:
         return record
 
     def load_predictor(self, output_root, coin, interval, horizon, *, now, max_age_seconds,
-                       expected_feature_revision=None):
+                       expected_feature_revision=None, expected_source_run_id=None, expected_settings=None):
         directory = self.model_dir(output_root, coin, interval, horizon)
         for filename, role in (("active.json", "active"), ("candidate.json", "research_candidate")):
             path = directory / filename
             if path.exists():
                 record = json.loads(path.read_text(encoding="utf-8"))
                 if (0 <= now - pd.Timestamp(record["trained_at_utc"]).timestamp() <= max_age_seconds
-                        and record.get("feature_revision") == expected_feature_revision):
+                        and record.get("feature_revision") == expected_feature_revision
+                        and (expected_source_run_id is None or record.get("source_run_id") == expected_source_run_id)
+                        and (expected_settings is None or record.get("settings") == expected_settings)):
                     return {"bundle": coin, "record": record, "role": role}
         return None
 
     def predict(self, bundle, snapshot):
         assert bundle == snapshot.coin
         self.prediction_calls.append((snapshot.coin, snapshot.run_id))
-        return {"decision_close": snapshot.decision_close, "probability_not_down": 0.6}
+        return {"decision_close": snapshot.decision_close, "probability_not_down": 0.6,
+                "data_run_id": snapshot.run_id}
 
-    def record_prediction(self, output_root, coin, interval, horizon, prediction, metadata, *, now):
+    def record_prediction(self, output_root, coin, interval, horizon, prediction, metadata, *, now,
+                          require_source_match=False):
         identity = (coin, interval, horizon, prediction["decision_close"])
-        self.forecasts.setdefault(identity, {**prediction, "model_id": metadata["model_id"], "role": metadata["role"]})
+        self.forecasts.setdefault(identity, {**prediction, "model_id": metadata["model_id"],
+                                            "role": metadata["role"],
+                                            "model_source_run_id": metadata["source_run_id"]})
         return self.forecasts[identity]
 
     def score_matured(self, output_root, snapshot, horizon, *, now):
@@ -667,3 +673,186 @@ def test_timing_journal_failure_does_not_reclassify_published_model(harness, mon
         assert state["timing_write_error"]["type"] == "PermissionError"
     finally:
         worker.shutdown()
+
+
+def strict_single_market(harness):
+    harness.write_markets(["BTC"])
+    config = json.loads(harness.config_path.read_text(encoding="utf-8"))
+    config["retrain_before_predict"] = True
+    harness.config_path.write_text(json.dumps(config), encoding="utf-8")
+
+
+@pytest.mark.parametrize("eligible", [True, False])
+def test_strict_sequence_waits_for_exact_source_fit_and_preserves_research_role(harness, eligible):
+    strict_single_market(harness)
+    started, release = threading.Event(), threading.Event()
+
+    def train(snapshot, settings):
+        started.set()
+        assert release.wait(5)
+        return {"bundle": snapshot.coin, "report": {"eligible": eligible}}
+
+    worker = harness.worker(train_fn=train)
+    original = harness.candidate(worker, "BTC")
+    try:
+        worker.tick()  # Prime the fitted-model cache with the earlier snapshot.
+        assert len(harness.forecasts) == 1
+        current = harness.new_snapshot("BTC")
+        state = worker.tick()
+        assert started.wait(2)
+        assert state["retrain_before_predict"] is True
+        assert state["markets"]["BTC/15m/h4"]["last_prediction"] is None
+        assert harness.prediction_calls == [("BTC", "BTC-run-1")]
+        assert len(harness.forecasts) == 1
+        release.set()
+        state = collect_finished_job(worker)
+        saved = state["markets"]["BTC/15m/h4"]["last_prediction"]
+        assert saved["data_run_id"] == saved["model_source_run_id"] == current.run_id
+        assert saved["model_id"] != original["model_id"]
+        assert saved["role"] == ("active" if eligible else "research_candidate")
+        assert len(harness.forecasts) == 2
+        worker.tick()
+        assert worker._job is None
+        assert len(harness.forecasts) == 2
+    finally:
+        release.set()
+        worker.shutdown()
+
+
+def test_strict_failed_fit_never_records_a_previous_source_prediction(harness):
+    strict_single_market(harness)
+
+    def fail(snapshot, settings):
+        raise RuntimeError("fit deliberately failed")
+
+    worker = harness.worker(train_fn=fail)
+    harness.candidate(worker, "BTC")
+    harness.new_snapshot("BTC")
+    try:
+        worker.tick()
+        state = collect_finished_job(worker)
+        slot = state["markets"]["BTC/15m/h4"]
+        assert slot["status"] == "training_failed"
+        assert slot["last_prediction"] is None
+        assert harness.prediction_calls == []
+        assert harness.forecasts == {}
+        assert worker._job is None  # Bounded retry delay still applies.
+    finally:
+        worker.shutdown()
+
+
+def test_strict_corrected_overlap_retrains_without_rewriting_first_forecast(harness):
+    strict_single_market(harness)
+    worker = harness.worker()
+    harness.candidate(worker, "BTC", source_last_close_utc="2033-05-18T03:30:00+00:00")
+    try:
+        worker.tick()
+        first = dict(worker._slot(("BTC", "15m", 4))["last_prediction"])
+        corrected = harness.new_snapshot("BTC")
+        corrected.decision_close = "decision-1"  # Same bar, changed overlap bytes.
+        corrected.features = pd.DataFrame({"close_time": [pd.Timestamp("2033-05-18T03:30:00Z")]})
+        worker.tick()
+        assert worker._job["snapshot"].run_id == corrected.run_id
+        state = collect_finished_job(worker)
+        slot = state["markets"]["BTC/15m/h4"]
+        assert harness.trained == [("BTC", corrected.run_id)]
+        assert slot["status"] == "prediction_unavailable"
+        assert slot["last_prediction"] is None
+        assert "does not match" in slot["last_prediction_error"]["message"]
+        assert list(harness.forecasts.values()) == [first]
+    finally:
+        worker.shutdown()
+
+
+def test_strict_unchanged_snapshot_reuses_saved_fit_after_restart(harness):
+    strict_single_market(harness)
+    worker = harness.worker()
+    harness.candidate(worker, "BTC", age=1000)
+    try:
+        worker.tick()
+        worker.tick()
+        assert harness.trained == []
+        assert len(harness.forecasts) == 1
+    finally:
+        worker.shutdown()
+    restarted = harness.worker()
+    try:
+        restarted.tick()
+        assert harness.trained == []
+        assert len(harness.forecasts) == 1
+        assert restarted._slot(("BTC", "15m", 4))["last_prediction"]
+    finally:
+        restarted.shutdown()
+
+
+def test_strict_recipe_mismatch_retrains_and_cannot_use_cached_or_saved_old_recipe(harness):
+    strict_single_market(harness)
+    worker = harness.worker()
+    current = harness.candidate(worker, "BTC")
+    wrong = {**current, "settings": {**current["settings"], "random_state": -1}}
+    key = ("BTC", "15m", 4)
+    path = harness.model_dir(harness.root, *key)
+    for name in ("active.json", "candidate.json"):
+        (path / name).write_text(json.dumps(wrong), encoding="utf-8")
+    versions = tuple((name, (path / name).stat().st_mtime_ns) for name in ("active.json", "candidate.json"))
+    worker._predictors[key] = (versions, {"bundle": "BTC", "record": wrong, "role": "active"})
+    try:
+        worker.tick()
+        assert harness.forecasts == {}
+        assert worker._job is not None
+        state = collect_finished_job(worker)
+        assert state["markets"]["BTC/15m/h4"]["last_prediction"]
+        assert len(harness.trained) == 1
+    finally:
+        worker.shutdown()
+
+
+def test_strict_fit_finishing_after_new_snapshot_cannot_forecast_new_data(harness):
+    strict_single_market(harness)
+    worker = harness.worker()
+    try:
+        worker.tick()
+        worker._job["future"].result(timeout=5)
+        newer = harness.new_snapshot("BTC")
+        state = worker.tick()
+        assert state["markets"]["BTC/15m/h4"]["last_prediction"] is None
+        assert harness.forecasts == {}
+        assert worker._job["snapshot"].run_id == newer.run_id
+        state = collect_finished_job(worker)
+        assert state["markets"]["BTC/15m/h4"]["last_prediction"]["data_run_id"] == newer.run_id
+        assert len(harness.forecasts) == 1
+    finally:
+        worker.shutdown()
+
+
+def test_strict_forced_fit_failure_does_not_publish_existing_candidate(harness):
+    strict_single_market(harness)
+
+    def fail(snapshot, settings):
+        raise RuntimeError("forced fit deliberately failed")
+
+    worker = harness.worker(train_fn=fail, force_train=True)
+    harness.candidate(worker, "BTC")
+    state = worker.run(once=True)
+    assert state["status"] == "failed"
+    assert harness.prediction_calls == []
+    assert harness.forecasts == {}
+
+
+def test_strict_once_resumes_saved_fit_and_forced_duplicate_preserves_history(harness):
+    strict_single_market(harness)
+    first = harness.worker()
+    harness.candidate(first, "BTC")
+    assert first.run(once=True)["status"] == "stopped"
+    saved = dict(next(iter(harness.forecasts.values())))
+    restarted = harness.worker()
+    resumed = restarted.run(once=True)
+    assert resumed["reason"] == "once"
+    assert resumed["markets"]["BTC/15m/h4"]["last_prediction"] == saved
+    assert harness.trained == []
+    forced = harness.worker(force_train=True)
+    result = forced.run(once=True)
+    assert result["status"] == "failed"
+    assert result["markets"]["BTC/15m/h4"]["last_prediction"] is None
+    assert harness.trained == [("BTC", "BTC-run-1")]
+    assert list(harness.forecasts.values()) == [saved]

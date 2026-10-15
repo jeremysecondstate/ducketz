@@ -102,6 +102,73 @@ def test_refresh_merges_new_and_corrected_rows_and_keeps_old_snapshot(tmp_path, 
     assert merged.timestamp.is_unique
 
 
+def five_minute_candles(count):
+    step = 300_000
+    return [{**row, "t": START + index * step,
+             "T": START + (index + 1) * step - 1, "i": "5m"}
+            for index, row in enumerate(candles(count))]
+
+
+def test_five_minute_bootstrap_and_full_refresh_include_earliest_closed_candle(tmp_path, monkeypatch):
+    step = 300_000
+    rows = five_minute_candles(5_001)
+    requests = []
+
+    def fetch(**kwargs):
+        requests.append(kwargs)
+        return [row.copy() for row in rows if kwargs["start_ms"] <= row["t"] <= kwargs["end_ms"]]
+
+    monkeypatch.setattr(pipeline, "fetch_candles", fetch)
+    cutoff = START + 5_000 * step + 5_000
+    result = pipeline.run_pipeline(interval="5m", output_root=tmp_path, as_of_ms=cutoff)
+    raw = pd.read_parquet(result["files"]["ohlcv"])
+    assert requests[-1]["start_ms"] == START
+    assert result["incoming_closed_candles"] == result["rows"] == 5_000
+    assert raw.timestamp.iloc[0] == pd.Timestamp(START, unit="ms", tz="UTC")
+    assert raw.close_time.iloc[-1] == pd.Timestamp(START + 5_000 * step, unit="ms", tz="UTC")
+    assert result["latest_candle_available"] is True
+
+    refreshed = pipeline.run_pipeline(interval="5m", output_root=tmp_path,
+                                      as_of_ms=cutoff, refresh_history=True)
+    assert requests[-1]["start_ms"] == START
+    assert refreshed["incoming_closed_candles"] == 5_000
+    assert refreshed["status"] == "unchanged"
+    assert refreshed["run_id"] == result["run_id"]
+
+
+def test_five_minute_overlap_corrects_deduplicates_and_keeps_archive_beyond_api_window(tmp_path, monkeypatch):
+    step = 300_000
+    rows = five_minute_candles(5_000)
+    requests = []
+
+    def fetch(**kwargs):
+        requests.append(kwargs)
+        return [row.copy() for row in rows if kwargs["start_ms"] <= row["t"] <= kwargs["end_ms"]]
+
+    monkeypatch.setattr(pipeline, "fetch_candles", fetch)
+    first = pipeline.run_pipeline(interval="5m", output_root=tmp_path,
+                                  as_of_ms=START + 5_000 * step + 5_000)
+    original = pd.read_parquet(first["files"]["ohlcv"])
+    rows = five_minute_candles(5_003)[4_997:]
+    corrected = {**rows[1], "c": str(float(rows[1]["c"]) + 1)}
+    # Last duplicate wins, while the still-forming 5,003rd row is excluded.
+    rows.append(corrected)
+    result = pipeline.run_pipeline(interval="5m", output_root=tmp_path,
+                                   as_of_ms=START + 5_002 * step + 5_000)
+    raw = pd.read_parquet(result["files"]["ohlcv"])
+    assert requests[-1]["start_ms"] == START + 4_997 * step
+    assert result["rows"] == 5_002
+    assert result["new_candles"] == result["appended_candles"] == 2
+    assert result["corrected_candles"] == 1
+    assert raw.timestamp.is_unique and raw.timestamp.is_monotonic_increasing
+    assert raw.close.iloc[4_998] == pytest.approx(original.close.iloc[4_998] + 1)
+    pd.testing.assert_frame_equal(raw.iloc[:4_997].reset_index(drop=True),
+                                  original.iloc[:4_997].reset_index(drop=True))
+    pd.testing.assert_frame_equal(original, pd.read_parquet(first["files"]["ohlcv"]))
+    for kind in ("features", "labels"):
+        assert pd.read_parquet(result["files"][kind]).timestamp.equals(raw.timestamp)
+
+
 def test_calculation_failure_keeps_previous_snapshot_current(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "fetch_candles", lambda **kwargs: candles(100))
     first = pipeline.run_pipeline(output_root=tmp_path, as_of_ms=START + 100 * STEP)

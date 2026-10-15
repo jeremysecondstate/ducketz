@@ -275,7 +275,10 @@ def _run_locked(*, coin, interval, dataset_dir, info_url, benchmark, rebuild, re
             start_ms = min(start_ms, gaps["earliest_recoverable_gap_ms"])
         start_ms = max(start_ms, window_start_ms)
     else:
-        start_ms = max(0, as_of_ms - API_HISTORY_LIMIT_CANDLES * step_ms)
+        # Anchor the bootstrap/repair window to the completed boundary. A
+        # publication delay after that boundary must not exclude the opening
+        # timestamp of the earliest requested completed candle.
+        start_ms = window_start_ms
     fetch_started = time.perf_counter()
     rows = fetch_candles(coin=coin, interval=interval, start_ms=start_ms, end_ms=as_of_ms, info_url=info_url)
     incoming = normalize_candles(rows, coin=coin, interval=interval, as_of_ms=as_of_ms)

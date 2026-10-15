@@ -110,6 +110,27 @@ def test_schema_change_can_use_new_candidate_instead_of_old_active(tmp_path):
     ) is None
 
 
+def test_exact_source_and_recipe_filter_bypasses_older_active_for_retrained_research(tmp_path):
+    active = publish(tmp_path)
+    settings = Recipe(random_state=7)
+    candidate = artifacts.publish_candidate(tmp_path, snapshot(run_id="source-2"), settings, {
+        "bundle": {"fitted_coefficients": [2]}, "report": {"eligible": False},
+        "assessment": pd.DataFrame({"actual": [0, 1]}),
+    }, now=NOW + 10)
+    expected = {"horizon_bars": 4, "random_state": 7}
+    loaded = artifacts.load_predictor(
+        tmp_path, "BTC", "15m", 4, now=NOW + 20, max_age_seconds=60,
+        expected_source_run_id="source-2", expected_settings=expected,
+    )
+    assert loaded["record"]["model_id"] == candidate["model_id"] != active["model_id"]
+    assert loaded["role"] == "research_candidate"
+    for source, recipe in (("source-3", expected), ("source-2", {**expected, "random_state": 8})):
+        assert artifacts.load_predictor(
+            tmp_path, "BTC", "15m", 4, now=NOW + 20, max_age_seconds=60,
+            expected_source_run_id=source, expected_settings=recipe,
+        ) is None
+
+
 def test_failed_bundle_publication_preserves_both_pointers(tmp_path, monkeypatch):
     first = publish(tmp_path)
     pointer_before = (directory(tmp_path) / "candidate.json").read_bytes()
@@ -156,6 +177,54 @@ def test_prediction_dedup_preserves_first_probability_model_and_creation(tmp_pat
     assert duplicate == original
     assert len(pd.read_parquet(directory(tmp_path) / "predictions.parquet")) == 1
     assert json.loads((directory(tmp_path) / "latest_prediction.json").read_text()) == original
+
+
+def test_prediction_records_actual_training_source_provenance(tmp_path):
+    metadata = publish(tmp_path)
+    saved = record(tmp_path, metadata)
+    assert saved["model_source_run_id"] == metadata["source_run_id"] == "source-1"
+    assert saved["data_run_id"] == "prediction-data-1"  # Legacy mode remains explicit.
+
+
+def test_strict_recording_requires_the_exact_training_source(tmp_path):
+    metadata = publish(tmp_path)
+    with pytest.raises(ValueError, match="exact source run"):
+        artifacts.record_prediction(tmp_path, "BTC", "15m", 4, prediction(), metadata,
+                                    now=NOW, require_source_match=True)
+    assert not (directory(tmp_path) / "predictions.parquet").exists()
+    item = {**prediction(), "data_run_id": metadata["source_run_id"], "model_source_run_id": "wrong-bundle"}
+    with pytest.raises(ValueError, match="exact source run"):
+        artifacts.record_prediction(tmp_path, "BTC", "15m", 4, item, metadata,
+                                    now=NOW, require_source_match=True)
+
+
+def test_strict_duplicate_reuses_only_identical_forecast_provenance(tmp_path):
+    metadata = publish(tmp_path)
+    item = {**prediction(), "data_run_id": metadata["source_run_id"]}
+    first = artifacts.record_prediction(tmp_path, "BTC", "15m", 4, item, metadata,
+                                        now=NOW, require_source_match=True)
+    repeated = artifacts.record_prediction(tmp_path, "BTC", "15m", 4, item, metadata,
+                                           now=NOW + 1, require_source_match=True)
+    assert repeated == first
+    journal = directory(tmp_path) / "predictions.parquet"
+    pointer = directory(tmp_path) / "latest_prediction.json"
+    before = (journal.read_bytes(), pointer.read_bytes())
+    replacement = publish(tmp_path, now=NOW + 2)
+    with pytest.raises(ValueError, match="different recorded forecast"):
+        artifacts.record_prediction(tmp_path, "BTC", "15m", 4, item, replacement,
+                                    now=NOW + 3, require_source_match=True)
+    assert (journal.read_bytes(), pointer.read_bytes()) == before
+
+
+def test_strict_duplicate_preserves_legacy_forecast_without_claiming_new_source(tmp_path):
+    original = record(tmp_path)
+    metadata = publish(tmp_path, now=NOW + 1)
+    item = {**prediction(), "data_run_id": metadata["source_run_id"]}
+    with pytest.raises(ValueError, match="different recorded forecast"):
+        artifacts.record_prediction(tmp_path, "BTC", "15m", 4, item, metadata,
+                                    now=NOW + 2, require_source_match=True)
+    assert json.loads((directory(tmp_path) / "latest_prediction.json").read_text()) == original
+    assert len(pd.read_parquet(directory(tmp_path) / "predictions.parquet")) == 1
 
 
 @pytest.mark.parametrize("projection_state", ["missing", "stale"])

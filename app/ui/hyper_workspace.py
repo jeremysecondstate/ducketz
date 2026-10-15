@@ -73,6 +73,25 @@ def _forecast_horizon(row):
     return "Forecast horizon unavailable"
 
 
+def _paper_workflow_summary(snapshot, *, read_failed=False):
+    """Describe the observed workflow without implying its sources are fresh."""
+    if snapshot is None:
+        return ""
+    owner = snapshot.runtime.get("paper_loop")
+    if not isinstance(owner, dict) or not owner:
+        return ""
+    source = snapshot.sources.get("paper_loop")
+    state = ("Read failed" if read_failed else "Running" if owner.get("ownership_verified") is True and source and source.state == "fresh"
+             else str(source.state if source else owner.get("status", "unavailable")).capitalize())
+    models = snapshot.runtime.get("models", {})
+    training = models.get("training_market") if isinstance(models, dict) else None
+    model_source = snapshot.sources.get("models")
+    activity = (f" · Retraining {str(training).split('/')[0]}"
+                if state == "Running" and training and model_source and model_source.state == "fresh" else "")
+    return (f"5-minute Paper loop · {state}{activity}\n"
+            "Real candles → overlap / dedup → saved dataframe → preprocess + retrain → predict → simulated trades")
+
+
 def _paper_decision_reason(row):
     """Explain older nonfills only from their saved evidence, never today's policy."""
     reason = row.get("reason")
@@ -418,6 +437,8 @@ class HyperWorkspace:
             self.source_labels[key] = (top, state, title, cadence)
             Tooltip(box, lambda key=key: self._source_tooltip(key))
             Tooltip(state, lambda key=key: self._source_tooltip(key))
+        self.workflow_label = label(self.page, "", size=9, color=MUTED_TEXT, justify="left")
+        self.workflow_label.bind("<Configure>", lambda event: self.workflow_label.configure(wraplength=max(200, event.width)))
         self.alert = label(self.page, "", size=9, color=WARNING)
         self.alert.pack(fill="x", padx=16, pady=(0, 4))
         viewport = tk.Frame(self.page, bg=PAGE)
@@ -978,6 +999,13 @@ class HyperWorkspace:
         self.mode_status.configure(text=("Portfolio " + local_time(snap.portfolio_observed_at_utc) if snap and paper else
                                          "Awaiting local records" if paper else
                                          "Observed " + local_time(snap.portfolio_observed_at_utc) if connected else "Not connected"), fg=MUTED_TEXT if paper else WARNING)
+        workflow = _paper_workflow_summary(snap, read_failed=bool(self._error)) if paper else ""
+        if workflow:
+            self.workflow_label.configure(text=workflow)
+            if not self.workflow_label.winfo_manager():
+                self.workflow_label.pack(fill="x", padx=16, pady=(0, 6), before=self.alert)
+        else:
+            self.workflow_label.pack_forget()
         for key, (title, state, text, cadence) in self.source_labels.items():
             cadence = self._source_cadence(key, cadence)
             group = self._source_group(key)

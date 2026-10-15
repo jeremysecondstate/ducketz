@@ -195,8 +195,22 @@ class PaperRuntime:
         return self._frames[coin][1]
 
     def _forecast(self, coin, now):
-        return read_forecast(coin, now, self.config, self.interval, self.horizon,
-                             feature_loader=self._features)
+        prediction, sigma = read_forecast(
+            coin, now, self.config, self.interval, self.horizon, feature_loader=self._features)
+        if self.model_config.retrain_before_predict:
+            directory = self.config.data_root / "_models" / coin / self.interval / f"h{self.horizon}"
+            record = json.loads((directory / "runs" / prediction["model_id"] / "record.json").read_text())
+            latest = json.loads((self.config.data_root / coin / self.interval / "latest.json").read_text())
+            source = prediction["data_run_id"]
+            if (record.get("source_run_id") != source
+                    or prediction.get("model_source_run_id") != source
+                    or latest.get("run_id") != source):
+                raise ValueError("Waiting for a forecast retrained on the latest candle snapshot.")
+            if record.get("settings") != asdict(self.model_config.model_settings(self.horizon)):
+                raise ValueError("Forecast was not retrained with the configured model recipe.")
+            if stamp(record["trained_at_utc"]) < stamp(prediction["decision_close_utc"]):
+                raise ValueError("Model fitting predates the completed decision candle.")
+        return prediction, sigma
 
     def _forecast_completion(self, coin, forecast_id):
         """Choose one durable completion key without altering historical skips."""
