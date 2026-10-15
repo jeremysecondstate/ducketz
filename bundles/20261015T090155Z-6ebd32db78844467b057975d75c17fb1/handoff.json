@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T09:01:55.265326Z",
+  "id": "20261015T090155Z-6ebd32db78844467b057975d75c17fb1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Integrate strict five-minute Hyperliquid Paper workflow with its workspace and lifecycle checks"
+}

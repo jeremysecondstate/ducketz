@@ -1,0 +1,170 @@
+{
+  "author": "Scout",
+  "base_commit": "4b1d62ab60d25f2692e03a7fc7c336953c2a27a1",
+  "branch": "codex/scout/20261015T085550Z-56840ce4701d40f1a4f7dc3eba3ad2e5",
+  "change_id": "20261015T085550Z-56840ce4701d40f1a4f7dc3eba3ad2e5",
+  "commit_sha": "eca4cf1c9d7ef434d528e79ad7be154c5a133bf5",
+  "details": [
+    "Actor Scout; task hyperliquid-unified-paper-workspace; common behavior applies independently to Atlas and Scout.",
+    "Compose immutable Completion-Record 20261015T082906Z-c69da5684a3145f1a6aee1c5efe9ac04 from a570d3a5e6c73941a0124eb41937a8112a73ee18; retain its publication identity and evidence.",
+    "Preserve guarded first-session bootstrap from Completion-Record 20261008T172209Z-dfd691ec01f5421994d5e33eb36de076 and reviewed successor 20261008T172651Z-13cacdd444454a9fb7f229a291ea3295; no prior receipt is superseded.",
+    "Recognize one unified Paper launcher as the owner of data, fitting and simulated execution; validate its process, configuration and fresh component evidence.",
+    "Show unified workflow readiness and retain immutable experiment history during locally authorized mirror resets; private operating evidence remains local."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Check-Hyperliquid-Paper.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Start-Hyperliquid-Paper.cmd"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "Stop-Hyperliquid-Paper.cmd"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/services/hyperliquid_paper_view.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/hyper_workspace.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "configs/hyperliquid-models.json"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/hyperliquid-system-analysis/CHANGELOG.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/hyperliquid-system-analysis/FIVE_MINUTE_PAPER_LOOP.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/hyperliquid-system-analysis/README.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_data_pipeline.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_model_artifacts.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_model_config.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_model_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_paper_health.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/hyperliquid_paper_loop.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_paper_review.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/hyperliquid_paper_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyper_workspace.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_data_pipeline.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_model_artifacts.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_model_config.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_model_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_health.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_loop.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_review.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_hyperliquid_paper_view.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures verify source and lifecycle behavior; they do not establish strategy profitability or provider availability.",
+    "The initial API history is bounded to its rolling 5000-candle window; retained local data and previous experiment evidence remain private."
+  ],
+  "publication_state": "source pushed and remote SHA verified; draft PR available; main not merged; peer installation unverified",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/159",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local Paper mirror reset and launcher activation are separately human-authorized operating actions; source publication neither changes real account holdings nor deploys a peer runtime.",
+  "scope": "shared",
+  "summary": "Integrate strict five-minute Hyperliquid Paper workflow with its workspace and lifecycle checks",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-15T08:59:21.299708Z",
+      "network": "disabled",
+      "output_sha256": "052daf9e7e05551a667351d35881653bfbc61e971a1ff758ec599874fee10934",
+      "result": "886 passed, 1 Windows symlink test skipped",
+      "started_at_utc": "2026-10-15T08:58:10.214792Z"
+    }
+  ]
+}
