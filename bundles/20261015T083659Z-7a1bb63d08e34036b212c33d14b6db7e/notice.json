@@ -1,0 +1,72 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T082312Z-ae60ae5f53584f0784189f1223b5c8aa",
+  "change_id": "20261015T082312Z-ae60ae5f53584f0784189f1223b5c8aa",
+  "commit_sha": "2ef6dc9a1b540cdcdbbc03a451488626ca7e7f49",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; common prestart source with explicit independent Scout manual-trader applicability.",
+    "Reject orphan accounting-history files when inventory is absent, preserving historical evidence without constructing or writing a production store.",
+    "Use the saved-accounting reader and retain original journal, deadline, manifest, profile, dependency and session checks.",
+    "Retire remote prestart connections and cross-trader process proofs; keep explicit error stubs for old imports and a local-only run_checks compatibility entry point.",
+    "Keep the actual installed manual launcher and recipe in required manifest source, alongside local helper dependencies; missing source remains a truthful engineering error.",
+    "Migrate full prestart regression intent from obsolete service and writer proofs to independent local behavior, retaining historical and manual-session cases.",
+    "Retain saved-accounting record 20261015T074721Z-385cb94d8c4b4e40881a469f9bde70f5 and independent executor records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4."
+  ],
+  "files": [
+    "ml/intraday/scout_prestart.py",
+    "tests/test_intraday_scout_prestart.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "4b1d62ab60d25f2692e03a7fc7c336953c2a27a1",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic evidence only; no production store, broker/provider request, training or process-loaded version verification.",
+    "Common-main manual launcher and recipe composition remain separate; manifest checks continue to require their actual installed bytes.",
+    "Retired admission options fail explicitly without IO. Historical authority and accounting writer modules remain preserved separately.",
+    "Existing manual-start fixture imports scout_manual_fixture without its module-local autouse minute-feed isolation fixture, so bare object history reaches the real minute feed and lacks frame; reproduced with original prestart bytes.",
+    "Broader installed check: 403 passed and one pre-existing local-start fixture failure; no verifier violations. The original prestart reproduces the same failure."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/157"
+  ],
+  "local_receipt": "Two reviewed files installed exactly; optional manifest verifies 225 files with original owner lineage and all unrelated entries preserved. Model policy already matched main and is now explicitly attested.",
+  "remaining_source_work": "Compose the selected live_session and live_model_recipe with their complete caller tests. First import the existing minute-feed isolation fixture into the local-start test; preserve all assertions. Replace cancellation.retry_delay with exact_status.retry_delay and make readiness import branch-local. Migrate independent fake executor fixtures away from remote-service constructors. Retain every PR140 cutoff, DST, manual stop, final-data drain, persisted feed and startup-latch case; preserve selected supervisor. Exact Atlas PR136/139/146 and nightly continuation composition remain separate.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Independent local engineering prestart no longer uses remote admission. Human trader start and stop controls remain intact; no production wait, restart or deployment.",
+  "scope": "Shared independent prestart engineering source; Scout manual-trader applicability.",
+  "summary": "Orphan accounting history preserved by independent prestart; source, main and local installation complete.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T08:23:47.421558Z",
+      "fingerprints": 28,
+      "output_sha256": "d97d983161f801383f7a35485ed1b0b081842af84884fd90f10c21ed561af209",
+      "result": "398 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T08:23:12.935266Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T08:25:16.163250Z",
+      "fingerprints": 28,
+      "output_sha256": "a1e9908a9763960284965ea2796eca171026e19437625d2d310c339e92525d67",
+      "result": "398 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T08:24:41.115804Z"
+    },
+    {
+      "check": "fresh main",
+      "completed_at_utc": "2026-10-15T08:28:28.698594Z",
+      "fingerprints": 28,
+      "output_sha256": "c550a906ac5d31bfeaed61f8ab3a71c9e35b5b54116262b874456667bbb02a78",
+      "result": "398 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T08:27:52.987595Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T08:29:27.923679Z",
+      "fingerprints": 28,
+      "output_sha256": "176898507af08c3249ab71b1526db8c176fefdbcd578a44674bec02ab3b85057",
+      "result": "398 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T08:28:51.168383Z"
+    }
+  ]
+}

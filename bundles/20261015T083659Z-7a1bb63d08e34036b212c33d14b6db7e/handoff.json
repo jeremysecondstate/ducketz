@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T08:36:59.601140Z",
+  "id": "20261015T083659Z-7a1bb63d08e34036b212c33d14b6db7e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Orphan accounting history preserved by independent prestart; source, main and local installation complete."
+}
