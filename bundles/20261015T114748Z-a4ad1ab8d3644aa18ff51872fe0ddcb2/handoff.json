@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T11:47:48.333937Z",
+  "id": "20261015T114748Z-a4ad1ab8d3644aa18ff51872fe0ddcb2",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted and installed immutable input-minute provenance and the read-only consensus display."
+}

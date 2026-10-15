@@ -1,0 +1,74 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T114150Z-d6ece46388534953bb9108779ed4d5ec",
+  "change_id": "20261015T114150Z-d6ece46388534953bb9108779ed4d5ec",
+  "commit_sha": "ab673bfefbfb43c49df38c7cee12327b506f6025",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; common input provenance and read-only display apply independently to both PCs.",
+    "Carry forward only the input-provenance slice of Atlas PR139 source 15d6850da9496b98d7d27ec97a6eab1373da12bf and Completion-Record 20261014T233031Z-85f62c5949ab473bac0bb75b51b13186.",
+    "Persist immutable reference minute counts with new forecasts; read bounded linked metadata for older saved forecasts without loading fitted inputs or modifying stored evidence.",
+    "Retain model-success counts separately; malformed or missing provenance remains unknown; preserve current model research and metric cohorts.",
+    "Keep manual controls, selected supervision, existing cutoff and final data drain unchanged. Provider-stop and completed-observation follow-ups are separate."
+  ],
+  "files": [
+    "app/ui/intraday.py",
+    "app/ui/intraday_data.py",
+    "ml/intraday/runtime.py",
+    "tests/test_intraday_input_provenance.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "33b7308c0f12a7e167163af674236b5da0335245",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixtures; loaded application adoption remains unverified.",
+    "Provider stop/completion scope was kept separate from the live-watch investigation."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/168",
+    "https://github.com/jeremysecondstate/ducketz/pull/139"
+  ],
+  "local_receipt": "Four paths installed exactly with originals preserved; all 238 optional manifest entries verified. Local branch, index, symbols, bindings and unrelated changes retained. No production or trader actions.",
+  "remaining_source_work": "Review PR139 provider-call stop checks on both single-symbol and Scout batched acquisition, and completed_15m_observation admission, after checking the live-watch owner's current scope. Preserve PR140 cutoff/final data drain. Keep installed nightly-continuation common-main composition separate; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded source records and displays input-minute provenance independently. Existing running processes are not restarted. No trader or nightly prerequisite.",
+  "scope": "Shared source for both PCs independently using their own saved data.",
+  "summary": "Scout adopted and installed immutable input-minute provenance and the read-only consensus display.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T11:42:03.834763Z",
+      "fingerprints": 35,
+      "import_verifier_violations": 0,
+      "output_sha256": "9da9b3d9ee5a26a05120ebb5e8d0e7cc53805ba744b607dc8443d261fff11bb6",
+      "result": "282 passed in 11.84s",
+      "started_at_utc": "2026-10-15T11:41:50.412963Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T11:43:29.573540Z",
+      "fingerprints": 35,
+      "import_verifier_violations": 0,
+      "output_sha256": "561be19bee257ab5159efddb92beb9a07d388c06281d24d9a63b722190cd23e4",
+      "result": "282 passed in 12.05s",
+      "started_at_utc": "2026-10-15T11:43:15.789360Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-15T11:45:13.617696Z",
+      "fingerprints": 35,
+      "import_verifier_violations": 0,
+      "output_sha256": "11207a2878f6fb11b3a34a8919ea6f7950ce65cdca77e0601c5368fb6848cc67",
+      "result": "282 passed in 11.63s",
+      "started_at_utc": "2026-10-15T11:45:00.310638Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T11:46:22.118331Z",
+      "fingerprints": 35,
+      "import_verifier_violations": 0,
+      "output_sha256": "c04a68cab56c7d2b050d4c4590841bb126e212a21066f038f038c0fe983bb475",
+      "result": "282 passed in 11.93s",
+      "started_at_utc": "2026-10-15T11:46:08.271237Z"
+    }
+  ]
+}
