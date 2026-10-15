@@ -68,6 +68,113 @@ def probability(value: Any) -> float | None:
     return result if math.isfinite(result) and 0 <= result <= 1 else None
 
 
+def _unknown_reference_provenance(reason: str) -> dict[str, Any]:
+    return {"status": "unknown", "reason": reason, "observed_constituents": None,
+            "synthetic_constituents": None}
+
+
+def _minute_count(value: Any) -> int | None:
+    # Concatenated historical frames can serialize an integer count as 15.0.
+    # Accept that exact value, without truncating fractions or accepting bools.
+    if type(value) is int and 0 <= value <= 15:
+        return value
+    if type(value) is float and math.isfinite(value) and value.is_integer() and 0 <= value <= 15:
+        return int(value)
+    return None
+
+
+def _validated_reference_provenance(value: Any, forecast: Mapping[str, Any], *, basis: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return _unknown_reference_provenance("malformed saved input provenance")
+    observed, synthetic = (_minute_count(value.get(key)) for key in ("observed_constituents", "synthetic_constituents"))
+    if observed is None or synthetic is None or observed + synthetic != 15:
+        return _unknown_reference_provenance("minute counts were not recorded or are invalid")
+    if (type(value.get("synthetic")) is not bool or type(value.get("no_trade")) is not bool
+            or value["synthetic"] != (synthetic > 0) or value["no_trade"] != (synthetic == 15)):
+        return _unknown_reference_provenance("saved no-trade flags differ from the minute counts")
+    try:
+        expected, reference = timestamp(forecast.get("reference_at")), timestamp(value.get("reference_at"))
+    except (OverflowError, ValueError):
+        return _unknown_reference_provenance("saved input reference time is invalid")
+    if expected is None or reference is None or expected != reference:
+        return _unknown_reference_provenance("saved input provenance differs from the reference candle")
+    source = value.get("source_id")
+    if source is not None and forecast.get("source_id") is not None and source != forecast["source_id"]:
+        return _unknown_reference_provenance("saved input provenance differs from the source")
+    return {"status": "known", "reference_at": reference.isoformat(),
+            "observed_constituents": observed, "synthetic_constituents": synthetic,
+            "synthetic": synthetic > 0, "no_trade": synthetic == 15,
+            "availability_kind": value.get("availability_kind"), "basis": basis}
+
+
+def reference_input_provenance(forecast: Mapping[str, Any], *, database_path: Path | None = None) -> dict[str, Any]:
+    """Read one chosen forecast's reference metadata without loading fitted inputs.
+
+    New forecasts carry their own immutable summary. Older local forecasts can
+    use their linked immutable snapshot. SQL extracts only the reference candle's
+    small metadata fields; training matrices and candle/evidence arrays never
+    leave SQLite. This is invoked lazily for the selected consensus forecast,
+    rather than joining every historical snapshot on each display refresh.
+    """
+    if "reference_provenance" in forecast:
+        return _validated_reference_provenance(forecast["reference_provenance"], forecast, basis="saved_forecast")
+    unknown = _unknown_reference_provenance("reference minute counts were not recorded")
+    if database_path is None:
+        return unknown
+    try:
+        path = Path(database_path).expanduser().resolve()
+        exists = path.is_file()
+    except (OSError, TypeError, ValueError):
+        return unknown
+    if path.suffix.casefold() == ".json" or not exists:
+        return unknown
+    fields = ("opened_at", "observed_constituents", "synthetic_constituents", "synthetic", "no_trade",
+              "source_id", "availability_kind")
+    projections = []
+    for prefix in ("$.inference.snapshot.candles[#-1]", "$.candles[#-1]"):
+        arguments = ", ".join("'" + prefix + "." + field + "'" for field in fields)
+        projections.append(f"json_extract(s.payload, {arguments})")
+    # Both snapshot layouts end at the fixed reference. A different final
+    # candle is rejected below; no neighboring candle is substituted.
+    query = ("SELECT s.id, " + ", ".join(projections)
+             + " FROM symbol_inputs i JOIN snapshots s ON s.id=i.snapshot_id"
+               " WHERE i.cycle_id=? AND i.symbol=? AND json_valid(s.payload) LIMIT 2")
+    try:
+        with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=1)) as connection:
+            connection.execute("PRAGMA query_only=ON")
+            rows = connection.execute(query, (forecast.get("cycle_id"), forecast.get("symbol"))).fetchall()
+        if len(rows) != 1:
+            return unknown
+        snapshot_id, *metadata = rows[0]
+        if forecast.get("snapshot_hash") is not None and forecast["snapshot_hash"] != snapshot_id:
+            return _unknown_reference_provenance("saved input snapshot identity differs from the forecast")
+        for raw in metadata:
+            values = json.loads(raw)
+            if not isinstance(values, list) or len(values) != len(fields) or all(value is None for value in values):
+                continue
+            value = dict(zip(fields, values))
+            value["reference_at"] = value.pop("opened_at")
+            if (value["observed_constituents"] is None and value["synthetic_constituents"] is None
+                    and timestamp(value["reference_at"]) == timestamp(forecast.get("reference_at"))):
+                # Older compact inference snapshots may omit counts that their
+                # same linked snapshot's reference candle still retains.
+                continue
+            return _validated_reference_provenance(value, forecast, basis="immutable_snapshot")
+        return unknown
+    except (sqlite3.Error, OSError, ValueError, TypeError, OverflowError):
+        return _unknown_reference_provenance("saved input provenance is unavailable or malformed")
+
+
+def reference_input_label(provenance: Mapping[str, Any]) -> str:
+    if provenance.get("status") != "known":
+        return "Input candle: minute provenance unknown"
+    observed, synthetic = provenance["observed_constituents"], provenance["synthetic_constituents"]
+    if synthetic and provenance.get("availability_kind") != "actual":
+        return (f"Input candle: {observed} observed minutes · {synthetic} synthetic minutes"
+                " (no-trade confirmation not recorded)")
+    return f"Input candle: {observed} observed minutes · {synthetic} confirmed no-trade minutes"
+
+
 def default_databases(datastore_root: Path | None = None) -> dict[str, Path]:
     """Only the local store is discovered; remote receipt paths are explicit."""
     configured = os.environ.get("DUCKETS_DATASTORE_DIR", "").strip() or os.environ.get("DUCKETS_OHLCV_PARQUET_DIR", "").strip()

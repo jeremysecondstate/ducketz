@@ -426,6 +426,15 @@ class ShadowRunner:
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
+        reference_rows=[row for row in snapshot.get("candles", [])
+                        if instant(row["opened_at"]) == reference]
+        if reference_rows:
+            candle=reference_rows[-1]
+            payload["reference_provenance"]={
+                "reference_at":reference.isoformat(),
+                **{field:candle.get(field) for field in (
+                    "observed_constituents", "synthetic_constituents", "synthetic",
+                    "no_trade", "source_id", "availability_kind")}}
         persistence_start=time.perf_counter()
         forecast=self.store.save_forecast(payload,intent=intent)
         self.store.event(cycle_id,"forecast_persisted",{"forecast_id":forecast["forecast_id"],
