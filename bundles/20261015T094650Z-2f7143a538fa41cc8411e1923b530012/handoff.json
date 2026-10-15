@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T09:46:50.555028Z",
+  "id": "20261015T094650Z-2f7143a538fa41cc8411e1923b530012",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted Atlas split Stats and private Gameplan execution reporting; source, common main and installation complete."
+}

@@ -1,0 +1,111 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T093845Z-ac5413242c9045bda6572c046833cc64",
+  "change_id": "20261015T093845Z-ac5413242c9045bda6572c046833cc64",
+  "commit_sha": "c0e48f1a49136ff29fc4574df411ebf3ac5a72ae",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared Stats UI and reporting applicable to both PCs with their own symbols and private evidence.",
+    "Compose exact twelve Atlas PR161 files onto current common main; retain Atlas Completion-Record 20261015T091438Z-0ec1c22c2a9b438c9fd5d43fc4506193 and source cea2c986bcfb538f98eb032e279bfdf6b6f3ac50.",
+    "Separate prediction accuracy from read-only saved Gameplan execution outcomes, fills, retries and evidence coverage.",
+    "Generate optional private execution summaries only after durable prediction publication; missing evidence cannot gate prediction Stats or nightly work.",
+    "Preserve Scout selected supervisor, independent manual-session changes, symbols, bindings and original private trading history."
+  ],
+  "files": [
+    "app/ui/gameplan_execution_data.py",
+    "app/ui/gameplan_execution_widgets.py",
+    "app/ui/gameplan_stats.py",
+    "docs/gameplan-stats-tab-design-ui/EXECUTION_REPORTING.md",
+    "ml/gameplan_actuals_review.py",
+    "ml/gameplan_execution_report.py",
+    "tests/test_gameplan_execution_data.py",
+    "tests/test_gameplan_execution_integration.py",
+    "tests/test_gameplan_execution_report.py",
+    "tests/test_gameplan_split_metrics.py",
+    "tests/test_gameplan_stats_ui.py",
+    "tests/visual_gameplan_execution_fixture.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "dd94c26ffd4d1fa2c89403f5c2ef9b366177fc51",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixtures only; no provider or broker calls, real account reads, production training or trader operation.",
+    "Execution summaries remain private and outside forecast packages and source publication.",
+    "Source adoption does not establish which bytes a running application has loaded.",
+    "Native Tk initialization intermittently skipped one installed UI case; both affected cases passed in a fresh targeted process. Original skip evidence retained."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/163",
+    "https://github.com/jeremysecondstate/ducketz/pull/161"
+  ],
+  "local_receipt": "Twelve exact reviewed files installed. Local nightly feedback and continuation dependencies are separately bound in installed regression evidence. Existing selected supervisor, native schedule and manual-session changes preserved.",
+  "remaining_source_work": "PR136 native catalog/report and UI metric cohorts remain selective follow-up; adapt research display to Scout schema. PR146 repairs already have Scout equivalents. PR139 alternate collector/session must not replace existing cutoff and final-data-drain behavior. Retain nightly-continuation composition separately.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed local source is available for the next normal application launch. No restart, trader start, stop clearing, task change or nightly operating prerequisite.",
+  "scope": "Shared Stats UI and reporting for both PCs with separate private evidence.",
+  "summary": "Scout adopted Atlas split Stats and private Gameplan execution reporting; source, common main and installation complete.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T09:39:13.848433Z",
+      "fingerprints": 180,
+      "import_verifier_violations": 0,
+      "output_sha256": "46f344a8bffc96d7a7dcb5c17fcf933cbef92d3166db7e86d8e31d4d9250db72",
+      "result": "251 passed in 26.63s",
+      "started_at_utc": "2026-10-15T09:38:45.825902Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T09:40:25.491092Z",
+      "fingerprints": 180,
+      "import_verifier_violations": 0,
+      "output_sha256": "70b7f9e3d4a1dacc14bc4af3cb0390f80cffc5b90d49a1327515dd89759560a5",
+      "result": "251 passed in 26.89s",
+      "started_at_utc": "2026-10-15T09:39:57.160976Z"
+    },
+    {
+      "check": "main initial",
+      "completed_at_utc": "2026-10-15T09:42:47.546496Z",
+      "fingerprints": 180,
+      "import_verifier_violations": 0,
+      "output_sha256": "4ee49f928985448821cb75642e1c29e8d5b97331fb0d63eb4ab45345c6bcd2e6",
+      "result": "250 passed, 1 skipped in 29.15s",
+      "started_at_utc": "2026-10-15T09:42:16.553045Z"
+    },
+    {
+      "check": "main fresh retry",
+      "completed_at_utc": "2026-10-15T09:45:56.694248Z",
+      "fingerprints": 180,
+      "import_verifier_violations": 0,
+      "output_sha256": "aa4a0638ed56636ebb5a81a25c0a6bc0e7c6f3b90f84deb96d14d19768fa7325",
+      "result": "251 passed in 30.75s",
+      "started_at_utc": "2026-10-15T09:45:24.214902Z"
+    },
+    {
+      "check": "installed initial",
+      "completed_at_utc": "2026-10-15T09:43:59.000159Z",
+      "fingerprints": 207,
+      "import_verifier_violations": 0,
+      "output_sha256": "cd6f1399ecda4aabbc1605b760df06dcc1ff2eafe8d8b30c424635ed9baac3fe",
+      "result": "250 passed, 1 skipped in 29.25s",
+      "started_at_utc": "2026-10-15T09:43:28.177431Z"
+    },
+    {
+      "check": "installed retry",
+      "completed_at_utc": "2026-10-15T09:44:56.108201Z",
+      "fingerprints": 207,
+      "import_verifier_violations": 0,
+      "output_sha256": "55fce41ddf0615963d9e539cb96572b31124abfe3434c0f6f6a8bf0e267ef1ed",
+      "result": "250 passed, 1 skipped in 28.39s",
+      "started_at_utc": "2026-10-15T09:44:26.216187Z"
+    },
+    {
+      "check": "installed affected Tk cases",
+      "completed_at_utc": "2026-10-15T09:46:01.133796Z",
+      "fingerprints": 207,
+      "import_verifier_violations": 0,
+      "output_sha256": "1fee39efb90b4c5888f86298c919eee4ae995fa7abdf923d24b1cc071c3196d0",
+      "result": "2 passed in 2.57s",
+      "started_at_utc": "2026-10-15T09:45:57.575696Z"
+    }
+  ]
+}
