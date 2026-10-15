@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T04:41:24.850522Z",
+  "id": "20261015T044124Z-0b0fc1d74dfd4ea9935c48e8c50b139f",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reviewed Atlas same-day ALFRED acquisition repair composed on main and installed on Scout."
+}

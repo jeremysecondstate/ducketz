@@ -1,0 +1,65 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T043706Z-050d7b43fb084c86a2c99ac51568d79e",
+  "change_id": "20261015T043706Z-050d7b43fb084c86a2c99ac51568d79e",
+  "commit_sha": "bae0c70487811fa24c92a4e2ceaa4835e5d8baaa",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared ALFRED normalization, readiness and macro consumer repair applies to Atlas and Scout.",
+    "Retain Atlas Completion-Record 20261015T040723Z-826b6244c9484179a5a687efa407fa2a and exact source 90e1f5d1a9c15a77eddaa00a41bfd01416b5debb from PR144. This Scout composition applies only those four reviewed files to current main.",
+    "Validate actual acquisition against the provider America/Chicago calendar date while retaining the conservative next-midnight model availability boundary. Preserve actual receipt timestamps and vintage identity.",
+    "Exercise preserved receipt, exact model visibility, future provider date rejection and summer, winter and daylight-saving boundaries across normalization, readiness and the macro consumer.",
+    "All other peer parent changes remain outside this composition; Scout retains its local symbols, operating bindings, native schedules, history and manual trader controls."
+  ],
+  "files": [
+    "datafetching/fred_vintages.py",
+    "datafetching/fred_alfred_readiness.py",
+    "ml/datasets/families.py",
+    "tests/test_fred_alfred_same_day_acquisition.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "efc5ed6eeec47ba165732b7dbb16a2bf08ed9d41",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic provider fixtures and causal-consumer checks only; no production import, provider/broker access or loaded-process verification.",
+    "Source publication, main integration and local installation are separate facts. Production and independent traders do not wait for this source work."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/147",
+    "https://github.com/jeremysecondstate/ducketz/pull/144"
+  ],
+  "remaining_source_work": "Independent executor caller and journal/broker dependency composition retain original IDs. Review newer model/manual-session/minute-collection and alternate-supervisor PR146 handoffs before older runtime composition; Scout retains its selected supervisor.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Subsequent ALFRED imports accept same-provider-date acquisition while macro features remain unavailable until the existing conservative clock. Source installation does not restart processes or start traders.",
+  "scope": "Shared causal ALFRED source independently applicable to Atlas and Scout.",
+  "summary": "Reviewed Atlas same-day ALFRED acquisition repair composed on main and installed on Scout.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T04:37:14.938739Z",
+      "output_sha256": "5490f0abb425a9e4cde06cafd4bbc60f313779ee98ce8744c7c1b6bb58efcb72",
+      "result": "69 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:37:07.011686Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T04:38:02.551178Z",
+      "output_sha256": "073bfbd022affd661ea04ccb959d3e5f21bfec21483f36e285293e27a5452dee",
+      "result": "69 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:37:54.965001Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T04:39:09.776421Z",
+      "output_sha256": "4c4530dd1ccd74197930e63d12341a511297e961f38413ed971d200449c7c719",
+      "result": "69 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:39:02.403493Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T04:40:23.618312Z",
+      "output_sha256": "0455a59805178541db9ab0f1454775d29592ac81be5fc27d4e39e312e34b2d86",
+      "result": "69 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T04:40:16.389544Z"
+    }
+  ]
+}
