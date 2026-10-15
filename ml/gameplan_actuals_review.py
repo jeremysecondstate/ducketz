@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Mapping
 
@@ -611,6 +612,16 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
     temporary = dated / "Gameplan-results.tmp"
     temporary.write_bytes((run / "Gameplan-results.md").read_bytes())
     temporary.replace(dated / "Gameplan-results.md")
+    # Execution is a separate private snapshot, never part of this prediction
+    # run, manifest, handoff package, or prerequisite for nightly continuation.
+    # Publish only after the prediction artifacts and reader pointers are durable.
+    try:
+        from ml.gameplan_execution_report import publish_execution_summary
+        publish_execution_summary(root, action_date, observed_at=clock())
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            "Private Gameplan execution summary unavailable for %s (%s); prediction Stats remain published",
+            action_date, type(exc).__name__)
     return run
 
 
