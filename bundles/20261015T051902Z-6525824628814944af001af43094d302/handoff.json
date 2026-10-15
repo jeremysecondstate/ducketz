@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T05:19:02.205894Z",
+  "id": "20261015T051902Z-6525824628814944af001af43094d302",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout independent local submission client composed on main; one-send behavior and identities preserved."
+}

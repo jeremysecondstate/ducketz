@@ -1,0 +1,64 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T051611Z-3419f39b41df40eba0e0b87ffb290d45",
+  "change_id": "20261015T051611Z-3419f39b41df40eba0e0b87ffb290d45",
+  "commit_sha": "408fbec95f7fef31ec05949de18fb62c4bccb2ac",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared submission source retaining the explicit Scout local stream binding. Both PCs retain independent broker capacity and manual controls.",
+    "Retain foundation Completion-Record 20261012T234951Z-e78eabcef86a42d2a734a9aef479d1fe and source 31d6551329b8aeac0eb382db1e352a87541853fa; retain independent executor records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4.",
+    "Compose the existing two-file submission client leaf using already integrated journal and protocol dependencies. Production executable AST, one-send fencing, error identities and serialized values remain unchanged.",
+    "Correct obsolete dormant and required peer-admission prose. Independent caller prepares its own broker-capacity permit and uses submit without an authority transport. Legacy injected methods remain available without becoming operating prerequisites.",
+    "Add an offline regression covering direct local-permit submission with no authority transport, exact granted quantity, repeated-send rejection and accepted identity after journal reopen.",
+    "Preserve executor wiring, private journals, symbols, operating bindings and all other writers. Books, broker and newer model or minute-collection source retain separate reviewed composition."
+  ],
+  "files": [
+    "ml/intraday/scout_client.py",
+    "tests/test_intraday_scout_client.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "84f931703d4f2626fd90628e733ffaad5370f005",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic requests, injected senders and temporary journals only. No real broker, provider, private operating history or loaded-runtime verification.",
+    "Only this two-file client dependency leaf is composed. Books, broker, caller wiring and newer model or minute-collection handoffs remain separate.",
+    "No trader start or restart, manual-stop clearing, scheduler change, production acquisition or training, or private operating export."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/149"
+  ],
+  "remaining_source_work": "Continue independent executor books and broker dependency composition, then caller wiring using completed local forecast, journal and client leaves. Books accounting helpers and broker exact-status cancellation imports need explicit dependency closure; avoid copying a broad legacy authority service. Review newer model/manual-session/minute-collection PR136-140 and alternate-supervisor PR146 exact source before copying older runtime bytes. Preserve the selected Scout supervisor. Nightly continuation/cancellation source composition remains separate from actual production. Do not replay completed ALFRED, forecast, journal or client units.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Common main gains the existing local submission client dependency. Executable behavior and journal identities remain intact; local prose and regression installation does not start or restart a trader.",
+  "scope": "Shared dependency source with existing Scout stream binding; independent broker capacity and manual controls.",
+  "summary": "Scout independent local submission client composed on main; one-send behavior and identities preserved.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T05:16:25.153221Z",
+      "output_sha256": "bf26b44c9f75c472e8b34e83e48882caa5f1258f8e11e07c44df6dd19186deda",
+      "result": "238 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:16:11.971397Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T05:17:05.564513Z",
+      "output_sha256": "26a5dbc0f632caa7cb56be60290b58f07ac5c349a1bc0e381ee7d4a362bf29a5",
+      "result": "238 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:16:52.458700Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T05:18:04.538513Z",
+      "output_sha256": "9d2842a6392860174be6c321bac9187e3e5e33fd5caaccfdaadb1e3785d0aff3",
+      "result": "238 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:17:51.578807Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T05:18:38.330068Z",
+      "output_sha256": "0fbbdf81fb8a25373877dbc6a6a76c57eabdf9eca176cd3f0f4ea1cfc6eda654",
+      "result": "238 passed without skips or exclusions; no offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:18:25.145681Z"
+    }
+  ]
+}
