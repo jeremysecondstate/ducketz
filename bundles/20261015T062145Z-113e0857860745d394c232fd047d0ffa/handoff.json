@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T06:21:45.621869Z",
+  "id": "20261015T062145Z-113e0857860745d394c232fd047d0ffa",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout independent broker dependency integrated and installed with strict local order evidence."
+}

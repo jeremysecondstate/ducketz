@@ -1,0 +1,64 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T061703Z-5607b668fd324980a70b28b0159fb5ff",
+  "change_id": "20261015T061703Z-5607b668fd324980a70b28b0159fb5ff",
+  "commit_sha": "afc9a7cdf6713685ca9c3c1ceb32770bbdcf6dbd",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared broker source with explicit local Scout stream binding and independent broker capacity.",
+    "Compose the existing broker adapter and its complete regression suite on common main. Replace the broad cancellation import with the identical standalone exact-status helpers.",
+    "Correct obsolete Atlas-only authorization prose to describe the independent caller durable local permit. Preserve every executable statement except the import module, transport sequence, journal state, manual-stop gate and existing cutoff.",
+    "Retain independent executor Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4; retain exact-status record 20261015T055811Z-daa847128f84430f8525ead86c7700d8.",
+    "Preserve newer manual-session model recipe, minute feed, order-stop and data-drain semantics. Executor caller composition remains separate."
+  ],
+  "files": [
+    "ml/intraday/scout_broker.py",
+    "tests/test_intraday_scout_broker.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "0e550e882f6def105ef341d94886b918dce0de93",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic broker responses and temporary journals only; no provider or broker requests, production training or loaded-runtime verification.",
+    "Existing broker 16:45 submission cutoff is retained. Broader executor and session source composition remain separate from this dependency unit.",
+    "No trader start or restart, manual-stop clearing, native task change or private operating export."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/152"
+  ],
+  "local_receipt": "Optional installed-source manifest refreshed from existing reviewed completion evidence; original lineage and source representations preserved.",
+  "remaining_source_work": "Selective executor caller and prestart composition; retain newer manual-session source, selected Scout supervisor and original identities.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adds the existing independent broker dependency to common source. Reviewed local installation preserves private state and manual trader controls; it does not start or restart a trader.",
+  "scope": "Shared source with explicit local Scout stream binding; each trader retains independent broker capacity.",
+  "summary": "Scout independent broker dependency integrated and installed with strict local order evidence.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T06:17:22.715291Z",
+      "output_sha256": "495206955327b5af0c082e6ad3af66280f694d604b47ad3ea34f3faa67090b7f",
+      "result": "460 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:17:03.947236Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T06:18:12.686129Z",
+      "output_sha256": "22630b740a06959207f0d820989a014a9d202265a4b51b0ebd42b23133cf781c",
+      "result": "460 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:17:54.495696Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T06:19:20.814437Z",
+      "output_sha256": "4bdc5559d8ee0ae6ae073c3ce5f92c35a7af37ba644afd2ced2cf4ec1a5250e8",
+      "result": "460 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:19:02.155246Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T06:21:11.735599Z",
+      "output_sha256": "44149e69600211d21b6e4e00fb5b5f74305e1a8ef7eec61a4f207fbc04be2fda",
+      "result": "460 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:20:52.977838Z"
+    }
+  ]
+}
