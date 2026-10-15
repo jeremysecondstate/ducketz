@@ -1,0 +1,74 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T115755Z-fdd634bd9acf4ce8a81d366da3de592c",
+  "change_id": "20261015T115755Z-fdd634bd9acf4ce8a81d366da3de592c",
+  "commit_sha": "90ab292c4e4312196125b1a11fba0b2de8c0c78a",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; common provider adapters and independent minute feed apply to both PCs.",
+    "Adapt the manual-stop slice of Atlas PR139 source 15d6850da9496b98d7d27ec97a6eab1373da12bf and Completion-Record 20261014T233031Z-85f62c5949ab473bac0bb75b51b13186 to Scout batched acquisition.",
+    "Check manual cancellation before each metadata, dataset, schema and price call. Propagate interruption without inventing provider failure or retry evidence.",
+    "Keep received success and error responses available for persistence; pass the existing hard-stop signal through the batch feed without changing automatic cutoff or final-data drain.",
+    "Preserve all original data/feed/session regression assertions. Saved-candle completion admission and final scoring remain separate reviews."
+  ],
+  "files": [
+    "ml/intraday/data.py",
+    "ml/intraday/minute_feed.py",
+    "tests/test_intraday_provider_stop.py",
+    "tests/test_intraday_minute_feed.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "d8cdd29103602b7a424b4cf5129fad8af1455307",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixtures; loaded application adoption remains unverified.",
+    "Existing unrelated local account, Gameplan and optional legacy dependencies retained and separately bound; no whole-application or loaded-runtime claim."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/169",
+    "https://github.com/jeremysecondstate/ducketz/pull/139"
+  ],
+  "local_receipt": "Four paths installed exactly with originals preserved; all optional manifest entries verified. Local branch, index, symbols, bindings and unrelated changes retained. No production or trader actions.",
+  "remaining_source_work": "Compose PR139 completed_15m_observation with saved-candle restoration and scoring; retain valid complete revisions when later native/incomplete rows exist. Keep legacy single-symbol stop wiring, final outcome scoring after drain, and installed nightly-continuation composition separate. Preserve PR140 cutoff/final-data drain; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded minute feeds cease starting provider calls after manual cancellation while retaining in-flight responses. Running processes are not restarted; automatic cutoff and final data drain are unchanged.",
+  "scope": "Shared source for both PCs independently using their own saved data.",
+  "summary": "Scout installed manual-stop boundaries for existing single and batch provider adapters and its independent minute feed.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T11:58:19.723530Z",
+      "fingerprints": 85,
+      "import_verifier_violations": 0,
+      "output_sha256": "7237d3474b6963619a8f4a192cde3811d3b1fe9a5aa5c71cc272b95d554bab7d",
+      "result": "262 passed in 22.35s",
+      "started_at_utc": "2026-10-15T11:57:55.441645Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T11:59:28.162834Z",
+      "fingerprints": 85,
+      "import_verifier_violations": 0,
+      "output_sha256": "c7ff85edad8ed18f1a2e4d9ad719b3da583c2ddcd4585560c83d8a2977436a5f",
+      "result": "262 passed in 21.18s",
+      "started_at_utc": "2026-10-15T11:59:05.180203Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-15T12:00:39.572967Z",
+      "fingerprints": 85,
+      "import_verifier_violations": 0,
+      "output_sha256": "de0300f2f685da3eac5ea53725d6a7e6c14fe90af02708ec674c9101c423af05",
+      "result": "262 passed in 21.35s",
+      "started_at_utc": "2026-10-15T12:00:16.335857Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T12:02:15.920469Z",
+      "fingerprints": 246,
+      "import_verifier_violations": 0,
+      "output_sha256": "1ee1216f49879718990b9e43f9d7c2b2e7dfd5e4ffe97c0f361521f26f7e7b26",
+      "result": "262 passed in 21.19s",
+      "started_at_utc": "2026-10-15T12:01:53.121446Z"
+    }
+  ]
+}
