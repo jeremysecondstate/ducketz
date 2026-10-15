@@ -1,0 +1,58 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T093024Z-a3f6337e18074c248dd67e0c12c2600c",
+  "change_id": "20261015T093024Z-a3f6337e18074c248dd67e0c12c2600c",
+  "details": [
+    "Wait once until Pacific operating time on the selected exchange session, respecting calendar and DST.",
+    "Read current recipe and compatibility at wake before broker preflight, provider or workers. Ctrl-C cancels pending startup.",
+    "Scout selected-day automatic stop and existing after-close immediate stop preserved; no automatic daily restart."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_early_start.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-manual-wake.md"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_live_model_recipe.py"
+    }
+  ],
+  "limitations": [
+    "Offline lifecycle fixtures only; no live broker/provider request, trader activation, order or peer runtime verification."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/162"
+  ],
+  "main_sha": "e6d491ae0b486512a5bb9b26197e435d753f9508",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact source locally installed on Scout; subsequent manual launches use interruptible waiting. Atlas applicability is shared source with independent local installation. Manual stop and first forecast policy are preserved.",
+  "scope": "shared",
+  "source_sha": "e983771cc7b1b2983d072659fcedb89edc297476",
+  "summary": "Shared manual 15m early launches wait for their exchange session before operating startup",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-15T09:30:41.347271Z",
+      "output_sha256": "0d14914b0bc9b5e4f46177b380f52555b18301a30d03ee816392c876d3c91c43",
+      "started_at_utc": "2026-10-15T09:30:24.564264Z",
+      "status": "passed",
+      "tests": 128
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T09:36:35.931680Z",
+  "id": "20261015T093635Z-cb166b393a4e473e9cdd809c613488c9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Shared manual 15m early launches wait for their exchange session before operating startup"
+}
