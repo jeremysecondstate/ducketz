@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T01:46:16.323920Z",
+  "id": "20261015T014616Z-33500e9128c14587a6e0d8487f3fd6a0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas restored completed scheduled chat cleanup for revised local cron schedules and completed subagent families."
+}

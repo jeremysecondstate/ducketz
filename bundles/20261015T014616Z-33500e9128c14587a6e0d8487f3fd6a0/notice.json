@@ -1,0 +1,28 @@
+{
+  "author": "Atlas",
+  "change_id": "20261015T014354Z-7dc40f93cc114371965c2be30a2fd431",
+  "files": [
+    "tools/codex_chat_cleanup.py",
+    "tools/probe_codex_archive.py",
+    "tools/register_codex_chat_cleanup.ps1",
+    "tests/test_codex_chat_cleanup.py",
+    "docs/development/codex-chat-cleanup.md"
+  ],
+  "limitations": [
+    "Source branch available in draft PR; main integration not performed.",
+    "Scout installation is separate and requires its own local probes and private binding.",
+    "Heartbeats, manual or resumed roots, incomplete or interrupted work and unmapped historical chats stay visible."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/141",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas locally installed the reviewed helper with local-cron discovery and durable pinned CLI. Preserve local native identities, state and receipts; no trading controls or native automation schedules changed.",
+  "scope": "shared",
+  "source_commit": "cd547e04cee0d69baac8bedf135017c905104d3f",
+  "summary": "Atlas restored completed scheduled chat cleanup for revised local cron schedules and completed subagent families.",
+  "tests": [
+    "99 offline tests passed in the isolated candidate.",
+    "Seven native archive writer guard probes passed on the exact Atlas pinned binary.",
+    "Existing cleanup task completed with exit zero; native readback confirmed one root and three completed descendants archived.",
+    "Existing task triggers, principal and settings preserved by exact XML comparison."
+  ]
+}
