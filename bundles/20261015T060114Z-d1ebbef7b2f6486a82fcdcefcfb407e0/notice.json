@@ -1,0 +1,62 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261015T055811Z-daa847128f84430f8525ead86c7700d8",
+  "change_id": "20261015T055811Z-daa847128f84430f8525ead86c7700d8",
+  "commit_sha": "d44b54c1ad4fb2c658cd3a1e3208b1ed1f93b209",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared exact-order evidence source applies independently to either PC.",
+    "Extract unchanged TERMINAL and read_exact_status into exact_status without importing the cancellation service, stream policy or authority modules.",
+    "Retain executor Completion-Records 20261013T210413Z-363c920429d74e7e9a82f3cdc6391742 and 20261013T225031Z-04660fd045fe4b62bf19ae2ca2dacfc4. Original cancellation, broker and executor callers remain unchanged.",
+    "Add offline exact-ID, account-binding, complete-fill, history-integrity and observation-clock coverage using injected synthetic broker responses."
+  ],
+  "files": [
+    "ml/intraday/exact_status.py",
+    "tests/test_intraday_exact_status.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "0c04069a54e47d6cb1fffcc6645c4621abd1af9d",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic history and temporary databases only; no broker/provider request or loaded-runtime verification.",
+    "Standalone extraction intentionally retains the original helper until reviewed broker/caller adoption and deduplication.",
+    "Broader broker, executor, newer model/minute-collection and nightly source work remain separate; no source work gates production."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/151"
+  ],
+  "remaining_source_work": "Broker composition and selective executor caller wiring remain separate; preserve newer Scout manual-session source and selected supervisor.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adds a source dependency without changing existing callers, private state, prestart manifest, trader controls or native tasks.",
+  "scope": "Shared source usable independently by Atlas and Scout.",
+  "summary": "Scout strict exact-order status evidence integrated and installed; existing callers and private state preserved.",
+  "tests": [
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-15T05:58:15.744813Z",
+      "output_sha256": "5eeda0f8bc6c1f0a19fec8e92fed02a5f9c061b4049cbabd5cadea7f56cc05eb",
+      "result": "163 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:58:11.108284Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-15T05:58:38.787229Z",
+      "output_sha256": "63a4be0e4034ba197be36b6d542fff9667bd468117b8b0fddc6de2319064acf4",
+      "result": "163 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:58:33.934269Z"
+    },
+    {
+      "check": "fresh main candidate",
+      "completed_at_utc": "2026-10-15T05:59:34.959916Z",
+      "output_sha256": "1747c1b0de5491c002eeda129ce794482cfc3ce87d58d6ca160d242e593f10dc",
+      "result": "163 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T05:59:30.352577Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-15T06:00:05.209378Z",
+      "output_sha256": "63a4be0e4034ba197be36b6d542fff9667bd468117b8b0fddc6de2319064acf4",
+      "result": "163 passed; no skips, exclusions or offline-verifier violations",
+      "started_at_utc": "2026-10-15T06:00:00.284604Z"
+    }
+  ]
+}

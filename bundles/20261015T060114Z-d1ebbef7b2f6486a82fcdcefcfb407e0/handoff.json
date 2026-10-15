@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T06:01:14.660562Z",
+  "id": "20261015T060114Z-d1ebbef7b2f6486a82fcdcefcfb407e0",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout strict exact-order status evidence integrated and installed; existing callers and private state preserved."
+}
