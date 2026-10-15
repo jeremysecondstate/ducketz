@@ -1,4 +1,4 @@
-"""Gameplan Stats: the prediction scorecard, backed only by saved reviews."""
+"""Gameplan Stats: independent prediction and execution views of saved evidence."""
 from __future__ import annotations
 
 import math
@@ -13,6 +13,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from app.ui.gameplan_widgets import label as _label, panel as _panel, Tooltip as _Tooltip
+from app.ui.gameplan_execution_data import GameplanExecutionSnapshot, execution_sessions, load_gameplan_execution
+from app.ui.gameplan_execution_widgets import GameplanExecutionPanel
 from app.ui.gameplan_stats_data import (
     GameplanStatsReview, PredictionOutcome, load_gameplan_stats, prediction_metrics,
     review_sessions,
@@ -85,15 +87,11 @@ class GameplanStatsTab:
         _Tooltip(self.date_box, "The session being reviewed, not the next Gameplan's action date.")
         self.latest_button = ttk.Button(self.controls, text="Latest session", command=self.follow_latest)
         self.latest_button.pack(side="left", padx=(0, 8))
-        self.horizon_box = ttk.Combobox(self.controls, textvariable=self.horizon, state="readonly",
-                                      values=tuple(HORIZON_LABELS), width=13)
-        self.horizon_box.pack(side="left", padx=(0, 8))
-        self.horizon_box.bind("<<ComboboxSelected>>", lambda _event: self.render())
         self.report_button = ttk.Button(self.controls, text="Open full report", command=self.open_report, state="disabled")
         self.report_button.pack(side="left", padx=(0, 8))
         self.refresh_button = ttk.Button(self.controls, text="Refresh", command=self.refresh)
         self.refresh_button.pack(side="left")
-        _label(self.page, "Forecast windows measure prediction accuracy; they do not schedule sales. All times Pacific.",
+        _label(self.page, "Two views of the same session · All times Pacific · Saved evidence only",
                color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(3, 1))
         self.status_label = _label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                    background=BACKGROUND, wraplength=1100, justify="left")
@@ -110,8 +108,22 @@ class GameplanStatsTab:
         self._body_window = self.canvas.create_window(0, 0, window=self.body, anchor="nw")
         self.body.bind("<Configure>", lambda _event: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", self._resize)
-        self.cards = tk.Frame(self.body, background=BACKGROUND)
-        self.cards.pack(fill="x", pady=(0, 12))
+        self.workspace = tk.Frame(self.body, background=BACKGROUND)
+        self.workspace.pack(fill="x")
+        self.prediction_panel = _panel(self.workspace)
+        self.prediction_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self.execution = GameplanExecutionPanel(self.workspace, self.root)
+        self.execution.frame.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        _label(self.prediction_panel, "Prediction accuracy", size=19, bold=True).pack(anchor="w", padx=14, pady=(12, 2))
+        prediction_controls = tk.Frame(self.prediction_panel, background=SURFACE)
+        prediction_controls.pack(fill="x", padx=14, pady=(0, 10))
+        _label(prediction_controls, "Saved forecasts ·", color=MUTED_TEXT).pack(side="left", padx=(0, 6))
+        self.horizon_box = ttk.Combobox(prediction_controls, textvariable=self.horizon, state="readonly",
+                                      values=tuple(HORIZON_LABELS), width=13)
+        self.horizon_box.pack(side="left")
+        self.horizon_box.bind("<<ComboboxSelected>>", lambda _event: self.render())
+        self.cards = tk.Frame(self.prediction_panel, background=SURFACE)
+        self.cards.pack(fill="x", padx=12, pady=(0, 10))
         self.card_widgets = []
         explanations = {
             "accuracy": "Correct saved bullish/bearish calls divided by scored calls. Neutral, pending and missing outcomes are excluded.",
@@ -119,34 +131,33 @@ class GameplanStatsTab:
             "bullish": "Accuracy of scored bullish calls only. A dash means there were no scored bullish calls; it does not mean 0% accuracy.",
             "bearish": "Accuracy of scored bearish calls only. Counts show how much evidence underlies the percentage.",
         }
-        for index, (name, title, icon) in enumerate((("accuracy", "Direction accuracy", "◎"),
-                ("brier", "Probability error", "▥"), ("bullish", "Bullish accuracy", "↗"),
-                ("bearish", "Bearish accuracy", "↘"))):
+        self.card_names = ("accuracy", "bullish", "bearish", "brier")
+        for index, (name, title) in enumerate((("accuracy", "Direction accuracy"),
+                ("bullish", "Bullish accuracy"), ("bearish", "Bearish accuracy"), ("brier", "Brier score"))):
             card = _panel(self.cards)
-            card.grid(row=0, column=index, sticky="nsew", padx=(0, 10 if index < 3 else 0))
-            card.columnconfigure(1, weight=1)
-            _label(card, icon, size=28, color=CYAN, padx=14).grid(row=0, column=0, rowspan=3)
-            title_label = _label(card, title + "  ⓘ", size=10)
-            title_label.grid(row=0, column=1, sticky="w", pady=(10, 0), padx=(0, 12))
+            card.grid(row=0, column=index, sticky="nsew", padx=(0, 6 if index < 3 else 0))
+            self.cards.columnconfigure(index, weight=1, uniform="cards")
+            _label(card, textvariable=self.values[name], size=22, bold=True,
+                   color=SUCCESS if name in {"accuracy", "bullish"} else CYAN if name == "bearish" else TEXT).pack(anchor="w", padx=8, pady=(8, 0))
+            title_label = _label(card, title, size=9, bold=True)
+            title_label.pack(anchor="w", padx=8)
             _Tooltip(title_label, explanations[name])
-            _label(card, textvariable=self.values[name], size=25, bold=True).grid(row=1, column=1, sticky="w")
-            _label(card, textvariable=self.captions[name], size=9, color=MUTED_TEXT).grid(row=2, column=1, sticky="w", pady=(0, 10), padx=(0, 10))
+            _label(card, textvariable=self.captions[name], size=8, color=MUTED_TEXT).pack(anchor="w", padx=8, pady=(3, 8))
             self.card_widgets.append(card)
 
-        self.middle = tk.Frame(self.body, background=BACKGROUND)
-        self.middle.pack(fill="x", pady=(0, 12))
+        self.middle = tk.Frame(self.prediction_panel, background=SURFACE)
+        self.middle.pack(fill="x", padx=6, pady=(0, 8))
         self.score_panel = _panel(self.middle)
-        self.score_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
+        self.score_panel.pack(fill="x")
         _label(self.score_panel, "Company scorecard", size=13, bold=True).pack(anchor="w", padx=12, pady=(8, 6))
-        self.score_canvas, self.score_scroll = self._table_canvas(self.score_panel, 278)
+        self.score_canvas, self.score_scroll = self._table_canvas(self.score_panel, 211)
         self.score_canvas.configure(takefocus=True)
         self.score_canvas.bind("<Configure>", lambda _event: self._draw_scorecard())
         self.score_canvas.bind("<Button-1>", self._select_row)
         self.score_canvas.bind("<Up>", lambda _event: self._step_symbol(-1))
         self.score_canvas.bind("<Down>", lambda _event: self._step_symbol(1))
-        _Tooltip(self.score_canvas, "Click a company or use the up/down keys. Bull / Bear calls shows counts of scored predictions, not a success rate. Brier: lower is better.")
-        self.side = tk.Frame(self.middle, background=BACKGROUND)
-        self.side.grid(row=0, column=1, sticky="nsew")
+        _Tooltip(self.score_canvas, "Click a company or use the up/down keys to explore its predictions and execution records. All saved companies are available by scrolling.")
+        self.side = tk.Frame(self.prediction_panel, background=SURFACE)
         self.coverage = _panel(self.side)
         self.coverage.pack(fill="x", pady=(0, 10))
         coverage_header = tk.Frame(self.coverage, background=SURFACE)
@@ -195,39 +206,60 @@ class GameplanStatsTab:
         self.selected_mix = _label(self.selection, "", size=9, color=MUTED_TEXT)
         self.selected_mix.pack(anchor="w", padx=12, pady=(8, 9))
 
-        self.grid_panel = _panel(self.body)
-        self.grid_panel.pack(fill="x")
+        self.grid_panel = _panel(self.prediction_panel)
+        self.grid_panel.pack(fill="x", padx=6)
         self.grid_header = tk.Frame(self.grid_panel, background=SURFACE)
         self.grid_header.pack(fill="x", padx=12, pady=(8, 5))
         self.grid_header.columnconfigure(0, weight=1)
         _label(self.grid_header, "1-hour prediction outcomes", size=13, bold=True).grid(row=0, column=0, sticky="w")
-        self.grid_legend = _label(self.grid_header, "✓ Correct    × Incorrect    — Neutral    ? Awaiting data    ◷ Pending", size=9, color=MUTED_TEXT)
-        self.grid_legend.grid(row=0, column=1, sticky="e")
-        self.grid_canvas, self.grid_scroll = self._table_canvas(self.grid_panel, 224)
+        self.grid_legend = _label(self.grid_header, "✓ Correct    × Incorrect    — Neutral    ◷ Pending", size=8, color=MUTED_TEXT)
+        self.grid_legend.grid(row=1, column=0, sticky="w", pady=(3, 0))
+        self.grid_canvas, self.grid_scroll = self._table_canvas(self.grid_panel, 196)
         self.grid_canvas.bind("<Configure>", lambda _event: self._draw_grid())
         self.grid_canvas.bind("<Button-1>", self._grid_click)
-        _Tooltip(self.grid_canvas, "Each cell scores the saved prediction over the labelled 1h window. Click a cell for its saved probability, observations and outcome. Gray neutral calls have no directional score.")
+        _Tooltip(self.grid_canvas, "Each cell scores the saved prediction over the labelled 1h window. ? means awaiting market-price data; no order status is implied. Click for saved probability and observations. Neutral calls have no directional score.")
+        _label(self.prediction_panel, "?  Awaiting market-price data · No order status implied", size=9,
+               color="#ffda5b").pack(anchor="w", padx=14, pady=(7, 8))
+        self.side.pack(fill="x", padx=6, pady=(0, 8))
         self.footer = tk.Frame(self.body, background=BACKGROUND)
         self.footer.pack(fill="x", pady=(8, 2))
         self.population_label = _label(self.footer, "", size=8, color=MUTED_TEXT, background=BACKGROUND, justify="left")
         self.population_label.pack(side="left", fill="x", expand=True)
         ttk.Button(self.footer, text="Metric definitions", command=self.show_definitions).pack(side="right", padx=(8, 0))
-        self.grid_scope = _label(self.body, "Grid: 1h execution windows · Summary: all saved horizons", size=8, color=MUTED_TEXT, background=BACKGROUND)
+        self.grid_scope = _label(self.body, "Grid: 1h forecast windows · Summary: all saved horizons", size=8, color=MUTED_TEXT, background=BACKGROUND)
         self.grid_scope.pack(anchor="w")
+        _label(self.body, "Filled measures execution, not profit. Retry attempts are counted separately. Forecast windows do not schedule sales.",
+               size=9, color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(5, 0))
         self._bind_wheel(self.body)
         self.render()
 
     def _table_canvas(self, panel, height):
-        canvas = tk.Canvas(panel, height=height, background=TABLE, highlightthickness=0)
-        canvas.pack(fill="x", padx=6, pady=(0, 6))
+        viewport = tk.Frame(panel, background=TABLE)
+        viewport.pack(fill="x", padx=6, pady=(0, 6))
+        canvas = tk.Canvas(viewport, height=height, background=TABLE, highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        canvas._height_limit = height
+        canvas._content_height = height
+        canvas._vertical_scroll = ttk.Scrollbar(viewport, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=canvas._vertical_scroll.set)
+        canvas.bind("<MouseWheel>", lambda event: self._table_wheel(canvas, event))
         scroll = ttk.Scrollbar(panel, orient="horizontal", command=canvas.xview)
         canvas.configure(xscrollcommand=scroll.set)
         return canvas, scroll
 
     def _bind_wheel(self, widget):
-        widget.bind("<MouseWheel>", self._wheel, add="+")
+        if isinstance(widget, (ttk.Treeview, tk.Text, ttk.Combobox, ttk.Scrollbar)):
+            return
+        if widget not in (self.score_canvas, self.grid_canvas):
+            widget.bind("<MouseWheel>", self._wheel, add="+")
         for child in widget.winfo_children():
             self._bind_wheel(child)
+
+    def _table_wheel(self, canvas, event):
+        if canvas._content_height > canvas._height_limit:
+            canvas.yview_scroll(-int(event.delta / 120) or (-1 if event.delta > 0 else 1), "units")
+            return "break"
+        return self._wheel(event)
 
     def _wheel(self, event):
         # Bind only this tab's widgets, never another tab's global wheel handler.
@@ -243,23 +275,17 @@ class GameplanStatsTab:
             self.scrollbar.pack(side="right", fill="y")
 
     def _resize(self, event):
-        self.canvas.itemconfigure(self._body_window, width=max(event.width, 580))
-        narrow = event.width < 1080
-        columns = 2 if narrow else 4
-        for i in range(4):
-            self.cards.columnconfigure(i, weight=1 if i < columns else 0, uniform="cards" if i < columns else "")
-        for i, card in enumerate(self.card_widgets):
-            card.grid(row=i // columns, column=i % columns, padx=(0, 10 if i % columns < columns - 1 else 0), pady=(0, 10 if narrow and i < 2 else 0))
-        self.middle.columnconfigure(0, weight=2 if not narrow else 1, minsize=745 if not narrow else 0)
-        self.middle.columnconfigure(1, weight=1 if not narrow else 0, minsize=320 if not narrow else 0)
-        self.score_panel.grid_configure(padx=(0, 12 if not narrow else 0))
-        self.side.grid(row=1 if narrow else 0, column=0 if narrow else 1, sticky="nsew", pady=(10 if narrow else 0, 0))
+        self.canvas.itemconfigure(self._body_window, width=max(event.width, 540))
+        narrow = event.width < 1020
+        self.workspace.columnconfigure(0, weight=1, uniform="workspace")
+        self.workspace.columnconfigure(1, weight=0 if narrow else 1, uniform="" if narrow else "workspace")
+        self.prediction_panel.grid_configure(padx=(0, 0 if narrow else 6))
+        self.execution.frame.grid(row=1 if narrow else 0, column=0 if narrow else 1,
+                                  sticky="nsew", padx=(0 if narrow else 6, 0), pady=(12 if narrow else 0, 0))
         if event.width < 940:
             self.controls.grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
-            self.grid_legend.grid(row=1, column=0, columnspan=2, sticky="w", pady=(3, 0))
         else:
             self.controls.grid(row=0, column=1, columnspan=1, sticky="e", pady=0)
-            self.grid_legend.grid(row=0, column=1, columnspan=1, sticky="e", pady=0)
         self.status_label.configure(wraplength=max(560, event.width - 20))
         self.population_label.configure(wraplength=max(400, event.width - 200))
 
@@ -290,14 +316,33 @@ class GameplanStatsTab:
         if self.review is not None and selected is not None and selected != self.review.session:
             self.review = None
             self.render()
+        self.execution.set_snapshot(None)
 
         def work():
+            dates, review, error, execution = (), None, None, None
             try:
-                dates = review_sessions(self.datastore_root)
+                prediction_dates = review_sessions(self.datastore_root)
+            except Exception:
+                prediction_dates = ()
+            try:
+                execution_dates = execution_sessions(self.datastore_root)
+            except Exception:
+                execution_dates = ()
+            dates = tuple(sorted(set(prediction_dates) | set(execution_dates), reverse=True))
+            try:
                 review = load_gameplan_stats(self.datastore_root, selected or (dates[0] if dates else None))
-                self._messages.put((request, dates, review, None))
             except Exception as exc:
-                self._messages.put((request, (), None, exc))
+                error = exc
+            execution_session = review.session if review is not None else selected or (dates[0] if dates else None)
+            if execution_session:
+                # This reader opens only the separate saved summary. Execution availability
+                # never gates prediction review or triggers broker/ledger reads in the UI.
+                try:
+                    execution = load_gameplan_execution(self.datastore_root, execution_session)
+                except Exception:
+                    execution = GameplanExecutionSnapshot(execution_session, "unreadable",
+                        "Saved execution summary could not be read. Prediction results remain available.")
+            self._messages.put((request, dates, review, error, execution))
 
         threading.Thread(target=work, name="gameplan-stats-read", daemon=True).start()
 
@@ -306,16 +351,22 @@ class GameplanStatsTab:
             return
         try:
             while True:
-                request, dates, review, error = self._messages.get_nowait()
+                message = self._messages.get_nowait()
+                request, dates, review, error = message[:4]
                 if request != self._request_id:
                     continue
                 self._loading = False
                 self.refresh_button.configure(state="normal")
+                self.set_execution(message[4] if len(message) > 4 else None)
+                if self.execution.snapshot is not None:
+                    self.session.set(self.execution.snapshot.session)
                 if error is not None:
                     self.review = None
                     self.status.set(str(error))
                     self.status_label.configure(foreground=WARNING)
                     self.report_button.configure(state="disabled")
+                    if dates:
+                        self.date_box.configure(values=dates)
                     self.render()
                 else:
                     self.date_box.configure(values=dates or (review.session,))
@@ -342,6 +393,10 @@ class GameplanStatsTab:
                 self.status.set(f"Session {review.session}: no saved approved forecasts are available to score.")
         self.render()
 
+    def set_execution(self, snapshot):
+        """Accept a saved snapshot (also used by offline rendering fixtures)."""
+        self.execution.set_snapshot(snapshot)
+
     def render(self):
         metrics = self.review.metrics(self.selected_horizon) if self.review else prediction_metrics(())
         self.values["accuracy"].set(percent(metrics.accuracy))
@@ -351,9 +406,10 @@ class GameplanStatsTab:
         for name, correct, scored in (("accuracy", metrics.correct, metrics.scored),
                                      ("bullish", metrics.bullish_correct, metrics.bullish_scored),
                                      ("bearish", metrics.bearish_correct, metrics.bearish_scored)):
-            self.captions[name].set(f"{correct} / {scored} scored calls" if scored else "0 scored calls")
-        self.captions["brier"].set("Brier score · lower is better" if metrics.brier is not None else "No evaluated forecasts")
+            self.captions[name].set(f"{correct} / {scored} scored")
+        self.captions["brier"].set("Lower is better")
         symbols = self.review.symbols if self.review else ()
+        self.execution.set_symbols(symbols)
         if self.selected_symbol not in symbols:
             self.selected_symbol = symbols[0] if symbols else None
         self.coverage_total.configure(text=f"Total: {metrics.total}")
@@ -362,7 +418,7 @@ class GameplanStatsTab:
         self.coverage_caption.configure(text=f"Brier uses all {metrics.evaluated} evaluated forecasts.")
         self.population_label.configure(text=f"Direction: {metrics.scored} scored calls; {metrics.neutral} neutral excluded.  Brier: {metrics.evaluated} evaluated, including neutral.\nPending and missing outcomes excluded from performance.")
         excluded = f" · {self.review.excluded_forecasts} unpromoted forecasts excluded" if self.review and self.review.excluded_forecasts else ""
-        self.grid_scope.configure(text=f"Grid: 1h execution windows · Summary: {self.horizon.get().lower()} (includes saved opening-gap research){excluded}")
+        self.grid_scope.configure(text=f"Grid: 1h forecast windows · Summary: {self.horizon.get().lower()} (includes saved opening-gap research){excluded}")
         self._draw_scorecard()
         self._draw_coverage()
         self._draw_selection()
@@ -371,13 +427,22 @@ class GameplanStatsTab:
     def _table_width(self, canvas, scrollbar, minimum):
         visible = max(canvas.winfo_width(), 1)
         width = max(visible, minimum)
-        canvas.configure(scrollregion=(0, 0, width, int(canvas.cget("height"))))
+        canvas.configure(scrollregion=(0, 0, width, canvas._content_height))
         if visible < minimum:
             scrollbar.pack(fill="x", padx=6, pady=(0, 4))
         else:
             scrollbar.pack_forget()
             canvas.xview_moveto(0)
         return width
+
+    def _table_height(self, canvas, content_height):
+        canvas._content_height = content_height
+        canvas.configure(height=min(content_height, canvas._height_limit))
+        if content_height > canvas._height_limit:
+            canvas._vertical_scroll.pack(side="right", fill="y")
+        else:
+            canvas._vertical_scroll.pack_forget()
+            canvas.yview_moveto(0)
 
     def _photo(self, symbol, size=24):
         key = symbol, size
@@ -403,39 +468,39 @@ class GameplanStatsTab:
     def _draw_scorecard(self):
         canvas = self.score_canvas
         canvas.delete("all")
-        width = self._table_width(canvas, self.score_scroll, 700)
-        edges = [0, width * .16, width * .47, width * .66, width * .82, width]
+        symbols = self.review.symbols if self.review else ()
+        self._table_height(canvas, 31 + 30 * len(symbols) if symbols else 130)
+        width = self._table_width(canvas, self.score_scroll, 470)
+        edges = [0, 104, width - 90, width]
         canvas.create_rectangle(0, 0, width, 31, fill=SURFACE_ALT, outline=BORDER)
-        for i, title in enumerate(("Symbol", "Direction accuracy", "Correct / Scored", "Brier score ↓", "Bull / Bear calls")):
+        for i, title in enumerate(("Company", "Prediction accuracy", "Scored calls")):
             canvas.create_text((edges[i] + edges[i+1])/2, 15, text=title, fill=MUTED_TEXT, font=("Segoe UI", 9))
         if not self.review or not self.review.symbols:
             canvas.create_text(width/2, 115, text="No saved predictions to display", fill=MUTED_TEXT, font=("Segoe UI", 11))
             return
-        canvas.configure(height=31+35*len(self.review.symbols))
         for index, symbol in enumerate(self.review.symbols):
             metrics = self.review.metrics(self.selected_horizon, symbol)
-            top, y = 31+index*35, 48+index*35
+            top, y = 31+index*30, 46+index*30
             selected = symbol == self.selected_symbol
-            canvas.create_rectangle(0, top, width-1, top+35, fill="#102a3c" if selected else TABLE,
+            canvas.create_rectangle(0, top, width-1, top+30, fill="#102a3c" if selected else TABLE,
                                     outline=CYAN if selected else BORDER, width=1)
             self._symbol(canvas, symbol, y)
-            left, right = edges[1]+16, edges[2]-75
+            left, right = edges[1]+8, edges[2]-65
             canvas.create_rectangle(left, y-6, right, y+6, fill="#31465a", outline="")
             if metrics.accuracy is not None:
                 canvas.create_rectangle(left, y-6, left+(right-left)*metrics.accuracy, y+6,
                                         fill=SUCCESS if metrics.accuracy >= .5 else DANGER, outline="")
             canvas.create_text(edges[2]-12, y, text=percent(metrics.accuracy), anchor="e", fill=TEXT, font=("Segoe UI", 10, "bold"))
-            for column, value in ((2, f"{metrics.correct} / {metrics.scored}"), (3, brier_text(metrics.brier)),
-                                  (4, f"{metrics.bullish_scored} / {metrics.bearish_scored}")):
-                canvas.create_text((edges[column]+edges[column+1])/2, y, text=value, fill=TEXT, font=("Segoe UI", 10))
+            canvas.create_text((edges[2]+edges[3])/2, y, text=f"{metrics.correct} / {metrics.scored}", fill=TEXT, font=("Segoe UI", 10))
 
     def _select_row(self, event):
         self.score_canvas.focus_set()
-        row = int((self.score_canvas.canvasy(event.y)-31)//35)
+        row = int((self.score_canvas.canvasy(event.y)-31)//30)
         if self.review and 0 <= row < len(self.review.symbols):
             self.selected_symbol = self.review.symbols[row]
             self._draw_scorecard()
             self._draw_selection()
+            self.execution.set_company(self.selected_symbol)
 
     def _step_symbol(self, step):
         if self.review and self.review.symbols:
@@ -444,6 +509,10 @@ class GameplanStatsTab:
             self.selected_symbol = symbols[max(0, min(len(symbols)-1, index+step))]
             self._draw_scorecard()
             self._draw_selection()
+            self.execution.set_company(self.selected_symbol)
+            row = symbols.index(self.selected_symbol)
+            if self.score_canvas._content_height > self.score_canvas._height_limit:
+                self.score_canvas.yview_moveto(max(0, 31 + row*30 - 60) / self.score_canvas._content_height)
         return "break"
 
     def _draw_selection(self):
@@ -471,17 +540,18 @@ class GameplanStatsTab:
         canvas = self.grid_canvas
         canvas.delete("all")
         self._cell_bounds = []
-        width = self._table_width(canvas, self.grid_scroll, 960)
-        symbol_width, score_width = 124, 76
+        symbols = self.review.symbols if self.review else ()
+        self._table_height(canvas, 28 + 28 * len(symbols) if symbols else 130)
+        width = self._table_width(canvas, self.grid_scroll, 470)
+        symbol_width, score_width = 92, 0
         cell_width = (width-symbol_width-score_width)/13
         canvas.create_rectangle(0, 0, width, 28, fill=SURFACE_ALT, outline=BORDER)
         for i in range(13):
-            canvas.create_text(symbol_width+(i+.5)*cell_width, 14, text=f"{i+4:02d}–{i+5:02d}", fill=MUTED_TEXT, font=("Segoe UI", 9))
-        canvas.create_text(width-score_width/2, 14, text="1h score", fill=MUTED_TEXT, font=("Segoe UI", 9))
+            canvas.create_text(symbol_width+(i+.5)*cell_width, 14, text=f"{i+4:02d}–{i+5:02d}", fill=MUTED_TEXT, font=("Segoe UI", 7))
+        canvas.create_text(8, 14, text="Company", fill=MUTED_TEXT, anchor="w", font=("Segoe UI", 9))
         if not self.review or not self.review.symbols:
             canvas.create_text(width/2, 100, text="The hourly grid will appear when verified results are available.", fill=MUTED_TEXT, font=("Segoe UI", 10))
             return
-        canvas.configure(height=28+28*len(self.review.symbols))
         for row_index, symbol in enumerate(self.review.symbols):
             top, y = 28+row_index*28, 42+row_index*28
             self._symbol(canvas, symbol, y)
@@ -492,8 +562,6 @@ class GameplanStatsTab:
                 canvas.create_rectangle(left, top, right, top+28, fill=background, outline=BORDER)
                 canvas.create_text((left+right)/2, y, text=glyph, fill=foreground, font=("Segoe UI", 14, "bold"))
                 self._cell_bounds.append((left, top, right, top+28, symbol, col, outcome))
-            metrics = prediction_metrics(tuple(row for row in outcomes if row is not None))
-            canvas.create_text(width-score_width/2, y, text=f"{metrics.correct} / {metrics.scored}", fill=TEXT, font=("Segoe UI", 10, "bold"))
 
     def _grid_click(self, event):
         x, y = self.grid_canvas.canvasx(event.x), self.grid_canvas.canvasy(event.y)
@@ -502,6 +570,7 @@ class GameplanStatsTab:
                 self.selected_symbol = symbol
                 self._draw_scorecard()
                 self._draw_selection()
+                self.execution.set_company(symbol)
                 self._show_outcome(symbol, col, outcome)
                 break
 
