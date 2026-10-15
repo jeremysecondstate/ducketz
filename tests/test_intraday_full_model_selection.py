@@ -8,9 +8,11 @@ import numpy as np
 import pytest
 
 from ml.intraday.full_model_selection import (
-    SelectionConfig, _fit, default_candidates, probability_metrics, select_models,
+    SelectionConfig, _fit, _fit_partitions, default_candidates, probability_metrics, select_models,
 )
-from ml.intraday.models import ModelSpec, UnsupportedModelError, configured_models, registry_status
+from ml.intraday.models import (
+    ModelSpec, UnsupportedModelError, configured_models, fit_calibrated_estimator, registry_status,
+)
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 
 
@@ -142,11 +144,52 @@ def test_multiple_hyperparameters_compete_but_same_family_is_not_counted_as_inde
     assert len(result.selected_models) == 1
 
 
-def test_chronological_calibration_fits_preprocessing_only_on_base_fit_rows():
+@pytest.mark.parametrize("training_max_rows", [None, 180])
+def test_selection_scores_the_same_capped_calibrated_fit_as_live(training_max_rows):
+    dataset = fixture_dataset()
+    spec = replace(candidates()[0], training_max_rows=training_max_rows)
+    result = select_models(dataset, candidates=(spec,), config=replace(SelectionConfig(),
+        max_brier_gap=1., max_fold_brier_std=1., max_fold_baseline_regression=1.))
+    assert result.selected_models
+    boundary = instant(result.holdout_start)
+    search = np.array([i for i, reference in enumerate(dataset.reference_at)
+                       if reference < boundary and dataset.target_close_at[i] <= boundary
+                       and dataset.label_available_at[i] <= boundary])
+    holdout = np.array([i for i, reference in enumerate(dataset.reference_at) if reference >= boundary])
+    model, evidence = fit_calibrated_estimator(result.selected_models[0], dataset.X[search], dataset.y[search],
+        reference_at=[dataset.reference_at[i] for i in search],
+        target_close_at=[dataset.target_close_at[i] for i in search],
+        label_available_at=[dataset.label_available_at[i] for i in search], training_cutoff=boundary)
+    expected = probability_metrics(dataset.y[holdout], model.predict_proba(dataset.X[holdout])[:, 1])
+    assert result.report["holdout"]["models"][0]["metrics"] == expected
+    assert evidence["calibration"]["base_latest_label_available_at"] <= evidence["calibration"]["first_calibration_reference"]
+    scored = result.report["holdout"]["models"][0]
+    assert scored["training_partition"]["rows"] == evidence["calibration"]["base_rows"]
+    assert scored["calibration_partition"]["rows"] == evidence["calibration"]["calibration_rows"]
+    if training_max_rows:
+        assert scored["training_partition"]["rows"] + scored["calibration_partition"]["rows"] <= training_max_rows
+
+
+def test_too_small_candidate_history_cap_is_reported_without_expanding_live_history():
+    limited = replace(candidates()[0], name="too_little_history", training_max_rows=40)
+    result = select_models(fixture_dataset(), candidates=(limited, *candidates()))
+    assert result.selected_models == (replace(candidates()[0], probability_calibration="sigmoid"),)
+    record = result.report["candidates"][0]
+    assert record["status"] == "failed"
+    assert record["error"]["type"] == "ContractError"
+    assert "Insufficient chronological calibration history" in record["error"]["message"]
+
+
+@pytest.mark.parametrize("training_max_rows", [None, 180])
+def test_chronological_calibration_fits_preprocessing_only_on_base_fit_rows(training_max_rows):
     dataset = fixture_dataset(300)
-    train, calibration = np.arange(200), np.arange(203, 263)
+    pool = np.arange(263)
+    train, calibration = _fit_partitions(pool, dataset.reference_at, dataset.target_close_at,
+                                         dataset.label_available_at, SelectionConfig(), training_max_rows)
     dataset.X[calibration] += 1000
-    model, _ = _fit(candidates()[0], dataset.X, dataset.y, train, calibration)
+    spec = replace(candidates()[0], probability_calibration="sigmoid", training_max_rows=training_max_rows)
+    model, _ = _fit(spec, dataset.X, dataset.y, train, calibration, pool, dataset.reference_at,
+                    dataset.target_close_at, dataset.label_available_at, dataset.manifest["training_cutoff"])
     np.testing.assert_allclose(model.base.named_steps["scale"].mean_, dataset.X[train].mean(axis=0))
     p = model.predict_proba(dataset.X[263:])
     assert p.shape == (37, 2)

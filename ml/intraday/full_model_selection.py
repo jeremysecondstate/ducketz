@@ -19,7 +19,9 @@ import numpy as np
 from sklearn.metrics import balanced_accuracy_score, brier_score_loss, log_loss
 from threadpoolctl import threadpool_limits
 
-from .models import ChronologicalSigmoid, ModelSpec, build_estimator, configured_models, registry_status
+from .models import (
+    ModelSpec, configured_models, fit_calibrated_estimator, purged_chronological_split, registry_status,
+)
 from .prediction import ContractError, TARGET_VERSION, instant
 
 SELECTION_VERSION = "intraday-purged-calibrated-selection-v1"
@@ -164,29 +166,29 @@ def _indices_report(indices, references, targets, available):
             "latest_label_available": max(available[i] for i in indices).isoformat()}
 
 
-def _fit_partitions(pool, references, targets, available, config):
-    calibration_rows = max(config.min_calibration_rows, int(len(pool)*config.calibration_fraction))
-    if calibration_rows >= len(pool):
+def _fit_partitions(pool, references, targets, available, config, training_max_rows=None):
+    # Live fitting caps the complete causal pool before its calibration split.
+    # Preserve those same rows and purge boundaries when scoring candidates.
+    pool = pool[-training_max_rows:] if training_max_rows is not None else pool
+    train, calibration = purged_chronological_split(
+        [references[i] for i in pool], [targets[i] for i in pool],
+        fraction=config.calibration_fraction, label_available_at=[available[i] for i in pool])
+    train, calibration = pool[train], pool[calibration]
+    if len(calibration) < config.min_calibration_rows:
         raise ContractError("Insufficient chronological calibration history")
-    calibration = pool[-calibration_rows:]
-    cutoff = references[calibration[0]]
-    train = np.asarray([i for i in pool[:-calibration_rows]
-                        if targets[i] <= cutoff and available[i] <= cutoff], dtype=int)
     if len(train) < config.min_training_rows:
         raise ContractError("Insufficient base-fit rows after label-window and receipt purge")
     return train, calibration
 
 
-def _fit(spec, X, y, train, calibration):
+def _fit(spec, X, y, train, calibration, pool, references, targets, available, cutoff):
     if set(np.unique(y[train])) != {0, 1} or set(np.unique(y[calibration])) != {0, 1}:
         raise ContractError("Base fit and calibration both require both target classes")
-    base = build_estimator(spec)
-    if spec.family == "knn":
-        requested = base.get_params()["model__n_neighbors"]
-        base.set_params(model__n_neighbors=min(requested, len(train)))
     with threadpool_limits(limits=1), warnings.catch_warnings(record=True) as observed:
         warnings.simplefilter("always")
-        model = ChronologicalSigmoid(base, spec.random_state).fit_chronological(X, y, train, calibration)
+        model, _ = fit_calibrated_estimator(spec, X[pool], y[pool],
+            reference_at=[references[i] for i in pool], target_close_at=[targets[i] for i in pool],
+            label_available_at=[available[i] for i in pool], training_cutoff=cutoff)
     return model, list(dict.fromkeys(str(w.message) for w in observed))
 
 
@@ -276,7 +278,7 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
             train, calibration = _fit_partitions(pool, references, targets, available, config)
             if set(np.unique(y[validation])) != {0, 1}:
                 raise ContractError("Search validation folds require both target classes")
-            folds.append((train, calibration, validation))
+            folds.append((pool, train, calibration, validation))
         final_train, final_calibration = _fit_partitions(search, references, targets, available, config)
     except ContractError as exc:
         report["reason"] = str(exc)
@@ -292,7 +294,7 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
                         "training": _indices_report(train, references, targets, available),
                         "calibration": _indices_report(calibration, references, targets, available),
                         "validation": _indices_report(validation, references, targets, available)}
-                       for number, (train, calibration, validation) in enumerate(folds)]
+                       for number, (_, train, calibration, validation) in enumerate(folds)]
     # This fingerprint intentionally excludes holdout feature/label values.
     fingerprint = hashlib.sha256(X[search].tobytes()+y[search].tobytes())
     fingerprint.update(json.dumps({"specs": [asdict(s) for s in specs], "config": asdict(config),
@@ -309,8 +311,11 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
                   "rejection_reasons": [], "seconds": 0.0, "selected": False,
                   "selection_reason": "fit_failed", "catalog_status": catalog_status[spec.family]}
         try:
-            for number, (train, calibration, validation) in enumerate(folds):
-                model, observed = _fit(spec, X, y, train, calibration)
+            for number, (pool, _, _, validation) in enumerate(folds):
+                train, calibration = _fit_partitions(pool, references, targets, available, config,
+                                                      spec.training_max_rows)
+                model, observed = _fit(spec, X, y, train, calibration, pool, references, targets,
+                                       available, references[validation[0]])
                 record["warnings"].extend(w for w in observed if w not in record["warnings"])
                 p = _probabilities(model, X[validation])
                 metrics = probability_metrics(y[validation], p)
@@ -324,6 +329,8 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
                 gap = metrics["brier"]-train_metrics["brier"]
                 raw_gap = raw_validation["brier"]-raw_train["brier"] if raw_train else None
                 record["folds"].append({"fold": number, "validation": metrics, "training": train_metrics,
+                                        "training_partition": _indices_report(train, references, targets, available),
+                                        "calibration_partition": _indices_report(calibration, references, targets, available),
                                         "raw_training": raw_train, "raw_validation": raw_validation,
                                         "baseline": baseline, "brier_improvement": baseline["brier"]-metrics["brier"],
                                         "brier_generalization_gap": gap, "raw_brier_generalization_gap": raw_gap})
@@ -390,10 +397,15 @@ def select_models(dataset, *, candidates=None, config=None, previous_holdout_sta
         for spec in selected:
             record = {"name": spec.name, "status": "failed"}
             try:
-                model, observed = _fit(spec, X, y, final_train, final_calibration)
+                train, calibration = _fit_partitions(search, references, targets, available, config,
+                                                      spec.training_max_rows)
+                model, observed = _fit(spec, X, y, train, calibration, search, references, targets,
+                                       available, boundary)
                 p = _probabilities(model, X[holdout])
                 predictions.append(p)
-                record.update(status="evaluated", metrics=probability_metrics(y[holdout], p), warnings=observed)
+                record.update(status="evaluated", metrics=probability_metrics(y[holdout], p), warnings=observed,
+                    training_partition=_indices_report(train, references, targets, available),
+                    calibration_partition=_indices_report(calibration, references, targets, available))
             except Exception as exc:
                 record["error"] = {"type": type(exc).__name__, "message": str(exc)}
             report["holdout"]["models"].append(record)

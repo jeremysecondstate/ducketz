@@ -19,7 +19,7 @@ $taskNamespace = 'http://schemas.microsoft.com/windows/2004/02/mit/task'
 $times = @('01:00:00', '01:30:00', '02:00:00', '02:30:00', '03:00:00', '03:30:00')
 $days = @('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
 
-function Assert-SupervisorXml([string]$Source) {
+function Assert-SupervisorXml([string]$Source, [string]$ExpectedEnabled = '') {
     $document = New-Object System.Xml.XmlDocument
     # Task XML is local evidence; never permit external entities or DTD access.
     $document.XmlResolver = $null
@@ -51,11 +51,16 @@ function Assert-SupervisorXml([string]$Source) {
         MultipleInstancesPolicy = 'IgnoreNew'; ExecutionTimeLimit = 'PT0S';
         StartWhenAvailable = 'true'; DisallowStartIfOnBatteries = 'false';
         StopIfGoingOnBatteries = 'false'; RunOnlyIfNetworkAvailable = 'false'; AllowHardTerminate = 'false';
-        RunOnlyIfIdle = 'false'; Enabled = 'true'; WakeToRun = 'true'
+        RunOnlyIfIdle = 'false'; WakeToRun = 'true'
     }
     foreach ($setting in $expectedSettings.GetEnumerator()) {
         $node = $document.SelectSingleNode('/t:Task/t:Settings/t:' + $setting.Key, $namespace)
         if (-not $node -or $node.InnerText -ne $setting.Value) { throw ('Invalid supervisor setting: ' + $setting.Key) }
+    }
+    $enabled = $document.SelectSingleNode('/t:Task/t:Settings/t:Enabled', $namespace)
+    if (-not $enabled -or $enabled.InnerText -notin @('true', 'false') -or
+        ($ExpectedEnabled -and $enabled.InnerText -ne $ExpectedEnabled)) {
+        throw 'Invalid supervisor setting: Enabled must preserve the existing native state.'
     }
     if ($document.SelectSingleNode('/t:Task/t:Settings/t:IdleSettings/t:StopOnIdleEnd', $namespace).InnerText -ne 'false') {
         throw 'Idleness must not stop a supervisor run.'
@@ -123,6 +128,24 @@ $equivalent = @($inventory | Where-Object {
 })
 if ($equivalent.Count -gt 0) { throw ('An equivalent supervisor already exists; reuse its owned identity: ' + (($equivalent | ForEach-Object { $_.TaskPath + $_.TaskName }) -join ', ')) }
 
+# Retain the saved native enablement independently of the running/ready state.
+# Planning and registration use the same snapshot; disabled tasks stay disabled.
+$enabled = 'true'
+$originalXml = $null
+if ($existing.Count -eq 1) {
+    $originalXml = Export-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath
+    $original = New-Object System.Xml.XmlDocument
+    $original.XmlResolver = $null
+    $original.LoadXml($originalXml)
+    $originalNamespace = New-Object System.Xml.XmlNamespaceManager($original.NameTable)
+    $originalNamespace.AddNamespace('t', $taskNamespace)
+    $originalEnabled = $original.SelectSingleNode('/t:Task/t:Settings/t:Enabled', $originalNamespace)
+    if (-not $originalEnabled -or $originalEnabled.InnerText -notin @('true', 'false')) {
+        throw 'Cannot preserve the existing native Enabled setting.'
+    }
+    $enabled = $originalEnabled.InnerText
+}
+
 function Escape-Xml([string]$Value) { return [Security.SecurityElement]::Escape($Value) }
 function Quote-Argument([string]$Value) {
     # Windows argv escaping doubles a trailing slash before the closing quote.
@@ -148,12 +171,12 @@ $xml = @"
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
     <AllowHardTerminate>false</AllowHardTerminate><StartWhenAvailable>true</StartWhenAvailable><RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
     <IdleSettings><StopOnIdleEnd>false</StopOnIdleEnd><RestartOnIdle>false</RestartOnIdle></IdleSettings>
-    <AllowStartOnDemand>true</AllowStartOnDemand><Enabled>true</Enabled><Hidden>false</Hidden><RunOnlyIfIdle>false</RunOnlyIfIdle><WakeToRun>true</WakeToRun><ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>7</Priority>
+    <AllowStartOnDemand>true</AllowStartOnDemand><Enabled>$enabled</Enabled><Hidden>false</Hidden><RunOnlyIfIdle>false</RunOnlyIfIdle><WakeToRun>true</WakeToRun><ExecutionTimeLimit>PT0S</ExecutionTimeLimit><Priority>7</Priority>
   </Settings>
   <Actions Context="Author"><Exec><Command>$(Escape-Xml $Python)</Command><Arguments>$(Escape-Xml $arguments)</Arguments><WorkingDirectory>$(Escape-Xml $Repository)</WorkingDirectory></Exec></Actions>
 </Task>
 "@
-$null = Assert-SupervisorXml $xml
+$null = Assert-SupervisorXml $xml $enabled
 if ($XmlPath) {
     $parentDirectory = Split-Path -Parent $XmlPath
     $null = New-Item -ItemType Directory -Path $parentDirectory -Force
@@ -167,15 +190,18 @@ if ($Plan) {
 $null = New-Item -ItemType Directory -Path $LogDirectory -Force
 $rollbackPath = $null
 if ($existing.Count -eq 1) {
+    if ((Export-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath) -cne $originalXml) {
+        throw 'Existing native task changed during preparation; preserve the newer definition.'
+    }
     $rollbackDirectory = Join-Path $LogDirectory 'task-rollback'
     $null = New-Item -ItemType Directory -Path $rollbackDirectory -Force
     $rollbackPath = Join-Path $rollbackDirectory (([DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ')) + '-' + [guid]::NewGuid().ToString('N') + '.xml')
-    [IO.File]::WriteAllText($rollbackPath, (Export-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath), [Text.Encoding]::Unicode)
+    [IO.File]::WriteAllText($rollbackPath, $originalXml, [Text.Encoding]::Unicode)
 }
 # Registering does not start or stop a task, and never changes another task.
 $null = Register-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath -Xml $xml -Force
 $savedXml = Export-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath
-$null = Assert-SupervisorXml $savedXml
+$null = Assert-SupervisorXml $savedXml $enabled
 $task = Get-ScheduledTask -TaskName $TaskName -TaskPath $TaskPath
 $information = Get-ScheduledTaskInfo -TaskName $TaskName -TaskPath $TaskPath
 [pscustomobject]@{

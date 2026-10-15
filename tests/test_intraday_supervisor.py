@@ -1,5 +1,6 @@
 """Nightly orchestration checks use temporary local observations, no providers."""
 from dataclasses import replace
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -90,6 +91,25 @@ def test_training_snapshot_excludes_unavailable_labels_and_future_features():
     delayed.frame.loc[30, "available_at"] = delayed.frame.available_at.iloc[31] + STEP
     filtered = supervisor.training_snapshot(delayed, cutoff=NOW)
     assert delayed.frame.opened_at.iloc[31] not in filtered.reference_at
+
+
+@pytest.mark.parametrize("synthetic_policy", ["include", "exclude"])
+def test_training_snapshot_records_actual_feature_receipt_after_target_close(synthetic_policy):
+    source = history()
+    reference = source.frame.opened_at.iloc[40]
+    feature_receipt = reference + 4 * STEP
+    source.frame.loc[40, "available_at"] = feature_receipt
+    source.frame.loc[40, "availability_kind"] = "actual"
+    dataset = supervisor.training_snapshot(source, cutoff=NOW, synthetic_policy=synthetic_policy)
+    position = dataset.reference_at.get_loc(reference)
+    assert dataset.target_close_at[position] < feature_receipt
+    assert dataset.label_available_at[position] == feature_receipt
+    # A fitting boundary after target close but before the real feature receipt
+    # must still exclude this row when purging information availability.
+    fit_cutoff = reference + 3 * STEP + pd.Timedelta(minutes=1)
+    assert not (dataset.label_available_at[position] <= fit_cutoff)
+    earlier = supervisor.training_snapshot(source, cutoff=fit_cutoff, synthetic_policy=synthetic_policy)
+    assert reference not in earlier.reference_at
 
 
 def test_training_snapshot_preserves_missing_intervals_and_rejects_wrong_targets():
@@ -358,6 +378,42 @@ def test_broken_active_preserved_without_stalling_refresh_and_activation(tmp_pat
     assert backup.read_bytes() == b"{broken JSON fixture"
     assert report["symbols"]["AAPL"]["status"] == "activated"
     assert json.loads(path.read_text())["symbols"]["AAPL"]["max_training_rows"] == 3000
+
+
+@pytest.mark.parametrize("broken_entry", [None, {"selection_id": "broken"},
+    {"selection_id": "broken", "selected_at": "invalid", "models": []},
+    {"selection_id": "broken", "selected_at": NOW.isoformat(), "models": [{"name": "bad", "training_max_rows": 0}]}])
+def test_malformed_active_symbol_preserves_unaffected_incumbents_and_original_evidence(tmp_path, broken_entry):
+    symbols = ("AAPL", "NVDA", "IONQ")
+    run(tmp_path, symbols=symbols)
+    path = tmp_path / supervisor.ACTIVE_PATH
+    active = json.loads(path.read_text())
+    old = {symbol: active["symbols"][symbol] for symbol in ("AAPL", "IONQ")}
+    active["symbols"]["NVDA"] = broken_entry
+    path.write_text(json.dumps(active))
+    before = path.read_bytes()
+
+    def refresh(root, symbols, **kwargs):
+        result = refreshed(root, symbols, **kwargs)
+        for symbol in old:
+            result[symbol] = {"status": "error", "failure_type": "FixtureRefreshError"}
+        return result
+
+    report = run(tmp_path, symbols=symbols, refresh=refresh)
+    assert report["symbols"]["NVDA"]["status"] == "activated"
+    saved = json.loads(path.read_text())
+    for symbol, incumbent in old.items():
+        assert saved["symbols"][symbol] == incumbent
+        assert report["symbols"][symbol]["incumbent_retained"] is True
+    repair = report["metadata_repairs"]["active"]
+    assert set(repair["symbol_errors"]) == {"NVDA"}
+    assert repair["symbol_errors"]["NVDA"]["failure_type"]
+    assert Path(repair["preserved_path"]).read_bytes() == before
+    assert repair["sha256"] == hashlib.sha256(before).hexdigest()
+    events = [json.loads(line) for line in (tmp_path / "intraday/model-supervision/logs/events.jsonl").read_text().splitlines()]
+    recovered = [event for event in events if event["kind"] == "metadata_recovered"][-1]
+    assert recovered["symbol_errors"] == repair["symbol_errors"]
+    assert recovered["sha256"] == repair["sha256"]
 
 
 def test_failure_details_redact_credentials(monkeypatch):
