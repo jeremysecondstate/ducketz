@@ -140,7 +140,7 @@ def test_existing_identity_and_equivalent_purpose_never_get_overwritten_or_dupli
 
 def test_mock_owned_update_saves_exact_rollback_and_verifies_saved_xml(tmp_path):
     args, xml_path = bindings(tmp_path)
-    old_xml = '<existing-task unchanged="true"/>'
+    old_xml = '<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Settings><Enabled>true</Enabled></Settings></Task>'
     fixture = r"""
 $script:registeredXml = $null
 function Get-ScheduledTask { param($TaskName,$TaskPath)
@@ -149,7 +149,7 @@ function Get-ScheduledTask { param($TaskName,$TaskPath)
 function Register-ScheduledTask { param($TaskName,$TaskPath,$Xml,[switch]$Force) $script:registeredXml = $Xml }
 function Export-ScheduledTask { param($TaskName,$TaskPath)
     if ($script:registeredXml) { return $script:registeredXml }
-    return '<existing-task unchanged="true"/>'
+    return '<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Settings><Enabled>true</Enabled></Settings></Task>'
 }
 function Get-ScheduledTaskInfo { param($TaskName,$TaskPath)
     [pscustomobject]@{NextRunTime=[datetime]'2026-10-15T01:00:00';LastRunTime=[datetime]'2026-10-14T01:00:00';LastTaskResult=0}
@@ -159,3 +159,34 @@ function Get-ScheduledTaskInfo { param($TaskName,$TaskPath)
     assert result["Status"] == "REGISTERED" and not result["StartedForVerification"]
     assert Path(result["RollbackXml"]).read_text(encoding="utf-16") == old_xml
     assert invoke(["-ValidateOnly", "-XmlPath", str(xml_path)])["Status"] == "VALID"
+
+
+@pytest.mark.parametrize("enabled", ["true", "false"])
+@pytest.mark.parametrize("planning", [True, False])
+def test_owned_update_preserves_enabled_state_without_scheduler_controls(tmp_path, enabled, planning):
+    args, xml_path = bindings(tmp_path)
+    old_xml = ('<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">'
+               '<Settings><Enabled>' + enabled + '</Enabled></Settings></Task>')
+    fixture = r"""
+$script:registeredXml = $null
+function Get-ScheduledTask { param($TaskName,$TaskPath)
+    [pscustomobject]@{TaskName='Ducketz 15m Model Supervisor Fixture';TaskPath='\';State='Disabled';Description='Ducketz independent 15-minute model supervision v1. Existing';Actions=@()}
+}
+function Register-ScheduledTask { param($TaskName,$TaskPath,$Xml,[switch]$Force) $script:registeredXml = $Xml }
+function Export-ScheduledTask { param($TaskName,$TaskPath)
+    if ($script:registeredXml) { return $script:registeredXml }
+    return OLD_XML
+}
+function Get-ScheduledTaskInfo { param($TaskName,$TaskPath)
+    [pscustomobject]@{NextRunTime=[datetime]'2026-10-15T01:00:00';LastRunTime=[datetime]'2026-10-14T01:00:00';LastTaskResult=0}
+}
+function Enable-ScheduledTask { throw 'Fixture forbids enabling a task' }
+function Disable-ScheduledTask { throw 'Fixture forbids disabling a task' }
+""".replace("OLD_XML", psquote(old_xml))
+    result = invoke(args + ["-XmlPath", str(xml_path)] + (["-Plan"] if planning else []), fixture=fixture)
+    assert result["Status"] == ("PLANNED" if planning else "REGISTERED")
+    root = ET.parse(xml_path).getroot()
+    assert root.findtext("t:Settings/t:Enabled", namespaces=NS) == enabled
+    assert invoke(["-ValidateOnly", "-XmlPath", str(xml_path)])["Status"] == "VALID"
+    if not planning:
+        assert Path(result["RollbackXml"]).read_text(encoding="utf-16") == old_xml

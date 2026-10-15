@@ -211,7 +211,11 @@ def training_snapshot(history, *, cutoff, lookback_days=None, synthetic_policy="
         y.append(int(float(target.close) >= float(row.open)))
         refs.append(ref)
         closes.append(target_close)
-        availability.append(target.available_at)
+        # A completed target alone does not make its training row observable:
+        # its own feature candle may have arrived after the target receipt.
+        # The history check above also binds every trailing feature input to
+        # this row's actual receipt, matching build_dataset's joint cutoff.
+        availability.append(max(target.available_at, row.available_at))
     if not X:
         raise ContractError("No mature finite labels in the refreshed training snapshot")
     manifest = {**base.manifest, "training_cutoff": cutoff.isoformat(), "training_rows": len(X),
@@ -322,21 +326,36 @@ def _load_state(path, actor):
     return value
 
 
+class _ActiveEntryErrors(ContractError):
+    """Carry independently valid incumbents through preserved-file recovery."""
+    def __init__(self, recovered, symbol_errors):
+        super().__init__("Malformed active model entries were excluded independently")
+        self.recovered = recovered
+        self.symbol_errors = symbol_errors
+
+
 def _load_active(path, actor, source_dataset):
     if not Path(path).is_file():
         return {"schema_version": VERSION, "actor": actor, "source_dataset": source_dataset,
                 "target_version": TARGET_VERSION, "symbols": {}}
     value = json.loads(Path(path).read_text(encoding="utf-8"))
-    if (value.get("schema_version") != VERSION or value.get("actor") != actor
+    if (not isinstance(value, dict) or value.get("schema_version") != VERSION or value.get("actor") != actor
             or value.get("source_dataset") != source_dataset or value.get("target_version") != TARGET_VERSION
             or not isinstance(value.get("symbols"), dict)):
         raise ContractError("Active model configuration differs from this local preparation")
     from .models import configured_models
-    for entry in value["symbols"].values():
-        if not isinstance(entry, dict) or not entry.get("selection_id"):
-            raise ContractError("Active model symbol entry is malformed")
-        utc(entry["selected_at"])
-        configured_models(entry["models"])
+    valid, errors = {}, {}
+    for symbol, entry in value["symbols"].items():
+        try:
+            if not isinstance(entry, dict) or not entry.get("selection_id"):
+                raise ContractError("Active model symbol entry is malformed")
+            utc(entry["selected_at"])
+            configured_models(entry["models"])
+            valid[symbol] = entry
+        except (ValueError, TypeError, KeyError) as exc:
+            errors[symbol] = _failure(exc)
+    if errors:
+        raise _ActiveEntryErrors({**value, "symbols": valid}, errors)
     return value
 
 
@@ -346,6 +365,11 @@ def _recover_metadata(path, loader, fallback, audit):
         return loader(), None
     except Exception as exc:
         evidence = _failure(exc)
+        recovered = fallback
+        if isinstance(exc, _ActiveEntryErrors):
+            recovered = exc.recovered
+            evidence.update(symbol_errors=exc.symbol_errors,
+                            retained_symbols=list(recovered["symbols"]))
         path = Path(path)
         if path.is_file():
             backup = path.with_name(path.stem + ".preserved-" + uuid.uuid4().hex + path.suffix)
@@ -356,7 +380,7 @@ def _recover_metadata(path, loader, fallback, audit):
                 os.fsync(handle.fileno())
             evidence.update(preserved_path=str(backup), sha256=hashlib.sha256(raw).hexdigest())
         audit.event("metadata_recovered", path=str(path), **evidence)
-        return fallback, evidence
+        return recovered, evidence
 
 
 def supervise(*, datastore, profile, watchlist, config=None, log_dir=None,
