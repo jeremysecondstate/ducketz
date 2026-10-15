@@ -867,8 +867,11 @@ def load_macro_features(
         raise MLContractError(
             "ALFRED macro available_at must equal its conservative provider clock"
         )
-    if vintage["fetched_at"].lt(vintage["release_at"]).any():
-        raise MLContractError("Macro vintage local receipt precedes provider release")
+    acquired_provider_date = vintage["fetched_at"].dt.tz_convert(
+        "America/Chicago"
+    ).dt.date
+    if acquired_provider_date.lt(vintage["realtime_start"].dt.date).any():
+        raise MLContractError("Macro vintage local receipt precedes provider date")
     natural = [
         "series_name",
         "observation_date",

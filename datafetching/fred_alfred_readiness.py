@@ -560,9 +560,12 @@ def _validate_vintage_integrity(vintages: pd.DataFrame) -> None:
         raise FredAlfredReadinessError(
             "ALFRED historical availability must equal provider release policy"
         )
-    if vintages["fetched_at"].lt(vintages["release_at"]).any():
+    acquired_provider_date = vintages["fetched_at"].dt.tz_convert(
+        "America/Chicago"
+    ).dt.date
+    if acquired_provider_date.lt(vintages["realtime_start"].dt.date).any():
         raise FredAlfredReadinessError(
-            "ALFRED retrieval precedes its provider release clock"
+            "ALFRED retrieval precedes its provider date"
         )
 
 
