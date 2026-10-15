@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -116,6 +116,50 @@ def prohibit_network(monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Paper runtime tests cannot make network requests.")
     monkeypatch.setattr("requests.post", forbidden)
+
+
+@pytest.mark.parametrize("mismatch", [None, "model_source", "latest_source", "recipe", "legacy", "old_fit"])
+def test_strict_paper_requires_latest_snapshot_fitted_forecast(tmp_path, mismatch):
+    config, data = configurations(tmp_path, interval="5m", horizon=1,
+                                  require_qualified_forecasts=False, max_forecast_age_seconds=300)
+    model_path = tmp_path / "models.json"
+    model_values = json.loads(model_path.read_text())
+    model_path.write_text(json.dumps({**model_values, "retrain_before_predict": True}))
+    clock = Clock()
+    instance = runtime_module.PaperRuntime(config, market=FakeMarket(clock), clock=clock)
+    instance.initialize()
+    try:
+        settings = asdict(instance.model_config.model_settings(1))
+        prediction = forecast(data, interval="5m", horizon=1,
+                              overrides={"model_source_run_id": DATA_ID},
+                              record_overrides={"trained_at_utc": iso(BASE + 1), "settings": settings})
+        directory = data / "_models" / "BTC" / "5m" / "h1"
+        record_path = directory / "runs" / prediction["model_id"] / "record.json"
+        record = json.loads(record_path.read_text())
+        if mismatch == "model_source":
+            record["source_run_id"] = "20260926T025505Z-1234abcd"
+        elif mismatch == "latest_source":
+            (data / "BTC" / "5m" / "latest.json").write_text(json.dumps({"run_id": "20260926T030006Z-1234abcd"}))
+        elif mismatch == "recipe":
+            record["settings"]["calibration_c"] = 100
+        elif mismatch == "old_fit":
+            record["trained_at_utc"] = iso(BASE - 1)
+        elif mismatch == "legacy":
+            prediction.pop("model_source_run_id")
+            (directory / "latest_prediction.json").write_text(json.dumps(prediction))
+        record_path.write_text(json.dumps(record))
+        result = instance.tick()
+        if mismatch is None:
+            assert instance.ledger.history("fills")
+            before = instance.ledger.history("fills")
+            instance.tick()
+            assert instance.ledger.history("fills") == before
+        else:
+            assert "BTC" in result["errors"]
+            assert not instance.ledger.history("fills")
+            assert instance.ledger.latest_observation() is not None
+    finally:
+        instance.ledger.close()
 
 
 def test_five_minute_forecasts_expire_hold_and_trade_the_next_candle(tmp_path):

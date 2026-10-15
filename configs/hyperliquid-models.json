@@ -5,6 +5,7 @@
     1
   ],
   "retrain_seconds": 300,
+  "retrain_before_predict": true,
   "poll_seconds": 5,
   "retry_seconds": 60,
   "model_threads": 2,
