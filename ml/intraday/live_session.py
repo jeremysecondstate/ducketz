@@ -25,6 +25,12 @@ VERSION = "manual-atlas-15m-session-v1"
 SCOUT_VERSION = "manual-scout-15m-session-v1"
 
 
+def automatic_stop_deadline(started):
+    """Latch 5pm on this manual session's Pacific date, including across DST."""
+    return instant(started).astimezone(PACIFIC).replace(
+        hour=17, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
+
 def latest_completed_reference(now, *, publication_offset_seconds):
     offset = float(publication_offset_seconds)
     if not 0 <= offset < 900:
@@ -313,7 +319,31 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     session_id = "manual-" + pc.lower() + "-15m:" + uuid.uuid4().hex
     process_create_time = psutil.Process(os.getpid()).create_time()
     stopped = threading.Event()
+    automatic_stop_at = automatic_stop_deadline(started) if pc == "Scout" else None
+    automatic_stop_requested_at = [None]
+    stop_lock = threading.Lock()
+    def should_stop():
+        if stopped.is_set() or automatic_stop_requested_at[0] is not None:
+            return True
+        if automatic_stop_at is not None:
+            now = instant(clock())
+            if now >= automatic_stop_at:
+                with stop_lock:
+                    if not stopped.is_set():
+                        automatic_stop_requested_at[0] = now.isoformat()
+                return True
+        return False
+    startup_in_progress = [True]
+    manual_stop_requested = [False]
+    def execution_should_stop():
+        requested = should_stop()
+        if requested and startup_in_progress[0] and automatic_stop_requested_at[0] is not None:
+            raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
+        return requested
     worker_errors = []
+    def stop_reason():
+        return ("worker_failure" if worker_errors else "manual_stop" if manual_stop_requested[0] else "automatic_17_00_pacific"
+                if automatic_stop_requested_at[0] is not None else "manual_stop")
     store = ShadowStore(root / "intraday/shadow.sqlite3")
     status_path = root / "intraday/manual-session.json"
     session_root = root / "intraday/sessions" / session_id.replace(":", "-")
@@ -335,7 +365,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         value = dict(schema_version=VERSION if pc == "Atlas" else SCOUT_VERSION,session_id=session_id,pc=pc,
                      pid=os.getpid(),process_create_time=process_create_time,started_at=started.isoformat(),
                      heartbeat_at=instant(clock()).isoformat(),status=state,manual_start=True,
-                     evidence_paths=evidence_paths,scout_admission=scout_admission if pc == "Scout" else None,**extra)
+                      evidence_paths=evidence_paths,scout_admission=scout_admission if pc == "Scout" else None,
+                      automatic_stop_at=automatic_stop_at.isoformat() if automatic_stop_at is not None else None,**extra)
         for destination in (session_status,status_path):
             temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex + ".tmp")
             temporary.write_text(encoded(value),encoding="utf-8")
@@ -344,6 +375,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             emit({"event":"session_status","status":state,**extra})
             previous_status[0] = state
     def manual_authority():
+        if should_stop():
+            return False
         try:
             value = json.loads(status_path.read_text(encoding="utf-8"))
             return (value["session_id"] == session_id and value["pc"] == pc
@@ -351,16 +384,23 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     and value["status"] == "RUNNING" and not stopped.is_set())
         except (OSError,ValueError,KeyError):
             return False
-    def pause(seconds):
+    def pause_with_stop(seconds, stop):
         end = time.monotonic() + max(0,float(seconds))
         while time.monotonic() < end:
-            if stopped.is_set():
+            if stop():
                 raise InterruptedError("Manual session stopped; acquisition recovery retained")
             sleep(min(1,max(0,end-time.monotonic())))
+    def pause(seconds):
+        pause_with_stop(seconds, should_stop)
+    def data_pause(seconds):
+        # Preserve the latched day's final native window, published after5pm.
+        pause_with_stop(seconds, stopped.is_set)
     with exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"):
         session_root.mkdir(parents=True,exist_ok=False)
         status("STARTING")
         try:
+            if should_stop():
+                raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
             load_dotenv(repository / ".env")
             if pc == "Scout":
                 if scout_admission == "broker-local":
@@ -371,7 +411,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     executor_type = ScoutAccountExecutor
                 executor = executor_type(repository=repository,profile=profile,datastore=root,store=store,
                     broker=SchwabSession(),local_symbols=symbols,session_started_at=started,session_id=session_id,
-                    clock=clock,manual_authority=manual_authority,stopped=stopped.is_set)
+                    clock=clock,manual_authority=manual_authority,stopped=execution_should_stop)
                 if scout_admission == "broker-local":
                     startup = executor.preflight()
                     if (not isinstance(startup,Mapping) or startup.get("session_id") != session_id
@@ -385,12 +425,17 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                     raise ContractError("Scout executor evidence paths must be a string mapping")
                 evidence_paths.update({"executor_" + key:value for key,value in executor_paths.items()})
                 emit({"event":"authority_ready",**startup})
+            startup_in_progress[0] = False
             histories = {}
             for symbol in symbols:
+                if should_stop():
+                    raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
                 try:
                     histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
                 except Exception as exc:
                     store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
+            if should_stop():
+                raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
             provider = DatabentoMarketDataProvider()
             if provider.dataset != config.source_dataset:
                 raise ContractError("Provider binding differs from selected single source")
@@ -403,35 +448,36 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 publication_offset_seconds=config.publication_offset_seconds,
                 on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
-                                  stopped=stopped.is_set,**model_runtime)
+                                  stopped=should_stop,**model_runtime)
             if pc == "Atlas":
                 executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
-                    session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=stopped.is_set)
+                    session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=should_stop)
         except BaseException as exc:
+            scheduled_stop = isinstance(exc,InterruptedError) and automatic_stop_requested_at[0] is not None
             stopped.set()
-            status("STOPPED" if isinstance(exc,KeyboardInterrupt) else "FAILED",
-                   stop_reason="manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
+            status("STOPPED" if isinstance(exc,KeyboardInterrupt) or scheduled_stop else "FAILED",
+                   stop_reason=stop_reason() if scheduled_stop else "manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
                    error_type=type(exc).__name__,error_message=str(exc),broker_orders_automatically_cancelled=False)
             store.event(session_id,"manual_startup_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
-            if isinstance(exc,KeyboardInterrupt):
+            if isinstance(exc,KeyboardInterrupt) or scheduled_stop:
                 return {"session_id":session_id,"status":"STOPPED"}
             raise
         status("RUNNING")
         def forecast_work():
             try:
                 forecasting_loop(runner,histories=histories,provider=provider,journal=journal,queue=queue,
-                                 stopped=stopped.is_set,clock=clock,pause=pause,
+                                 stopped=should_stop,clock=clock,pause=pause,
                                  history_source=minute_feed.history_source)
             except BaseException as exc:
                 store.event(session_id,"forecast_worker_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
-                if not (isinstance(exc,InterruptedError) and stopped.is_set()):
+                if not (isinstance(exc,InterruptedError) and should_stop()):
                     worker_errors.append({"worker":"forecast","error_type":type(exc).__name__,"message":str(exc)})
-                stopped.set()
+                    stopped.set()
         worker = threading.Thread(target=forecast_work,name="intraday-manual-forecast",daemon=True)
         def score_work():
             try:
                 scoring_loop(store,histories=histories,provider=provider,journal=journal,session_id=session_id,
-                             stopped=stopped.is_set,clock=clock,pause=pause,pc=pc,
+                             stopped=should_stop,clock=clock,pause=pause,pc=pc,
                              history_source=minute_feed.history_source)
             except InterruptedError:
                 pass
@@ -442,7 +488,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         scorer = threading.Thread(target=score_work,name="intraday-manual-scoring",daemon=True)
         def data_work():
             try:
-                minute_feed.run(stopped=stopped.is_set,pause=pause)
+                minute_feed.run(stopped=stopped.is_set,pause=data_pause)
             except InterruptedError:
                 pass
             except BaseException as exc:
@@ -454,15 +500,17 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         scorer.start()
         data_worker.start()
         print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
+        if automatic_stop_at is not None:
+            print("Automatic graceful stop: 5:00pm America/Los_Angeles; active work drains and resting orders retain their identities.",flush=True)
         print(f"Session status: {status_path}\nSession log: {log_path}",flush=True)
         next_recovery = instant(clock())
         try:
-            while not stopped.is_set():
+            while not should_stop():
                 status("RUNNING")
                 for forecast in queue.due(clock()):
                     # A prior symbol in this snapshot may have just received a
                     # longer provider wait. No later symbol bypasses that wait.
-                    if not queue.broker_due(clock()):
+                    if should_stop() or not queue.broker_due(clock()):
                         break
                     try:
                         result = executor.step(forecast)
@@ -489,7 +537,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         store.event(session_id,"execution_retry",{"forecast_id":forecast["forecast_id"],
                             "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay},symbol=forecast["symbol"])
                         break
-                if instant(clock()) >= next_recovery and queue.broker_due(clock()):
+                if not should_stop() and instant(clock()) >= next_recovery and queue.broker_due(clock()):
                     try:
                         executor.recover()
                         delay = 3
@@ -499,27 +547,40 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         store.event(session_id,"order_recovery_retry",{"error_type":type(exc).__name__,
                             "message":str(exc),"retry_after_seconds":delay})
                     next_recovery = instant(clock()) + timedelta(seconds=delay)
-                sleep(1)
+                if not should_stop():
+                    sleep(1)
         except KeyboardInterrupt:
+            manual_stop_requested[0] = True
             stopped.set()
         except BaseException as exc:
             worker_errors.append({"worker":"execution","error_type":type(exc).__name__,"message":str(exc)})
             raise
         finally:
-            stopped.set()
+            if automatic_stop_requested_at[0] is None or worker_errors:
+                stopped.set()
+            if automatic_stop_requested_at[0] is not None:
+                emit({"event":"automatic_stop_requested","stop_reason":"automatic_17_00_pacific",
+                      "automatic_stop_at":automatic_stop_at.isoformat(),
+                      "requested_at":automatic_stop_requested_at[0]})
             status("STOPPING",broker_orders_automatically_cancelled=False,
-                   stop_reason="worker_failure" if worker_errors else "manual_stop")
+                   stop_reason=stop_reason())
             print("15m order authority stopped. Waiting for active computation to finish; pending broker identities are retained.",flush=True)
             while worker.is_alive() or scorer.is_alive() or data_worker.is_alive():
-                worker.join(timeout=1)
-                scorer.join(timeout=1)
-                data_worker.join(timeout=1)
-                status("STOPPING",broker_orders_automatically_cancelled=False,
-                       stop_reason="worker_failure" if worker_errors else "manual_stop")
+                try:
+                    worker.join(timeout=1)
+                    scorer.join(timeout=1)
+                    data_worker.join(timeout=1)
+                    status("STOPPING",broker_orders_automatically_cancelled=False,
+                           stop_reason=stop_reason())
+                except KeyboardInterrupt:
+                    manual_stop_requested[0] = True
+                    stopped.set()
+                    emit({"event":"manual_stop_requested","during":"worker_drain"})
+            stopped.set()
             status("FAILED" if worker_errors else "STOPPED",broker_orders_automatically_cancelled=False,
-                   stop_reason="worker_failure" if worker_errors else "manual_stop",worker_errors=worker_errors)
+                   stop_reason=stop_reason(),worker_errors=worker_errors)
             store.event(session_id,"manual_session_stopped",{"pending_order_identity_preserved":True,
-                        "stop_reason":"worker_failure" if worker_errors else "manual_stop","worker_errors":worker_errors})
+                        "stop_reason":stop_reason(),"worker_errors":worker_errors})
         return {"session_id":session_id,"status":"FAILED" if worker_errors else "STOPPED"}
 
 

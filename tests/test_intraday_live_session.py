@@ -727,3 +727,325 @@ def test_scout_protocol_exception_stays_startup_failure_without_fallback(tmp_pat
     assert status["status"] == "FAILED"
     assert status["error_type"] == "ConnectionError"
     assert not executors[0].kwargs["manual_authority"]()
+
+
+@pytest.mark.parametrize("started,expected", [
+    ("2026-10-14T22:31:00Z", "2026-10-15T00:00:00Z"),
+    ("2026-12-14T23:31:00Z", "2026-12-15T01:00:00Z"),
+    ("2026-10-15T06:59:59Z", "2026-10-15T00:00:00Z"),
+    ("2026-10-15T07:00:00Z", "2026-10-16T00:00:00Z"),
+    ("2026-11-01T08:30:00Z", "2026-11-02T01:00:00Z"),
+    ("2026-03-08T09:30:00Z", "2026-03-09T00:00:00Z"),
+])
+def test_automatic_stop_deadline_uses_latched_pacific_date_and_dst(started, expected):
+    assert live_session.automatic_stop_deadline(instant(started)) == instant(expected)
+
+
+@pytest.mark.parametrize("now", ["2026-10-15T00:00:00Z", "2026-10-15T00:00:01Z"])
+def test_scout_manual_launch_at_or_after_cutoff_never_opens_operating_boundaries(tmp_path, monkeypatch, now):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    kwargs["clock"] = lambda: now
+    monkeypatch.setattr(live_session.threading, "Thread",
+        lambda **kwargs: pytest.fail("after-cutoff launch started a worker"))
+    from app.services import schwab
+    monkeypatch.setattr(schwab, "SchwabSession",
+        lambda: pytest.fail("after-cutoff launch constructed a broker session"))
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED"
+    assert calls == executors == []
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["automatic_stop_at"] == "2026-10-15T00:00:00+00:00"
+    assert status["stop_reason"] == "automatic_17_00_pacific"
+    assert status["broker_orders_automatically_cancelled"] is False
+
+
+def test_scout_cutoff_during_execution_revokes_final_authority_and_fences_batch(tmp_path, monkeypatch):
+    """Fake broker work crosses cutoff; neither another symbol nor recovery starts."""
+    import sys
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    now = [instant("2026-10-14T23:59:59Z")]
+    cutoff = instant("2026-10-15T00:00:00Z")
+    kwargs["clock"] = lambda: now[0]
+    kwargs["sleep"] = lambda seconds: pytest.fail("execution continued sleeping after cutoff")
+    published, stepped = [], []
+
+    def publish(runner, **options):
+        queue = options["queue"]
+        for symbol in ("DOCU", "DBX"):
+            value = runner.store.save_forecast(forecast(mode="live", pc="Scout", symbol=symbol,
+                cycle_id=queue.session_id, reference_at="2026-10-14T23:15:00Z",
+                target_open="2026-10-14T23:45:00Z", target_close=cutoff.isoformat(),
+                data_through="2026-10-14T23:30:00Z", information_available_at="2026-10-14T23:30:01Z",
+                issued_at=now[0].isoformat()))
+            queue.enqueue(value)
+            published.append(value)
+
+    def step(self, value):
+        assert self.kwargs["manual_authority"]()
+        assert self.kwargs["stopped"]() is False
+        stepped.append(value["symbol"])
+        now[0] = cutoff
+        # This is the same callback the prepared broker's final gate receives.
+        assert self.kwargs["manual_authority"]() is False
+        assert self.kwargs["stopped"]() is True
+        # The stop is sticky even if the wall clock subsequently moves back.
+        now[0] -= timedelta(seconds=1)
+        assert self.kwargs["manual_authority"]() is False
+        assert self.kwargs["stopped"]() is True
+        return {"kind": "execution_disposition", "disposition": "not_submitted", "evidence": {}}
+
+    executor_type = sys.modules["ml.intraday.scout_execution"].ScoutAccountExecutor
+    monkeypatch.setattr(executor_type, "step", step)
+    monkeypatch.setattr(executor_type, "recover",
+        lambda self: pytest.fail("order recovery began after cutoff"))
+    monkeypatch.setattr(live_session, "forecasting_loop", publish)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED"
+    assert len(stepped) == 1 and len(executors) == 1
+    assert {value["symbol"] for value in published} == {"DOCU", "DBX"}
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    assert store.forecasts(pc="Scout") == published
+    with store.connect() as db:
+        statuses = dict(db.execute("SELECT symbol,status FROM intraday_live_queue"))
+    assert statuses[stepped[0]] == "not_submitted"
+    assert statuses[next(symbol for symbol in statuses if symbol != stepped[0])] == "pending"
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["stop_reason"] == "automatic_17_00_pacific"
+    assert status["broker_orders_automatically_cancelled"] is False
+
+
+def test_scout_cutoff_drains_all_workers_and_keeps_original_deadline_after_midnight(tmp_path, monkeypatch):
+    """Deterministic thread fixtures finish only when the shutdown path joins them."""
+    from ml.intraday import minute_feed
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    now = [instant("2026-10-14T23:59:59Z")]
+    kwargs["clock"] = lambda: now[0]
+    threads, finished = [], []
+
+    class DrainingThread:
+        def __init__(self, *, target, name, **kwargs):
+            self.target, self.name, self.alive = target, name, False
+            threads.append(self)
+        def start(self):
+            self.alive = True
+        def is_alive(self):
+            return self.alive
+        def join(self, **kwargs):
+            if self.alive:
+                status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+                assert status["status"] == "STOPPING"
+                assert status["stop_reason"] == "automatic_17_00_pacific"
+                self.target()
+                self.alive = False
+                finished.append(self.name)
+
+    def finish_forecast(runner, **options):
+        assert options["stopped"]() is True
+        assert runner.stopped() is True
+
+    def finish_scoring(store, **options):
+        assert options["stopped"]() is True
+
+    class DrainingFeed:
+        history_source = None
+        def __init__(self, **kwargs):
+            self.on_closed = kwargs["on_closed"]
+        def run(self, **kwargs):
+            # Closing order authority does not discard the feed's last native
+            # interval; its existing acquisition finishes before final stop.
+            assert kwargs["stopped"]() is False
+            assert executors[0].kwargs["manual_authority"]() is False
+            self.on_closed({"status": "closed", "close_at": "2026-10-15T00:00:00+00:00",
+                "all_queued_native_windows_saved": True, "later_sessions_automatic": False})
+
+    def cross_midnight(seconds):
+        # The session began on October 14 Pacific; crossing midnight must not
+        # advance the already latched deadline to the following evening.
+        now[0] = instant("2026-10-15T07:00:00Z")
+
+    kwargs["sleep"] = cross_midnight
+    monkeypatch.setattr(live_session.threading, "Thread", DrainingThread)
+    monkeypatch.setattr(live_session, "forecasting_loop", finish_forecast)
+    monkeypatch.setattr(live_session, "scoring_loop", finish_scoring)
+    monkeypatch.setattr(minute_feed, "QuarterHourMinuteFeed", DrainingFeed)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED"
+    assert len(threads) == 3 and all(not thread.alive for thread in threads)
+    assert finished == ["intraday-manual-forecast", "intraday-manual-scoring", "intraday-manual-minute-data"]
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["automatic_stop_at"] == "2026-10-15T00:00:00+00:00"
+    assert status["stop_reason"] == "automatic_17_00_pacific"
+    assert status["worker_errors"] == []
+    assert not executors[0].kwargs["manual_authority"]()
+    log_path = tmp_path / "intraday/sessions" / result["session_id"].replace(":", "-") / "events.jsonl"
+    logs = [json.loads(line) for line in log_path.read_text().splitlines()]
+    assert [row["status"] for row in logs if row["event"] == "session_status"] == [
+        "STARTING", "RUNNING", "STOPPING", "STOPPED"]
+    completed = [row for row in logs if row["event"] == "minute_data_day_complete"]
+    assert len(completed) == 1 and completed[0]["all_queued_native_windows_saved"] is True
+
+
+def test_scout_preflight_crossing_cutoff_is_a_scheduled_stop_before_provider_or_workers(tmp_path, monkeypatch):
+    import sys
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    now = [instant("2026-10-14T23:59:59Z")]
+    kwargs["clock"] = lambda: now[0]
+
+    def cross_cutoff(self):
+        calls.append("preflight")
+        now[0] = instant("2026-10-15T00:00:00Z")
+        self.kwargs["stopped"]()
+        pytest.fail("startup stop callback did not interrupt preflight")
+
+    executor_type = sys.modules["ml.intraday.scout_execution"].ScoutAccountExecutor
+    monkeypatch.setattr(executor_type, "preflight", cross_cutoff)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED" and calls == ["preflight"]
+    assert len(executors) == 1
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["stop_reason"] == "automatic_17_00_pacific"
+    assert status["broker_orders_automatically_cancelled"] is False
+
+
+def test_real_scout_preflight_failure_after_cutoff_remains_a_startup_failure(tmp_path, monkeypatch):
+    import sys
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    now = [instant("2026-10-14T23:59:59Z")]
+    kwargs["clock"] = lambda: now[0]
+
+    def fail(self):
+        calls.append("preflight")
+        now[0] = instant("2026-10-15T00:00:00Z")
+        raise RuntimeError("preflight fixture failure")
+
+    executor_type = sys.modules["ml.intraday.scout_execution"].ScoutAccountExecutor
+    monkeypatch.setattr(executor_type, "preflight", fail)
+    with pytest.raises(RuntimeError, match="preflight fixture failure"):
+        live_session.run_manual(**kwargs)
+    assert calls == ["preflight"] and len(executors) == 1
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
+    assert status["error_type"] == "RuntimeError"
+
+
+def test_scout_worker_failure_keeps_failure_status_when_it_crosses_cutoff(tmp_path, monkeypatch):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    now = [instant("2026-10-14T23:59:59Z")]
+    kwargs["clock"] = lambda: now[0]
+
+    def fail(runner, **options):
+        now[0] = instant("2026-10-15T00:00:00Z")
+        assert options["stopped"]() is True
+        raise RuntimeError("forecast fixture failure during shutdown")
+
+    monkeypatch.setattr(live_session, "forecasting_loop", fail)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "FAILED"
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["stop_reason"] == "worker_failure"
+    assert status["worker_errors"][0]["worker"] == "forecast"
+    assert status["broker_orders_automatically_cancelled"] is False
+    assert "step" not in calls and "recover" not in calls
+
+
+def test_scout_automatic_cutoff_does_not_change_atlas_manual_stop(tmp_path, monkeypatch):
+    import dotenv
+    from app.services import schwab, databento_market_data
+    from ml.intraday import runtime_compatibility, data, account_execution
+    monkeypatch.setattr(live_session, "local_symbols", lambda *args: ("Atlas", ("AAPL",)))
+    monkeypatch.setattr(runtime_compatibility, "read_gameplan_runtime_compatibility",
+        lambda *args, **kwargs: {"ready": True})
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *args: None)
+    monkeypatch.setattr(data, "load_local_history", lambda *args, **kwargs: object())
+    monkeypatch.setattr(databento_market_data, "DatabentoMarketDataProvider",
+        lambda: SimpleNamespace(dataset="EQUS.MINI"))
+    monkeypatch.setattr(schwab, "SchwabSession", lambda: object())
+    recoveries = []
+    monkeypatch.setattr(account_execution, "IntradayAccountExecutor", lambda **kwargs: SimpleNamespace(
+        step=lambda value: pytest.fail("fixture issued an order"), recover=lambda: recoveries.append(True)))
+    monkeypatch.setattr(live_session, "forecasting_loop", lambda *args, **kwargs: None)
+    monkeypatch.setattr(live_session, "scoring_loop", lambda *args, **kwargs: None)
+
+    class InlineThread:
+        def __init__(self, *, target, **kwargs):
+            self.target = target
+        def start(self):
+            self.target()
+        def is_alive(self):
+            return False
+        def join(self, **kwargs):
+            pass
+
+    def stop(seconds):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(live_session.threading, "Thread", InlineThread)
+    result = live_session.run_manual(repository=tmp_path, datastore=tmp_path, profile=tmp_path / "profile.json",
+        watchlist=tmp_path / "watchlist.txt", config=live_session.ResearchConfig(),
+        clock=lambda: "2026-10-15T00:01:00Z", sleep=stop)
+    assert result["status"] == "STOPPED" and recoveries == [True]
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["automatic_stop_at"] is None
+    assert status["stop_reason"] == "manual_stop"
+
+
+def test_ctrl_c_during_automatic_data_drain_still_joins_workers_and_records_manual_stop(tmp_path, monkeypatch):
+    from ml.intraday import minute_feed
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    now = [instant("2026-10-14T23:59:59Z")]
+    kwargs["clock"] = lambda: now[0]
+    interrupted, threads, finished = [], [], []
+
+    class InterruptingThread:
+        def __init__(self, *, target, name, **kwargs):
+            self.target, self.name, self.alive = target, name, False
+            threads.append(self)
+        def start(self):
+            self.alive = True
+        def is_alive(self):
+            return self.alive
+        def join(self, **kwargs):
+            if not interrupted:
+                interrupted.append(True)
+                raise KeyboardInterrupt()
+            if self.alive:
+                self.target()
+                self.alive = False
+                finished.append(self.name)
+
+    class UnfinishedFeed:
+        history_source = None
+        def __init__(self, **kwargs):
+            pass
+        def run(self, **kwargs):
+            # The explicit Ctrl-C interrupts otherwise automatic late data
+            # acquisition. It must not fabricate completion for missing work.
+            assert kwargs["stopped"]() is True
+            assert executors[0].kwargs["manual_authority"]() is False
+
+    def finish_forecast(runner, **options):
+        assert runner.stopped() is True and options["stopped"]() is True
+
+    def finish_scoring(store, **options):
+        assert options["stopped"]() is True
+
+    def reach_cutoff(seconds):
+        now[0] = instant("2026-10-15T00:00:00Z")
+
+    kwargs["sleep"] = reach_cutoff
+    monkeypatch.setattr(live_session.threading, "Thread", InterruptingThread)
+    monkeypatch.setattr(live_session, "forecasting_loop", finish_forecast)
+    monkeypatch.setattr(live_session, "scoring_loop", finish_scoring)
+    monkeypatch.setattr(minute_feed, "QuarterHourMinuteFeed", UnfinishedFeed)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED" and interrupted == [True]
+    assert len(threads) == 3 and all(not thread.alive for thread in threads)
+    assert finished == ["intraday-manual-forecast", "intraday-manual-scoring", "intraday-manual-minute-data"]
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["status"] == "STOPPED" and status["stop_reason"] == "manual_stop"
+    assert status["broker_orders_automatically_cancelled"] is False and status["worker_errors"] == []
+    log_path = tmp_path / "intraday/sessions" / result["session_id"].replace(":", "-") / "events.jsonl"
+    logs = [json.loads(line) for line in log_path.read_text().splitlines()]
+    assert any(row["event"] == "automatic_stop_requested" for row in logs)
+    assert any(row["event"] == "manual_stop_requested" for row in logs)
+    assert not any(row["event"] == "minute_data_day_complete" for row in logs)
