@@ -29,7 +29,7 @@ def setup(tmp_path, monkeypatch, *, now="2026-10-14T17:16:00Z", start=None, beha
     journal = data.AcquisitionJournal(tmp_path / "acquisition.sqlite3")
     provider = SimpleNamespace(dataset="EQUS.MINI")
 
-    def fetch(provider, *, symbols, opened_at, attempt_id, clock):
+    def fetch(provider, *, symbols, opened_at, attempt_id, clock, stopped=lambda: False):
         reference = instant(opened_at)
         assert reference + STEP <= clock()
         calls.append((reference, tuple(symbols), clock()))

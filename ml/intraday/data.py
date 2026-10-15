@@ -454,7 +454,8 @@ def recover_interval(fetch: Callable[[], IntervalResponse], *, journal: Acquisit
 
 
 def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attempt_id: str,
-                                    clock: Callable = lambda: datetime.now(timezone.utc)) -> IntervalResponse:
+                                    clock: Callable = lambda: datetime.now(timezone.utc),
+                                    stopped: Callable = lambda: False) -> IntervalResponse:
     """Read the exact 15m native-minute range through an existing provider.
 
     Caller supplies its already-authorized configured provider; construction,
@@ -476,15 +477,24 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
     source_id = f"databento:{dataset}:ohlcv-1m"
     coverage = None
     try:
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before metadata request")
         specs = [spec for spec in provider.native_specs() if spec.schema == "ohlcv-1m" and spec.frequency == "1m"]
         if len(specs) != 1:
             raise ContractError("One native ohlcv-1m provider spec is required")
-        advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=provider.dataset_range())
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before dataset range request")
+        dataset_range = provider.dataset_range()
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before schema range request")
+        advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=dataset_range)
         coverage = (utc(advertised.start).isoformat(), utc(advertised.end).isoformat())
         if utc(advertised.start) > op or utc(advertised.end) < cl:
             return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
                 begin.isoformat(), utc(clock()).isoformat(), "unavailable_coverage", coverage_open=coverage[0],
                 coverage_close=coverage[1], error="requested_interval_outside_advertised_schema_range")
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before price request")
         results, selected = provider.fetch_native_bars_range([symbol], specs[0], start=op.to_pydatetime(),
                                                             end=cl.to_pydatetime(), available_range=advertised)
         if symbol not in results or utc(selected.start) != op or utc(selected.end) != cl:
@@ -497,7 +507,7 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
         return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
             begin.isoformat(), utc(clock()).isoformat(), "success", native, coverage[0], coverage[1],
             "Databento native OHLCV omits intervals with no trades; successful exact-range response is within advertised coverage")
-    except ContractError:
+    except (ContractError, InterruptedError):
         raise
     except Exception as exc:
         from app.services.databento_retry import is_retryable_databento_error, _retry_after_seconds, _http_status
@@ -509,7 +519,8 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
 
 
 def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opened_at, attempt_id: str,
-                                     clock: Callable = lambda: datetime.now(timezone.utc)) -> dict[str, IntervalResponse]:
+                                     clock: Callable = lambda: datetime.now(timezone.utc),
+                                     stopped: Callable = lambda: False) -> dict[str, IntervalResponse]:
     """One exact native-minute request for all symbols; independent evidence.
 
     Price reads use the existing provider's batching implementation. No newly
@@ -531,19 +542,28 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
     source_id, coverage = f"databento:{dataset}:ohlcv-1m", None
     status, error, wait, results = "success", None, 0.0, {}
     try:
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before metadata request")
         specs = [spec for spec in provider.native_specs() if spec.schema == "ohlcv-1m" and spec.frequency == "1m"]
         if len(specs) != 1:
             raise ContractError("One native ohlcv-1m provider spec is required")
-        advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=provider.dataset_range())
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before dataset range request")
+        dataset_range = provider.dataset_range()
+        if stopped():
+            raise InterruptedError("Candle acquisition stopped before schema range request")
+        advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=dataset_range)
         coverage = (utc(advertised.start).isoformat(), utc(advertised.end).isoformat())
         if utc(advertised.start) > op or utc(advertised.end) < cl:
             status, error = "unavailable_coverage", "requested_interval_outside_advertised_schema_range"
         else:
+            if stopped():
+                raise InterruptedError("Candle acquisition stopped before price request")
             results, selected = provider.fetch_native_bars_range(clean, specs[0], start=op.to_pydatetime(),
                 end=cl.to_pydatetime(), available_range=advertised)
             if set(results) != set(clean) or utc(selected.start) != op or utc(selected.end) != cl:
                 raise ContractError("Provider did not preserve exact requested interval or symbol set")
-    except ContractError:
+    except (ContractError, InterruptedError):
         raise
     except Exception as exc:
         from app.services.databento_retry import is_retryable_databento_error, _retry_after_seconds, _http_status
