@@ -35,6 +35,19 @@ broker at manual startup. No Gameplan account configuration, cash balance, held
 position, Gameplan allocation or Atlas connection is a startup requirement. Ctrl-C stops this worker gracefully; resting orders and
 their exact identities remain recorded for recovery.
 
+Scout also begins a graceful stop automatically at **5:00 p.m.
+America/Los_Angeles** on the date of its manual start. The deadline follows
+Pacific daylight-saving time and stays fixed if a session runs past midnight.
+At the deadline, order authority ends and model/scoring workers stop taking new
+work. Active computation finishes saving its real output. The data worker drains
+the latched day's remaining windows, including the final 4:45–5:00 p.m. window
+once published, before the process exits. Actual missing data remains pending
+while existing acquisition retries continue. Status and the session
+log record `automatic_17_00_pacific` separately from a manual stop or failure.
+This does not cancel resting broker orders or sell positions. A manual launch
+at or after 5 p.m. stops before broker preflight or data acquisition. The next
+day still requires a new manual start. Atlas's sessions are unchanged.
+
 Each completed quarter-hour cycle uses the existing full configured ensemble,
 original fixed target, independent technical sizing and half-up whole-share
 rounding. A valid desired trade is saved before capacity adjustment. The fresh
