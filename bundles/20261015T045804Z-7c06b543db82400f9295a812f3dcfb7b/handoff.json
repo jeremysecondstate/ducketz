@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-15T04:58:04.498332Z",
+  "id": "20261015T045804Z-7c06b543db82400f9295a812f3dcfb7b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout local submission journal dependency composed on main with immutable history preserved."
+}
