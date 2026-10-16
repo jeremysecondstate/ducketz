@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T07:26:12.640811Z",
+  "id": "20261016T072612Z-4926ada956214a86b7dec1a22177bbbd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout composed optional nightly producer feedback and repaired input-replacement provenance through publication."
+}
