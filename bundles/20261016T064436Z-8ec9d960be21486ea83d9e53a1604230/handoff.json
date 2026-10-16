@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T06:44:36.274578Z",
+  "id": "20261016T064436Z-8ec9d960be21486ea83d9e53a1604230",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout composed bounded model-feedback evaluation on common main and repaired validated Stats receipt binding."
+}

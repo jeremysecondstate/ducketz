@@ -1,0 +1,84 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T064003Z-ffa9ff5329e8445aa8ea47ba57cced39",
+  "change_id": "20261016T064003Z-ffa9ff5329e8445aa8ea47ba57cced39",
+  "commit_sha": "b36471fada47c0e5870c0703ea116c22bcfebb77",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared feedback validation and bounded model evaluation apply to Atlas and Scout independently.",
+    "Compose existing feedback module and complete original suite from 775052967f4a17d2598e413c9ed369959fe3b1f4; retain original Completion-Records 20261007T221732Z-2f3996bdc5fd4e5db7367e7a92c03c08, 20261008T013431Z-41550a3763044bc8a8b690be0fb8bee8, 20261013T201011Z-bb838715086b4c07b991a1518f249a4a, 20261014T050106Z-0e807c66479e4deb83823375e163fe5c, 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93.",
+    "Retain the initially validated Stats receipt identity and reject coherent same-run republication during feedback binding, for preparation, acceptance and latest/frozen review loading.",
+    "Candidate parameters remain bounded; existing defaults and accepted candidates win development-score ties, assessment remains separate, and unchanged gates control promotion.",
+    "Compose only candidate-evaluation helpers in nightly Gameplan; broader runtime/workflow/dispatch and production integration remain separate. Preserve Scout existing producer extensions, all original assertions, symbols and manual trader controls.",
+    "Preserve complete champion assertions while adding the already-existing Scout fixture Gameplan artifact and its manifest binding, required by the publication reader."
+  ],
+  "files": [
+    "ml/gameplan_model_feedback.py",
+    "ml/nightly_gameplan.py",
+    "tests/test_gameplan_model_feedback.py",
+    "tests/test_gameplan_feedback_receipt_binding.py",
+    "tests/test_gameplan_champions.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "b59d10f86359cb75aa62721c48a912f2da3bf306",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic-fixture checks; no provider or broker requests, account reads, production training, trader action, task mutation or private export.",
+    "Runtime/workflow/dispatch composition and loaded-process adoption are separate; Scout existing operational producer source is preserved."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/179"
+  ],
+  "local_receipt": "Installed only the feedback receipt repair and eight-case regression. Preserved existing local nightly producer, complete original feedback suite, extended champion tests, symbols and private bindings. Verified all 258 optional manifest entries.",
+  "remaining_source_work": "Compose the existing optional prior-session champion retention and full original champion tests, then review producer feedback plumbing before broader nightly runtime/workflow/dispatch composition.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Feedback binds immutable Stats evidence; common model evaluation gains existing optional bounded candidates. Local Scout receives only the feedback receipt repair and regression, preserving its producer/CLI behavior without a runtime restart.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout composed bounded model-feedback evaluation on common main and repaired validated Stats receipt binding.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T06:39:54.561031Z",
+      "fingerprints": 178,
+      "import_verifier_violations": 0,
+      "output_sha256": "44cba7fb2c9470c2fe68975abd8566b3a18fb7dbbdad0e932684968146f84b0b",
+      "result": "224 passed, 50 warnings in 17.95s",
+      "started_at_utc": "2026-10-16T06:39:35.242466Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T06:40:23.326863Z",
+      "fingerprints": 178,
+      "import_verifier_violations": 0,
+      "output_sha256": "e4da0198b37c593ec3b7f76f779a3c3f3d762ae686258a18d5bd5b1609b8fb6a",
+      "result": "224 passed, 50 warnings in 18.47s",
+      "started_at_utc": "2026-10-16T06:40:03.347358Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T06:41:17.480754Z",
+      "fingerprints": 178,
+      "import_verifier_violations": 0,
+      "output_sha256": "ee649ab4e48aa429e7a9423e007cd01d7fcbf81071e2d27d4f50db06fd1083a8",
+      "result": "224 passed, 50 warnings in 17.96s",
+      "started_at_utc": "2026-10-16T06:40:58.077551Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T06:43:02.631187Z",
+      "fingerprints": 178,
+      "import_verifier_violations": 0,
+      "output_sha256": "31181a3d6576755459f36aebbb9662a62f1b4067e68f2946de5954b45c6e5b98",
+      "result": "224 passed, 50 warnings in 18.32s",
+      "started_at_utc": "2026-10-16T06:42:42.862005Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T06:44:05.560961Z",
+      "fingerprints": 204,
+      "import_verifier_violations": 0,
+      "output_sha256": "e5e6d3003600868aaf479508a48e2bbcb53355c4334d3e86a97d4106801e73ef",
+      "result": "230 passed, 54 warnings in 18.73s",
+      "started_at_utc": "2026-10-16T06:43:45.395027Z"
+    }
+  ]
+}
