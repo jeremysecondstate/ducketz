@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T22:16:11.886301Z",
+  "id": "20261016T221611Z-9a095c372adf4a76bcea39ca4d35c6b9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas fifteen-minute submission latency repair installed and published"
+}

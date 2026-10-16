@@ -1,0 +1,52 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261016T221319Z-3822cca947eb48788f81481e27784933",
+  "change_id": "20261016T221319Z-3822cca947eb48788f81481e27784933",
+  "commit_sha": "9a6dc4bb4f5bdc10b00bfc95ff346f5ce37655a5",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_forecast_scope.py"
+    }
+  ],
+  "limitations": [
+    "Draft PR stacked on diagnostic PR196; independent-session prerequisites are not on main.",
+    "Original discarded historical exception remains unknown; offline reproduction confirms and fixes unrelated-history latency causing quote expiry.",
+    "No main integration, peer installation or active runtime recovery asserted."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/197",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas source installed with unchanged manual controls; a human-controlled restart loads it. No schema, model-policy or freshness-limit changes. Shared code applies independently to either PC without cross-trader inspection.",
+  "scope": "shared",
+  "summary": "Atlas fifteen-minute submission latency repair installed and published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-16T22:14:47.904828Z",
+      "output_sha256": "0786930ed12d56b06423962461386a6444af8048bd476b6aa055bad24865725d",
+      "result": "43 passed",
+      "started_at_utc": "2026-10-16T22:14:34.623908Z",
+      "suite": "intraday account execution, forecast scope and intentions"
+    }
+  ]
+}
