@@ -382,8 +382,15 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         raise ValueError("Late recovery cannot replace a frozen informational refresh")
     dated_continuation = continuing(action_date)
     if dated_continuation:
-        if late_action_date not in (None, action_date) or deadline_at != original_deadline:
+        if late_action_date not in (None, action_date):
             raise ValueError("Nightly planning must retain its original action date and target")
+        if deadline_at != original_deadline:
+            # A saved recovery tail keeps both original deadlines. The frozen
+            # exception below must still verify the exact source and session.
+            from ml.preparation_deadline import RECOVERY_VERSION
+            if (deadline_exception is None or not Path(deadline_exception).is_file()
+                    or json.loads(Path(deadline_exception).read_text(encoding="utf-8")).get("schema_version") != RECOVERY_VERSION):
+                raise ValueError("Nightly planning must retain its original action date and target")
     elif late_action_date is not None:
         close = (expected_deadline + pd.Timedelta(hours=13)).tz_convert("UTC")
         if (late_action_date != action_date
