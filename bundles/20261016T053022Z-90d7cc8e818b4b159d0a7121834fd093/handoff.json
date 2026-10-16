@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T05:30:22.933429Z",
+  "id": "20261016T053022Z-90d7cc8e818b4b159d0a7121834fd093",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed Stats handoff validation and fixed original receipt provenance during export."
+}

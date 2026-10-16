@@ -1,0 +1,50 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261016T052636Z-8e6ff0e2d16849faadc6e58050bcd785",
+  "change_id": "20261016T052636Z-8e6ff0e2d16849faadc6e58050bcd785",
+  "commit_sha": "e0e04d7bc1850eeb6cc6bdc7ccb55662fb4bda04",
+  "files": [
+    "ml/gameplan_stats_handoff.py",
+    "tests/test_gameplan_stats_handoff.py",
+    "app/ui/gameplan_stats_data.py",
+    "tests/test_gameplan_stats_data.py"
+  ],
+  "installation_stage": "installed_on_atlas",
+  "integration_stage": "draft_pr_against_main",
+  "limitations": [
+    "Offline saved-artifact tests only; loaded-process adoption is unverified.",
+    "Main integration and Scout installation are not claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/174"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_record": "20261014T095934Z-c1a826bccdd74a488174a0405f7f5201",
+  "retained_peer_source": "8000d8290d05123ee343a77774addb55f9c6d0ec",
+  "runtime_implications": "Four reviewed source/test paths installed on Atlas; no runtime restart, trader action or nightly operating prerequisite.",
+  "scope": "Shared Stats behavior applies independently to both PCs.",
+  "summary": "Atlas installed Stats handoff validation and fixed original receipt provenance during export.",
+  "tests": [
+    {
+      "check": "Stats sealed source",
+      "completed_at_utc": "2026-10-16T05:26:59.244738Z",
+      "output_sha256": "a376904d05b7bc56f126e8973df2c5cb1246f3f1ef1ba77d1449c6fa3925fdcd",
+      "result": "160 passed; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-16T05:26:37.633736Z"
+    },
+    {
+      "check": "Stats isolated publication",
+      "completed_at_utc": "2026-10-16T05:28:08.011759Z",
+      "output_sha256": "341027f88d7ea3222363a93485c4bbd01e519bec6da819b6fd6331acab7e21b2",
+      "result": "160 passed; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-16T05:27:46.036945Z"
+    },
+    {
+      "check": "Stats installed Atlas",
+      "completed_at_utc": "2026-10-16T05:28:31.073748Z",
+      "output_sha256": "c6cc8818b6aef9e4513a7d421cda054a19633ef1b9aee2c625d8489b3e032ede",
+      "result": "152 passed; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-16T05:28:11.666893Z"
+    }
+  ]
+}
