@@ -56,8 +56,9 @@ def publish(root, stamp="20260908T080000.000000Z", *, status="PROMOTED", config_
     config = {"schema_version": GAMEPLAN_VERSION, "target_contract_version": CONTRACT,
               "target_price_source_contract": SOURCE, "target_price_dataset": "XNAS.ITCH",
               "action_date": str(DAY), "symbols": list(STOCK_TRADER_SYMBOLS), **(config_changes or {})}
+    (run / "gameplan.json").write_text(json.dumps({"action_date": config["action_date"]}))
     write_manifest(run, run_timestamp=trained_at, input_files=(),
-                   output_files=("models/1d/model.joblib", "model-reports.json", "training-cohort-1d.parquet"),
+                   output_files=("models/1d/model.joblib", "model-reports.json", "training-cohort-1d.parquet", "gameplan.json"),
                    configuration=config)
     _publish_gameplan(root, run=run, action_date=DAY, published_at=trained_at,
                       source_loop_b="fixture", source_strategy=None)
@@ -173,8 +174,9 @@ def test_retained_model_recomputes_current_features_and_keeps_actual_evidence(tm
     pd.DataFrame({"x": [999.], "target": [0]}).to_parquet(run / "training-cohort-1d.parquet", index=False)
     (run / "model-reports.json").write_text(json.dumps({"1d": retained["report"]}))
     config = json.loads((source_run / "manifest.json").read_text())["configuration"]
+    (run / "gameplan.json").write_bytes((source_run / "gameplan.json").read_bytes())
     write_manifest(run, run_timestamp=pd.Timestamp("2026-09-08T09:30Z"), input_files=champion["files"],
-        output_files=(*outputs, "models/1d/model.joblib", "model-reports.json", "training-cohort-1d.parquet"),
+        output_files=(*outputs, "models/1d/model.joblib", "model-reports.json", "training-cohort-1d.parquet", "gameplan.json"),
         configuration=config)
     _publish_gameplan(tmp_path, run=run, action_date=DAY, published_at=pd.Timestamp("2026-09-08T09:30Z"),
                       source_loop_b="fixture", source_strategy=None)
