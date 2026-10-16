@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T06:21:04.144688Z",
+  "id": "20261016T062104Z-a8a91d61d7124944b147845a03e21e35",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout completed late publication package propagation on common main and verified its existing local adoption."
+}

@@ -1,0 +1,82 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T061608Z-b9c226dde4514f059e17f96eac1a07d5",
+  "change_id": "20261016T061608Z-b9c226dde4514f059e17f96eac1a07d5",
+  "commit_sha": "d938d647c026e812956abce1c590eda4bb836638",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared package export and validation apply to Atlas and Scout independently.",
+    "Compose original Atlas late-publication package propagation from source 9eb6bd394b2625e90a03c63fc1d12759bf080b42; retain Completion-Record 20261009T184124Z-640806e7eb774553a32f8d7506ed8d81.",
+    "Carry the verified publication timestamp into package forecast validation and seal it before calculating the package digest; reject publication after package creation without backdating forecast or input timestamps.",
+    "Retain the complete Scout continuation round-trip suite from 775052967f4a17d2598e413c9ed369959fe3b1f4 and records 20261013T201011Z-bb838715086b4c07b991a1518f249a4a, 20261014T050106Z-0e807c66479e4deb83823375e163fe5c, 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93 and 20261016T052407Z-12aa09bffa434e40810e3c3541054ec9.",
+    "Preserve existing Scout account-balance, optional projection and idempotent publication extensions. Source publication remains separate from nightly production and manual trader control."
+  ],
+  "files": [
+    "ml/joint_capital_handoff.py",
+    "ml/joint_capital_plan.py",
+    "tests/test_late_forecast_validation.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "61f5d50a157aa89da0571e20f0cde0686d7ba483",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture checks only; no provider or broker calls, production training, trader action or private export.",
+    "Existing Scout extensions remain separately bound by local checks; loaded-process adoption is unverified.",
+    "The synthetic symlink rejection test is skipped because this Windows host does not permit creating symlinks."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/177"
+  ],
+  "local_receipt": "Verified existing local propagation and all original source bytes with separate local dependency checks; no source rewrite. Scout account-balance, optional projection, idempotent publication and original assertions remain intact.",
+  "remaining_source_work": "Compose existing model-feedback validation and candidate evaluation with the complete original feedback suite before broader nightly runtime/workflow/dispatch composition; review Stats receipt binding against coherent reissue.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Common package readers and exporters retain truthful late publication provenance. Scout already carries the reviewed semantic delta; preserve its existing local extensions and manual controls without restarting applications.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout completed late publication package propagation on common main and verified its existing local adoption.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T06:15:48.884909Z",
+      "fingerprints": 200,
+      "import_verifier_violations": 0,
+      "output_sha256": "a3e094028212e6375566b2c602d87b8933096402c64ac4c2026b68f178ed4ac9",
+      "result": "274 passed, 1 skipped, 40 warnings in 35.42s",
+      "started_at_utc": "2026-10-16T06:15:11.983151Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T06:16:45.251606Z",
+      "fingerprints": 200,
+      "import_verifier_violations": 0,
+      "output_sha256": "d5fc7ac61cd35ae517a6d2f7fe383880448eb8dacb8747e1370e9499c4496829",
+      "result": "274 passed, 1 skipped, 40 warnings in 35.13s",
+      "started_at_utc": "2026-10-16T06:16:08.553042Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T06:18:20.514621Z",
+      "fingerprints": 200,
+      "import_verifier_violations": 0,
+      "output_sha256": "e6003c360dc20d8374abab89df9bd99a57f7d8e995804f7d57bb8f396c0f7093",
+      "result": "274 passed, 1 skipped, 40 warnings in 34.84s",
+      "started_at_utc": "2026-10-16T06:17:44.165754Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T06:19:34.449677Z",
+      "fingerprints": 200,
+      "import_verifier_violations": 0,
+      "output_sha256": "bfd6480f3a758fd8859b097bd5671b60c38c214ab7a26be55f18ddc5cc7cb193",
+      "result": "274 passed, 1 skipped, 40 warnings in 35.10s",
+      "started_at_utc": "2026-10-16T06:18:57.850580Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T06:20:42.899507Z",
+      "fingerprints": 219,
+      "import_verifier_violations": 0,
+      "output_sha256": "30203f103e2ca9430c949c9f9b88958195da191032abc1cdaccce19b08c5cc93",
+      "result": "288 passed, 1 skipped, 40 warnings in 36.06s",
+      "started_at_utc": "2026-10-16T06:20:05.294299Z"
+    }
+  ]
+}
