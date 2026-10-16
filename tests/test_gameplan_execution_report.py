@@ -346,3 +346,106 @@ def test_unknown_submission_timestamp_does_not_reuse_broker_observation_time(led
 def test_bad_iso_date_cannot_escape_private_output_root(ledger):
     with pytest.raises(ValueError):
         publish_execution_summary(ledger, "../other", observed_at=NOW)
+
+
+def test_missing_local_ledger_preserves_imported_execution_summary_bytes(ledger):
+    from app.ui.gameplan_execution_data import load_gameplan_execution
+
+    add_order(ledger)
+    imported = (json.dumps(report(ledger), sort_keys=True, indent=1) + "\r\n").encode("utf-8")
+    recipient = ledger / "recipient"
+    destination = recipient / "state/gameplan-execution-reports" / SESSION / "summary.json"
+    destination.parent.mkdir(parents=True)
+    destination.write_bytes(imported)
+    assert not (recipient / LEDGER_RELATIVE_PATH).exists()
+
+    output = publish_execution_summary(recipient, SESSION, observed_at=NOW)
+
+    assert output == destination
+    assert destination.read_bytes() == imported
+    assert list(destination.parent.iterdir()) == [destination]
+    snapshot = load_gameplan_execution(recipient, SESSION, now=NOW)
+    assert snapshot.state == "available"
+    assert snapshot.counts["fully_filled"] == 1
+
+
+@pytest.mark.parametrize("saved_bytes", [b'{"unfinished":', b'{"unsupported": true}\n'])
+def test_missing_local_ledger_preserves_unreadable_saved_execution(tmp_path, saved_bytes):
+    from app.ui.gameplan_execution_data import load_gameplan_execution
+
+    destination = tmp_path / "state/gameplan-execution-reports" / SESSION / "summary.json"
+    destination.parent.mkdir(parents=True)
+    destination.write_bytes(saved_bytes)
+
+    output = publish_execution_summary(tmp_path, SESSION, observed_at=NOW)
+
+    assert output == destination
+    assert destination.read_bytes() == saved_bytes
+    assert list(destination.parent.iterdir()) == [destination]
+    snapshot = load_gameplan_execution(tmp_path, SESSION, now=NOW)
+    assert snapshot.state == "unreadable"
+    assert snapshot.counts is None
+
+
+def test_missing_local_ledger_creates_initial_missing_summary(tmp_path):
+    from app.ui.gameplan_execution_data import load_gameplan_execution
+
+    output = publish_execution_summary(tmp_path, SESSION, observed_at=NOW)
+
+    assert output == tmp_path / "state/gameplan-execution-reports" / SESSION / "summary.json"
+    snapshot = load_gameplan_execution(tmp_path, SESSION, now=NOW)
+    assert snapshot.state == "missing"
+    assert snapshot.counts is None
+    assert snapshot.orders == ()
+    assert snapshot.report["session_date"] == SESSION
+    assert list(output.parent.iterdir()) == [output]
+
+
+def test_imported_summary_arriving_during_missing_publication_is_preserved(ledger, monkeypatch):
+    from app.ui.gameplan_execution_data import load_gameplan_execution
+    import ml.gameplan_execution_report as execution_report
+
+    add_order(ledger)
+    imported = (json.dumps(report(ledger), sort_keys=True, indent=1) + "\r\n").encode("utf-8")
+    recipient = ledger / "recipient"
+    destination = recipient / "state/gameplan-execution-reports" / SESSION / "summary.json"
+    link = execution_report.os.link
+    arrivals = []
+
+    def arrive_before_link(source, target):
+        assert Path(target) == destination
+        assert not destination.exists()
+        destination.write_bytes(imported)
+        arrivals.append(destination)
+        return link(source, target)
+
+    monkeypatch.setattr(execution_report.os, "link", arrive_before_link)
+    output = publish_execution_summary(recipient, SESSION, observed_at=NOW)
+
+    assert arrivals == [destination]
+    assert output == destination
+    assert destination.read_bytes() == imported
+    assert list(destination.parent.iterdir()) == [destination]
+    snapshot = load_gameplan_execution(recipient, SESSION, now=NOW)
+    assert snapshot.state == "available"
+    assert snapshot.counts["fully_filled"] == 1
+
+
+def test_existing_local_ledger_refreshes_saved_execution_summary(ledger):
+    from app.ui.gameplan_execution_data import load_gameplan_execution
+
+    add_order(ledger)
+    destination = publish_execution_summary(ledger, SESSION, observed_at=NOW)
+    earlier = destination.read_bytes()
+    add_order(ledger, "second")
+    later = "2026-10-15T00:01:00+00:00"
+
+    output = publish_execution_summary(ledger, SESSION, observed_at=later)
+
+    assert output == destination
+    assert destination.read_bytes() != earlier
+    assert list(destination.parent.iterdir()) == [destination]
+    snapshot = load_gameplan_execution(ledger, SESSION, now=later)
+    assert snapshot.state == "available"
+    assert snapshot.counts["fully_filled"] == 2
+    assert snapshot.report["generated_at"] == later
