@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T07:44:32.632744Z",
+  "id": "20261016T074432Z-9e5613a67c6d4a31a95132261712bbbc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Deliver saved Gameplan execution Stats from Atlas to Scout"
+}

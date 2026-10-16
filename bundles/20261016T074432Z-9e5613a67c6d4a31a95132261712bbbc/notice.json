@@ -1,0 +1,61 @@
+{
+  "author": "Atlas",
+  "base_commit": "dd56af6822c3d80e1297c3afd3ed94d5383ff7e8",
+  "behavior": [
+    "Atlas task scout-execution-stats: shared saved-report publication and Scout receiving behavior for both PCs.",
+    "Send the private saved display through the existing private exchange; preserve exact records, source times and prior local versions.",
+    "Publish after Atlas saves its report and receive during Scout reporting or refresh, independent of completed Gameplan synthesis and every trader.",
+    "Reject malformed or older packets, scan private values and preserve existing displays on optional transfer failure."
+  ],
+  "branch": "codex/atlas/20261016T073959Z-3bdf593aa8ec48c6a3380319a6c04d04",
+  "change_id": "20261016T073959Z-3bdf593aa8ec48c6a3380319a6c04d04",
+  "commit_sha": "ef1c5cafa8d5a5c02d66fa5a402ab8f93a172c1f",
+  "completion_record": "20261016T073959Z-3bdf593aa8ec48c6a3380319a6c04d04",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "app/ui/gameplan_execution_data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/gameplan_execution_report.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/gameplan_execution_handoff.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_gameplan_execution_handoff.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "docs/gameplan-stats-tab-design-ui/EXECUTION_REPORTING.md"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic checks; no broker or provider requests, trader starts or schedule changes.",
+    "Only shared source is published in Git; saved execution summaries remain on the existing private exchange.",
+    "A busy or changing-source display attempt remains pending for retry; current imported evidence is preserved."
+  ],
+  "peer_applicability": "Scout reviews and installs shared helper and hooks under its direct human request; immediate report adoption proceeds independently of source publication.",
+  "privacy": "Source and synthetic tests only in Git. Authorized saved display summaries travel separately through the existing private exchange; no database or credentials are exported.",
+  "publication_state": "Owned source branch pushed and exact remote SHA verified; PR open; exact changes installed on Atlas. Main integration and Scout installation are separate.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/182",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install the shared helper and reporting hooks on each PC. Scout can import existing saved reports immediately; an already-running UI uses its current loader until normal source loading. No trader or application restart is performed.",
+  "scope": "Shared Atlas and Scout saved display reporting; operating state and symbols remain local.",
+  "summary": "Deliver saved Gameplan execution Stats from Atlas to Scout",
+  "tests": {
+    "installed_atlas": "118 passed",
+    "isolated_publication": "118 passed",
+    "reviewed_candidate": "118 passed",
+    "sealed_queue": "118 passed",
+    "verifier": "No skips or import/network violations; exact owned and dependency bytes retained."
+  }
+}
