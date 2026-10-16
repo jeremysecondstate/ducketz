@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T08:56:19.623322Z",
+  "id": "20261016T085619Z-232a2d691ee6436f9522c471347b387c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout aligned frozen recovery publication and consumption with standing nightly authority and causal inputs."
+}

@@ -1,0 +1,84 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T084725Z-6a3d7639e3e842ae8b48b3e9bc64d9c1",
+  "change_id": "20261016T084725Z-6a3d7639e3e842ae8b48b3e9bc64d9c1",
+  "commit_sha": "3c2b0e8097dfe6ff06eeed014189c1160a3e901a",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; scope shared, independently applicable on Atlas and Scout.",
+    "Compose the existing recovery-spec producer and CLI with the forecast consumer; historical authorization and expiry metadata do not cancel standing nightly preparation.",
+    "Preserve original action dates, truthful freeze/publication clocks, exact recovery evidence, causal Stats and champion cutoffs, and no-order authority.",
+    "Retain original sources 0d9c81c973a01da9a7872c225d4363bd9fa8c002, 1d532323fc0f646ccfb0fb605bbb22d88c9f51c2, 77c6704e8b348931b5a3641e627ffac9370a269f, 775052967f4a17d2598e413c9ed369959fe3b1f4.",
+    "Retain Completion-Records 20261007T221732Z-2f3996bdc5fd4e5db7367e7a92c03c08, 20261008T013431Z-41550a3763044bc8a8b690be0fb8bee8, 20261013T201011Z-bb838715086b4c07b991a1518f249a4a, 20261014T050106Z-0e807c66479e4deb83823375e163fe5c.",
+    "Retain Completion-Records 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93, 20261009T150105Z-69be6ce7ea3446cf8ae75d8da484afd0, 20261016T074607Z-e19cd05898e8441cb7c90795f4583219, 20261016T072215Z-98105fa3b00344df9b4041b7cc404bd2.",
+    "Exercise real recovery creation and validation, synthetic producer publication and consumer round-trip, expiry continuation, pre-open preparation, evidence mutation and causal feedback rejection."
+  ],
+  "files": [
+    "ml/nightly_gameplan.py",
+    "ml/stock_trader/independent_signals.py",
+    "tests/test_nightly_recovery_roundtrip.py",
+    "tests/test_nightly_signal_provenance.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "025dd763e0370d62cdbdd05c7dca25730a33234f",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixtures; no provider or broker requests, production training, trader action, native task changes or private export.",
+    "Broader runtime/workflow/dispatch composition remains separate. Loaded-process adoption is unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/186"
+  ],
+  "local_receipt": "Installed only reviewed producer/consumer definitions and regression tests, preserving operating originals and unrelated source. Local HEAD, index, symbols and bindings preserved. Loaded-process adoption unverified.",
+  "remaining_source_work": "Review remaining nightly runtime/workflow/dispatch composition against current main, retaining original continuation identities and independent production. PR182 common-main integration remains separate from its completed local adoption.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Frozen recovery evidence can complete and be read after historical expiry under standing authority; original dates and causal input cutoff remain fixed. No trader activation or runtime restart.",
+  "scope": "Shared source for Atlas and Scout independently.",
+  "summary": "Scout aligned frozen recovery publication and consumption with standing nightly authority and causal inputs.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T08:41:24.080771Z",
+      "fingerprints": 222,
+      "import_verifier_violations": 0,
+      "output_sha256": "8d3a71f6e5a14cf9ca19987609374d633c0ed159153fe0a974d7b9861b5decd0",
+      "result": "677 passed, 130 warnings in 57.03s",
+      "started_at_utc": "2026-10-16T08:40:25.444105Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T08:48:22.508934Z",
+      "fingerprints": 222,
+      "import_verifier_violations": 0,
+      "output_sha256": "4543b2b4e7c345afe6d13a172079727b79c7900eab2865c6d1dcdac6c4a1236d",
+      "result": "677 passed, 130 warnings in 54.72s",
+      "started_at_utc": "2026-10-16T08:47:26.254007Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T08:50:09.253075Z",
+      "fingerprints": 222,
+      "import_verifier_violations": 0,
+      "output_sha256": "befc9f226839a825f7a0767b58be584e735c43d61f6be581f416b94c3967e2de",
+      "result": "677 passed, 130 warnings in 54.23s",
+      "started_at_utc": "2026-10-16T08:49:13.420881Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T08:54:21.846654Z",
+      "fingerprints": 222,
+      "import_verifier_violations": 0,
+      "output_sha256": "a59237ca452222f946957425c6d34748391e9e469bc7f85e6a588d7a0fe40c00",
+      "result": "677 passed, 130 warnings in 58.26s",
+      "started_at_utc": "2026-10-16T08:53:21.940339Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T08:55:54.144253Z",
+      "fingerprints": 243,
+      "import_verifier_violations": 0,
+      "output_sha256": "77a6069ab22084eb91413824252d0bdc40b8f01250629390d0b86a22b518276c",
+      "result": "677 passed, 130 warnings in 55.02s",
+      "started_at_utc": "2026-10-16T08:54:56.366768Z"
+    }
+  ]
+}
