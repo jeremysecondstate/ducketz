@@ -126,6 +126,13 @@ def advance(env, seconds=1):
     env.now += pd.Timedelta(seconds=seconds)
 
 
+def persisted_failure(env, forecast, result):
+    failures = [row for row in env.executor.intents.history(forecast["forecast_id"])
+                if row["disposition"] == "not_submitted"]
+    assert failures[-1]["evidence"] == result["evidence"]
+    return failures[-1]["evidence"]
+
+
 def test_four_desired_at_fifty_cash_hundred_submits_two_and_keeps_forecast(env):
     forecast = env.forecast()
     result = env.executor.step(forecast)
@@ -247,6 +254,10 @@ def test_manual_authority_revoked_in_final_post_gate_releases_only_unsent(env):
     assert [r.status for r in native(env).snapshot().reservations] == ["REJECTED"]
     assert [r["status"] for r in account(env).read_state()["reservations"]] == ["NOT_SUBMITTED"]
     assert env.store.forecasts()[0] == forecast
+    evidence = persisted_failure(env, forecast, result)
+    assert evidence["submission_stage"] == "current_manual_session_and_account"
+    assert evidence["root_cause"] == {"error_type": "ContractError", "message": "Manual 15m session is no longer active"}
+    assert not env.active
 
 
 def test_pre_manual_forecast_is_recorded_without_account_read_or_post(env):
@@ -409,6 +420,11 @@ def test_proven_unsent_retry_refreshes_capacity_preserves_desired_and_all_attemp
     first=env.executor.step(forecast)
     assert first["disposition"] == "not_submitted" and first["evidence"]["proven_unsent_retry_eligible"]
     assert not env.broker.submissions
+    evidence = persisted_failure(env, forecast, first)
+    assert evidence["submission_stage"] == "broker_snapshot_identity"
+    assert [item["error_type"] for item in evidence["exception_chain"]] == ["SubmissionNotStarted", "TimeoutError"]
+    assert evidence["root_cause"] == {"error_type": "TimeoutError"}
+    assert not evidence["exception_chain_truncated"]
     env.broker.verify_read_snapshot=original_identity
     env.broker.before_post_hook=None
     env.cash=50
@@ -496,6 +512,10 @@ def test_audited_no_post_after_lease_expiry_retries_under_fresh_fence(env):
     assert first["evidence"]["proven_unsent_retry_eligible"]
     assert first["evidence"]["awaiting_fresh_authority_fence"]
     assert not env.broker.submissions
+    evidence = persisted_failure(env, forecast, first)
+    assert evidence["submission_stage"] == "broker_snapshot_identity"
+    assert [item["error_type"] for item in evidence["exception_chain"]] == ["AuthorityError", "SubmissionNotStarted", "TimeoutError"]
+    assert evidence["root_cause"] == {"error_type": "TimeoutError"}
     prior=native(env).snapshot().reservations[0]
     assert prior.status=="RESERVED" and prior.submitted_at is None
     env.broker.verify_read_snapshot=verify
@@ -508,6 +528,64 @@ def test_audited_no_post_after_lease_expiry_retries_under_fresh_fence(env):
     attempts=native(env).intraday_attempts(symbol="AAPL",forecast_id=forecast["forecast_id"])
     assert len(attempts)==2 and attempts[0].status=="REJECTED" and attempts[0].submitted_at is None
     assert attempts[1].broker_order_id=="1001"
+
+
+@pytest.mark.parametrize("expiry,stage,message", [
+    ("quote", "quote_freshness", "Quote needs refresh before submission"),
+    ("target", "forecast_eligibility", "Forecast eligibility changed before submission"),
+])
+def test_prepost_expiry_cause_persists_without_submission(env, expiry, stage, message):
+    forecast = env.forecast()
+    if expiry == "quote":
+        env.quote_age = 59
+        env.broker.before_post_hook = lambda: advance(env, 2)
+    else:
+        env.now = pd.Timestamp(forecast["target_close"]) - pd.Timedelta(seconds=1)
+        env.broker.before_post_hook = lambda: setattr(env, "now", pd.Timestamp(forecast["target_close"]))
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "not_submitted" and not env.broker.submissions
+    evidence = persisted_failure(env, forecast, result)
+    assert evidence["submission_stage"] == stage
+    assert evidence["root_cause"] == {"error_type": "ContractError", "message": message}
+    assert all(row.submitted_at is None for row in native(env).snapshot().reservations)
+
+
+def test_prepost_provider_diagnostics_do_not_persist_secrets(env):
+    import json
+    forecast = env.forecast()
+    secret = "private-fixture-bearer-and-account-url"
+    failure = TimeoutError(secret)
+    failure.stock_trader_operation = "account_identity"
+    failure.response = SimpleNamespace(status_code=503, headers={"Authorization": secret}, text=secret)
+    def fail_final():
+        env.broker.verify_read_snapshot = lambda _: (_ for _ in ()).throw(failure)
+    env.broker.before_post_hook = fail_final
+    result = env.executor.step(forecast)
+    evidence = persisted_failure(env, forecast, result)
+    assert evidence["root_cause"] == {"error_type": "TimeoutError", "operation": "account_identity", "http_status": 503}
+    assert secret not in json.dumps(env.executor.intents.history(forecast["forecast_id"]))
+    assert not env.broker.submissions
+
+
+def test_submission_diagnostics_bound_cycles_and_reject_unreviewed_local_messages():
+    import json
+    secret = "private-fixture-local-message"
+    error = execution.ContractError(secret)
+    error.stock_trader_operation = secret
+    error.__cause__ = error
+    result = execution._submission_failure_evidence(error, "fixture")
+    assert len(result["exception_chain"]) == 1 and result["exception_chain_truncated"]
+    assert secret not in json.dumps(result)
+    error.stock_trader_operation = {"untrusted": secret}
+    assert secret not in json.dumps(execution._submission_failure_evidence(error, "fixture"))
+    error = TimeoutError(secret)
+    for _ in range(12):
+        outer = execution.SubmissionNotStarted(secret)
+        outer.__cause__ = error
+        error = outer
+    result = execution._submission_failure_evidence(error, "fixture")
+    assert len(result["exception_chain"]) == 8 and result["exception_chain_truncated"]
+    assert secret not in json.dumps(result)
 
 
 def test_old_native_filled_shared_submitted_recovers_whole_second_fill_without_reposting(env, monkeypatch):
