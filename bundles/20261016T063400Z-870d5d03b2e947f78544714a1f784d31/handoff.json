@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T06:34:00.864715Z",
+  "id": "20261016T063400Z-870d5d03b2e947f78544714a1f784d31",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas composed complete-observation scoring and restoration into its independent collector."
+}

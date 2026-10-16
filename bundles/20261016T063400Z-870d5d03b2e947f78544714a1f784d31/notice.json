@@ -1,0 +1,54 @@
+{
+  "author": "Atlas",
+  "base_commit": "15d6850da9496b98d7d27ec97a6eab1373da12bf",
+  "branch": "codex/atlas/20261016T062929Z-f9a2cd71619d45a79c4d733843a0deb0",
+  "change_id": "20261016T062929Z-f9a2cd71619d45a79c4d733843a0deb0",
+  "commit_sha": "3dba697255d0f4bd68b5c2a59d44cd37180e4182",
+  "files": [
+    "ml/intraday/data.py",
+    "ml/intraday/live_session.py",
+    "ml/intraday/runtime.py",
+    "tests/test_intraday_completed_observations.py",
+    "tests/test_intraday_data.py",
+    "tests/test_intraday_runtime.py",
+    "tests/test_intraday_store.py"
+  ],
+  "installation_stage": "installed_on_atlas",
+  "integration_stage": "draft_pr_stacked_on_pr139",
+  "limitations": [
+    "Stacked on Atlas PR139 collector source; common-main composition remains separate.",
+    "Offline fixtures only; loaded-process adoption is unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/178"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_record": "20261016T044226Z-8613c6f74158402f9387abc06ba66adb",
+  "retained_peer_source": "bdec9d06cb9b628033cf2677319753504fcc4db9",
+  "runtime_implications": "Seven exact source/test paths installed on Atlas; manual stops, cutoff and final scoring preserved; no runtime restart or operating prerequisite.",
+  "scope": "Shared scoring and restoration apply independently to both PCs.",
+  "summary": "Atlas composed complete-observation scoring and restoration into its independent collector.",
+  "tests": [
+    {
+      "check": "Completed observation sealed source",
+      "completed_at_utc": "2026-10-16T06:29:51.262330Z",
+      "output_sha256": "dc7ae664e04a1f62e31c37d509c928c242ae5d6ab43fa9245b7b4b753d648bf8",
+      "result": "314 passed; 14 dependency deprecation warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-16T06:29:30.040267Z"
+    },
+    {
+      "check": "Completed observation isolated publication",
+      "completed_at_utc": "2026-10-16T06:31:21.941928Z",
+      "output_sha256": "2ea2e612bc05f3570a64382930f31013dcf7c6098c90eea976d6e513c3001163",
+      "result": "314 passed; 14 dependency deprecation warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-16T06:31:00.565484Z"
+    },
+    {
+      "check": "Completed observation installed Atlas",
+      "completed_at_utc": "2026-10-16T06:32:16.061327Z",
+      "output_sha256": "06c13baeb9fa3cfe771acfd349277cc56ae43de4d934da7c529ade04694cb71c",
+      "result": "314 passed; 14 dependency deprecation warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-16T06:31:54.621589Z"
+    }
+  ]
+}
