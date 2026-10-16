@@ -147,9 +147,20 @@ class ShadowStore:
             row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
         return self._forecast_value(row) if row else None
 
-    def forecasts(self, *, pc=None):
+    def forecasts(self, *, pc=None, symbol=None):
+        # Execution chronology concerns one symbol. Use the existing index to
+        # avoid decoding unrelated model payloads while account evidence ages.
+        clauses, parameters = [], []
+        if pc:
+            clauses.append("pc=?")
+            parameters.append(pc)
+        if symbol is not None:
+            clauses.append("symbol=?")
+            parameters.append(symbol)
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
         with self.connect() as db:
-            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" + (" WHERE pc=?" if pc else "") + " ORDER BY rowid", (pc,) if pc else ()).fetchall()
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" +
+                              where + " ORDER BY rowid", parameters).fetchall()
         return [self._forecast_value(row) for row in rows]
 
     def save_forecast(self, payload, *, intent=None):
