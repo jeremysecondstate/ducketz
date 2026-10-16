@@ -1,0 +1,80 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T104228Z-597f1e2146f24611ae84b64b2737879f",
+  "change_id": "20261016T104228Z-597f1e2146f24611ae84b64b2737879f",
+  "commit_sha": "7a8279222be840788c04a6d4f4b6cd9b9fb51638",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared correctness applies independently on both PCs.",
+    "Dated preparation retains the original session, deadline, forecast bytes and true publication time across elapsed targets.",
+    "Preserve frozen recovery-tail evidence and original versus effective deadlines; retain existing date and source checks.",
+    "Reject late-publication refresh mixing and sources not yet published at the observed planning time before account capture.",
+    "Elapsed entries have no provisional quantity or simulated cash events; an entry at the snapshot time remains current.",
+    "Preserve local model recipes, symbols and manual controls. No trader starts, orders or provider calls.",
+    "Retain Scout continuation record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93.",
+    "Retain Atlas continuation record 20261014T050106Z-0e807c66479e4deb83823375e163fe5c."
+  ],
+  "files": [
+    "ml/gameplan_trade_planning.py",
+    "ml/gameplan_cash_ledger.py",
+    "tests/test_gameplan_trade_planning.py",
+    "tests/test_dated_trade_planning.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "35d096ba0ae4e5c62c653b314cfed191cf83d6d4",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixtures; no production data, providers, brokers or trader execution.",
+    "Broader native runtime and workflow-dispatch composition remain separate. Loaded-process adoption unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/192"
+  ],
+  "local_receipt": "Existing dated planning and expired-entry behavior retained; installed refresh and chronology guards plus focused tests. Local symbols, model recipes and manual controls preserved. Loaded-process adoption unverified.",
+  "remaining_source_work": "Compose native dated continuation and workflow-dispatch using original identities; retain existing Stats-first behavior and local fixture adaptations.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Dated planning completes without resetting elapsed targets and retains historical forecast clocks. Expired entries cannot reserve cash or produce simulated entry events. Manual trader controls remain intact.",
+  "scope": "Shared correctness source for both PCs independently.",
+  "summary": "Scout preserved dated planning continuation and removed elapsed entries from scheduled and cash projections.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T10:42:14.175009Z",
+      "fingerprints": 214,
+      "output_sha256": "b07960e1c9f761a3869ef8e5bcf7b9fb18d72ecf1dddf8cefe3adc0b9bb7075f",
+      "result": "364 passed, 36 warnings in 30.15s",
+      "started_at_utc": "2026-10-16T10:41:42.511025Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T10:43:00.395061Z",
+      "fingerprints": 214,
+      "output_sha256": "c13cd9dac0296f751c9e368d45cdc5d89daadabddeebe114e1d6cac4ce827557",
+      "result": "364 passed, 36 warnings in 30.27s",
+      "started_at_utc": "2026-10-16T10:42:28.665439Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T10:44:23.858740Z",
+      "fingerprints": 214,
+      "output_sha256": "288cb21baf66e01d62953c9912bfd3947169462a5b43596f1fa0ecb995d071d3",
+      "result": "364 passed, 36 warnings in 30.85s",
+      "started_at_utc": "2026-10-16T10:43:51.413344Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T10:46:07.791910Z",
+      "fingerprints": 214,
+      "output_sha256": "c98171e64dfc4c6fc6b401a105b30ed7362a4fd1625a3fd75445ffa639998a5d",
+      "result": "364 passed, 36 warnings in 30.66s",
+      "started_at_utc": "2026-10-16T10:45:35.578843Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T10:48:18.316697Z",
+      "fingerprints": 235,
+      "output_sha256": "b4b722a816a254366e70115ed4a1953280ed799f5deff7adfc1a652096652ba0",
+      "result": "380 passed, 36 warnings in 31.57s",
+      "started_at_utc": "2026-10-16T10:47:45.240083Z"
+    }
+  ]
+}

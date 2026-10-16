@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T10:48:45.906692Z",
+  "id": "20261016T104845Z-2b2754138b2c4e329cf4b880c7556aa9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserved dated planning continuation and removed elapsed entries from scheduled and cash projections."
+}
