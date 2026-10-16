@@ -30,6 +30,50 @@ from .starter_sizing import QuoteObservation, size_forecast
 from .technical_sizing import AvailableInput
 
 
+_SAFE_SUBMISSION_REASONS = frozenset({
+    "Manual 15m session is no longer active",
+    "Independent local 15m account binding and symbols required",
+    "Account binding changed during execution",
+    "Broker account differs from local 15m binding",
+    "Newer current-session forecast supersedes this intention",
+    "Prepared order context differs from account snapshot",
+    "Forecast eligibility changed before submission",
+    "Market session changed before submission",
+    "Quote needs refresh before submission",
+    "CURRENT_FENCED_LEASE_REQUIRED",
+    "INTRADAY_CAPACITY_SNAPSHOT_REQUIRED",
+    "LATEST_INTRADAY_CAPACITY_SNAPSHOT_REQUIRED",
+    "INTRADAY_CAPACITY_SNAPSHOT_STALE_OR_FUTURE",
+    "INTRADAY_FORECAST_NOT_CURRENT",
+    "SUBMISSION_GATE_ALREADY_USED_OR_STATE_CHANGED",
+    "SUBMISSION_OUTCOME_REQUIRES_RECONCILIATION",
+    "EXACT_BROKER_ORDER_ID_AND_FINAL_GATE_REQUIRED",
+})
+
+
+def _submission_failure_evidence(exc, stage):
+    """Keep bounded causes without copying provider messages or request secrets."""
+    chain, seen = [], set()
+    current = exc
+    while current is not None and id(current) not in seen and len(chain) < 8:
+        seen.add(id(current))
+        item = {"error_type": type(current).__name__[:80]}
+        # Local fixed messages are useful reasons. Arbitrary provider/transport
+        # messages can contain account URLs, headers or credential material.
+        if isinstance(current, (ContractError, AuthorityError)) and str(current) in _SAFE_SUBMISSION_REASONS:
+            item["message"] = str(current)
+        operation = getattr(current, "stock_trader_operation", None)
+        if isinstance(operation, str) and operation in {"authentication", "account_identity", "account", "positions", "orders", "quotes"}:
+            item["operation"] = operation
+        status = getattr(getattr(current, "response", None), "status_code", None)
+        if type(status) is int and 100 <= status <= 599:
+            item["http_status"] = status
+        chain.append(item)
+        current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
+    return {"submission_stage": stage, "exception_chain": chain,
+            "root_cause": chain[-1], "exception_chain_truncated": current is not None}
+
+
 
 def forecast_disposition(forecast, *, now, session_started_at, local_symbols, actor="Atlas"):
     """A current manual session cannot execute a replay or previously saved issue."""
@@ -373,6 +417,7 @@ class IntradayAccountExecutor:
         account_previous = admitted[-1].reservation_id if admitted else None
         native = account = None
         context = self.broker.prepare_order_submission()
+        stage = "reserve_native"
         try:
             native = self.ledger.reserve_intraday(symbol=forecast["symbol"], forecast_id=forecast["forecast_id"],
                 side=capacity.side, quantity=capacity.adjusted_quantity, limit_price=capacity.limit_price,
@@ -384,6 +429,7 @@ class IntradayAccountExecutor:
                     for row in self.portfolio.broker_working_orders
                     if row["symbol"] == forecast["symbol"] and row["instruction"] == "SELL"},
                 retry_of_reservation_id=previous.reservation_id if previous else None, stream=self.stream)
+            stage = "reserve_account"
             account = self.authority.reserve_intraday(self.lease.token, IntradayReservationRequest(
                 key, self.snapshot_id, self.config.account_fingerprint, instant(self.clock()).astimezone(PACIFIC).date().isoformat(),
                 self.config.machine_id, forecast["symbol"], forecast["forecast_id"], capacity.side,
@@ -391,37 +437,51 @@ class IntradayAccountExecutor:
                 native.reservation_id, native.allocation_id, forecast["forecast_id"], forecast["snapshot_hash"],
                 forecast["issued_at"], forecast["reference_at"], forecast["target_close"], TARGET_VERSION, self.symbols,
                 retry_of_native_reservation_id=account_previous, stream=self.stream))
+            stage = "build_order_payload"
             payload = build_schwab_stock_order_payload(symbol=forecast["symbol"], instruction=capacity.side,
                 order_type="LIMIT", time_in_force=window.time_in_force, position_effect="AUTO",
                 quantity=capacity.adjusted_quantity, price=capacity.limit_price)
             def send(authority_gate):
                 def gate():
+                    nonlocal stage
                     try:
+                        stage = "current_manual_session_and_account"
                         self._assert_current()
+                        stage = "latest_forecast"
                         self._assert_latest(forecast)
+                        stage = "broker_snapshot_identity"
                         self.broker.verify_read_snapshot(self.portfolio.broker_identity_fingerprint)
+                        stage = "prepared_context_identity"
                         if context.identity_fingerprint != self.portfolio.broker_identity_fingerprint:
                             raise ContractError("Prepared order context differs from account snapshot")
                         current = instant(self.clock())
+                        stage = "forecast_eligibility"
                         if forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
                                                 local_symbols=self.symbols, actor=self.actor) != "eligible_for_account_checks":
                             raise ContractError("Forecast eligibility changed before submission")
+                        stage = "market_session"
                         if stock_execution_window(current).time_in_force != window.time_in_force:
                             raise ContractError("Market session changed before submission")
+                        stage = "quote_freshness"
                         if not 0 <= (current-instant(quote.freshness_observed_at)).total_seconds() <= self.ledger.maximum_evidence_age_seconds:
                             raise ContractError("Quote needs refresh before submission")
+                        stage = "authority_submission_gate"
                         authority_gate()
+                        stage = "broker_submission"
                     except Exception as exc:
                         raise SubmissionNotStarted(str(exc)) from exc
                 location = self.broker.submit_prepared_order(payload, context, before_post=gate)
                 return urlparse(str(location or "")).path.rstrip("/").split("/")[-1]
+            stage = "authority_submit"
             accepted = self.authority.submit(self.lease.token, account.reservation_id, send)
+            stage = "persist_native_submission"
             self.ledger.mark_submission(native.reservation_id, status="SUBMITTED", observed_at=self.clock(),
                 evidence_id=key + ":submitted", broker_order_id=accepted.broker_order_id)
             return self._record(forecast, "submitted", order=self.ledger.lookup_reservation(native.reservation_id),
                                 evidence={"account_reservation_id":account.reservation_id})
         except Exception as exc:
             if native is not None:
+                diagnostics = _submission_failure_evidence(exc, stage)
                 state = self.authority.reservation(account.reservation_id) if account else None
                 receipt = self.authority.submission_receipt(account.reservation_id) if account else None
                 if receipt and receipt["outcome"] == "NOT_SUBMITTED" and state.status in {"SUBMITTING", "UNKNOWN"}:
@@ -433,7 +493,7 @@ class IntradayAccountExecutor:
                     from .cancellation import retry_delay
                     delay=max(retry_delay(exc,self.clock()),retry_delay(exc.__cause__,self.clock()) if exc.__cause__ else 3)
                     return self._record(forecast,"not_submitted",order=self.ledger.lookup_reservation(native.reservation_id),
-                        evidence={"error_type":type(exc).__name__,"proven_unsent_retry_eligible":True,
+                        evidence={**diagnostics,"error_type":type(exc).__name__,"proven_unsent_retry_eligible":True,
                                   "awaiting_fresh_authority_fence":True,"retry_after_seconds":delay,
                                   "submission_receipt":receipt})
                 unsent = state is None or state.status in {"RESERVED", "NOT_SUBMITTED"}
@@ -450,6 +510,6 @@ class IntradayAccountExecutor:
                 from .cancellation import retry_delay
                 delay = max(retry_delay(exc,self.clock()),retry_delay(exc.__cause__,self.clock()) if exc.__cause__ else 3)
                 return self._record(forecast, "not_submitted" if unsent else "submission_recovery_required",
-                    order=self.ledger.lookup_reservation(native.reservation_id), evidence={"error_type":type(exc).__name__,
+                    order=self.ledger.lookup_reservation(native.reservation_id), evidence={**diagnostics,"error_type":type(exc).__name__,
                         "proven_unsent_retry_eligible":unsent,"retry_after_seconds":delay})
             raise
