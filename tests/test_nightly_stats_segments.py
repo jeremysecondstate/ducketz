@@ -38,10 +38,28 @@ def _stages(monkeypatch, *, fail_module=None):
     return calls
 
 
-def _feedback(root):
-    path = root / "reviewed-proposal.json"
-    path.write_text('{"reviewed": true}', encoding="utf-8")
-    return path
+def _feedback(root, *, action_date=None, now="2026-09-10T04:05:00Z",
+              target="raw-price-direction-v1"):
+    from ml.gameplan_actuals_review import publish_completed_session_review
+    from ml.gameplan_model_feedback import REVIEW_VERSION, prepare_feedback, save_feedback_review
+
+    stats = publish_completed_session_review(
+        root, action_date=action_date, clock=lambda: pd.Timestamp(now),
+        price_loader=lambda *args, **kwargs: pytest.fail("No forecast requires provider data"),
+    )
+    run = prepare_feedback(root, review_run=stats, now=now, probability_target=target)
+    diagnostics = json.loads((run / "diagnostics.json").read_text(encoding="utf-8"))
+    proposal = {
+        "schema_version": REVIEW_VERSION,
+        "stats_receipt_sha256": diagnostics["stats"]["receipt_sha256"],
+        "reviewed_by": "offline fixture",
+        "groups": {
+            group: {"decision": "KEEP_CURRENT", "rationale": "No saved observations.",
+                    "candidates": []}
+            for group in ("1h", "4h", "1d", "1w")
+        },
+    }
+    return save_feedback_review(root, run, proposal, now=now)
 
 
 def _report(directory):
