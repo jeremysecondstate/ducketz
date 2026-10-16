@@ -19,6 +19,8 @@ def test_default_is_offline_and_does_not_create_state(tmp_path, monkeypatch):
     result = s.supervise(repository=tmp_path, datastore=tmp_path, as_of="2026-10-14T08:00Z")
     assert result["status"] == "dry_run"
     assert result["provider_calls"] == result["training_runs"] == 0
+    assert result["model_assessment_scope"] == "supervised_candidates_and_supervised_incumbent"
+    assert result["manual_recipe_qualification"] == "separate_manual_experiment_not_qualified_by_this_selection"
     assert not (tmp_path / "intraday").exists()
 
 
@@ -214,3 +216,39 @@ def test_review_reads_latest_outcome_and_execution_without_counting_revisions(tm
     assert result["filled_quantity"] == result["submitted_quantity"] == 2
     assert result["realized_pnl"] is None
     assert result["accuracy"] == 0
+    assert result["observed_not_down_fraction"] == 0
+    assert result["majority_baseline_accuracy"] == 1
+
+
+def test_review_distinguishes_synthetic_missing_and_unscorable_outcomes(tmp_path):
+    from ml.intraday.store import ShadowStore
+    from ml.intraday.prediction import TARGET_VERSION
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    forecasts = []
+    for index in range(5):
+        forecasts.append(store.save_forecast(dict(pc="Scout", symbol="ABCL", cycle_id=f"cycle-{index}",
+            reference_at="2026-10-13T17:00:00+00:00", reference_open="100",
+            target_open="2026-10-13T17:30:00+00:00", target_close="2026-10-13T17:45:00+00:00",
+            issued_at="2026-10-13T17:16:02+00:00", information_available_at="2026-10-13T17:15:03+00:00",
+            data_through="2026-10-13T17:15:00+00:00", target_version=TARGET_VERSION,
+            mode="live", availability_basis="observed", probability_not_down=.9,
+            configured_count=1, successful_count=1, ensemble_status="full",
+            models=[dict(name="a", status="success", probability_not_down=.9)])))
+    candle = dict(symbol="ABCL", opened_at="2026-10-13T17:30:00+00:00",
+        available_at="2026-10-13T17:45:04+00:00", open="100", high="101", low="99",
+        close="100", volume=100, source_id="source", availability_kind="actual", synthetic=False)
+    store.observe(forecasts[0], as_of="2026-10-13T17:46:00Z", candle=candle)
+    store.observe(forecasts[1], as_of="2026-10-13T17:46:00Z", candle={**candle, "synthetic": True,
+        "evidence_json": '{"kind":"fixture_source_empty_minute"}'})
+    store.observe(forecasts[2], as_of="2026-10-13T17:46:00Z")
+    store.observe(forecasts[3], as_of="2026-10-13T17:46:00Z", unavailable_reason="fixture invalid target")
+    # The fifth forecast has no saved outcome. A later observed correction cannot
+    # leak into the review cutoff or turn the synthetic result into a scored one.
+    store.observe(forecasts[1], as_of="2026-10-14T09:00:00Z", candle=candle)
+    result = s.review_session(tmp_path, pc="Scout", symbol="ABCL", session_id="2026-10-13", as_of="2026-10-14T08:00Z")
+    assert result["forecasts"] == 5
+    assert result["scored"] == result["synthetic_outcomes"] == result["other_unscored_outcomes"] == 1
+    assert result["missing_outcomes"] == 2
+    assert result["unscored_outcomes"] == 4
+    assert result["accuracy"] == 1
+    assert result["brier"] == pytest.approx(.01)

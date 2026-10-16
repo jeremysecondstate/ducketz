@@ -63,8 +63,10 @@ def test_future_saved_summary_separates_input_counts_from_model_success(observed
     original = deepcopy(row)
     result = reference_input_provenance(row, database_path="unused.sqlite3")
     assert result["status"] == "known" and result["basis"] == "saved_forecast"
-    assert reference_input_label(result) == (
-        f"Input candle: {observed} observed minutes · {synthetic} confirmed no-trade minutes")
+    label = f"Input candle (EQUS.MINI): {observed} observed minutes · {synthetic} synthetic minutes"
+    if synthetic:
+        label += " (no trades recorded by this source; market-wide inactivity is not established)"
+    assert reference_input_label(result) == label
     assert row == original and row["successful_count"] == 16
 
 
@@ -143,7 +145,9 @@ def test_legacy_outer_reference_candle_is_used_when_compact_counts_were_not_reco
     write_snapshot(path, snapshot)
     result = reference_input_provenance(forecast(), database_path=path)
     assert result["status"] == "known"
-    assert reference_input_label(result) == "Input candle: 14 observed minutes · 1 confirmed no-trade minutes"
+    assert reference_input_label(result) == (
+        "Input candle (EQUS.MINI): 14 observed minutes · 1 synthetic minutes"
+        " (no trades recorded by this source; market-wide inactivity is not established)")
 
 
 @pytest.mark.parametrize("changes", [
@@ -187,9 +191,29 @@ def test_historical_synthetic_counts_do_not_claim_actual_no_trade_confirmation()
     assert "confirmed no-trade minutes" not in label
 
 
+@pytest.mark.parametrize("source_dataset,source_id,expected", [
+    (None, SOURCE, SOURCE),
+    (None, None, "source unrecorded"),
+])
+def test_known_minute_counts_do_not_invent_source_scope(source_dataset, source_id, expected):
+    row = forecast(source_dataset=source_dataset, source_id=source_id,
+                   reference_provenance=provenance(source_id=source_id))
+    result = reference_input_provenance(row)
+    assert result["status"] == "known"
+    label = reference_input_label(result)
+    assert f"Input candle ({expected})" in label
+    assert "confirmed no-trade minutes" not in label
+    if source_id is None:
+        assert "no-trade source scope unknown" in label
+        assert "no trades recorded by this source" not in label
+    else:
+        assert "market-wide inactivity is not established" in label
+
+
 @pytest.mark.parametrize("saved,label", [
-    (provenance(), "Input candle: 0 observed minutes · 15 confirmed no-trade minutes"),
-    (provenance(15, 0), "Input candle: 15 observed minutes · 0 confirmed no-trade minutes"),
+    (provenance(), "Input candle (EQUS.MINI): 0 observed minutes · 15 synthetic minutes"
+                   " (no trades recorded by this source; market-wide inactivity is not established)"),
+    (provenance(15, 0), "Input candle (EQUS.MINI): 15 observed minutes · 0 synthetic minutes"),
     (None, "Input candle: minute provenance unknown"),
 ])
 def test_actual_consensus_projection_keeps_input_and_model_success_separate(saved, label, monkeypatch):
@@ -199,10 +223,12 @@ def test_actual_consensus_projection_keeps_input_and_model_success_separate(save
     view = SimpleNamespace(
         models_frame=SimpleNamespace(winfo_children=lambda: []), consensus_rows={"choice": row},
         consensus_choice=SimpleNamespace(get=lambda: "choice"), local_pc="Atlas",
+        snapshot=SimpleNamespace(loaded_at=datetime(2026, 10, 16, 8, tzinfo=timezone.utc)),
         symbol=SimpleNamespace(get=lambda: "AMZN"), database_paths={},
         model_research={"status": "missing", "message": "No saved research"},
         research_status=SimpleNamespace(configure=lambda **values: None), research_table=object(),
         consensus_value=SimpleNamespace(configure=lambda **values: text.update(consensus=values["text"])),
+        consensus_context=SimpleNamespace(configure=lambda **values: text.update(context=values["text"])),
         consensus_meta=SimpleNamespace(configure=lambda **values: text.update(metadata=values["text"])),
     )
     monkeypatch.setattr(intraday, "_replace", lambda *args: None)
@@ -211,6 +237,8 @@ def test_actual_consensus_projection_keeps_input_and_model_success_separate(save
     assert "16/16 enabled models succeeded · full ensemble" in text["metadata"]
     assert label in text["metadata"]
     assert "receipt availability observed" in text["metadata"]
+    assert "Historical saved forecast" in text["context"]
+    assert "Saved setup: 16 models" in text["context"]
     assert row == forecast(reference_provenance=saved)
 
 

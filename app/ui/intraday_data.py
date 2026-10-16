@@ -104,7 +104,9 @@ def _validated_reference_provenance(value: Any, forecast: Mapping[str, Any], *, 
     return {"status": "known", "reference_at": reference.isoformat(),
             "observed_constituents": observed, "synthetic_constituents": synthetic,
             "synthetic": synthetic > 0, "no_trade": synthetic == 15,
-            "availability_kind": value.get("availability_kind"), "basis": basis}
+            "availability_kind": value.get("availability_kind"), "basis": basis,
+            "source_dataset": forecast.get("source_dataset"),
+            "source_id": source or forecast.get("source_id")}
 
 
 def reference_input_provenance(forecast: Mapping[str, Any], *, database_path: Path | None = None) -> dict[str, Any]:
@@ -169,10 +171,50 @@ def reference_input_label(provenance: Mapping[str, Any]) -> str:
     if provenance.get("status") != "known":
         return "Input candle: minute provenance unknown"
     observed, synthetic = provenance["observed_constituents"], provenance["synthetic_constituents"]
+    source = provenance.get("source_dataset") or provenance.get("source_id") or "source unrecorded"
+    prefix = f"Input candle ({source}): {observed} observed minutes · {synthetic} synthetic minutes"
     if synthetic and provenance.get("availability_kind") != "actual":
-        return (f"Input candle: {observed} observed minutes · {synthetic} synthetic minutes"
-                " (no-trade confirmation not recorded)")
-    return f"Input candle: {observed} observed minutes · {synthetic} confirmed no-trade minutes"
+        return prefix + " (source no-trade confirmation not recorded)"
+    if synthetic:
+        if not (provenance.get("source_dataset") or provenance.get("source_id")):
+            return prefix + " (no-trade source scope unknown)"
+        return prefix + " (no trades recorded by this source; market-wide inactivity is not established)"
+    return prefix
+
+
+def saved_forecast_context(row: Mapping[str, Any], *, now: datetime) -> str:
+    """Describe the selected saved issue, never the currently installed setup."""
+    issued = timestamp(row.get("issued_at"))
+    if issued is None:
+        timing = "Saved forecast · issue time unknown"
+    else:
+        local = issued.astimezone(PACIFIC)
+        seconds = (now - issued).total_seconds()
+        heading = "Historical saved forecast" if local.date() < now.astimezone(PACIFIC).date() else "Saved forecast"
+        age = f"{seconds / 60:.1f}m ago" if seconds >= 0 else "future issue timestamp"
+        timing = f"{heading} · {local:%b %d, %Y %H:%M:%S %Z} · {age}"
+    manifest = row.get("dataset_manifest")
+    manifest = manifest if isinstance(manifest, Mapping) else {}
+    recipe = manifest.get("manual_model_recipe")
+    recipe = recipe if isinstance(recipe, Mapping) else {}
+    selection = row.get("model_selection")
+    selection = selection if isinstance(selection, Mapping) else {}
+    setup = ("manual observed-only recipe" if recipe.get("schema_version") in {
+                 "intraday-manual-observed-calibrated-v1", "intraday-manual-observed-calibrated-v2"}
+             else str(selection.get("selection") or "identity unrecorded").replace("_", " "))
+    calibrations = set()
+    for output in row.get("models", []):
+        metadata = output.get("metadata")
+        metadata = metadata if isinstance(metadata, Mapping) else {}
+        spec = metadata.get("spec")
+        spec = spec if isinstance(spec, Mapping) else {}
+        calibration = metadata.get("calibration")
+        calibration = calibration if isinstance(calibration, Mapping) else {}
+        calibrations.add(str(calibration.get("method") or spec.get("probability_calibration") or "unrecorded").replace("_", " "))
+    scope = manifest.get("synthetic_policy") or row.get("synthetic_policy") or "unrecorded"
+    return (f"{timing}\nSaved setup: {row.get('configured_count', 'unknown')} models · {setup}"
+            f" · calibration {', '.join(sorted(calibrations)) or 'unrecorded'} · synthetic labels {scope}"
+            "\nSaved forecast settings; refreshing does not refit models.")
 
 
 def default_databases(datastore_root: Path | None = None) -> dict[str, Path]:

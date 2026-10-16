@@ -8,10 +8,11 @@ from pathlib import Path
 import re
 import tempfile
 
-from .models import configured_models
+from .models import configured_models, freeze_model_spec
 from .prediction import ContractError, TARGET_VERSION, digest, instant
 
 SCHEMA = "intraday-supervised-model-policy-v1"
+FROZEN_SCHEMA = "intraday-supervised-model-policy-v2"
 
 
 def write_json(path, value):
@@ -71,7 +72,7 @@ def load_active_policy(root, *, pc, symbol, feature_names=None):
         if not isinstance(value, dict):
             raise ContractError("Active supervised policy must be an object")
         checksum = value.pop("sha256")
-        if (checksum != digest(value) or value["schema"] != SCHEMA or value["pc"] != pc
+        if (checksum != digest(value) or value["schema"] not in {SCHEMA, FROZEN_SCHEMA} or value["pc"] != pc
                 or value["symbol"] != symbol or value["target_version"] != TARGET_VERSION
                 or value["source_dataset"] != "EQUS.MINI"
                 or feature_names is not None and list(feature_names) != value["feature_names"]):
@@ -80,6 +81,11 @@ def load_active_policy(root, *, pc, symbol, feature_names=None):
         specs = configured_models(value["models"])
         if any(spec.probability_calibration != "sigmoid" for spec in specs):
             raise ContractError("Supervised models require chronological probability calibration")
+        if value["schema"] == FROZEN_SCHEMA:
+            if any(spec.runtime_contract is None for spec in specs):
+                raise ContractError("Frozen supervised policies require explicit runtime contracts")
+            for spec in specs:
+                freeze_model_spec(spec)  # Compatibility check only; never rewrite or fit.
         scope = (_validated_scope(value["dataset_scope"]) if "dataset_scope" in value else
                  {"synthetic_policy": "exclude", "lookback_days": None})
         return {"models": specs, "dataset_scope": scope, "sha256": checksum,
@@ -103,7 +109,15 @@ def install_selection(root, *, pc, symbol, report, feature_names, installed_at, 
     if any(spec.probability_calibration != "sigmoid" for spec in specs):
         raise ContractError("Only calibrated qualified specifications may be installed")
     scope = _manifest_scope(dataset_manifest)
-    value = dict(schema=SCHEMA, pc=pc, symbol=symbol, target_version=TARGET_VERSION,
+    frozen = all(spec.runtime_contract is not None for spec in specs)
+    if report.get("selection_version") == "intraday-purged-session-selection-v2" and not frozen:
+        raise ContractError("Current qualified reports require the exact runtime contracts assessed")
+    if frozen:
+        specs = tuple(freeze_model_spec(spec) for spec in specs)
+    # A historical pending decision has no evidence of its resolved runtime.
+    # Preserve its legacy interpretation; never stamp today's changed defaults
+    # as if they were frozen/evaluated by that old report.
+    value = dict(schema=FROZEN_SCHEMA if frozen else SCHEMA, pc=pc, symbol=symbol, target_version=TARGET_VERSION,
                  source_dataset="EQUS.MINI", feature_names=list(feature_names),
                  dataset_scope=scope,
                  models=[asdict(spec) for spec in specs], installed_at=instant(installed_at).isoformat(),

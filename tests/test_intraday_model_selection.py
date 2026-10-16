@@ -75,6 +75,8 @@ def fake_fitter(monkeypatch):
             "calibration": {"method": "fixture_chronological_sigmoid"}}
 
     monkeypatch.setattr("ml.intraday.model_selection.fit_calibrated_estimator", fit)
+    # The synthetic scorer's fixture-only knobs are not estimator parameters.
+    monkeypatch.setattr("ml.intraday.model_selection.freeze_model_spec", lambda model: model)
     return calls
 
 
@@ -87,6 +89,48 @@ def test_default_search_has_real_diverse_calibrated_families_and_neural_shapes()
     assert all(candidate.probability_calibration == "sigmoid" for candidate in candidates)
     assert {candidate.parameters["hidden_layer_sizes"] for candidate in candidates if candidate.family == "mlp"} == {(16,), (32, 8), (8, 4)}
     assert all(candidate.parameters.get("warm_start", False) is False for candidate in candidates)
+
+
+def test_actual_runtime_contract_is_frozen_before_validation_and_retained_through_holdout(monkeypatch):
+    from dataclasses import asdict
+    from ml.intraday import models
+    from ml.intraday import model_selection as selection
+    dataset, sessions = fixture_data()
+    observed = []
+    def fit(model, X, y, **evidence):
+        assert model.runtime_contract is not None
+        observed.append(asdict(model))
+        assert models.build_estimator(model).named_steps["model"].solver == "lbfgs"
+        monkeypatch.setitem(models.DEFAULT_PARAMETERS, "logistic", {"C": 1000, "solver": "liblinear"})
+        return SyntheticEstimator(.9), {"calibration": {"method": "fixture_chronological_sigmoid"}}
+    monkeypatch.setattr(selection, "fit_calibrated_estimator", fit)
+    report = evaluate_candidates(dataset, candidates=[spec(C=.05)], config=small_config(), session_ids=sessions)
+    assert report["status"] == "promoted", report
+    assert len(observed) == 3
+    assert all(value == observed[0] for value in observed)
+    assert report["selected_specs"] == report["frozen_shortlist"] == [observed[0]]
+    assert report["candidates"][0]["spec"] == observed[0]
+    assert report["candidate_manifest_sha256"] == selection._digest([observed[0]])
+
+
+def test_unavailable_runtime_resolution_is_an_individual_candidate_failure(monkeypatch):
+    from ml.intraday import model_selection as selection
+    dataset, sessions = fixture_data()
+    real_resolver = selection.freeze_model_spec
+    def resolve(model):
+        if model.name == "absent":
+            raise UnsupportedModelError("optional fixture dependency unavailable")
+        return real_resolver(model)
+    monkeypatch.setattr(selection, "freeze_model_spec", resolve)
+    monkeypatch.setattr(selection, "fit_calibrated_estimator", lambda *a, **k:
+        (SyntheticEstimator(.9), {"calibration": {"method": "fixture_chronological_sigmoid"}}))
+    report = evaluate_candidates(dataset, candidates=[spec("present"), spec("absent")],
+        config=small_config(), session_ids=sessions)
+    assert report["status"] == "promoted"
+    assert [value["name"] for value in report["selected_specs"]] == ["present"]
+    missing = next(value for value in report["candidates"] if value["spec"]["name"] == "absent")
+    assert missing["status"] == "failed" and missing["folds"] == []
+    assert missing["error"]["type"] == "UnsupportedModelError"
 
 
 def test_full_catalog_research_records_missing_dependency_and_selects_more_than_four_families(monkeypatch):
@@ -107,6 +151,7 @@ def test_full_catalog_research_records_missing_dependency_and_selects_more_than_
         return SyntheticEstimator(.9), {"calibration": {"method": "fixture_chronological_sigmoid"}}
 
     monkeypatch.setattr(selection, "fit_calibrated_estimator", fit)
+    monkeypatch.setattr(selection, "freeze_model_spec", lambda model: model)
     report = evaluate_candidates(dataset, session_ids=sessions)
     assert {candidate.name for candidate in default_candidates()} <= set(calls)
     assert report["status"] == "promoted", report["reasons"]

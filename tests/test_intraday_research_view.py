@@ -291,10 +291,12 @@ def test_ui_unrecorded_forecast_cannot_show_different_source_research(legacy_rep
         consensus_rows={"legacy": {"pc": "Atlas", "symbol": "AAPL", "models": [],
                                     "forecast_id": "legacy", "outcome_status": "pending"}},
         consensus_choice=SimpleNamespace(get=lambda: "legacy"), local_pc="Atlas",
+        snapshot=SimpleNamespace(loaded_at=intraday.timestamp("2026-10-16T08:00:00Z")),
         symbol=SimpleNamespace(get=lambda: "AAPL"),
         model_research={"status": "loaded", "report": legacy_report},
         research_status=SimpleNamespace(configure=lambda **values: labels.update(values)),
         research_table=object(), consensus_value=SimpleNamespace(configure=lambda **values: None),
+        consensus_context=SimpleNamespace(configure=lambda **values: None),
         consensus_meta=SimpleNamespace(configure=lambda **values: None),
     )
     monkeypatch.setattr(intraday, "_replace", lambda tree, rows: rendered.extend(rows))
@@ -580,6 +582,7 @@ def test_no_forecast_projection_honors_pc_source_and_symbol(tmp_path, scout_repo
         research_status=SimpleNamespace(configure=lambda **v: labels.update(v)),
         research_table=SimpleNamespace(heading=lambda *a, **k: None),
         consensus_value=SimpleNamespace(configure=lambda **v: None),
+        consensus_context=SimpleNamespace(configure=lambda **v: None),
         consensus_meta=SimpleNamespace(configure=lambda **v: None))
     monkeypatch.setattr(intraday, "_replace", lambda tree, rows: rendered.extend(rows))
     intraday.IntradayTab._render_consensus(view)
