@@ -1,0 +1,47 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261016T083425Z-da5bed5ff58d4c83a043e06c88fd4450",
+  "change_id": "20261016T083425Z-da5bed5ff58d4c83a043e06c88fd4450",
+  "commit_sha": "8c9a4f9ab5e192654c8d3042eef6e65218a220ea",
+  "details": [
+    "Direct October 16 human instruction keeps statistical tuning specific to the producing PC and applicable symbols. Shared diagnostic source does not authorize cross-PC statistical policy installation.",
+    "No private candidate configuration, model selection, fitted model, database, execution state or diagnostic results are included.",
+    "Original Completion-Record 20261016T083207Z-9beb13e865924e3d905e3ae250dbc99c retained; this exact-byte revision uses current main for the PR."
+  ],
+  "files": [
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tools/intraday_model_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_model_diagnostics.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-model-local-policy.md"
+    }
+  ],
+  "limitations": [
+    "Read-only diagnostic tests use offline SQLite fixtures; they do not validate model accuracy or profitability.",
+    "Regular versus extended session classification requires explicit saved regular-session bounds.",
+    "Existing model settings and fitted artifacts remain local; no statistical cure is claimed from displayed confidence.",
+    "Peer adoption and runtime deployment are unverified; no peer acceptance is requested or required."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/184",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Adds a standalone read-only diagnostic and local-policy documentation. No trader restart, provider or broker call, model activation or operational gate.",
+  "scope": "shared diagnostics and local-policy documentation only",
+  "summary": "Atlas published read-only forecast diagnostics and local model-policy direction; draft PR 184.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-16T08:35:03.947755Z",
+      "description": "Nine offline SQLite diagnostic tests passed in isolated current-main candidate; import and exact-byte evidence verified.",
+      "output_sha256": "c7de81541fce58753543407f33d91729b70f987e94905496ff0d21fb22993e10",
+      "started_at_utc": "2026-10-16T08:35:03.147520Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T08:36:02.843716Z",
+  "id": "20261016T083602Z-fedeee85537f475f8b0620df47405727",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published read-only forecast diagnostics and local model-policy direction; draft PR 184."
+}
