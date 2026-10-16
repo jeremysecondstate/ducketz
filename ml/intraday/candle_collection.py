@@ -92,11 +92,15 @@ class CandleCollector:
                                "history_policy": "missing_original_history_retained_no_invented_rows"})
 
     def pass_once(self):
-        """One bounded pass. After close, older retries cannot delay final slots."""
+        """Yield old work when a new quarter is due; retain every pending slot."""
         if self.stopped():
             return {"closing": instant(self.clock()) >= self.close_at, "final_complete": False,
                     "pending_final_symbols": list(self.symbols), "saved": 0}
         now = instant(self.clock())
+        adjusted = now - timedelta(seconds=self.offset)
+        refresh_at = (min(self.close_at,
+            adjusted.replace(minute=adjusted.minute // 15 * 15, second=0, microsecond=0)
+            + STEP + timedelta(seconds=self.offset)) if now < self.close_at else None)
         self._schedule(now)
         with self.store.connect() as db:
             pending = db.execute("SELECT symbol,reference_at,next_attempt_at,last_error FROM intraday_candle_collection "
@@ -107,6 +111,11 @@ class CandleCollector:
             if self.stopped():
                 break
             now, reference = instant(self.clock()), instant(raw_reference)
+            # The pending snapshot predates the next quarter. Finish the current
+            # bounded step, then let the next pass schedule new slots first.
+            # Yielding changes no stop flag, receipt, or durable pending work.
+            if refresh_at is not None and now >= refresh_at:
+                break
             if now >= self.close_at and reference != self.final_reference:
                 continue
             candle = self._saved(symbol, reference, now)
