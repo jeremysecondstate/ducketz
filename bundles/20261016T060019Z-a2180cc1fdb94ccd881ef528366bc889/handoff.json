@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T06:00:19.033114Z",
+  "id": "20261016T060019Z-a2180cc1fdb94ccd881ef528366bc889",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted the exact Atlas PR174 Stats receipt fix and integrated it into common main."
+}
