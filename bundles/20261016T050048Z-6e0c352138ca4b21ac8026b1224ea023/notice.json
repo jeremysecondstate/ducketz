@@ -1,0 +1,83 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T045616Z-814b682a43604913b0a58bcf6fd8e76e",
+  "change_id": "20261016T045616Z-814b682a43604913b0a58bcf6fd8e76e",
+  "commit_sha": "ad8a1ae9ed9c661f957f33b5c77c52313e5c9b6f",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared legacy acquisition stop behavior applies independently to both PCs.",
+    "Carry caller stop callbacks through live histories, bounded and repeated recovery, the quarter-hour adapter, fallback forecast and scoring loops, and manual shadow research.",
+    "Check stop before new provider calls, predecessor backfill and retry waits; retain received success or error responses and completed candles before unwinding.",
+    "Preserve the independent minute collector, automatic order/model/scoring cutoff, final native-data drain, prior forecast/outcome evidence, manual controls and schedules."
+  ],
+  "files": [
+    "ml/intraday/data.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_legacy_stop.py",
+    "tests/test_intraday_data.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "61438d0868c4b293a48b11dcb289782b5936c954",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture validation; loaded-process adoption unverified.",
+    "Cooperative stops prevent the next provider operation; requests already in progress finish and received evidence is retained.",
+    "Existing local contract, ledger and optional dependencies preserved; installed tests bind their actual bytes."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/172"
+  ],
+  "local_receipt": "Five reviewed source and test paths installed exactly with originals retained. Existing cutoff, collector, final-data drain, local symbols and private bindings preserved.",
+  "remaining_source_work": "Review final outcome scoring after native-data drain against the explicit automatic scoring cutoff; preserve PR140 manual controls and final-data drain. Installed nightly-continuation common-main composition remains separate; production continues independently.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded legacy single-symbol acquisition honors its caller stop request between provider calls and before retrying while retaining already received evidence. Existing independent minute-feed cutoff and data-drain behavior is preserved.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout repaired stop propagation through legacy single-symbol candle recovery while preserving received evidence.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T04:55:35.194859Z",
+      "fingerprints": 87,
+      "import_verifier_violations": 0,
+      "output_sha256": "929abb12f0d1440b234ddb33c70b9352f624f0dd87d98a0692470e4cda6bb7b1",
+      "result": "364 passed in 26.30s",
+      "started_at_utc": "2026-10-16T04:55:05.831723Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T04:56:44.310784Z",
+      "fingerprints": 87,
+      "import_verifier_violations": 0,
+      "output_sha256": "fe36c775c68f200b32f77714371cff9ee3856bd6c56011d2cad023c24fadcf86",
+      "result": "364 passed in 25.97s",
+      "started_at_utc": "2026-10-16T04:56:16.331136Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T04:57:46.253114Z",
+      "fingerprints": 87,
+      "import_verifier_violations": 0,
+      "output_sha256": "a0ce4bfa60cdca4f19bb3b04eb5756291b89ce7825da5b7ee3a685dc7933af4f",
+      "result": "364 passed in 24.56s",
+      "started_at_utc": "2026-10-16T04:57:19.744541Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T04:59:07.134830Z",
+      "fingerprints": 87,
+      "import_verifier_violations": 0,
+      "output_sha256": "c40157ec46f2b4bfb61789860cbbd9bd9a7fa0e2a15240d3c85253bd2554caff",
+      "result": "364 passed in 25.10s",
+      "started_at_utc": "2026-10-16T04:58:40.157309Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T05:00:07.717862Z",
+      "fingerprints": 248,
+      "import_verifier_violations": 0,
+      "output_sha256": "05a1a1911db57d68ec3066cdecb699b87b7bb267b72b1b253169eb423a579f3b",
+      "result": "364 passed in 24.63s",
+      "started_at_utc": "2026-10-16T04:59:41.246772Z"
+    }
+  ]
+}
