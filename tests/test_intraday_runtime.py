@@ -50,22 +50,15 @@ def test_research_membership_rejects_unbound_or_conflicting_scope(tmp_path, chan
     with pytest.raises(ContractError): local_symbols(profile, watch, tmp_path)
 
 
-def test_research_membership_is_independent_of_account_state_and_keeps_profile_order(tmp_path, monkeypatch):
+def test_other_trader_configuration_cannot_change_local_research_membership(tmp_path):
     from ml.intraday.runtime import local_symbols
     profile, watch = research_binding(tmp_path)
     binding = tmp_path / "state/account-gameplan/config.json"
     binding.parent.mkdir(parents=True)
-    saved = json.loads(profile.read_text())
-    saved["symbols"] = ["BBB", "AAA"]
-    profile.write_text(json.dumps(saved))
-    binding.write_text("invalid unrelated account json")
-    original_read = Path.read_text
-    def read(path, *args, **kwargs):
-        assert path != binding, "Independent membership must not read Gameplan account state"
-        return original_read(path, *args, **kwargs)
-    monkeypatch.setattr(Path, "read_text", read)
-    assert local_symbols(profile, watch, tmp_path) == ("Scout", ("BBB", "AAA"))
-    assert binding.read_bytes() == b"invalid unrelated account json"
+    for content in ('invalid json', '{"machine_id":"pc-original"}'):
+        binding.write_text(content)
+        assert local_symbols(profile, watch, tmp_path) == ("Scout", ("AAA", "BBB"))
+        assert binding.read_text() == content
 
 
 @pytest.mark.parametrize("mode", [["--mode", "shadow"], ["--watch"]])
@@ -78,7 +71,7 @@ def test_archive_selection_cannot_change_shadow_provider_binding(tmp_path, mode)
 
 def history(symbol):
     return pd.DataFrame([dict(symbol=symbol,opened_at=REF,available_at=REF+timedelta(minutes=15),
-                              availability_kind="actual",open=100,high=101,low=99,close=100,volume=100,synthetic=False)])
+                              availability_kind="actual",interval_seconds=900,open=100,high=101,low=99,close=100,volume=100,synthetic=False)])
 
 
 def dataset(frame,*,cutoff,reference_at,**kwargs):
@@ -119,7 +112,7 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
         return dict(symbol="AAPL",opened_at=opened_at,available_at=opened_at+STEP,
             availability_kind="actual",open=100,high=100 if synthetic else 101,
             low=100 if synthetic else 99,close=100,volume=0 if synthetic else 100,
-            synthetic=synthetic,no_trade=synthetic,source_id=source,source_dataset="EQUS.MINI",
+            synthetic=synthetic,no_trade=synthetic,interval_seconds=900,source_id=source,source_dataset="EQUS.MINI",
             session_id=session.session_id,session_open=session.opened_at,session_close=session.closed_at,
             evidence_json='{"legacy_confirmations":2}' if synthetic else "{}")
     original = pd.DataFrame([row(REF-3*STEP),row(REF-2*STEP,synthetic=True),row(REF-STEP)])
@@ -290,6 +283,7 @@ def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_pe
     reference=pd.Timestamp("2026-05-11T14:00:00Z")
     now=[pd.Timestamp("2026-05-11T15:00:00Z")]
     frame=candles(1)
+    frame["interval_seconds"]=900
     frame["source_id"]="databento:EQUS.MINI:ohlcv-1m"
     store=ShadowStore(tmp_path/"late.sqlite3")
     journal=data.AcquisitionJournal(tmp_path/"acquisition.sqlite3")
@@ -304,7 +298,7 @@ def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_pe
     with pytest.raises(data.AcquisitionPending): live.get("AAPL")
     if external_prior:
         prior=candles(1,start=(reference-timedelta(minutes=15)).isoformat()).iloc[0].to_dict()
-        prior.update(source_id="databento:EQUS.MINI:ohlcv-1m",available_at=now[0]+timedelta(seconds=2),
+        prior.update(source_id="databento:EQUS.MINI:ohlcv-1m",interval_seconds=900,available_at=now[0]+timedelta(seconds=2),
                      open=77.0,high=78.0,low=76.0,close=77.0)
         store.record_candle(runtime._jsonable(prior))
     now[0]+=timedelta(seconds=4)
@@ -447,7 +441,7 @@ def test_final_1645_edge_preserves_inputs_without_invented_forecast(tmp_path):
         assert snapshot["next_session_target"] is None and snapshot["candles"]
 
 
-def test_resource_snapshot_keeps_own_and_host_metrics_without_process_inspection(monkeypatch):
+def test_resource_snapshot_does_not_inspect_other_trader_commands(monkeypatch):
     import ml.intraday.runtime as runtime
 
     def forbid_process_inspection(*args, **kwargs):
@@ -472,6 +466,26 @@ def test_resource_snapshot_keeps_own_and_host_metrics_without_process_inspection
         "system_available_memory_bytes": 1000,
         "system_cpu_percent": 12.5,
     }
+
+
+def test_research_membership_is_independent_of_account_state_and_keeps_profile_order(tmp_path, monkeypatch):
+    from ml.intraday.runtime import local_symbols
+    profile, watch = research_binding(tmp_path)
+    binding = tmp_path / "state/account-gameplan/config.json"
+    binding.parent.mkdir(parents=True)
+    saved = json.loads(profile.read_text())
+    saved["symbols"] = ["BBB", "AAA"]
+    profile.write_text(json.dumps(saved))
+    binding.write_text("invalid unrelated account json")
+    original_read = Path.read_text
+    def read(path, *args, **kwargs):
+        assert path != binding, "Independent membership must not read Gameplan account state"
+        return original_read(path, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", read)
+    assert local_symbols(profile, watch, tmp_path) == ("Scout", ("BBB", "AAA"))
+    assert binding.read_bytes() == b"invalid unrelated account json"
+
+
 
 def test_live_supervised_specs_are_frozen_for_retry_and_new_cycle_adopts_latest(tmp_path, monkeypatch):
     import ml.intraday.data as data_module
@@ -515,6 +529,7 @@ def test_live_supervised_specs_are_frozen_for_retry_and_new_cycle_adopts_latest(
     assert all(path == tmp_path / "supervision" for path, _, _, _ in loads)
 
 
+
 @pytest.mark.parametrize("mode", ["shadow", "historical_replay"])
 def test_supervised_adoption_is_limited_to_explicit_live_mode(tmp_path, monkeypatch, mode):
     import ml.intraday.model_policy as policy_module
@@ -524,6 +539,7 @@ def test_supervised_adoption_is_limited_to_explicit_live_mode(tmp_path, monkeypa
     result = r.run_cycle({s: history(s) for s in r.symbols}, reference_at=REF, mode=mode)
     assert result["successful_symbols"] == 2
     assert all(value["model_selection"] is None for value in result["forecasts"].values())
+
 
 
 def test_invalid_supervised_policy_and_mismatched_features_never_fit_defaults(tmp_path, monkeypatch):
@@ -544,6 +560,7 @@ def test_invalid_supervised_policy_and_mismatched_features_never_fit_defaults(tm
     assert all("features differ" in failure["message"] for failure in result["failures"].values())
 
 
+
 def test_supervised_cycle_detects_changed_frozen_policy(tmp_path, monkeypatch):
     import ml.intraday.model_policy as policy_module
     monkeypatch.setattr(policy_module, "load_active_policy", lambda *a, **k: None)
@@ -556,6 +573,7 @@ def test_supervised_cycle_detects_changed_frozen_policy(tmp_path, monkeypatch):
         db.execute("UPDATE cycles SET payload=? WHERE id=?", (json.dumps(row), first["cycle_id"]))
     with pytest.raises(ContractError, match="policy hash changed"):
         r.run_cycle({}, reference_at=REF, mode="live")
+
 
 
 def install_live_policy(tmp_path, symbol, *, feature_names=("x",), synthetic_policy="exclude", lookback_days=None,
@@ -579,6 +597,7 @@ def install_live_policy(tmp_path, symbol, *, feature_names=("x",), synthetic_pol
     return result["policy_sha256"]
 
 
+
 def population_history(symbol):
     rows = []
     for days_ago in (1, 0):
@@ -592,6 +611,7 @@ def population_history(symbol):
                 session_id=str(start.date()), session_open=start.isoformat(),
                 session_close=(start + timedelta(hours=12)).isoformat(), synthetic=index == 30, no_trade=False))
     return pd.DataFrame(rows)
+
 
 
 def test_live_policy_scope_drives_actual_population_and_next_cycle_adopts_new_scope(tmp_path):
@@ -630,6 +650,7 @@ def test_live_policy_scope_drives_actual_population_and_next_cycle_adopts_new_sc
     assert newer["forecasts"]["AAPL"]["dataset_scope"] == defaults["dataset_scope"]
     assert newer["forecasts"]["AAPL"]["model_selection"]["active_policy_sha256"] == newer_id != policy_id
     assert fits["AAPL"][0] == fits["IONQ"][0]
+
 
 
 def test_live_scope_retry_keeps_frozen_inputs_and_scope_for_not_yet_acquired_symbols(tmp_path, monkeypatch):
@@ -674,6 +695,7 @@ def test_live_scope_retry_keeps_frozen_inputs_and_scope_for_not_yet_acquired_sym
                for metadata in fits if metadata.get("model_selection", {}).get("selection") == "supervised")
 
 
+
 def test_legacy_active_policy_derives_scope_only_for_new_live_cycles(tmp_path, monkeypatch):
     import ml.intraday.data as data_module
     from ml.intraday.prediction import digest
@@ -716,6 +738,7 @@ def test_legacy_active_policy_derives_scope_only_for_new_live_cycles(tmp_path, m
     assert new["forecasts"]["AAPL"]["model_selection"]["active_policy_sha256"] == policy_id
 
 
+
 def test_legacy_cycle_hash_is_checked_before_scope_derivation(tmp_path, monkeypatch):
     from ml.intraday.runtime import _frozen_supervised_policy
     from ml.intraday.prediction import digest
@@ -725,6 +748,7 @@ def test_legacy_cycle_hash_is_checked_before_scope_derivation(tmp_path, monkeypa
     # Missing configuration would otherwise fail during legacy derivation.
     with pytest.raises(ContractError, match="policy hash changed"):
         _frozen_supervised_policy(dict(supervised_model_policy=policy), symbols=("AAPL",))
+
 
 
 @pytest.mark.parametrize("scope", [None, [], {}, {"synthetic_policy": "include"},
@@ -743,6 +767,7 @@ def test_frozen_supervised_scope_rejects_malformed_values(tmp_path, scope):
         _frozen_supervised_policy(dict(supervised_model_policy=policy), symbols=("AAPL",))
 
 
+
 @pytest.mark.parametrize("scopes", [None, [], "invalid", {}])
 def test_frozen_supervised_cycle_requires_scope_mapping_for_every_symbol(scopes):
     from ml.intraday.runtime import _frozen_supervised_policy
@@ -752,3 +777,4 @@ def test_frozen_supervised_cycle_requires_scope_mapping_for_every_symbol(scopes)
     policy["sha256"] = digest(policy)
     with pytest.raises(ContractError, match="dataset scope"):
         _frozen_supervised_policy(dict(supervised_model_policy=policy), symbols=("AAPL",))
+

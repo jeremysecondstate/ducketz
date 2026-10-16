@@ -407,37 +407,43 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
         return False
 
 
-def completed_15m_observation(candle: Mapping) -> bool:
-    """Require positive full-quarter evidence before reusing a saved observation.
+def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
+    """Require positive full-quarter evidence before reusing an observation.
 
-    Native rows and incomplete aggregates cannot finish a 15m collection or
-    score its target. Legacy explicit 900-second bars remain valid; current
-    aggregates carry constituent counts and the exact fifteen-minute grid.
-    Synthetic price continuity is a separate check at each calling boundary.
+    Native rows and incomplete aggregates cannot replace or score a completed
+    quarter. Legacy explicit 900-second bars remain valid. Only DataFrame rows
+    may treat null optional fields introduced by concatenation as absent proof;
+    raw durable mappings retain strict validation of explicitly present fields.
+    Synthetic price continuity remains a separate check at each caller.
     """
+    def missing(value):
+        return value is None or (isinstance(value, (float, np.floating))
+                                 and math.isnan(float(value)))
+
+    if not isinstance(candle, Mapping):
+        return False
     try:
         opened, available = utc(candle["opened_at"]), utc(candle["available_at"])
-        if opened != opened.floor("15min") or available < opened + STEP:
+        if pd.isna(opened) or pd.isna(available) or opened != opened.floor("15min") or available < opened + STEP:
             return False
         proof = False
-        if "interval_seconds" in candle:
-            if candle["interval_seconds"] != 900:
+        seconds = candle.get("interval_seconds")
+        if "interval_seconds" in candle and not (from_frame and missing(seconds)):
+            if seconds != 900:
                 return False
             proof = True
-        count_fields = ("observed_constituents", "synthetic_constituents")
-        if any(field in candle for field in count_fields):
-            counts = [candle.get(field) for field in count_fields]
+        counts = [candle.get(field) for field in ("observed_constituents", "synthetic_constituents")]
+        if (any(field in candle for field in ("observed_constituents", "synthetic_constituents"))
+                and not (from_frame and all(missing(value) for value in counts))):
             if any(isinstance(value, (bool, np.bool_))
                    or not isinstance(value, (int, float, np.integer, np.floating))
                    or not math.isfinite(float(value)) or not float(value).is_integer()
                    or not 0 <= value <= 15 for value in counts) or sum(counts) != 15:
                 return False
             proof = True
-        raw_evidence = candle.get("evidence_json", "{}")
-        if raw_evidence is None or (isinstance(raw_evidence, (float, np.floating)) and math.isnan(float(raw_evidence))):
-            evidence = {}  # Optional legacy evidence becomes null after DataFrame concatenation.
-        else:
-            evidence = raw_evidence if isinstance(raw_evidence, Mapping) else json.loads(raw_evidence)
+        raw_evidence = candle.get("evidence_json")
+        evidence = {} if missing(raw_evidence) else (
+            raw_evidence if isinstance(raw_evidence, Mapping) else json.loads(raw_evidence))
         if isinstance(evidence, Mapping) and "constituents" in evidence:
             constituents = evidence["constituents"]
             if not isinstance(constituents, list) or len(constituents) != 15:
