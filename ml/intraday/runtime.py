@@ -496,7 +496,8 @@ class ShadowRunner:
 
 class LiveHistories:
     """Read-only existing Databento access; original DATASTORE files stay intact."""
-    def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False):
+    def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False,
+                 stopped=lambda: False):
         self.histories=histories
         self.provider=provider
         self.store=store
@@ -505,6 +506,7 @@ class LiveHistories:
         self.clock=clock
         self.sleep=sleep
         self.bounded=bounded
+        self.stopped=stopped
         self.cycle_id=None
         for symbol in tuple(histories):
             self._refresh_symbol(symbol)
@@ -549,9 +551,13 @@ class LiveHistories:
     def get(self,symbol):
         from .data import AcquisitionPending
         while True:
+            if self.stopped():
+                raise InterruptedError("Live history stopped before acquisition")
             try:
                 return self._get_step(symbol)
             except AcquisitionPending as exc:
+                if self.stopped():
+                    raise InterruptedError("Live history stopped before retry wait") from exc
                 if self.bounded:
                     raise
                 self.sleep(min(4.0, exc.retry_after_seconds))
@@ -568,6 +574,8 @@ class LiveHistories:
             raise ContractError("Requested interval is outside a genuine eligible session")
         requested = self.reference
         while True:
+            if self.stopped():
+                raise InterruptedError("Live history stopped before predecessor recovery")
             before=frame.loc[pd.to_datetime(frame.opened_at,utc=True).lt(pd.Timestamp(requested))
                              & pd.to_datetime(frame.available_at,utc=True).le(pd.Timestamp(instant(self.clock())))]
             previous=_jsonable(before.iloc[-1].to_dict()) if len(before) else None
@@ -588,7 +596,7 @@ class LiveHistories:
             break
         begin=instant(self.clock());tick=time.perf_counter()
         kwargs=dict(symbol=symbol,opened_at=requested,journal=self.journal,session=session,
-                    previous=previous,clock=self.clock)
+                    previous=previous,clock=self.clock,stopped=self.stopped)
         result=recover_databento_candle_step(self.provider,**kwargs)
         if result.get("candle") is None:
             if result.get("status") == "retry":
@@ -640,7 +648,7 @@ def watch_shadow(runner,*,histories,provider,journal,start_reference,overrun_pol
         eligible=(4,0)<(local.hour,local.minute)<=(16,45) and any(s.contains(reference) for s in equity_sessions(reference,reference+STEP))
         if eligible:
             incoming=LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
-                                  reference_at=reference,clock=clock,sleep=sleep)
+                                  reference_at=reference,clock=clock,sleep=sleep,stopped=runner.stopped)
             result=runner.run_cycle(incoming,reference_at=reference,mode="shadow",experiment="manual_shadow_watch",
                                     acquisition={"kind":"existing_databento_exact_interval"})
             runner.score_available(histories,as_of=clock(),mode="shadow")

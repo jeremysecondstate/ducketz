@@ -733,7 +733,8 @@ def _provider_request_lock(journal):
 
 def recover_databento_candle_step(provider, *, symbol, opened_at, journal: AcquisitionJournal,
                                   session: SessionBounds, previous: Mapping | None,
-                                  clock: Callable = lambda: datetime.now(timezone.utc)) -> dict:
+                                  clock: Callable = lambda: datetime.now(timezone.utc),
+                                  stopped: Callable = lambda: False) -> dict:
     """One bounded exact attempt or durable wait; no internal sleep or retry cap.
 
     Provider temporary errors wait at least four seconds across all Databento
@@ -743,6 +744,8 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
     corrections, retaining every original attempt. Broker methods are absent.
     """
     import uuid
+    if stopped():
+        raise InterruptedError("Candle recovery stopped before acquisition")
     op, now = utc(opened_at), utc(clock())
     if op != op.floor("15min"):
         raise ContractError("Expected quarter-hour reference opening")
@@ -779,7 +782,7 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
                     "candle":None, "retry_after_seconds":max(exact_wait,provider_wait),
                     "evidence":[asdict(item) for item in attempts]}
         attempt = fetch_databento_interval_attempt(provider,symbol=symbol,opened_at=op,
-                                                   attempt_id=uuid.uuid4().hex,clock=clock)
+                                                   attempt_id=uuid.uuid4().hex,clock=clock,stopped=stopped)
         actual = dict(symbol=attempt.symbol,source_id=attempt.source_id,
                       interval_open=attempt.interval_open,interval_close=attempt.interval_close)
         if journal.slot(**actual) != journal.slot(**slot) or attempt.source_dataset != dataset.strip():
@@ -799,23 +802,27 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
 
 def recover_databento_candle(provider, *, symbol, opened_at, journal: AcquisitionJournal,
                              session: SessionBounds, previous: Mapping | None,
-                             sleep: Callable[[float], None], clock: Callable = lambda: datetime.now(timezone.utc)) -> dict:
+                             sleep: Callable[[float], None], clock: Callable = lambda: datetime.now(timezone.utc),
+                             stopped: Callable = lambda: False) -> dict:
     """Indefinite exact recovery around bounded steps, preserving provider waits."""
     while True:
         result = recover_databento_candle_step(provider,symbol=symbol,opened_at=opened_at,
-            journal=journal,session=session,previous=previous,clock=clock)
+            journal=journal,session=session,previous=previous,clock=clock,stopped=stopped)
         if result["status"] != "retry":
             return result
+        if stopped():
+            raise InterruptedError("Candle recovery stopped before retry wait")
         # Short sleeps keep interruption responsive; remaining waits are durable.
         sleep(min(4.0,result["retry_after_seconds"]))
 
 
 def fetch_15m(provider, *, symbol, reference, previous: Mapping | None, session: SessionBounds,
               journal: AcquisitionJournal, sleep: Callable[[float], None],
-              clock: Callable = lambda: datetime.now(timezone.utc)) -> pd.DataFrame:
+              clock: Callable = lambda: datetime.now(timezone.utc),
+              stopped: Callable = lambda: False) -> pd.DataFrame:
     """Convenience read-only live adapter returning an actual-availability row."""
     result = recover_databento_candle(provider, symbol=symbol, opened_at=reference, journal=journal,
-                                      session=session, previous=previous, sleep=sleep, clock=clock)
+                                      session=session, previous=previous, sleep=sleep, clock=clock,stopped=stopped)
     if result["candle"] is None:
         raise ContractError("Live candle unavailable: " + result.get("reason", result["status"]))
     return validate_candles(pd.DataFrame([result["candle"]]))
