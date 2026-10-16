@@ -95,10 +95,14 @@ neither late predictions nor missing action slots are replayed.
         or plan.get("orders_placed") != 0
     ):
         raise ValueError("Independent stock Gameplan payload differs from its publication")
+    late_publication_at = late_publication_time(configuration, publication.receipt)
+    if late_publication_at is not None and utc(late_publication_at) > timestamp:
+        raise ValueError("Independent stock Gameplan publication is not yet available at the requested time")
     normalized = _validated_independent_forecasts(
         pd.read_parquet(publication.run_directory / "forecasts.parquet"),
         action_date=action_date,
         symbols=symbols,
+        late_publication_at=late_publication_at,
     )
     from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE
     if not normalized["target_price_source_contract"].eq(
@@ -237,11 +241,73 @@ def verified_promoted_model_groups(publication) -> frozenset[str]:
     return frozenset(promoted)
 
 
+def late_publication_time(configuration: Mapping, receipt: Mapping):
+    """Select explicit late-source evidence without changing any forecast time."""
+    if configuration.get("publication_mode") == "NIGHTLY_CONTINUATION":
+        from ml.nightly_continuation import POLICY
+        day = receipt.get("action_date")
+        if (not day or configuration.get("action_date") != day
+                or configuration.get("late_action_date") != day
+                or configuration.get("continuation_policy") != POLICY):
+            raise ValueError("Dated nightly publication has inconsistent source evidence")
+        published = pd.Timestamp(receipt.get("published_at"))
+        cutoff = pd.Timestamp(configuration.get("training_information_cutoff"))
+        opening = (pd.Timestamp(day).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)).tz_convert("UTC")
+        if (pd.isna(published) or published.tzinfo is None or pd.isna(cutoff) or cutoff.tzinfo is None
+                or cutoff >= opening or cutoff > published):
+            raise ValueError("Dated nightly publication requires causal inputs and truthful publication times")
+        return receipt["published_at"] if published >= opening else None
+    recovery = configuration.get("late_preparation")
+    if recovery is not None:
+        # Local publication already verified this recovery record before its
+        # immutable manifest was written. Read its bound metadata; do not open
+        # private paths carried by evidence or backdate existing forecast rows.
+        day = receipt.get("action_date")
+        authorization = recovery.get("authorization", {}) if isinstance(recovery, Mapping) else {}
+        if (not day or configuration.get("action_date") != day
+                or authorization.get("schema_version") != "nightly-preparation-recovery-v1"
+                or authorization.get("action_date") != day
+                or authorization.get("operator_authorized") is not True
+                or authorization.get("orders_authorized") is not False
+                or authorization.get("actor") not in ("Scout", "Atlas")
+                or not authorization.get("authorization_reason")
+                or not isinstance(recovery.get("sha256"), str)
+                or len(recovery["sha256"]) != 64):
+            raise ValueError("Late forecast publication has inconsistent recovery evidence")
+        def stamp(value):
+            result = pd.Timestamp(value)
+            if pd.isna(result) or result.tzinfo is None:
+                raise ValueError("Late recovery timestamps must be timezone aware")
+            return result.tz_convert("UTC")
+        opening = (pd.Timestamp(day).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)).tz_convert("UTC")
+        published = stamp(receipt.get("published_at"))
+        requested, expires = stamp(authorization.get("requested_at")), stamp(authorization.get("expires_at"))
+        cutoff = stamp(authorization.get("training_information_cutoff"))
+        if (stamp(authorization.get("original_deadline_at")) != opening
+                or cutoff != opening - pd.Timedelta(microseconds=1)
+                or stamp(configuration.get("training_information_cutoff")) != cutoff
+                or not opening <= requested <= published < expires
+                or expires > min(requested + pd.Timedelta(hours=7), opening + pd.Timedelta(hours=13))):
+            raise ValueError("Late forecast publication differs from its fixed recovery window or information cutoff")
+        if (configuration.get("publication_mode") == "LATE_RECOVERY"
+                and configuration.get("late_action_date") != day):
+            raise ValueError("Late forecast publication has conflicting recovery dates")
+        return receipt["published_at"]
+    if configuration.get("publication_mode") != "LATE_RECOVERY":
+        return None
+    day = receipt.get("action_date")
+    if (not day or configuration.get("action_date") != day
+            or configuration.get("late_action_date") != day or not receipt.get("published_at")):
+        raise ValueError("Late forecast publication has inconsistent source evidence")
+    return receipt["published_at"]
+
+
 def _validated_independent_forecasts(
     frame: pd.DataFrame,
     *,
     action_date: str,
     symbols: tuple[str, ...],
+    late_publication_at=None,
 ) -> pd.DataFrame:
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
 
@@ -281,9 +347,20 @@ def _validated_independent_forecasts(
     _validate_target_windows(data, action_date=action_date)
     execution = data.loc[data["target_role"].eq("EXECUTION")]
     if any(not execution[column].le(execution["target_window_start"]).all() for column in (
-        "decision_timestamp", "information_available_at", "frozen_at"
+        "decision_timestamp", "information_available_at"
     )):
         raise ValueError("Independent stock execution forecast contains future information")
+    if late_publication_at is None:
+        if not execution["frozen_at"].le(execution["target_window_start"]).all():
+            raise ValueError("Independent stock execution forecast contains future information")
+    else:
+        published = pd.Timestamp(late_publication_at)
+        opening = (pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)).tz_convert("UTC")
+        if (pd.isna(published) or published.tzinfo is None
+                or published < opening
+                or not data["frozen_at"].le(published).all()
+                or any(not data[column].lt(opening).all() for column in ("decision_timestamp", "information_available_at"))):
+            raise ValueError("Late forecast publication requires causal pre-session inputs and truthful publication times")
     if not data["information_available_at"].le(data["frozen_at"]).all():
         raise ValueError("Independent stock forecast information postdates publication")
     if execution.duplicated(["symbol", "model_group", "target_window_start"]).any():
