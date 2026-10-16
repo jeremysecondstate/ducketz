@@ -78,7 +78,7 @@ def test_archive_selection_cannot_change_shadow_provider_binding(tmp_path, mode)
 
 def history(symbol):
     return pd.DataFrame([dict(symbol=symbol,opened_at=REF,available_at=REF+timedelta(minutes=15),
-                              availability_kind="actual",open=100,high=101,low=99,close=100,volume=100,synthetic=False)])
+                              availability_kind="actual",interval_seconds=900,open=100,high=101,low=99,close=100,volume=100,synthetic=False)])
 
 
 def dataset(frame,*,cutoff,reference_at,**kwargs):
@@ -119,7 +119,7 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
         return dict(symbol="AAPL",opened_at=opened_at,available_at=opened_at+STEP,
             availability_kind="actual",open=100,high=100 if synthetic else 101,
             low=100 if synthetic else 99,close=100,volume=0 if synthetic else 100,
-            synthetic=synthetic,no_trade=synthetic,source_id=source,source_dataset="EQUS.MINI",
+            synthetic=synthetic,no_trade=synthetic,interval_seconds=900,source_id=source,source_dataset="EQUS.MINI",
             session_id=session.session_id,session_open=session.opened_at,session_close=session.closed_at,
             evidence_json='{"legacy_confirmations":2}' if synthetic else "{}")
     original = pd.DataFrame([row(REF-3*STEP),row(REF-2*STEP,synthetic=True),row(REF-STEP)])
@@ -290,6 +290,7 @@ def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_pe
     reference=pd.Timestamp("2026-05-11T14:00:00Z")
     now=[pd.Timestamp("2026-05-11T15:00:00Z")]
     frame=candles(1)
+    frame["interval_seconds"]=900
     frame["source_id"]="databento:EQUS.MINI:ohlcv-1m"
     store=ShadowStore(tmp_path/"late.sqlite3")
     journal=data.AcquisitionJournal(tmp_path/"acquisition.sqlite3")
@@ -304,7 +305,7 @@ def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_pe
     with pytest.raises(data.AcquisitionPending): live.get("AAPL")
     if external_prior:
         prior=candles(1,start=(reference-timedelta(minutes=15)).isoformat()).iloc[0].to_dict()
-        prior.update(source_id="databento:EQUS.MINI:ohlcv-1m",available_at=now[0]+timedelta(seconds=2),
+        prior.update(source_id="databento:EQUS.MINI:ohlcv-1m",interval_seconds=900,available_at=now[0]+timedelta(seconds=2),
                      open=77.0,high=78.0,low=76.0,close=77.0)
         store.record_candle(runtime._jsonable(prior))
     now[0]+=timedelta(seconds=4)
