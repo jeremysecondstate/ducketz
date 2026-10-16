@@ -145,9 +145,17 @@ class QuarterHourMinuteFeed:
                         self.histories[symbol] = data.History(clean, history.manifest)
                         self._event("minute_feed_invalid_synthetic_excluded", {
                             "history_rows_excluded": len(invalid), "immutable_originals_retained": True}, symbol)
+                    history = self.histories[symbol]
+                    eligible = [data.completed_15m_observation(row, from_frame=True)
+                                and instant(row["available_at"]) <= now
+                                for row in history.frame.to_dict("records")]
+                    clean = history.frame.loc[eligible].copy()
+                    clean.attrs["intraday_history"] = history.manifest
+                    self.histories[symbol] = data.History(clean, history.manifest)
                 saved = [c for c in self.store.observed_candles(symbol)
                          if c.get("source_id") == self.source_id
                          and c.get("source_dataset") == self.dataset
+                         and data.completed_15m_observation(c)
                          and instant(c["available_at"]) <= now
                          and data.synthetic_continuity_verified(c)]
                 self._merge(symbol, saved)
@@ -354,7 +362,8 @@ class QuarterHourMinuteFeed:
                         & pd.to_datetime(frame.available_at, utc=True).le(pd.Timestamp(instant(self.clock())))
                         & frame.availability_kind.eq("actual")
                         & frame.source_id.eq(self.source_id) & frame.source_dataset.eq(self.dataset)]
-                    if not matching.empty and data.synthetic_continuity_verified(matching.iloc[-1].to_dict()):
+                    if any(data.completed_15m_observation(row, from_frame=True) and data.synthetic_continuity_verified(row)
+                           for row in matching.to_dict("records")):
                         return history
             raise ContractError("History reference lies outside this feed's latched eligible day")
         with self._lock:

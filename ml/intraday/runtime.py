@@ -455,6 +455,7 @@ class ShadowRunner:
                  "message": str(exc), "forecast_preserved": True}, symbol=forecast["symbol"])
 
     def score_available(self,histories,*,as_of,mode=None):
+        from .data import completed_15m_observation, synthetic_continuity_verified
         results=[]
         for forecast in self.store.forecasts(pc=self.pc):
             if mode is not None and forecast["mode"]!=mode:
@@ -484,6 +485,8 @@ class ShadowRunner:
                     frame=frame.loc[frame.availability_kind.eq("actual")]
                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
                                 (pd.to_datetime(frame.available_at,utc=True)<=pd.Timestamp(instant(as_of)))]
+                match=match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                                for row in match.to_dict("records")]]
                 if len(match):
                     match=match.sort_values("available_at")
                     candle=_jsonable(match.iloc[-1].to_dict())
@@ -507,7 +510,7 @@ class LiveHistories:
             self._refresh_symbol(symbol)
 
     def _refresh_symbol(self, symbol):
-        from .data import History, synthetic_continuity_verified
+        from .data import History, completed_15m_observation, synthetic_continuity_verified
         histories = self.histories
         for symbol,history in ((symbol, histories[symbol]),):
             if history.manifest.get("source_dataset")!=self.provider.dataset:
@@ -515,7 +518,7 @@ class LiveHistories:
             saved=self.store.observed_candles(symbol)
             saved=[c for c in saved if instant(c["available_at"]) <= instant(self.clock())]
             invalid=[c for c in saved if not synthetic_continuity_verified(c)]
-            saved=[c for c in saved if synthetic_continuity_verified(c)]
+            saved=[c for c in saved if synthetic_continuity_verified(c) and completed_15m_observation(c)]
             original=_frame(history)
             excluded=[index for index,row in original.loc[original.synthetic.eq(True)].iterrows()
                       if not synthetic_continuity_verified(_jsonable(row.to_dict()))]
@@ -525,6 +528,11 @@ class LiveHistories:
                      "history_rows_excluded":len(excluded),"immutable_originals_retained":True},symbol=symbol)
                 original=original.drop(index=excluded).copy()
                 histories[symbol]=history=History(original,history.manifest)
+            eligible=[completed_15m_observation(row, from_frame=True) and instant(row["available_at"]) <= instant(self.clock())
+                      for row in original.to_dict("records")]
+            original=original.loc[eligible].copy()
+            original.attrs["intraday_history"]=history.manifest
+            histories[symbol]=history=History(original,history.manifest)
             if saved:
                 if any(c.get("source_dataset")!=self.provider.dataset for c in saved):
                     raise ContractError("Stored observed candles have another source dataset")
