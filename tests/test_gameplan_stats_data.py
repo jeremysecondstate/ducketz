@@ -23,8 +23,9 @@ def test_empty_preopen_coverage_is_preserved_without_hiding_prior_results(tmp_pa
 
 
 def test_separate_direction_probability_and_incomplete_populations(tmp_path):
-    write_review(tmp_path)
+    run = write_review(tmp_path)
     review = load_gameplan_stats(tmp_path)
+    assert review.receipt_sha256 == file_checksum(run / "receipt.json")
     metrics = review.metrics()
     assert (metrics.total, metrics.evaluated, metrics.pending, metrics.awaiting_data) == (7, 5, 1, 1)
     assert (metrics.correct, metrics.scored, metrics.neutral) == (2, 4, 1)
@@ -204,6 +205,7 @@ def test_frozen_review_uses_original_receipt_after_display_pointers_change(tmp_p
     review = load_gameplan_stats(tmp_path, session, run_directory=original,
                                 expected_receipt_sha256=receipt_hash)
     assert review.run_directory == original and review.session == "2026-09-11"
+    assert review.receipt_sha256 == receipt_hash
     assert review.metrics().accuracy == 1
     assert review.report_path == original / "Gameplan-results.md"
     assert _saved_tree(tmp_path) == before

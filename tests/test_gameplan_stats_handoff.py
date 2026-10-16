@@ -378,6 +378,55 @@ def test_source_mutation_during_export_cannot_create_a_package(tmp_path, package
     assert mutated and not destination.exists()
 
 
+def test_reissued_excluded_research_cannot_replace_the_initial_export_source(tmp_path, monkeypatch):
+    root = tmp_path / "source"
+    research = forecast("DOCU", hour=5)
+    research["model_status"] = "RESEARCH_NOT_PROMOTED"
+    source = write_review(root, [forecast("DOCU"), research])
+    original_load = stats_handoff.load_gameplan_stats
+    initial = original_load(root)
+    destination = tmp_path / "changed-research.json"
+    mutated = False
+
+    def load_then_reissue(*args, **kwargs):
+        nonlocal mutated
+        review = original_load(*args, **kwargs)
+        if not mutated:
+            results_path = source / "forecast-results.parquet"
+            results = pd.read_parquet(results_path)
+            mask = results.model_status.eq("RESEARCH_NOT_PROMOTED")
+            results.loc[mask, "calibrated_probability"] = .3
+            results.loc[mask, "model_brier_score"] = .3 ** 2
+            results.to_parquet(results_path, index=False)
+            manifest_path = source / "manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["output_files"]["forecast-results.parquet"] = {
+                "size": results_path.stat().st_size,
+                "checksum_sha256": file_checksum(results_path),
+            }
+            manifest_path.write_text(json.dumps(manifest))
+            receipt_path = source / "receipt.json"
+            receipt = json.loads(receipt_path.read_text())
+            receipt["manifest_sha256"] = file_checksum(manifest_path)
+            receipt_path.write_text(json.dumps(receipt))
+            for pointer_path in (root / "ml/gameplan-actuals-review-latest/run.json",
+                                 root / "ml/gameplan-actuals-review-by-date/2026-09-11/run.json"):
+                pointer = json.loads(pointer_path.read_text())
+                pointer["current"]["receipt_sha256"] = file_checksum(receipt_path)
+                pointer_path.write_text(json.dumps(pointer))
+            mutated = True
+        return review
+
+    monkeypatch.setattr(stats_handoff, "load_gameplan_stats", load_then_reissue)
+    with pytest.raises(ValueError, match="source changed before export snapshot"):
+        export_stats_package(root, producer="Scout", symbols=["DOCU"], destination=destination)
+    reissued = original_load(root)
+    assert mutated and not destination.exists()
+    assert initial.outcomes == reissued.outcomes
+    assert initial.excluded_forecasts == reissued.excluded_forecasts == 1
+    assert initial.receipt_sha256 != reissued.receipt_sha256
+
+
 def test_pointer_advance_during_export_keeps_the_original_immutable_run(tmp_path, packages, monkeypatch):
     _, owners = packages
     root = tmp_path / "Scout"
