@@ -221,7 +221,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
             reference = instant(cycle["reference_at"])
         incoming = (history_source(reference) if history_source is not None else
                     LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
-                                  reference_at=reference,clock=clock,sleep=pause,bounded=True))
+                                  reference_at=reference,clock=clock,sleep=pause,bounded=True,stopped=stopped))
         result = runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
                          on_published=queue.enqueue,acquisition={"kind":"existing_databento_exact_interval"},
                          retry_symbols=retry_symbols,allow_execution=reference == newest)
@@ -275,7 +275,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                 continue
             incoming = (history_source(forecast["target_open"]) if history_source is not None else
                         LiveHistories(histories=dict(histories),provider=provider,store=store,journal=journal,
-                                      reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True))
+                                      reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True,stopped=stopped))
             incoming.bind_cycle("score:" + forecast["forecast_id"])
             try:
                 history = incoming.get(symbol)
