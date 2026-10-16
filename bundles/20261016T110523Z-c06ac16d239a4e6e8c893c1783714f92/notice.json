@@ -1,0 +1,77 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T105820Z-0245a998ba5c48129543c3b36d2c5bbd",
+  "change_id": "20261016T105820Z-0245a998ba5c48129543c3b36d2c5bbd",
+  "commit_sha": "ab3241032293e88c2c350bdba6940a3682ac1e77",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared correctness applies independently on both PCs.",
+    "Native continuation binds the original Pacific action session and independent Stats-first preparation scope.",
+    "Carry the dated context to child processes and publication/planning commands; parent environment stays unchanged.",
+    "Direct retries inherit saved continuation context, reject conflicting dates and preserve frozen stages, deadlines and evidence.",
+    "Preserve local model recipes, symbols and manual controls; no trader starts or provider calls.",
+    "Retain Scout continuation record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93.",
+    "Retain Atlas continuation record 20261014T050106Z-0e807c66479e4deb83823375e163fe5c."
+  ],
+  "files": [
+    "ml/overnight_runtime.py",
+    "tests/test_nightly_native_continuation.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "6f63cc7aa3b0e700317c9b09ae2491314d04a076",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixtures; no production data, providers, brokers or trader execution.",
+    "Broader workflow-dispatch composition remains separate. Loaded-process adoption unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/193"
+  ],
+  "local_receipt": "Selectively installed saved-date inheritance and validation plus CLI forwarding and focused tests. Existing mixed runtime, recovery branches, local symbols and model recipes preserved. Loaded-process adoption unverified.",
+  "remaining_source_work": "Compose remaining native recovery routes and workflow-dispatch from original records, preserving Stats-first local behavior and existing fixture adaptations.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Direct native retries preserve the original dated context in child processes without replaying completed stages or replacing frozen evidence. Manual trader controls remain intact.",
+  "scope": "Shared correctness source for both PCs independently.",
+  "summary": "Scout preserved native dated continuation and inherited context on direct retries.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T10:58:03.903322Z",
+      "fingerprints": 203,
+      "output_sha256": "fa66aab7ef3b2ea43fba46435c6a9d2ee3121b57461338423ac0935460ebf63b",
+      "result": "221 passed, 20 warnings in 28.22s",
+      "started_at_utc": "2026-10-16T10:57:34.195461Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T10:58:50.161102Z",
+      "fingerprints": 203,
+      "output_sha256": "78b49ece81666bc9a3615bcc39f6dd690074d51cf061be925e65f0cd0c568af6",
+      "result": "221 passed, 20 warnings in 27.90s",
+      "started_at_utc": "2026-10-16T10:58:20.818676Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T10:59:40.084742Z",
+      "fingerprints": 203,
+      "output_sha256": "0a7a8765efc23c90fc9a2c941a3f28928ce026bfc21abe4aad393d3dd8265d01",
+      "result": "221 passed, 20 warnings in 28.40s",
+      "started_at_utc": "2026-10-16T10:59:10.201052Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T11:00:54.640916Z",
+      "fingerprints": 203,
+      "output_sha256": "942ae975dab951dcd463142c778242e2fbc42ff24821b2f1d699977baf2952b2",
+      "result": "221 passed, 20 warnings in 28.95s",
+      "started_at_utc": "2026-10-16T11:00:24.177325Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T11:04:56.475286Z",
+      "fingerprints": 250,
+      "output_sha256": "5c53041c87d3e7122ae79382b145388a3d8fa4d4c9be905e845704642df2b568",
+      "result": "284 passed, 20 warnings in 39.38s",
+      "started_at_utc": "2026-10-16T11:04:15.461375Z"
+    }
+  ]
+}

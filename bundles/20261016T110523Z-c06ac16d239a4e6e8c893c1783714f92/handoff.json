@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T11:05:23.545869Z",
+  "id": "20261016T110523Z-c06ac16d239a4e6e8c893c1783714f92",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserved native dated continuation and inherited context on direct retries."
+}
