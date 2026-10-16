@@ -123,6 +123,8 @@ def export_stats_package(root: Path, *, producer: str, symbols: Sequence[str], d
         raise ValueError("Selected Stats publication changed before export")
     run = review.run_directory
     source_hashes = {name: file_checksum(run / name) for name in ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")}
+    if source_hashes["receipt.json"] != review.receipt_sha256:
+        raise ValueError("Stats source changed before export snapshot")
     frozen = load_gameplan_stats(root, action_date, run_directory=run,
                                 expected_receipt_sha256=source_hashes["receipt.json"])
     if frozen != review:
