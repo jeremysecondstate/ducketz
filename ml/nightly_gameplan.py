@@ -152,6 +152,7 @@ def run_nightly_gameplan_once(
     stock_price_source: str = CANONICAL_STOCK_PRICE_SOURCE,
     probability_target_contract: str | None = None,
     archive_history: bool = False,
+    model_feedback: Path | None = None,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -174,6 +175,13 @@ def run_nightly_gameplan_once(
     probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
+    feedback = None
+    if model_feedback is not None:
+        if not independent_stock_horizons:
+            raise ValueError("Model feedback requires independent stock horizons")
+        from ml.gameplan_model_feedback import load_feedback_review
+        feedback = load_feedback_review(root, model_feedback, as_of=created,
+                                        probability_target=probability_target)
     loop_b = read_current_publication(root)
     strategy = None if stock_only else read_current_strategy_publication(root)
     samples_path = loop_b.run_directory / "samples.parquet"
@@ -190,6 +198,31 @@ def run_nightly_gameplan_once(
     )
     if not all(path.is_file() for path in (samples_path, predictions_path, *strategy_inputs)):
         raise RuntimeError("Nightly gameplan inputs are incomplete")
+
+    feedback_context = None
+    if feedback is not None:
+        # Bind the verified publication before consuming its training rows.
+        # A replacement must never become the provenance of already-read data.
+        manifest_path = loop_b.run_directory / "manifest.json"
+        manifest_sha256 = file_checksum(manifest_path)
+        samples_sha256 = loop_b.manifest["output_files"]["samples.parquet"]["checksum_sha256"]
+        if (json.loads(manifest_path.read_text(encoding="utf-8")) != loop_b.manifest
+                or file_checksum(samples_path) != samples_sha256):
+            raise RuntimeError("Reviewed training inputs changed before fitting")
+        feedback_context = {
+            "review_sha256": feedback["checksum_sha256"], "stats": feedback["stats"],
+            "loop_b_manifest_sha256": manifest_sha256, "samples_sha256": samples_sha256,
+        }
+
+    def verify_feedback_inputs():
+        if feedback is None:
+            return
+        verified = load_feedback_review(root, model_feedback, probability_target=probability_target)
+        if verified["checksum_sha256"] != feedback["checksum_sha256"]:
+            raise RuntimeError("Model review changed during training")
+        if (file_checksum(samples_path) != feedback_context["samples_sha256"]
+                or file_checksum(loop_b.run_directory / "manifest.json") != feedback_context["loop_b_manifest_sha256"]):
+            raise RuntimeError("Reviewed training inputs changed during fitting")
 
     samples = pd.read_parquet(samples_path)
     candidates = (
@@ -348,7 +381,20 @@ def run_nightly_gameplan_once(
     model_output_names: list[str] = []
     training_cohort_names: list[str] = []
     champion_input_files: list[Path] = []
+    feedback_results: dict[str, object] = {}
     for group in MODEL_GROUPS:
+        champion = None
+        incumbent_specification = None
+        if feedback is not None:
+            from ml.gameplan_champions import latest_promoted_champion, retain_champion
+            champion = latest_promoted_champion(root, group=group, action_date=action_date,
+                symbols=symbols, price_source=stock_price_source, before=created,
+                source_selection_contract=selection_version, probability_target=probability_target,
+                allow_prior_sessions=True)
+            if champion is not None:
+                accepted_feedback = champion["report"].get("model_feedback") or {}
+                incumbent_specification = accepted_feedback.get("selected_specification", accepted_feedback.get("selected_candidate"))
+                champion_input_files.extend(champion["files"])
         if independent_stock_horizons:
             cohort_name = f"training-cohort-{group}.parquet"
             groups[group].to_parquet(run / cohort_name, index=False)
@@ -360,18 +406,31 @@ def run_nightly_gameplan_once(
             group=group,
             model_directory=run / "models" / group,
             trained_at=created,
+            **({"feedback_candidates": feedback["proposal"]["groups"][group]["candidates"],
+                "feedback_context": feedback_context,
+                "incumbent_specification": incumbent_specification} if feedback is not None else {}),
         )
+        challenger_feedback = trained["report"].get("model_feedback")
         if independent_stock_horizons and trained["report"]["promotion_gate"]["status"] != "PROMOTED":
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
-            champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                symbols=symbols, price_source=stock_price_source, before=created,
-                source_selection_contract=selection_version,
-                probability_target=probability_target)
+            if feedback is None:
+                champion = latest_promoted_champion(root, group=group, action_date=action_date,
+                    symbols=symbols, price_source=stock_price_source, before=created,
+                    source_selection_contract=selection_version, probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
                     current=current[group], run=run, group=group, frozen_at=created)
                 model_output_names.extend(retained_outputs)
                 champion_input_files.extend(champion["files"])
+        if feedback is not None:
+            feedback_results[group] = {
+                "review": feedback["proposal"]["groups"][group],
+                "candidate_evaluation": challenger_feedback,
+                "accepted_family": trained["report"]["selected_family"],
+                "accepted_model": trained["report"]["model_file"],
+                "promotion_status": trained["report"]["promotion_gate"]["status"],
+                "deployment": trained["report"].get("deployment"),
+            }
         forecast_frames.append(trained["forecasts"])
         model_reports[group] = trained["report"]
         model_output_names.append(
@@ -520,7 +579,20 @@ def run_nightly_gameplan_once(
         *model_output_names,
         *training_cohort_names,
         *archive_outputs,
+        *(("model-feedback-results.json",) if feedback is not None else ()),
     )
+    feedback_inputs = ()
+    if feedback is not None:
+        # Reject mutation or a newer Stats publication after a long fit. A new
+        # review is needed, rather than attributing these models to changed bytes.
+        verify_feedback_inputs()
+        stats_run = root / feedback["stats"]["run_path"]
+        feedback_inputs = (Path(model_feedback), Path(model_feedback).parent / "diagnostics.json",
+                           *(stats_run / name for name in ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")))
+        _write_json_atomic(run / "model-feedback-results.json", {
+            "schema_version": "nightly-gameplan-model-feedback-results-v1", "input_binding": feedback_context,
+            "groups": feedback_results, "assessment_used_for_candidate_selection": False,
+            "orders_placed": 0, "broker_orders_enabled": False})
     write_manifest(
         run,
         run_timestamp=created,
@@ -534,6 +606,7 @@ def run_nightly_gameplan_once(
             *minute_bar_files,
             *archive_files,
             *champion_input_files,
+            *feedback_inputs,
             evaluation.run_directory / "receipt.json",
             evaluation.run_directory / "evaluations.parquet",
         ),
@@ -580,6 +653,8 @@ def run_nightly_gameplan_once(
             f"action_date={action_date.isoformat()}; "
             f"finished_at={published_at.isoformat()}"
         )
+    # Manifest construction also reads inputs; reject changes during that step.
+    verify_feedback_inputs()
     _publish_gameplan(
         root,
         run=run,
@@ -2629,6 +2704,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="pc",
     )
     parser.add_argument("--once", action="store_true", help="Compatibility flag")
+    parser.add_argument("--model-feedback", type=Path,
+                        help="Completed Stats-bound model review; adds bounded candidates to chronological selection")
     parser.add_argument("--archive-history", action="store_true",
                         help="Use verified historical XNAS feature rows; preserves price and model quality gates")
     parser.add_argument(
@@ -2655,6 +2732,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                       independent_stock_horizons=args.independent_stock_horizons,
                                       stock_price_source=args.stock_price_source,
                                       archive_history=args.archive_history,
+                                      model_feedback=args.model_feedback,
                                       probability_target_contract=args.probability_target_contract)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")
