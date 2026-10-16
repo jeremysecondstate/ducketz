@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T08:54:37.021208Z",
+  "id": "20261016T085437Z-491b433e3f7b4f47857da3fb12d8a695",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas repaired collector backlog scheduling so new quarter-hour intervals receive priority."
+}

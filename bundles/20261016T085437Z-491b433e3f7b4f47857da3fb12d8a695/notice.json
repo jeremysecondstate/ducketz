@@ -1,0 +1,43 @@
+{
+  "author": "Atlas",
+  "base_commit": "15d6850da9496b98d7d27ec97a6eab1373da12bf",
+  "branch": "codex/atlas/20261016T085241Z-5d612e13bda34e1fa3be9a59c90541fa",
+  "change_id": "20261016T085241Z-5d612e13bda34e1fa3be9a59c90541fa",
+  "commit_sha": "afcfc4c265891a6f45cabaa8a404e7470372bc9c",
+  "details": [
+    "Manual-started collector still requests genuine native price data and permits only provenance-verified no-trade continuity.",
+    "No parameter, calibration, dataset, model selection or fitted model is transferred.",
+    "Draft PR187 is stacked on existing published collector PR139; source integration is separate from local installation.",
+    "Peer installation and future live timing are unverified; no reciprocal acceptance or operational gate."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/candle_collection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_collection_cadence.py"
+    }
+  ],
+  "limitations": [
+    "Saved requests establish delayed first attempts but do not identify every caller or prove one exclusive cause.",
+    "A provider request already in flight still completes normally; this repair does not guarantee provider publication or punctual network delivery.",
+    "Based on the existing published candle collector in draft PR 139; main does not yet contain that source dependency."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/187",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Local source repair loads on the next human manual start. No trader launch or restart, provider or broker calls, manual-stop change, or model-policy change.",
+  "scope": "shared acquisition scheduler correctness only",
+  "summary": "Atlas repaired collector backlog scheduling so new quarter-hour intervals receive priority.",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-16T08:53:22.634762Z",
+      "description": "60 offline cadence, candle completion and close tests pass. Regression fails4cases on original code.",
+      "output_sha256": "8efa905db9fc420048c17048f7b57a8d0a2a9a17f57d206e82eb3eb4a0f3ab86",
+      "started_at_utc": "2026-10-16T08:53:17.146054Z"
+    }
+  ]
+}
