@@ -27,7 +27,7 @@ from .intentions import IntentionStore
 from .prediction import ContractError, digest, instant
 from .scout_session_books import ScoutBooks
 from .scout_broker import ScoutBrokerAdapter
-from .scout_client import ScoutClient
+from .scout_client import ScoutClient, exception_details
 from .local_forecast import forecast_disposition
 from .scout_protocol import Grant, Request, canonical_sha256
 from .local_forecast import _saved_forecast
@@ -378,4 +378,6 @@ class ScoutLocalAccountExecutor:
             return self._record(forecast, 'submission_recovery_required', capacity=capacity,
                 order=self._order(self.journal, record),
                 evidence={'request_id': request.request_id, 'local_state': record['state'],
-                          'error_type': type(exc).__name__, 'retry_after_seconds': retry_delay(exc, self.clock())})
+                          'error_type': type(exc).__name__, 'retry_after_seconds': retry_delay(exc, self.clock()),
+                          'submission_failure': getattr(exc, 'scout_submission_failure',
+                              dict(stage='outside_claimed_submit', original=exception_details(exc)))})
