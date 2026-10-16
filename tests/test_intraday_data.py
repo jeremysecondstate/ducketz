@@ -504,6 +504,7 @@ def test_live_histories_genuine_availability_integration_without_order_side_effe
     from ml.intraday.store import ShadowStore
     reference = pd.Timestamp("2026-05-11T20:00:00Z")
     frame = candles(26)
+    frame["interval_seconds"] = 900
     frame["availability_kind"] = "assumed_historical_close"
     frame["source_id"] = "databento:EQUS.MINI:ohlcv-1m"
     original = frame.copy(deep=True)
