@@ -16,6 +16,7 @@ from typing import Mapping
 import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, verify_manifest, write_manifest, utc_timestamp
+from ml.nightly_continuation import continuing, deadline_expired
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
 from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
@@ -159,6 +160,14 @@ same current cash being promised to several horizons or symbols.
                   "projected_trade_quantity": None, "projected_trade_budget": None,
                   "projected_trade_notional": None, "projected_quantity_reason": "NON_ENTRY_CONTEXT"}
         if row["execution_eligible"]:
+            if (snapshot.get("observed_at") is not None
+                    and utc(row["target_window_start"]) < utc(snapshot["observed_at"])):
+                result.update(trade_planning_reason="EXPIRED_BEFORE_PREPARATION",
+                              projected_quantity_reason="EXPIRED_BEFORE_PREPARATION",
+                              projected_trade_quantity=0, projected_trade_budget=0., projected_trade_notional=0.,
+                              scheduled_trade_quantity=0)
+                results[str(row["id"])] = result
+                continue
             result["projected_quantity_reason"] = "ACCOUNT_EVIDENCE_UNAVAILABLE"
             if evidence_ready:
                 result["projected_quantity_reason"] = "PRICE_RANGE_UNAVAILABLE"
@@ -340,10 +349,11 @@ def _review_refresh_basis(root, prior_run, source, source_hash, action_date, now
 
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
                        snapshot_loader=None, price_loader=None, clock=utc_timestamp,
-                       deadline_exception: Path | None = None, refresh_plan: Path | None = None) -> Path:
+                       deadline_exception: Path | None = None, refresh_plan: Path | None = None,
+                       late_action_date: str | None = None) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
-    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups
+    from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups, late_publication_time
     from ml.stock_target_prices import load_stock_target_prices
     from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
     from ml.gameplan_cash_ledger import project_direction_trades, UnavailablePlanningPricePath
@@ -366,14 +376,40 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     source_receipt_hash = file_checksum(source / "receipt.json")
     expected_deadline = pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
-    if deadline_at != expected_deadline.tz_convert("UTC"):
-        raise ValueError("Trade planning deadline differs from the pinned action session")
     observed = utc(clock())
+    original_deadline = expected_deadline.tz_convert("UTC")
+    if late_action_date is not None and refresh_plan is not None:
+        raise ValueError("Late recovery cannot replace a frozen informational refresh")
+    dated_continuation = continuing(action_date)
+    if dated_continuation:
+        if late_action_date not in (None, action_date) or deadline_at != original_deadline:
+            raise ValueError("Nightly planning must retain its original action date and target")
+    elif late_action_date is not None:
+        close = (expected_deadline + pd.Timedelta(hours=13)).tz_convert("UTC")
+        if (late_action_date != action_date
+                or config.get("publication_mode") != "LATE_RECOVERY"
+                or config.get("late_action_date") != action_date
+                or deadline is None or refresh_plan is not None
+                or observed < original_deadline
+                or (deadline_exception is not None and not Path(deadline_exception).is_file())
+                or (deadline_exception is None and observed >= deadline_at)
+                or not original_deadline <= deadline_at <= close):
+            raise ValueError("Late trade planning requires the matching recovery source and unexpired recovery deadline")
+    elif deadline_at != original_deadline:
+        # A saved planning-tail continuation retains its original recovery
+        # cutoff even when its accepted forecast was published before 04:00.
+        # preparation_deadline below verifies the exact source receipt, both
+        # original deadlines and the explicit, fixed continuation window.
+        from ml.preparation_deadline import RECOVERY_VERSION
+        if (deadline_exception is None or not Path(deadline_exception).is_file()
+                or json.loads(Path(deadline_exception).read_text(encoding="utf-8")).get("schema_version") != RECOVERY_VERSION):
+            raise ValueError("Trade planning deadline differs from the pinned action session")
     from ml.preparation_deadline import preparation_deadline
-    original_deadline = deadline_at
     refresh_snapshot = refresh_asof = refresh_evidence = refresh_pointer_hash = None
     refresh_inputs = []
-    if refresh_plan is None:
+    if late_action_date is not None or (deadline_at != original_deadline and refresh_plan is None):
+        deadline_at, exception_evidence = preparation_deadline(root, source, deadline_at, observed, deadline_exception)
+    elif refresh_plan is None:
         deadline_at, exception_evidence = preparation_deadline(root, source, original_deadline, observed, deadline_exception)
     else:
         if deadline_exception is not None or snapshot_loader is not None:
@@ -385,10 +421,14 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         refresh_snapshot, refresh_asof, refresh_evidence, refresh_inputs, refresh_pointer_hash = _review_refresh_basis(
             root, refresh_plan, source, source_receipt_hash, action_date, observed)
         exception_evidence = None
-    if observed >= deadline_at:
+    if deadline_expired(observed, deadline_at):
         raise ValueError("Trade planning publication deadline has passed")
     symbols = tuple(config["symbols"])
-    forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols)
+    late_publication_at = late_publication_time(config, publication.receipt)
+    if late_publication_at is not None and utc(late_publication_at) > observed:
+        raise ValueError("Late Gameplan publication is not yet available at planning time")
+    forecasts = _validated_independent_forecasts(pd.read_parquet(source / "forecasts.parquet"), action_date=action_date, symbols=symbols,
+        late_publication_at=late_publication_at)
     intents = pd.read_parquet(source / "option-strategy-intents.parquet")
     if (len(intents) != len(forecasts) or not intents.groupby("symbol").size().eq(24).all()
             or set(intents.id) != set(forecasts.id + ":OPTION")
@@ -406,6 +446,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
               "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
               "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
               "orders_placed": 0, "broker_orders_enabled": False, "status": "RUNNING"}
+    if late_action_date is not None:
+        report.update(publication_mode="LATE_RECOVERY", late_action_date=late_action_date)
     if refresh_evidence is not None:
         report.update(publication_mode="INFORMATIONAL_REFRESH", review_refresh=refresh_evidence)
     prior_action_date = previous_action_date(action_date)
@@ -509,7 +551,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         phase = "REVIEW_AND_PUBLICATION"
         _write_json(run / "report.json", report)
         (run / "Gameplan.md").write_text(render_trade_review(rows, report, model_reports, source_gameplan=source.as_posix()), encoding="utf-8")
-        if utc(clock()) >= deadline_at:
+        if deadline_expired(utc(clock()), deadline_at):
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         if file_checksum(source / "receipt.json") != source_receipt_hash:
             raise ValueError("PINNED_GAMEPLAN_RECEIPT_CHANGED")
@@ -528,7 +570,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                        "review_refresh": refresh_evidence,
                        "execution_authority": AUTHORITY, "broker_orders_enabled": False, "orders_placed": 0}, datastore_root=root)
         verify_manifest(run)
-        if utc(clock()) >= deadline_at:
+        if deadline_expired(utc(clock()), deadline_at):
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         terminal = {"schema_version": VERSION, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
                     **probability_metadata, **fallback_metadata,
@@ -537,7 +579,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                     "forecast_rows": len(rows), "orders_placed": 0, "broker_orders_enabled": False,
                     "execution_authority": AUTHORITY, "completed_at": utc(clock()).isoformat()}
         _write_json(run / "receipt.json", terminal)
-        if utc(clock()) >= deadline_at:
+        if deadline_expired(utc(clock()), deadline_at):
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         if refresh_pointer_hash is not None and file_checksum(root / "ml/gameplan-trade-plan-latest/run.json") != refresh_pointer_hash:
             raise ValueError("REFRESH_PLAN_CHANGED")
@@ -568,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
     datastore.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
     parser.add_argument("--gameplan-run", required=True, type=Path)
     parser.add_argument("--deadline")
+    parser.add_argument("--late-action-date", help="Explicit date-pinned late recovery using its frozen deadline")
     parser.add_argument('--deadline-exception', type=Path)
     parser.add_argument('--refresh-plan', type=Path,
                         help="Recalculate the current informational review using its original snapshot and planning cutoff")
@@ -575,6 +618,8 @@ def main(argv: list[str] | None = None) -> int:
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-trade-planning.lock", process_name="gameplan trade planning"):
         extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
+        if args.late_action_date is not None:
+            extra['late_action_date'] = args.late_action_date
         if args.refresh_plan is not None:
             extra['refresh_plan'] = args.refresh_plan
         run = publish_trade_plan(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)

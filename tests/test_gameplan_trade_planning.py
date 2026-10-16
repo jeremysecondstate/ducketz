@@ -293,7 +293,7 @@ def publication_case(tmp_path, monkeypatch):
     pd.DataFrame({"id": frame.id + ":OPTION", "symbol": "AAPL", "plan_status": "NO_TRADE_STOCK_ONLY",
                   "legs_json": None, "candidate_key": None, "strategy_source_run": None}).to_parquet(source / "option-strategy-intents.parquet", index=False)
     monkeypatch.setattr(nightly_gameplan, "read_gameplan_run", lambda *a: SimpleNamespace(run_directory=source,
-                        manifest={"configuration": config}, receipt={"action_date": "2026-09-09"}))
+                        manifest={"configuration": config}, receipt=json.loads((source / "receipt.json").read_text())))
     monkeypatch.setattr(independent_signals, "_validated_independent_forecasts", lambda frame, **kw: frame)
     monkeypatch.setattr(independent_signals, "verified_promoted_model_groups", lambda p: frozenset({"1h", "4h", "1d", "1w"}))
     calls = []
