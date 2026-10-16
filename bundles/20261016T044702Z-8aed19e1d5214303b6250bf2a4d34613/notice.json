@@ -1,0 +1,87 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T044226Z-8613c6f74158402f9387abc06ba66adb",
+  "change_id": "20261016T044226Z-8613c6f74158402f9387abc06ba66adb",
+  "commit_sha": "bdec9d06cb9b628033cf2677319753504fcc4db9",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared observation restoration and scoring applies independently to both PCs.",
+    "Selectively compose Atlas PR139 source 15d6850da9496b98d7d27ec97a6eab1373da12bf and Completion-Record 20261014T233031Z-85f62c5949ab473bac0bb75b51b13186 without changing native collector or PR140 cutoff and final-data drain.",
+    "Require positive complete-quarter evidence before saved or historical revision selection; retain earlier valid available revisions when later rows are native, incomplete or future-available.",
+    "Keep raw durable metadata strict and handle optional null fields only at mixed-schema DataFrame boundaries. Filter scoring candidates by actual availability and source before selecting the newest valid row.",
+    "Preserve original histories, forecasts, outcome revisions, synthetic provenance audits, manual controls and native schedules."
+  ],
+  "files": [
+    "ml/intraday/data.py",
+    "ml/intraday/minute_feed.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_completed_observations.py",
+    "tests/test_intraday_runtime.py",
+    "tests/test_intraday_store.py",
+    "tests/test_intraday_data.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "3a682f48491c5e30cbc2356ac0866fc5665a8312",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture validation; loaded-process adoption unverified.",
+    "Existing local contract, ledger and optional dependency extensions preserved; installed checks bind all actual dependencies."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/171",
+    "https://github.com/jeremysecondstate/ducketz/pull/139"
+  ],
+  "local_receipt": "Eight reviewed paths installed exactly; original histories, forecasts and prior outcomes retained. Existing collector, cutoff, manual stops and final-data drain unchanged.",
+  "remaining_source_work": "Review legacy single-symbol manual-stop wiring and final outcome scoring after data drain separately, preserving PR140 cutoff and manual controls. Keep installed nightly-continuation common-main composition separate; production continues independently.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded sessions restore and score only complete available quarter-hour observations; incomplete later revisions cannot displace earlier valid evidence. Existing trader controls, cutoff and final-data drain remain unchanged.",
+  "scope": "Shared source for both PCs independently using their own saved data.",
+  "summary": "Scout preserves earlier complete available 15-minute observations when later revisions are incomplete, native-minute or future-available.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T04:42:19.616972Z",
+      "fingerprints": 86,
+      "import_verifier_violations": 0,
+      "output_sha256": "2e40eac8e988d7733848babbf21492ffa17eaef49d30bb78b41c0dd9830cf933",
+      "result": "333 passed in 25.05s",
+      "started_at_utc": "2026-10-16T04:41:52.630509Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T04:42:53.583610Z",
+      "fingerprints": 86,
+      "import_verifier_violations": 0,
+      "output_sha256": "2e40eac8e988d7733848babbf21492ffa17eaef49d30bb78b41c0dd9830cf933",
+      "result": "333 passed in 25.05s",
+      "started_at_utc": "2026-10-16T04:42:26.609570Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T04:43:44.238586Z",
+      "fingerprints": 86,
+      "import_verifier_violations": 0,
+      "output_sha256": "88bac06977e9ec38b70e629b88564314a40cf4628db71415891f1c15294b8cad",
+      "result": "333 passed in 24.96s",
+      "started_at_utc": "2026-10-16T04:43:17.220315Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T04:45:52.313043Z",
+      "fingerprints": 86,
+      "import_verifier_violations": 0,
+      "output_sha256": "a30934d5015da415d1353aefb5eecf74683a83fad42f2200508405f45794e676",
+      "result": "333 passed in 25.47s",
+      "started_at_utc": "2026-10-16T04:45:24.774115Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T04:46:43.371871Z",
+      "fingerprints": 247,
+      "import_verifier_violations": 0,
+      "output_sha256": "5128f93b0f7fed4467dc350abc65fb0cf0810e0b3700f2dce345d99353f3b3a4",
+      "result": "333 passed in 25.42s",
+      "started_at_utc": "2026-10-16T04:46:15.848103Z"
+    }
+  ]
+}

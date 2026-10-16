@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T04:47:02.339685Z",
+  "id": "20261016T044702Z-8aed19e1d5214303b6250bf2a4d34613",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserves earlier complete available 15-minute observations when later revisions are incomplete, native-minute or future-available."
+}
