@@ -153,6 +153,7 @@ def run_nightly_gameplan_once(
     probability_target_contract: str | None = None,
     archive_history: bool = False,
     model_feedback: Path | None = None,
+    late_action_date: str | None = None,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -175,6 +176,18 @@ def run_nightly_gameplan_once(
     probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
+    from ml.nightly_continuation import continuing, POLICY as CONTINUATION_POLICY
+    dated_continuation = continuing(late_action_date) and late_action_date is not None
+    if late_action_date is not None and not independent_stock_horizons:
+        raise ValueError("Late recovery requires independent stock preparation")
+    information_cutoff = created
+    if late_action_date is not None:
+        selected = pd.Timestamp(late_action_date)
+        local = created.tz_convert(SCHEDULE_TIMEZONE)
+        if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
+                or (not dated_continuation and (late_action_date != local.date().isoformat() or not 4 <= local.hour < 17))):
+            raise ValueError("Late recovery must select today's open action session")
+        information_cutoff = min(created, _local_timestamp(selected.date(), ACTION_START_HOUR) - pd.Timedelta(microseconds=1))
     feedback = None
     if model_feedback is not None:
         if not independent_stock_horizons:
@@ -182,6 +195,10 @@ def run_nightly_gameplan_once(
         from ml.gameplan_model_feedback import load_feedback_review
         feedback = load_feedback_review(root, model_feedback, as_of=created,
                                         probability_target=probability_target)
+        if (late_action_date is not None
+                and not feedback["stats"]["baseline_no_saved_predictions"]
+                and utc_timestamp(feedback["stats"]["outcomes_through"]) > information_cutoff):
+            raise ValueError("Model feedback outcomes extend beyond the preparation information cutoff")
     loop_b = read_current_publication(root)
     strategy = None if stock_only else read_current_strategy_publication(root)
     samples_path = loop_b.run_directory / "samples.parquet"
@@ -235,7 +252,7 @@ def run_nightly_gameplan_once(
     if independent_stock_horizons:
         feature_columns = tuple(dict.fromkeys((*feature_columns, *STOCK_CALENDAR_FEATURE_NAMES)))
     sources = (
-        select_prior_session_sources(samples, symbols=symbols, available_at=created,
+        select_prior_session_sources(samples, symbols=symbols, available_at=information_cutoff,
                                      feature_columns=source_feature_columns)
         if independent_stock_horizons else
         _overnight_sources(samples, symbols=symbols, available_at=created)
@@ -250,10 +267,14 @@ def run_nightly_gameplan_once(
         from ml.gameplan_archive_integration import combine_archive_sources
         from ml.gameplan_archive_seconds import verify_second_minute_overlap
         from dataclasses import replace
+        # Evidence acquisition keeps its real timestamp; features and fitting
+        # remain bounded by the original pre-open information cutoff.
+        archive_clocks = {"evidence_available_at": created} if late_action_date else {}
         archive = combine_archive_sources(
-            load_archive_feature_sources(root, symbols=symbols, available_at=created),
+            load_archive_feature_sources(root, symbols=symbols, available_at=information_cutoff, **archive_clocks),
             operational_sources, feature_columns=source_feature_columns)
-        seconds_report, seconds_files = verify_second_minute_overlap(root, symbols=symbols, available_at=created)
+        seconds_report, seconds_files = verify_second_minute_overlap(
+            root, symbols=symbols, available_at=information_cutoff, **archive_clocks)
         archive = replace(archive, report={**archive.report, "second_minute_consistency": seconds_report},
                           source_files=tuple(dict.fromkeys((*archive.source_files, *seconds_files))))
         archive.sources.attrs["source_selection"] = archive.report
@@ -265,11 +286,12 @@ def run_nightly_gameplan_once(
     current_sources, action_date = _current_overnight_sources(
         sources,
         symbols=symbols,
-        as_of=created,
+        as_of=created if late_action_date else information_cutoff,
+        late_action_date=late_action_date,
     )
     action_start = _local_timestamp(action_date, ACTION_START_HOUR)
     action_end = _local_timestamp(action_date, ACTION_END_HOUR)
-    if created >= action_start:
+    if created >= action_start and late_action_date is None:
         raise RuntimeError(
             "A new immutable gameplan cannot be published after the 04:00 PT "
             f"action window begins: action_date={action_date.isoformat()}"
@@ -294,7 +316,8 @@ def run_nightly_gameplan_once(
         )
     if independent_stock_horizons:
         groups = build_stock_training_groups(
-            sources, feature_columns=feature_columns, minute_bars=minute_bars, available_at=created,
+            sources, feature_columns=feature_columns, minute_bars=minute_bars,
+            available_at=information_cutoff,
             price_source_contract=stock_price_source,
             probability_target=probability_target,
         )
@@ -388,7 +411,7 @@ def run_nightly_gameplan_once(
         if feedback is not None:
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                symbols=symbols, price_source=stock_price_source, before=created,
+                symbols=symbols, price_source=stock_price_source, before=information_cutoff,
                 source_selection_contract=selection_version, probability_target=probability_target,
                 allow_prior_sessions=True)
             if champion is not None:
@@ -415,7 +438,7 @@ def run_nightly_gameplan_once(
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             if feedback is None:
                 champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                    symbols=symbols, price_source=stock_price_source, before=created,
+                    symbols=symbols, price_source=stock_price_source, before=information_cutoff,
                     source_selection_contract=selection_version, probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
@@ -504,6 +527,10 @@ def run_nightly_gameplan_once(
             "definition": "inclusive forecast anchors from 04:00 through 17:00 PT",
         },
         "frozen_at": created.isoformat(),
+        **({"training_information_cutoff": information_cutoff.isoformat()} if late_action_date else {}),
+        "publication_mode": "NIGHTLY_CONTINUATION" if dated_continuation else "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+        **({"continuation_policy": CONTINUATION_POLICY} if dated_continuation else {}),
+        "late_action_date": late_action_date,
         "immutable": True,
         "execution_authority": EXECUTION_AUTHORITY,
         "broker_orders_enabled": False,
@@ -619,6 +646,7 @@ def run_nightly_gameplan_once(
             "schema_version": GAMEPLAN_VERSION,
             **fallback_metadata,
             **probability_metadata,
+            **({"training_information_cutoff": information_cutoff.isoformat()} if late_action_date else {}),
             "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
             "forecast_contract_version": FORECAST_CONTRACT_VERSION,
             "target_contract_version": target_contract,
@@ -629,6 +657,9 @@ def run_nightly_gameplan_once(
                 "archive_history": archive_history,
                 "source_selection": source_selection_report} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
+            "publication_mode": "NIGHTLY_CONTINUATION" if dated_continuation else "LATE_RECOVERY" if late_action_date else "NIGHTLY",
+            **({"continuation_policy": CONTINUATION_POLICY} if dated_continuation else {}),
+            "late_action_date": late_action_date,
             "timezone": str(SCHEDULE_TIMEZONE),
             "execution_authority": EXECUTION_AUTHORITY,
             "broker_orders_enabled": False,
@@ -646,9 +677,10 @@ def run_nightly_gameplan_once(
         datastore_root=root,
     )
     published_at = utc_timestamp()
-    if published_at >= action_start:
+    if not dated_continuation and published_at >= (action_end if late_action_date else action_start):
         raise RuntimeError(
-            "The completed gameplan missed the 04:00 PT publication boundary; "
+            ("The completed late gameplan missed the 17:00 PT publication boundary; " if late_action_date else
+             "The completed gameplan missed the 04:00 PT publication boundary; ") +
             "its immutable pointer was not advanced. "
             f"action_date={action_date.isoformat()}; "
             f"finished_at={published_at.isoformat()}"
@@ -774,12 +806,29 @@ def _current_overnight_sources(
     *,
     symbols: Sequence[str],
     as_of: pd.Timestamp,
+    late_action_date: str | None = None,
 ) -> tuple[pd.DataFrame, date]:
     starts = pd.to_datetime(sources["source_action_start" if "source_action_start" in sources else "target_window_start"],
                             utc=True, errors="coerce")
-    future = sources.loc[starts.gt(as_of)].copy()
+    if late_action_date is not None:
+        from ml.nightly_continuation import continuing
+        selected = pd.Timestamp(late_action_date)
+        local = as_of.tz_convert(SCHEDULE_TIMEZONE)
+        if (selected.tzinfo is not None or selected.date().isoformat() != late_action_date
+                or (not continuing(late_action_date) and (late_action_date != local.date().isoformat() or not 4 <= local.hour < 17))):
+            raise ValueError("Late recovery must select today's open action session")
+        future = sources.loc[sources["action_date"].eq(selected.date())].copy()
+        boundary = _local_timestamp(selected.date(), ACTION_START_HOUR)
+        # Keep the original causal overnight features, even when publication is late.
+        for field in ("decision_timestamp", "information_available_at"):
+            clocks = pd.to_datetime(future[field], utc=True, errors="coerce")
+            if clocks.isna().any() or clocks.ge(boundary).any():
+                raise ValueError("Late recovery features must predate the action session")
+    else:
+        future = sources.loc[starts.gt(as_of)].copy()
     if future.empty:
-        raise RuntimeError("No future 04:00 PT source row exists for a new gameplan")
+        raise RuntimeError("No source row exists for the requested late action date" if late_action_date else
+                           "No future 04:00 PT source row exists for a new gameplan")
     next_date = min(future["action_date"])
     current = future.loc[future["action_date"].eq(next_date)].copy()
     observed = set(current["symbol"].astype("string").str.upper())
@@ -2708,6 +2757,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="Completed Stats-bound model review; adds bounded candidates to chronological selection")
     parser.add_argument("--archive-history", action="store_true",
                         help="Use verified historical XNAS feature rows; preserves price and model quality gates")
+    parser.add_argument("--late-action-date", help="Explicit same-day late recovery; preserves actual publication time")
     parser.add_argument(
         "--stock-only", action="store_true",
         help="Prepare stock forecasts with explicit no-trade options intents, without Strategy models or candidates",
@@ -2733,6 +2783,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                       stock_price_source=args.stock_price_source,
                                       archive_history=args.archive_history,
                                       model_feedback=args.model_feedback,
+                                      late_action_date=args.late_action_date,
                                       probability_target_contract=args.probability_target_contract)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")
