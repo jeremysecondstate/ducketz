@@ -178,7 +178,7 @@ def _native_preparation_chain(root, native, *, yg, deadline):
             raise ValueError('YG native resume ancestry contains a cycle')
         seen.add(native)
         receipt, report = _json(native/'receipt.json'), _json(native/'stage-report.json')
-        statuses = ('COMPLETE',) if first else ('FAILED', 'CANCELLED', 'INTERRUPTED')
+        statuses = ('COMPLETE',) if first else ('FAILED', 'CANCELLED', 'INTERRUPTED', 'TIMED_OUT')
         pin = report.get('enrichment_gameplan', {})
         rows = report.get('stages', [])
         rows = list(rows.values()) if isinstance(rows, dict) else rows

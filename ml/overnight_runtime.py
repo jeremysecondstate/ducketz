@@ -23,6 +23,10 @@ from datafetching.symbol_universe import configured_watchlist_path
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp
 
 
+class HumanRequestedStop(InterruptedError):
+    """Immediate explicit human action; never reconstructed from saved evidence."""
+
+
 OVERNIGHT_RUNTIME_VERSION = "supervised-overnight-gameplan-runtime-v2"
 OVERNIGHT_NOOP_VERSION = "single-owner-overnight-gameplan-noop-v1"
 SCHEDULE_TIMEZONE = ZoneInfo("America/Los_Angeles")
@@ -474,7 +478,8 @@ def run_overnight_pipeline(
                     raise RuntimeError(f"{stage} exited with code {exit_code}; inspect {log_path}")
             except BaseException as exc:
                 stage_error = exc
-                status = "TIMED_OUT" if isinstance(exc, TimeoutError) else "CANCELLED" if isinstance(exc, (InterruptedError, KeyboardInterrupt)) else "FAILED"
+                status = ("TIMED_OUT" if isinstance(exc, TimeoutError) else "CANCELLED" if isinstance(exc, HumanRequestedStop)
+                          else "INTERRUPTED" if isinstance(exc, (InterruptedError, KeyboardInterrupt)) else "FAILED")
             result = StageResult(stage, command, started.isoformat(), utc_timestamp().isoformat(),
                 time.monotonic() - monotonic_started, exit_code, status, log_path.name,
                 f"{type(stage_error).__name__}: {stage_error}" if stage_error else None)
@@ -528,10 +533,6 @@ def _run_stage(command: Sequence[str], *, repository: Path, log_path: Path,
     """Stream child output to disk and expose health while long fits continue."""
     if poll_seconds <= 0:
         raise ValueError("poll_seconds must be positive")
-    if utc_timestamp() >= deadline:
-        raise TimeoutError("Next session's 04:00 PT publication deadline has passed")
-    if stop_request.is_file():
-        raise InterruptedError("A supervisor stop request was recorded before stage launch")
     environment = dict(os.environ, PYTHONUNBUFFERED="1", DUCKETZ_TRAINING_PROGRESS="1")
     flags = {"creationflags": subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
     with log_path.open("wb") as output:
@@ -563,6 +564,7 @@ def _run_stage(command: Sequence[str], *, repository: Path, log_path: Path,
                     "child_created_at": _process_created_at(process.pid),
                     "log_bytes": offset, "log_modified_at": pd.Timestamp(log_path.stat().st_mtime, unit="s", tz="UTC").isoformat(),
                     "seconds_to_deadline": max(0, (deadline - now).total_seconds()),
+                    "publication_target_missed": now >= deadline,
                     "stage_health": "ATTENTION_REQUIRED" if issue_count else "RUNNING",
                     "reported_issue_count": issue_count, "recent_issues": issue_tail,
                     "recent_output": text_lines[-5:],
@@ -571,17 +573,21 @@ def _run_stage(command: Sequence[str], *, repository: Path, log_path: Path,
                 progress(payload)
                 if exited:
                     return int(process.returncode)
-                if stop_request.is_file():
-                    raise InterruptedError(f"Supervisor requested stop: {stop_request.read_text(encoding='utf-8')[:1000]}")
-                remaining = (deadline - now).total_seconds()
-                if remaining <= 0:
-                    raise TimeoutError("Next session's 04:00 PT publication deadline reached")
                 try:
-                    process.wait(timeout=min(poll_seconds, remaining))
+                    process.wait(timeout=poll_seconds)
                 except subprocess.TimeoutExpired:
                     pass
-        except BaseException:
-            _terminate_owned_process(process)
+        except BaseException as error:
+            # Failed telemetry is an attempt error, not human cancellation.
+            # Retain this owner and its lock while the useful child completes.
+            while process.poll() is None:
+                if isinstance(error, HumanRequestedStop):
+                    _terminate_owned_process(process)
+                    raise HumanRequestedStop("Explicit human stop during nightly preparation") from error
+                try:
+                    process.wait(timeout=poll_seconds)
+                except subprocess.TimeoutExpired:
+                    pass
             raise
 
 
@@ -622,7 +628,7 @@ def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
     run = _validated_run(root, run)
     report_path = run / "stage-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    terminal = report.get("status") in {"FAILED", "CANCELLED"}
+    terminal = report.get("status") in {"FAILED", "CANCELLED", "INTERRUPTED", "TIMED_OUT"}
     if not reason.strip():
         raise RuntimeError("Recovery needs an interrupted running attempt and a reason")
     if terminal:
@@ -647,25 +653,14 @@ def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
         child = psutil.Process(int(child_pid))
         if child.create_time() != report.get("child_created_at"):
             raise RuntimeError("Child PID was reused; refusing to stop an unrelated process")
-        children = child.children(recursive=True)
-        for process in [*reversed(children), child]:
-            try:
-                process.terminate()
-            except psutil.NoSuchProcess:
-                pass
-        _, alive = psutil.wait_procs([*children, child], timeout=10)
-        for process in alive:
-            process.kill()
-        _, alive = psutil.wait_procs(alive, timeout=10)
-        if alive:
-            raise RuntimeError("Owned child processes did not stop; recovery is incomplete")
+        raise RuntimeError("Overnight child is still running; preserve its work and recover after it exits")
     now = utc_timestamp().isoformat()
     completed = {row["stage"] for row in report["stages"] if row["status"] == "COMPLETE"}
     unfinished = [stage for stage in report["stage_order"] if stage not in completed]
     failed_stage = unfinished[0] if unfinished else None
     if failed_stage is not None and failed_stage not in ALL_STAGE_ORDER:
         raise RuntimeError("Interrupted stage cannot be identified")
-    status = "CANCELLED" if unfinished else "COMPLETE"
+    status = "INTERRUPTED" if unfinished else "COMPLETE"
     report.update(status=status, failed_stage=failed_stage, completed_at=now,
                   heartbeat_at=now, error="Supervisor process exited: " + reason)
     _write_json_atomic(report_path, report)
@@ -710,7 +705,7 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
     if (receipt.get("schema_version") != OVERNIGHT_RUNTIME_VERSION
         or receipt.get("run_path") != run.relative_to(root).as_posix()
-        or receipt.get("status") not in {"FAILED", "CANCELLED"}
+        or receipt.get("status") not in {"FAILED", "CANCELLED", "TIMED_OUT", "INTERRUPTED"}
         or receipt.get("status") != report.get("status")
         or receipt.get("stage_report_checksum_sha256") != file_checksum(run / "stage-report.json")
         or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
@@ -728,8 +723,7 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
             root, root/report['enrichment_gameplan']['run_path'], report['deadline_at'], utc_timestamp(), deadline_exception)
         if exception_evidence['authorization']['gameplan_receipt_sha256'] != report['enrichment_gameplan']['receipt_sha256']:
             raise ValueError('Deadline exception differs from the saved tail pin')
-    if utc_timestamp() >= effective_deadline:
-        raise RuntimeError("The failed attempt's publication deadline has passed")
+    # Elapsed targets remain provenance, not authority to cancel nightly recovery.
     for name, record in receipt.get("logs", {}).items():
         path = (run / name).resolve()
         if path.parent != run or file_checksum(path) != record["checksum_sha256"]:
@@ -783,7 +777,11 @@ def claim_supervision(root: Path, token: str, *, release: bool = False,
         return {"status": "RELEASED" if release else "ACQUIRED", **payload}
 
 
-def request_stage_stop(root: Path, run: Path, reason: str) -> Path:
+def request_stage_stop(root: Path, run: Path, reason: str, *, human_authorized: bool = False,
+                       authorization_source: str = "") -> Path:
+    """Retain a requested-stop note; the file cannot stop, pause or block work."""
+    if human_authorized is not True or not authorization_source.strip():
+        raise PermissionError("Stopping nightly preparation requires Jeremy's explicit stop instruction")
     run = _validated_run(root, run)
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
     if report.get("status") != "RUNNING" or (run / "receipt.json").exists():
@@ -791,7 +789,9 @@ def request_stage_stop(root: Path, run: Path, reason: str) -> Path:
     if not reason.strip():
         raise ValueError("A stop reason is required")
     request = run / "stop-request.json"
-    _write_json_atomic(request, {"requested_at": utc_timestamp().isoformat(), "reason": reason})
+    _write_json_atomic(request, {"requested_at": utc_timestamp().isoformat(), "reason": reason,
+                                "human_authorized": True, "authorization_source": authorization_source,
+                                "automated_execution_authority": False})
     return request
 
 
@@ -838,7 +838,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--status", action="store_true", help="Read the latest overnight progress without starting work")
     parser.add_argument("--archive-history", action="store_true", default=None,
                         help="Use the verified full XNAS feature archive and extend missing minute-label history; preserved on resume")
-    parser.add_argument("--request-stop-run", type=Path, help="Ask the owner to stop its current stage")
+    parser.add_argument("--request-stop-run", type=Path, help="Record a stop note; saved files cannot cancel nightly work")
+    parser.add_argument("--human-stop-source", default="", help="Reference to Jeremy's explicit stop instruction; required for a stop")
     parser.add_argument("--recover-run", type=Path, help="Recover an attempt whose supervisor process exited")
     parser.add_argument("--claim-supervision", metavar="UUID", help="Acquire/renew this Scheduled operator's three-minute supervision lease")
     parser.add_argument("--release-supervision", metavar="UUID", help="Release this Scheduled operator's supervision lease")
@@ -872,7 +873,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result))
         return 0
     if args.request_stop_run:
-        print(request_stage_stop(root, args.request_stop_run, args.reason))
+        print(request_stage_stop(root, args.request_stop_run, args.reason,
+                                human_authorized=bool(args.human_stop_source),
+                                authorization_source=args.human_stop_source))
         return 0
     repository = Path(__file__).resolve().parents[1]
     lock = root / ".ducketz-overnight-runtime.lock"
