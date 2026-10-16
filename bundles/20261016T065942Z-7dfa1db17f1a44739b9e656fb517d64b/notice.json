@@ -1,0 +1,79 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T065524Z-fe06d0b0815d405b84b8ee688bc5dd72",
+  "change_id": "20261016T065524Z-fe06d0b0815d405b84b8ee688bc5dd72",
+  "commit_sha": "a2ada7610b9d38b88f430c9d323495a86db31f2f",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared champion retention applies independently to Atlas and Scout.",
+    "Compose optional prior-session selection and full original champion suite from 775052967f4a17d2598e413c9ed369959fe3b1f4; retain Completion-Records 20261007T221732Z-2f3996bdc5fd4e5db7367e7a92c03c08, 20261008T013431Z-41550a3763044bc8a8b690be0fb8bee8, 20261013T201011Z-bb838715086b4c07b991a1518f249a4a, 20261014T050106Z-0e807c66479e4deb83823375e163fe5c, 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93.",
+    "Same-day default remains unchanged. Explicit prior-session mode rejects future action dates and preserves horizon, symbols, target price, probability target, feature selection, immutable publication, model and cohort checks.",
+    "Retain all original assertions and report the selected policy in provenance. Existing Scout source and producer extensions remain unchanged; producer feedback plumbing is a separate source unit."
+  ],
+  "files": [
+    "ml/gameplan_champions.py",
+    "tests/test_gameplan_champions.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "27f613def246059d41a7d6743cbdd3d1941853fb",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic-fixture tests only; no provider or broker requests, production training, trading, task mutation or private export.",
+    "Common-main producer opt-in and broader nightly runtime/workflow composition remain separate; running-process adoption is unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/180"
+  ],
+  "local_receipt": "Existing local champion implementation and complete original suite are semantically identical to the reviewed publication. No local source rewritten. Local producer extensions, symbols, private bindings and all optional manifest entries preserved and verified.",
+  "remaining_source_work": "Compose existing nightly producer feedback plumbing with offline producer binding and unchanged-pointer regressions; keep late-publication and runtime/workflow/dispatch composition separate.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Existing Scout champion behavior is preserved and verified without rewriting local source. Common callers retain same-day behavior unless explicitly opting into prior sessions. No runtime restart.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout composed optional prior-session champion retention on common main, preserving the same-day default.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T06:55:17.112576Z",
+      "fingerprints": 179,
+      "import_verifier_violations": 0,
+      "output_sha256": "e27fd3e9216f3fc6608b97d038561ec9224ca0c6edaa7beddff5cdad0a897cca",
+      "result": "259 passed, 54 warnings in 19.51s",
+      "started_at_utc": "2026-10-16T06:54:56.184638Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T06:55:45.267537Z",
+      "fingerprints": 179,
+      "import_verifier_violations": 0,
+      "output_sha256": "44d571848fe36c3d3e4899b0e50bf2d1b374e73664f469b5e0d56ecc44547f27",
+      "result": "259 passed, 54 warnings in 19.43s",
+      "started_at_utc": "2026-10-16T06:55:24.465882Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T06:56:53.502847Z",
+      "fingerprints": 179,
+      "import_verifier_violations": 0,
+      "output_sha256": "2ff65d856d664ea2e84d7583b42367d45dde7aa671d363c0e2c51b0f00b8dc3f",
+      "result": "259 passed, 54 warnings in 19.97s",
+      "started_at_utc": "2026-10-16T06:56:32.088871Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T06:58:06.542670Z",
+      "fingerprints": 179,
+      "import_verifier_violations": 0,
+      "output_sha256": "4aaed68c79c6ed158dc7d0c1b0abb03e5e43773beabfd3118d270dccdad47d7e",
+      "result": "259 passed, 54 warnings in 19.31s",
+      "started_at_utc": "2026-10-16T06:57:45.783122Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T06:59:33.434038Z",
+      "fingerprints": 205,
+      "import_verifier_violations": 0,
+      "output_sha256": "37ef78d16a989d5d7c83f4eea5dd8da524298c26e90ee33df34caa476b9dd696",
+      "result": "259 passed, 54 warnings in 19.40s",
+      "started_at_utc": "2026-10-16T06:59:12.547245Z"
+    }
+  ]
+}
