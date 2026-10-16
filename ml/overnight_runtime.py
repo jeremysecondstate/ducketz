@@ -203,6 +203,20 @@ def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.
             "action_date": action_date}
 
 
+def _continuation_context(value: str | None, *, deadline: object, stats_first: bool,
+                          stock_only: bool, independent_stock_horizons: bool) -> str | None:
+    if value is None:
+        return None
+    from ml.nightly_continuation import action_date
+    selected = action_date(value)
+    original_day = utc_timestamp(deadline).tz_convert(SCHEDULE_TIMEZONE).date().isoformat()
+    if selected != original_day:
+        raise ValueError("Nightly continuation cannot change the original action session")
+    if not stats_first or not stock_only or not independent_stock_horizons:
+        raise ValueError("Dated continuation requires Stats-first independent stock preparation")
+    return selected
+
+
 def run_overnight_pipeline(
     datastore_root: Path,
     *,
@@ -223,6 +237,7 @@ def run_overnight_pipeline(
     stats_first: bool | None = None,
     review_action_date: str | None = None,
     model_feedback: Path | None = None,
+    continuation_action_date: str | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
 
@@ -232,8 +247,12 @@ def run_overnight_pipeline(
     from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, LEGACY_COST_TARGET, resolve_probability_target
     if deadline_exception is not None and resume_run is None:
         raise ValueError('A deadline exception requires an existing pinned tail attempt')
-    resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception) if resume_run else None
+    resume = _resume_configuration(
+        root, resume_run, deadline_exception=deadline_exception,
+        continuation_action_date=continuation_action_date,
+    ) if resume_run else None
     if resume:
+        continuation_action_date = resume.get("continuation_action_date")
         start_at, stop_after = resume["failed_stage"], resume["stage_order"][-1]
         stock_only = stock_only or resume.get("stock_only") is True
         independent_stock_horizons = independent_stock_horizons or resume.get("independent_stock_horizons") is True
@@ -294,6 +313,10 @@ def run_overnight_pipeline(
     if stop_after in INDEPENDENT_TAIL_STAGES and not independent_stock_horizons:
         raise ValueError("Independent post-publication stages require independent stock horizons")
     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
+    continuation_action_date = _continuation_context(
+        continuation_action_date, deadline=deadline_at, stats_first=stats_first,
+        stock_only=stock_only, independent_stock_horizons=independent_stock_horizons,
+    )
     effective_deadline = utc_timestamp(resume.get('effective_deadline_at', resume['deadline_at'])) if resume else deadline_at
     selected = stage_order[start_index : stop_index + 1]
     if resume:
@@ -438,6 +461,7 @@ def run_overnight_pipeline(
             *(("--probability-target-contract", probability_target_contract) if independent_stock_horizons else ()),
             *(("--archive-history",) if archive_history else ()),
             *(("--model-feedback", str(model_feedback)) if model_feedback is not None else ()),
+            *(("--late-action-date", continuation_action_date) if continuation_action_date is not None else ()),
         ),
         INDEPENDENT_ENRICHMENT_STAGE: (
             python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
@@ -467,6 +491,8 @@ def run_overnight_pipeline(
         "status": "RUNNING", "stages": [], "current_stage": None,
         "stats_first": stats_first, "review_action_date": review_action_date,
         "model_feedback": feedback_binding,
+        "late_action_date": continuation_action_date,
+        "continuation_action_date": continuation_action_date,
     }
     if stock_only:
         report.update(
@@ -532,12 +558,15 @@ def run_overnight_pipeline(
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE):
                         command = (*command, "--deadline", deadline_at.isoformat())
+                        if stage == INDEPENDENT_TRADE_PLANNING_STAGE and continuation_action_date is not None:
+                            command = (*command, "--late-action-date", continuation_action_date)
                         if deadline_exception is not None:
                             command = (*command, '--deadline-exception', str(Path(deadline_exception).resolve()))
                     _write_json_atomic(report_path, report)
                 exit_code = _run_stage(command, repository=repository, log_path=log_path,
                     deadline=effective_deadline, stop_request=run / "stop-request.json",
-                    progress=progress, poll_seconds=poll_seconds)
+                    progress=progress, poll_seconds=poll_seconds,
+                    **({"continuation_action_date": continuation_action_date} if continuation_action_date is not None else {}))
                 if exit_code:
                     raise RuntimeError(f"{stage} exited with code {exit_code}; inspect {log_path}")
             except BaseException as exc:
@@ -593,11 +622,16 @@ def next_action_deadline(observed_at: object) -> pd.Timestamp:
 
 def _run_stage(command: Sequence[str], *, repository: Path, log_path: Path,
                deadline: pd.Timestamp, stop_request: Path,
-               progress: Callable[[Mapping[str, object]], None], poll_seconds: float) -> int:
+               progress: Callable[[Mapping[str, object]], None], poll_seconds: float,
+               continuation_action_date: str | None = None) -> int:
     """Stream child output to disk and expose health while long fits continue."""
     if poll_seconds <= 0:
         raise ValueError("poll_seconds must be positive")
     environment = dict(os.environ, PYTHONUNBUFFERED="1", DUCKETZ_TRAINING_PROGRESS="1")
+    from ml.nightly_continuation import ENVIRONMENT_KEY, action_date
+    environment.pop(ENVIRONMENT_KEY, None)
+    if continuation_action_date is not None:
+        environment[ENVIRONMENT_KEY] = action_date(continuation_action_date)
     flags = {"creationflags": subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
     with log_path.open("wb") as output:
         process = subprocess.Popen(command, cwd=repository, stdout=output, stderr=subprocess.STDOUT, env=environment, **flags)
@@ -763,7 +797,8 @@ def _validated_run(root: Path, run: Path) -> Path:
     return run
 
 
-def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | None = None) -> dict[str, object]:
+def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | None = None,
+                          continuation_action_date: str | None = None) -> dict[str, object]:
     run = _validated_run(root, run)
     receipt = json.loads((run / "receipt.json").read_text(encoding="utf-8"))
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
@@ -775,6 +810,26 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
         or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
         raise RuntimeError("Only a verified failed or stopped overnight attempt can resume")
     effective_deadline = utc_timestamp(report['deadline_at'])
+    saved_continuation = report.get("continuation_action_date")
+    if saved_continuation is not None:
+        saved_continuation = _continuation_context(
+            saved_continuation, deadline=effective_deadline,
+            stats_first=report.get("stats_first") is True,
+            stock_only=report.get("stock_only") is True,
+            independent_stock_horizons=report.get("independent_stock_horizons") is True,
+        )
+        if continuation_action_date is not None and continuation_action_date != saved_continuation:
+            raise ValueError("Resume must preserve its original continuation action session")
+        continuation_action_date = saved_continuation
+    continuation_action_date = _continuation_context(
+        continuation_action_date, deadline=effective_deadline,
+        stats_first=report.get("stats_first") is True,
+        stock_only=report.get("stock_only") is True,
+        independent_stock_horizons=report.get("independent_stock_horizons") is True,
+    )
+    if (continuation_action_date is not None and report.get("late_action_date") is not None
+            and report["late_action_date"] != continuation_action_date):
+        raise ValueError("Saved late-publication date differs from the continuation action session")
     exception_evidence = None
     if deadline_exception is not None:
         from ml.preparation_deadline import preparation_deadline
@@ -797,7 +852,7 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
     if report.get("failed_stage") not in ALL_STAGE_ORDER:
         raise RuntimeError("Failed overnight stage is missing")
     return {**report, "completed_stages": completed, 'effective_deadline_at':effective_deadline.isoformat(),
-            'deadline_exception':exception_evidence}
+            'deadline_exception':exception_evidence, "continuation_action_date": continuation_action_date}
 
 
 def overnight_status(root: Path) -> dict[str, object]:
@@ -899,6 +954,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="Use completed-session Stats before training; stop at gameplan_stats, then start the training segment with model feedback")
     parser.add_argument("--review-action-date", help="Completed XNYS session to score; retained on failed-stage resume")
     parser.add_argument("--model-feedback", type=Path, help="Reviewed model proposal consumed by nightly training; exact bytes retained on resume")
+    parser.add_argument("--continuation-action-date", help="Exact original action date for persistent Stats-first preparation; retained on resume")
     parser.add_argument("--stock-price-source", choices=STOCK_PRICE_SOURCES, default=None,
                         help="Explicit historical equity source for independent stock targets; preserved on resume")
     parser.add_argument("--probability-target-contract", choices=("raw-price-direction-v1", "cost-adjusted-positive-return-v1"),
@@ -982,6 +1038,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 stats_first=args.stats_first,
                 review_action_date=args.review_action_date,
                 model_feedback=args.model_feedback,
+                continuation_action_date=args.continuation_action_date,
             )
         except Exception as exc:
             print(f"Overnight runtime failed: {type(exc).__name__}: {exc}")
