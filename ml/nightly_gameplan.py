@@ -1237,6 +1237,15 @@ def _build_current_groups(
     }
 
 
+
+def _feedback_estimator(specification, numeric, categorical):
+    estimator = _estimator(specification["family"], numeric, categorical)
+    parameters = {f"classifier__{key}": tuple(value) if key == "hidden_layer_sizes" else value
+                  for key, value in specification["parameters"].items()}
+    return estimator.set_params(**parameters)
+
+
+
 def _fit_group_model(
     samples: pd.DataFrame,
     *,
@@ -1245,6 +1254,9 @@ def _fit_group_model(
     group: str,
     model_directory: Path,
     trained_at: pd.Timestamp,
+    feedback_candidates: list[dict] | None = None,
+    feedback_context: Mapping[str, object] | None = None,
+    incumbent_specification: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     selection_contract = source_selection_contract(current)
     if source_selection_contract(samples) != selection_contract:
@@ -1314,6 +1326,25 @@ def _fit_group_model(
                               label=f"gameplan/{group}/logistic-c{regularization_c:g}-selection")
             candidates.append((name, None, logistic.predict_proba(selection_matrix)[:, 1]))
             logistic_candidates[name] = regularization_c
+    feedback_specs = {}
+    accepted_specs = {}
+    if incumbent_specification is not None:
+        from ml.gameplan_model_feedback import validate_candidates
+        specification = validate_candidates([incumbent_specification])[0]
+        name = f"accepted-{specification['family']}"
+        incumbent = _feedback_estimator(specification, admitted, categorical)
+        fit_with_progress(incumbent, train_matrix, target_train, label=f"gameplan/{group}/{name}-selection")
+        candidates.append((name, None, incumbent.predict_proba(selection_matrix)[:, 1]))
+        accepted_specs[name] = specification
+    if feedback_candidates is not None:
+        from ml.gameplan_model_feedback import validate_candidates
+        for index, specification in enumerate(validate_candidates(feedback_candidates), 1):
+            name = f"feedback-{specification['family']}-{index}"
+            challenger = _feedback_estimator(specification, admitted, categorical)
+            fit_with_progress(challenger, train_matrix, target_train,
+                              label=f"gameplan/{group}/{name}-selection")
+            candidates.append((name, None, challenger.predict_proba(selection_matrix)[:, 1]))
+            feedback_specs[name] = specification
     shrinkage = {name: (name, 1.0) for name, _, _ in candidates}
     shrinkage_policy = (WEEKLY_PROBABILITY_SHRINKAGE_POLICY
                         if independent_selection and group == "1w" and probability_target == RAW_DIRECTION_TARGET else None)
@@ -1333,7 +1364,9 @@ def _fit_group_model(
     }
     selected_name, selected_weight, _ = min(
         candidates,
-        key=lambda candidate: (selection_metrics[candidate[0]]["log_loss"], shrinkage[candidate[0]][1] != 1.0),
+        key=lambda candidate: (selection_metrics[candidate[0]]["log_loss"],
+                               shrinkage[candidate[0]][0] in feedback_specs,
+                               shrinkage[candidate[0]][1] != 1.0),
     )
     selected_base_name, selected_shrinkage_weight = shrinkage[selected_name]
 
@@ -1354,7 +1387,11 @@ def _fit_group_model(
         if selected_logistic_c is not None and selected_logistic_c != 1.0:
             final_logistic.set_params(classifier__C=selected_logistic_c)
         fit_with_progress(final_logistic, fit_matrix, fit_target, label=f"gameplan/{group}/logistic-final")
-    if selected_base_name in logistic_candidates:
+    selected_specification = {**accepted_specs, **feedback_specs}.get(selected_base_name)
+    if selected_specification is not None:
+        estimator = _feedback_estimator(selected_specification, admitted, categorical)
+        fit_with_progress(estimator, fit_matrix, fit_target, label=f"gameplan/{group}/{selected_base_name}-final")
+    elif selected_base_name in logistic_candidates:
         estimator: object = final_logistic
     elif selected_weight <= 0.0:
         estimator = final_tree
@@ -1428,6 +1465,23 @@ def _fit_group_model(
         int(partitions["assessment"]["decision_timestamp"].nunique()),
         policy_version=DIRECTIONAL_PROMOTION_POLICY if independent_selection else STRICT_PROMOTION_POLICY)
     gate_checks = gate["checks"]
+    feedback_report = None
+    if feedback_candidates is not None:
+        default_metrics = {name: metrics for name, metrics in selection_metrics.items()
+                           if shrinkage[name][0] not in feedback_specs}
+        feedback_report = {
+            "input_binding": dict(feedback_context or {}), "candidates": feedback_specs,
+            "candidate_selection_metrics": {name: metrics for name, metrics in selection_metrics.items()
+                                            if shrinkage[name][0] in feedback_specs},
+            "best_default_selection_log_loss": min(value["log_loss"] for value in default_metrics.values()),
+            "selected_family": selected_name,
+            "selected_candidate": feedback_specs.get(selected_base_name),
+            "selected_specification": selected_specification,
+            "accepted_specification_baseline": incumbent_specification,
+            "candidate_improved_development": selected_base_name in feedback_specs,
+            "assessment_used_for_selection": False,
+            "promotion_status": gate["status"],
+        }
     if not all(gate_checks.values()):
         print(json.dumps({
             "training_event": "FIT_WARNING", "fit": f"gameplan/{group}/assessment",
@@ -1466,6 +1520,7 @@ def _fit_group_model(
             "selected_logistic_regularization_c": logistic_candidates.get(selected_base_name),
             **shrinkage_metadata,
             "selection_metrics": selection_metrics,
+            **({"model_feedback": feedback_report} if feedback_report is not None else {}),
             "directional_promotion_policy": gate["policy_version"],
             "logistic_regularization_policy": logistic_regularization_policy(group, probability_target=probability_target) if independent_selection else None,
             "development_selection_policy": development_selection_policy(probability_target) if independent_selection else None,
@@ -1557,6 +1612,7 @@ def _fit_group_model(
         "target_calendar_feature_names": list(STOCK_CALENDAR_FEATURE_NAMES) if independent_selection else [],
         "calibration_selection": calibration_selection,
         "selection_metrics": selection_metrics,
+        **({"model_feedback": feedback_report} if feedback_report is not None else {}),
         "calibration_method": getattr(calibrator, "method", "none"),
         "calibration_diagnostics": calibration_diagnostics,
         "target_boundary_quality": target_quality,
