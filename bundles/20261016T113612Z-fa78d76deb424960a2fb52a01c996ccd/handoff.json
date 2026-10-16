@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T11:36:12.161842Z",
+  "id": "20261016T113612Z-fa78d76deb424960a2fb52a01c996ccd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserved frozen native recovery evidence, child context and legacy planning retries."
+}
