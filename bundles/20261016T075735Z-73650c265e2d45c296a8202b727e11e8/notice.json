@@ -1,0 +1,83 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T074949Z-4d89a97616264bca896cab7b7f180338",
+  "change_id": "20261016T074949Z-4d89a97616264bca896cab7b7f180338",
+  "commit_sha": "caa408aba80022588c9cefd4676c0d2675aaea9e",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared date-pinned producer behavior applies independently on Atlas and Scout.",
+    "Compose original late producer c78a29c95c82dd47e76f4049c77d632eee42b111 and continuation 775052967f4a17d2598e413c9ed369959fe3b1f4; retain Completion-Records 20261007T221732Z-2f3996bdc5fd4e5db7367e7a92c03c08, 20261008T013431Z-41550a3763044bc8a8b690be0fb8bee8, 20261013T201011Z-bb838715086b4c07b991a1518f249a4a, 20261014T050106Z-0e807c66479e4deb83823375e163fe5c, 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93, 20261009T150105Z-69be6ce7ea3446cf8ae75d8da484afd0.",
+    "Bound source and training data to the original pre-open cutoff; retain actual archive acquisition and publication clocks, exact action date and continuation metadata.",
+    "Preserve ordinary deadlines, default source/probability behavior, producer feedback byte binding and original forecast assertions.",
+    "Exercise causal rows, wrong dates and missing clocks, CLI forwarding, close-boundary pointer preservation, continuation completion and archive clock forwarding.",
+    "Three reproduced regressions reject post-cutoff Stats outcomes and exclude post-cutoff champions on both paths. Later reviews of causal old Stats and verified empty KEEP_CURRENT baselines remain valid; normal preparation is unchanged."
+  ],
+  "files": [
+    "ml/nightly_gameplan.py",
+    "tests/test_stock_only_gameplan.py",
+    "tests/test_nightly_late_producer.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "fc77fa32077bf64858e7afccb85e0986ec24f427",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic-fixture checks only; no provider or broker requests, production training, trader action, task changes or private export.",
+    "Recovery-spec round-trip and broader nightly runtime/workflow composition remain separate. Loaded-process adoption is unverified.",
+    "Champion eligibility conservatively requires publication before the causal cutoff; late-published champions are excluded even when trained only on old observations."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/183"
+  ],
+  "local_receipt": "Installed only the bounded causal repair and standalone regression suite. Existing dated producer behavior and stock-only tests already matched. Local recovery-spec route, all other functions, originals, symbols and private bindings preserved. All optional manifest entries verified.",
+  "remaining_source_work": "Reproduce the recovery-spec producer/consumer round-trip and repair its confirmed incompatibilities before composition; retain broader runtime/workflow/dispatch work separately.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Dated late preparation preserves original action date and pre-open information cutoff while retaining actual acquisition, freeze and publication times. No trader starts or runtime restarts.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout composed date-pinned late and continued producer publication and repaired feedback/champion causal cutoffs.",
+  "tests": [
+    {
+      "check": "final focused review",
+      "completed_at_utc": "2026-10-16T07:49:43.142684Z",
+      "fingerprints": 196,
+      "import_verifier_violations": 0,
+      "output_sha256": "d5ed6d93d9b2daa5cf077ccfb93e9785a7b0c62e73f088e13115c8dc5a5a8eb5",
+      "result": "26 passed, 20 warnings in 7.65s",
+      "started_at_utc": "2026-10-16T07:49:34.003796Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T07:50:30.665254Z",
+      "fingerprints": 196,
+      "import_verifier_violations": 0,
+      "output_sha256": "e01266e12b63e08cf4d4593234f21d539d4a9738fb2990bbe6450e7800c9a1fa",
+      "result": "437 passed, 74 warnings in 39.87s",
+      "started_at_utc": "2026-10-16T07:49:49.276546Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T07:52:11.168772Z",
+      "fingerprints": 196,
+      "import_verifier_violations": 0,
+      "output_sha256": "2ecdd1ee57f5ef73a1300522974ab0e5ea48d8ea9740718dd7b9d30274bd3cb2",
+      "result": "437 passed, 74 warnings in 38.70s",
+      "started_at_utc": "2026-10-16T07:51:30.886311Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T07:53:50.653129Z",
+      "fingerprints": 196,
+      "import_verifier_violations": 0,
+      "output_sha256": "b19b276e91cb36ae37258d7df6090d1fe7906a7fd7acb6984b3ec86b2b569348",
+      "result": "437 passed, 74 warnings in 41.60s",
+      "started_at_utc": "2026-10-16T07:53:07.425699Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T07:56:55.775278Z",
+      "fingerprints": 218,
+      "import_verifier_violations": 0,
+      "output_sha256": "322f0a228001dc43df46742235a9b8529a9789ffbcf732da2c16e228d1d41afa",
+      "result": "437 passed, 74 warnings in 39.37s",
+      "started_at_utc": "2026-10-16T07:56:14.758360Z"
+    }
+  ]
+}

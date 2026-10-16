@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T07:57:35.770612Z",
+  "id": "20261016T075735Z-73650c265e2d45c296a8202b727e11e8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout composed date-pinned late and continued producer publication and repaired feedback/champion causal cutoffs."
+}
