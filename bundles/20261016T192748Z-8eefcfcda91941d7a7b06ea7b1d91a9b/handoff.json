@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T19:27:48.111523Z",
+  "id": "20261016T192748Z-8eefcfcda91941d7a7b06ea7b1d91a9b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas repaired completed scheduled chat cleanup and installed one-hour completion plus two-hour terminal inactivity policy."
+}

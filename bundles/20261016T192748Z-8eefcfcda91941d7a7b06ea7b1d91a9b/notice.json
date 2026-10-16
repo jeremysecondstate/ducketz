@@ -1,0 +1,25 @@
+{
+  "author": "Atlas",
+  "change_id": "20261016T192510Z-c0158854d3584bf7872834b1bd7e383e",
+  "files": [
+    "tools/codex_chat_cleanup.py",
+    "tests/test_codex_chat_cleanup.py",
+    "docs/development/codex-chat-cleanup.md"
+  ],
+  "limitations": [
+    "Idle subagent writer leases can defer standalone archival until released by Codex. No active work is shut down.",
+    "Private native bindings and evidence remain local. Scout installation remains separate.",
+    "Draft PR prepared; main integration not performed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/195",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas installed shared helper with all-local-cron completed_or_idle policy and durable tested native binary; nightly and trader controls unchanged. Preserve private receipts during peer adoption.",
+  "scope": "shared",
+  "source_commit": "59921fc0b614ce6273788c6c2a289250e27ae606",
+  "summary": "Atlas repaired completed scheduled chat cleanup and installed one-hour completion plus two-hour terminal inactivity policy.",
+  "tests": [
+    "164 offline tests passed in exact isolated candidate at 2026-10-16T19:26:47Z.",
+    "Seven native exact-binary offline archive probes passed.",
+    "Atlas existing five-minute Windows cleanup task verification wake exited zero; saved triggers, principal and settings preserved."
+  ]
+}
