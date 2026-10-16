@@ -671,3 +671,235 @@ def test_native_subprocess_cannot_inherit_remote_or_provider_routing(native, mon
     env = calls[0][1]["env"]
     assert not any(key in env for key in ("CODEX_EXEC_SERVER_URL", "CODEX_APP_SERVER_URL", "OPENAI_BASE_URL", "OPENAI_API_KEY"))
     assert env["CODEX_HOME"] == native.config["codex_home"]
+
+
+def use_all_local_terminal_policy(native):
+    """The explicitly selected policy for cleanup of every local scheduled run."""
+    native.config.pop("automation_ids", None)
+    native.config.update(automation_selection="local_cron", archive_policy="completed_or_idle",
+                         fallback_idle_seconds=7200)
+
+
+def age_native_family(native, idle_age=7200):
+    native.sql("app", "UPDATE automation_runs SET created_at=?", ((NOW - idle_age - 60) * 1000,))
+    native.sql("state", "UPDATE threads SET updated_at_ms=?", ((NOW - idle_age) * 1000,))
+    native.sql("history", "UPDATE thread_turns SET started_at=?,completed_at=?",
+               (NOW - idle_age - 60, NOW - idle_age))
+
+
+@pytest.mark.parametrize("status", ["PENDING_REVIEW", "ACCEPTED"])
+@pytest.mark.parametrize("target_type,project_id", [
+    ("project", PROJECT),
+    ("project", "00000000-0000-4000-8000-000000000099"),
+    ("projectless", None),
+])
+def test_all_local_cron_policy_includes_reviewed_runs_across_projects(native, status, target_type, project_id):
+    use_all_local_terminal_policy(native)
+    native.sql("app", "UPDATE automation_runs SET status=?", (status,))
+    native.sql("app", "UPDATE automations SET target_type=?,project_id=?", (target_type, project_id))
+    assert cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    result = cleanup.run_once(native.config, apply=True, now=NOW, runner=archive_runner(native, []))
+    assert result["archived"] == [THREAD]
+
+
+@pytest.mark.parametrize("kind,environment", [("heartbeat", "local"), ("cron", "worktree"), ("cron", None)])
+def test_all_local_cron_policy_still_excludes_other_automation_kinds_and_hosts(native, kind, environment):
+    use_all_local_terminal_policy(native)
+    native.sql("app", "UPDATE automations SET kind=?,execution_environment=?", (kind, environment))
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    result = cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)
+    assert result["considered"] == 0
+
+
+def test_terminal_policy_accepts_multiple_successful_root_turns_using_latest_completion(native):
+    use_all_local_terminal_policy(native)
+    completed = NOW - 3599
+    native.sql("history", "INSERT INTO thread_turns VALUES(?,?,?,NULL,?,?,?,?,NULL)",
+               (THREAD, "turn-two", "completed", completed - 30, completed, "user-two", "final-two"))
+    native.sql("history", "INSERT INTO thread_items VALUES(?,?,?,?,?)",
+               (THREAD, "turn-two", "user-two", json.dumps({"id": "user-two", "type": "userMessage", "content": []}), "userMessage"))
+    native.sql("history", "INSERT INTO thread_items VALUES(?,?,?,?,?)",
+               (THREAD, "turn-two", "final-two", json.dumps({**native.final, "id": "final-two"}), "agentMessage"))
+    native.sql("state", "UPDATE threads SET updated_at_ms=?", (completed * 1000,))
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.inspect_candidate(native.config, THREAD, NOW + 1)["eligible"]
+    result = cleanup.run_once(native.config, apply=True, now=NOW + 1, runner=archive_runner(native, []))
+    assert result["archived"] == [THREAD]
+
+
+def test_terminal_policy_hour_waits_for_latest_completed_descendant(native):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native, completed=NOW - 4000)
+    add_completed_child(native, child=GRANDCHILD, parent=CHILD, completed=NOW - 3599)
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.inspect_candidate(native.config, THREAD, NOW + 1)["eligible"]
+
+
+@pytest.mark.parametrize("terminal_status", ["failed", "interrupted"])
+@pytest.mark.parametrize("target", [THREAD, CHILD], ids=["root", "descendant"])
+def test_terminal_policy_uses_two_hour_idle_fallback_for_unsuccessful_terminal_turns(native, terminal_status, target):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    age_native_family(native)
+    native.sql("history", "UPDATE thread_turns SET status=?,final_agent_item_id=NULL WHERE thread_id=?", (terminal_status, target))
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW - 0.1)["eligible"]
+    assert cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=archive_runner(native, []))["archived"] == [THREAD]
+
+
+@pytest.mark.parametrize("statement", [
+    "UPDATE thread_turns SET completed_at=NULL",
+    "UPDATE thread_turns SET final_agent_item_id=NULL",
+    "UPDATE thread_turns SET error_json='{}'",
+    "DELETE FROM thread_items WHERE item_type='agentMessage'",
+])
+def test_terminal_policy_missing_completion_or_final_uses_two_hour_idle_clock(native, statement):
+    use_all_local_terminal_policy(native)
+    age_native_family(native)
+    native.sql("history", statement)
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW - 0.1)["eligible"]
+    assert cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+
+
+@pytest.mark.parametrize("key,statement,args", [
+    ("app", "UPDATE automation_runs SET created_at=?", ((NOW - 7199) * 1000,)),
+    ("state", "UPDATE threads SET updated_at_ms=? WHERE id=?", ((NOW - 7199) * 1000, THREAD)),
+    ("state", "UPDATE threads SET updated_at_ms=? WHERE id=?", ((NOW - 7199) * 1000, CHILD)),
+    ("history", "UPDATE thread_turns SET started_at=?,completed_at=NULL WHERE thread_id=?", (NOW - 7199, CHILD)),
+    ("history", "UPDATE thread_turns SET completed_at=? WHERE thread_id=?", (NOW - 7199, CHILD)),
+])
+def test_terminal_policy_fallback_uses_newest_family_activity(native, key, statement, args):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    age_native_family(native)
+    native.sql("history", "UPDATE thread_turns SET status='interrupted'")
+    native.sql(key, statement, args)
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.inspect_candidate(native.config, THREAD, NOW + 1)["eligible"]
+
+
+@pytest.mark.parametrize("target", [THREAD, CHILD], ids=["root", "descendant"])
+def test_terminal_policy_never_archives_in_progress_turn_even_after_two_hours(native, target):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    age_native_family(native, 86400)
+    native.sql("history", "UPDATE thread_turns SET status='inProgress' WHERE thread_id=?", (target,))
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)["archived"] == []
+
+
+@pytest.mark.parametrize("key,statement,args", [
+    ("state", "UPDATE threads SET thread_source='manual' WHERE id=?", (THREAD,)),
+    ("state", "UPDATE threads SET is_pinned=1 WHERE id=?", (THREAD,)),
+    ("state", "UPDATE threads SET thread_section_id='saved' WHERE id=?", (THREAD,)),
+    ("state", "UPDATE threads SET is_pinned=1 WHERE id=?", (CHILD,)),
+    ("queue", "INSERT INTO queued_items VALUES(?)", (THREAD,)),
+    ("queue", "INSERT INTO queued_items VALUES(?)", (CHILD,)),
+])
+def test_terminal_policy_keeps_manual_saved_and_queued_chats_visible(native, key, statement, args):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    age_native_family(native, 86400)
+    native.sql(key, statement, args)
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)["archived"] == []
+
+
+@pytest.mark.parametrize("goal_status", ["active", "paused"])
+@pytest.mark.parametrize("target", [THREAD, CHILD], ids=["root", "descendant"])
+def test_terminal_policy_preserves_active_and_paused_family_goals(native, target, goal_status):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    age_native_family(native, 86400)
+    with sqlite3.connect(native.home / "goals_1.sqlite") as db:
+        db.execute("CREATE TABLE thread_goals(thread_id TEXT,status TEXT)")
+        db.execute("INSERT INTO thread_goals VALUES(?,?)", (target, goal_status))
+    assert not cleanup.inspect_candidate(native.config, THREAD, NOW)["eligible"]
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=never_run)["archived"] == []
+
+
+def test_terminal_policy_retries_definite_nonzero_failure_and_preserves_attempt_history(native):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    failure = lambda *a, **kw: SimpleNamespace(returncode=1, stdout="", stderr="Error: failed to archive session\n")
+    first = cleanup.run_once(native.config, apply=True, now=NOW, runner=failure)
+    assert first["archived"] == []
+    root = Path(native.config["state_dir"])
+    original = cleanup._receipt(root, THREAD)
+    assert original["status"] == "failed"
+    result = cleanup.run_once(native.config, apply=True, now=NOW + 300, runner=archive_runner(native, []))
+    assert result["archived"] == [THREAD]
+    events = [json.loads(line) for line in (root / "events.jsonl").read_text().splitlines()]
+    assert any(event == original for event in events)
+    assert any(event["status"] == "archived" and event["attempt_id"] != original["attempt_id"] for event in events)
+
+
+@pytest.mark.parametrize("kind", ["unknown", "partial", "missing-family-member"])
+def test_terminal_policy_does_not_retry_unknown_or_partly_archived_family(native, kind):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    def uncertain(command, **kwargs):
+        if kind == "partial":
+            native.sql("state", "UPDATE threads SET archived=1,archived_at=? WHERE id=?", (NOW, CHILD))
+        elif kind == "missing-family-member":
+            native.sql("state", "DELETE FROM threads WHERE id=?", (CHILD,))
+        return SimpleNamespace(returncode=0 if kind == "unknown" else 1, stdout="", stderr="native archive failed")
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=uncertain)["archived"] == []
+    assert cleanup.run_once(native.config, apply=True, now=NOW + 300, runner=never_run)["archived"] == []
+
+
+def test_terminal_policy_still_protects_a_user_restored_chat(native):
+    use_all_local_terminal_policy(native)
+    assert cleanup.run_once(native.config, apply=True, now=NOW, runner=archive_runner(native, []))["archived"] == [THREAD]
+    native.sql("state", "UPDATE threads SET archived=0,archived_at=NULL")
+    assert cleanup.run_once(native.config, apply=True, now=NOW + 86400, runner=never_run)["archived"] == []
+    assert cleanup._receipt(Path(native.config["state_dir"]), THREAD)["status"] == "restored"
+
+
+def test_partial_failed_archive_stays_nonretryable_after_child_is_restored(native):
+    use_all_local_terminal_policy(native)
+    add_completed_child(native)
+    def partial(command, **kwargs):
+        native.sql("state", "UPDATE threads SET archived=1,archived_at=? WHERE id=?", (NOW, CHILD))
+        return SimpleNamespace(returncode=1, stdout="", stderr="archive failed")
+    cleanup.run_once(native.config, apply=True, now=NOW, runner=partial)
+    assert cleanup._receipt(Path(native.config["state_dir"]), THREAD)["status"] == "unknown"
+    native.sql("state", "UPDATE threads SET archived=0,archived_at=NULL WHERE id=?", (CHILD,))
+    assert cleanup.run_once(native.config, apply=True, now=NOW + 300, runner=never_run)["archived"] == []
+
+
+def test_legacy_failure_without_immediate_family_proof_is_not_retried(native):
+    use_all_local_terminal_policy(native)
+    failure = lambda *a, **kw: SimpleNamespace(returncode=1, stdout="", stderr="archive failed")
+    cleanup.run_once(native.config, apply=True, now=NOW, runner=failure)
+    root = Path(native.config["state_dir"])
+    receipt = cleanup._receipt(root, THREAD)
+    receipt.pop("retry_safe")
+    cleanup._write(root / "receipts" / f"{THREAD}.json", receipt)
+    assert cleanup.run_once(native.config, apply=True, now=NOW + 300, runner=never_run)["archived"] == []
+
+
+def test_private_config_accepts_opt_in_terminal_policy_and_local_cron_discovery(native, tmp_path):
+    use_all_local_terminal_policy(native)
+    path = tmp_path / "terminal-policy.json"
+    path.write_text(json.dumps(native.config))
+    loaded = cleanup.load_config(path)
+    assert loaded["automation_selection"] == "local_cron"
+    assert loaded["archive_policy"] == "completed_or_idle"
+    assert loaded["fallback_idle_seconds"] == 7200
+
+
+@pytest.mark.parametrize("patch", [
+    {"archive_policy": "all_chats"},
+    {"fallback_idle_seconds": 7199},
+    {"fallback_idle_seconds": True},
+    {"automation_selection": "all_hosts"},
+    {"automation_ids": [AUTOMATION]},
+    {"automation_project_id": PROJECT},
+])
+def test_private_config_rejects_unsafe_or_ambiguous_terminal_policy(native, tmp_path, patch):
+    use_all_local_terminal_policy(native)
+    path = tmp_path / "terminal-policy.json"
+    path.write_text(json.dumps({**native.config, **patch}))
+    with pytest.raises(cleanup.CleanupError):
+        cleanup.load_config(path)

@@ -68,7 +68,7 @@ def load_config(path: Path) -> dict:
     if not isinstance(value, dict):
         raise CleanupError("Configuration must be an object")
     required = {"codex_home", "codex_exe", "codex_sha256", "state_dir", "minimum_age_seconds"}
-    if not required <= value.keys() or set(value) - required - {"max_per_run", "helper_sha256", "automation_ids", "automation_project_id"}:
+    if not required <= value.keys() or set(value) - required - {"max_per_run", "helper_sha256", "automation_ids", "automation_project_id", "automation_selection", "archive_policy", "fallback_idle_seconds"}:
         raise CleanupError("Configuration fields are missing or unknown")
     for field in ("codex_home", "codex_exe", "state_dir"):
         if not isinstance(value[field], str) or value[field].startswith(("\\\\", "//")) or not Path(value[field]).is_absolute() or str(Path(value[field]).resolve()).startswith(("\\\\", "//")):
@@ -83,8 +83,15 @@ def load_config(path: Path) -> dict:
     project = value.get("automation_project_id")
     if project is not None and not _uuid(project):
         raise CleanupError("automation_project_id must be an exact native project UUID")
-    if not ids and not project:
+    selection = value.get("automation_selection")
+    if selection is not None and (selection != "local_cron" or ids or project):
+        raise CleanupError("Choose all local cron tasks or an exact ID/project scope")
+    if not ids and not project and selection != "local_cron":
         raise CleanupError("Select exact automation IDs or a local automation project")
+    if value.get("archive_policy", "single_successful_turn") not in {"single_successful_turn", "completed_or_idle"}:
+        raise CleanupError("Unsupported archive policy")
+    if "fallback_idle_seconds" in value and (type(value["fallback_idle_seconds"]) is not int or value["fallback_idle_seconds"] < 7200):
+        raise CleanupError("fallback_idle_seconds must be at least 7200")
     if type(value["minimum_age_seconds"]) is not int or value["minimum_age_seconds"] < 3600:
         raise CleanupError("minimum_age_seconds must be at least 3600")
     value.setdefault("max_per_run", 10)
@@ -154,6 +161,8 @@ def _item(connection, thread_id: str, turn_id: str, item_id: str):
 def _automation_scope(config: dict):
     """Native definitions, never display titles, establish the local scope."""
     clauses, args = [], []
+    if config.get("automation_selection") == "local_cron":
+        return "a.kind='cron' AND a.execution_environment='local'", []
     ids = config.get("automation_ids", [])
     if ids:
         clauses.append("a.id IN (" + ",".join("?" for _ in ids) + ")")
@@ -223,8 +232,91 @@ def _finished_descendants(db, config: dict, root_id: str, root_turn_id: str, now
     return None, sorted(snapshots, key=lambda value: value["thread"]["id"])
 
 
+def _inspect_finished_chat(config: dict, thread_id: str, now: float) -> dict:
+    """Age completed scheduled chats, including automatic continuation turns.
+
+    The two-hour fallback applies only to terminal native turns. An old creation
+    time never makes an active turn or queued input eligible for archival.
+    """
+    def reject(reason):
+        return {"thread_id": thread_id, "eligible": False, "reason": reason}
+    if not _uuid(thread_id):
+        return reject("INVALID_NATIVE_ID")
+    with _databases(config) as db:
+        run = _one(db["app"], "SELECT thread_id,automation_id,status,created_at,read_at FROM automation_runs WHERE thread_id=?", (thread_id,))
+        if not run or not (definition := _definition(db["app"], config, run["automation_id"])):
+            return reject("NOT_ALLOWED_AUTOMATION")
+        if type(run["created_at"]) is not int or not 0 < run["created_at"] <= now * 1000:
+            return reject("INVALID_CREATION_TIME")
+        pending, seen, snapshots = [(thread_id, None)], set(), []
+        activity = [run["created_at"] / 1000]
+        completions, successful = [], True
+        while pending:
+            identity, parent = pending.pop()
+            if not _uuid(identity) or identity in seen or len(seen) >= TREE_LIMIT:
+                return reject("UNSUPPORTED_DESCENDANT_TREE")
+            seen.add(identity)
+            thread = _one(db["state"], "SELECT id,thread_source,has_user_event,is_pinned,thread_section_id,archived,archived_at,updated_at_ms FROM threads WHERE id=?", (identity,))
+            if not thread or thread["thread_source"] != ("automation" if parent is None else "subagent"):
+                return reject("NOT_SCHEDULED_FAMILY")
+            if parent is not None:
+                parents = db["state"].execute("SELECT parent_thread_id FROM thread_spawn_edges WHERE child_thread_id=? LIMIT 2", (identity,)).fetchall()
+                if len(parents) != 1 or parents[0][0] != parent or thread["has_user_event"]:
+                    return reject("UNSUPPORTED_DESCENDANT_TREE")
+            if thread["archived"] or thread["archived_at"] is not None:
+                return reject("ALREADY_ARCHIVED")
+            if thread["is_pinned"] or thread["thread_section_id"] is not None:
+                return reject("PINNED_OR_ORGANIZED")
+            updated = thread["updated_at_ms"]
+            if type(updated) is not int or not 0 < updated <= now * 1000:
+                return reject("INVALID_ACTIVITY_TIME")
+            activity.append(updated / 1000)
+            if db["queue"].execute("SELECT 1 FROM queued_items WHERE thread_id=? LIMIT 1", (identity,)).fetchone():
+                return reject("QUEUED_INPUT")
+            if "goals" in db and db["goals"].execute("SELECT 1 FROM thread_goals WHERE thread_id=? AND status != 'complete' LIMIT 1", (identity,)).fetchone():
+                return reject("UNFINISHED_GOAL")
+            turns = [dict(row) for row in db["history"].execute("SELECT turn_id,status,error_json,started_at,completed_at,first_user_item_id,final_agent_item_id FROM thread_turns WHERE thread_id=? ORDER BY started_at,turn_id LIMIT ?", (identity, TREE_LIMIT + 1))]
+            if not turns or len(turns) > TREE_LIMIT or len({t["turn_id"] for t in turns}) != len(turns):
+                return reject("UNSUPPORTED_TURNS")
+            finals = []
+            for turn in turns:
+                if turn["status"] not in {"completed", "failed", "interrupted"}:
+                    return reject("TURN_STILL_ACTIVE")
+                start, completed = turn["started_at"], turn["completed_at"]
+                if type(start) is not int or not 0 < start <= now:
+                    return reject("INVALID_START_TIME")
+                activity.append(start)
+                if completed is not None:
+                    if type(completed) is not int or not start <= completed <= now:
+                        return reject("INVALID_COMPLETION_TIME")
+                    activity.append(completed)
+                    completions.append(completed)
+                final = _item(db["history"], identity, turn["turn_id"], turn["final_agent_item_id"])
+                valid_final = (final and final.get("id") == turn["final_agent_item_id"]
+                               and final.get("type") == "agentMessage" and final.get("phase") in {"final", "final_answer"}
+                               and isinstance(final.get("text"), str) and bool(final["text"].strip()))
+                successful = successful and turn["status"] == "completed" and turn["error_json"] is None and completed is not None and bool(valid_final)
+                finals.append(sha256(json.dumps(final, sort_keys=True).encode()).hexdigest())
+            snapshots.append({"parent": parent, "thread": thread, "turns": turns, "final_sha256": finals})
+            children = db["state"].execute("SELECT child_thread_id FROM thread_spawn_edges WHERE parent_thread_id=? ORDER BY child_thread_id LIMIT ?", (identity, TREE_LIMIT + 1)).fetchall()
+            pending.extend((child[0], identity) for child in children)
+        age_base = max(completions) if successful else max(activity)
+        grace = config["minimum_age_seconds"] if successful else config.get("fallback_idle_seconds", 7200)
+        if now - age_base < grace:
+            return reject("YOUNGER_THAN_MINIMUM" if successful else "YOUNGER_THAN_FALLBACK")
+        descendants = sorted(seen - {thread_id})
+        snapshot = {"run": run, "definition": definition, "family": snapshots}
+        return {"thread_id": thread_id, "automation_id": run["automation_id"], "eligible": True,
+                "completed_at": max(completions) if completions else None,
+                "eligible_at": age_base + grace, "age_basis": "completion" if successful else "terminal_idle",
+                "descendant_count": len(descendants), "descendant_ids": descendants,
+                "snapshot_sha256": sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()}
+
+
 def inspect_candidate(config: dict, thread_id: str, now: float) -> dict:
     """A fresh bounded native snapshot; no writes and no model invocation."""
+    if config.get("archive_policy") == "completed_or_idle":
+        return _inspect_finished_chat(config, thread_id, now)
     def reject(reason):
         return {"thread_id": thread_id, "eligible": False, "reason": reason}
     if not _uuid(thread_id):
@@ -293,6 +385,13 @@ def _archived(config: dict, thread_id: str, descendant_ids=()) -> bool | None:
         ids = [thread_id, *descendant_ids]
         rows = db["state"].execute("SELECT id,archived FROM threads WHERE id IN (" + ",".join("?" for _ in ids) + ")", ids).fetchall()
         return None if len(rows) != len(ids) else all(row["archived"] == 1 for row in rows)
+
+
+def _all_unarchived(config: dict, thread_ids) -> bool:
+    ids = sorted(set(thread_ids))
+    with _databases(config) as db:
+        rows = db["state"].execute("SELECT id,archived,archived_at FROM threads WHERE id IN (" + ",".join("?" for _ in ids) + ")", ids).fetchall()
+        return len(rows) == len(ids) and all(row["archived"] == 0 and row["archived_at"] is None for row in rows)
 
 
 def _foreign_writer_busy(config: dict, thread_ids) -> bool:
@@ -417,12 +516,13 @@ def _candidates(config, cursor):
         state_uri = (Path(config["codex_home"]) / DB_PATHS["state"]).resolve().as_uri() + "?mode=ro"
         db["app"].execute("ATTACH DATABASE ? AS cleanup_state", (state_uri,))
         scope, args = _automation_scope(config)
+        completed_filter = "" if config.get("archive_policy") == "completed_or_idle" else " AND r.status='PENDING_REVIEW' AND t.has_user_event=0"
         query = f"""SELECT r.thread_id,r.created_at FROM automation_runs AS r
             JOIN cleanup_state.threads AS t ON t.id=r.thread_id
             JOIN automations AS a ON a.id=r.automation_id
-            WHERE {scope} AND r.status='PENDING_REVIEW'
+            WHERE {scope}{completed_filter}
               AND t.archived=0 AND t.thread_source='automation'
-              AND t.has_user_event=0 AND t.is_pinned=0 AND t.thread_section_id IS NULL"""
+              AND t.is_pinned=0 AND t.thread_section_id IS NULL"""
         if cursor:
             query += " AND (r.created_at>? OR (r.created_at=? AND r.thread_id>?))"
             args.extend((cursor["created_at"], cursor["created_at"], cursor["thread_id"]))
@@ -453,7 +553,10 @@ def _run(config: dict, apply: bool, now: float, runner) -> dict:
         cursor = row
         result["considered"] += 1
         prior = _receipt(root, thread_id)
-        if prior and prior["status"] != "writer_busy":
+        retry_failed = bool(prior and config.get("archive_policy") == "completed_or_idle"
+                            and prior["status"] == "failed" and type(prior.get("native_exit_code")) is int
+                            and prior["native_exit_code"] != 0 and prior.get("retry_safe") is True)
+        if prior and prior["status"] != "writer_busy" and not retry_failed:
             archived = _archived(config, thread_id, prior.get("descendant_ids", []))
             if apply and archived and prior["status"] in {"attempting", "unknown", "failed"}:
                 _record(root, {**prior, "status": "archived", "reconciled_at": now})
@@ -467,7 +570,11 @@ def _run(config: dict, apply: bool, now: float, runner) -> dict:
         if not candidate["eligible"]:
             result["skipped"].append(candidate)
             continue
-        if prior and prior.get("snapshot_sha256") != candidate["snapshot_sha256"]:
+        if retry_failed and not _all_unarchived(config, [thread_id, *candidate["descendant_ids"], *prior.get("descendant_ids", [])]):
+            result["skipped"].append({"thread_id": thread_id, "reason": "PRIOR_PARTIAL_OR_UNKNOWN_ARCHIVE"})
+            result["status"] = "FAILED"
+            continue
+        if prior and not retry_failed and config.get("archive_policy") != "completed_or_idle" and prior.get("snapshot_sha256") != candidate["snapshot_sha256"]:
             result["skipped"].append({"thread_id": thread_id, "reason": "CHANGED_AFTER_BUSY_ATTEMPT"})
             continue
         result["eligible"].append(candidate)
@@ -487,6 +594,10 @@ def _run(config: dict, apply: bool, now: float, runner) -> dict:
         _verify_binaries(config)
         attempt = {**candidate, "version": VERSION, "attempt_id": uuid.uuid4().hex,
                    "attempted_at": now, "status": "attempting", "native_sha256": config["codex_sha256"]}
+        if prior:
+            # Historical events are append-only, including legacy failures whose
+            # snapshot format predates this policy. Never erase that evidence.
+            attempt["previous_attempt_id"] = prior["attempt_id"]
         _record(root, attempt)
         command = [config["codex_exe"], "--no-daemon", "archive", thread_id]
         # Maintenance has no network/model job. Inherit only OS/user directories;
@@ -502,16 +613,18 @@ def _run(config: dict, apply: bool, now: float, runner) -> dict:
                              timeout=15, check=False, shell=False,
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             archived = _archived(config, thread_id, candidate["descendant_ids"])
+            fully_unarchived = False if archived else _all_unarchived(config, [thread_id, *candidate["descendant_ids"]])
             message = (outcome.stderr or outcome.stdout or "")[-2000:]
             if archived:
                 receipt = {**attempt, "status": "archived", "native_exit_code": outcome.returncode,
                            "archived_verified_at": time.time()}
                 result["archived"].append(thread_id)
-            elif outcome.returncode != 0 and re.search(r"writer.*(?:lock|lease)|(?:lock|lease).*writer", message, re.IGNORECASE):
+            elif fully_unarchived and outcome.returncode != 0 and re.search(r"writer.*(?:lock|lease)|(?:lock|lease).*writer", message, re.IGNORECASE):
                 receipt = {**attempt, "status": "writer_busy", "native_exit_code": outcome.returncode}
             else:
-                receipt = {**attempt, "status": "unknown" if outcome.returncode == 0 else "failed",
-                           "native_exit_code": outcome.returncode, "error": message}
+                receipt = {**attempt, "status": "failed" if outcome.returncode != 0 and fully_unarchived else "unknown",
+                           "native_exit_code": outcome.returncode, "error": message,
+                           "retry_safe": fully_unarchived, "unarchived_verified_at": time.time() if fully_unarchived else None}
                 result["status"] = "FAILED"
         except (OSError, subprocess.TimeoutExpired, sqlite3.Error, CleanupError) as error:
             receipt = {**attempt, "status": "unknown", "error": f"{type(error).__name__}: {error}"}
