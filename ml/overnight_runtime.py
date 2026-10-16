@@ -323,6 +323,16 @@ def run_overnight_pipeline(
             raise ValueError("Stop after gameplan_stats for model review before starting the training segment")
         if any(stage in selected for stage in ("loop_b_directional_generation", "gameplan_publication")) and model_feedback is None:
             raise ValueError("Stats-first training requires reviewed model feedback; complete the gameplan_stats boundary first")
+        if any(stage in selected for stage in ("loop_b_directional_generation", "gameplan_publication")):
+            from ml.gameplan_model_feedback import load_feedback_review
+            feedback = load_feedback_review(
+                root, model_feedback, as_of=created,
+                probability_target=probability_target_contract,
+            )
+            if feedback["checksum_sha256"] != feedback_binding["sha256"]:
+                raise ValueError("Reviewed model feedback changed during native validation")
+            if feedback["stats"]["session"] != review_action_date:
+                raise ValueError("Reviewed model feedback Stats session differs from the native review date")
     run = create_timestamp_directory(
         root / "ml" / "overnight-runs",
         timestamp=created,
