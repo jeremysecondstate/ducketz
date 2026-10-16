@@ -409,7 +409,16 @@ def publish_execution_summary(root, session, observed_at=None):
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, destination)
+        if report["state"] == "missing":
+            # Without a local ledger, this PC has no newer execution evidence.
+            # Preserve saved display bytes, including reports arriving while
+            # this placeholder is being built. Readers still validate them.
+            try:
+                os.link(temporary, destination)
+            except FileExistsError:
+                pass
+        else:
+            os.replace(temporary, destination)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
