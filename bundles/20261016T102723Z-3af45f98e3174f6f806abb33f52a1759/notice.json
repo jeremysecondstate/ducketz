@@ -1,0 +1,77 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T101908Z-e5a261a4bce44d1cb8ff2fb51680fb65",
+  "change_id": "20261016T101908Z-e5a261a4bce44d1cb8ff2fb51680fb65",
+  "commit_sha": "9de296b24d50560a4d9d94580bf60f526eb467d1",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared correctness repair applies independently on both PCs.",
+    "Before native training or publication, verify feedback with the existing loader and bind its Stats session to the reported review date.",
+    "Retain feedback completion time, target, latest-Stats integrity and exact bytes; preserve tail-only retries after newer display Stats.",
+    "Use genuine offline Stats and reviewed-feedback fixtures; preserve local model choices and existing nightly continuation identities.",
+    "Retain Scout continuation record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93.",
+    "Retain Atlas continuation record 20261014T050106Z-0e807c66479e4deb83823375e163fe5c."
+  ],
+  "files": [
+    "ml/overnight_runtime.py",
+    "tests/test_nightly_stats_segments.py",
+    "tests/test_nightly_feedback_session.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "fb1f1d9a02e056167f9ea161eae84cff6151a922",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline synthetic fixtures; no production data, providers, brokers or trader execution.",
+    "Dated runtime/workflow composition and pending collector handoffs remain separate. Loaded-process adoption unverified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/191"
+  ],
+  "local_receipt": "Installed focused runtime hunk and regression coverage; preserved broader runtime, local recipes and original evidence. Local-only test setups now use genuine feedback with assertions unchanged. Loaded-process adoption unverified.",
+  "remaining_source_work": "Compose dated trade-planning/native continuation and workflow-dispatch with original identities; retain local fixture adaptations with their broader source units.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "A mismatched feedback session fails before native training. Existing independent production, saved recipes and manual controls remain intact.",
+  "scope": "Shared correctness source for both PCs independently.",
+  "summary": "Scout bound native review dates to verified feedback Stats sessions; tail retries preserve frozen evidence.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T10:18:34.715015Z",
+      "fingerprints": 183,
+      "output_sha256": "94604546724a385bc6f7aaaa41286754595be5629465414aedbb0200e0dc314c",
+      "result": "201 passed in 34.96s",
+      "started_at_utc": "2026-10-16T10:17:58.309082Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T10:19:44.763176Z",
+      "fingerprints": 183,
+      "output_sha256": "c012928c18e25ea68f84ac263143e10df2e040f3cc3fe90d390e824ff7ad188c",
+      "result": "201 passed in 35.07s",
+      "started_at_utc": "2026-10-16T10:19:08.288409Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T10:21:15.401454Z",
+      "fingerprints": 183,
+      "output_sha256": "ff273d193e4a2db226434abb8a09c033e5944c9df616ba42cffc131a62dcfca4",
+      "result": "201 passed in 34.39s",
+      "started_at_utc": "2026-10-16T10:20:39.586488Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T10:22:46.300396Z",
+      "fingerprints": 183,
+      "output_sha256": "4d600e391aaa86797ac8dd6b2287a345b82e417d1fe4739b72452618da6142f0",
+      "result": "201 passed in 35.42s",
+      "started_at_utc": "2026-10-16T10:22:09.407026Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T10:27:08.814026Z",
+      "fingerprints": 236,
+      "output_sha256": "ff0d3ee9e1e78a690e19d6d5c0b4230fbaa75bccd99c853a8fca1b2d72bf4300",
+      "result": "227 passed in 39.54s",
+      "started_at_utc": "2026-10-16T10:26:27.752325Z"
+    }
+  ]
+}

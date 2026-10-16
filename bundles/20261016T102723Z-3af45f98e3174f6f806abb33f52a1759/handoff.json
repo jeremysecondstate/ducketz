@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T10:27:23.525506Z",
+  "id": "20261016T102723Z-3af45f98e3174f6f806abb33f52a1759",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout bound native review dates to verified feedback Stats sessions; tail retries preserve frozen evidence."
+}
