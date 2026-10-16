@@ -1,0 +1,36 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261016T201116Z-cbb3e62d92ff4ce5b6a82d39b373af79",
+  "change_id": "20261016T201116Z-cbb3e62d92ff4ce5b6a82d39b373af79",
+  "commit_sha": "037551087c878fab5a97c92dea0492a512b83e57",
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_account_execution.py"
+    }
+  ],
+  "limitations": [
+    "Stacked draft PR on the existing independent-session source PR139; main integration is pending.",
+    "Historical discarded exception causes cannot be reconstructed. No actual operating recovery or peer installation is asserted."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/196",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas source installed without starting or restarting a trader. Running processes retain their loaded code; the new diagnostics load at a later human-controlled manual start. Shared diagnostic code applies independently without cross-trader inspection.",
+  "scope": "shared",
+  "summary": "Atlas fifteen-minute submission diagnostics installed and published for review",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-16T20:12:57.318926Z",
+      "output_sha256": "5a4fb6cdfd06ccabe61d251d95e35f19f0cab1c4451d3dd3622dfa3ac7686981",
+      "result": "34 passed",
+      "started_at_utc": "2026-10-16T20:12:44.885483Z",
+      "suite": "tests/test_intraday_account_execution.py"
+    }
+  ]
+}

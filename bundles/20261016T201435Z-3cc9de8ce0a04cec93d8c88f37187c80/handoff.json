@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T20:14:35.359238Z",
+  "id": "20261016T201435Z-3cc9de8ce0a04cec93d8c88f37187c80",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas fifteen-minute submission diagnostics installed and published for review"
+}
