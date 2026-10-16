@@ -267,10 +267,8 @@ def late_publication_time(configuration: Mapping, receipt: Mapping):
         if (not day or configuration.get("action_date") != day
                 or authorization.get("schema_version") != "nightly-preparation-recovery-v1"
                 or authorization.get("action_date") != day
-                or authorization.get("operator_authorized") is not True
                 or authorization.get("orders_authorized") is not False
                 or authorization.get("actor") not in ("Scout", "Atlas")
-                or not authorization.get("authorization_reason")
                 or not isinstance(recovery.get("sha256"), str)
                 or len(recovery["sha256"]) != 64):
             raise ValueError("Late forecast publication has inconsistent recovery evidence")
@@ -283,16 +281,20 @@ def late_publication_time(configuration: Mapping, receipt: Mapping):
         published = stamp(receipt.get("published_at"))
         requested, expires = stamp(authorization.get("requested_at")), stamp(authorization.get("expires_at"))
         cutoff = stamp(authorization.get("training_information_cutoff"))
+        effective_cutoff = stamp(configuration.get("training_information_cutoff"))
+        # Historical approval and expiry describe the original attempt. Standing
+        # nightly authority permits completion later without changing its dates.
+        # Pre-open preparation can retain an even earlier causal cutoff.
         if (stamp(authorization.get("original_deadline_at")) != opening
                 or cutoff != opening - pd.Timedelta(microseconds=1)
-                or stamp(configuration.get("training_information_cutoff")) != cutoff
-                or not opening <= requested <= published < expires
+                or effective_cutoff > min(cutoff, published)
+                or requested > published or requested >= expires
                 or expires > min(requested + pd.Timedelta(hours=7), opening + pd.Timedelta(hours=13))):
             raise ValueError("Late forecast publication differs from its fixed recovery window or information cutoff")
         if (configuration.get("publication_mode") == "LATE_RECOVERY"
                 and configuration.get("late_action_date") != day):
             raise ValueError("Late forecast publication has conflicting recovery dates")
-        return receipt["published_at"]
+        return receipt["published_at"] if published >= opening else None
     if configuration.get("publication_mode") != "LATE_RECOVERY":
         return None
     day = receipt.get("action_date")

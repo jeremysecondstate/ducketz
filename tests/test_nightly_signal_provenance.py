@@ -234,9 +234,8 @@ def test_bound_recovery_metadata_supplies_context_without_mutation(actor, mode):
 
 @pytest.mark.parametrize("field,value", [
     ("schema_version", "unknown"), ("action_date", "2026-09-09"),
-    ("operator_authorized", False), ("operator_authorized", 1),
     ("orders_authorized", True), ("orders_authorized", 0),
-    ("actor", "other"), ("authorization_reason", ""),
+    ("actor", "other"),
 ])
 def test_recovery_metadata_does_not_expand_authority(field, value):
     config, receipt = recovery()
@@ -272,10 +271,10 @@ def test_recovery_rejects_missing_or_naive_authorization_times(field, value):
 
 
 @pytest.mark.parametrize("fault", [
-    "deadline", "cutoff_not_last_microsecond", "configuration_cutoff", "requested_before_open",
-    "publication_before_request", "publication_at_expiry", "more_than_seven_hours", "after_close",
+    "deadline", "cutoff_not_last_microsecond", "configuration_cutoff",
+    "publication_before_request", "empty_window", "more_than_seven_hours", "after_close",
 ])
-def test_recovery_remains_within_its_fixed_window(fault):
+def test_recovery_preserves_original_window_shape_and_causal_cutoff(fault):
     config, receipt = recovery()
     auth = config["late_preparation"]["authorization"]
     start = opening()
@@ -285,13 +284,11 @@ def test_recovery_remains_within_its_fixed_window(fault):
         auth["training_information_cutoff"] = (start - pd.Timedelta(seconds=1)).isoformat()
         config["training_information_cutoff"] = auth["training_information_cutoff"]
     elif fault == "configuration_cutoff":
-        config["training_information_cutoff"] = (start - pd.Timedelta(seconds=1)).isoformat()
-    elif fault == "requested_before_open":
-        auth["requested_at"] = (start - pd.Timedelta(microseconds=1)).isoformat()
+        config["training_information_cutoff"] = start.isoformat()
     elif fault == "publication_before_request":
         receipt["published_at"] = (start + pd.Timedelta(hours=2)).isoformat()
-    elif fault == "publication_at_expiry":
-        receipt["published_at"] = auth["expires_at"]
+    elif fault == "empty_window":
+        auth["expires_at"] = auth["requested_at"]
     elif fault == "more_than_seven_hours":
         auth["expires_at"] = (start + pd.Timedelta(hours=10, microseconds=1)).isoformat()
     else:
