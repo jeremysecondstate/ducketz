@@ -1,0 +1,81 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T052407Z-12aa09bffa434e40810e3c3541054ec9",
+  "change_id": "20261016T052407Z-12aa09bffa434e40810e3c3541054ec9",
+  "commit_sha": "ff5fc9b7bd042f515e7f259a4d4eb792b0a13989",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared late-publication reader applies independently on Atlas and Scout.",
+    "Compose the installed late_publication_time evidence selector and forecast validation branch onto current main without changing original forecast clocks, target windows or data. Reject reader observations before the actual late publication time; equality remains available.",
+    "Accept explicit matching dated continuation or saved recovery evidence; reject future inputs, invalid publication clocks, conflicting dates and freezes after actual publication.",
+    "Retain ordinary forecast checks and original signal execution-window tests. This source change supplies no trading authority and never replays expired entries.",
+    "Retain original Scout Completion-Record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93 and Atlas Completion-Record 20261014T050106Z-0e807c66479e4deb83823375e163fe5c; original source 775052967f4a17d2598e413c9ed369959fe3b1f4."
+  ],
+  "files": [
+    "ml/stock_trader/independent_signals.py",
+    "tests/test_nightly_signal_provenance.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "7f19aa020cd213ceb806fb7743e2690710a9a25a",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture validation; loaded-process adoption unverified.",
+    "Broader nightly runtime, package handoff and preflight caller composition remain separate; original suites and source identities preserved.",
+    "Existing local contract, ledger and optional dependencies preserved; installed tests bind their actual bytes."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/173"
+  ],
+  "local_receipt": "Two reviewed source and test paths installed exactly with originals retained. Causal clocks, target windows, entry grace, local symbols and private bindings preserved.",
+  "remaining_source_work": "Compose the saved gameplan_deployment INTERRUPTED-ancestor cleanup with its complete handoff suite and isolated ancestor regression; current attempt must still be COMPLETE.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded shared forecast readers accept explicitly dated late publication only with causal inputs and truthful freeze/publication times, and reject observations before publication. This preserves original target intervals and existing entry deadlines. Scout receives the additional reader clock bound and its focused regression suite.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout composed causal late-nightly forecast validation and repaired reader access before the actual publication time.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T05:23:36.696988Z",
+      "fingerprints": 183,
+      "import_verifier_violations": 0,
+      "output_sha256": "4f9a98c02060c8027ec1c9c374887c8afaa1678a46d702f23d22df34323315a3",
+      "result": "154 passed, 40 warnings in 14.09s",
+      "started_at_utc": "2026-10-16T05:23:21.166532Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T05:24:23.809404Z",
+      "fingerprints": 183,
+      "import_verifier_violations": 0,
+      "output_sha256": "bbb4231a01c3710cc445bff3c94511c074f64d98366845145219a75070f61468",
+      "result": "154 passed, 40 warnings in 14.83s",
+      "started_at_utc": "2026-10-16T05:24:07.495033Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T05:24:56.920182Z",
+      "fingerprints": 183,
+      "import_verifier_violations": 0,
+      "output_sha256": "e83db7edba705e03359614b8603b361aacb45302618ad19e8f7191881c7a3cce",
+      "result": "154 passed, 40 warnings in 14.11s",
+      "started_at_utc": "2026-10-16T05:24:41.339484Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T05:26:14.289581Z",
+      "fingerprints": 183,
+      "import_verifier_violations": 0,
+      "output_sha256": "e7322b84d3b763a945854e6c03cee248f233fbb9aeefe79f260cf933fdec42b1",
+      "result": "154 passed, 40 warnings in 14.01s",
+      "started_at_utc": "2026-10-16T05:25:58.741603Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T05:26:49.115399Z",
+      "fingerprints": 209,
+      "import_verifier_violations": 0,
+      "output_sha256": "4fccdfbff0fd97052b2fe530e1a3480d030b4c15aae93722980f82e4b566512a",
+      "result": "154 passed, 40 warnings in 13.95s",
+      "started_at_utc": "2026-10-16T05:26:33.523699Z"
+    }
+  ]
+}

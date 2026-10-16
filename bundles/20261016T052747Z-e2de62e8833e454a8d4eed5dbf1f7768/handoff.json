@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T05:27:47.787229Z",
+  "id": "20261016T052747Z-e2de62e8833e454a8d4eed5dbf1f7768",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout composed causal late-nightly forecast validation and repaired reader access before the actual publication time."
+}
