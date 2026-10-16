@@ -1,0 +1,80 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T094213Z-dc9609377e7243fa81149f80c90ef659",
+  "change_id": "20261016T094213Z-dc9609377e7243fa81149f80c90ef659",
+  "commit_sha": "b561a00a7acc7a25414f03b0f3fb8909c76d8eb7",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared source applies independently on both PCs.",
+    "Preserve useful children across elapsed publication targets, persisted software stop notes and telemetry failures; only immediate explicit human cancellation terminates the owned child.",
+    "Recover exited attempts without killing a living child; retain interrupted and timed-out receipt identities and original deadlines, logs, completed stages and no-order checks.",
+    "Accept a verified timed-out ancestor only after a completed resumed preparation; current publication still requires COMPLETE and all integrity checks.",
+    "Retain Scout source 775052967f4a17d2598e413c9ed369959fe3b1f4 and Completion-Record 20261014T055212Z-f63cd552ecdf49a086853a95ff696c93.",
+    "Retain Atlas source 77c6704e8b348931b5a3641e627ffac9370a269f and Completion-Record 20261014T050106Z-0e807c66479e4deb83823375e163fe5c.",
+    "Retain cancellation cleanup source 0f765d267dbbb0416c46bf8a5c6c19f597a64386 and Completion-Record 20261014T065312Z-202eba8257854a5f8b557ba5f5bcab40."
+  ],
+  "files": [
+    "ml/overnight_runtime.py",
+    "ml/gameplan_deployment.py",
+    "tests/test_overnight_supervision.py",
+    "tests/test_preparation_deadline.py",
+    "tests/test_nightly_child_persistence.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "41c22a509330ebc2374b224ecd327a800919c6c5",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture children and synthetic saved publications only; no provider, broker, production training or trader activity.",
+    "Broader dated runtime, workflow and dispatch composition remains separate; source installation does not establish loaded-process adoption."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/189"
+  ],
+  "local_receipt": "Selective source hunks and regression tests installed with original mixed source, local bindings, HEAD and index preserved. All 276 installation entries verify. Loaded-process adoption unverified.",
+  "remaining_source_work": "Compose the remaining dated native pipeline/resume context and then workflow/dispatch, preserving existing continuation identities and Stats-first local behavior; do not copy mixed runtime wholesale.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Preserves independent nightly completion and manual trader controls; no runtime restart, schedule change or new operating prerequisite.",
+  "scope": "Shared source for Atlas and Scout independently.",
+  "summary": "Scout integrated useful nightly child persistence and interruption recovery, including verified timed-out publication ancestry.",
+  "tests": [
+    {
+      "check": "reviewed exact source",
+      "completed_at_utc": "2026-10-16T09:40:59.362446Z",
+      "fingerprints": 1393,
+      "output_sha256": "e9b0d2ebc658f778dbe23302e993d2a9365deffa35fcc5344e9d0207f3e5e729",
+      "result": "148 passed in 31.30s",
+      "started_at_utc": "2026-10-16T09:40:26.611308Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T09:42:44.203479Z",
+      "fingerprints": 174,
+      "output_sha256": "6257106f2b1658dda779439caac9d5f90e84c3630010e209f0cef3751052ac85",
+      "result": "148 passed in 29.17s",
+      "started_at_utc": "2026-10-16T09:42:13.562637Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T09:43:34.826144Z",
+      "fingerprints": 174,
+      "output_sha256": "fc666b53ac7a8566c003f728f08e7219a82b9f35192962f6449b5de9d884196b",
+      "result": "148 passed in 29.78s",
+      "started_at_utc": "2026-10-16T09:43:03.603231Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T09:47:07.777580Z",
+      "fingerprints": 174,
+      "output_sha256": "271e7df9b9d95d95dfc76a322d27597c7252e4aca41b1eb158620c3d9d67248a",
+      "result": "148 passed in 29.81s",
+      "started_at_utc": "2026-10-16T09:46:36.523878Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T09:48:17.527066Z",
+      "fingerprints": 221,
+      "output_sha256": "711e51c1a14bf1001f3edecd12e2ef0bdeeb3fa81885c892c7dcc1d9a04b6162",
+      "result": "156 passed in 32.23s",
+      "started_at_utc": "2026-10-16T09:47:43.774208Z"
+    }
+  ]
+}
