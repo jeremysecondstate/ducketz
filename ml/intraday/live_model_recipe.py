@@ -229,7 +229,15 @@ def manual_recipe_migration_evidence(original, migrated, *, pc, symbols, config)
             "provider_calls": 0, "training_runs": 0, "files_written": 0}
 
 
-def _training_support(y, reference_at, target_close_at, label_available_at, *, cutoff, support=None):
+class ManualRecipeSupportError(ContractError):
+    """Bounded rejected-input evidence survives the runtime's string-only error log."""
+    def __init__(self, message, diagnostics):
+        self.diagnostics = deepcopy(diagnostics)
+        super().__init__(message + "; support_diagnostics=" + _canonical(self.diagnostics))
+
+
+def _training_support(y, reference_at, target_close_at, label_available_at, *, cutoff, support=None,
+                      diagnostic_context=None):
     support = _validate_support(support or {
         "newest_training_rows": MAX_ROWS, "minimum_rows": MIN_ROWS, "minimum_training_dates": MIN_DATES,
         "minimum_each_class": MIN_CLASS, "minimum_calibration_rows": MIN_CALIBRATION_ROWS,
@@ -237,33 +245,106 @@ def _training_support(y, reference_at, target_close_at, label_available_at, *, c
     minimum, maximum = support["minimum_rows"], support["newest_training_rows"]
     min_dates, min_class = support["minimum_training_dates"], support["minimum_each_class"]
     min_calibration = support["minimum_calibration_rows"]
-    labels = np.asarray(y)
-    references = tuple(instant(v) for v in reference_at)
-    targets = tuple(instant(v) for v in target_close_at)
-    available = tuple(instant(v) for v in label_available_at)
-    if (labels.ndim != 1 or len(labels) < minimum or len(labels) > maximum
-            or len(references) != len(labels) or len(targets) != len(labels)
-            or len(available) != len(labels) or not np.isin(labels, [0, 1]).all()):
-        raise ContractError(f"Observed recipe requires {minimum} to {maximum} matching real training rows")
-    if any(a > instant(cutoff) for a in available):
-        raise ContractError("Observed recipe training labels are not yet available at cutoff")
-    if any(t != r + pd.Timedelta(minutes=45) for r, t in zip(references, targets)):
-        raise ContractError("Observed recipe requires exact 45-minute label windows")
-    dates = {pd.Timestamp(v).tz_convert("America/New_York").date() for v in references}
-    if len(dates) < min_dates:
-        raise ContractError(f"Observed recipe requires at least {min_dates} actual training dates")
+    diagnostics = {"schema_version": "intraday-manual-support-rejection-v1",
+                   "requirements": support, "context": deepcopy(diagnostic_context or {})}
+    reasons = []
+
+    def reject(message, *failed):
+        diagnostics["reasons"] = list(failed)
+        raise ManualRecipeSupportError(message, diagnostics)
+
+    try:
+        labels = np.asarray(y)
+    except (TypeError, ValueError):
+        diagnostics["label_shape"] = None
+        reject("Observed recipe requires a regular label array", "invalid_label_array")
+    diagnostics["label_shape"] = list(labels.shape)
+    rows = len(labels) if labels.ndim else 0
+    diagnostics["training_rows"] = rows
+    if labels.ndim != 1:
+        reasons.append("label_dimension_mismatch")
+    if rows < minimum:
+        reasons.append("training_rows_below_minimum")
+    if rows > maximum:
+        reasons.append("training_rows_above_maximum")
+    binary = np.isin(labels, [0, 1])
+    diagnostics["nonbinary_labels"] = int((~binary).sum())
+    if not binary.all():
+        reasons.append("nonbinary_labels")
     counts = {str(v): int((labels == v).sum()) for v in (0, 1)}
-    if min(counts.values()) < min_class:
-        raise ContractError(f"Observed recipe requires at least {min_class} examples of each target class")
-    train, calibration = purged_chronological_split(references, targets,
-        fraction=0.25, label_available_at=available)
+    diagnostics["class_counts"] = counts
+    timestamps = {}
+    for name, values in (("reference_at", reference_at), ("target_close_at", target_close_at),
+                         ("label_available_at", label_available_at)):
+        try:
+            values = tuple(values)
+        except TypeError:
+            diagnostics[name + "_length"] = None
+            reasons.append(name + "_not_array")
+            continue
+        diagnostics[name + "_length"] = len(values)
+        if len(values) != rows:
+            reasons.append(name + "_length_mismatch")
+        try:
+            timestamps[name] = tuple(instant(v) for v in values)
+        except (TypeError, ValueError, OverflowError):
+            reasons.append(name + "_invalid_timestamp")
+    try:
+        selected_cutoff = instant(cutoff)
+        diagnostics["cutoff"] = selected_cutoff.isoformat()
+    except (TypeError, ValueError, OverflowError):
+        selected_cutoff = None
+        diagnostics["cutoff"] = None
+        reasons.append("invalid_cutoff")
+    references = timestamps.get("reference_at", ())
+    targets = timestamps.get("target_close_at", ())
+    available = timestamps.get("label_available_at", ())
+    dates = {pd.Timestamp(v).tz_convert("America/New_York").date() for v in references}
+    diagnostics["training_dates"] = len(dates)
+    diagnostics["latest_label_available_at"] = max(available).isoformat() if available else None
+    diagnostics["invalid_target_windows"] = sum(
+        t != r + pd.Timedelta(minutes=45) for r, t in zip(references, targets))
+    diagnostics["labels_after_cutoff"] = (sum(a > selected_cutoff for a in available)
+                                           if selected_cutoff is not None else None)
+    train, calibration, split_error = None, None, None
+    # A deficient overall population can still expose its real purged support.
+    # Malformed inputs never enter the splitter or index another array.
+    if (labels.ndim == 1 and len(references) == len(targets) == len(available) == rows
+            and rows >= 4 and len(timestamps) == 3):
+        try:
+            train, calibration = purged_chronological_split(references, targets,
+                fraction=0.25, label_available_at=available)
+        except ContractError as exc:
+            split_error = str(exc)
+    diagnostics["split_error"] = split_error
     partitions = {}
-    for name, indices in (("base", train), ("calibration", calibration)):
-        class_counts = {str(v): int((labels[indices] == v).sum()) for v in (0, 1)}
-        if len(indices) < min_calibration or min(class_counts.values()) < min_class:
-            raise ContractError(f"Observed recipe {name} partition requires at least "
-                f"{min_calibration} rows and {min_class} examples of each class after the purge")
-        partitions[name] = {"rows": len(indices), "class_counts": class_counts}
+    if train is not None:
+        for name, indices in (("base", train), ("calibration", calibration)):
+            partitions[name] = {"rows": len(indices),
+                "class_counts": {str(v): int((labels[indices] == v).sum()) for v in (0, 1)}}
+    diagnostics["partitions"] = partitions
+    diagnostics["purged_rows"] = rows - len(train) - len(calibration) if train is not None else None
+    if reasons:
+        reject(f"Observed recipe requires {minimum} to {maximum} matching real training rows", *reasons)
+    if diagnostics["labels_after_cutoff"]:
+        reject("Observed recipe training labels are not yet available at cutoff", "labels_after_cutoff")
+    if diagnostics["invalid_target_windows"]:
+        reject("Observed recipe requires exact 45-minute label windows", "invalid_target_windows")
+    if len(dates) < min_dates:
+        reject(f"Observed recipe requires at least {min_dates} actual training dates", "training_dates_below_minimum")
+    if min(counts.values()) < min_class:
+        reject(f"Observed recipe requires at least {min_class} examples of each target class", "class_count_below_minimum")
+    if split_error is not None:
+        reject(split_error, "invalid_chronological_split")
+    for name, partition in partitions.items():
+        failed = []
+        if partition["rows"] < min_calibration:
+            failed.append(name + "_rows_below_minimum")
+        if min(partition["class_counts"].values()) < min_class:
+            failed.append(name + "_class_count_below_minimum")
+        if failed:
+            reject(f"Observed recipe {name} partition requires at least "
+                f"{min_calibration} rows and {min_class} examples of each class after the purge", *failed)
     return {"training_rows": len(labels), "training_dates": len(dates),
             "class_counts": counts, "purged_rows": len(labels) - len(train) - len(calibration),
             **partitions}
@@ -354,7 +435,14 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             training_reference_at=dataset.reference_at[-max_rows:],
             target_close_at=dataset.target_close_at[-max_rows:])
         support = _training_support(dataset.y, dataset.reference_at, dataset.target_close_at,
-                                    dataset.label_available_at, cutoff=cutoff, support=support_contract)
+            dataset.label_available_at, cutoff=cutoff, support=support_contract,
+            diagnostic_context={"symbol": dataset.inference.get("symbol"),
+                "reference_at": instant(reference_at).isoformat(), "feature_shape": list(dataset.X.shape),
+                "inference_shape": list(dataset.inference_X.shape), "input_training_rows": input_rows,
+                "recipe_sha256": recipe["sha256"], "feature_version": dataset.manifest.get("feature_version"),
+                "source_dataset": dataset.inference.get("source_dataset"),
+                "source_history_sha256": _sha(dataset.manifest.get("source_history", {})),
+                "lookback_days": lookback_days, "synthetic_policy": synthetic_policy})
         manifest = {**dataset.manifest, "manual_model_recipe": deepcopy(recipe),
             "manual_recipe_training_support": support,
             "training_rows": len(dataset.y), "input_training_rows": input_rows,
