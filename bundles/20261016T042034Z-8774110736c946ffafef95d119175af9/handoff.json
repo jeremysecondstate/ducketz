@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T04:20:34.209828Z",
+  "id": "20261016T042034Z-8774110736c946ffafef95d119175af9",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserves saved execution display reports when its dedicated Gameplan ledger is absent."
+}

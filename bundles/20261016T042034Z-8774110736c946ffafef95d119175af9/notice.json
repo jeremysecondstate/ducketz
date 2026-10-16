@@ -1,0 +1,80 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T041713Z-fb233fe4dfae47198a54b47ff7182fc9",
+  "change_id": "20261016T041713Z-fb233fe4dfae47198a54b47ff7182fc9",
+  "commit_sha": "1e076545dd84df21bf05f3de888d59db5705e467",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; common saved execution reporting applies to both PCs.",
+    "Resolve the missing-ledger overwrite identified by Atlas execution-display handoff 20261015T2030Z. Existing private display bytes remain local and unchanged.",
+    "Publish a missing-ledger placeholder only when no saved summary exists, using atomic create-if-absent publication that preserves concurrent report arrivals.",
+    "Keep normal local-ledger refreshes, truthful reader validation, forecast exports and all trader controls unchanged."
+  ],
+  "files": [
+    "ml/gameplan_execution_report.py",
+    "tests/test_gameplan_execution_report.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "328c153b24d122ad2292b0db7cd579a065ce86cc",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture validation; no loaded-process adoption claim.",
+    "Existing local Gameplan, stock contract and optional dependency configuration retained; installed checks separately bind all actual dependencies."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/170",
+    "https://github.com/jeremysecondstate/atlas-scout/issues/1#issuecomment-6201754112"
+  ],
+  "local_receipt": "Two source files installed exactly; all 241 optional installation-manifest entries verify. The exact October 14 handoff was already installed and available; its private report bytes remain unchanged. No private report contents are published.",
+  "remaining_source_work": "Compose PR139 completed_15m_observation with saved-candle restoration and scoring; retain valid complete revisions when later native/incomplete rows exist. Keep legacy single-symbol stop wiring, final outcome scoring after drain, and installed nightly-continuation composition separate. Preserve PR140 cutoff/final-data drain; no production wait.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded Stats publication preserves an existing saved execution report when this PC has no dedicated Gameplan ledger; normal source-ledger reports still refresh.",
+  "scope": "Shared source for both PCs independently using their own saved data.",
+  "summary": "Scout preserves saved execution display reports when its dedicated Gameplan ledger is absent.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T04:17:02.487083Z",
+      "fingerprints": 168,
+      "import_verifier_violations": 0,
+      "output_sha256": "c59c128f9da670547045c8f7c60eee5f032474af50fdf02dd468cd0e6fb1f132",
+      "result": "116 passed in 5.71s",
+      "started_at_utc": "2026-10-16T04:16:55.479092Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T04:17:20.125565Z",
+      "fingerprints": 168,
+      "import_verifier_violations": 0,
+      "output_sha256": "34289d504f58d6ada8343a93bed1d3c9387a8773afb0901d8b5404d78f03599f",
+      "result": "116 passed in 4.99s",
+      "started_at_utc": "2026-10-16T04:17:14.046930Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T04:17:49.769015Z",
+      "fingerprints": 168,
+      "import_verifier_violations": 0,
+      "output_sha256": "24511f7ba7e3fcc9e3f5955fe16b51db85b35267f9ea3f110e7ff75ae5784891",
+      "result": "116 passed in 4.60s",
+      "started_at_utc": "2026-10-16T04:17:44.061949Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T04:18:42.935528Z",
+      "fingerprints": 168,
+      "import_verifier_violations": 0,
+      "output_sha256": "7cda164688eebbcc3bd197ad3c30510985d692f21eaa42708f7a50afcb14c095",
+      "result": "116 passed in 4.71s",
+      "started_at_utc": "2026-10-16T04:18:37.050384Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T04:19:38.500377Z",
+      "fingerprints": 194,
+      "import_verifier_violations": 0,
+      "output_sha256": "a226f3e063fa9c655075e16172bf58b4bee23b3ee2cb9f4f096da779496f31fa",
+      "result": "116 passed in 4.79s",
+      "started_at_utc": "2026-10-16T04:19:32.631756Z"
+    }
+  ]
+}
