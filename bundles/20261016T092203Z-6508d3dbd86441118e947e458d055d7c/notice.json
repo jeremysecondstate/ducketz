@@ -1,0 +1,81 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T091812Z-eb8696e6d97a490db0b4fa6d4569404b",
+  "change_id": "20261016T091812Z-eb8696e6d97a490db0b4fa6d4569404b",
+  "commit_sha": "07a947ce9bf52a21dc47a9ed38009c2c825b86a3",
+  "details": [
+    "Actor Scout; task after-midnight-source-reconciliation; shared diagnostics apply independently to each PC and its local symbols.",
+    "Adopt exact Atlas PR184 additions for explicit read-only forecast timing, outcome and input-coverage diagnostics. No model recipe or selection changes.",
+    "Retain Atlas source 8c9a4f9ab5e192654c8d3042eef6e65218a220ea and Completion-Records 20261016T083425Z-da5bed5ff58d4c83a043e06c88fd4450 and 20261016T083207Z-9beb13e865924e3d905e3ae250dbc99c.",
+    "Preserve original saved records; distinguish timely, during-target, after-close, synthetic, reconstructed, missing and unknown cohorts."
+  ],
+  "files": [
+    "tools/intraday_model_diagnostics.py",
+    "tests/test_intraday_model_diagnostics.py",
+    "docs/development/intraday-model-local-policy.md"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "152ca0355e7c4f60fc2827feb4b516e183cbd5e6",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Nine offline SQLite fixture tests; no operational datastore or private report inspected.",
+    "Source adoption does not establish availability of a compatible local supervisor report or loaded-process adoption."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/188",
+    "https://github.com/jeremysecondstate/ducketz/pull/184"
+  ],
+  "local_receipt": "Exact three peer additions installed with prior files and local bindings preserved. All 272 optional manifest entries verify. No private report or datastore read; no model, trader or task changes.",
+  "remaining_source_work": "Compose useful nightly child persistence onto current main without copying mixed runtime; then review broader workflow/dispatch.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Standalone opt-in diagnostic only. No trader start, restart, controls, model parameters, schedule changes or operating prerequisites.",
+  "scope": "Shared source applicable independently to each PC. Model recipes remain local.",
+  "summary": "Scout adopted exact saved forecast diagnostics and local model policy; integrated common main and installed with nine passing offline tests at all five stages.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T09:17:55.028591Z",
+      "fingerprints": 4,
+      "import_verifier_violations": 0,
+      "output_sha256": "2f01d876f37193ca02e81251b6ddab61036d13b441c221f13bf7c5b8c69c235c",
+      "result": "9 tests passed; no skips",
+      "started_at_utc": "2026-10-16T09:17:54.302290Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T09:18:13.645056Z",
+      "fingerprints": 4,
+      "import_verifier_violations": 0,
+      "output_sha256": "a8bd7d29548f59e821738868b4f67980e24e706167775e410e958e9c72282178",
+      "result": "9 tests passed; no skips",
+      "started_at_utc": "2026-10-16T09:18:12.996948Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T09:18:48.476104Z",
+      "fingerprints": 4,
+      "import_verifier_violations": 0,
+      "output_sha256": "95260229dbe53e2156094442273afd5adbde841f4dc111869a9d5f1eb1738162",
+      "result": "9 tests passed; no skips",
+      "started_at_utc": "2026-10-16T09:18:47.766007Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T09:19:55.369652Z",
+      "fingerprints": 4,
+      "import_verifier_violations": 0,
+      "output_sha256": "e6f75aa9364f4e0da6654bd4396dcd545d9e582e5e47632f4199bae3b068c64a",
+      "result": "9 tests passed; no skips",
+      "started_at_utc": "2026-10-16T09:19:54.634551Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T09:20:38.796774Z",
+      "fingerprints": 4,
+      "import_verifier_violations": 0,
+      "output_sha256": "7586b66af40b5605a72f4d0586bf8701cd69d925c7fcad0991dc3329bb532163",
+      "result": "9 tests passed; no skips",
+      "started_at_utc": "2026-10-16T09:20:38.114370Z"
+    }
+  ]
+}

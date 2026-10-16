@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T09:22:03.280321Z",
+  "id": "20261016T092203Z-6508d3dbd86441118e947e458d055d7c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout adopted exact saved forecast diagnostics and local model policy; integrated common main and installed with nine passing offline tests at all five stages."
+}
