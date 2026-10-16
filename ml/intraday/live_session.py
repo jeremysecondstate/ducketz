@@ -238,12 +238,12 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     an issued prediction or writes corrections into its original input snapshot.
     Local copies of the history mapping keep scoring out of the training writer.
     """
-    from .data import synthetic_continuity_verified
+    from .data import completed_15m_observation, synthetic_continuity_verified
     if pc not in {"Atlas", "Scout"}:
         raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
     while not stopped():
-        latest_observed = {}
+        observed_candidates = {}
         for candle in store.observed_candles():
             if not synthetic_continuity_verified(candle):
                 key=digest(candle)
@@ -252,14 +252,19 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                                 {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"])
                     audited.add(key)
                 continue
-            latest_observed[(candle["symbol"],candle.get("source_id"),instant(candle["opened_at"]))] = candle
+            if not completed_15m_observation(candle) or instant(candle["available_at"]) > instant(clock()):
+                continue
+            observed_candidates.setdefault((candle["symbol"],instant(candle["opened_at"])), []).append(candle)
         for forecast in store.forecasts(pc=pc):
             if stopped():
                 return
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
                 continue
             revisions = store.revisions(forecast["forecast_id"])
-            observed = latest_observed.get((forecast["symbol"],forecast.get("source_id"),instant(forecast["target_open"])))
+            candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
+            observed = next((row for row in reversed(candidates)
+                if all(not forecast.get(field) or row.get(field) == forecast[field]
+                       for field in ("source_dataset", "source_id"))), None)
             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
                 store.observe(forecast,as_of=clock(),candle=observed)
                 continue
@@ -275,8 +280,15 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             try:
                 history = incoming.get(symbol)
                 match = history.frame.loc[history.frame.opened_at.eq(instant(forecast["target_open"]))]
+                match = match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                    and instant(row["available_at"]) <= instant(clock())
+                    and row.get("availability_kind") == "actual"
+                    and all(not forecast.get(field) or row.get(field) == forecast[field]
+                            for field in ("source_dataset", "source_id"))
+                    for row in match.to_dict("records")]]
                 if match.empty:
                     raise ContractError("Exact target interval unavailable after acquisition")
+                match = match.sort_values("available_at")
                 from .runtime import _jsonable
                 store.observe(forecast,as_of=clock(),candle=_jsonable(match.iloc[-1].to_dict()))
             except InterruptedError:
