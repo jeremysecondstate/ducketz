@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T10:04:29.587186Z",
+  "id": "20261016T100429Z-26df26cd705b437e95b6a29e7589d34d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout integrated Stats-first native segments and retry preservation; existing local runtime remains intact."
+}
