@@ -1,0 +1,81 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T053728Z-dd75be30b16243359ac905e262a026f2",
+  "change_id": "20261016T053728Z-dd75be30b16243359ac905e262a026f2",
+  "commit_sha": "105a6f13a7da7e998332453e076dbde004667450",
+  "details": [
+    "Actor Scout; task evening-source-reconciliation; shared deployment evidence reader applies independently on Atlas and Scout.",
+    "Accept INTERRUPTED ancestors alongside historical FAILED and CANCELLED attempts while requiring the current native attempt to be COMPLETE. Preserve all existing source, hash, log, deadline, chronology and ancestry checks.",
+    "Retain saved cleanup Completion-Record 20261014T065312Z-202eba8257854a5f8b557ba5f5bcab40 and exact source 0f765d267dbbb0416c46bf8a5c6c19f597a64386. Compose only its deployment status change onto current main.",
+    "Isolated ancestry regressions use existing immutable handoff fixtures without importing the separate nightly cancellation runtime. Original handoff and execution suites remain intact.",
+    "This change supplies no trading or cancellation authority. Production continues under its standing authorization independently of source publication."
+  ],
+  "files": [
+    "ml/gameplan_deployment.py",
+    "tests/test_gameplan_deployment_ancestry.py"
+  ],
+  "installation_stage": "locally_installed",
+  "integrated_sha": "2f428bdaf7f0a636741bf491309004e3e02df036",
+  "integration_stage": "main_integrated",
+  "limitations": [
+    "Offline fixture checks only; no provider or broker calls, production training, trading, private exports or task changes.",
+    "Remaining nightly runtime/workflow/dispatch and package late-publication composition are separate source units.",
+    "Loaded-process adoption is unverified; original history and manual controls remain unchanged."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/175"
+  ],
+  "local_receipt": "Reader bytes already matched exactly and remain unchanged. Installed new isolated ancestry suite; all original native evidence, symbols, bindings and manual controls preserved.",
+  "remaining_source_work": "Adopt Atlas PR174 exact Stats receipt-provenance patch after fresh ownership and local-byte checks.",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Newly loaded deployment readers can consume valid completed preparation stages from an interrupted ancestor. The current attempt must remain complete. Scout already has the exact reader change installed; install only the new regression file if its before hash remains unchanged.",
+  "scope": "Shared source for both PCs independently.",
+  "summary": "Scout composed verified interrupted-ancestor acceptance onto common main, preserving complete current attempts and immutable evidence.",
+  "tests": [
+    {
+      "check": "reviewed source",
+      "completed_at_utc": "2026-10-16T05:36:53.944081Z",
+      "fingerprints": 185,
+      "import_verifier_violations": 0,
+      "output_sha256": "8317ff2a5d7549026041a37702d672ac20fc7794de5a7aec9c6b304835587f02",
+      "result": "85 passed in 17.09s",
+      "started_at_utc": "2026-10-16T05:36:35.464283Z"
+    },
+    {
+      "check": "sealed source",
+      "completed_at_utc": "2026-10-16T05:37:47.721217Z",
+      "fingerprints": 185,
+      "import_verifier_violations": 0,
+      "output_sha256": "dcd8d408d5e1728dc0be5a9de9c668131c2c99b4ad8a9a73029018e1f9a27e55",
+      "result": "85 passed in 17.24s",
+      "started_at_utc": "2026-10-16T05:37:29.094858Z"
+    },
+    {
+      "check": "isolated publication",
+      "completed_at_utc": "2026-10-16T05:38:25.681691Z",
+      "fingerprints": 185,
+      "import_verifier_violations": 0,
+      "output_sha256": "72fd75a1c39599e64058c20544849c91422d09695ba42c950738d16e300482d2",
+      "result": "85 passed in 17.88s",
+      "started_at_utc": "2026-10-16T05:38:06.326899Z"
+    },
+    {
+      "check": "common main",
+      "completed_at_utc": "2026-10-16T05:39:37.844927Z",
+      "fingerprints": 185,
+      "import_verifier_violations": 0,
+      "output_sha256": "13016c80fc03e86e37e5a2feaaefe3f6bcd48f0e3f72c22847e2a07bb65731e5",
+      "result": "85 passed in 18.27s",
+      "started_at_utc": "2026-10-16T05:39:18.107619Z"
+    },
+    {
+      "check": "installed Scout",
+      "completed_at_utc": "2026-10-16T05:40:35.289313Z",
+      "fingerprints": 211,
+      "import_verifier_violations": 0,
+      "output_sha256": "11e514580b00a0f22f2893ec23d9fe18a8c42879ebd7779393a999160a7684cc",
+      "result": "85 passed in 18.43s",
+      "started_at_utc": "2026-10-16T05:40:15.335364Z"
+    }
+  ]
+}

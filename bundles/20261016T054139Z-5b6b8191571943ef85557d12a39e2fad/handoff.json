@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T05:41:39.363948Z",
+  "id": "20261016T054139Z-5b6b8191571943ef85557d12a39e2fad",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout composed verified interrupted-ancestor acceptance onto common main, preserving complete current attempts and immutable evidence."
+}
