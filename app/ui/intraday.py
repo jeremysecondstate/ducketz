@@ -13,7 +13,7 @@ from app.ui.intraday_data import (
     IntradaySnapshot, configured_actor, default_databases, error_correlations,
     filter_forecasts, forecast_metrics, latest_matrix, load_intraday_snapshot,
     metric_rows, model_metrics, prediction_timing, probability, probability_geometry, regime_metrics, source_dataset_label, timestamp,
-    reference_input_label, reference_input_provenance,
+    reference_input_label, reference_input_provenance, saved_forecast_context,
     window_rows,
 )
 from app.ui.intraday_models import load_model_research, research_choices, research_view
@@ -166,10 +166,13 @@ class IntradayTab:
         self.consensus_page = pages["consensus"]
         chooser = tk.Frame(self.consensus_page, bg=SURFACE)
         chooser.pack(fill="x", padx=14, pady=(10, 4))
-        _label(chooser, "Newest saved issue for", color=MUTED_TEXT).pack(side="left")
+        _label(chooser, "Latest saved issue in filters for", color=MUTED_TEXT).pack(side="left")
         self.consensus_box = ttk.Combobox(chooser, textvariable=self.consensus_choice, state="readonly", width=62)
         self.consensus_box.pack(side="left", padx=10)
         self.consensus_box.bind("<<ComboboxSelected>>", lambda _event: self._render_consensus())
+        self.consensus_context = _label(self.consensus_page, color=WARNING, bold=True,
+                                        justify="left", wraplength=1200)
+        self.consensus_context.pack(anchor="w", padx=14, pady=(5, 0))
         self.consensus_value = _label(self.consensus_page, "No saved predictions", size=26, bold=True)
         self.consensus_value.pack(anchor="w", padx=14, pady=5)
         self.consensus_meta = _label(self.consensus_page, color=MUTED_TEXT, justify="left", wraplength=1200)
@@ -354,10 +357,12 @@ class IntradayTab:
             percent(item.get("validation_balanced_accuracy")), numeric(item.get("baseline_improvement")),
             numeric(item.get("holdout_brier")), numeric(item.get("seconds"))), ()) for item in view["rows"]])
         if row is None:
+            self.consensus_context.configure(text="")
             self.consensus_value.configure(text="No saved predictions in these filters", fg=MUTED_TEXT)
             self.consensus_meta.configure(text="The display will populate when a trained ensemble persists its issue. Historical replay is selectable separately.")
             return
         p = probability(row.get("probability_not_down"))
+        self.consensus_context.configure(text=saved_forecast_context(row, now=self.snapshot.loaded_at))
         classification = "not-down" if p is not None and p >= .5 else "down" if p is not None else "unavailable"
         color = SUCCESS if classification == "not-down" else DANGER if classification == "down" else MUTED_TEXT
         self.consensus_value.configure(text=f"{percent(p)} ensemble probability · {classification}", fg=color)

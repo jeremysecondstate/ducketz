@@ -13,6 +13,14 @@ Only documented symbol-specific fields and this PC's live operating bindings
 stay local; review mixed configuration by field rather than excluding whole
 files. Reviewed completed output may be copied to a machine-owned Git namespace.
 
+Jeremy's October 16, 2026 direction: 15-minute model selection, hyperparameters,
+calibration choices and data-population recipes are local to each PC's own
+symbols and evidence. Never install Atlas's model tuning on Scout, or Scout's
+on Atlas, merely because shared source was adopted. Shared correctness repairs
+remain shareable, but must preserve each PC's saved model recipe and scope.
+Follow `docs/development/intraday-model-ownership.md`; review mixed changes by
+field and keep private recipes, fitted models and operating evidence local.
+
 Immediately after completing an authorized change, review the whole owned diff
 and dependencies, then use the installed `tools/cross_pc/cli.py queue` command to
 capture immutable final bytes and real passing offline checks. Record explicit

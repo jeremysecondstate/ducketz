@@ -306,3 +306,67 @@ def test_fitting_and_live_artifact_preserve_selected_newest_row_window(tmp_path)
 def test_model_spec_rejects_invalid_training_window(limit):
     with pytest.raises(ContractError, match="Training row limit"):
         ModelSpec("invalid_window", training_max_rows=limit)
+
+
+def test_frozen_pipeline_and_calibrator_ignore_changed_shared_and_constructor_defaults(monkeypatch):
+    from dataclasses import asdict
+    from ml.intraday import models
+    original = ModelSpec("local", family="logistic", parameters={"C": .05},
+                         probability_calibration="sigmoid", calibration_fraction=.25)
+    frozen = models.freeze_model_spec(original)
+    serialized = asdict(frozen)
+    expected = models._resolved_step(build_estimator(frozen).named_steps["model"])
+    X, y, inference, kwargs = dataset(240)
+    before, _ = fit_calibrated_estimator(frozen, X, y, **kwargs)
+    monkeypatch.setitem(DEFAULT_PARAMETERS, "logistic", {"C": 900, "solver": "liblinear", "max_iter": 3})
+    monkeypatch.setitem(models.SimpleImputer.__init__.__kwdefaults__, "copy", False)
+    monkeypatch.setitem(models.StandardScaler.__init__.__kwdefaults__, "with_std", False)
+    restored = configured_models([serialized])[0]
+    pipeline = build_estimator(restored)
+    assert models._resolved_step(pipeline.named_steps["model"]) == expected
+    assert pipeline.named_steps["impute"].copy is True
+    assert pipeline.named_steps["scale"].with_std is True
+    after, _ = fit_calibrated_estimator(restored, X, y, **kwargs)
+    assert models._resolved_step(before.sigmoid_) == models._resolved_step(after.sigmoid_)
+    assert probability_not_down(after, inference) == pytest.approx(probability_not_down(before, inference), abs=1e-12)
+    assert asdict(frozen) == serialized
+
+
+@pytest.mark.parametrize("family", [item["family"] for item in registry_status() if item["status"] == "available"])
+def test_available_pipeline_contract_roundtrips_exact_json_without_fitting(family):
+    from dataclasses import asdict
+    import json
+    from ml.intraday import models
+    frozen = models.freeze_model_spec(ModelSpec("local", family=family, probability_calibration="sigmoid"))
+    payload = json.loads(json.dumps(asdict(frozen), allow_nan=False))
+    restored = configured_models([payload])[0]
+    assert models._resolved_step(build_estimator(frozen).named_steps["model"]) == models._resolved_step(
+        build_estimator(restored).named_steps["model"])
+    assert models.freeze_model_spec(restored) == restored
+
+
+@pytest.mark.parametrize("damage", ["version", "parameter", "dependency", "preprocessor"])
+def test_frozen_contract_incompatibility_never_falls_back_to_defaults(damage):
+    from dataclasses import asdict
+    from ml.intraday import models
+    payload = asdict(models.freeze_model_spec(ModelSpec("local", family="logistic")))
+    if damage == "version":
+        payload["runtime_contract"]["version"] = "unknown"
+    elif damage == "parameter":
+        payload["parameters"].pop("solver")
+    elif damage == "dependency":
+        payload["runtime_contract"]["dependency_versions"]["scikit-learn"] = "unknown"
+    else:
+        payload["runtime_contract"]["preprocessing"]["impute"]["parameters"].pop("copy")
+    with pytest.raises(ContractError, match="incompatible"):
+        build_estimator(configured_models([payload])[0])
+
+
+def test_nested_adaboost_snapshot_is_safe_serializable_fit_metadata():
+    import json
+    from ml.intraday.models import freeze_model_spec
+    X, y, inference, kwargs = dataset(240)
+    frozen = freeze_model_spec(ModelSpec("local", family="adaboost", probability_calibration="sigmoid"))
+    result = fit_ensemble(X, y, inference, config=[frozen], **kwargs)
+    assert result["complete"], result
+    json.dumps(result, allow_nan=False)

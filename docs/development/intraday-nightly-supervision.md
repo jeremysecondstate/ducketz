@@ -7,6 +7,11 @@ uses its own installed coordination profile, watchlist, authenticated data
 connection, prediction store and operating bindings. Atlas and Scout remain
 independent. A local task registration is not evidence of registration on a peer.
 
+Follow the [independent model ownership contract](intraday-model-ownership.md).
+Shared source adoption never authorizes copying a peer's model tuning or
+replacing this PC's private recipe. Frozen model contracts preserve effective
+estimator, preprocessing and calibration settings across shared-default changes.
+
 The supervisor invokes the deterministic local workflow:
 
 ```powershell
@@ -110,9 +115,16 @@ Saved historical measurements retain their original fields and bytes.
 
 The prior-session review reads only this PC's saved live forecasts, observed
 outcome revisions and latest execution projections. It records missing outcomes,
-late issues, Brier score, accuracy, extreme errors, submission uncertainty and
+synthetic outcomes excluded from scoring, other unscorable outcomes, late issues,
+Brier score, accuracy, observed class prevalence, the descriptive majority-class
+accuracy baseline, extreme errors, submission uncertainty and
 available submitted/filled quantities. Unknown realized profit remains unknown.
 Prediction correctness and reference-price returns are not trading profit.
+`unscored_outcomes` is the total excluded count; `missing_outcomes` excludes
+saved synthetic and explicitly unscorable outcomes. Previous reports keep their
+historical field meanings and bytes. Supervised selection assesses supervised
+candidates and its incumbent; it does not statistically qualify a separate
+manual recipe that overrides policy adoption.
 The workflow does not start/restart a trader, clear a manual stop, submit orders,
 or change account authority. Jeremy retains the manual trader start.
 

@@ -18,8 +18,10 @@ import tempfile
 import numpy as np
 import pandas as pd
 
-from .data import FEATURE_NAMES
-from .models import ModelSpec, configured_models, fit_ensemble, purged_chronological_split
+from .data import FEATURE_NAMES, FEATURE_VERSION as BASE_FEATURE_VERSION
+from .models import (
+    ModelSpec, configured_models, fit_ensemble, freeze_model_spec, purged_chronological_split,
+)
 from .observed_data import (
     FEATURE_POLICY, FEATURE_VERSION, LABEL_PROVENANCE, build_observed_dataset,
 )
@@ -27,6 +29,7 @@ from .prediction import ContractError, TARGET_VERSION, instant
 
 
 SCHEMA_VERSION = "intraday-manual-observed-calibrated-v1"
+FROZEN_SCHEMA_VERSION = "intraday-manual-observed-calibrated-v2"
 SELECTION = "authorized_human_live_experiment"
 MAX_ROWS = 4096
 MIN_ROWS = 160
@@ -45,6 +48,43 @@ def _specs():
             probability_calibration="sigmoid", calibration_fraction=0.25,
             training_max_rows=MAX_ROWS),
     )
+
+
+def _legacy_spec_payload(spec):
+    # Preserve the v1 private checksum and ResearchConfig/cycle identity exactly.
+    return {key: value for key, value in asdict(spec).items() if key != "runtime_contract"}
+
+
+def _feature_contract():
+    return {"version": "intraday-observed-feature-contract-v1",
+            "base_feature_version": BASE_FEATURE_VERSION,
+            "feature_version": FEATURE_VERSION, "feature_policy": FEATURE_POLICY,
+            "feature_names": list(FEATURE_NAMES), "label_provenance": LABEL_PROVENANCE,
+            "synthetic_policy": "exclude", "target_version": TARGET_VERSION}
+
+
+def _dataset_scope(value):
+    if (not isinstance(value, dict) or set(value) != {"source_dataset", "lookback_days"}
+            or value["source_dataset"] != "EQUS.MINI"
+            or value["lookback_days"] is not None and
+            (type(value["lookback_days"]) is not int or value["lookback_days"] <= 0)):
+        raise ContractError("Frozen manual recipe requires an explicit supported source/history scope")
+    return deepcopy(value)
+
+
+def _validate_support(value):
+    required = {"newest_training_rows", "minimum_rows", "minimum_training_dates",
+                "minimum_each_class", "minimum_calibration_rows", "calibration"}
+    if not isinstance(value, dict) or set(value) != required:
+        raise ContractError("Manual recipe training support contract is invalid")
+    floors = {"minimum_rows": 160, "minimum_training_dates": 5,
+              "minimum_each_class": 5, "minimum_calibration_rows": 32}
+    if (any(type(value[key]) is not int or value[key] < floor for key, floor in floors.items())
+            or type(value["newest_training_rows"]) is not int
+            or not value["minimum_rows"] <= value["newest_training_rows"] <= 4096
+            or value["calibration"] != "purged_chronological_sigmoid"):
+        raise ContractError("Manual recipe cannot weaken the observed training/calibration evidence gates")
+    return deepcopy(value)
 
 
 def _canonical(value):
@@ -82,7 +122,7 @@ def make_manual_recipe(*, pc, symbols, installed_at, authority_reference):
         "feature_policy": FEATURE_POLICY,
         "label_provenance": LABEL_PROVENANCE,
         "synthetic_policy": "exclude",
-        "models": [asdict(spec) for spec in _specs()],
+        "models": [_legacy_spec_payload(spec) for spec in _specs()],
         "training_support": {
             "newest_training_rows": MAX_ROWS,
             "minimum_rows": MIN_ROWS,
@@ -107,9 +147,6 @@ def _unique_object(pairs):
 def _validate_recipe(value, *, pc, symbols):
     if not isinstance(value, dict):
         raise ContractError("Manual model recipe must be a JSON object")
-    expected = make_manual_recipe(pc=pc, symbols=symbols,
-        installed_at=value.get("installed_at"),
-        authority_reference=value.get("authority_reference"))
     payload = {key: item for key, item in value.items() if key != "sha256"}
     try:
         checksum = _sha(payload)
@@ -117,6 +154,36 @@ def _validate_recipe(value, *, pc, symbols):
         raise ContractError("Manual model recipe contains noncanonical values") from exc
     if value.get("sha256") != checksum:
         raise ContractError("Manual model recipe checksum mismatch")
+    if value.get("schema_version") == FROZEN_SCHEMA_VERSION:
+        symbols = _scope(pc, symbols)
+        required = {"schema_version", "selection", "pc", "symbols", "installed_at", "authority_reference",
+                    "target_version", "feature_version", "feature_policy", "label_provenance",
+                    "synthetic_policy", "models", "training_support", "feature_contract",
+                    "dataset_scope", "migrated_from_sha256", "sha256"}
+        contract = _feature_contract()
+        if (set(value) != required or value["selection"] != SELECTION
+                or value["pc"] != pc or value["symbols"] != list(symbols)
+                or value["feature_contract"] != contract
+                or any(value[key] != contract[key] for key in
+                       ("target_version", "feature_version", "feature_policy", "label_provenance", "synthetic_policy"))
+                or not isinstance(value["authority_reference"], str) or not value["authority_reference"].strip()
+                or not isinstance(value["migrated_from_sha256"], str)
+                or not re.fullmatch(r"[0-9a-f]{64}", value["migrated_from_sha256"])):
+            raise ContractError("Frozen manual recipe scope or feature contract is incompatible")
+        instant(value["installed_at"])
+        _dataset_scope(value["dataset_scope"])
+        support = _validate_support(value["training_support"])
+        specs = configured_models(value["models"])
+        if (len(specs) > 16 or any(spec.runtime_contract is None
+                or spec.probability_calibration != "sigmoid" or spec.calibration_fraction != .25
+                or spec.training_max_rows != support["newest_training_rows"] for spec in specs)):
+            raise ContractError("Frozen manual recipe requires complete calibrated model contracts")
+        for spec in specs:
+            freeze_model_spec(spec)  # Validate compatibility without fitting or changing the saved specification.
+        return deepcopy(value)
+    expected = make_manual_recipe(pc=pc, symbols=symbols,
+        installed_at=value.get("installed_at"),
+        authority_reference=value.get("authority_reference"))
     # Canonical comparison also rejects booleans in numeric fields, arbitrary
     # extra fields, changed model settings, and peer or partial symbol scopes.
     if _canonical(value) != _canonical(expected):
@@ -124,33 +191,78 @@ def _validate_recipe(value, *, pc, symbols):
     return deepcopy(value)
 
 
-def _training_support(y, reference_at, target_close_at, label_available_at, *, cutoff):
+def migrate_manual_recipe(value, *, pc, symbols, config, installed_at=None, authority_reference=None):
+    """Return a reviewed-installation candidate; never write, fit or activate it.
+
+    v1 retains its checksum and interpretation while being read. Migration
+    snapshots this machine's effective parameters, preprocessing and calibrator,
+    rather than importing a peer's settings or selecting another candidate.
+    """
+    original = _validate_recipe(value, pc=pc, symbols=symbols)
+    frozen = deepcopy(original)
+    frozen.update(schema_version=FROZEN_SCHEMA_VERSION,
+                  models=[asdict(freeze_model_spec(spec)) for spec in configured_models(original["models"])],
+                  feature_contract=_feature_contract(),
+                  dataset_scope=_dataset_scope(original.get("dataset_scope", {
+                      "source_dataset": config.source_dataset, "lookback_days": config.lookback_days})),
+                  migrated_from_sha256=original["sha256"])
+    if installed_at is not None:
+        frozen["installed_at"] = instant(installed_at).isoformat()
+    if authority_reference is not None:
+        frozen["authority_reference"] = authority_reference
+    frozen.pop("sha256", None)
+    frozen["sha256"] = _sha(frozen)
+    return _validate_recipe(frozen, pc=pc, symbols=symbols)
+
+
+def manual_recipe_migration_evidence(original, migrated, *, pc, symbols, config):
+    """Compare the exact effective specifications without fitting either recipe."""
+    previous = _validate_recipe(original, pc=pc, symbols=symbols)
+    current = _validate_recipe(migrated, pc=pc, symbols=symbols)
+    resolved = [asdict(freeze_model_spec(spec)) for spec in configured_models(previous["models"])]
+    return {"original_sha256": previous["sha256"], "migrated_sha256": current["sha256"],
+            "effective_models_identical": _canonical(resolved) == _canonical(current["models"]),
+            "training_support_identical": previous["training_support"] == current["training_support"],
+            "feature_contract_identical": _feature_contract() == current.get("feature_contract"),
+            "dataset_scope_identical": previous.get("dataset_scope", {
+                "source_dataset": config.source_dataset, "lookback_days": config.lookback_days}) == current.get("dataset_scope"),
+            "provider_calls": 0, "training_runs": 0, "files_written": 0}
+
+
+def _training_support(y, reference_at, target_close_at, label_available_at, *, cutoff, support=None):
+    support = _validate_support(support or {
+        "newest_training_rows": MAX_ROWS, "minimum_rows": MIN_ROWS, "minimum_training_dates": MIN_DATES,
+        "minimum_each_class": MIN_CLASS, "minimum_calibration_rows": MIN_CALIBRATION_ROWS,
+        "calibration": "purged_chronological_sigmoid"})
+    minimum, maximum = support["minimum_rows"], support["newest_training_rows"]
+    min_dates, min_class = support["minimum_training_dates"], support["minimum_each_class"]
+    min_calibration = support["minimum_calibration_rows"]
     labels = np.asarray(y)
     references = tuple(instant(v) for v in reference_at)
     targets = tuple(instant(v) for v in target_close_at)
     available = tuple(instant(v) for v in label_available_at)
-    if (labels.ndim != 1 or len(labels) < MIN_ROWS or len(labels) > MAX_ROWS
+    if (labels.ndim != 1 or len(labels) < minimum or len(labels) > maximum
             or len(references) != len(labels) or len(targets) != len(labels)
             or len(available) != len(labels) or not np.isin(labels, [0, 1]).all()):
-        raise ContractError(f"Observed recipe requires {MIN_ROWS} to {MAX_ROWS} matching real training rows")
+        raise ContractError(f"Observed recipe requires {minimum} to {maximum} matching real training rows")
     if any(a > instant(cutoff) for a in available):
         raise ContractError("Observed recipe training labels are not yet available at cutoff")
     if any(t != r + pd.Timedelta(minutes=45) for r, t in zip(references, targets)):
         raise ContractError("Observed recipe requires exact 45-minute label windows")
     dates = {pd.Timestamp(v).tz_convert("America/New_York").date() for v in references}
-    if len(dates) < MIN_DATES:
-        raise ContractError(f"Observed recipe requires at least {MIN_DATES} actual training dates")
+    if len(dates) < min_dates:
+        raise ContractError(f"Observed recipe requires at least {min_dates} actual training dates")
     counts = {str(v): int((labels == v).sum()) for v in (0, 1)}
-    if min(counts.values()) < MIN_CLASS:
-        raise ContractError(f"Observed recipe requires at least {MIN_CLASS} examples of each target class")
+    if min(counts.values()) < min_class:
+        raise ContractError(f"Observed recipe requires at least {min_class} examples of each target class")
     train, calibration = purged_chronological_split(references, targets,
         fraction=0.25, label_available_at=available)
     partitions = {}
     for name, indices in (("base", train), ("calibration", calibration)):
         class_counts = {str(v): int((labels[indices] == v).sum()) for v in (0, 1)}
-        if len(indices) < MIN_CALIBRATION_ROWS or min(class_counts.values()) < MIN_CLASS:
+        if len(indices) < min_calibration or min(class_counts.values()) < min_class:
             raise ContractError(f"Observed recipe {name} partition requires at least "
-                f"{MIN_CALIBRATION_ROWS} rows and {MIN_CLASS} examples of each class after the purge")
+                f"{min_calibration} rows and {min_class} examples of each class after the purge")
         partitions[name] = {"rows": len(indices), "class_counts": class_counts}
     return {"training_rows": len(labels), "training_dates": len(dates),
             "class_counts": counts, "purged_rows": len(labels) - len(train) - len(calibration),
@@ -169,7 +281,7 @@ class ManualRecipeFitError(ContractError):
                 ("name", "status", "error", "artifact_path", "artifact_sha256")}
                 for out in result.get("outputs", [])],
             "evidence_path": evidence_path, "persistence_error": persistence_error}
-        super().__init__("Observed manual recipe requires both calibrated models; "
+        super().__init__("Observed manual recipe requires every configured calibrated model; "
             "no partial forecast or fallback: " + _canonical(evidence))
 
 
@@ -212,30 +324,43 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         recipe = _validate_recipe(json.loads(raw, object_pairs_hook=_unique_object), pc=pc, symbols=symbols)
     except (ValueError, TypeError, KeyError) as exc:
         raise ContractError("Invalid manual model recipe: " + str(exc)) from exc
-    specs = _specs()
-    selected_config = replace(config, models=tuple(asdict(spec) for spec in specs),
+    specs = configured_models(recipe["models"])
+    support_contract = deepcopy(recipe["training_support"])
+    max_rows = support_contract["newest_training_rows"]
+    feature_contract = deepcopy(recipe.get("feature_contract", _feature_contract()))
+    frozen_scope = deepcopy(recipe.get("dataset_scope"))
+    selected_config = replace(config, models=tuple(deepcopy(recipe["models"])),
                               synthetic_policy="exclude", use_supervised_models=False).validate()
+    if frozen_scope is not None:
+        selected_config = replace(selected_config, **frozen_scope).validate()
 
     def dataset_builder(candles, *, cutoff, reference_at, lookback_days=None, synthetic_policy="exclude"):
         if synthetic_policy != "exclude":
             raise ContractError("Observed manual recipe cannot admit synthetic labels or feature candles")
+        if feature_contract != _feature_contract():
+            raise ContractError("Manual recipe feature contract changed after session startup")
+        if frozen_scope is not None and lookback_days != frozen_scope["lookback_days"]:
+            raise ContractError("Manual recipe dataset history scope differs from its frozen local selection")
         dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
                                          lookback_days=lookback_days)
         if dataset.inference.get("symbol") not in symbols:
             raise ContractError("Observed manual recipe cannot train a symbol outside this PC's scope")
+        if (frozen_scope is not None
+                and dataset.inference.get("source_dataset") != frozen_scope["source_dataset"]):
+            raise ContractError("Manual recipe source dataset differs from its frozen local selection")
         input_rows = len(dataset.y)
-        dataset = replace(dataset, X=dataset.X[-MAX_ROWS:], y=dataset.y[-MAX_ROWS:],
-            label_available_at=dataset.label_available_at[-MAX_ROWS:],
-            training_reference_at=dataset.reference_at[-MAX_ROWS:],
-            target_close_at=dataset.target_close_at[-MAX_ROWS:])
+        dataset = replace(dataset, X=dataset.X[-max_rows:], y=dataset.y[-max_rows:],
+            label_available_at=dataset.label_available_at[-max_rows:],
+            training_reference_at=dataset.reference_at[-max_rows:],
+            target_close_at=dataset.target_close_at[-max_rows:])
         support = _training_support(dataset.y, dataset.reference_at, dataset.target_close_at,
-                                    dataset.label_available_at, cutoff=cutoff)
+                                    dataset.label_available_at, cutoff=cutoff, support=support_contract)
         manifest = {**dataset.manifest, "manual_model_recipe": deepcopy(recipe),
             "manual_recipe_training_support": support,
             "training_rows": len(dataset.y), "input_training_rows": input_rows,
             "first_training_reference": dataset.reference_at[0].isoformat(),
             "last_training_reference": dataset.reference_at[-1].isoformat(),
-            "training_window": {"policy": "newest_causal_rows", "max_rows": MAX_ROWS,
+            "training_window": {"policy": "newest_causal_rows", "max_rows": max_rows,
                                 "excluded_rows": input_rows - len(dataset.y)}}
         return replace(dataset, manifest=manifest)
 
@@ -259,12 +384,13 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
                 or inference[0, FEATURE_NAMES.index("synthetic_input_fraction20")] != 0):
             raise ContractError("Manual recipe fit requires finite observed-only feature matrices")
         _training_support(y, kwargs.get("reference_at", ()), kwargs.get("target_close_at", ()),
-                          kwargs.get("label_available_at", ()), cutoff=kwargs.get("training_cutoff"))
+                          kwargs.get("label_available_at", ()), cutoff=kwargs.get("training_cutoff"),
+                          support=support_contract)
         result = fit_ensemble(X, y, inference_X, config=specs, dataset_metadata=metadata, **kwargs)
         outputs = result.get("outputs", [])
-        if (result.get("configured_count") != 2 or result.get("successful_count") != 2
+        if (result.get("configured_count") != len(specs) or result.get("successful_count") != len(specs)
                 or result.get("complete") is not True or result.get("consensus_status") != "full"
-                or len(outputs) != 2 or [out.get("name") for out in outputs] != [s.name for s in specs]
+                or len(outputs) != len(specs) or [out.get("name") for out in outputs] != [s.name for s in specs]
                 or any(out.get("status") != "success" for out in outputs)
                 or result.get("probability_not_down") is None):
             evidence_path, persistence_error = None, None

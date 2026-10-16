@@ -160,3 +160,43 @@ def test_changed_scoped_policy_fails_integrity_even_when_scope_remains_valid(tmp
     path.write_text(json.dumps(value))
     with pytest.raises(ContractError):
         load_active_policy(tmp_path, pc="Scout", symbol="ABCL")
+
+
+def test_pending_current_install_uses_only_the_runtime_evaluated_before_default_change(tmp_path, monkeypatch):
+    from ml.intraday import models
+    report = proposal()
+    report["selection_version"] = "intraday-purged-session-selection-v2"
+    report["selected_specs"] = [asdict(models.freeze_model_spec(models.configured_models(report["selected_specs"])[0]))]
+    reviewed = json.loads(json.dumps(report))
+    monkeypatch.setitem(models.DEFAULT_PARAMETERS, "logistic", {"C": 1000, "solver": "liblinear"})
+    install_selection(tmp_path, pc="Scout", symbol="ABCL", report=report,
+        feature_names=["a"], installed_at="2026-10-14T08:00Z")
+    saved = json.loads((tmp_path / "active/Scout-ABCL.json").read_text())
+    assert saved["schema"] == "intraday-supervised-model-policy-v2"
+    assert saved["models"] == reviewed["selected_specs"]
+    assert saved["report_sha256"] == digest(reviewed) and report == reviewed
+    selected = load_active_models(tmp_path, pc="Scout", symbol="ABCL")[0]
+    assert models.build_estimator(selected).named_steps["model"].solver == "lbfgs"
+
+
+def test_current_report_without_evaluated_contract_cannot_be_retroactively_frozen(tmp_path):
+    report = proposal()
+    report["selection_version"] = "intraday-purged-session-selection-v2"
+    with pytest.raises(ContractError, match="exact runtime contracts assessed"):
+        install_selection(tmp_path, pc="Scout", symbol="ABCL", report=report,
+            feature_names=["a"], installed_at="2026-10-14T08:00Z")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_legacy_pending_decision_is_not_misrepresented_as_frozen_at_assessment(tmp_path):
+    report = proposal()
+    report["selected_specs"][0].pop("runtime_contract")
+    install_selection(tmp_path, pc="Scout", symbol="ABCL", report=report,
+        feature_names=["a"], installed_at="2026-10-14T08:00Z")
+    saved = json.loads((tmp_path / "active/Scout-ABCL.json").read_text())
+    assert saved["schema"] == "intraday-supervised-model-policy-v1"
+    assert saved["models"][0]["runtime_contract"] is None
+    assert saved["report_sha256"] == digest(report)
+    before = (tmp_path / "active/Scout-ABCL.json").read_bytes()
+    assert load_active_models(tmp_path, pc="Scout", symbol="ABCL")[0].runtime_contract is None
+    assert (tmp_path / "active/Scout-ABCL.json").read_bytes() == before

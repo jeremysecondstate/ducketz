@@ -21,12 +21,12 @@ import numpy as np
 from threadpoolctl import threadpool_limits
 
 from ml.intraday.models import (
-    ModelSpec, configured_models, fit_calibrated_estimator,
+    ModelSpec, configured_models, fit_calibrated_estimator, freeze_model_spec,
     purged_chronological_split, registry_status,
 )
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 
-SELECTION_VERSION = "intraday-purged-session-selection-v1"
+SELECTION_VERSION = "intraday-purged-session-selection-v2"
 
 
 class InsufficientEvidenceError(ContractError):
@@ -368,11 +368,27 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         raise ContractError("Candidate count exceeds the explicit research budget")
     if any(getattr(spec, "probability_calibration", "none") != "sigmoid" for spec in specs):
         raise ContractError("Selection candidates must explicitly use chronological sigmoid calibration")
+    # Resolve before the manifest, any validation fit, or the final holdout.
+    # An unavailable optional adapter remains an explicit candidate failure.
+    resolution_errors = {}
+    resolved = []
+    for spec in specs:
+        try:
+            resolved.append(freeze_model_spec(spec))
+        except Exception as exc:
+            resolution_errors[spec.name] = exc
+            resolved.append(spec)
+    specs = tuple(resolved)
     catalog, coverage = _catalog_report(specs)
     catalog_status = {item["family"]: item["status"] for item in catalog}
     incumbents = configured_models(incumbent_specs) if incumbent_specs else ()
     if len(incumbents) > 24:
         raise ContractError("Incumbent comparison exceeds the 24-model budget")
+    incumbent_error = None
+    try:
+        incumbents = tuple(freeze_model_spec(spec) for spec in incumbents)
+    except Exception as exc:
+        incumbent_error = exc
     data = _arrays(dataset, as_of, session_ids, session_timezone)
     X, y, references, targets, availability, sessions, eligible, cutoff = data
     ordered_sessions = list(dict.fromkeys(sessions[i] for i in eligible))
@@ -440,6 +456,8 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
                "catalog_status": catalog_status[spec.family]}
         pieces = []
         try:
+            if spec.name in resolution_errors:
+                raise resolution_errors[spec.name]
             for fold in folds:
                 p, fitted = _fit_predict(spec, fold, data, config, deadline)
                 fold_metrics = metric(y[fold[1]], p)
@@ -506,6 +524,8 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
     proposal_reasons = _metric_gates(proposal_cv, baselines, config)
     incumbent_cv = None
     try:
+        if incumbent_error is not None:
+            raise incumbent_error
         if incumbents:
             incumbent_predictions = [np.concatenate([_fit_predict(spec, fold, data, config, deadline)[0] for fold in incumbent_folds])
                                      for spec in incumbents]

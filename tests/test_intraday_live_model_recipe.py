@@ -385,3 +385,99 @@ def test_manual_entrypoint_latches_recipe_before_operating_client_side_effects(t
     status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
     assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
     assert json.loads(path.read_text(encoding="utf-8")) == value
+
+
+def migrated_recipe(**kwargs):
+    return recipes.migrate_manual_recipe(recipe(), pc="Scout", symbols=("ABCL", "DBX"),
+                                         config=ResearchConfig(), **kwargs)
+
+
+def test_real_legacy_json_shape_and_cycle_configuration_remain_unchanged(tmp_path):
+    value = recipe()
+    # Exact pre-runtime-contract model dictionaries, rather than new asdict output.
+    value["models"] = [
+        {"name": "logistic_strong", "family": "logistic", "random_state": 20261012,
+         "parameters": {"C": .05}, "calibration_fraction": .25,
+         "probability_calibration": "sigmoid", "training_max_rows": 4096},
+        {"name": "forest_shallow", "family": "random_forest", "random_state": 20261012,
+         "parameters": {"n_estimators": 64, "max_depth": 3, "min_samples_leaf": 16},
+         "calibration_fraction": .25, "probability_calibration": "sigmoid", "training_max_rows": 4096},
+    ]
+    rehash(value)
+    path = save(tmp_path, value)
+    original = path.read_bytes()
+    config, runtime = recipes.prepare_manual_models(ResearchConfig(), datastore=tmp_path,
+        pc="Scout", symbols=("ABCL", "DBX"))
+    assert config.models == tuple(value["models"])
+    assert all("runtime_contract" not in model for model in config.models)
+    assert dataset_for(runtime).manifest["manual_model_recipe"] == value
+    assert path.read_bytes() == original
+
+
+def test_v2_migration_has_identical_effective_fits_without_writing_or_selecting_new_models(tmp_path):
+    original = recipe()
+    migrated = migrated_recipe()
+    evidence = recipes.manual_recipe_migration_evidence(original, migrated, pc="Scout",
+        symbols=("ABCL", "DBX"), config=ResearchConfig())
+    assert all(evidence[key] for key in ("effective_models_identical", "training_support_identical",
+                                       "feature_contract_identical", "dataset_scope_identical"))
+    assert evidence["training_runs"] == evidence["files_written"] == evidence["provider_calls"] == 0
+    assert list(tmp_path.iterdir()) == []
+    outputs = []
+    for value in (original, migrated):
+        save(tmp_path, value)
+        config, runtime = recipes.prepare_manual_models(ResearchConfig(), datastore=tmp_path,
+            pc="Scout", symbols=("ABCL", "DBX"))
+        outputs.append(fit(runtime, config, dataset_for(runtime)))
+    assert all(out["complete"] for out in outputs)
+    assert [out["probability_not_down"] for out in outputs[0]["outputs"]] == pytest.approx(
+        [out["probability_not_down"] for out in outputs[1]["outputs"]], abs=1e-12)
+
+
+def test_v2_saved_selection_is_independent_of_shared_recipe_and_model_defaults(tmp_path, monkeypatch):
+    from ml.intraday import models
+    value = migrated_recipe()
+    path = save(tmp_path, value)
+    original = path.read_bytes()
+    monkeypatch.setattr(recipes, "_specs", lambda: pytest.fail("Peer candidate defaults were consulted"))
+    monkeypatch.setitem(models.DEFAULT_PARAMETERS, "logistic", {"C": 500, "solver": "liblinear"})
+    config, runtime = recipes.prepare_manual_models(ResearchConfig(lookback_days=1, source_dataset="OTHER"),
+        datastore=tmp_path, pc="Scout", symbols=("ABCL", "DBX"))
+    assert config.models == tuple(value["models"])
+    assert config.lookback_days is None and config.source_dataset == "EQUS.MINI"
+    path.write_text("a later local installation cannot mutate this session")
+    dataset = dataset_for(runtime)
+    assert dataset.manifest["manual_model_recipe"] == value
+    assert models.build_estimator(models.configured_models(config.models)[0]).named_steps["model"].solver == "lbfgs"
+    with pytest.raises(ContractError, match="history scope"):
+        runtime["dataset_builder"](candles(), cutoff=dataset.manifest["training_cutoff"],
+            reference_at=dataset.reference_at[-1], lookback_days=1)
+    assert original == json.dumps(value).encode()
+
+
+@pytest.mark.parametrize("damage", ["pc", "symbols", "feature", "source", "gate", "unfrozen"])
+def test_v2_cannot_cross_local_scope_or_weaken_evidence(tmp_path, damage):
+    value = migrated_recipe()
+    if damage == "pc":
+        value["pc"] = "Atlas"
+    elif damage == "symbols":
+        value["symbols"] = ["ABCL"]
+    elif damage == "feature":
+        value["feature_contract"]["base_feature_version"] = "another-population"
+    elif damage == "source":
+        value["dataset_scope"]["source_dataset"] = "OTHER"
+    elif damage == "gate":
+        value["training_support"]["minimum_rows"] = 159
+    else:
+        value["models"][0]["runtime_contract"] = None
+    path = save(tmp_path, migrated_recipe())
+    path.write_text(json.dumps(rehash(value)))
+    with pytest.raises(ContractError):
+        recipes.prepare_manual_models(ResearchConfig(), datastore=tmp_path, pc="Scout", symbols=("ABCL", "DBX"))
+
+
+def test_v2_feature_pipeline_version_change_is_explicit_not_a_silent_retune(tmp_path, monkeypatch):
+    save(tmp_path, migrated_recipe())
+    monkeypatch.setattr(recipes, "BASE_FEATURE_VERSION", "a-new-feature-algorithm")
+    with pytest.raises(ContractError, match="feature contract"):
+        recipes.prepare_manual_models(ResearchConfig(), datastore=tmp_path, pc="Scout", symbols=("ABCL", "DBX"))

@@ -6,7 +6,8 @@ has a failure record, never a stale-model or constant-probability substitute.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import importlib.metadata
@@ -41,6 +42,7 @@ from threadpoolctl import threadpool_limits
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
 
 REGISTRY_VERSION = "intraday-independent-tabular-v2"
+RUNTIME_CONTRACT_VERSION = "intraday-frozen-estimator-pipeline-v1"
 
 # Ten independently fitted research candidates. These are explicit settings,
 # not a claim that this composition or its probabilities outperform alternatives.
@@ -97,6 +99,7 @@ class ModelSpec:
     calibration_fraction: float = 0.2
     probability_calibration: str | None = "none"
     training_max_rows: int | None = None
+    runtime_contract: Mapping[str, object] | None = None
 
     def __post_init__(self):
         if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,79}", self.name):
@@ -110,6 +113,14 @@ class ModelSpec:
         if self.training_max_rows is not None and (isinstance(self.training_max_rows, bool)
                 or not isinstance(self.training_max_rows, int) or self.training_max_rows < 4):
             raise ContractError("Training row limit must be an integer of at least four or None")
+        if not isinstance(self.parameters, Mapping):
+            raise ContractError("Model parameters must be an object")
+        if self.runtime_contract is not None and not isinstance(self.runtime_contract, Mapping):
+            raise ContractError("Frozen model runtime contract must be an object")
+        # A frozen dataclass must not keep caller-owned mutable policy dictionaries.
+        object.__setattr__(self, "parameters", deepcopy(dict(self.parameters)))
+        if self.runtime_contract is not None:
+            object.__setattr__(self, "runtime_contract", deepcopy(dict(self.runtime_contract)))
 
 
 def _json(value) -> str:
@@ -157,10 +168,16 @@ def registry_status() -> list[dict]:
 def _parameters(spec: ModelSpec) -> dict:
     if spec.family not in _TABULAR:
         raise UnsupportedModelError(f"No genuine training/probability adapter for {spec.family}")
-    params = {**DEFAULT_PARAMETERS[spec.family], **dict(spec.parameters)}
+    frozen = spec.runtime_contract is not None
+    params = (_decode_parameters(dict(spec.parameters)) if frozen else
+              {**DEFAULT_PARAMETERS[spec.family], **dict(spec.parameters)})
     if params.get("warm_start", False):
         raise ContractError("Warm-start is forbidden for the full-retraining benchmark")
-    if params.get("n_jobs", 1) != 1 or params.get("thread_count", 1) != 1:
+    # These binary linear classifiers expose n_jobs=None as their legacy
+    # constructor default; preserve that resolved single-fit behavior exactly.
+    jobs = params.get("n_jobs", 1)
+    if (jobs != 1 and not (frozen and spec.family in {"logistic", "passive_aggressive"} and jobs is None)
+            or params.get("thread_count", 1) != 1):
         raise ContractError("This research adapter requires one internal worker per model")
     if spec.family == "knn":
         neighbors = params["n_neighbors"]
@@ -168,8 +185,12 @@ def _parameters(spec: ModelSpec) -> dict:
             raise ContractError("KNN n_neighbors must be a positive integer")
     if spec.family in {"random_forest", "extra_trees", "hist_gradient_boosting", "gradient_boosting",
                        "adaboost", "xgboost", "lightgbm", "logistic", "mlp", "passive_aggressive"}:
+        if frozen and params.get("random_state") != spec.random_state:
+            raise ContractError("Frozen estimator random state differs from its specification")
         params["random_state"] = spec.random_state
     elif spec.family == "catboost":
+        if frozen and params.get("random_seed") != spec.random_state:
+            raise ContractError("Frozen estimator random seed differs from its specification")
         params["random_seed"] = spec.random_state
     return params
 
@@ -185,7 +206,7 @@ def build_estimator(spec: ModelSpec) -> Pipeline:
         "adaboost": AdaBoostClassifier, "ridge": RidgeClassifier,
         "passive_aggressive": PassiveAggressiveClassifier, "mlp": MLPClassifier,
     }
-    if spec.family == "adaboost":
+    if spec.family == "adaboost" and spec.runtime_contract is None:
         params.setdefault("estimator", DecisionTreeClassifier(max_depth=1, random_state=spec.random_state))
     if spec.family in _DEPENDENCIES:
         module = _DEPENDENCIES[spec.family]
@@ -202,11 +223,128 @@ def build_estimator(spec: ModelSpec) -> Pipeline:
             estimator = CatBoostClassifier(**params)
     else:
         estimator = constructors[spec.family](**params)
+    if spec.runtime_contract is not None:
+        return _frozen_pipeline(spec, estimator)
     steps = [("impute", SimpleImputer(strategy="median", keep_empty_features=True))]
     if spec.family in {"logistic", "knn", "lda", "qda", "gaussian_nb", "ridge", "passive_aggressive", "mlp"}:
         steps.append(("scale", StandardScaler()))
     steps.append(("model", estimator))
     return Pipeline(steps)
+
+
+def _encode_parameters(value):
+    """JSON-only constructor values; never serialize/import arbitrary objects."""
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float) and not np.isfinite(value):
+        if np.isnan(value):
+            return {"__intraday_parameter__": "nan"}
+        raise ContractError("Infinite constructor parameters cannot be frozen")
+    if isinstance(value, DecisionTreeClassifier):
+        return {"__intraday_parameter__": "decision_tree_classifier",
+                "parameters": _encode_parameters(value.get_params(deep=False))}
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise ContractError("Frozen constructor parameter keys must be strings")
+        return {key: _encode_parameters(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_encode_parameters(item) for item in value]
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    raise ContractError(f"Unsupported frozen constructor parameter type: {type(value).__name__}")
+
+
+def _decode_parameters(value):
+    if isinstance(value, dict):
+        marker = value.get("__intraday_parameter__")
+        if marker is not None:
+            if marker == "nan" and set(value) == {"__intraday_parameter__"}:
+                return np.nan
+            if marker == "decision_tree_classifier" and set(value) == {"__intraday_parameter__", "parameters"}:
+                params = _decode_parameters(value["parameters"])
+                tree = DecisionTreeClassifier(**params)
+                if set(tree.get_params(deep=False)) != set(params):
+                    raise ContractError("Frozen base-tree constructor contract is incompatible")
+                return tree
+            raise ContractError("Unknown frozen constructor parameter encoding")
+        return {key: _decode_parameters(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_decode_parameters(item) for item in value]
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    raise ContractError("Invalid frozen constructor parameter value")
+
+
+def _constructor_identity(estimator):
+    return type(estimator).__module__ + "." + type(estimator).__qualname__
+
+
+def _resolved_step(estimator):
+    return {"class": _constructor_identity(estimator),
+            "parameters": _encode_parameters(estimator.get_params(deep=False))}
+
+
+def _construct_frozen_step(description, constructor):
+    if not isinstance(description, dict) or set(description) != {"class", "parameters"}:
+        raise ContractError("Frozen preprocessing/calibration contract is invalid")
+    params = _decode_parameters(description["parameters"])
+    estimator = constructor(**params)
+    if (description["class"] != _constructor_identity(estimator)
+            or set(estimator.get_params(deep=False)) != set(params)):
+        raise ContractError("Frozen preprocessing/calibration constructor contract is incompatible")
+    return estimator
+
+
+def _frozen_pipeline(spec, estimator):
+    contract = spec.runtime_contract
+    required = {"version", "estimator_class", "preprocessing", "calibrator", "dependency_versions"}
+    if (set(contract) != required or contract["version"] != RUNTIME_CONTRACT_VERSION
+            or contract["estimator_class"] != _constructor_identity(estimator)
+            or contract["dependency_versions"] != _versions(spec)
+            or set(estimator.get_params(deep=False)) != set(spec.parameters)):
+        raise ContractError("Frozen estimator runtime contract is incompatible; local review is required")
+    preprocessing = contract["preprocessing"]
+    if (not isinstance(preprocessing, dict) or set(preprocessing) != {"impute", "scale"}
+            or preprocessing["impute"] is None):
+        raise ContractError("Frozen preprocessing contract is incompatible")
+    steps = [("impute", _construct_frozen_step(preprocessing["impute"], SimpleImputer))]
+    if preprocessing["scale"] is not None:
+        steps.append(("scale", _construct_frozen_step(preprocessing["scale"], StandardScaler)))
+    calibrated = spec.probability_calibration == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}
+    if calibrated != (contract["calibrator"] is not None):
+        raise ContractError("Frozen probability calibration contract differs from its specification")
+    if calibrated:
+        _construct_frozen_step(contract["calibrator"], LogisticRegression)
+    return Pipeline([*steps, ("model", estimator)])
+
+
+def freeze_model_spec(spec):
+    """Resolve this local installation's exact untrained pipeline; write/fit nothing.
+
+    Legacy specifications keep their prior interpretation until explicitly
+    frozen. The returned specification never consults mutable tuning defaults.
+    Dependency or constructor incompatibility fails explicitly at use time.
+    """
+    if not isinstance(spec, ModelSpec):
+        spec = configured_models([spec])[0]
+    pipeline = build_estimator(spec)
+    if spec.runtime_contract is not None:
+        return replace(spec)
+    calibrated = spec.probability_calibration == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}
+    contract = {
+        "version": RUNTIME_CONTRACT_VERSION,
+        "estimator_class": _constructor_identity(pipeline.named_steps["model"]),
+        "preprocessing": {"impute": _resolved_step(pipeline.named_steps["impute"]),
+                          "scale": _resolved_step(pipeline.named_steps["scale"])
+                                   if "scale" in pipeline.named_steps else None},
+        "calibrator": _resolved_step(LogisticRegression(C=1.0, max_iter=1000,
+                                      random_state=spec.random_state)) if calibrated else None,
+        "dependency_versions": _versions(spec),
+    }
+    frozen = replace(spec, parameters=_encode_parameters(pipeline.named_steps["model"].get_params(deep=False)),
+                     runtime_contract=contract)
+    build_estimator(frozen)
+    return frozen
 
 
 def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2,
@@ -234,16 +372,19 @@ def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2,
 
 class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
     """Fresh base fit plus disjoint, purged chronological probability calibration."""
-    def __init__(self, base, random_state=20261012):
+    def __init__(self, base, random_state=20261012, calibrator=None):
         self.base = base
         self.random_state = random_state
+        self.calibrator = calibrator
 
     def fit_chronological(self, X, y, train, calibration):
         if set(np.unique(y[train])) != {0, 1} or set(np.unique(y[calibration])) != {0, 1}:
             raise ContractError("Base and calibration partitions both require both target classes")
         self.base.fit(X[train], y[train])
         scores = self._scores(X[calibration])
-        self.sigmoid_ = LogisticRegression(C=1.0, max_iter=1000, random_state=self.random_state).fit(scores, y[calibration])
+        sigmoid = (_construct_frozen_step(self.calibrator, LogisticRegression) if self.calibrator is not None
+                   else LogisticRegression(C=1.0, max_iter=1000, random_state=self.random_state))
+        self.sigmoid_ = sigmoid.fit(scores, y[calibration])
         self.classes_ = np.array([0, 1])
         return self
 
@@ -297,7 +438,7 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     else:
         available = None
     calibrated = spec.probability_calibration == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}
-    evidence = {"effective_parameters": _parameters(spec), "calibration": None}
+    evidence = {"effective_parameters": _encode_parameters(_parameters(spec)), "calibration": None}
     references = tuple(instant(v) for v in reference_at) if reference_at is not None else None
     targets = tuple(instant(v) for v in target_close_at) if target_close_at is not None else None
     for timestamps in (references, targets):
@@ -351,7 +492,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
         evidence["effective_parameters"]["n_neighbors"] = effective
         estimator.set_params(model__n_neighbors=effective)
     if calibrated:
-        estimator = ChronologicalSigmoid(estimator, spec.random_state).fit_chronological(features, labels, train, calibration)
+        calibrator = spec.runtime_contract["calibrator"] if spec.runtime_contract is not None else None
+        estimator = ChronologicalSigmoid(estimator, spec.random_state, calibrator).fit_chronological(features, labels, train, calibration)
         evidence["calibration"]["score_interface"] = estimator.score_interface_
     else:
         estimator.fit(features, labels)
@@ -370,7 +512,7 @@ def probability_not_down(estimator, inference_X) -> float:
 
 
 def _versions(spec) -> dict:
-    packages = ["scikit-learn", "numpy", "joblib", "threadpoolctl"]
+    packages = ["scikit-learn", "numpy", "scipy", "joblib", "threadpoolctl"]
     if spec.family in _DEPENDENCIES:
         packages.append(_DEPENDENCIES[spec.family])
     result = {}
@@ -475,7 +617,7 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
         try:
             if set(np.unique(labels)) != {0, 1}:
                 raise ContractError("Training requires both target classes; no constant model substitution")
-            metadata["effective_parameters"] = _parameters(spec)
+            metadata["effective_parameters"] = _encode_parameters(_parameters(spec))
             output["version"] = _sha(metadata)
             with threadpool_limits(limits=1), warnings.catch_warnings(record=True) as observed_warnings:
                 warnings.simplefilter("always")

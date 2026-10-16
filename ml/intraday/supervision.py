@@ -44,7 +44,9 @@ def review_session(datastore, *, pc, symbol, session_id, as_of):
     """Read saved own-PC prediction and execution evidence in a consistent snapshot."""
     path = Path(datastore) / "intraday/shadow.sqlite3"
     result = dict(session_id=session_id, pc=pc, symbol=symbol, forecasts=0, scored=0,
-                  missing_outcomes=0, late_forecasts=0, accuracy=None, brier=None,
+                  missing_outcomes=0, synthetic_outcomes=0, other_unscored_outcomes=0,
+                  unscored_outcomes=0, late_forecasts=0, accuracy=None, brier=None,
+                  observed_not_down_fraction=None, majority_baseline_accuracy=None,
                   extreme_probability_count=0, wrong_extreme_probability_count=0,
                   submitted_quantity=0, filled_quantity=0, submission_unknown=0,
                   realized_pnl=None, trade_result_basis="saved_execution_projections_only",
@@ -77,6 +79,12 @@ def review_session(datastore, *, pc, symbol, session_id, as_of):
                 probabilities.append(p)
                 labels.append(y)
                 result["wrong_extreme_probability_count"] += (p <= .01 or p >= .99) and int(p >= .5) != y
+            elif outcome and outcome["status"] == "synthetic":
+                result["synthetic_outcomes"] += 1
+            elif outcome is None or outcome["status"] in {"missing", "pending"}:
+                result["missing_outcomes"] += 1
+            else:
+                result["other_unscored_outcomes"] += 1
             latest = db.execute("SELECT id,payload FROM intents WHERE forecast_id=? AND recorded_at<=? ORDER BY recorded_at DESC,rowid DESC LIMIT 1",
                                 (forecast["forecast_id"], instant(as_of).isoformat())).fetchone()
             if latest:
@@ -88,10 +96,13 @@ def review_session(datastore, *, pc, symbol, session_id, as_of):
                 result["filled_quantity"] += intent.get("filled_quantity") or 0
                 result["submission_unknown"] += intent.get("submitted_quantity") is None
     result["scored"] = len(labels)
-    result["missing_outcomes"] = result["forecasts"] - len(labels)
+    result["unscored_outcomes"] = result["forecasts"] - len(labels)
     if labels:
         p, y = np.asarray(probabilities), np.asarray(labels)
-        result.update(accuracy=float(np.mean((p >= .5) == y)), brier=float(np.mean((p - y) ** 2)))
+        prevalence = float(np.mean(y))
+        result.update(accuracy=float(np.mean((p >= .5) == y)), brier=float(np.mean((p - y) ** 2)),
+                      observed_not_down_fraction=prevalence,
+                      majority_baseline_accuracy=max(prevalence, 1 - prevalence))
     result["status"] = "reviewed" if result["forecasts"] else "no_saved_session"
     return result
 
@@ -111,6 +122,8 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
     report = dict(schema=SCHEMA, pc=pc, as_of=now.isoformat(), execute=execute,
                   schedule="Monday-Friday 01:00,01:30,02:00,02:30,03:00,03:30 America/Los_Angeles",
                   completion_scope="completed_session_assessment_only_not_live_input_readiness",
+                  model_assessment_scope="supervised_candidates_and_supervised_incumbent",
+                  manual_recipe_qualification="separate_manual_experiment_not_qualified_by_this_selection",
                   status="inspected", symbols={})
     if not execute:
         return {**report, "status": "dry_run", "local_symbols": list(symbols),
