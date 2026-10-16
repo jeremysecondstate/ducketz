@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-16T22:56:47.073595Z",
+  "id": "20261016T225647Z-6c9acf8db5cd43d19eb0f44e81fd6e2e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published and locally installed reviewed training-support and submission diagnostic repairs; manual runtime reload remains pending."
+}

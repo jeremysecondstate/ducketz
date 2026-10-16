@@ -1,0 +1,27 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261016T225151Z-e19cdc02c0f94c168e9ad85452f59cc6",
+  "change_id": "20261016T225151Z-e19cdc02c0f94c168e9ad85452f59cc6",
+  "commit_sha": "3778704010af45de4055c633d19e2472999e3049",
+  "files": [
+    "ml/intraday/live_model_recipe.py",
+    "ml/intraday/scout_client.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_live_model_recipe.py",
+    "tests/test_intraday_scout_client.py",
+    "tests/test_intraday_scout_local_execution.py"
+  ],
+  "limitations": [
+    "No historical UNKNOWN resolution, replay, merge, peer installation or runtime recovery claimed.",
+    "Private local data recovery and operating evidence are not included in source publication."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/198",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed source requires manual process reload. Each PC retains its own recipe and runtime controls.",
+  "scope": "shared correctness; preserves each PC local model recipe and qualification gates",
+  "summary": "Scout published and locally installed reviewed training-support and submission diagnostic repairs; manual runtime reload remains pending.",
+  "tests": [
+    "369 offline checks passed in reviewed source, publication candidate and installed Scout checkout.",
+    "Publication checks bind 61 source/dependency fingerprints and disable network."
+  ]
+}
