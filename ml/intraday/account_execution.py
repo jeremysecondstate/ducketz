@@ -277,7 +277,7 @@ class IntradayAccountExecutor:
 
     def _newer_forecasts(self, forecast):
         """Per-symbol publication can supersede a queue item during account IO."""
-        return [f["forecast_id"] for f in self.store.forecasts(pc=self.actor)
+        return [f["forecast_id"] for f in self.store.forecasts(pc=self.actor, symbol=forecast["symbol"])
                 if f["symbol"] == forecast["symbol"] and f["mode"] == "live"
                 and f["ensemble_status"] == "full"
                 and instant(f["issued_at"]) >= self.session_started_at

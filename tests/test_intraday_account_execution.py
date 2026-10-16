@@ -681,3 +681,29 @@ def test_external_account_reduction_does_not_create_cross_trader_reconciliation(
     forecast = env.forecast(probability=.28)
     result = env.executor.step(forecast)
     assert result["disposition"]=="submitted" and 0 < result["adjusted_quantity"] <= 2
+
+
+def test_unrelated_forecast_history_cannot_expire_submission_quote(env, monkeypatch):
+    for offset in range(-150, 0, 15):
+        env.forecast(symbol="AMZN", offset=offset)
+    forecast = env.forecast()
+    env.quote_age = 35
+    validate = ShadowStore._forecast_value
+    unrelated_reads = []
+
+    def timed_validation(row):
+        value = validate(row)
+        if value["symbol"] != forecast["symbol"]:
+            unrelated_reads.append(value["forecast_id"])
+            advance(env, 1)
+        return value
+
+    monkeypatch.setattr(ShadowStore, "_forecast_value", staticmethod(timed_validation))
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "submitted", result.get("evidence")
+    assert not unrelated_reads
+    assert len(env.broker.submissions) == 1
+    assert result["desired_quantity"] == 4 and result["adjusted_quantity"] == 2
+    advance(env)
+    assert env.executor.step(forecast)["disposition"] == "recover_existing_intention"
+    assert len(env.broker.submissions) == 1

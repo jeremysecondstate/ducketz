@@ -49,7 +49,7 @@ class IntentionStore:
         """Valid sized intentions fence chronology even when no order was possible."""
         with self.store.connect() as db:
             ids = {row[0] for row in db.execute("SELECT forecast_id FROM intraday_intentions")}
-        return [f["forecast_id"] for f in self.store.forecasts(pc=forecast["pc"])
+        return [f["forecast_id"] for f in self.store.forecasts(pc=forecast["pc"], symbol=forecast["symbol"])
                 if f["forecast_id"] in ids and f["forecast_id"] != forecast["forecast_id"]
                 and f["symbol"] == forecast["symbol"] and f["mode"] == "live"
                 and instant(f["reference_at"]) >= instant(forecast["reference_at"])]
