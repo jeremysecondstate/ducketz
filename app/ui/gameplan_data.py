@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -520,21 +521,37 @@ def _planning_note(report: dict, symbols: set[str]) -> str:
     return ""
 
 
-def load_gameplan(datastore_root: Path | None = None, session: str | None = None) -> Gameplan:
+def load_gameplan(datastore_root: Path | None = None, session: str | None = None, *,
+                  run_directory: Path | None = None,
+                  expected_receipt_sha256: str | None = None) -> Gameplan:
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
     try:
         requested = _session(session) if session else None
-        current = _latest(root)
-        pointer = current if current and (requested is None or requested == current["action_date"]) else None
-        if pointer:
-            selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
-        elif requested:
-            candidates = [item for item in _history(root) if item[0] == requested]
-            if not candidates:
-                raise GameplanError(f"No completed direction-ledger plan is saved for {requested}")
-            selected, _, run = max(candidates, key=lambda item: (item[1], item[2].name))
+        if run_directory is not None:
+            run = _run_path(root, Path(run_directory).resolve())
+            if (not isinstance(expected_receipt_sha256, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", expected_receipt_sha256) is None):
+                raise GameplanError("Frozen Gameplan requires its exact receipt hash")
+            saved = _json(run / "receipt.json")
+            selected = _session(saved.get("action_date"))
+            if requested is not None and selected != requested:
+                raise GameplanError(f"No verified local Gameplan is saved for {requested}")
+            pointer = {"receipt_sha256": expected_receipt_sha256,
+                       "source_receipt_sha256": saved.get("source_receipt_sha256")}
         else:
-            raise GameplanError("No saved Gameplan is available yet. Refresh after nightly planning finishes.")
+            if expected_receipt_sha256 is not None:
+                raise GameplanError("A frozen receipt hash requires an explicit saved run")
+            current = _latest(root)
+            pointer = current if current and (requested is None or requested == current["action_date"]) else None
+            if pointer:
+                selected, run = pointer["action_date"], _run_path(root, pointer["run_path"])
+            elif requested:
+                candidates = [item for item in _history(root) if item[0] == requested]
+                if not candidates:
+                    raise GameplanError(f"No completed direction-ledger plan is saved for {requested}")
+                selected, _, run = max(candidates, key=lambda item: (item[1], item[2].name))
+            else:
+                raise GameplanError("No saved Gameplan is available yet. Refresh after nightly planning finishes.")
         receipt_path = run / "receipt.json"
         receipt_hash = file_checksum(receipt_path)
         if pointer and receipt_hash != pointer.get("receipt_sha256"):
