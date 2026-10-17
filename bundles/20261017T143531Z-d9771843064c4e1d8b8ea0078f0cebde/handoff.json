@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T14:35:31.947639Z",
+  "id": "20261017T143531Z-d9771843064c4e1d8b8ea0078f0cebde",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published superseding observed-market and continuous-provider source in PR209"
+}
