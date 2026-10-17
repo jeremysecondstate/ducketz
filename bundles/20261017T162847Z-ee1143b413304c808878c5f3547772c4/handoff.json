@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T16:28:47.372430Z",
+  "id": "20261017T162847Z-ee1143b413304c808878c5f3547772c4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout October 19 repaired research Gameplan revision delivered; original accepted execution and joint UI selection are preserved."
+}

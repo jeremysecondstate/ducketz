@@ -1,0 +1,41 @@
+{
+  "artifact": {
+    "action_date": "2026-10-19",
+    "content_sha256": "404c6a4fbcdc0dab4272c152a8b02fa59d2c02a2c5922209fd4adfab62ea2ba5",
+    "exchange_namespace": "ducketz-nightly-exchange/v1",
+    "packet_sha256": "0479df9c0563615f682c2fc1a65f382a48ca54a42137e096143c32d94efa200a",
+    "predecessor_joint_plan_sha256": "d75d315cd611370456c679cf244ae03c1003cf350175e116c93beadf30ab9945",
+    "relative_path": "sessions/2026-10-19/scout/revisions/scout-20261019-data-repair-9c20bfa577312c37/packet.json",
+    "revision_id": "scout-20261019-data-repair-9c20bfa577312c37"
+  },
+  "author": "Scout",
+  "change_id": "operating-output:scout-20261019-data-repair-9c20bfa577312c37",
+  "files": [
+    "sessions/2026-10-19/scout/revisions/scout-20261019-data-repair-9c20bfa577312c37/packet.json",
+    "sessions/2026-10-19/scout/revisions/scout-20261019-data-repair-9c20bfa577312c37/delivery.json"
+  ],
+  "limitations": [
+    "This is an append-only research revision, not an execution-selection change or evidence of Atlas adoption.",
+    "All 154 Atlas planning points are unavailable in the new projection because the unchanged historical package aggregates contain synthetic close samples; 28 also had synthetic current anchors. Original Atlas forecasts and evidence are preserved. No peer prices were reconstructed.",
+    "The repaired Scout price references and new active joint projection contain zero usable synthetic prices; missing observations remain unavailable.",
+    "Cash basis is SIZED_AT_EXECUTION; no account refresh, broker operation or trader start occurred.",
+    "Original model quality and support gates remain in force; directional promotion is distinct from enrichment qualification.",
+    "The revision API supports one explicit claim per original predecessor, not a general revision chain."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Normal local Gameplan, enrichment and research-plan readers select new immutable publications. The original accepted joint execution/default joint UI selection remains unchanged. Delivery completes the authorized handoff; no acknowledgment is required.",
+  "scope": "Authorized nightly operating output: repaired Scout preparation synthesized with the existing same-date Atlas package and Stats. Private payload remains in the existing authorized exchange; this notice contains no model recipes, fitted models, raw data or account evidence.",
+  "source": {
+    "commit_sha": "7572cbdad8a23bedfedf77c0817368417d52b91e",
+    "observed_projection_commit_sha": "edeb8416b5bda5f00202a82db67c7c7c8f45ec51",
+    "observed_projection_module_sha256": "9a36098a9ca655bbd025d45beb1783be53767a0ac01760b02c083727db4a6dec",
+    "observed_projection_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/213",
+    "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/211"
+  },
+  "summary": "Scout October 19 repaired research Gameplan revision delivered; original accepted execution and joint UI selection are preserved.",
+  "tests": [
+    "Actual final consumer cohort digests match the frozen preflight population.",
+    "Delivered packet bytes were read back and verified by SHA-256.",
+    "Original completed exchange, owner selections and accepted joint plan hashes remain unchanged."
+  ]
+}
