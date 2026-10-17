@@ -129,11 +129,14 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
     saved_old = row(REF-4*STEP,synthetic=True)
     saved_observed = row(REF)
     def attempt(index):
+        from tests.test_intraday_data import independent_absence
         op=REF+STEP
         return IntervalResponse(str(index),"AAPL",source,"EQUS.MINI",op.isoformat(),(op+STEP).isoformat(),
             (op+STEP+timedelta(seconds=5*index)).isoformat(),
             (op+STEP+timedelta(seconds=5*index+1)).isoformat(),"success",(),op.isoformat(),
-            (op+STEP).isoformat(),"successful covered provider omission")
+            (op+STEP).isoformat(),"independent complete scope fixture",
+            no_trade_scope_evidence=independent_absence(symbol="AAPL",dataset="EQUS.MINI",opened_at=op,
+                closed_at=op+STEP,verified_at=op+STEP+timedelta(seconds=5*index+1)))
     valid_synthetic = resolve_interval([attempt(1),attempt(2)],session=session,
                                       previous=saved_observed)["candle"]
     old_hash=store.record_candle(saved_old)

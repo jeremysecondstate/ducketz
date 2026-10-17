@@ -64,7 +64,8 @@ def fixture(frame=None, *, probability=.72, config=None, reference=None, cutoff=
     frame["opened_at"] = pd.to_datetime(frame.opened_at, utc=True)
     frame["available_at"] = pd.to_datetime(frame.available_at, utc=True)
     snapshot = {"cutoff": cutoff.isoformat(), "inference": {"symbol": str(frame.symbol.iloc[0]),
-        "reference_at": reference.isoformat()}, "candles": frozen_rows, "manifest": {"fixture": True}}
+        "reference_at": reference.isoformat()}, "candles": frozen_rows,
+        "manifest": {"fixture": True, "synthetic_policy":"include"}}
     frozen_hash = digest(snapshot)
     forecast = {"symbol": str(frame.symbol.iloc[0]), "reference_at": reference.isoformat(),
         "reference_open": str(frame.loc[frame.opened_at.eq(reference), "open"].iloc[0]),

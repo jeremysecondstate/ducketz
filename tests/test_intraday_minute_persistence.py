@@ -192,7 +192,9 @@ def test_empty_and_partial_responses_archive_without_filling_canonical_minutes(t
     receipt = json.loads(Path(status["response_receipt"]).read_text())
     assert [s["raw"]["rows"] for s in receipt["symbols"]] == [14, 0]
     session = SessionBounds("2026-05-11", FIRST.isoformat(), (FIRST + 6 * STEP).isoformat())
-    assert resolve_minute_candle([responses["ABCL"]], session=session, previous=None)["status"] == "retry"
+    partial = resolve_minute_candle([responses["ABCL"]], session=session, previous=None)
+    assert partial["status"] == "unavailable" and partial["final"] is True
+    assert partial["reason"] == "unverified_source_omission" and partial["candle"] is None
     assert resolve_minute_candle([responses["DBX"]], session=session, previous=None)["status"] == "retry"
 
 

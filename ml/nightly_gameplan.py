@@ -271,7 +271,8 @@ def run_nightly_gameplan_once(
     archive = None
     archive_files = ()
     if archive_history:
-        if not independent_stock_horizons or stock_price_source != "xnas-itch-archive-v1":
+        if not independent_stock_horizons or stock_price_source not in (
+                "xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2"):
             raise ValueError("Archive history requires independent XNAS stock preparation")
         from ml.gameplan_archive_features import load_archive_feature_sources
         from ml.gameplan_archive_integration import combine_archive_sources
@@ -332,6 +333,7 @@ def run_nightly_gameplan_once(
             available_at=information_cutoff,
             price_source_contract=stock_price_source,
             probability_target=probability_target,
+            evidence_available_at=created if recovery or late_action_date else information_cutoff,
         )
         if archive is not None:
             from ml.gameplan_archive_integration import exclude_quality_intervals
@@ -468,6 +470,7 @@ def run_nightly_gameplan_once(
             }
         forecast_frames.append(trained["forecasts"])
         model_reports[group] = trained["report"]
+        model_output_names.extend(trained.get("input_evidence_outputs", ()))
         model_output_names.append(
             (Path("models") / group / "model.joblib").as_posix()
         )
@@ -1641,6 +1644,7 @@ def _fit_group_model(
         )
     support_by_symbol, assessment_by_symbol = _symbol_target_support(
         samples, fitted=fit_frame, assessment=assessment_frame,
+        calibration=partitions["calibration"],
         symbols=current["symbol"].astype("string").unique(),
     )
 
@@ -1731,6 +1735,8 @@ def _fit_group_model(
     forecasts["option_feature_count"] = sum(
         column.startswith(("opt__", "opx__")) for column in admitted
     )
+    from ml.gameplan_input_evidence import annotate_local_support, freeze_inference_inputs
+    forecasts = annotate_local_support(forecasts, support_by_symbol)
     report = {
         "schema_version": GAMEPLAN_VERSION,
         **probability_metadata,
@@ -1769,6 +1775,8 @@ def _fit_group_model(
         "assessment_by_route": route_metrics,
         "assessment_by_symbol": assessment_by_symbol,
         "target_support_by_symbol": support_by_symbol,
+        "qualification_scope": "pooled symbol-and-route model; no per-symbol or per-route qualification claimed",
+        "local_support_policy": "descriptive evidence only; original pooled promotion thresholds unchanged",
         "promotion_gate": gate,
         "features": {
             "admitted_count": len(admitted),
@@ -1793,23 +1801,35 @@ def _fit_group_model(
             "checksum_sha256": file_checksum(model_path),
         },
     }
-    return {"forecasts": forecasts, "report": report}
+    report["inference_input_evidence"], evidence_outputs = freeze_inference_inputs(
+        current, numeric=admitted, categorical=categorical, directory=model_directory, report=report,
+        matrix=current_matrix)
+    return {"forecasts": forecasts, "report": report, "input_evidence_outputs": evidence_outputs}
 
 
 def _symbol_target_support(
     samples: pd.DataFrame, *, fitted: pd.DataFrame, assessment: pd.DataFrame,
-    symbols: Sequence[str],
+    symbols: Sequence[str], calibration: pd.DataFrame | None = None,
 ) -> tuple[dict[str, object], dict[str, object]]:
     support, metrics = {}, {}
     for symbol in sorted(set(map(str, symbols)) | set(samples["symbol"].astype(str))):
         counts = {}
-        for name, source in (("admitted", samples), ("fitted", fitted), ("assessment", assessment)):
+        populations = [("admitted", samples), ("fitted", fitted), ("assessment", assessment)]
+        if calibration is not None:
+            populations.append(("calibration", calibration))
+        for name, source in populations:
             frame = source.loc[source["symbol"].astype(str).eq(symbol)]
             counts[f"{name}_rows"] = len(frame)
             counts[f"{name}_decision_clusters"] = int(frame["decision_timestamp"].nunique())
             counts[f"{name}_rows_by_route"] = {
                 str(route): int(count) for route, count in frame.groupby("route").size().items()
             }
+            counts[f"{name}_class_counts"] = {str(label): int(count) for label, count in frame.groupby("target").size().items()}
+            counts[f"{name}_decision_clusters_by_route"] = {
+                str(route): int(group.decision_timestamp.nunique()) for route, group in frame.groupby("route")}
+            counts[f"{name}_class_counts_by_route"] = {
+                str(route): {str(label): int(count) for label, count in group.groupby("target").size().items()}
+                for route, group in frame.groupby("route")}
         held_out = assessment.loc[assessment["symbol"].astype(str).eq(symbol)]
         metrics[symbol] = (
             _proper_scores(held_out["target"].astype(int).to_numpy(), held_out["probability"].to_numpy())

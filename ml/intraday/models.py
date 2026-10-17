@@ -415,7 +415,7 @@ class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
 
 
 def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=None,
-                             label_available_at=None, training_cutoff=None):
+                             label_available_at=None, training_cutoff=None, feature_names=None):
     """Fit a new pipeline and, when requested, a disjoint probability calibrator.
 
     The base estimator's preprocessing fits only its own earlier partition.
@@ -485,6 +485,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     else:
         base_rows = len(features)
     estimator = build_estimator(spec)
+    from .feature_support import attach_market_support
+    estimator = attach_market_support(estimator, feature_names)
     if spec.family == "knn":
         requested = evidence["effective_parameters"]["n_neighbors"]
         effective = min(requested, base_rows)
@@ -497,6 +499,9 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
         evidence["calibration"]["score_interface"] = estimator.score_interface_
     else:
         estimator.fit(features, labels)
+    base = estimator.base if calibrated else estimator
+    if "market_support" in base.named_steps:
+        evidence["market_feature_support"] = base.named_steps["market_support"].evidence()
     return estimator, evidence
 
 
@@ -596,6 +601,9 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                                       "reference_at": [v.isoformat() for v in references] if reference_at is not None else None,
                                       "target_close_at": [v.isoformat() for v in target_closes] if target_close_at is not None else None}).encode()).hexdigest()
     outputs = []
+    from ml.market_provenance import capture_runtime
+    from . import feature_support
+    loaded_runtime = capture_runtime([__name__, feature_support.__name__])
     for spec in specs:
         start = time.perf_counter()
         output = {"name": spec.name, "family": spec.family, "status": "failed", "probability_not_down": None,
@@ -606,6 +614,8 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                   "artifact_persistence_started_at": None, "artifact_persisted_at": None,
                   "artifact_persistence_seconds": 0.0, "failed_at": None}
         metadata = {"registry_version": REGISTRY_VERSION, "adapter_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "adapter_source_hash_basis": "current_disk_bytes; see loaded_runtime for executable evidence",
+                    "loaded_runtime": loaded_runtime,
                     "spec": asdict(spec), "target_version": TARGET_VERSION,
                     "training_cutoff": cutoff.isoformat(), "latest_label_available_at": max(available).isoformat(),
                     "training_rows": len(features), "class_counts": {str(i): int((labels == i).sum()) for i in (0, 1)},
@@ -623,7 +633,7 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                 warnings.simplefilter("always")
                 estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
                     reference_at=reference_at, target_close_at=target_close_at,
-                    label_available_at=available, training_cutoff=cutoff)
+                    label_available_at=available, training_cutoff=cutoff, feature_names=names)
                 metadata.update(fitting_evidence)
                 output["training_seconds"] = time.perf_counter() - start
                 output["training_completed_at"] = _now()
