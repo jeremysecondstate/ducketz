@@ -25,6 +25,7 @@ from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, i
 
 MINUTE = timedelta(minutes=1)
 FEATURE_VERSION = "intraday-observed-causal-features-v1"
+PREPARATION_CONTRACT = "intraday-nontrading-dataset-preparation-v1"
 SYNTHETIC_CONTINUITY_POLICY = "same-session-adjacent-prior-close-v1"
 _PROVIDER_LOCKS = {}
 _PROVIDER_LOCKS_GUARD = threading.Lock()
@@ -881,8 +882,21 @@ def validate_candles(frame: pd.DataFrame, *, duration=STEP) -> pd.DataFrame:
         raise ContractError("Candles must be named by interval opening times")
     if out.available_at.lt(out.opened_at + duration).any():
         raise ContractError("Candle availability precedes interval completion")
-    if not out.availability_kind.isin(["actual", "assumed_historical_close"]).all():
+    if not out.availability_kind.isin(["actual", "assumed_historical_close", "actual_historical_recovery"]).all():
         raise ContractError("Unknown information availability basis")
+    recovered = out.availability_kind.eq("actual_historical_recovery")
+    if recovered.any():
+        # A current receipt is never a historical close assumption. Only the
+        # separately reviewed recovery contract can carry a reconstructed
+        # feature clock, while the real acquisition clock still gates fitting.
+        from .native_interval import RECOVERY_CONTRACT
+        if ("native_recovery_contract" not in out or "feature_cutoff_at" not in out
+                or not out.loc[recovered, "native_recovery_contract"].eq(RECOVERY_CONTRACT).all()):
+            raise ContractError("Historical recovery requires explicit versioned source lineage")
+        clocks = pd.to_datetime(out.loc[recovered, "feature_cutoff_at"], utc=True, errors="raise")
+        if (clocks.isna().any() or not clocks.eq(out.loc[recovered, "opened_at"] + duration).all()
+                or out.loc[recovered, "available_at"].lt(clocks).any()):
+            raise ContractError("Historical recovery feature and actual receipt clocks disagree")
     for field in ("open", "high", "low", "close", "volume"):
         out[field] = pd.to_numeric(out[field], errors="raise")
         if not np.isfinite(out[field]).all() or (out[field] < (0 if field == "volume" else np.nextafter(0, 1))).any():
@@ -1252,7 +1266,7 @@ class Dataset:
 
 
 def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days: float | None = None,
-                  synthetic_policy: str | None = None) -> Dataset:
+                  synthetic_policy: str | None = None, preparation_only: bool = False) -> Dataset:
     """Labels are >= reference OPEN at exact third CLOSE, mature by joint receipt.
 
     Training sample availability includes its features/reference as well as the
@@ -1266,10 +1280,16 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
     """
     if synthetic_policy not in {None, "include", "exclude"}:
         raise ContractError("Synthetic label policy must be include/exclude or unresolved")
+    if type(preparation_only) is not bool:
+        raise ContractError("Dataset preparation mode must be explicit boolean")
     cutoff, reference = utc(cutoff), utc(reference_at)
     target_open, target_close = exact_target(reference)
     frame = validate_candles(candles)
     attrs = dict(candles.attrs.get("intraday_history", {}))
+    # Preserve provenance once in the manifest. Pandas otherwise deep-copies
+    # potentially large source receipts into every per-row/slice result below.
+    # validate_candles returned a private frame; caller metadata stays intact.
+    frame.attrs = {}
     # The requested inclusion policy applies only after provenance admission.
     # Legacy/nightly synthetic prices with prose-only omission claims remain
     # readable, but cannot supply features, reference prices or target labels.
@@ -1298,10 +1318,10 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         raise ContractError("Inference lacks causal observed-history feature warmup")
     if {"session_open", "session_close"} <= set(frame):
         bounds = SessionBounds(str(inference_row.session_id), inference_row.session_open, inference_row.session_close)
-        if not bounds.contains(target_open):
+        if not preparation_only and not bounds.contains(target_open):
             raise UnresolvedPolicy("Exact intraday target crosses session closure; next-session policy is unresolved")
     X, y, references, closes, available, synthetic_excluded, synthetic_included = [], [], [], [], [], 0, 0
-    for row in frame.itertuples():
+    for position, row in enumerate(frame.itertuples()):
         ref = row.opened_at
         if ref < window_start:
             continue
@@ -1313,10 +1333,15 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
             continue
         # Information used in each historical feature must have matured by that
         # row's own decision time, not merely the later overall training cutoff.
-        position = int(frame.index[frame.opened_at.eq(ref)][0])
         own_cutoff = row.available_at
         history = frame.iloc[max(0, position - 20):position + 1]
-        if history.available_at.gt(own_cutoff).any():
+        # Recovered historical observations are reconstructed only under their
+        # explicit contract. Their actual acquisition clocks can differ across
+        # overlap requests, so the complete feature vector becomes available at
+        # the latest constituent receipt, never the earlier reference receipt.
+        # Existing actual decision rows retain their original receipt exclusion.
+        reconstructed = row.availability_kind == "actual_historical_recovery"
+        if not reconstructed and history.available_at.gt(own_cutoff).any():
             continue
         values = features.loc[ref].to_numpy(dtype=float)
         if not np.isfinite(values).all():
@@ -1332,7 +1357,7 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         y.append(int(float(outcome.close) >= float(row.open)))
         references.append(ref)
         closes.append(finish)
-        available.append(max(outcome.available_at, own_cutoff))
+        available.append(max(outcome.available_at, own_cutoff, history.available_at.max()))
     if not X:
         raise InsufficientTrainingData("No matured finite training labels for this cycle/window")
     causal_input_rows = frame.tail(21)
@@ -1353,6 +1378,9 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         records.append(clean)
     snapshot = {"candles": records, "feature_version": FEATURE_VERSION,
                 "feature_names": list(FEATURE_NAMES), "features": inference_values.tolist()}
+    if preparation_only:
+        snapshot.update(preparation_only=True, preparation_contract=PREPARATION_CONTRACT,
+                        executable_forecast=False)
     fingerprint = hashlib.sha256(_json(snapshot).encode()).hexdigest()
     information_available = causal_input_rows.available_at.max()
     inference = {"symbol": str(inference_row.symbol), "reference_at": reference.isoformat(),
@@ -1372,6 +1400,14 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         "availability_kinds": sorted(frame.availability_kind.unique().tolist()), "source_history": attrs,
         "feature_policy": "trailing_observed_steps_explicit_elapsed_gaps_no_fitted_global_preprocessing",
         "validation_requirement": "chronological_purge_targets_and_joint_information_receipts_before_validation_decisions"}
+    if preparation_only:
+        # Session-end observations can mature earlier labels without defining
+        # any next-session forecast. Keep their exact closed reference solely
+        # as a preparation snapshot; ordinary live callers retain their gate.
+        inference.update(preparation_only=True, preparation_contract=PREPARATION_CONTRACT,
+                         executable_forecast=False, target_open=None, target_close=None)
+        manifest.update(preparation_only=True, preparation_contract=PREPARATION_CONTRACT,
+                        executable_forecast=False)
     return Dataset(np.asarray(X, dtype=float), np.asarray(y, dtype=np.uint8), inference_values.reshape(1, -1),
                    FEATURE_NAMES, pd.DatetimeIndex(available), pd.DatetimeIndex(references), pd.DatetimeIndex(closes),
                    inference, manifest)

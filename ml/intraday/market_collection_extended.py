@@ -180,6 +180,12 @@ def _current_fmp(request, start, end, max_records, fetch_page):
             break
     return CollectionResult(records, status, reason, evidence={"endpoint": request.endpoint,
         "mode": "bounded_current_symbol_research", "pages": pages,
+        # Repeating a fully received fixed 100-row current slice cannot recover
+        # its unrequested historical tail. Preserve PARTIAL coverage and refresh
+        # on the next quarter; transport/page failures remain retryable.
+        "bounded_response_complete": status == "COMPLETE" or (
+            reason == "Bounded current page slice reached; further source records are unknown"
+            and all(page.get("status") in {"COMPLETE", "EMPTY"} for page in pages)),
         "maximum_pages": maximum_pages, "page_limit": limit if paged or request.endpoint in LIMITED else None,
         "pagination_exhausted_within_request": status == "COMPLETE" and paged,
         "history_claim": "Current bounded response only; no claim to complete history or point-in-time reconstruction",
@@ -196,7 +202,7 @@ def _market_get(session, endpoint, params, *, timeout=20):
     return response.json()
 
 
-def fetch_full_schwab_chain(session, symbol):
+def fetch_full_schwab_chain(session, symbol, *, on_response=None):
     """Request every provider-returnable strike/expiry without local slice filters.
 
     Provider omissions/entitlements still apply. The caller retains the full
@@ -204,6 +210,11 @@ def fetch_full_schwab_chain(session, symbol):
     """
     payload = _market_get(session, "chains", {"symbol": _symbol(symbol), "contractType": "ALL",
         "includeUnderlyingQuote": "true", "strategy": "SINGLE", "range": "ALL"})
+    # Acquisition consumers can preserve a returned payload even when its
+    # native schema/status subsequently fails validation. Never pass headers or
+    # authenticated session preferences to this market-data-only callback.
+    if on_response is not None:
+        on_response(payload)
     if not isinstance(payload, dict):
         raise ValueError("Schwab chain response must be a mapping")
     if payload.get("status") != "SUCCESS":

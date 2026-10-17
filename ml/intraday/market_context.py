@@ -28,7 +28,8 @@ from .prediction import ContractError
 
 
 SNAPSHOT_VERSION = "intraday-market-snapshot-v1"
-FEATURE_VERSION = "intraday-causal-market-context-v1"
+LEGACY_FEATURE_VERSION = "intraday-causal-market-context-v1"
+FEATURE_VERSION = "intraday-causal-market-context-v2"
 PROJECTION_VERSION = "intraday-native-context-projection-v1"
 FEATURE_POLICY = "actual_receipt_and_row_clocks_asof_explicit_missingness_no_historical_backfill_v1"
 SOURCE_KINDS = ("stock_quote", "stock_trades", "stock_bars", "options",
@@ -121,20 +122,42 @@ def _slots(selectors):
                  for kind in SOURCE_KINDS for source_id in selectors.get(kind, (None,)))
 
 
-def _names(selectors):
+def _fields(kind, version):
+    extra = {
+        "stock_quote": ("book_depth_imbalance", "log_book_depth_levels"),
+        "options": ("relative_spread_median", "top_depth_imbalance_median", "book_depth_imbalance_median"),
+        "opra_options": ("relative_spread_median", "top_depth_imbalance_median", "book_depth_imbalance_median"),
+        "fundamentals": ("log_float_shares", "log_outstanding_shares", "free_float_fraction",
+            "eps", "diluted_eps", "cash_assets_fraction", "signed_log_operating_cash_flow",
+            "signed_log_free_cash_flow", "signed_log_capital_expenditure",
+            "operating_cash_flow_growth", "free_cash_flow_growth", "overall_rating_score",
+            "dcf_rating_score", "roe_rating_score", "roa_rating_score", "debt_equity_rating_score",
+            "pe_rating_score", "pb_rating_score", "target_month_average", "target_month_count",
+            "target_quarter_average", "target_quarter_count", "target_year_average", "target_year_count",
+            "target_all_time_average", "target_all_time_count", "log_observed_filing_count"),
+    }
+    return (*_FIELDS[kind], *(extra.get(kind, ()) if version == FEATURE_VERSION else ()))
+
+
+def _names(selectors, version=FEATURE_VERSION):
     slots = _slots(selectors)
     names = tuple(f"{prefix}_{field}" for kind, _, prefix in slots
-                  for field in (*_FIELDS[kind], "source_age_seconds", "receipt_age_seconds"))
+                  for field in (*_fields(kind, version), "source_age_seconds", "receipt_age_seconds"))
     return (names, (*names, *(name + "_missing" for name in names),
                     *(f"{prefix}_source_available" for _, _, prefix in slots),
                     *(f"{prefix}_source_partial" for _, _, prefix in slots)))
 
 
-def market_context_contract(source_ids: Mapping | None = None) -> dict:
+VALUE_FEATURE_NAMES, CONTEXT_FEATURE_NAMES = _names({})
+
+
+def market_context_contract(source_ids: Mapping | None = None, *, version=FEATURE_VERSION) -> dict:
     """Serializable exact contract to freeze alongside a PC-local recipe."""
+    if version not in {LEGACY_FEATURE_VERSION, FEATURE_VERSION}:
+        raise ContractError("Unsupported market context feature version")
     selectors = _selectors(source_ids)
-    return {"version": FEATURE_VERSION, "snapshot_version": SNAPSHOT_VERSION,
-            "feature_names": list(_names(selectors)[1]),
+    return {"version": version, "snapshot_version": SNAPSHOT_VERSION,
+            "feature_names": list(_names(selectors, version)[1]),
             "source_ids": {k: list(v) for k, v in sorted(selectors.items())},
             "timing_policy": FEATURE_POLICY, "max_receipt_age_seconds": dict(_MAX_RECEIPT_AGE),
             "max_market_event_age_seconds": 1800,
@@ -147,14 +170,24 @@ def market_context_contract(source_ids: Mapping | None = None) -> dict:
             "technical_contract": {"timeframe": "15min", "period_length": 10, "completion": "explicit_bar_end"},
             "macro_timing": "period_date_is_not_publication_actual_receipt_required",
             "commodity_quote_contract": "configured_native_symbols_latest_positive_price_over_previous_close_equal_weight_median_population_stddev",
-            "partial_policy": "unavailable", "option_iv_unit": "decimal",
+            "partial_policy": ("unavailable" if version == LEGACY_FEATURE_VERSION else
+                "eligible_observed_records_only_keep_partial_scope_and_row_exclusions"), "option_iv_unit": "decimal",
             "missing_encoding": "zero_plus_per_value_missing_indicator"}
 
 
 def validate_market_context_contract(contract: Mapping) -> dict:
-    if not isinstance(contract, Mapping) or contract != market_context_contract(contract.get("source_ids")):
+    if (not isinstance(contract, Mapping) or contract != market_context_contract(
+            contract.get("source_ids"), version=contract.get("version"))):
         raise ContractError("Saved market context contract differs from the exact supported contract")
     return deepcopy(dict(contract))
+
+
+def _resolved_contract(source_ids, contract):
+    value = (market_context_contract(source_ids) if contract is None
+             else validate_market_context_contract(contract))
+    if _selectors(value["source_ids"]) != _selectors(source_ids):
+        raise ContractError("Market context selectors differ from the frozen contract")
+    return value
 
 
 @dataclass(frozen=True)
@@ -400,6 +433,12 @@ def _quote(rows):
         last = _number(row, "last", positive=True)
         if last is not None:
             result["last_mid_return"] = last / mid - 1
+        depth_bid, depth_ask = (_number(row, side + "_depth_volume", nonnegative=True) for side in ("bid", "ask"))
+        if depth_bid is not None and depth_ask is not None and depth_bid + depth_ask > 0:
+            result["book_depth_imbalance"] = (depth_bid - depth_ask) / (depth_bid + depth_ask)
+        bid_levels, ask_levels = (_number(row, side + "_depth_levels", positive=True) for side in ("bid", "ask"))
+        if bid_levels is not None and ask_levels is not None:
+            result["log_book_depth_levels"] = math.log1p(bid_levels + ask_levels)
         return result
     return {}
 
@@ -431,7 +470,7 @@ def _prices(rows, *, trades):
             "price_return": observations[-1][2] / observations[0][1] - 1}
 
 
-def _options(rows, *, incremental_volume=False):
+def _options(rows, *, incremental_volume=False, cumulative_stream=False):
     # One latest causal observation per contract; repeated quote updates must
     # not inflate cross-sectional option counts or cumulative daily volume.
     latest = {}
@@ -454,20 +493,32 @@ def _options(rows, *, incremental_volume=False):
     # bounded bar volume are incremental observations within the source window.
     for _, row in (rows if incremental_volume else latest.values()):
         side = str(row.get("option_type", "")).upper()
-        volume = _number(row, "volume", nonnegative=True)
+        if cumulative_stream:
+            side = {"P": "PUT", "C": "CALL"}.get(side, side)
+        volume = _number(row, *(('day_volume', 'volume') if cumulative_stream else ('volume',)), nonnegative=True)
         if side in volumes and volume is not None:
             volumes[side].append(volume)
     if all(volumes.values()):
         result["put_call_volume_log_ratio"] = math.log1p(sum(volumes["PUT"])) - math.log1p(sum(volumes["CALL"]))
+    # The exact selected source's observed contracts only. A partial book is
+    # neither the full chain nor an option-market-wide liquidity estimate.
+    quote_values = [_quote([item]) for item in latest.values()]
+    for source, target in (("relative_spread", "relative_spread_median"),
+                           ("depth_imbalance", "top_depth_imbalance_median"),
+                           ("book_depth_imbalance", "book_depth_imbalance_median")):
+        values = [value[source] for value in quote_values if source in value]
+        if values:
+            result[target] = median(values)
     return result
 
 
-def _fundamentals(rows, *, cutoff):
+def _fundamentals(rows, *, cutoff, version=LEGACY_FEATURE_VERSION, schema=None):
     # Latest actually known value for each metric. This never reassigns current
     # financials to their old fiscal period as an availability timestamp.
     result = {}
+    candidates = defaultdict(list)
     ordered = sorted(rows, key=lambda item: (str(item[1].get("period_end", item[1].get("date", ""))), item[0]))
-    for _, row in ordered:
+    for event, row in ordered:
         direct = {"earnings_yield": _number(row, "earnings_yield", "earningsYield"),
                   "debt_equity": _number(row, "debt_equity", "debtToEquity", "debtEquityRatio"),
                   "profit_margin": _number(row, "profit_margin", "netProfitMargin", "netProfitMarginTTM"),
@@ -485,6 +536,82 @@ def _fundamentals(rows, *, cutoff):
         if direct["analyst_bullish_fraction"] is not None and direct["analyst_bullish_fraction"] > 1:
             direct["analyst_bullish_fraction"] = None
         result.update({k: v for k, v in direct.items() if v is not None})
+        if version == FEATURE_VERSION:
+            # Source-specific same-record fields. Never join a current balance
+            # sheet to a different income period to manufacture a ratio.
+            extra = {}
+            shares = _number(row, "float_shares", "floatShares", positive=True)
+            outstanding = _number(row, "outstanding_shares", "outstandingShares", positive=True)
+            if shares is not None:
+                extra["log_float_shares"] = math.log1p(shares)
+            if outstanding is not None:
+                extra["log_outstanding_shares"] = math.log1p(outstanding)
+            if shares is not None and outstanding is not None and shares <= outstanding:
+                extra["free_float_fraction"] = shares / outstanding
+            aliases = {
+                "eps": ("eps",), "diluted_eps": ("eps_diluted", "epsDiluted", "dilutedEPS"),
+                "revenue_growth": ("growth_revenue", "growthRevenue"),
+                "operating_cash_flow_growth": ("growth_operating_cash_flow", "growthOperatingCashFlow"),
+                "free_cash_flow_growth": ("growth_free_cash_flow", "growthFreeCashFlow"),
+            }
+            for name, keys in aliases.items():
+                value = _number(row, *keys)
+                if value is not None:
+                    extra[name] = value
+            for name, numerator, denominator in (
+                ("profit_margin", ("net_income", "netIncome"), ("revenue",)),
+                ("debt_equity", ("total_debt", "totalDebt"), ("total_stockholders_equity", "totalStockholdersEquity")),
+                ("cash_assets_fraction", ("cash_and_cash_equivalents", "cashAndCashEquivalents"), ("total_assets", "totalAssets")),
+            ):
+                top = _number(row, *numerator)
+                bottom = _number(row, *denominator, positive=name != "debt_equity")
+                if top is not None and bottom not in (None, 0):
+                    value = top / bottom
+                    if name != "cash_assets_fraction" or 0 <= value <= 1:
+                        extra[name] = value
+            for name, keys in (
+                ("operating_cash_flow", ("operating_cash_flow", "operatingCashFlow")),
+                ("free_cash_flow", ("free_cash_flow", "freeCashFlow")),
+                ("capital_expenditure", ("capital_expenditure", "capitalExpenditure")),
+            ):
+                value = _number(row, *keys)
+                if value is not None:
+                    extra["signed_log_" + name] = math.copysign(math.log1p(abs(value)), value)
+            for name, keys in (
+                ("overall", ("overall_score", "overallScore")),
+                ("dcf", ("discounted_cash_flow_score", "discountedCashFlowScore")),
+                ("roe", ("return_on_equity_score", "returnOnEquityScore")),
+                ("roa", ("return_on_assets_score", "returnOnAssetsScore")),
+                ("debt_equity", ("debt_to_equity_score", "debtToEquityScore")),
+                ("pe", ("price_to_earnings_score", "priceToEarningsScore")),
+                ("pb", ("price_to_book_score", "priceToBookScore")),
+            ):
+                value = _number(row, *keys, nonnegative=True)
+                if value is not None:
+                    extra[name + "_rating_score"] = value
+            for period, native, snake in (("month", "lastMonth", "last_month"),
+                    ("quarter", "lastQuarter", "last_quarter"), ("year", "lastYear", "last_year"),
+                    ("all_time", "allTime", "all_time")):
+                average = _number(row, native + "AvgPriceTarget", snake + "_avg_price_target", positive=True)
+                count = _number(row, native + "Count", snake + "_count", nonnegative=True)
+                if count is not None and not count.is_integer():
+                    count = None
+                if count is not None:
+                    extra["target_" + period + "_count"] = count
+                if average is not None and count != 0:
+                    extra["target_" + period + "_average"] = average
+            key = (str(row.get("period_end", row.get("date", ""))), event)
+            for name, value in {**{k:v for k,v in direct.items() if v is not None}, **extra}.items():
+                candidates[name].append((key, value))
+    if version == FEATURE_VERSION:
+        result = {}
+        for name, values in candidates.items():
+            latest = max(key for key, _ in values)
+            observed = {value for key, value in values if key == latest}
+            # A conflicting latest revision is unavailable. An older value or
+            # deterministic row ordering cannot resolve provider disagreement.
+            if len(observed) == 1:
+                result[name] = observed.pop()
     estimates = []
     for event, row in rows:
         try:
@@ -502,6 +629,8 @@ def _fundamentals(rows, *, cutoff):
             values.discard(None)
             if len(values) == 1:
                 result[field] = values.pop()
+    if version == FEATURE_VERSION and schema == "sec_filings_search_symbol" and rows:
+        result["log_observed_filing_count"] = math.log1p(len(rows))
     return result
 
 
@@ -615,7 +744,7 @@ def _cross_asset(rows, *, schema, delivery=None):
 
 
 def build_market_context(snapshots: Iterable[Mapping], *, symbol: str, cutoff,
-                         source_ids: Mapping | None = None) -> MarketContext:
+                         source_ids: Mapping | None = None, contract=None) -> MarketContext:
     """Build a fixed feature vector using only receipts visible at ``cutoff``.
 
     ``source_ids`` freezes source IDs per kind; multiple sources receive distinct
@@ -624,7 +753,19 @@ def build_market_context(snapshots: Iterable[Mapping], *, symbol: str, cutoff,
     Selectors are part of the resulting fingerprint. Future receipts do not
     influence feature values, provenance, diagnostics, or that fingerprint.
     """
+    return _build_resolved_context(snapshots, symbol=symbol, cutoff=cutoff,
+        source_ids=source_ids, contract=_resolved_contract(source_ids, contract))
+
+
+def _build_resolved_context(snapshots, *, symbol, cutoff, source_ids, contract):
+    """Internal derivation after exact contract validation by the caller.
+
+    The dataset cache retains an independent validated contract and rejects
+    caller mutation on every reuse. Public callers always validate above.
+    Receipt scope, clocks, hashes and row eligibility remain checked here.
+    """
     cutoff = instant(cutoff)
+    partial_records = contract["version"] == FEATURE_VERSION
     if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,19}", symbol):
         raise ContractError("Explicit equity symbol required for market context")
     selectors = _selectors(source_ids)
@@ -685,10 +826,18 @@ def build_market_context(snapshots: Iterable[Mapping], *, symbol: str, cutoff,
                          snapshot_sha256=snapshot["snapshot_sha256"], status=status,
                          receipt_at=snapshot["receipt_at"], available_at=snapshot["available_at"],
                          dataset=snapshot.get("dataset"), schema=snapshot.get("schema"))
+            if partial_records:
+                entry.update(coverage_complete=status == "COMPLETE",
+                             records_received=len(snapshot.get("records", [])),
+                             coverage_status=status,
+                             coverage_evidence={key: deepcopy(value) for key, value in
+                                 (snapshot.get("evidence") or {}).items() if key in {
+                                     "mode", "completed", "coverage_claim", "omitted_scope_count",
+                                     "configured_symbols", "service_results", "excluded_option_scopes"}})
             measured[f"{prefix}_receipt_age_seconds"] = age
             if age > _MAX_RECEIPT_AGE[kind]:
                 entry["status"] = "STALE_RECEIPT"
-            elif status in _SUCCESS:
+            elif status in _SUCCESS or (partial_records and status == "PARTIAL"):
                 rows, excluded = _rows(snapshot, symbol=symbol, cutoff=cutoff, kind=kind)
                 entry.update(records_used=len(rows), exclusions=excluded)
                 available_flags[prefix] = float(bool(rows) or status == "EMPTY")
@@ -697,8 +846,10 @@ def build_market_context(snapshots: Iterable[Mapping], *, symbol: str, cutoff,
                     if kind == "stock_quote": values = _quote(rows)
                     elif kind in {"stock_trades", "stock_bars"}: values = _prices(rows, trades=kind == "stock_trades")
                     elif kind in {"options", "opra_options"}: values = _options(rows,
-                        incremental_volume=kind == "opra_options" and snapshot.get("schema") in {"trades", "ohlcv-1s", "ohlcv-1m", "ohlcv-1h", "ohlcv-1d"})
-                    elif kind == "fundamentals": values = _fundamentals(rows, cutoff=cutoff)
+                        incremental_volume=kind == "opra_options" and snapshot.get("schema") in {"trades", "ohlcv-1s", "ohlcv-1m", "ohlcv-1h", "ohlcv-1d"},
+                        cumulative_stream=partial_records and snapshot.get("schema") == "LEVELONE_OPTIONS")
+                    elif kind == "fundamentals": values = _fundamentals(rows, cutoff=cutoff,
+                        version=contract["version"], schema=snapshot.get("schema"))
                     elif kind == "events": values = _events(rows, cutoff)
                     elif kind == "technical": values = _technical(rows)
                     elif kind == "macro": values = _macro(rows, cutoff=cutoff)
@@ -707,13 +858,13 @@ def build_market_context(snapshots: Iterable[Mapping], *, symbol: str, cutoff,
         evidence.append(entry)
     if any(not math.isfinite(value) for value in measured.values()):
         raise ContractError("Context calculation produced nonfinite values")
-    value_names, feature_names = _names(selectors)
+    value_names, feature_names = _names(selectors, contract["version"])
     values = tuple(float(measured.get(name, 0.0)) for name in value_names)
     values += tuple(float(name not in measured) for name in value_names)
     values += tuple(available_flags[prefix] for _, _, prefix in slots)
     values += tuple(partial_flags[prefix] for _, _, prefix in slots)
     context = MarketContext(symbol, cutoff.isoformat(), feature_names, values,
-                            tuple(evidence), "", tuple(sorted(selectors.items())))
+                            tuple(evidence), "", tuple(sorted(selectors.items())), contract["version"])
     return replace(context, snapshot_sha256=_hash(context.snapshot))
 
 
@@ -756,7 +907,7 @@ def _indexed_candidates(index, cutoff):
 
 
 def augment_dataset(dataset, snapshots: Iterable[Mapping], *, training_decision_at: Mapping,
-                    inference_cutoff, source_ids: Mapping | None = None, cache_path=None):
+                    inference_cutoff, source_ids: Mapping | None = None, cache_path=None, contract=None):
     """Return a new Dataset, with per-row causal context appended explicitly.
 
     Historical cutoffs must be the reference's actual feature/decision receipts,
@@ -765,11 +916,12 @@ def augment_dataset(dataset, snapshots: Iterable[Mapping], *, training_decision_
     alter labels, or relax any training/calibration/support requirement.
     """
     snapshots = tuple(snapshots)
+    contract = _resolved_contract(source_ids, contract)
     if any(name.startswith("ctx_") for name in dataset.feature_names):
         raise ContractError("Dataset already contains market context")
     decisions = {instant(k): instant(v) for k, v in training_decision_at.items()}
     index = _snapshot_index(snapshots, symbol=dataset.inference["symbol"], source_ids=source_ids)
-    context_values = np.empty((len(dataset.training_reference_at), len(_names(_selectors(source_ids))[1])), dtype=float)
+    context_values = np.empty((len(dataset.training_reference_at), len(contract["feature_names"])), dtype=float)
     context_hashes, rows_with_source = [], 0
     manager = nullcontext()
     if cache_path is not None:
@@ -785,24 +937,23 @@ def augment_dataset(dataset, snapshots: Iterable[Mapping], *, training_decision_
             if not reference + timedelta(minutes=15) <= decision < reference + timedelta(minutes=30):
                 raise ContractError("Historical context decision must follow reference close and precede target open")
             context = builder(_indexed_candidates(index, decision), symbol=dataset.inference["symbol"],
-                              cutoff=decision, source_ids=source_ids)
+                              cutoff=decision, source_ids=source_ids, contract=contract)
             context_values[row_index] = context.values
             context_hashes.append(context.snapshot_sha256)
             rows_with_source += int(any(e.get("records_used") for e in context.source_evidence))
         inference = builder(_indexed_candidates(index, inference_cutoff), symbol=dataset.inference["symbol"],
-                            cutoff=inference_cutoff, source_ids=source_ids)
+                            cutoff=inference_cutoff, source_ids=source_ids, contract=contract)
     if instant(inference_cutoff) < instant(dataset.inference["information_available_at"]):
         raise ContractError("Inference context cutoff precedes known base feature availability")
     names = (*dataset.feature_names, *inference.feature_names)
     X = np.column_stack((dataset.X, context_values))
     inference_X = np.column_stack((dataset.inference_X, np.asarray([inference.values], dtype=float)))
-    contract = market_context_contract(source_ids)
     snapshot = {**deepcopy(dataset.inference["snapshot"]),
                 "feature_names": list(names), "features": inference_X[0].tolist(),
                 "market_context": inference.snapshot, "market_context_sha256": inference.snapshot_sha256}
     info = deepcopy(dataset.inference)
     info.update(features=inference_X[0].tolist(), snapshot=snapshot,
-                snapshot_sha256=_hash(snapshot), market_context_feature_version=FEATURE_VERSION,
+                snapshot_sha256=_hash(snapshot), market_context_feature_version=contract["version"],
                 market_context_sha256=inference.snapshot_sha256)
     receipts = [instant(e["available_at"]) for e in inference.source_evidence if e.get("records_used")]
     if receipts:

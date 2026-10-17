@@ -282,6 +282,8 @@ def _partition(train, validation, *, X, y, references, targets, availability, se
     reasons.extend(_class_gate(y[validation], config.min_class_count, "holdout" if holdout else "validation"))
     evidence = {"session": sessions[validation[0]], "training_cutoff": fit_cutoff.isoformat(),
                 "training_rows": len(capped), "validation_rows": len(validation),
+                "training_class_counts": {str(label): int((y[capped] == label).sum()) for label in (0, 1)},
+                "validation_class_counts": {str(label): int((y[validation] == label).sum()) for label in (0, 1)},
                 "overlap_or_unavailable_rows_purged": len(train) - len(available_train),
                 "row_budget_excluded": len(available_train) - len(capped),
                 "training_first_reference": references[capped[0]].isoformat() if len(capped) else None,
@@ -343,6 +345,143 @@ def _baseline_predictions(partitions, y):
         priors.append(np.full(len(validation), prevalence))
         neutral.append(np.full(len(validation), 0.5))
     return {"training_prevalence": np.concatenate(priors), "neutral_0_5": np.concatenate(neutral)}
+
+
+def assess_frozen_ensemble(dataset, *, models, as_of=None, config=None, session_ids=None,
+                           session_timezone="America/Los_Angeles", holdout_already_examined=True):
+    """Assess every member of an existing recipe without selecting replacements.
+
+    Unlike candidate selection, this path measures the exact installed manual
+    ensemble even when one member would not make a supervised shortlist. Sparse
+    validation partitions retain descriptive scores and their failed support
+    gates. Training/calibration gates still prevent unsupported fits. A spent
+    holdout can diagnose a repaired pipeline but cannot qualify its recipe; this
+    result is never an installable selection report.
+    """
+    if type(holdout_already_examined) is not bool:
+        raise ContractError("Holdout examination history must be explicit boolean")
+    config = config if isinstance(config, SelectionConfig) else SelectionConfig(**(config or {}))
+    specs = tuple(freeze_model_spec(spec) for spec in configured_models(models))
+    if len(specs) > config.max_candidates or any(spec.probability_calibration != "sigmoid" for spec in specs):
+        raise ContractError("Frozen assessment requires bounded explicitly calibrated members")
+    # Do not silently impose a different history cap on the installed recipe.
+    if any(spec.training_max_rows is None or spec.training_max_rows > config.max_training_rows for spec in specs):
+        raise ContractError("Frozen assessment budget must cover each recipe's explicit history cap")
+    data = _arrays(dataset, as_of, session_ids, session_timezone)
+    X, y, references, targets, availability, sessions, eligible, cutoff = data
+    ordered = list(dict.fromkeys(sessions[i] for i in eligible))
+    recipe = dataset.manifest.get("manual_model_recipe", {})
+    if recipe.get("models") is not None and [asdict(spec) for spec in specs] != [
+            asdict(freeze_model_spec(spec)) for spec in configured_models(recipe["models"])]:
+        raise ContractError("Exact manual assessment must use the dataset's frozen recipe members")
+    binding = {"symbol": dataset.inference.get("symbol"), "recipe_sha256": recipe.get("sha256"),
+        "manifest_sha256": _digest(dataset.manifest),
+        "source_history_sha256": _digest(dataset.manifest.get("source_history", {})),
+        "feature_contract_sha256": _digest({key: dataset.manifest.get(key) for key in
+            ("feature_version", "feature_policy", "label_provenance", "native_interval_contract", "market_context")}),
+        "feature_names_sha256": _digest(list(dataset.feature_names)), "feature_count": len(dataset.feature_names)}
+    data_hash = hashlib.sha256(X.tobytes() + y.tobytes() + json.dumps({
+        "binding": binding, "references": [value.isoformat() for value in references],
+        "targets": [value.isoformat() for value in targets],
+        "availability": [value.isoformat() for value in availability], "sessions": sessions}, sort_keys=True).encode()).hexdigest()
+    report = {"assessment_version": "intraday-frozen-ensemble-assessment-v1",
+        "assessment_kind": "exact_frozen_manual_ensemble_no_selection", "status": "insufficient_data",
+        "qualification": "not_established", "source_binding": binding, "dataset_sha256": data_hash,
+        "as_of": cutoff.isoformat(), "target_version": TARGET_VERSION, "config": asdict(config),
+        "models": [asdict(spec) for spec in specs], "partitions": [], "reasons": [],
+        "holdout_session": ordered[-1], "holdout_already_examined": holdout_already_examined,
+        "holdout_use": "diagnostic_only" if holdout_already_examined else "independent_fixed_recipe_gate",
+        "selected_specs": [], "policy_installation_authorized": False,
+        "availability_kinds": dataset.manifest.get("availability_kinds", []),
+        "historical_availability_limitation": ("Historical close availability is assumed where explicitly declared; no receipt was backdated."
+            if any(kind != "actual" for kind in dataset.manifest.get("availability_kinds", [])) else None)}
+    report["assessment_id"] = _digest({"data": data_hash, "models": report["models"],
+        "config": asdict(config), "holdout_already_examined": holdout_already_examined})
+    if len(ordered) < config.min_training_sessions + config.cv_folds + 1:
+        report["reasons"] = ["insufficient_chronological_sessions"]
+        return report
+    deadline = time.monotonic() + config.max_search_seconds
+    metric = lambda labels, p: probability_metrics(labels, p, extreme_probability=config.extreme_probability)
+    cv_parts, cv_probabilities, cv_labels = [], [], []
+    cv_member_probabilities = {spec.name: [] for spec in specs}
+    for session in ordered[-config.cv_folds - 1:]:
+        validation = np.asarray([i for i in eligible if sessions[i] == session], dtype=int)
+        train = np.asarray([i for i in eligible if references[i] < references[validation[0]]], dtype=int)
+        held = session == ordered[-1]
+        partition = _partition(train, validation, X=X, y=y, references=references, targets=targets,
+            availability=availability, sessions=sessions, config=config, holdout=held)
+        if (recipe and dataset.manifest.get("input_training_rows", len(X)) > len(X)
+                and len(partition[0]) < max(spec.training_max_rows for spec in specs)):
+            raise ContractError("Exact manual assessment requires enough uncapped history for every fold's recipe window")
+        entry = {**partition[2], "role": "holdout" if held else "development", "models": [],
+            "ensemble_metrics": None, "metric_reasons": [], "complete": False,
+            "scores_are_descriptive_only": held and holdout_already_examined or bool(partition[2]["gate_reasons"])}
+        entry["baselines"] = {name: metric(y[validation], p) for name, p in _baseline_predictions([partition], y).items()}
+        train_reasons = [reason for reason in entry["gate_reasons"] if reason.startswith("training")]
+        pieces = []
+        for spec in specs:
+            member = {"name": spec.name, "status": "not_fit", "metrics": None, "reasons": list(train_reasons)}
+            if not train_reasons:
+                try:
+                    p, fitted = _fit_predict(spec, partition, data, config, deadline, feature_names=dataset.feature_names)
+                    member.update(status="fitted", metrics=metric(y[validation], p), **fitted)
+                    member["reasons"] = _metric_gates(member["metrics"], entry["baselines"], config)
+                    pieces.append(p)
+                    if not held:
+                        cv_member_probabilities[spec.name].append(p)
+                except Exception as exc:
+                    member.update(status="insufficient_data" if isinstance(exc, InsufficientEvidenceError) else "failed",
+                        error={"type": type(exc).__name__, "message": str(exc)})
+            entry["models"].append(member)
+        entry["complete"] = len(pieces) == len(specs)
+        if entry["complete"]:
+            probability = np.mean(pieces, axis=0)
+            entry["ensemble_metrics"] = metric(y[validation], probability)
+            entry["metric_reasons"] = _metric_gates(entry["ensemble_metrics"], entry["baselines"], config)
+            if not held:
+                cv_parts.append(partition)
+                cv_probabilities.append(probability)
+                cv_labels.append(y[validation])
+        report["partitions"].append(entry)
+    reasons = [f"{part['session']}:{reason}" for part in report["partitions"] for reason in part["gate_reasons"]]
+    if not all(part["complete"] for part in report["partitions"]):
+        reasons.append("incomplete_frozen_ensemble")
+        reasons.extend(f"{part['session']}:{member['name']}:{member['error']['type']}:{member['error']['message']}"
+            for part in report["partitions"] for member in part["models"] if "error" in member)
+    if len(cv_parts) == config.cv_folds:
+        labels = np.concatenate(cv_labels)
+        report["development_metrics"] = metric(labels, np.concatenate(cv_probabilities))
+        report["development_baselines"] = {name: metric(labels, p) for name, p in _baseline_predictions(cv_parts, y).items()}
+        reasons.extend("development:" + reason for reason in _metric_gates(
+            report["development_metrics"], report["development_baselines"], config))
+        wins = sum(all(part["ensemble_metrics"]["brier"] < base["brier"] for base in part["baselines"].values())
+            for part in report["partitions"] if part["role"] == "development")
+        report["development_winning_folds"] = wins
+        if wins < math.ceil(config.min_winning_fold_fraction * config.cv_folds):
+            reasons.append("development:too_few_folds_improve_baseline")
+        report["development_members"] = []
+        for spec in specs:
+            member_metrics = metric(labels, np.concatenate(cv_member_probabilities[spec.name]))
+            member_reasons = _metric_gates(member_metrics, report["development_baselines"], config)
+            member_wins = sum(all(next(member for member in part["models"] if member["name"] == spec.name)
+                ["metrics"]["brier"] < base["brier"] for base in part["baselines"].values())
+                for part in report["partitions"] if part["role"] == "development")
+            if member_wins < math.ceil(config.min_winning_fold_fraction * config.cv_folds):
+                member_reasons.append("too_few_folds_improve_baseline")
+            report["development_members"].append({"name": spec.name, "metrics": member_metrics,
+                "winning_folds": member_wins, "reasons": member_reasons})
+            reasons.extend("development:" + spec.name + ":" + reason for reason in member_reasons)
+    held = report["partitions"][-1]
+    reasons.extend("holdout:" + reason for reason in held["metric_reasons"])
+    for member in held["models"]:
+        reasons.extend("holdout:" + member["name"] + ":" + reason for reason in member["reasons"])
+    report["reasons"] = sorted(set(reasons))
+    report["status"] = ("insufficient_data" if any(part["gate_reasons"] or any(
+        member["status"] == "insufficient_data" for member in part["models"]) for part in report["partitions"])
+        else "failed" if not all(part["complete"] for part in report["partitions"]) else "assessed")
+    report["qualification"] = ("not_qualified" if reasons else
+        "requires_new_independent_holdout" if holdout_already_examined else "fixed_recipe_gates_passed")
+    return report
 
 
 def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, session_ids=None,

@@ -298,6 +298,11 @@ def _construct_frozen_step(description, constructor):
 def _frozen_pipeline(spec, estimator):
     contract = spec.runtime_contract
     required = {"version", "estimator_class", "preprocessing", "calibrator", "dependency_versions"}
+    if "market_feature_projection" in contract:
+        from .feature_support import PROJECTION_POLICY
+        required.add("market_feature_projection")
+        if contract["market_feature_projection"] != PROJECTION_POLICY:
+            raise ContractError("Frozen market feature projection requires local review")
     if (set(contract) != required or contract["version"] != RUNTIME_CONTRACT_VERSION
             or contract["estimator_class"] != _constructor_identity(estimator)
             or contract["dependency_versions"] != _versions(spec)
@@ -345,6 +350,14 @@ def freeze_model_spec(spec):
                      runtime_contract=contract)
     build_estimator(frozen)
     return frozen
+
+
+def with_market_feature_projection(spec):
+    """Return an explicit local candidate; never mutate an installed recipe."""
+    from .feature_support import PROJECTION_POLICY
+    frozen = freeze_model_spec(spec)
+    contract = {**deepcopy(frozen.runtime_contract), "market_feature_projection": PROJECTION_POLICY}
+    return freeze_model_spec(replace(frozen, runtime_contract=contract))
 
 
 def purged_chronological_split(reference_at, target_close_at, *, fraction=0.2,
@@ -488,7 +501,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
         base_rows = len(features)
     estimator = build_estimator(spec)
     from .feature_support import attach_market_support
-    estimator = attach_market_support(estimator, feature_names)
+    estimator = attach_market_support(estimator, feature_names,
+        projection=spec.runtime_contract.get("market_feature_projection") if spec.runtime_contract else None)
     if spec.family == "knn":
         requested = evidence["effective_parameters"]["n_neighbors"]
         effective = min(requested, base_rows)

@@ -176,16 +176,23 @@ def _validate_recipe(value, *, pc, symbols):
                     or any(contract != _native_feature_contract() for contract in selected.values())):
                 raise ContractError("Native manual recipe requires explicit local symbol feature contracts")
         if value["schema_version"] == MARKET_SCHEMA_VERSION:
-            from .market_context import market_context_contract
+            from .market_context import validate_market_context_contract
             required.add("market_context_contract")
             required.add("market_collection_configuration_sha256")
             context = value.get("market_context_contract")
             if (not isinstance(context, dict)
-                    or context != market_context_contract(context.get("source_ids"))
+                    or context != validate_market_context_contract(context)
                     or set(selected) != set(symbols)
                     or not isinstance(value.get("market_collection_configuration_sha256"), str)
                     or not re.fullmatch(r"[0-9a-f]{64}", value["market_collection_configuration_sha256"])):
                 raise ContractError("Market context requires a frozen source contract and native observations for every local symbol")
+            if "historical_recovery_contract" in value:
+                from .native_interval import RECOVERY_CONTRACT
+                from .market_context import FEATURE_VERSION as CONTEXT_VERSION
+                required.add("historical_recovery_contract")
+                if (value["historical_recovery_contract"] != RECOVERY_CONTRACT
+                        or context["version"] != CONTEXT_VERSION):
+                    raise ContractError("Historical recovery requires an explicit supported local context contract")
         contract = _feature_contract()
         if (set(value) != required or value["selection"] != SELECTION
                 or value["pc"] != pc or value["symbols"] != list(symbols)
@@ -266,7 +273,7 @@ def native_interval_symbols_for_runtime(model_runtime):
 
 
 def migrate_market_context_recipe(value, *, pc, symbols, source_ids, collection_configuration_sha256,
-                                  installed_at, authority_reference):
+                                  installed_at, authority_reference, historical_recovery_contract=None):
     """Explicit local population/feature migration; retain fitted model settings and gates.
 
     No current context is backdated into historical training. Missing context has
@@ -283,6 +290,8 @@ def migrate_market_context_recipe(value, *, pc, symbols, source_ids, collection_
         "symbol_feature_contracts": {symbol: _native_feature_contract() for symbol in symbols},
         "market_collection_configuration_sha256": collection_configuration_sha256,
         "market_context_contract": market_context_contract(source_ids)}
+    if historical_recovery_contract is not None:
+        revised["historical_recovery_contract"] = historical_recovery_contract
     revised.pop("sha256", None)
     revised["sha256"] = _sha(revised)
     return _validate_recipe(revised, pc=pc, symbols=symbols)
@@ -486,6 +495,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
     feature_contract = deepcopy(recipe.get("feature_contract", _feature_contract()))
     symbol_contracts = deepcopy(recipe.get("symbol_feature_contracts", {}))
     context_contract = deepcopy(recipe.get("market_context_contract"))
+    recovery_contract = recipe.get("historical_recovery_contract")
     expected_features = (tuple(FEATURE_NAMES) + tuple(context_contract["feature_names"])
                          if context_contract is not None else tuple(FEATURE_NAMES))
     frozen_scope = deepcopy(recipe.get("dataset_scope"))
@@ -494,7 +504,10 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
     if frozen_scope is not None:
         selected_config = replace(selected_config, **frozen_scope).validate()
 
-    def dataset_builder(candles, *, cutoff, reference_at, lookback_days=None, synthetic_policy="exclude"):
+    def dataset_builder(candles, *, cutoff, reference_at, lookback_days=None, synthetic_policy="exclude",
+                        _assessment=False, _preparation=False):
+        if _assessment and _preparation:
+            raise ContractError("Assessment history and non-trading preparation are distinct modes")
         if synthetic_policy != "exclude":
             raise ContractError("Observed manual recipe cannot admit synthetic labels or feature candles")
         if feature_contract != _feature_contract():
@@ -511,12 +524,12 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if symbol in symbol_contracts:
             from .native_interval import build_native_interval_dataset
             dataset = build_native_interval_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-                                                     lookback_days=lookback_days)
+                lookback_days=lookback_days, recovery_contract=recovery_contract, preparation_only=_preparation)
         else:
             if candles is not None and "native_interval_contract" in candles and candles.native_interval_contract.notna().any():
                 raise ContractError("A default symbol cannot consume the opt-in native population")
             dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-                                             lookback_days=lookback_days)
+                lookback_days=lookback_days, preparation_only=_preparation)
         if any(dataset.manifest.get(k) != selected_contract[k] for k in
                ("feature_version", "feature_policy", "label_provenance")):
             raise ContractError("Manual dataset differs from its frozen per-symbol feature contract")
@@ -529,8 +542,14 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         input_rows_before_decision_filter = len(dataset.y)
         decisions = None
         if context_contract is not None:
-            decisions = {instant(row["opened_at"]): instant(row["available_at"])
-                         for row in candles.to_dict("records")}
+            # A recovered historical observation is acquired now and can only
+            # train after that receipt. Its reconstructed feature cutoff names
+            # the historical reference close, never today's receipt. Native
+            # contract validation proves the tag, cutoff and retained receipts.
+            decisions = {instant(row["opened_at"]): instant(
+                row["feature_cutoff_at"] if recovery_contract is not None
+                    and row.get("availability_kind") == "actual_historical_recovery"
+                else row["available_at"]) for row in candles.to_dict("records")}
             causal = np.asarray([instant(reference) + pd.Timedelta(minutes=15)
                                  <= decisions[instant(reference)]
                                  < instant(reference) + pd.Timedelta(minutes=30)
@@ -543,14 +562,23 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
                 training_reference_at=dataset.reference_at[causal],
                 target_close_at=dataset.target_close_at[causal])
         input_rows = len(dataset.y)
-        dataset = replace(dataset, X=dataset.X[-max_rows:], y=dataset.y[-max_rows:],
+        runtime_dataset = replace(dataset, X=dataset.X[-max_rows:], y=dataset.y[-max_rows:],
             label_available_at=dataset.label_available_at[-max_rows:],
             training_reference_at=dataset.reference_at[-max_rows:],
             target_close_at=dataset.target_close_at[-max_rows:])
-        support = _training_support(dataset.y, dataset.reference_at, dataset.target_close_at,
-            dataset.label_available_at, cutoff=cutoff, support=support_contract,
+        # Chronological assessment needs earlier rows for each fold's own
+        # 4096-row fit window. Capping once at the final decision silently
+        # shortens earlier fits. Keep a bounded assessment history separately;
+        # the runtime trainer below explicitly rejects it.
+        history_limit = max(8192, max_rows) if _assessment else max_rows
+        dataset = replace(dataset, X=dataset.X[-history_limit:], y=dataset.y[-history_limit:],
+            label_available_at=dataset.label_available_at[-history_limit:],
+            training_reference_at=dataset.reference_at[-history_limit:],
+            target_close_at=dataset.target_close_at[-history_limit:]) if _assessment else runtime_dataset
+        support = _training_support(runtime_dataset.y, runtime_dataset.reference_at, runtime_dataset.target_close_at,
+            runtime_dataset.label_available_at, cutoff=cutoff, support=support_contract,
             diagnostic_context={"symbol": dataset.inference.get("symbol"),
-                "reference_at": instant(reference_at).isoformat(), "feature_shape": list(dataset.X.shape),
+                "reference_at": instant(reference_at).isoformat(), "feature_shape": list(runtime_dataset.X.shape),
                 "inference_shape": list(dataset.inference_X.shape), "input_training_rows": input_rows,
                 "recipe_sha256": recipe["sha256"], "feature_version": dataset.manifest.get("feature_version"),
                 "source_dataset": dataset.inference.get("source_dataset"),
@@ -569,6 +597,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             dataset = augment_dataset(dataset, snapshots,
                 training_decision_at={reference: decisions[instant(reference)] for reference in dataset.reference_at},
                 inference_cutoff=cutoff, source_ids=context_contract["source_ids"],
+                contract=context_contract,
                 cache_path=Path(datastore) / "intraday" / pc.lower() / "market-data" / f"context-cache-{symbol}.sqlite3")
             if tuple(dataset.feature_names) != expected_features:
                 raise ContractError("Market context feature order differs from the frozen local recipe")
@@ -579,14 +608,36 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             "context_decision_rows_excluded": input_rows_before_decision_filter - input_rows,
             "first_training_reference": dataset.reference_at[0].isoformat(),
             "last_training_reference": dataset.reference_at[-1].isoformat(),
-            "training_window": {"policy": "newest_causal_rows", "max_rows": max_rows,
+            "training_window": {"policy": "assessment_history_per_fold_fit_cap" if _assessment else "newest_causal_rows",
+                                "max_rows": history_limit,
                                 "excluded_rows": input_rows - len(dataset.y)}}
+        if _assessment:
+            manifest.update(assessment_only=True, assessment_fit_max_rows=max_rows,
+                assessment_support_scope="latest_runtime_suffix; every assessment fold must independently recheck support")
         return replace(dataset, manifest=manifest)
 
-    def trainer(X, y, inference_X, *, config=None, dataset_metadata=None, **kwargs):
+    def assessment_dataset_builder(candles, **kwargs):
+        return dataset_builder(candles, **kwargs, _assessment=True)
+
+    dataset_builder.for_assessment = assessment_dataset_builder
+
+    def preparation_dataset_builder(candles, **kwargs):
+        return dataset_builder(candles, **kwargs, _preparation=True)
+
+    dataset_builder.for_preparation = preparation_dataset_builder
+
+    def trainer(X, y, inference_X, *, config=None, dataset_metadata=None, preparation_only=False, **kwargs):
         if tuple(asdict(spec) for spec in configured_models(config)) != tuple(asdict(spec) for spec in specs):
             raise ContractError("Manual recipe trainer received different model specifications")
         metadata = dataset_metadata or {}
+        from .data import PREPARATION_CONTRACT
+        if (type(preparation_only) is not bool
+                or bool(metadata.get("preparation_only")) != preparation_only
+                or preparation_only and (metadata.get("preparation_contract") != PREPARATION_CONTRACT
+                                         or metadata.get("executable_forecast") is not False)):
+            raise ContractError("Non-trading preparation requires explicit fit mode; it cannot train a runtime forecast")
+        if metadata.get("assessment_only"):
+            raise ContractError("Assessment history requires per-fold fits; it cannot train a runtime forecast")
         selected_contract = symbol_contracts.get(metadata.get("manual_recipe_symbol"), feature_contract)
         if symbol_contracts and metadata.get("manual_recipe_symbol") not in symbols:
             raise ContractError("Scoped manual recipe requires exact dataset symbol evidence")
@@ -613,6 +664,8 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
                           kwargs.get("label_available_at", ()), cutoff=kwargs.get("training_cutoff"),
                           support=support_contract)
         result = fit_ensemble(X, y, inference_X, config=specs, dataset_metadata=metadata, **kwargs)
+        if preparation_only:
+            result.update(preparation_only=True, executable_forecast=False)
         outputs = result.get("outputs", [])
         if (result.get("configured_count") != len(specs) or result.get("successful_count") != len(specs)
                 or result.get("complete") is not True or result.get("consensus_status") != "full"
@@ -631,5 +684,6 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
 
     dataset_builder.native_interval_symbols = tuple(symbol for symbol in symbols if symbol in symbol_contracts)
     dataset_builder.market_context_contract = deepcopy(context_contract)
+    dataset_builder.historical_recovery_contract = recovery_contract
     dataset_builder.market_collection_configuration_sha256 = recipe.get("market_collection_configuration_sha256")
     return selected_config, {"dataset_builder": dataset_builder, "trainer": trainer}

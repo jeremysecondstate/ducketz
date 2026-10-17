@@ -198,15 +198,19 @@ def quote_record(raw, symbol, *, event_at=None):
 
 class SchwabAdapter:
     def __init__(self, session_factory=None, *, root=None, requests=()):
+        import threading
         self.session_factory = session_factory
         self.session = None
+        self.session_lock = threading.Lock()
         from .market_collection_schwab_stream import SchwabStreamCollector
         self.stream = SchwabStreamCollector(root, requests) if root is not None else None
 
     def __call__(self, request, start, end, max_records):
         if self.session is None:
-            from datafetching.schwab_fetch import DataFetchingSchwabSession
-            self.session = (self.session_factory or DataFetchingSchwabSession)()
+            with self.session_lock:
+                if self.session is None:
+                    from datafetching.schwab_fetch import DataFetchingSchwabSession
+                    self.session = (self.session_factory or DataFetchingSchwabSession)()
         symbol, session = request.symbol, self.session
         if request.endpoint == "stream":
             if self.stream is None:

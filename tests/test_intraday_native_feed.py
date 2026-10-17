@@ -212,5 +212,8 @@ def test_manual_start_uses_latched_symbol_recipe_for_history_and_feed(tmp_path, 
     result = live_session.run_manual(**args)
     assert result["status"] == "STOPPED"
     assert selections == [{}]
-    assert loads == [("native" if selected else "legacy", "DOCU", {"source_dataset": "EQUS.MINI"})]
+    expected = {"source_dataset": "EQUS.MINI"}
+    if selected:
+        expected.update(pc="Scout", recovery_contract=None)
+    assert loads == [("native" if selected else "legacy", "DOCU", expected)]
     assert feeds[0]["native_interval_symbols"] == (("DOCU",) if selected else ())

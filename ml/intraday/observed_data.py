@@ -30,6 +30,7 @@ def build_observed_dataset(
     cutoff,
     reference_at,
     lookback_days: float | None = None,
+    preparation_only: bool = False,
 ) -> Dataset:
     """Build a distinct observed-only research dataset without changing originals.
 
@@ -68,6 +69,7 @@ def build_observed_dataset(
         reference_at=reference,
         lookback_days=lookback_days,
         synthetic_policy="exclude",
+        preparation_only=preparation_only,
     )
 
     provenance = {

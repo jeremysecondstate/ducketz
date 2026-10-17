@@ -9,7 +9,6 @@ receipt clocks. One transaction per dataset avoids syncing every reference.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
-from dataclasses import asdict
 import hashlib
 import json
 import math
@@ -18,14 +17,14 @@ import sqlite3
 import zlib
 
 from .market_context import (
-    MarketContext, _hash, _json, _selectors, build_market_context, instant,
-    market_context_contract, snapshot_digest,
+    MarketContext, _hash, _json, _selectors, _build_resolved_context, instant,
+    _resolved_contract, snapshot_digest,
 )
 from .prediction import ContractError
 
 # Do not reuse vectors produced before explicit observation-marker/positive-
 # volume admission. Original immutable provider receipts are retained.
-VERSION = "intraday-exact-causal-context-cache-v2"
+VERSION = "intraday-exact-causal-context-cache-v4"
 MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
 MAX_DECODED_BYTES = 16 * 1024 * 1024
 
@@ -39,6 +38,25 @@ class ContextCache(AbstractContextManager):
         self.hits = self.misses = self.invalid_entries = 0
         self._contracts = {}
         self._lazy_refs = {}
+
+    def _contract(self, source_ids, contract, selectors):
+        # Keep the caller alive, so an id cannot be reused during this dataset.
+        # Equality against the validated independent copy detects nested edits
+        # without rebuilding and deep-copying thousands of feature names per row.
+        selector_key = tuple(sorted(selectors.items()))
+        key = (id(contract), selector_key)
+        cached = self._contracts.get(key)
+        if cached is not None:
+            original, resolved, digest = cached
+            if contract is not original or contract is not None and contract != resolved:
+                raise ContractError("Market context contract changed during cache transaction")
+            return resolved, digest
+        resolved = _resolved_contract(source_ids, contract)
+        digest = _hash(resolved)
+        if len(self._contracts) >= 32:
+            raise ContractError("Too many context contracts in one dataset transaction")
+        self._contracts[key] = (contract, resolved, digest)
+        return resolved, digest
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -68,7 +86,7 @@ class ContextCache(AbstractContextManager):
             self.connection.close()
             self.connection = None
 
-    def build(self, snapshots, *, symbol, cutoff, source_ids=None):
+    def build(self, snapshots, *, symbol, cutoff, source_ids=None, contract=None):
         if self.connection is None:
             raise RuntimeError("ContextCache requires a dataset transaction")
         cutoff = instant(cutoff)
@@ -91,11 +109,7 @@ class ContextCache(AbstractContextManager):
             elif snapshot.get("snapshot_sha256") != snapshot_digest(snapshot):
                 raise ContractError("Market snapshot content hash mismatch")
             selected.append(snapshot)
-        selector_key = tuple(sorted(selectors.items()))
-        if selector_key not in self._contracts:
-            contract = market_context_contract(source_ids)
-            self._contracts[selector_key] = contract, _hash(contract)
-        contract, contract_sha256 = self._contracts[selector_key]
+        contract, contract_sha256 = self._contract(source_ids, contract, selectors)
         key = _hash({"cache_version": VERSION, "contract_sha256": contract_sha256, "symbol": symbol,
                      "cutoff": cutoff.isoformat(), "receipts": sorted(
                          (s["source_id"], s["snapshot_id"], s["snapshot_sha256"]) for s in selected)})
@@ -138,8 +152,12 @@ class ContextCache(AbstractContextManager):
                 materialized.append(payload)
             else:
                 materialized.append(snapshot)
-        result = build_market_context(materialized, symbol=symbol, cutoff=cutoff, source_ids=source_ids)
-        payload = zlib.compress(_json({"cache_key": key, "context": asdict(result)}).encode("utf-8"))
+        result = _build_resolved_context(materialized, symbol=symbol, cutoff=cutoff, source_ids=source_ids, contract=contract)
+        # JSON immediately serializes these owned immutable vectors. Recursive
+        # dataclass conversion copies thousands of scalar coordinates per miss
+        # without changing their bytes or providing an additional validation.
+        value = {name:getattr(result,name) for name in result.__dataclass_fields__}
+        payload = zlib.compress(_json({"cache_key": key, "context": value}).encode("utf-8"))
         if len(payload) <= MAX_COMPRESSED_BYTES:
             self.connection.execute("INSERT OR REPLACE INTO contexts VALUES (?,?,?)",
                 (key, payload, hashlib.sha256(payload).hexdigest()))
