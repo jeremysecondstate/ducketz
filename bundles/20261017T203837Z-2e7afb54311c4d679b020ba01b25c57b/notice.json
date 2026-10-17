@@ -1,0 +1,271 @@
+{
+  "author": "Scout",
+  "base_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/214",
+  "change_id": "20261017T203228Z-f35cb81dfc8f441fb2c8578b5617056e",
+  "changes": [
+    "Scout pipeline repair task: publish shared correctness source while preserving each PC's independently selected symbols, models and data population.",
+    "Stack this owned source repair on reviewed PR 214 at commit 7e34c70f46bc69e35ce993832c968ca4d4b4d362; the separate draft PR targets that source branch and does not imply main integration.",
+    "Keep current market collection responsive with separate transport concurrency, bounded fair option-book scope, exact partial-window settlement and precise provider failure classification.",
+    "Archive full option-chain bootstrap responses and scoped failures with actual acquisition clocks, immutable checksums and restart verification without additional provider requests.",
+    "Version per-record partial context eligibility and scoped option and book features; invalidate older derived caches without changing saved legacy contracts.",
+    "Project native fundamental values under the new context contract with per-field latest-period selection, explicit conflict rejection and original receipt clocks.",
+    "Add explicitly selected native recovery with immutable original payload verification, actual receipt clocks, conflict retention and later information availability.",
+    "Watch durable saved minute observations and persist non-trading preparation identities, missing inputs and restart-safe fit evidence independently for each symbol.",
+    "Assess exact frozen ensembles with chronological fold-specific history caps and spent-holdout diagnostics; offer locally selected training-only optional-feature projection.",
+    "Publish portable contracts and offline regressions only; no private recipe, raw observation, fitted model or operating assessment is included."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/feature_support.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_model_recipe.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection_adapters.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection_extended.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection_fmp_commodities.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_collection_schwab_stream.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_context.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/market_context_cache.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/minute_feed.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/model_selection.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/models.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/native_interval.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/native_recovery.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/observed_data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/preparation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "ml/intraday/preparation_watch.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_market_context.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_market_context_cache.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_partial_context.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_native_feed.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_preparation.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_preparation_watch.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_preparation_dataset.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_native_recovery.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_native_history_merge.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_frozen_assessment.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_assessment_history.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_dataset_metadata.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_clocks.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_market_projection.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_market_collection_pipeline_repair.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-pipeline-repair-contract.md"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "docs/development/intraday-native-recovery.md"
+    }
+  ],
+  "limitations": [
+    "Source is stacked on the exact reviewed published base; source publication, main integration, peer installation and running-process adoption remain separate facts.",
+    "Provider entitlement, fresh market activity and new independent validation are external observations; offline fixtures do not establish their availability or qualify any model.",
+    "Recovery, context migration and feature projection require explicit local recipe selection; adopting source does not import another PC's tuning or population.",
+    "Private records, recipes, fitted models, detailed evidence and machine operating bindings remain local."
+  ],
+  "peer_applicability": "Shared correctness source only. Each PC retains its own recipe, tuning, symbol and population choices; no private operating artifacts are included.",
+  "publication_scope": "Verified own source branch and stacked draft PR; no main integration or peer runtime adoption claimed.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/217",
+  "repository": "jeremysecondstate/ducketz",
+  "reviewed_base": "7e34c70f46bc69e35ce993832c968ca4d4b4d362",
+  "runtime_implications": "New invocations use installed source; existing processes retain loaded code. Local recipes remain explicit and independent. No trader start, restart, manual-stop change, subscription change or order action is included.",
+  "scope": "shared",
+  "source_branch": "codex/scout/20261017T203228Z-f35cb81dfc8f441fb2c8578b5617056e",
+  "source_commit": "3db2c6368140777cce4427747875c042cc6cb316",
+  "summary": "Repair causal intraday acquisition, recovery, preparation and assessment",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-17T20:36:31.355705Z",
+      "output_sha256": "de579b40c0a3a19507f44f76b977daa46f98366e6a5b1c6dacb7b51fcd8a06d0",
+      "result": "1036 passed, 1 skipped, 1985 warnings in 91.44s",
+      "started_at_utc": "2026-10-17T20:34:57.558270Z",
+      "targets": [
+        "tests/test_intraday_data.py",
+        "tests/test_intraday_observed_data.py",
+        "tests/test_intraday_native_interval.py",
+        "tests/test_intraday_native_recovery.py",
+        "tests/test_intraday_native_history_merge.py",
+        "tests/test_intraday_recovery_clocks.py",
+        "tests/test_intraday_market_context.py",
+        "tests/test_intraday_market_context_cache.py",
+        "tests/test_intraday_context_observation_quality.py",
+        "tests/test_intraday_partial_context.py",
+        "tests/test_intraday_preparation.py",
+        "tests/test_intraday_preparation_watch.py",
+        "tests/test_intraday_preparation_dataset.py",
+        "tests/test_intraday_market_recipe.py",
+        "tests/test_intraday_live_model_recipe.py",
+        "tests/test_intraday_market_collection.py",
+        "tests/test_intraday_market_collection_extended.py",
+        "tests/test_intraday_market_collection_fmp_context.py",
+        "tests/test_intraday_market_collection_history.py",
+        "tests/test_intraday_fmp_native_commodities.py",
+        "tests/test_intraday_market_collection_index.py",
+        "tests/test_intraday_market_collection_schwab_stream.py",
+        "tests/test_intraday_market_collection_pipeline_repair.py",
+        "tests/test_intraday_feature_support.py",
+        "tests/test_intraday_market_projection.py",
+        "tests/test_intraday_models.py",
+        "tests/test_intraday_model_contracts.py",
+        "tests/test_intraday_model_selection.py",
+        "tests/test_intraday_frozen_assessment.py",
+        "tests/test_intraday_assessment_history.py",
+        "tests/test_intraday_dataset_metadata.py",
+        "tests/test_intraday_sizing_population.py",
+        "tests/test_intraday_technical_sizing.py",
+        "tests/test_intraday_evaluation.py",
+        "tests/test_intraday_native_feed.py",
+        "tests/test_intraday_minute_persistence.py",
+        "tests/test_intraday_live_minute_provider.py",
+        "tests/test_intraday_minute_feed.py",
+        "tests/test_intraday_live_session.py",
+        "tests/test_intraday_runtime.py",
+        "tests/test_intraday_local_executor_dependencies.py"
+      ]
+    }
+  ]
+}
