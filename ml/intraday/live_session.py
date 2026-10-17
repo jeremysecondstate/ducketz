@@ -239,6 +239,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     Local copies of the history mapping keep scoring out of the training writer.
     """
     from .data import completed_15m_observation, synthetic_continuity_verified
+    from .native_interval import candle_matches_forecast
     if pc not in {"Atlas", "Scout"}:
         raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
@@ -264,7 +265,8 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
             observed = next((row for row in reversed(candidates)
                 if all(not forecast.get(field) or row.get(field) == forecast[field]
-                       for field in ("source_dataset", "source_id"))), None)
+                       for field in ("source_dataset", "source_id"))
+                and candle_matches_forecast(row, forecast)), None)
             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
                 store.observe(forecast,as_of=clock(),candle=observed)
                 continue
@@ -281,6 +283,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                 history = incoming.get(symbol)
                 match = history.frame.loc[history.frame.opened_at.eq(instant(forecast["target_open"]))]
                 match = match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                    and candle_matches_forecast(row, forecast)
                     and instant(row["available_at"]) <= instant(clock())
                     and row.get("availability_kind") == "actual"
                     and all(not forecast.get(field) or row.get(field) == forecast[field]
@@ -438,8 +441,9 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 status("STARTING")
             # Read overnight-installed recipes and compatibility at wake, not
             # when the operator first launches the sleeping process.
-            from .live_model_recipe import prepare_manual_models
+            from .live_model_recipe import prepare_manual_models, native_interval_symbols_for_runtime
             config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols)
+            native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
             if pc == "Atlas":
                 proof = compatibility()
                 if not proof["ready"]:
@@ -474,7 +478,11 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 if should_stop():
                     raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
                 try:
-                    histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
+                    if symbol in native_interval_symbols:
+                        from .native_interval import load_native_interval_history
+                        histories[symbol] = load_native_interval_history(root,symbol,source_dataset=config.source_dataset)
+                    else:
+                        histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
                 except Exception as exc:
                     store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
             if should_stop():
@@ -489,6 +497,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
                 pc=pc,symbols=symbols,session_id=session_id,clock=clock,
                 publication_offset_seconds=config.publication_offset_seconds,
+                native_interval_symbols=native_interval_symbols,
                 on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                                   stopped=should_stop,**model_runtime)

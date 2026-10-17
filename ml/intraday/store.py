@@ -274,6 +274,9 @@ class ShadowStore:
         if unavailable_reason:
             status = "unscorable"
         if candle is not None:
+            from .native_interval import candle_matches_forecast
+            if not candle_matches_forecast(candle, forecast):
+                raise ContractError("Outcome observation contract differs from the immutable forecast")
             if (candle["symbol"] != forecast["symbol"] or instant(candle["opened_at"]) != instant(forecast["target_open"]) or instant(candle["available_at"]) > now):
                 raise ContractError("Outcome must use the exact available target")
             if forecast.get("source_dataset") and candle.get("source_dataset")!=forecast["source_dataset"]:

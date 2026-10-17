@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 import re
+import sqlite3
 from typing import Protocol
 
 from .scout_journal import JournalStateError, ScoutJournal
@@ -20,6 +21,45 @@ from .scout_protocol import Grant, ProtocolError, Request
 
 class ClientGateError(ValueError):
     """An identity, clock, or final submission prerequisite did not pass."""
+
+
+def exception_details(error: BaseException) -> dict:
+    """Bounded diagnostic context without broker URLs, credentials or locals.
+
+    Arbitrary exception text can contain account IDs or authorization headers.
+    Retain exact standard SQLite messages only; stack locations, error codes and
+    causal types identify other failures without persisting private response text.
+    """
+    safe_sqlite_messages = {
+        "database is locked", "database table is locked", "database schema is locked",
+        "database or disk is full", "disk I/O error", "unable to open database file",
+        "attempt to write a readonly database", "cannot start a transaction within a transaction",
+        "cannot commit - no transaction is active", "database disk image is malformed",
+        "interrupted", "out of memory",
+    }
+    chain, seen, current = [], set(), error
+    while current is not None and id(current) not in seen and len(chain) < 4:
+        seen.add(id(current))
+        kind = type(current).__name__[:80]
+        message = "Exception text withheld; inspect error type and stack locations"
+        if isinstance(current, sqlite3.Error) and str(current) in safe_sqlite_messages:
+            message = str(current)
+        frames, trace = [], current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            # Basenames only: no local account paths or frame values.
+            frames.append(dict(file=code.co_filename.replace("\\", "/").rsplit("/", 1)[-1][:120],
+                               function=code.co_name[:80], line=trace.tb_lineno))
+            trace = trace.tb_next
+        item = dict(type=kind, message=message, frames=frames[-8:])
+        for name in ("sqlite_errorcode", "errno"):
+            value = getattr(current, name, None)
+            if type(value) is int:
+                item[name] = value
+        chain.append(item)
+        current = current.__cause__ if current.__cause__ is not None else (
+            None if current.__suppress_context__ else current.__context__)
+    return dict(chain=chain, chain_truncated=current is not None)
 
 
 class AuthorityTransport(Protocol):
@@ -139,20 +179,34 @@ class ScoutClient:
         grant = Grant.from_payload(record["grant"])
         self._gate(request, grant, final_gate)
         token = self.journal.claim_send(request_id)
+        stage, order_id = "final_gate", None
         try:
             self._gate(request, grant, final_gate)
+            stage = "send"
             order_id = send(request, grant)
+            stage = "validate_receipt"
             # Proposed sender contract: an exact positive decimal order ID,
             # never a placeholder, URL or guessed match. A production adapter
             # must validate the broker response/account before extracting it.
             if type(order_id) is not str or re.fullmatch(r"[1-9][0-9]{0,63}", order_id, re.ASCII) is None:
                 raise ProtocolError("Sender did not return a canonical exact order ID")
+            stage = "record_acceptance"
             return self.journal.outcome(request_id, token, order_id)
-        except Exception:
+        except Exception as original:
             # Even a callback which failed before sending might have opaque
             # side effects. Preserve ambiguity; never arm another submission.
             # Journal outcome(None) preserves an already accepted exact ID.
-            self.journal.outcome(request_id, token, None)
+            details = dict(stage=stage, original=exception_details(original))
+            if stage == "record_acceptance":
+                # This is the validated sender receipt, not a guessed match or
+                # proof that its journal write committed. Preserve it for exact
+                # recovery without changing the durable one-send fence.
+                details["returned_broker_order_id"] = order_id
+            try:
+                self.journal.outcome(request_id, token, None)
+            except Exception as persistence_error:
+                details["uncertainty_persistence_error"] = exception_details(persistence_error)
+            original.scout_submission_failure = details
             raise
         # A process exit/BaseException leaves SENDING durably fenced as well.
 
