@@ -277,15 +277,15 @@ def test_late_archive_acquisition_does_not_advance_information_cutoff(tmp_path, 
     acquired = pd.Timestamp("2026-09-24T01:00Z")
     part.manifest["published_at"] = acquired.isoformat()
     monkeypatch.setattr(archive, "discover_archive_partitions", lambda *a, **k: (part,))
-    with pytest.raises(ValueError, match="published after"):
-        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff)
+    earlier, earlier_files, _, _ = archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff)
+    assert earlier.empty and not earlier_files
     frame, _, _, _ = archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d",
         as_of=cutoff, evidence_available_at=acquired)
     assert len(frame) == 13
     assert (frame.timestamp + pd.Timedelta(days=1, minutes=5)).le(cutoff).all()
-    with pytest.raises(ValueError, match="published after"):
-        archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
-                             evidence_available_at=acquired - pd.Timedelta(seconds=1))
+    earlier, earlier_files, _, _ = archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
+                         evidence_available_at=acquired - pd.Timedelta(seconds=1))
+    assert earlier.empty and not earlier_files
     with pytest.raises(ValueError, match="precedes"):
         archive._load_schema(tmp_path, ["AAPL"], "ohlcv-1d", as_of=cutoff,
                              evidence_available_at=cutoff - pd.Timedelta(seconds=1))
@@ -307,7 +307,7 @@ def test_public_loader_preserves_causal_features_and_both_publication_clocks(tmp
     assert pd.to_datetime(result.sources.information_available_at, utc=True).le(cutoff).all()
     assert result.sources.source_session.max() == original.ts_event.iloc[22].date()
     assert all(path.read_bytes() == raw for path, raw in before.items())
-    with pytest.raises(ValueError, match="published after"):
+    with pytest.raises(ValueError, match="unavailable"):
         archive.load_archive_feature_sources(tmp_path, symbols=("AAPL",), available_at=cutoff)
 
 

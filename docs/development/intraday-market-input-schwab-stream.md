@@ -1,0 +1,50 @@
+# Current Schwab stream inputs
+
+`ml.intraday.market_input_schwab_stream.SchwabMarketStream` is an optional market-data adapter owned by the existing independent15-minute collector. `start()` starts daemon workers and returns without waiting for network bootstrap. `close()` sets their stop event, closes this owner's socket, and makes the instance permanently stopped. It never starts a trader, reads account balances/positions, places orders, or changes a recipe.
+
+The adapter follows the protocol and field-map work reviewed at peer commit `28ef18efe477c43375a363dc436f5780ea1a1494`. It does not import the peer's private bindings, population contract, recipes, queue or feature implementation. Source publication, local installation and the version loaded by a running process remain separate facts.
+
+## Integration
+
+Construct with a private market-input root, explicit local equity symbols and optional **Schwab native** futures scopes (`/ES`, `/NQ`, or an explicit native contract). Databento continuous selectors are different identities; the caller must record any explicit configured-root mapping. Only one scope per futures root is accepted.
+
+The public API is `start()`, `snapshot()` and `close()`. `snapshot()` returns a list of records with `source`, `symbol`, `started_at`, `received_at`, `event_at`, `bar_end_at`, `status`, `features`, `request`, and `payload`. Futures records use `symbol=None`; the existing collector may attach the same source receipt to its own equities. Register `ADDITIONAL_SOURCE_FIELDS` and `ADDITIONAL_SOURCE_TTL_SECONDS` in the consuming feature version. These are additive optional inputs, never a forecast veto. Changes to the feature list require explicit version/provenance and qualification-context handling; collecting a source does not qualify a model.
+
+Production dependencies are existing `DataFetchingSchwabSession`, Schwab market/base URLs, `requests` and `websocket-client`. Authentication uses the existing session. `userPreference` is used only to obtain the actual streamer origin and necessary session fields; it is not saved. Account stream services are rejected. Login authorization, credentials, and response control text are never persisted. Tests inject the session, HTTP function, socket factory and clocks and prohibit real network access.
+
+## Sources and definitions
+
+| Sources | Scope and features |
+|---|---|
+| `schwab_stream_quote` | `LEVELONE_EQUITIES`: actual latest received delta, relative bid/ask spread, size imbalance, last price and cumulative day volume. Missing delta fields stay missing. |
+| `schwab_stream_bars` | `CHART_EQUITY`: received complete one-minute bars in the last30minutes; first observed open to last observed close return, observed high/low range, summed observed positive volume and count. No empty-minute filling. |
+| `schwab_stream_nyse_book`, `schwab_stream_nasdaq_book` | Native service-specific book messages; spread, displayed depth imbalance/size and levels. These are not consolidated whole-market depth. |
+| `schwab_stream_options` | `LEVELONE_OPTIONS`: medians of actual available IV/Greeks across observed contracts, observed contract count, recognized requested and acknowledged contract counts. IV is converted from provider percent to decimal. |
+| `schwab_stream_options_book` | `OPTIONS_BOOK`: median per-contract spread/depth fields across actual observed contracts, with explicit observed/requested/acknowledged counts. |
+| `schwab_future_<root>_quote`, `schwab_future_<root>_bars` | Configured ES,NQ,RTY,CL,GC,ZN,6E native futures. Quote/bar definitions match equities, while actual native contract identity is retained. No returns are calculated across distinct observed contracts. |
+
+Quote/book fields are taken from one actual message delta per instrument. No previous bid, ask, price or size is inserted into a later delta. A cached observed value can remain an as-of input within the30-minute age bound; its original receipt/event clocks are retained. Explicit synthetic/source-empty/no-trade markers are rejected before projection. Invalid OHLC, nonpositive bar volume, invalid numeric values, delayed rows and future clocks remain unavailable. A chart row must already have completed when received; waiting does not turn a partial message into a final candle. Equal event-and-receipt clock conflicts are unavailable until later unambiguous evidence arrives.
+
+Native root futures identity may be learned only from an actual mapping at or before both the event and receipt clock. An older delayed mapping cannot roll it backwards. Different contracts at the same event/receipt clock make it ambiguous until a strictly later mapping. Explicit native contract keys need no backfilled root mapping.
+
+## Continuous ownership and bounded scope
+
+The market connection remains open until this owner closes it or the provider disconnects. Reconnects use bounded waits and record gaps; missed events are never replayed or reconstructed. One separate daemon fetches at most one current option chain at a time, using bounded HTTP requests, so a slow chain response does not stop the socket reader. Checks before new HTTP/subscription/receive operations preserve manual stops. A request already in flight may finish; its actual raw response is preserved, and no new request is launched after stop.
+
+Option chains request all provider-returnable strikes/expirations with no local40-strike/45-day filter. Original full responses are saved before parsing. Recognized OCC-format keys form the stream scope; rejected/duplicate/unknown keys are counted. The existing `max_option_contracts` argument (at most1000) bounds combined option service-key memberships. A conservative common500-membership connection envelope first reserves four equity and two futures service memberships per configured symbol; the remaining option budget is split between quote and book services. Each service uses at most250-key request chunks, spreads its allocation across available underlyings and rotates every15minutes. These are explicit local resource bounds, not assertions about account entitlement or a provider-wide limit. Requested chain keys, allocated memberships per service, acknowledged keys and observed contracts remain separate counts.
+
+The chain worker attempts every configured underlying once per refresh round, including bounded10-second timeouts. It publishes a completed round only after all attempts finish. Initial subscriptions wait for that completed round; subsequent15-minute refreshes cause one coalesced scope change, rather than resubscribing as each chain arrives. Socket reception continues on its own worker throughout chain discovery. Failures are recorded and retried only in the next scheduled round. Previously received chain identity retains its original receipt; no new market value is inferred from a failed refresh.
+
+[Schwabdev client documentation](https://github.com/tylerebowers/schwabdev/blob/main/docs/pages-raw/stream.md) states a500-key limit, but does not establish the current account-specific scope. The adapter uses that number only as a conservative implementation envelope. Provider ACKs remain actual evidence; a capacity rejection by itself does not identify the exact limit. [Schwab-py documentation](https://schwab-py.readthedocs.io/en/latest/streaming.html) also describes incomplete official book-service documentation, so no consolidated-market or exact option-exchange coverage is claimed. Source features describe the acknowledged **observed subset**, with coverage counts; they never claim all contracts or a complete market.
+
+A code19 response is treated as a provider capacity-or-scope rejection; it does not prove an exact numeric threshold. The adapter makes at most two smaller-scope attempts: one key per available underlying, then one rotating key total. It retains original and attempted native scopes, ACK codes, accepted counts and raw receipts. An accepted smaller scope is retained for that connection instead of repeating the rejected full scope each refresh. Underserved underlyings rotate every15minutes; each still has an explicit unavailable record when no current accepted observation exists. Other denials stop reductions. Manual stops prevent further requests.
+
+Source ACK codes, actual submitted scope, received/delayed/rejected counts, connection IDs and gap evidence are retained. Provider denial/capacity failures leave that optional source unavailable. Other providers and independent traders keep operating. An extra Schwab connection may encounter account/session limits; no cross-trader approval or shared-ledger requirement is introduced.
+
+## Private evidence and timing
+
+Market messages and full chain responses are written to private append-only JSONL before normalization. Each write is flushed and synced. Snapshots and close seal segments with immutable full SHA256/byte-count manifests; subsequent messages use a new file. Parser failures retain redacted raw text. Unrequested account-service payloads are rejected without persistence. An injected `persist_raw(payload, metadata)` callback may instead provide durable receipt storage.
+
+Numeric availability is no earlier than both the actual market receipt and the relevant subscription acknowledgement. An unavailable status is an observation at its current clock; disconnects are not backdated onto old prices. Snapshot generation time is recorded separately. Receipts retain service/raw-segment identity, event/bar-end clocks, chain scope and actual connection gaps. They do not establish complete quarter coverage, market-wide trade absence or historical availability before collection began.
+
+Offline tests cover raw-before-projection persistence, segment immutability, marker filtering, delta missingness, timing, futures identity order/ambiguity, ACK integrity, scope caps, parser redaction, lifecycle cancellation and reconnect evidence. A successful offline check is not proof of Atlas account entitlement or actual live market flow; operational evidence must identify the process and source bytes that produced it.

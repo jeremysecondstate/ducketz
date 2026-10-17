@@ -21,8 +21,9 @@ def saved_plan(root, name, action_date, *, end="2026-09-10T20:00:00Z"):
         "model_group": "1d", "model_status": "PROMOTED",
     }])
     frame.to_parquet(run / "forecasts.parquet", index=False)
+    (run / "gameplan.json").write_text(json.dumps({"action_date": action_date}))
     write_manifest(run, run_timestamp="2026-09-04T10:00:00Z", input_files=(),
-                   output_files=("forecasts.parquet",), configuration={"action_date": action_date}, datastore_root=root)
+                   output_files=("forecasts.parquet", "gameplan.json"), configuration={"action_date": action_date}, datastore_root=root)
     _publish_gameplan(root, run=run, action_date=date.fromisoformat(action_date),
                       published_at=pd.Timestamp("2026-09-04T10:01:00Z"), source_loop_b="test", source_strategy="test")
     return run
@@ -112,8 +113,9 @@ def test_four_hour_evaluation_waits_for_an_actual_window_end_price(tmp_path):
         "calibrated_probability": 0.5, "model_group": "4h", "model_status": "PROMOTED",
     }])
     forecasts.to_parquet(run / "forecasts.parquet", index=False)
+    (run / "gameplan.json").write_text(json.dumps({"action_date": "2026-09-04"}))
     write_manifest(run, run_timestamp="2026-09-04T10:00:00Z", input_files=(),
-                   output_files=("forecasts.parquet",), configuration={"action_date": "2026-09-04"}, datastore_root=tmp_path)
+                   output_files=("forecasts.parquet", "gameplan.json"), configuration={"action_date": "2026-09-04"}, datastore_root=tmp_path)
     _publish_gameplan(tmp_path, run=run, action_date=date(2026, 9, 4),
                       published_at=pd.Timestamp("2026-09-04T10:01:00Z"), source_loop_b="test", source_strategy="test")
     sources = pd.DataFrame([{
