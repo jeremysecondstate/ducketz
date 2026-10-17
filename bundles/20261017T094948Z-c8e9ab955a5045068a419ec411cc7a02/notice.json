@@ -1,0 +1,25 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261017T094752Z-d4e26814a8df43f59a78e0645ebafb1d",
+  "change_id": "20261017T094752Z-d4e26814a8df43f59a78e0645ebafb1d",
+  "commit_sha": "bdc53fbcba393c114e5a81d28c959acc39d5cb27",
+  "files": [
+    "app/ui/intraday_data.py",
+    "app/ui/intraday.py",
+    "tests/test_intraday_symbol_coverage.py"
+  ],
+  "limitations": [
+    "Offline fixture and Tk checks; no provider or broker calls, training, trader start, or running GUI restart.",
+    "Coverage follows saved cycle evidence; missing peer membership remains unknown. This display repair does not create unavailable market observations or resolve uncertain order submissions."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/202",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed UI source is installed locally; an already open GUI must reload the application to use it. Trader state and model recipes remain unchanged. Peer source adoption is separate.",
+  "scope": "shared read-only UI behavior; independently applicable to both PCs; private model recipes unchanged",
+  "summary": "Intraday UI now retains symbols with saved failure evidence and no forecast; reviewed shared display correction is published and locally installed.",
+  "tests": [
+    "236 checks passed in application checkout and isolated network-disabled review.",
+    "Final byte-bound verification on 2026-10-17 09:48 UTC: 235 passed, one existing Tk initialization skip; new coverage rendering checks passed.",
+    "23 source, test and configuration fingerprints bound; private-value scan and remote commit readback passed."
+  ]
+}

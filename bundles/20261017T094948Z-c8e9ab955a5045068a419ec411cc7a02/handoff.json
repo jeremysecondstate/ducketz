@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T09:49:48.870939Z",
+  "id": "20261017T094948Z-c8e9ab955a5045068a419ec411cc7a02",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Intraday UI now retains symbols with saved failure evidence and no forecast; reviewed shared display correction is published and locally installed."
+}
