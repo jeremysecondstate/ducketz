@@ -1,0 +1,28 @@
+{
+  "author": "Scout",
+  "base_commit": "7572cbdad8a23bedfedf77c0817368417d52b91e",
+  "branch": "codex/scout/20261017T154541Z-e4c6ca5876514b89b4720e937e55be40",
+  "change_id": "source:20261017T154541Z-e4c6ca5876514b89b4720e937e55be40",
+  "commit_sha": "edeb8416b5bda5f00202a82db67c7c7c8f45ec51",
+  "completion_record": "20261017T154541Z-e4c6ca5876514b89b4720e937e55be40",
+  "files": [
+    "ml/joint_capital_plan.py",
+    "tests/test_joint_capital_observed_references.py"
+  ],
+  "limitations": [
+    "Stacked on PR211; main integration and peer installation are separate facts.",
+    "Explicit synthetic anchors or contaminated historical aggregates become unavailable; original owner packages remain evidence only, and no replacement price is reconstructed.",
+    "Forecast rows and gates are preserved. Cash-backed sizing still fails closed on unavailable planning prices.",
+    "No accepted execution pointer, running trader or live order state is changed by source publication."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/213",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "After reviewed adoption, newly composed joint research plans apply observed-only-joint-planning-projection-v1 when explicit synthetic provenance is present. Existing immutable publications are preserved.",
+  "scope": "Shared correctness behavior for new joint research composition; no owner tuning, private recipes, market data, fitted artifacts or account evidence included.",
+  "summary": "Shared joint research projection excludes synthetic price references while preserving source evidence and forecast identities.",
+  "tests": [
+    "117 focused composition, lineage, revision and synthesis tests passed in the strict source snapshot in101.94seconds.",
+    "117 tests passed again in the independent publication candidate in105.31seconds.",
+    "Both isolated tests bind223 exact source/dependency files and actual import evidence; both owned published bytes match the reviewed application."
+  ]
+}

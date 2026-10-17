@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T15:51:24.454364Z",
+  "id": "20261017T155124Z-b566ed0790584a2d91e60761d32c959b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Shared joint research projection excludes synthetic price references while preserving source evidence and forecast identities."
+}
