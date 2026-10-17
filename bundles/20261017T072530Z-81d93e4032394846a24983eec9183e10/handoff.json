@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T07:25:30.719904Z",
+  "id": "20261017T072530Z-81d93e4032394846a24983eec9183e10",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed preserved nightly retries after elapsed targets and timed-out ancestry."
+}

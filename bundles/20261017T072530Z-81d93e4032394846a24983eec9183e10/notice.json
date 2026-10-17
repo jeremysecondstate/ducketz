@@ -1,0 +1,56 @@
+{
+  "author": "Atlas",
+  "base_commit": "15b6c083e5d12467ff0472942c5e98ecda5ac22b",
+  "branch": "codex/atlas/20261017T071916Z-7e63cb6b828b43a7af142cb541774568",
+  "change_id": "20261017T071916Z-7e63cb6b828b43a7af142cb541774568",
+  "commit_sha": "d85effff3a1e345b988811b524f3a25c9d92f2a7",
+  "files": [
+    "ml/gameplan_deployment.py",
+    "ml/overnight_runtime.py",
+    "tests/test_nightly_child_persistence.py",
+    "tests/test_overnight_supervision.py",
+    "tests/test_preparation_deadline.py",
+    "ml/preparation_deadline.py"
+  ],
+  "installation_stage": "installed_on_atlas",
+  "integration_stage": "peer_repair_already_on_main_atlas_composition_stacked_on_pr200",
+  "limitations": [
+    "Draft stacked on PR200; exact Atlas composition is not integrated on main because the reviewed base is not its ancestor.",
+    "Desired peer repair is already accepted on common main; broader runtime composition remains separate.",
+    "Offline fixtures only; no loaded-process assertion."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/201"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_record": "20261016T094213Z-dc9609377e7243fa81149f80c90ef659",
+  "retained_dependency_completion_record": "20261014T062717Z-a9bad9ad3004431687f3540595009b13",
+  "retained_dependency_source": "0d63b894bb1a0b17364e91bc67ac9d6d3646887d",
+  "retained_peer_source": "b561a00a7acc7a25414f03b0f3fb8909c76d8eb7",
+  "runtime_implications": "Five source/test files installed on Atlas; accepted preparation reader already installed. Existing production continues independently; no trader or runtime restart.",
+  "scope": "Shared nightly correctness, independently applicable to both PCs.",
+  "summary": "Atlas installed preserved nightly retries after elapsed targets and timed-out ancestry.",
+  "tests": [
+    {
+      "check": "Sealed source",
+      "completed_at_utc": "2026-10-17T07:19:52.352293Z",
+      "output_sha256": "c3d94400e75fc7c1d45fbd755947fc1871b9c8a62a9d7e2541bb48e45bcd303f",
+      "result": "156 passed; no skips, warnings or offline violations",
+      "started_at_utc": "2026-10-17T07:19:17.136868Z"
+    },
+    {
+      "check": "Isolated publication",
+      "completed_at_utc": "2026-10-17T07:21:45.308983Z",
+      "output_sha256": "ab9ad2d230e25dbade521aeadfd79f6f7e18a20efbf41ca64f99db91e9dd622a",
+      "result": "156 passed; no skips, warnings or offline violations",
+      "started_at_utc": "2026-10-17T07:21:11.846742Z"
+    },
+    {
+      "check": "Installed Atlas",
+      "completed_at_utc": "2026-10-17T07:20:55.243655Z",
+      "output_sha256": "f81dffd81b0550b35d49e37fce284bf37d0cb8568001c2e7ce356ddd6e824beb",
+      "result": "176 passed; no skips, warnings or offline violations",
+      "started_at_utc": "2026-10-17T07:20:19.332599Z"
+    }
+  ]
+}
