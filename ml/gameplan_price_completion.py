@@ -167,7 +167,7 @@ def complete_planning_reference_gaps(
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
     from ml.stock_observation_sources import planning_source_view
-    from ml.gameplan_price_bands import _observation_interval
+    from ml.gameplan_price_bands import _symbol_lookup
     prices = planning_source_view(prices, forecasts, now=now)
     completion_contract = SPARSE_SESSION_COMPLETION_CONTRACT if allow_extended_hours else PLANNING_REFERENCE_COMPLETION_CONTRACT
     report = {
@@ -205,7 +205,8 @@ def complete_planning_reference_gaps(
                                   end=pd.Timestamp(max(dates)) + pd.Timedelta(days=10))
     bars = _native_minutes(prices)
     by_symbol = {symbol: frame for symbol, frame in bars.groupby("symbol", sort=False)}
-    indexes = {symbol: pd.DatetimeIndex(frame.timestamp) for symbol, frame in by_symbol.items()}
+    lookups = {}
+    empty_bars = bars.iloc[:0]
     cache = {}
 
     def resolve(symbol, session):
@@ -228,10 +229,10 @@ def complete_planning_reference_gaps(
         if boundary > now:
             reference["reason"] = "PRIOR_SESSION_BOUNDARY_NOT_COMPLETED"
             return reference
-        symbol_bars = by_symbol.get(symbol, bars.iloc[:0])
-        interval = _observation_interval(symbol_bars)
-        index = indexes.get(symbol)
-        position = index.searchsorted(boundary - interval, side="right") - 1 if index is not None else -1
+        symbol_bars = by_symbol.get(symbol, empty_bars)
+        lookup = _symbol_lookup(lookups, by_symbol, symbol, empty_bars)
+        interval, index = lookup.interval, lookup.timestamps
+        position = index.searchsorted(boundary - interval, side="right") - 1 if len(index) else -1
         if position < 0 or symbol_bars.iloc[position].timestamp < session_start:
             return reference
         origin = symbol_bars.iloc[position]

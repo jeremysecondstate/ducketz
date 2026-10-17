@@ -7,6 +7,7 @@ no acquisition, model-training, broker, or publication side effects.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 from typing import Any
@@ -39,19 +40,63 @@ def _clock(day: date, hour: int) -> pd.Timestamp:
     return pd.Timestamp(day).tz_localize(STOCK_TIMEZONE).replace(hour=hour).tz_convert("UTC")
 
 
-def _observation(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: bool) -> tuple[float, str] | None:
-    if bars.empty:
-        return None
-    timestamps = pd.DatetimeIndex(bars.timestamp)
-    interval = _observation_interval(bars)
+@dataclass(frozen=True)
+class _ObservationLookup:
+    """One call's immutable view of a validated, selected native source frame.
+
+    Copy the small lookup columns so later input mutations cannot invalidate
+    cached metadata. Never persist this object in frame attrs or global state.
+    Full interval validation precedes indexing; no lookback trimming is used.
+    """
+    timestamps: pd.DatetimeIndex
+    interval: pd.Timedelta
+    opens: np.ndarray
+    closes: np.ndarray
+
+    @classmethod
+    def from_frame(cls, bars: pd.DataFrame):
+        interval = _observation_interval(bars)
+        timestamps = pd.DatetimeIndex(bars.timestamp, copy=True)
+        opens = bars["open"].to_numpy(copy=True)
+        closes = bars["close"].to_numpy(copy=True)
+        timestamps.values.setflags(write=False)
+        opens.setflags(write=False)
+        closes.setflags(write=False)
+        return cls(timestamps, interval, opens, closes)
+
+
+def _symbol_lookup(cache, by_symbol, symbol, empty):
+    # Lazy construction preserves validation for actually consumed symbols;
+    # an unrelated symbol does not acquire a new validation side effect.
+    if symbol not in cache:
+        cache[symbol] = _ObservationLookup.from_frame(by_symbol.get(symbol, empty))
+    return cache[symbol]
+
+
+def _observation(bars: pd.DataFrame | _ObservationLookup, boundary: pd.Timestamp, *, close: bool) -> tuple[float, str] | None:
+    if isinstance(bars, _ObservationLookup):
+        timestamps, interval = bars.timestamps, bars.interval
+        if not len(timestamps):
+            return None
+    else:
+        # Preserve the direct DataFrame interface used by source selection;
+        # its one-off probe need not copy every price in the source history.
+        if bars.empty:
+            return None
+        timestamps = pd.DatetimeIndex(bars.timestamp)
+        interval = _observation_interval(bars)
     position = (timestamps.searchsorted(boundary - interval, side="right") - 1
                 if close else timestamps.searchsorted(boundary, side="left"))
-    if position < 0 or position >= len(bars):
+    if position < 0 or position >= len(timestamps):
         return None
-    row = bars.iloc[position]
-    observed = row.timestamp + (interval if close else pd.Timedelta(0))
+    if isinstance(bars, _ObservationLookup):
+        observed = timestamps[position] + (interval if close else pd.Timedelta(0))
+        price = float((bars.closes if close else bars.opens)[position])
+    else:
+        row = bars.iloc[position]
+        observed = row.timestamp + (interval if close else pd.Timedelta(0))
+        price = float(row["close" if close else "open"])
     gap = boundary - observed if close else observed - boundary
-    price = float(row["close" if close else "open"])
     if not pd.Timedelta(0) <= gap <= STOCK_TARGET_BOUNDARY_TOLERANCE or not np.isfinite(price) or price <= 0:
         return None
     return price, observed.isoformat()
@@ -157,20 +202,19 @@ def build_entry_price_bands(
     action date. Weekend/holiday transitions are included, never synthesized.
 
     The range is anchored to the forecast action date's exact preceding
-    session close. The explicit v2 planning policy may carry the last actual
-    close through a verified trailing gap of at most 15 minutes, recorded as
-    synthetic zero-volume bars. It never fills historical samples or uses a
-    broker quote. The 5th/95th empirical percentiles are pooled across session
+    session close. Legacy v2/v3 carry-window flags retain their serialized
+    compatibility labels, but new completion requires actual observations
+    within the five-minute tolerance. Request coverage never authorizes a
+    synthetic price. The 5th/95th empirical percentiles are pooled across session
     gap lengths and rounded outward to cents. Daily/weekly entries share the
     same 04:00 evidence, while explicit context rows receive no entry range.
     This descriptive calculation uses the observed sample whenever at least two
     session pairs exist. It has no model-training sample gate; fewer than two
     pairs cannot describe a distribution of price movement.
 
-    The explicit v3 sparse-session policy may carry closing references through
-    up to four after-hours hours, including historical planning anchors. Each
-    derived sample records its carried close, original time and coverage key.
-    Intraday entry endpoints remain observed under the five-minute rule.
+    The v3 sparse-session flag records historical closing-reference diagnostics,
+    including original observation clocks and source coverage. Missing observed
+    endpoints remain unavailable; no new historical closing carries are made.
     """
     if (not isinstance(lookback_sessions, int) or isinstance(lookback_sessions, bool)
             or not isinstance(minimum_samples, int) or isinstance(minimum_samples, bool)
@@ -227,6 +271,7 @@ def build_entry_price_bands(
     by_symbol = {symbol: frame.sort_values("timestamp", kind="stable")
                  for symbol, frame in bars.groupby("symbol", sort=False)}
     empty_bars = bars.iloc[:0]
+    lookups = {}
 
     for forecast, day in zip(forecasts.to_dict("records"), dates):
         symbol = str(forecast["symbol"]).upper()
@@ -251,7 +296,7 @@ def build_entry_price_bands(
         if stats is None:
             prior_session = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
             candidates = sessions[sessions < pd.Timestamp(day)][-lookback_sessions:]
-            symbol_bars = by_symbol.get(symbol, empty_bars)
+            symbol_bars = _symbol_lookup(lookups, by_symbol, symbol, empty_bars)
             reference = _planning_reference(symbol_bars, _clock(prior_session, 17), symbol, day, completion)
             samples, missing_close, missing_entry = [], 0, 0
             for session in candidates:
@@ -419,8 +464,9 @@ def build_planning_price_path(
     by_symbol = {symbol: frame.sort_values("timestamp", kind="stable")
                  for symbol, frame in bars.groupby("symbol", sort=False)}
     empty = bars.iloc[:0]
+    lookups = {}
     for symbol, day in scopes:
-        symbol_bars = by_symbol.get(symbol, empty)
+        symbol_bars = _symbol_lookup(lookups, by_symbol, symbol, empty)
         prior_day = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
         reference = _planning_reference(symbol_bars, _clock(prior_day, 17), symbol, day, completion)
         close_samples = []
