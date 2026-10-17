@@ -331,13 +331,17 @@ def test_terminal_recovery_preserves_deadline_and_completed_stages_for_resume(tm
     assert configuration["failed_stage"] == "loop_b_directional_generation"
 
 
-def test_terminal_recovery_refuses_expired_deadline(tmp_path, monkeypatch):
+def test_terminal_recovery_preserves_expired_target_and_evidence(tmp_path, monkeypatch):
     run_path = _terminal_attempt(tmp_path, monkeypatch)
     before = _evidence_snapshot(run_path)
     deadline = json.loads((run_path / "stage-report.json").read_text())["deadline_at"]
     monkeypatch.setattr("ml.overnight_runtime.utc_timestamp", lambda value=None: pd.Timestamp(value if value is not None else deadline))
-    with pytest.raises(RuntimeError, match="deadline has passed"):
-        recover_interrupted_run(tmp_path, run_path, "verified supervisor exit")
+    monkeypatch.setattr("ml.overnight_runtime._process_created_at", lambda _: None)
+    assert recover_interrupted_run(tmp_path, run_path, "verified supervisor exit") == run_path
+    from ml.overnight_runtime import _resume_configuration
+    saved = _resume_configuration(tmp_path, run_path)
+    assert saved["deadline_at"] == deadline
+    assert saved["completed_stages"] == ["loop_a_close_fetch"]
     assert _evidence_snapshot(run_path) == before
 
 
@@ -437,7 +441,7 @@ def test_stock_only_resume_narrows_failed_options_and_inherits_scope(tmp_path, m
 
 
 @pytest.mark.parametrize("damage", ["report", "expired"])
-def test_stock_only_resume_keeps_receipt_and_deadline_guards(tmp_path, monkeypatch, damage):
+def test_stock_only_resume_preserves_receipt_guards_and_elapsed_target(tmp_path, monkeypatch, damage):
     failed = _terminal_attempt(tmp_path, monkeypatch)
     if damage == "report":
         with (failed / "stage-report.json").open("a") as stream:
@@ -449,10 +453,25 @@ def test_stock_only_resume_keeps_receipt_and_deadline_guards(tmp_path, monkeypat
                             lambda value=None: pd.Timestamp(value if value is not None else deadline))
         reason = "deadline has passed"
     before = _evidence_snapshot(failed)
-    monkeypatch.setattr("ml.overnight_runtime._run_stage",
-                        lambda *a, **k: pytest.fail("invalid resume cannot launch work"))
-    with pytest.raises(RuntimeError, match=reason):
-        run(tmp_path, resume_run=failed, stock_only=True)
+    if damage == "report":
+        monkeypatch.setattr("ml.overnight_runtime._run_stage",
+                            lambda *a, **k: pytest.fail("invalid resume cannot launch work"))
+        with pytest.raises(RuntimeError, match=reason):
+            run(tmp_path, resume_run=failed, stock_only=True)
+    else:
+        calls = []
+        def complete(command, **kwargs):
+            assert kwargs["deadline"] == pd.Timestamp(deadline)
+            kwargs["log_path"].write_text("completed after original target")
+            calls.append(command[3])
+            return 0
+        monkeypatch.setattr("ml.overnight_runtime._run_stage", complete)
+        resumed = run(tmp_path, resume_run=failed, stock_only=True)
+        report = json.loads((resumed / "stage-report.json").read_text())
+        assert report["status"] == "COMPLETE"
+        assert report["deadline_at"] == deadline
+        assert calls == ["ml.prediction_runtime", "ml.gameplan_evaluation", "ml.nightly_gameplan"]
+        assert report["completed_stages_from_previous_attempt"] == ["loop_a_close_fetch"]
     assert _evidence_snapshot(failed) == before
 
 

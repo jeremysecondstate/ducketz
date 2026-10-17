@@ -993,8 +993,7 @@ def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | N
             root, root/report['enrichment_gameplan']['run_path'], exception_original, utc_timestamp(), deadline_exception)
         if exception_evidence['authorization']['gameplan_receipt_sha256'] != report['enrichment_gameplan']['receipt_sha256']:
             raise ValueError('Deadline exception differs from the saved tail pin')
-    if not continuing and utc_timestamp() >= effective_deadline:
-        raise RuntimeError("The failed attempt's publication deadline has passed")
+    # Elapsed targets remain provenance, not authority to cancel nightly recovery.
     for name, record in receipt.get("logs", {}).items():
         path = (run / name).resolve()
         if path.parent != run or file_checksum(path) != record["checksum_sha256"]:
@@ -1113,7 +1112,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--status", action="store_true", help="Read the latest overnight progress without starting work")
     parser.add_argument("--archive-history", action="store_true", default=None,
                         help="Use the verified full XNAS feature archive and extend missing minute-label history; preserved on resume")
-    parser.add_argument("--request-stop-run", type=Path, help="Ask the owner to stop its current stage")
+    parser.add_argument("--request-stop-run", type=Path, help="Record a stop note; saved files cannot cancel nightly work")
     parser.add_argument("--recover-run", type=Path, help="Recover an attempt whose supervisor process exited")
     parser.add_argument("--claim-supervision", metavar="UUID", help="Acquire/renew this Scheduled operator's three-minute supervision lease")
     parser.add_argument("--release-supervision", metavar="UUID", help="Release this Scheduled operator's supervision lease")

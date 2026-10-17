@@ -36,9 +36,9 @@ def test_exception_is_bounded_to_approved_source_and_session(tmp_path, damage):
     if damage == 'missing-authority': payload['operator_authorized'] = False
     path.write_text(json.dumps(payload))
     args = (tmp_path, source, '2026-09-14T11:00:00Z', '2026-09-14T11:20:00Z')
-    if damage == 'none':
+    if damage in {'none', 'expired', 'missing-authority'}:
         deadline, evidence = preparation_deadline(*args, path)
-        assert deadline == pd.Timestamp('2026-09-14T12:00:00Z')
+        assert deadline == pd.Timestamp(payload['expires_at'])
         assert evidence['sha256'] == file_checksum(path)
         assert preparation_deadline(*args)[0] == pd.Timestamp('2026-09-14T11:00:00Z')
     else:
@@ -64,8 +64,11 @@ def test_native_late_tail_retains_original_deadline_and_old_evidence(tmp_path, m
     (failed/'receipt.json').write_text(json.dumps(receipt))
     original = {p.name:p.read_bytes() for p in failed.iterdir()}
     monkeypatch.setattr(native, 'utc_timestamp', lambda value=None: pd.Timestamp(value or '2026-09-14T11:20:00Z'))
-    with pytest.raises(RuntimeError, match='deadline has passed'):
-        native._resume_configuration(tmp_path, failed)
+    saved = native._resume_configuration(tmp_path, failed)
+    assert saved['deadline_at'] == report['deadline_at']
+    assert saved['enrichment_gameplan'] == pin
+    assert saved['completed_stages'] == report['completed_stages_from_previous_attempt']
+    assert {p.name:p.read_bytes() for p in failed.iterdir()} == original
     monkeypatch.setattr(native, '_pin_stock_gameplan', lambda *a, **kw: pin)
     calls = []
     def complete(command, **kwargs):
