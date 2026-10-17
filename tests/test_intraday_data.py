@@ -202,14 +202,25 @@ def candles(count=42, *, start="2026-05-11T13:30:00+00:00", minutes=False):
     return pd.DataFrame(rows)
 
 
-def response(attempt, *, status="success", rows=(), covered=True, proof="provider covered interval contains no trades",
+def independent_absence(*, symbol, dataset, opened_at, closed_at, verified_at):
+    """Explicit independent complete-scope fixture; a MINI omission is not this."""
+    from ml.intraday.coverage import NO_TRADE_EVIDENCE_VERSION
+    return {"schema_version": NO_TRADE_EVIDENCE_VERSION, "scope": "complete_market_trade_activity",
+        "coverage_complete": True, "confirmed_no_trades": True, "symbol": symbol, "source_dataset": dataset,
+        "evidence_id": "independent-test-proof", "verifier_source_id": "test:independent-complete-scope",
+        "interval_open": str(opened_at), "interval_close": str(closed_at), "verified_at": str(verified_at)}
+
+
+def response(attempt, *, status="success", rows=(), covered=True, proof="independent complete scope fixture",
              start="2026-05-11T14:00:00+00:00", minutes=15, wait=0):
     op = pd.Timestamp(start)
     cl = op + pd.Timedelta(minutes=minutes)
     return IntervalResponse(str(attempt), "AAPL", "test:EQUS.MINI", "EQUS.MINI", op.isoformat(), cl.isoformat(),
         (cl+pd.Timedelta(seconds=4*attempt+wait)).isoformat(),
         (cl+pd.Timedelta(seconds=4*attempt+1+wait)).isoformat(), status, tuple(rows),
-        op.isoformat() if covered else None, cl.isoformat() if covered else None, proof)
+        op.isoformat() if covered else None, cl.isoformat() if covered else None, proof,
+        no_trade_scope_evidence=independent_absence(symbol="AAPL",dataset="EQUS.MINI",opened_at=op,
+            closed_at=cl,verified_at=cl+pd.Timedelta(seconds=4*attempt+1+wait)) if proof and covered else None)
 
 
 def bounds():
@@ -666,7 +677,9 @@ def _bounded_attempt(provider, *, symbol, opened_at, attempt_id, clock, status="
     return IntervalResponse(attempt_id, symbol, f"databento:{provider.dataset}:ohlcv-1m", provider.dataset,
         op.isoformat(), (op+STEP).isoformat(), at.isoformat(), at.isoformat(), status,
         rows if status == "success" else (), op.isoformat(), (op+STEP).isoformat(),
-        "covered provider omission" if status == "success" else None, wait)
+        "independent complete scope fixture" if status == "success" else None, wait,
+        no_trade_scope_evidence=independent_absence(symbol=symbol,dataset=provider.dataset,
+            opened_at=op,closed_at=op+STEP,verified_at=at) if status == "success" else None)
 
 
 def test_bounded_retry_one_interval_does_not_block_another(tmp_path, monkeypatch):

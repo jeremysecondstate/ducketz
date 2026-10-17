@@ -262,6 +262,14 @@ def fetch(
         ) is not None:
             data_files += 1
 
+        # Keep both the prior snapshot and this response as immutable source
+        # evidence before the standard one-file snapshot advances again.
+        from datafetching.schwab_price_history_receipts import preserve_price_history_raw
+        raw_history_path = store.target_path(scope="raw", source="schwab", category="bars",
+            symbol=symbol, suffix=f"pricehistory_{spec.key}", timeframe=canonical,
+            dataset_key=f"pricehistory_{spec.key}") if canonical in {"1m", "5m"} else None
+        if raw_history_path is not None:
+            preserve_price_history_raw(raw_history_path)
         if store.save_raw_payload(
             source="schwab",
             category="bars",
@@ -272,6 +280,8 @@ def fetch(
             metadata=request_metadata,
         ) is not None:
             data_files += 1
+        if raw_history_path is not None:
+            preserve_price_history_raw(raw_history_path)
 
     if continuation_windows:
         print(
