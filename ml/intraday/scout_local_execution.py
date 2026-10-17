@@ -22,6 +22,7 @@ from ml.stock_trader.horizon_ledger import ReservationState
 from ml.stock_trader.state import capture_portfolio_state, validated_symbols
 
 from .capacity import clip_to_capacity
+from .commitment_clearance import load_clearance
 from .exact_status import TERMINAL, retry_delay
 from .intentions import IntentionStore
 from .prediction import ContractError, digest, instant
@@ -186,8 +187,18 @@ class ScoutLocalAccountExecutor:
                     forecast = forecasts.get(record['request']['forecast_id'])
                     if forecast is None or self.intents.get(forecast['forecast_id']) is None:
                         raise ContractError('Local order lacks its original immutable intention')
-                    results.append(self._project(journal, record, forecast,
-                        'submission_recovery_required' if record['state'] == 'UNKNOWN' else 'order_status_reconciled'))
+                    clearance = (load_clearance(self.books, journal, record, as_of=self.clock())
+                                 if record['state'] == 'UNKNOWN' else None)
+                    if clearance:
+                        # The receipt is durable. Do not append a historical
+                        # intention with invented zero fills or acceptance.
+                        results.append(dict(disposition='historical_submission_unknown_no_open_commitment',
+                            forecast_id=forecast['forecast_id'], symbol=forecast['symbol'],
+                            submission_status='UNKNOWN', submitted_quantity=None, filled_quantity=None,
+                            realized_pnl=None, evidence={'commitment_clearance': clearance}))
+                    else:
+                        results.append(self._project(journal, record, forecast,
+                            'submission_recovery_required' if record['state'] == 'UNKNOWN' else 'order_status_reconciled'))
             return results
 
     def _cancel(self, journal, record, forecast):
@@ -293,6 +304,11 @@ class ScoutLocalAccountExecutor:
                 if record['request']['forecast_id'] == forecast['forecast_id']:
                     return self._project(journal, record, forecast, 'recover_existing_intention')
                 if record['state'] == 'UNKNOWN':
+                    # The original send stays UNKNOWN and can never be replayed.
+                    # Reviewed complete post-expiry absence evidence can remove
+                    # only its blanket block on distinct new forecast requests.
+                    if load_clearance(self.books, journal, record, as_of=self.clock()) is not None:
+                        continue
                     return self._record(forecast, 'submission_recovery_required',
                         evidence={'unresolved_request_id': record['request']['request_id'], 'retry_after_seconds': 3})
                 if record['state'] == 'ACCEPTED':
