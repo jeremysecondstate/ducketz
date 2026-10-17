@@ -183,4 +183,11 @@ def retain_champion(challenger: dict, *, champion: dict, current: pd.DataFrame,
                               else support.get(str(s), {}).get(key, 0)) for s, r in zip(frames.symbol, frames.route)]
     frames.loc[frames.symbol_fitted_target_rows.eq(0) | frames.symbol_route_fitted_target_rows.eq(0),
                "model_status"] = "RESEARCH_NO_TARGET_HISTORY"
-    return {"forecasts": frames, "report": report}, (model_name, cohort_name, report_name, challenger_report_name)
+    from ml.gameplan_input_evidence import annotate_local_support, freeze_inference_inputs
+    frames = annotate_local_support(frames, support)
+    report["qualification_scope"] = "pooled symbol-and-route model; no per-symbol or per-route qualification claimed"
+    report["inference_input_evidence"], evidence_outputs = freeze_inference_inputs(
+        current, numeric=numeric, categorical=categorical, directory=run / "models" / group,
+        report=report, prefix="champion-", matrix=matrix)
+    return {"forecasts": frames, "report": report, "input_evidence_outputs": (
+        *challenger.get("input_evidence_outputs", ()), *evidence_outputs)}, (model_name, cohort_name, report_name, challenger_report_name)

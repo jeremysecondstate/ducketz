@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 import json
 import math
@@ -29,13 +29,23 @@ class ResearchConfig:
     synthetic_policy: str = "include"
     source_dataset: str = "EQUS.MINI"
     retraining_minutes: int = 15
+    # This flag controls the per-symbol model_policy lane. The existing own v1
+    # model-supervision manifest remains automatic for default live/shadow fits.
     use_supervised_models: bool = False
+    population_contract: str | None = None
+    market_inputs_enabled: bool = False
 
     def validate(self):
         if self.retraining_minutes != 15:
             raise ContractError("Primary benchmark fully retrains every 15 minutes")
         if type(self.use_supervised_models) is not bool:
             raise ContractError("Supervised model adoption must be an explicit boolean")
+        if type(self.market_inputs_enabled) is not bool:
+            raise ContractError("Market input collection must be an explicit boolean")
+        if self.population_contract is not None:
+            from .coverage import POPULATION_CONTRACT
+            if self.population_contract != POPULATION_CONTRACT:
+                raise ContractError("Unknown observed population contract")
         if type(self.symbol_workers) is not int or self.symbol_workers < 1:
             raise ContractError("Explicit positive symbol worker count required")
         if not 0 <= self.publication_offset_seconds < 900:
@@ -45,6 +55,27 @@ class ResearchConfig:
         if self.lookback_days is not None and (type(self.lookback_days) is not int or self.lookback_days <= 0):
             raise ContractError("Historical window must be positive or all available")
         return self
+
+
+class SourceIntervalEmpty(ContractError):
+    """Completed acquisition with no observations; never a zero-return candle."""
+    def __init__(self, evidence):
+        super().__init__("Exact covered source interval contains no observations")
+        self.evidence = evidence
+
+
+def with_local_data_policy(config, datastore):
+    """Explicit private binding; historical forecasts retain their frozen policy."""
+    from .coverage import load_data_policy
+    if not (Path(datastore) / "intraday/data-policy.json").is_file():
+        return config
+    policy = load_data_policy(datastore)
+    if not policy:
+        return config
+    if policy.get("source_dataset", config.source_dataset) != config.source_dataset:
+        raise ContractError("Local data policy differs from configured source")
+    return replace(config, population_contract=policy.get("population_contract"),
+                   market_inputs_enabled=policy.get("market_inputs_enabled", False)).validate()
 
 
 def local_symbols(profile_path, watchlist_path, datastore):
@@ -74,6 +105,8 @@ def _frame(history):
 
 
 def _jsonable(value):
+    if value is pd.NA or value is pd.NaT:
+        return None
     if isinstance(value, dict):
         return {str(k): _jsonable(v) for k, v in value.items()}
     if isinstance(value, (list, tuple, np.ndarray, pd.Index)):
@@ -81,10 +114,29 @@ def _jsonable(value):
     if isinstance(value, (datetime, pd.Timestamp)):
         return value.isoformat()
     if isinstance(value, np.generic):
-        return value.item()
+        return _jsonable(value.item())
     if isinstance(value, float) and not np.isfinite(value):
         return None
     return value
+
+
+def _market_feature_migration(selected, current, base):
+    """Portable specifications can refit changed context without claiming assessment.
+
+    The price feature definitions stay ordered and exact. No fitted estimator or
+    old input matrix is reused. Only paired, explicitly missing-aware context
+    columns may differ; arbitrary feature mismatches remain errors.
+    """
+    base = list(base)
+    def context(names):
+        if list(names[:len(base)]) != base or len(set(names)) != len(names):
+            return False
+        suffix = list(names[len(base):])
+        return len(suffix) % 2 == 0 and all(
+            isinstance(name, str) and name.startswith("market_") and not name.endswith("__available")
+            and suffix[index + 1] == name + "__available"
+            for index, name in enumerate(suffix) if index % 2 == 0)
+    return context(selected) and context(current)
 
 
 def resource_snapshot():
@@ -125,6 +177,8 @@ def _dataset_scope(value):
     if not isinstance(value, dict) or not {"synthetic_policy", "lookback_days"} <= value.keys():
         raise ContractError("Frozen dataset scope is invalid")
     scope = {"synthetic_policy": value.get("synthetic_policy"), "lookback_days": value.get("lookback_days")}
+    if value.get("population_contract"):
+        scope["population_contract"] = value["population_contract"]
     if (not isinstance(scope["synthetic_policy"], str) or scope["synthetic_policy"] not in {"include", "exclude"} or
             scope["lookback_days"] is not None and
             (type(scope["lookback_days"]) is not int or scope["lookback_days"] <= 0)):
@@ -157,22 +211,66 @@ def _frozen_supervised_policy(saved, *, symbols):
     return policy
 
 
-def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration):
+def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration,
+                             selected_config_path=None, selected_as_of=None, use_model_policy=True):
     """Freeze selected specs, their policy identities and populations per cycle."""
     with store.connect() as db:
         row = db.execute("SELECT payload FROM cycles WHERE id=?", (cycle_id,)).fetchone()
     if row:
-        return _frozen_supervised_policy(json.loads(row[0]), symbols=symbols)
+        saved = json.loads(row[0])
+        if saved.get("supervised_model_policy") is None and not use_model_policy:
+            return None
+        return _frozen_supervised_policy(saved, symbols=symbols)
     from .data import FEATURE_NAMES
     from .model_policy import load_active_policy
     policy = {"pc": pc, "feature_names": list(FEATURE_NAMES), "models_by_symbol": {},
               "dataset_scope_by_symbol": {}, "policy_identities_by_symbol": {}}
     default_scope = _dataset_scope(configuration)
+    selections = {}
+    if selected_config_path is not None:
+        from .selected_config import load_selected_config
+        def selected_error(symbol, exc):
+            store.event(cycle_id, "selected_configuration_error",
+                {"error_type": type(exc).__name__, "message": str(exc),
+                 "configuration_used": "existing_own_policy_or_configured_defaults"}, symbol=symbol)
+        try:
+            selections = load_selected_config(selected_config_path, pc=pc, symbols=symbols,
+                source_dataset=configuration["source_dataset"], as_of=selected_as_of,
+                on_error=selected_error)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            selected_error(None, exc)
+        if selections:
+            policy["selected_config_by_symbol"] = selections
+    if not selections and not use_model_policy:
+        return None
     for symbol in symbols:
-        selected = load_active_policy(store.path.parent / "supervision", pc=pc, symbol=symbol,
-                                      feature_names=FEATURE_NAMES)
+        entry = selections.get(symbol)
+        if entry is not None:
+            policy["models_by_symbol"][symbol] = entry["models"]
+            policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(entry)
+            if configuration.get("population_contract"):
+                policy["dataset_scope_by_symbol"][symbol]["population_contract"] = configuration["population_contract"]
+            policy["policy_identities_by_symbol"][symbol] = entry["selection_id"]
+            # The explicitly chosen own manifest supplies this cycle. A second
+            # policy stays intact and is reported without becoming a wait or gate.
+            other = store.path.parent / "supervision/active" / f"{pc}-{symbol}.json"
+            if other.is_file():
+                details = {"selected_manifest": str(selected_config_path),
+                           "selection_id": entry["selection_id"], "other_policy_path": str(other),
+                           "policy_used": "selected_manifest", "other_policy_preserved": True}
+                try:
+                    other_value = json.loads(other.read_text(encoding="utf-8"))
+                    details["other_policy_newer"] = instant(other_value["installed_at"]) > instant(entry["selected_at"])
+                except (OSError, ValueError, KeyError, TypeError):
+                    details["other_policy_time_unknown"] = True
+                store.event(cycle_id, "selected_configuration_precedence", details, symbol=symbol)
+            continue
+        selected = (load_active_policy(store.path.parent / "supervision", pc=pc, symbol=symbol,
+                                       feature_names=FEATURE_NAMES) if use_model_policy else None)
         policy["models_by_symbol"][symbol] = [asdict(spec) for spec in selected["models"]] if selected else None
         policy["dataset_scope_by_symbol"][symbol] = _dataset_scope(selected["dataset_scope"] if selected else default_scope)
+        if configuration.get("population_contract"):
+            policy["dataset_scope_by_symbol"][symbol]["population_contract"] = configuration["population_contract"]
         policy["policy_identities_by_symbol"][symbol] = selected["sha256"] if selected else None
     policy["sha256"] = digest(policy)
     return policy
@@ -180,7 +278,7 @@ def _supervised_cycle_policy(store, cycle_id, *, pc, symbols, configuration):
 
 class ShadowRunner:
     def __init__(self, *, store, pc, symbols, config=None, artifact_root=None, clock=utcnow,
-                 trainer=None, dataset_builder=None, stopped=lambda: False):
+                 trainer=None, dataset_builder=None, stopped=lambda: False, selected_config_path=None):
         self.store = store
         self.pc = pc
         self.symbols = tuple(symbols)
@@ -192,6 +290,19 @@ class ShadowRunner:
         self.trainer = trainer
         self.dataset_builder = dataset_builder
         self.stopped = stopped
+        self.selected_config_path = (Path(selected_config_path) if selected_config_path is not None else
+                                     self.store.path.parent / "model-supervision/active.json")
+        from ml.market_provenance import capture_runtime
+        from . import data, models, coverage, feature_support
+        self.market_input_store = None
+        if self.config.market_inputs_enabled:
+            from .market_inputs import MarketInputStore
+            self.market_input_store = MarketInputStore(self.store.path.parent.parent)
+        self.runtime_provenance = capture_runtime(
+            [__name__, data.__name__, models.__name__, coverage.__name__, feature_support.__name__,
+             "ml.intraday.live_session", "ml.intraday.store", "ml.intraday.market_inputs",
+             "ml.intraday.market_input_research", "ml.intraday.market_input_schwab_stream"],
+            object_root=self.artifact_root / "source-objects")
 
     def run_cycle(self, histories, *, reference_at, mode="shadow", cutoff=None, experiment="primary",
                   acquisition=None, intent_by_symbol=None, on_published=None, retry_symbols=None,
@@ -218,15 +329,26 @@ class ShadowRunner:
         configuration_hash = digest(configuration)
         cycle_id = digest(dict(pc=self.pc,reference_at=reference.isoformat(),configuration_hash=configuration_hash,
                                mode=mode,experiment=experiment))
+        from .models import DEFAULT_MODELS
+        default_models = tuple(self.config.models) == DEFAULT_MODELS
+        use_model_policy = self.config.use_supervised_models and mode == "live"
+        use_selected_manifest = mode in {"live", "shadow"} and default_models
         supervised_policy = (_supervised_cycle_policy(self.store, cycle_id, pc=self.pc, symbols=self.symbols,
-                                                     configuration=configuration)
-                             if self.config.use_supervised_models and mode == "live" else None)
+            configuration=configuration, selected_as_of=training_cutoff,
+            selected_config_path=self.selected_config_path if use_selected_manifest else None,
+            use_model_policy=use_model_policy)
+                             if use_model_policy or use_selected_manifest else None)
+        if supervised_policy is not None and supervised_policy.get("selected_config_by_symbol"):
+            # This overlay is excluded from the logical cycle identity. The
+            # first begin_cycle writer owns it; retries reuse that frozen choice.
+            configuration["selected_models_by_symbol"] = supervised_policy["selected_config_by_symbol"]
         initial = dict(pc=self.pc,symbols=list(self.symbols),reference_at=reference.isoformat(),mode=mode,
                        experiment=experiment,configuration_hash=configuration_hash,configuration=configuration,
                        supervised_model_policy=supervised_policy,
                        started_at=started.isoformat(),training_cutoff=training_cutoff.isoformat(),
                        candle_close=(reference+STEP).isoformat(),scheduled_acquisition=scheduled.isoformat(),
                        acquisition=acquisition or {},status="running",full_retrain=True,
+                       runtime_provenance=self.runtime_provenance,
                        scheduling_policy="explicit_research_workers_no_timeout_no_fallback",
                        overrun_policy="latest_completed_no_backlog_orders" if mode == "live" else
                                       "record_overrun_no_automatic_live_execution")
@@ -353,19 +475,50 @@ class ShadowRunner:
                       "manifest":_jsonable(dataset.manifest),"cutoff":cutoff.isoformat(),
                       "dataset_scope": dict(scope),
                       "source_manifest":_jsonable(getattr(history,"manifest",{}))}
+            snapshot["runtime_provenance"] = self.runtime_provenance
+            if self.market_input_store is not None:
+                from .market_inputs import augment_snapshot
+                snapshot = augment_snapshot(snapshot, self.market_input_store, symbol=symbol,
+                                            inference_at=cutoff, cutoff=cutoff)
             if supervised_policy is not None:
                 selected_specs = supervised_policy["models_by_symbol"][symbol]
-                if selected_specs is not None and list(dataset.feature_names) != supervised_policy["feature_names"]:
+                entry = supervised_policy.get("selected_config_by_symbol", {}).get(symbol)
+                selected_features = entry["feature_names"] if entry is not None else supervised_policy["feature_names"]
+                if (selected_specs is not None and list(snapshot["feature_names"]) != selected_features
+                        and not (self.market_input_store is not None and _market_feature_migration(
+                            selected_features, snapshot["feature_names"], dataset.feature_names))):
                     raise ContractError("Selected model policy features differ from the current dataset")
                 snapshot["model_selection"] = {"models": selected_specs,
                     "policy_sha256": supervised_policy["sha256"],
                     "active_policy_sha256": supervised_policy.get("policy_identities_by_symbol", {}).get(symbol),
                     "selection": "supervised" if selected_specs is not None else "configured_defaults"}
+                snapshot["model_selection"]["qualification_context"] = (
+                    "same_population_and_features" if entry is not None
+                    and entry.get("population_contract") == scope.get("population_contract")
+                    and selected_features == snapshot["feature_names"]
+                    and entry.get("feature_contract", {"price": entry.get("feature_version")})
+                        == snapshot["manifest"].get("feature_contract", {"price": snapshot["manifest"].get("feature_version")})
+                    and entry.get("market_input_version") == snapshot["manifest"].get("market_input_version")
+                    else "specifications_retained; current_population_or_features_not_yet_assessed")
+                if entry is not None:
+                    tail = entry["max_training_rows"]
+                    for field in ("X", "y", "label_available_at", "reference_at", "target_close_at"):
+                        snapshot[field] = snapshot[field][-tail:]
+                    if snapshot.get("market_inputs"):
+                        snapshot["market_inputs"]["training"] = snapshot["market_inputs"]["training"][-tail:]
+                        snapshot["market_inputs"]["training_rows"] = len(snapshot["X"])
+                        snapshot["market_inputs"]["training_nonmissing_rows_by_feature"] = {
+                            name: sum(row[index + 1] for row in snapshot["X"])
+                            for index, name in enumerate(snapshot["feature_names"])
+                            if name in snapshot["market_inputs"]["feature_names"] and not name.endswith("__available")}
+                    snapshot["manifest"] = {**snapshot["manifest"], "supervised_training_rows": len(snapshot["y"]),
+                        "max_training_rows": tail, "model_selection_id": entry["selection_id"]}
+                    snapshot["model_selection"].update(selection="selected_manifest", selection_id=entry["selection_id"])
             # Retain the actual observations used, rather than only transformed features.
             frame=_frame(history)
             available=pd.to_datetime(frame.available_at,utc=True)
             used=frame.loc[available.le(pd.Timestamp(cutoff)) & pd.to_datetime(frame.opened_at,utc=True).le(pd.Timestamp(reference))]
-            snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
+            snapshot["candles"]=_jsonable(used.to_dict("records"))
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
         snapshot_hash,snapshot=frozen
         # Immutable inputs and their actual manifest take precedence on retry,
@@ -387,7 +540,8 @@ class ShadowRunner:
             raise InterruptedError("Manual stop before training; original snapshot preserved")
         trainer=self.trainer or fit_ensemble
         selected_specs = snapshot.get("model_selection", {}).get("models")
-        model_config = configured_models(selected_specs) if selected_specs is not None else self.config.models
+        model_config = (selected_specs if snapshot.get("model_selection", {}).get("selection") == "selected_manifest"
+                        else configured_models(selected_specs)) if selected_specs is not None else self.config.models
         attempt=uuid.uuid4().hex
         training_start=instant(self.clock())
         self.store.event(cycle_id,"training_started",{"attempt":attempt,"snapshot_hash":snapshot_hash,
@@ -399,6 +553,8 @@ class ShadowRunner:
                        artifact_dir=self.artifact_root,run_id=f"{cycle_id[:16]}-{symbol}-{attempt}",
                        reference_at=snapshot["reference_at"],target_close_at=snapshot["target_close_at"],
                        dataset_metadata={**snapshot["manifest"], **dataset_scope, "dataset_scope": dataset_scope,
+                           "runtime_provenance": snapshot.get("runtime_provenance"),
+                           "market_inputs": snapshot.get("market_inputs"),
                            **({"model_selection": snapshot["model_selection"]} if "model_selection" in snapshot else {})})
         finished=instant(self.clock())
         self.store.event(cycle_id,"models_completed",{"attempt":attempt,"result":fitted},symbol=symbol)
@@ -421,9 +577,13 @@ class ShadowRunner:
                  "training_started_at":training_start.isoformat(),"training_completed_at":finished.isoformat(),
                  "issue_after_target":issued>=reference+3*STEP,"dataset_manifest":snapshot["manifest"],
                  "model_selection":snapshot.get("model_selection"),
+                 "model_selection_id":snapshot.get("model_selection", {}).get("selection_id"),
                  "execution_blocked_reason":"recovered_older_cycle" if not allow_execution else
                      "issue_after_target" if issued>=reference+3*STEP else None,
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
+                 "population_contract":dataset_scope.get("population_contract"),
+                 "runtime_provenance_sha256": snapshot.get("runtime_provenance", {}).get("sha256"),
+                 "model_qualification_context":snapshot.get("model_selection", {}).get("qualification_context"),
                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
         reference_rows=[row for row in snapshot.get("candles", [])
@@ -486,6 +646,8 @@ class ShadowRunner:
                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
                                 (pd.to_datetime(frame.available_at,utc=True)<=pd.Timestamp(instant(as_of)))]
                 match=match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                                and (row.get("population_contract") if isinstance(row.get("population_contract"), str) else None)
+                                    == forecast.get("population_contract")
                                 for row in match.to_dict("records")]]
                 if len(match):
                     match=match.sort_values("available_at")
@@ -497,7 +659,7 @@ class ShadowRunner:
 class LiveHistories:
     """Read-only existing Databento access; original DATASTORE files stay intact."""
     def __init__(self,*,histories,provider,store,journal,reference_at,clock=utcnow,sleep=time.sleep,bounded=False,
-                 stopped=lambda: False):
+                 stopped=None,reuse_saved=False,population_contract=None):
         self.histories=histories
         self.provider=provider
         self.store=store
@@ -506,9 +668,17 @@ class LiveHistories:
         self.clock=clock
         self.sleep=sleep
         self.bounded=bounded
-        self.stopped=stopped
+        self.stopped=stopped or (lambda: False)
+        self.reuse_saved=reuse_saved
+        self.population_contract = population_contract or next(
+            (getattr(h, "manifest", {}).get("population_contract") for h in histories.values()
+             if getattr(h, "manifest", {}).get("population_contract")), None)
+        if population_contract == "legacy":
+            self.population_contract = None
         self.cycle_id=None
         for symbol in tuple(histories):
+            if self.stopped():
+                raise InterruptedError("Candle acquisition stopped before history restoration")
             self._refresh_symbol(symbol)
 
     def _refresh_symbol(self, symbol):
@@ -521,6 +691,7 @@ class LiveHistories:
             saved=[c for c in saved if instant(c["available_at"]) <= instant(self.clock())]
             invalid=[c for c in saved if not synthetic_continuity_verified(c)]
             saved=[c for c in saved if synthetic_continuity_verified(c) and completed_15m_observation(c)]
+            saved=[c for c in saved if c.get("population_contract") == self.population_contract]
             original=_frame(history)
             excluded=[index for index,row in original.loc[original.synthetic.eq(True)].iterrows()
                       if not synthetic_continuity_verified(_jsonable(row.to_dict()))]
@@ -531,6 +702,8 @@ class LiveHistories:
                 original=original.drop(index=excluded).copy()
                 histories[symbol]=history=History(original,history.manifest)
             eligible=[completed_15m_observation(row, from_frame=True) and instant(row["available_at"]) <= instant(self.clock())
+                      and (row.get("population_contract") if isinstance(row.get("population_contract"),str) else None)
+                          == self.population_contract
                       for row in original.to_dict("records")]
             original=original.loc[eligible].copy()
             original.attrs["intraday_history"]=history.manifest
@@ -552,22 +725,48 @@ class LiveHistories:
         from .data import AcquisitionPending
         while True:
             if self.stopped():
-                raise InterruptedError("Live history stopped before acquisition")
+                raise InterruptedError("Candle acquisition stopped before the next attempt")
             try:
                 return self._get_step(symbol)
             except AcquisitionPending as exc:
                 if self.stopped():
-                    raise InterruptedError("Live history stopped before retry wait") from exc
+                    raise InterruptedError("Candle acquisition stopped before retry wait") from exc
                 if self.bounded:
                     raise
                 self.sleep(min(4.0, exc.retry_after_seconds))
 
     def _get_step(self,symbol):
         from .data import (History,equity_sessions,recover_databento_candle_step,
-                           resolve_minute_candle,AcquisitionPending)
+                           resolve_minute_candle,AcquisitionPending,synthetic_continuity_verified,
+                           completed_15m_observation)
         self._refresh_symbol(symbol)
         history=self.histories[symbol]
         frame=_frame(history)
+        if self.stopped():
+            raise InterruptedError("Candle acquisition stopped before the next provider request")
+        if self.reuse_saved:
+            # Reuse only durable, actually received and provenance-validated
+            # observations. Historical close-time assumptions cannot satisfy
+            # a live collector's completed slot.
+            durable=next((c for c in reversed(self.store.observed_candles(symbol))
+                          if instant(c["opened_at"]) == self.reference
+                          and instant(c["available_at"]) <= instant(self.clock())
+                          and c.get("source_dataset") == self.provider.dataset
+                          and c.get("source_id") == f"databento:{self.provider.dataset}:ohlcv-1m"
+                          and c.get("population_contract") == self.population_contract
+                          and completed_15m_observation(c)
+                          and synthetic_continuity_verified(c)), None)
+            if durable is not None and self.reference+STEP <= instant(self.clock()):
+                # A later invalid same-opening row must not override the
+                # independently validated durable 15m observation we selected.
+                addition=pd.DataFrame([durable])
+                for column in ("opened_at","available_at"):
+                    addition[column]=pd.to_datetime(addition[column],utc=True)
+                prior=frame.loc[pd.to_datetime(frame.opened_at,utc=True).ne(pd.Timestamp(self.reference))]
+                merged=pd.concat([prior,addition],ignore_index=True).sort_values("opened_at").reset_index(drop=True)
+                merged.attrs["intraday_history"]=history.manifest
+                self.histories[symbol]=History(merged,history.manifest)
+                return self.histories[symbol]
         sessions=equity_sessions(self.reference,self.reference+STEP)
         session=next((s for s in sessions if s.contains(self.reference)),None)
         if session is None:
@@ -575,7 +774,7 @@ class LiveHistories:
         requested = self.reference
         while True:
             if self.stopped():
-                raise InterruptedError("Live history stopped before predecessor recovery")
+                raise InterruptedError("Candle acquisition stopped before predecessor recovery")
             before=frame.loc[pd.to_datetime(frame.opened_at,utc=True).lt(pd.Timestamp(requested))
                              & pd.to_datetime(frame.available_at,utc=True).le(pd.Timestamp(instant(self.clock())))]
             previous=_jsonable(before.iloc[-1].to_dict()) if len(before) else None
@@ -589,7 +788,8 @@ class LiveHistories:
             # Only confirmed leading omissions require an external close. Walk
             # their missing same-session predecessors using existing evidence;
             # this call still performs at most one bounded acquisition step.
-            probe=resolve_minute_candle(attempts,session=session,previous=None) if attempts and not adjacent else {}
+            probe=resolve_minute_candle(attempts,session=session,previous=None,
+                **({"population_contract":self.population_contract} if self.population_contract else {})) if attempts and not adjacent else {}
             if (probe.get("reason") == "no_prior_known_price" and session.contains(requested-STEP)):
                 requested -= STEP
                 continue
@@ -597,10 +797,14 @@ class LiveHistories:
         begin=instant(self.clock());tick=time.perf_counter()
         kwargs=dict(symbol=symbol,opened_at=requested,journal=self.journal,session=session,
                     previous=previous,clock=self.clock,stopped=self.stopped)
+        if self.population_contract:
+            kwargs["population_contract"] = self.population_contract
         result=recover_databento_candle_step(self.provider,**kwargs)
         if result.get("candle") is None:
             if result.get("status") == "retry":
                 raise AcquisitionPending(result.get("reason", "retry"), result.get("retry_after_seconds", 4))
+            if result.get("final") and result.get("reason") == "source_empty":
+                raise SourceIntervalEmpty(result)
             raise ContractError("Exact reference unavailable: "+str(result.get("reason",result.get("status"))))
         candle=result["candle"]
         self.store.record_candle(candle)
@@ -648,7 +852,8 @@ def watch_shadow(runner,*,histories,provider,journal,start_reference,overrun_pol
         eligible=(4,0)<(local.hour,local.minute)<=(16,45) and any(s.contains(reference) for s in equity_sessions(reference,reference+STEP))
         if eligible:
             incoming=LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
-                                  reference_at=reference,clock=clock,sleep=sleep,stopped=runner.stopped)
+                                  reference_at=reference,clock=clock,sleep=sleep,stopped=runner.stopped,
+                                  population_contract=runner.config.population_contract)
             result=runner.run_cycle(incoming,reference_at=reference,mode="shadow",experiment="manual_shadow_watch",
                                     acquisition={"kind":"existing_databento_exact_interval"})
             runner.score_available(histories,as_of=clock(),mode="shadow")
@@ -685,8 +890,11 @@ def main(argv=None):
     pc,symbols=local_symbols(args.profile,args.watchlist,args.datastore)
     config=ResearchConfig(lookback_days=args.lookback_days,symbol_workers=args.symbol_workers,source_dataset=args.source_dataset,
                           publication_offset_seconds=args.publication_offset_seconds)
+    if args.watch or args.mode in {"shadow", "live"}:
+        config=with_local_data_policy(config,args.datastore)
     start=time.perf_counter(); request_start=utcnow()
-    histories={symbol:load_local_history(args.datastore,symbol,source_dataset=config.source_dataset) for symbol in symbols}
+    histories={symbol:load_local_history(args.datastore,symbol,source_dataset=config.source_dataset,
+        **({"population_contract":config.population_contract} if config.population_contract else {})) for symbol in symbols}
     acquisition={"kind":"existing_local_single_source_history","request_start":request_start,"request_end":utcnow(),
                  "seconds":time.perf_counter()-start,"provider_requests":0}
     runner=ShadowRunner(store=ShadowStore(args.datastore/"intraday/shadow.sqlite3"),pc=pc,symbols=symbols,config=config)
