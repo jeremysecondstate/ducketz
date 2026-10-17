@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T19:00:13.399620Z",
+  "id": "20261017T190013Z-d9f248114bb7438597d9d5175c865038",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed bounded market-data recovery, retrospective CME inputs and prospective evidence repairs"
+}
