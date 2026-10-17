@@ -267,7 +267,7 @@ class QuarterHourMinuteFeed:
                       "error_type": type(exc).__name__, "message": str(exc)}
         candle = result.get("candle")
         terminal_missing = result.get("status") == "missing" and (
-            result.get("reason") in {"no_prior_known_price", "unverified_prior_price_continuity"}
+            result.get("reason") in {"no_prior_known_price", "unverified_prior_price_continuity", "unverified_source_no_trade"}
             or native and result.get("reason") == "source_empty_interval")
         if candle is None and not terminal_missing and result.get("status") != "unusable":
             return False

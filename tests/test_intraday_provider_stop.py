@@ -109,7 +109,9 @@ def test_stop_during_last_call_retains_received_rows_or_provider_error(mode, sta
             assert len(response.rows) == 15
             assert response.rows[0]["opened_at"] == REFERENCE.isoformat()
             assert response.rows[-1]["opened_at"] == (REFERENCE + timedelta(minutes=14)).isoformat()
-            assert response.provider_no_trade_evidence and response.error is None
+            # Genuine rows survive a stop, but this bare fake provider has no
+            # persisted complete source receipt that could prove an omission.
+            assert response.provider_no_trade_evidence is None and response.error is None
         else:
             assert not response.rows and response.error == "ReadTimeout"
 

@@ -471,6 +471,8 @@ class ShadowRunner:
                 # A retrospective experiment cannot overwrite later recorded
                 # evidence or expose that future outcome at its earlier cutoff.
                 continue
+            if revisions and revisions[-1]["status"] == "synthetic":
+                self.store.invalidate_unverified_outcome(forecast["forecast_id"], as_of=as_of)
             history=histories.get(forecast["symbol"])
             candle=None
             if history is not None:

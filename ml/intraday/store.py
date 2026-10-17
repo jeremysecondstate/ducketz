@@ -274,6 +274,9 @@ class ShadowStore:
         if unavailable_reason:
             status = "unscorable"
         if candle is not None:
+            from .data import synthetic_continuity_verified
+            if not synthetic_continuity_verified(candle):
+                raise ContractError("Synthetic outcome lacks verified source absence and price continuity")
             from .native_interval import candle_matches_forecast
             if not candle_matches_forecast(candle, forecast):
                 raise ContractError("Outcome observation contract differs from the immutable forecast")
@@ -302,7 +305,7 @@ class ShadowStore:
             previous = self._outcome_value(prior) if prior else None
             if previous and instant(previous["observed_at"])>now:
                 raise ContractError("Outcome evidence cannot be backdated before an existing observation")
-            if previous and candle is None and previous["status"] in {"scored", "synthetic"}:
+            if previous and candle is None and previous["status"] in {"scored", "synthetic", "unscorable"}:
                 return previous
             old = db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes WHERE id=?", (revision_id,)).fetchone()
             if old:
@@ -310,6 +313,48 @@ class ShadowStore:
             result = {**evidence, "observed_at": now.isoformat(), "revision_id": revision_id}
             db.execute("INSERT INTO outcomes VALUES(?,?,?,?)", (revision_id, key, now.isoformat(), encoded(result)))
         return result
+
+    def invalidate_unverified_outcome(self, forecast_id, *, as_of):
+        """Append a precise audit revision; never rewrite prices or forecasts.
+
+        Legacy synthetic outcomes could be stored with only a generic omission
+        statement. They cannot become observed targets under a newer contract.
+        Retain the original outcome and candle, marking the latest assessment
+        unscorable only when their saved provenance demonstrably fails.
+        """
+        from .data import synthetic_continuity_verified
+        now = instant(as_of)
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT id,forecast_id,observed_at,payload FROM outcomes "
+                "WHERE forecast_id=? ORDER BY rowid DESC LIMIT 1", (forecast_id,)).fetchone()
+            if row is None:
+                return None
+            previous = self._outcome_value(row)
+            if (previous["status"] not in {"scored", "synthetic"}
+                    or instant(previous["observed_at"]) > now or not previous.get("candle_id")):
+                return None
+            saved = db.execute("SELECT payload FROM candles WHERE id=?", (previous["candle_id"],)).fetchone()
+            if saved is None:
+                raise ContractError("Saved outcome target candle is missing")
+            candle = json.loads(saved[0])
+            if digest(candle) != previous["candle_id"]:
+                raise ContractError("Saved outcome candle evidence hash changed")
+            if synthetic_continuity_verified(candle):
+                return None
+            evidence = {"forecast_id": forecast_id, "status": "unscorable", "target_not_down": None,
+                "reference_to_target_return": None,
+                "return_basis": "reference_open_to_exact_target_close_not_trade_pnl",
+                "target_close_price": None, "candle_id": None,
+                "unavailable_reason": "legacy_synthetic_target_without_verified_source_no_trade_proof",
+                "availability_basis": None, "invalidates_revision_id": previous["revision_id"],
+                "rejected_candle_id": previous["candle_id"],
+                "audit_contract": "verified_source_no_trade_outcome_audit_v1"}
+            revision_id = digest(evidence)
+            result = {**evidence, "observed_at": now.isoformat(), "revision_id": revision_id}
+            db.execute("INSERT OR IGNORE INTO outcomes VALUES(?,?,?,?)",
+                (revision_id, forecast_id, now.isoformat(), encoded(result)))
+            return result
 
     def revisions(self, forecast_id):
         with self.connect() as db:
