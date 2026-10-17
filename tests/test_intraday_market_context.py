@@ -9,7 +9,7 @@ import pytest
 
 from ml.intraday.data import Dataset
 from ml.intraday.market_context import (
-    CONTEXT_FEATURE_NAMES, FEATURE_VERSION, VALUE_FEATURE_NAMES,
+    CONTEXT_FEATURE_NAMES, FEATURE_VERSION, LEGACY_FEATURE_VERSION, VALUE_FEATURE_NAMES,
     augment_dataset, build_market_context, market_context_contract,
     snapshot_digest, validate_market_context_contract,
 )
@@ -125,11 +125,11 @@ def test_duplicates_are_idempotent_and_conflicting_source_rows_are_rejected():
     assert native_updates.features["ctx_stock_quote_relative_spread"] == pytest.approx(.02)
 
 
-def test_latest_source_error_and_partial_never_enter_successful_features():
+def test_legacy_latest_source_error_and_partial_never_enter_successful_features():
     good = sealed()
     for status in ("ERROR", "PARTIAL", "CAPACITY_BLOCKED", "NOT_AUTHORIZED", "UNPROBED"):
         bad = sealed(snapshot_id="second", receipt_at=CUTOFF, available_at=CUTOFF, status=status)
-        item = context(good, bad)
+        item = context(good, bad, contract=market_context_contract(version=LEGACY_FEATURE_VERSION))
         assert item.features["ctx_stock_quote_relative_spread_missing"] == 1
         assert item.source_evidence[0]["status"] == status
         assert item.features["ctx_stock_quote_source_partial"] == float(status in {"PARTIAL", "CAPACITY_BLOCKED"})
@@ -346,7 +346,9 @@ def test_commodity_batch_uses_actual_native_quote_returns_without_futures_aliase
     assert result.features["ctx_cross_asset_commodity_log_instrument_count"] == pytest.approx(math.log1p(2))
     assert result.features["ctx_cross_asset_CL_return_missing"] == 1
     assert build_market_context([item], symbol="DOCU", cutoff="2026-10-16T14:15:04+00:00").features["ctx_cross_asset_commodity_quote_return_median_missing"] == 1
-    assert context({**item, "status": "PARTIAL", "snapshot_sha256": snapshot_digest({**item, "status": "PARTIAL"})}).features["ctx_cross_asset_commodity_quote_return_median_missing"] == 1
+    partial = {**item, "status": "PARTIAL", "snapshot_sha256": snapshot_digest({**item, "status": "PARTIAL"})}
+    assert context(partial).features["ctx_cross_asset_commodity_quote_return_median_missing"] == 0
+    assert context(partial, contract=market_context_contract(version=LEGACY_FEATURE_VERSION)).features["ctx_cross_asset_commodity_quote_return_median_missing"] == 1
 
 
 @pytest.mark.parametrize("previous", [0, -1, None, "unavailable"])

@@ -147,9 +147,8 @@ class QuarterHourMinuteFeed:
         addition = pd.DataFrame(candles)
         for column in ("opened_at", "available_at"):
             addition[column] = pd.to_datetime(addition[column], utc=True)
-        merged = (pd.concat([original, addition], ignore_index=True)
-                  .sort_values("available_at").drop_duplicates("opened_at", keep="last")
-                  .sort_values("opened_at").reset_index(drop=True))
+        from .native_interval import merge_native_history_frames
+        merged = merge_native_history_frames(original, addition)
         manifest.update(source_dataset=self.dataset, current_reference_availability="actual")
         if symbol in self.native_interval_symbols:
             manifest["native_interval_contract"] = self.native_interval_contract

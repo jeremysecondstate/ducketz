@@ -522,7 +522,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 try:
                     if symbol in native_interval_symbols:
                         from .native_interval import load_native_interval_history
-                        histories[symbol] = load_native_interval_history(root,symbol,source_dataset=config.source_dataset)
+                        histories[symbol] = load_native_interval_history(root,symbol,source_dataset=config.source_dataset,
+                            pc=pc, recovery_contract=getattr(model_runtime.get("dataset_builder"), "historical_recovery_contract", None))
                     else:
                         histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
                 except Exception as exc:

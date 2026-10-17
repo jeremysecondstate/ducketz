@@ -27,6 +27,7 @@ CONTRACT = "intraday-covered-native-interval-v1"
 FEATURE_VERSION = "intraday-covered-native-observed-features-v1"
 FEATURE_POLICY = "covered_exact_quarter_actual_observations_only_no_price_fill_v1"
 LABEL_PROVENANCE = "covered_native_reference_open_and_exact_target_observed_close"
+RECOVERY_CONTRACT = "intraday-covered-native-recovery-v2"
 FIELDS = ("open", "high", "low", "close", "volume")
 
 
@@ -80,6 +81,9 @@ def _candle(*, symbol, source_dataset, opened, available, kind, session, rows, c
             "symbol": symbol, "source_dataset": source_dataset,
             "interval_open": opened.isoformat(), "interval_close": (opened + STEP).isoformat(),
             "coverage": coverage, "observations": rows, "prices_filled": False})}
+    if kind == "actual_historical_recovery":
+        value.update(native_recovery_contract=RECOVERY_CONTRACT,
+                     feature_cutoff_at=(opened + STEP).isoformat())
     if not completed_native_interval(value):
         raise ContractError("Native interval evidence failed its own validation")
     return value
@@ -147,6 +151,10 @@ def completed_native_interval(candle, *, from_frame=False):
                         or (utc(coverage["request_started_at"]) - utc(previous["request_ended_at"])).total_seconds() < max(4.0, retry)
                         or _rows(previous["observations"], opened=opened, closed=opened + STEP) != observations):
                     return False
+        elif kind == "actual_historical_recovery":
+            from .native_recovery import valid_recovery_coverage
+            if not valid_recovery_coverage(candle, coverage):
+                return False
         elif kind == "assumed_historical_close":
             if (coverage.get("kind") != "historical_native_raw_range" or available != opened + STEP
                     or coverage.get("observation_basis") != "canonical_native_file_after_successful_fetch_merges"
@@ -210,7 +218,66 @@ def resolve_native_interval(responses, *, session):
     return {"status": "observed", "reason": None, "candle": candle}
 
 
-def load_native_interval_history(root, symbol, *, source_dataset="EQUS.MINI"):
+def merge_native_history_frames(original, addition):
+    """Retain earliest actual evidence for the current native revision only.
+
+    Legacy candles keep their existing latest-availability selection. Native
+    identity includes every validated minute, not just aggregate OHLCV. A
+    changed intervening revision ends the group, so A/B/A never reuses old A's
+    clock. Inputs and immutable saved revisions are not modified.
+    """
+    merged=pd.concat([original,addition],ignore_index=True)
+    ordered=merged.sort_values('available_at',kind='stable')
+    selected=ordered.drop_duplicates('opened_at',keep='last').index.to_list()
+    duplicate=ordered.loc[ordered.duplicated('opened_at',keep=False)]
+    replacements={}
+    def identity(row):
+        if not completed_native_interval(row,from_frame=True):
+            return None
+        evidence=json.loads(row['evidence_json'])
+        return _json({'symbol':row['symbol'],'source_id':row['source_id'],
+            'source_dataset':row['source_dataset'],'native_interval_contract':CONTRACT,
+            'opened_at':utc(row['opened_at']).isoformat(),
+            'observations':_rows(evidence['observations'],opened=utc(row['opened_at']),
+                                 closed=utc(row['opened_at'])+STEP)})
+    for _,group in duplicate.groupby('opened_at',sort=False):
+        latest=group.iloc[-1].to_dict()
+        if latest.get('availability_kind') not in {'actual','actual_historical_recovery'}:
+            continue
+        final_identity=identity(latest)
+        if final_identity is None:
+            continue
+        suffix=[]
+        boundaries=[]
+        for index,row in reversed(list(group.iterrows())):
+            value=row.to_dict()
+            if identity(value)!=final_identity:
+                break
+            suffix.append((index,value))
+            boundary=json.loads(value['evidence_json'])['coverage'].get('revision_boundary')
+            if boundary is not None:
+                if (boundary.get('kind')!='observed_native_revision_v1' or not boundary.get('attempt_id')
+                        or utc(boundary['available_at'])>=utc(value['available_at'])):
+                    raise ContractError('Native revision boundary must precede its verified current snapshot')
+                boundaries.append(boundary)
+        boundary=max(boundaries,key=lambda b:utc(b['available_at'])) if boundaries else None
+        chosen=group.index[-1]
+        for index,value in suffix:
+            if boundary is not None and utc(value['available_at'])<=utc(boundary['available_at']):
+                break
+            if value.get('availability_kind') in {'actual','actual_historical_recovery'}:
+                chosen=index
+        if boundary is not None:
+            evidence=json.loads(merged.at[chosen,'evidence_json'])
+            evidence['coverage']['revision_boundary']=boundary
+            merged.at[chosen,'evidence_json']=_json(evidence)
+        replacements[group.index[-1]]=chosen
+    selected=[replacements.get(index,index) for index in selected]
+    return merged.loc[selected].sort_values('opened_at').reset_index(drop=True)
+
+
+def load_native_interval_history(root, symbol, *, source_dataset="EQUS.MINI",
+                                 recovery_contract=None, pc=None):
     """Read exact native/raw pairs; range coverage and assumed receipt differ."""
     if source_dataset != "EQUS.MINI" or not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,19}", symbol):
         raise ContractError("Explicit supported native history scope required")
@@ -295,15 +362,32 @@ def load_native_interval_history(root, symbol, *, source_dataset="EQUS.MINI"):
         "files": files, "price_policy": "actual_native_observations_only_no_fill_no_carry",
         "first_minute_open": minutes.opened_at.min().isoformat(), "last_minute_open": minutes.opened_at.max().isoformat()}
     frame.attrs["intraday_history"] = manifest
-    return History(frame, manifest)
+    history = History(frame, manifest)
+    if recovery_contract is not None:
+        if recovery_contract != RECOVERY_CONTRACT or pc not in {"Atlas", "Scout"}:
+            raise ContractError("Recovered history requires explicit version and local PC")
+        from .native_recovery import merge_recovered_history
+        history = merge_recovered_history(history, root=root, symbol=symbol, pc=pc)
+        from .preparation_watch import overlay_saved_native_history
+        history = overlay_saved_native_history(history, root=root, symbol=symbol, pc=pc)
+    return history
 
 
-def build_native_interval_dataset(candles, *, cutoff, reference_at, lookback_days=None):
+def build_native_interval_dataset(candles, *, cutoff, reference_at, lookback_days=None,
+                                  recovery_contract=None, preparation_only=False):
+    if recovery_contract not in {None, RECOVERY_CONTRACT}:
+        raise ContractError("Unknown native recovery projection contract")
+    recovered = candles.availability_kind.eq("actual_historical_recovery")
+    if recovered.any() and recovery_contract != RECOVERY_CONTRACT:
+        raise ContractError("Recovered observations require explicit local recipe opt-in")
     if any(not completed_native_interval(row, from_frame=True) for row in candles.to_dict("records")):
         raise ContractError("Native interval recipe cannot consume another candle contract")
-    dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at, lookback_days=lookback_days)
+    dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
+        lookback_days=lookback_days, preparation_only=preparation_only)
     provenance = {"feature_version": FEATURE_VERSION, "feature_policy": FEATURE_POLICY,
         "label_provenance": LABEL_PROVENANCE, "native_interval_contract": CONTRACT}
+    if recovery_contract is not None:
+        provenance["native_recovery_contract"] = recovery_contract
     snapshot = {**deepcopy(dataset.inference["snapshot"]), **provenance}
     inference = {**dataset.inference, **provenance, "snapshot": snapshot,
         "snapshot_sha256": hashlib.sha256(_json(snapshot).encode()).hexdigest()}

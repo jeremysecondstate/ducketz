@@ -187,3 +187,32 @@ def test_real_index_to_cache_reads_payload_once_and_detects_later_file_change(tm
     with ContextCache(tmp_path / "DOCU.sqlite3") as cache:
         with pytest.raises(ValueError, match="file changed"):
             cache.build(refs, symbol="DOCU", cutoff=CUTOFF)
+
+
+def test_contract_validated_once_per_identity_but_nested_mutation_is_rejected(tmp_path, monkeypatch):
+    from ml.intraday import market_context_cache as module
+    from ml.intraday.market_context import market_context_contract
+    contract = market_context_contract()
+    original, calls = module._resolved_contract, []
+    def resolve(*args):
+        calls.append(1)
+        return original(*args)
+    monkeypatch.setattr(module, '_resolved_contract', resolve)
+    with ContextCache(tmp_path/'cache.sqlite3') as cache:
+        first = cache.build([], symbol='DOCU', cutoff=CUTOFF, contract=contract)
+        assert cache.build([], symbol='DOCU', cutoff=CUTOFF, contract=contract) == first
+        assert calls == [1]
+        contract['feature_names'][0] = 'silently_changed_feature'
+        with pytest.raises(ContractError, match='contract changed'):
+            cache.build([], symbol='DOCU', cutoff=CUTOFF, contract=contract)
+
+
+def test_contract_memo_cannot_hide_changed_selectors(tmp_path):
+    from ml.intraday.market_context import market_context_contract
+    selectors = {'stock_quote':['fixture:first']}
+    contract = market_context_contract(selectors)
+    with ContextCache(tmp_path/'cache.sqlite3') as cache:
+        cache.build([], symbol='DOCU', cutoff=CUTOFF, source_ids=selectors, contract=contract)
+        selectors['stock_quote'][0] = 'fixture:second'
+        with pytest.raises(ContractError, match='selectors differ'):
+            cache.build([], symbol='DOCU', cutoff=CUTOFF, source_ids=selectors, contract=contract)

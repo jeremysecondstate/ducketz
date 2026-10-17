@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from .market_collection import CollectionFailure, CollectionResult, SourceRequest, classify_error
+from .market_collection import CollectionFailure, CollectionResult, SourceRequest, classify_error, _http_status
 
 POLICY = "fmp-native-single-commodity-quote-v1"
 
@@ -50,10 +50,10 @@ def collect(request, start, end, max_records, *, provider_factory):
         payload = provider_factory()._get_json("quote", {"symbol": symbol})
     except Exception as exc:
         status, reason = classify_error(exc)
-        http_status = getattr(getattr(exc, "response", None), "status_code", None)
+        http_status = _http_status(exc)
         if isinstance(http_status, int):
             evidence["http_status"] = http_status
-        if status == "NOT_AUTHORIZED":
+        if status == "NOT_AUTHORIZED" and http_status != 401:
             reason = "Provider denied this exact native commodity quote request; no entitlement inferred for other symbols"
         raise CollectionFailure(status, reason, evidence) from None
     if not isinstance(payload, list) or any(not isinstance(row, dict) for row in payload):

@@ -21,11 +21,62 @@ import uuid
 from .market_collection import CollectionFailure, CollectionResult, SourceRequest, canonical, classify_error, instant, _atomic, _sha
 
 VERSION = "intraday-schwab-current-stream-v1"
+NORMALIZATION_VERSION = "intraday-schwab-normalization-v2"
+SCOPE_VERSION = "intraday-schwab-fair-option-scope-v2"
+BOOTSTRAP_VERSION = "intraday-schwab-chain-bootstrap-receipt-v1"
+MAX_BOOTSTRAP_BYTES = 32 * 1024 * 1024
 FIELDS = {"LEVELONE_EQUITIES": 52, "LEVELONE_OPTIONS": 56,
           "LEVELONE_FUTURES": 41, "CHART_EQUITY": 9, "CHART_FUTURES": 7,
           "NYSE_BOOK": 4, "NASDAQ_BOOK": 4, "OPTIONS_BOOK": 4}
 BOOKS = {"NYSE_BOOK", "NASDAQ_BOOK", "OPTIONS_BOOK"}
 OPTION_SCOPE_LIMITS = {"LEVELONE_OPTIONS": 1000, "OPTIONS_BOOK": 100}
+
+
+def _store_bootstrap(root, *, symbol, started_at, ended_at, start, end, payload, response_received, status, reason):
+    """Retain exact decoded provider JSON, including unusable returned payloads.
+
+    HTTP failures have no returned JSON here; their sanitized failure receipt
+    remains distinct from an empty successful market response. No session,
+    preference, header, token, or private error response is serialized.
+    """
+    value = {"contract": BOOTSTRAP_VERSION, "provider": "schwab", "symbol": symbol,
+        "source_id": "schwab:marketdata:chains:full-chain-bootstrap:v1",
+        "endpoint": "chains", "params": {"symbol": symbol, "contractType": "ALL",
+            "includeUnderlyingQuote": "true", "strategy": "SINGLE", "range": "ALL"},
+        "scheduling_window": {"start": instant(start).isoformat(), "end": instant(end).isoformat()},
+        "request_started_at": started_at, "request_ended_at": ended_at, "receipt_at": ended_at,
+        "status": status, "reason": reason, "raw_encoding": "canonical_provider_json",
+        "raw_payload": payload, "response_received": response_received,
+        "scope": "subscription identifier discovery; no historical or model-input claim"}
+    raw = canonical(value)
+    if len(raw) > MAX_BOOTSTRAP_BYTES:
+        raise CollectionFailure("CAPACITY_BLOCKED", "Option bootstrap response exceeds local immutable archive bound",
+            {"unpersisted_bytes": len(raw), "unpersisted_sha256": hashlib.sha256(raw).hexdigest()})
+    path = Path(root)/"raw"/instant(ended_at).date().isoformat()/("schwab-chain-bootstrap-"+uuid.uuid4().hex+".json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("xb") as handle:
+        handle.write(raw)
+        handle.flush()
+        import os
+        os.fsync(handle.fileno())
+    return {"symbol": symbol, "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(),
+        "bytes": len(raw), "status": status, "request_started_at": started_at, "request_ended_at": ended_at,
+        "raw_payload_present": response_received, "contract": BOOTSTRAP_VERSION}
+
+
+def _verify_bootstrap(evidence):
+    for symbol, receipt in evidence.get("chain_bootstrap_receipts", {}).items():
+        path = Path(receipt["path"])
+        if not 0 < path.stat().st_size == receipt["bytes"] <= MAX_BOOTSTRAP_BYTES:
+            raise ValueError("Option bootstrap archive size changed")
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != receipt["sha256"]:
+            raise ValueError("Option bootstrap archive checksum changed")
+        value = json.loads(raw)
+        if (value.get("contract") != BOOTSTRAP_VERSION or value.get("symbol") != symbol
+                or value.get("request_started_at") != receipt["request_started_at"]
+                or value.get("request_ended_at") != receipt["request_ended_at"]):
+            raise ValueError("Option bootstrap archive identity changed")
 
 
 def _scope_keys(service, scopes, observed_at):
@@ -41,12 +92,16 @@ def _scope_keys(service, scopes, observed_at):
     quarter = int(instant(observed_at).timestamp()//900)
     if service == "OPTIONS_BOOK":
         groups = [values for _, values in sorted(groups.items())]
-        ordered = [values[index] for index in range(max(map(len, groups)))
+        # Rotating a flattened unequal-chain universe can land in its long
+        # tail and omit every contract for a smaller underlying. Advance each
+        # underlying independently, then share the bounded slot count fairly.
+        stride = max(1, OPTION_SCOPE_LIMITS[service]//len(groups))
+        groups = [values[(quarter*stride) % len(values):]+values[:(quarter*stride) % len(values)]
+            for values in groups]
+        first = quarter % len(groups)
+        groups = groups[first:]+groups[:first]
+        return [values[index] for index in range(max(map(len, groups)))
             for values in groups if index < len(values)]
-        # Page the complete round-robin scope, so every contract and later
-        # underlying is eventually visited even when a chain exceeds the cap.
-        offset = quarter*OPTION_SCOPE_LIMITS[service] % len(ordered)
-        return ordered[offset:]+ordered[:offset]
     offset = quarter*250
     groups = [values[offset % len(values):]+values[:offset % len(values)]
         for _, values in sorted(groups.items())]
@@ -100,6 +155,7 @@ def normalize(service, native, *, receipt_at, scope):
     equity = scope[key]
     row = {"symbol": equity or key, "raw": native, "provider_symbol": key,
            "stream_receipt_at": receipt_at, "projection_version": VERSION,
+           "normalization_version": NORMALIZATION_VERSION,
            "is_delayed": native.get("delayed")}
     if service in BOOKS:
         row["event_at"] = _utc_ms(native.get("1"))
@@ -138,6 +194,7 @@ def normalize(service, native, *, receipt_at, scope):
         row["trade_timestamp"] = _utc_ms(native.get("39" if option else "11" if future else "35"))
         row["event_at"] = row["quote_timestamp"] or row["trade_timestamp"]
         row["day_volume"] = native.get("8")  # cumulative, never treated as quarter volume
+        row["volume_basis"] = "provider cumulative session total; not quarter trade volume"
         if option:
             from .market_collection_adapters import _greek
             row.update({name: _greek(native.get(str(number))) for name, number in
@@ -145,7 +202,8 @@ def normalize(service, native, *, receipt_at, scope):
             vol = native.get("10")
             row.update(open_interest=native.get("9"), implied_volatility=vol/100
                 if isinstance(vol, (float, int)) and vol >= 0 else None,
-                implied_volatility_unit="decimal", option_type=str(native.get("21", "")).lower())
+                implied_volatility_unit="decimal", option_type={"C": "call", "CALL": "call",
+                    "P": "put", "PUT": "put"}.get(str(native.get("21", "")).upper()))
         if future:
             active = native.get("34")
             root = re.match(r"^/(ES|NQ|RTY|CL|GC|ZN|6E)(?:[FGHJKMNQUVXZ]\d+)?$", key)
@@ -430,6 +488,9 @@ class SchwabStreamCollector:
     def __call__(self, session, request, start, end, max_records):
         from .market_collection_extended import fetch_full_schwab_chain
         identity = _sha({"start": start, "end": end,
+            "normalization_version": NORMALIZATION_VERSION,
+            "bootstrap_version": BOOTSTRAP_VERSION,
+            "scope_version": SCOPE_VERSION, "scope_limits": OPTION_SCOPE_LIMITS,
             "requests": [r.identity for r in self.requests]})
         with self.lock:
             failed = self.failures.get(identity)
@@ -442,32 +503,76 @@ class SchwabStreamCollector:
                     claimed = saved.pop("response_sha256")
                     if claimed != _sha(saved):
                         raise ValueError("Schwab stream response checksum mismatch")
+                    _verify_bootstrap(saved["evidence"])
                     self.cache[identity] = saved["rows"], saved["evidence"]
                 else:
-                    subscriptions, chains, excluded = {}, {}, {}
+                    subscriptions, chains, excluded, bootstrap, archive_errors = {}, {}, {}, {}, {}
+                    option_symbols = sorted({r.symbol for r in self.requests if "OPTIONS" in r.schema})
+
+                    def fetch_scope(symbol):
+                        began = datetime.now(timezone.utc).isoformat()
+                        captured = {}
+                        def received(payload):
+                            captured.update(payload=payload, ended_at=datetime.now(timezone.utc).isoformat())
+                        keys, failure = None, None
+                        try:
+                            if self.chain_fetch is None:
+                                raw = fetch_full_schwab_chain(session, symbol, on_response=received)
+                            else:
+                                raw = self.chain_fetch(session, symbol)
+                                received(raw)
+                            keys = []
+                            for name in ("callExpDateMap", "putExpDateMap"):
+                                for strikes in raw.get(name, {}).values():
+                                    for contracts in strikes.values():
+                                        keys.extend(c["symbol"] for c in contracts if isinstance(c.get("symbol"), str))
+                            if not keys:
+                                failure = {"status": "UNAVAILABLE", "reason": "Full current chain returned no option stream identifiers"}
+                            elif any(not re.fullmatch(re.escape(symbol)+r"\s*\d{6}[CP]\d{8}", key) for key in keys):
+                                raise ValueError("Option chain stream scope differs from underlying")
+                            else:
+                                keys = sorted(set(keys))
+                        except Exception as exc:
+                            status, reason = classify_error(exc)
+                            failure = {"status": status, "reason": reason}
+                        try:
+                            receipt = _store_bootstrap(self.root, symbol=symbol, started_at=began,
+                                ended_at=captured.get("ended_at", datetime.now(timezone.utc).isoformat()),
+                                start=start, end=end, payload=captured.get("payload"),
+                                response_received="payload" in captured,
+                                status=failure["status"] if failure else "COMPLETE",
+                                reason=failure["reason"] if failure else "Validated full current chain identifiers")
+                        except Exception as exc:
+                            status, reason = classify_error(exc)
+                            receipt = None
+                            failure = {"status": status, "reason": "Bootstrap archive unavailable: "+reason,
+                                "stage": "immutable_chain_archive", "raw_preserved": False,
+                                "response_received": "payload" in captured,
+                                "request_started_at": began,
+                                "request_ended_at": captured.get("ended_at", datetime.now(timezone.utc).isoformat()),
+                                **{k:v for k,v in getattr(exc,"collection_evidence",{}).items()
+                                   if k in {"unpersisted_bytes","unpersisted_sha256"}}}
+                        return symbol, keys if not failure else None, failure, receipt
+
+                    # Two bounded market-data requests at a time. A failed chain
+                    # keeps its own missing scope without delaying every other
+                    # underlying serially; token refresh is session-lock guarded.
+                    from concurrent.futures import ThreadPoolExecutor
+                    with ThreadPoolExecutor(max_workers=2) as pool:
+                        for symbol, keys, failure, receipt in pool.map(fetch_scope, option_symbols):
+                            if receipt is not None:
+                                bootstrap[symbol] = receipt
+                            else:
+                                archive_errors[symbol] = failure
+                            if failure:
+                                excluded[symbol] = failure
+                            else:
+                                chains[symbol] = keys
                     for configured in self.requests:
                         scope = subscriptions.setdefault(configured.schema, {})
                         if "OPTIONS" in configured.schema:
-                            if configured.symbol not in chains:
-                                if configured.symbol in excluded:
-                                    continue
-                                try:
-                                    raw = (self.chain_fetch or fetch_full_schwab_chain)(session, configured.symbol)
-                                except Exception as exc:
-                                    status, reason = classify_error(exc)
-                                    excluded[configured.symbol] = {"status": status, "reason": reason}
-                                    continue
-                                keys = []
-                                for name in ("callExpDateMap", "putExpDateMap"):
-                                    for strikes in raw.get(name, {}).values():
-                                        for contracts in strikes.values():
-                                            keys.extend(c["symbol"] for c in contracts if isinstance(c.get("symbol"), str))
-                                if not keys:
-                                    excluded[configured.symbol] = {"status": "UNAVAILABLE", "reason": "Full current chain returned no option stream identifiers"}
-                                    continue
-                                if any(not re.fullmatch(re.escape(configured.symbol)+r"\s*\d{6}[CP]\d{8}", key) for key in keys):
-                                    raise ValueError("Option chain stream scope differs from underlying")
-                                chains[configured.symbol] = sorted(set(keys))
+                            if configured.symbol in excluded:
+                                continue
                             scope.update({key: configured.symbol for key in chains[configured.symbol]})
                         elif configured.symbol == "*":
                             scope.update({key: None for key in configured.params["symbols"]})
@@ -484,10 +589,16 @@ class SchwabStreamCollector:
                                 "service_results": {}, "reason": "No native option identifiers were available"}
                     except Exception as exc:
                         status, reason = classify_error(exc)
-                        failure = CollectionFailure(status, reason, getattr(exc, "collection_evidence", {}))
+                        failure = CollectionFailure(status, reason, {
+                            **getattr(exc, "collection_evidence", {}), "chain_bootstrap_receipts": bootstrap,
+                            "bootstrap_archive_errors": archive_errors,
+                            "bootstrap_version": BOOTSTRAP_VERSION})
                         self.failures[identity] = time.monotonic(), failure
                         raise failure from None
-                    evidence = {**evidence, "excluded_option_scopes": excluded}
+                    evidence = {**evidence, "excluded_option_scopes": excluded,
+                        "normalization_version": NORMALIZATION_VERSION, "scope_version": SCOPE_VERSION,
+                        "bootstrap_version": BOOTSTRAP_VERSION, "chain_bootstrap_receipts": bootstrap,
+                        "bootstrap_archive_errors": archive_errors}
                     saved = {"rows": rows, "evidence": evidence}
                     saved["response_sha256"] = _sha(saved)
                     _atomic(response_path, saved)

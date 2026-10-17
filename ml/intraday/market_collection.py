@@ -28,6 +28,56 @@ KINDS = {"stock_quote", "stock_trades", "stock_bars", "options", "fundamentals",
          "events", "cross_asset", "opra_options", "technical", "macro"}
 
 
+def _settled(value):
+    """Queue completion is separate from complete source coverage."""
+    return value["status"] in TERMINAL or (
+        value["status"] == "PARTIAL" and value.get("window_finalized") is True)
+
+
+def _lane(request):
+    # A bounded stream bootstrap can need eleven chains plus acknowledgements.
+    # It must not own the REST quote/chain request slot for that whole interval.
+    if request["provider"] == "schwab" and request.get("endpoint") == "stream":
+        return "schwab_stream"
+    return request["provider"]
+
+
+def _select_tasks(due, maximum):
+    """Reserve current price/options, background progress and oldest recovery."""
+    if not due:
+        return []
+    market = {"stock_quote", "stock_trades", "stock_bars", "options", "opra_options"}
+    ordered = sorted(due, key=lambda item: (
+        item[1]["quarter_start"], item[1]["request"]["source_kind"] in market,
+        -item[1].get("attempts", 0), item[0]), reverse=True)
+    selected = []
+    # Round-robin the independent provider lanes within each priority cohort.
+    # A hash ordering can otherwise fill every worker with one slow provider.
+    for quarter in sorted({t["quarter_start"] for _, t in due}, reverse=True):
+        for current in (True, False):
+            buckets = {}
+            for item in ordered:
+                request = item[1]["request"]
+                if item[1]["quarter_start"] == quarter and (request["source_kind"] in market) == current:
+                    buckets.setdefault(_lane(request), []).append(item)
+            while any(buckets.values()):
+                for bucket in buckets.values():
+                    if bucket:
+                        selected.append(bucket.pop(0))
+    selected = selected[:maximum]
+    if len(due) > maximum and maximum > 1:
+        latest = max(t["quarter_start"] for _, t in due)
+        background = [item for item in ordered if item[1]["quarter_start"] == latest
+                      and item[1]["request"]["source_kind"] not in market and item not in selected]
+        if background and maximum >= 4:
+            selected[-2] = background[0]
+        # Preserve an oldest recovery slot, including background-only workloads.
+        remaining = [item for item in due if item not in selected[:-1]]
+        selected[-1] = min(remaining, key=lambda item: (
+            item[1]["quarter_start"], item[1].get("attempts", 0), item[0]))
+    return selected
+
+
 def instant(value) -> datetime:
     import pandas as pd
     stamp = pd.Timestamp(value)
@@ -153,17 +203,31 @@ class CollectionFailure(RuntimeError):
         self.collection_evidence = evidence or {}
 
 
+def _http_status(exc):
+    code = getattr(getattr(exc, "response", None), "status_code", None)
+    if type(code) is int and 100 <= code <= 599:
+        return code
+    # The existing FMP client wraps HTTP errors in RuntimeError. Recover only
+    # its numeric status, never persist the payload or authenticated URL.
+    matched = re.search(r"\bHTTP\s+([1-5][0-9]{2})\b", str(exc), re.I)
+    return int(matched.group(1)) if matched else None
+
+
 def classify_error(exc: Exception) -> tuple[str, str]:
     """Persist a category, never exception strings containing authenticated URLs."""
     if isinstance(exc, CollectionFailure):
         return exc.collection_status, exc.collection_reason
-    if isinstance(exc, TimeoutError):
+    from requests.exceptions import Timeout as RequestTimeout
+    if isinstance(exc, (TimeoutError, RequestTimeout)):
         return "UNAVAILABLE", "Source did not establish complete delivery within the bounded deadline"
-    response = getattr(exc, "response", None)
-    code = getattr(response, "status_code", None)
+    code = _http_status(exc)
     message = str(exc).lower()  # inspected only; never written or printed
     if code == 429 or "429" in message or "rate limit" in message:
         return "RATE_LIMITED", "Provider rate limit; retry after bounded backoff"
+    if code == 401:
+        return "NOT_AUTHORIZED", "Provider rejected authentication (HTTP 401); existing credentials require attention"
+    if code == 402:
+        return "NOT_AUTHORIZED", "Provider denied this exact product or symbol under the current subscription (HTTP 402)"
     if code in {401, 402, 403} or any(x in message for x in ("http 401", "http 402", "http 403", "not entitled", "not authorized",
             "not licensed", "license required", "access denied", "subscription required", "requires a subscription",
             "subscription not authorized", "authentication failed")):
@@ -198,7 +262,7 @@ class QuarterHourMarketCollector:
         self.max_records = max_records
         import threading
         self.provider_limits = {"schwab": threading.Semaphore(1), "fmp": threading.Semaphore(2),
-                                "databento": threading.Semaphore(2)}
+                                "databento": threading.Semaphore(2), "schwab_stream": threading.Semaphore(1)}
         from .market_collection_adapters import default_requests, default_adapters
         self.requests = tuple(requests if requests is not None else default_requests(self.symbols))
         self.configuration_sha256 = configuration_sha256 or _sha({"symbols": self.symbols,
@@ -238,7 +302,7 @@ class QuarterHourMarketCollector:
             lower = (now - timedelta(days=7)).isoformat()
             previous_count = len(state["tasks"])
             state["tasks"] = {k: v for k, v in state["tasks"].items()
-                              if v["quarter_end"] >= lower or v["status"] not in TERMINAL}
+                              if v["quarter_end"] >= lower or not _settled(v)}
             for request in self.requests:
                 key = start.strftime("%Y%m%dT%H%M%SZ") + "-" + request.identity
                 if key not in state["tasks"]:
@@ -272,13 +336,8 @@ class QuarterHourMarketCollector:
             state = self._state()
             now = instant(self.clock())
             due = [(key, task) for key, task in state["tasks"].items()
-                   if task["status"] not in TERMINAL and instant(task["due_at"]) <= now]
-        # Fresh data gets three quarters of each batch; one recovery slot keeps
-        # prior gaps progressing without stale unavailable work starving today.
-        due.sort(key=lambda item: (item[1]["quarter_start"], item[0]), reverse=True)
-        selected = due[:max_requests]
-        if len(due) > max_requests and max_requests > 1:
-            selected[-1] = min(due[max_requests - 1:], key=lambda item: (item[1]["quarter_start"], item[0]))
+                   if not _settled(task) and instant(task["due_at"]) <= now]
+        selected = _select_tasks(due, max_requests)
 
         def perform(item):
             key, _ = item
@@ -287,9 +346,9 @@ class QuarterHourMarketCollector:
                 with task_lock:
                     with self.lock:
                         task = self._state()["tasks"][key]
-                    if task["status"] in TERMINAL or instant(task["due_at"]) > instant(self.clock()):
+                    if _settled(task) or instant(task["due_at"]) > instant(self.clock()):
                         return None
-                    with self.provider_limits[task["request"]["provider"]]:
+                    with self.provider_limits[_lane(task["request"])]:
                         return self._collect(key, task)
             except Timeout:
                 return None  # another collector owns exactly this provider/window
@@ -308,7 +367,7 @@ class QuarterHourMarketCollector:
                 raise ValueError("Orphan market receipt failed checksum validation")
             from .market_collection_index import index_receipt
             index_receipt(self.root, path, recovered)
-            if recovered.get("status") in TERMINAL and recovered.get("source_id") == request.source_id:
+            if _settled(recovered) and recovered.get("source_id") == request.source_id:
                 with self.lock:
                     state = self._state()
                     saved = state["tasks"][key]
@@ -317,6 +376,7 @@ class QuarterHourMarketCollector:
                         saved["snapshots"].append(relative)
                         saved["attempts"] += 1
                     saved["status"] = recovered["status"]
+                    saved["window_finalized"] = recovered.get("window_finalized", False)
                     _atomic(self.state_path, state)
                 return recovered
         with self.lock:
@@ -337,7 +397,11 @@ class QuarterHourMarketCollector:
                     raise TypeError("Provider adapter must return CollectionResult")
             except Exception as exc:
                 status, reason = classify_error(exc)
-                result = CollectionResult([], status, reason, getattr(exc, "collection_evidence", {}))
+                evidence = dict(getattr(exc, "collection_evidence", {}))
+                code = _http_status(exc)
+                if type(code) is int and 100 <= code <= 599:
+                    evidence["http_status"] = code
+                result = CollectionResult([], status, reason, evidence)
         receipt = instant(self.clock())
         if receipt < started:
             raise ValueError("Collection clock moved backwards")
@@ -378,6 +442,12 @@ class QuarterHourMarketCollector:
             "request_started_at": started.isoformat(), "receipt_at": receipt.isoformat(),
             "available_at": available.isoformat(), "status": status, "reason": result.reason,
             "records": records, "record_count": len(records),
+            "window_finalized": bool(request.provider == "schwab" and request.endpoint == "stream"
+                and result.evidence.get("mode") == "current_stream_snapshot"
+                and result.evidence.get("completed") is True
+                or request.provider == "fmp"
+                and result.evidence.get("mode") == "bounded_current_symbol_research"
+                and result.evidence.get("bounded_response_complete") is True),
             "exact_duplicates_removed": len(result.records) - len(records),
             "coverage_claim": "Request delivery only; no claim of market-wide observation completeness",
             "evidence": _plain(result.evidence)}
@@ -397,6 +467,7 @@ class QuarterHourMarketCollector:
             saved = state["tasks"][key]
             saved["attempts"] += 1
             saved["status"] = status
+            saved["window_finalized"] = snapshot["window_finalized"]
             saved["snapshots"].append(str(path.relative_to(self.root)))
             if status == "NOT_AUTHORIZED":
                 state.setdefault("source_blocks", {})[request.identity] = {"observed_at": receipt.isoformat(),
