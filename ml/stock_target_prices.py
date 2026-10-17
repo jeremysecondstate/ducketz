@@ -18,9 +18,15 @@ from ml.artifacts import file_checksum
 
 CANONICAL_STOCK_PRICE_SOURCE = "canonical-equity-minute-v1"
 XNAS_STOCK_PRICE_SOURCE = "xnas-itch-archive-v1"
+OBSERVED_MULTI_STOCK_PRICE_SOURCE = "observed-multi-source-stock-v1"
+OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2 = "observed-multi-source-stock-v2"
+OBSERVED_MULTI_STOCK_PRICE_SOURCES = (OBSERVED_MULTI_STOCK_PRICE_SOURCE, OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2)
 STOCK_PRICE_SOURCES = {
     CANONICAL_STOCK_PRICE_SOURCE: "EQUS.MINI",
     XNAS_STOCK_PRICE_SOURCE: "XNAS.ITCH",
+    # A policy identity, not a claim that these are a consolidated market feed.
+    OBSERVED_MULTI_STOCK_PRICE_SOURCE: "OBSERVED_SOURCE_SELECTION_V1",
+    OBSERVED_MULTI_STOCK_PRICE_SOURCE_V2: "OBSERVED_SOURCE_SELECTION_V2",
 }
 
 
@@ -29,6 +35,12 @@ def stock_price_dataset(source_contract: str) -> str:
         return STOCK_PRICE_SOURCES[source_contract]
     except KeyError as exc:
         raise ValueError(f"Unsupported stock price source: {source_contract}") from exc
+
+
+def _verify_native_markers(frame):
+    from ml.stock_observation_sources import genuine_observation_mask
+    if not genuine_observation_mask(frame).all():
+        raise RuntimeError("Stock price source contains synthetic/no-trade or nonboolean native markers")
 
 
 def load_stock_target_prices(
@@ -43,6 +55,9 @@ def load_stock_target_prices(
     existing target builder's directional five-minute observation policy.
     """
     root = Path(datastore_root).resolve()
+    if source_contract in OBSERVED_MULTI_STOCK_PRICE_SOURCES:
+        from ml.stock_observation_sources import load_observed_stock_sources
+        return load_observed_stock_sources(root, symbols=symbols, source_contract=source_contract)
     dataset = stock_price_dataset(source_contract)
     clean_symbols = tuple(str(value).strip().upper() for value in symbols)
     if not clean_symbols or len(set(clean_symbols)) != len(clean_symbols):
@@ -74,6 +89,7 @@ def load_stock_target_prices(
                         or file_checksum(raw_path) != raw.get("checksum_sha256")):
                     raise RuntimeError(f"Stock price archive raw payload failed verification: {raw_path}")
                 frame = pd.read_parquet(normalized_path)
+                _verify_native_markers(frame)
                 timestamp_column = item.manifest["normalized"]["timestamp_column"]
                 if timestamp_column not in frame and frame.index.name == timestamp_column:
                     frame = frame.reset_index()
@@ -86,7 +102,11 @@ def load_stock_target_prices(
                         or frame.timestamp.lt(pd.to_datetime(request["start"], utc=True)).any()
                         or frame.timestamp.ge(pd.to_datetime(request["end"], utc=True)).any()):
                     raise RuntimeError("Stock price archive timestamps escape its requested interval")
-                frames.append(frame.loc[:, ["timestamp", "open", "close"]].assign(symbol=symbol))
+                frames.append(frame.loc[:, ["timestamp", "open", "close"]].assign(
+                    symbol=symbol, observation_source="databento:XNAS.ITCH:ohlcv-1m",
+                    observation_dataset=dataset, observation_interval_seconds=60,
+                    observation_input_sha256=raw["checksum_sha256"],
+                    observation_recorded_at=item.manifest["published_at"]))
                 files.extend((*item.source_files, raw_path))
                 partitions.append({"symbol": symbol, "request_id": request["request_id"],
                     "start": request["start"], "end": request["end"], "rows": len(frame),
@@ -97,7 +117,12 @@ def load_stock_target_prices(
         from datafetching.xnas_replay_archive import discover_partitions
         for item in discover_partitions(root, symbols=clean_symbols):
             frame = item["frame"]
-            frames.append(frame.loc[:, ["timestamp", "open", "close"]].assign(symbol=item["symbol"]))
+            _verify_native_markers(frame)
+            frames.append(frame.loc[:, ["timestamp", "open", "close"]].assign(
+                symbol=item["symbol"], observation_source="databento:XNAS.ITCH:ohlcv-1m",
+                observation_dataset=dataset, observation_interval_seconds=60,
+                observation_input_sha256=file_checksum(item["manifest_path"]),
+                observation_recorded_at=item["manifest"]["published_at"]))
             files.extend(item["source_files"])
             replay_manifest = item["manifest"]
             partitions.append({"symbol": item["symbol"], "session": item["session"],
@@ -112,6 +137,7 @@ def load_stock_target_prices(
                 raise RuntimeError(f"Canonical stock minute prices are missing: {symbol}")
             for path in paths:
                 frame = pd.read_parquet(path)
+                _verify_native_markers(frame)
                 if "provider_dataset" not in frame or set(frame.provider_dataset.dropna().astype(str)) != {dataset}:
                     raise RuntimeError(f"Canonical stock price dataset differs from {dataset}: {path}")
                 frames.append(frame.loc[:, ["timestamp", "open", "close"]].assign(symbol=symbol))

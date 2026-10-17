@@ -10,6 +10,7 @@ from ml.intraday.minute_feed import QuarterHourMinuteFeed
 from ml.intraday.observed_data import build_observed_dataset
 from ml.intraday.prediction import ContractError, STEP, instant
 from ml.intraday.store import ShadowStore
+from tests.test_intraday_data import independent_absence
 
 
 class Clock:
@@ -35,6 +36,7 @@ def setup(tmp_path, monkeypatch, *, now="2026-10-14T17:16:00Z", start=None, beha
         calls.append((reference, tuple(symbols), clock()))
         result = {}
         for symbol in symbols:
+            override = {}
             status, rows, retry = "success", tuple(dict(opened_at=(reference + timedelta(minutes=n)).isoformat(),
                 open=10+n*.01, high=11, low=9, close=10+n*.01, volume=100) for n in range(15)), 0
             if behavior:
@@ -47,7 +49,8 @@ def setup(tmp_path, monkeypatch, *, now="2026-10-14T17:16:00Z", start=None, beha
                 (reference+STEP).isoformat(), clock().isoformat(), clock().isoformat(), status,
                 rows=rows, coverage_open=reference.isoformat(), coverage_close=(reference+STEP).isoformat(),
                 provider_no_trade_evidence="explicit exact covered native omission" if status == "success" else None,
-                retry_after_seconds=retry).validate()
+                retry_after_seconds=retry,
+                no_trade_scope_evidence=override.get("no_trade_scope_evidence")).validate()
         return result
 
     monkeypatch.setattr(data, "fetch_databento_interval_attempts", fetch)
@@ -118,7 +121,7 @@ def test_final_provider_lag_finishes_after_five_then_stops(tmp_path, monkeypatch
 
 
 def test_final_confirmed_empty_window_saved_without_fabricating_prices(tmp_path, monkeypatch):
-    feed, _, clock, calls = setup(tmp_path, monkeypatch, now="2026-10-15T00:00Z", start="2026-10-14T23:45Z",
+    feed, args, clock, calls = setup(tmp_path, monkeypatch, now="2026-10-15T00:00Z", start="2026-10-14T23:45Z",
         behavior=lambda *a: {"rows": ()})
     feed.step()
     assert not feed.outcomes and not feed.store.observed_candles()
@@ -127,8 +130,13 @@ def test_final_confirmed_empty_window_saved_without_fabricating_prices(tmp_path,
     assert feed.step()["status"] == "closed"
     assert len(calls) == 2 and not feed.store.observed_candles()
     assert all(v["status"] == "resolved_no_usable_15m" for v in feed.outcomes.values())
+    assert all(v["reason"] == "source_empty" for v in feed.outcomes.values())
+    assert all(len(v["attempt_ids"]) == 2 for v in feed.outcomes.values())
     with pytest.raises(ContractError, match="no usable 15m"):
         feed.history_source("2026-10-14T23:45Z").get("ABCL")
+    restored = QuarterHourMinuteFeed(**args)
+    assert restored.step()["status"] == "closed" and len(calls) == 2
+    assert restored.outcomes == feed.outcomes
 
 
 def test_unavailable_coverage_keeps_pending_without_fake_empty_candle(tmp_path, monkeypatch):
@@ -256,7 +264,7 @@ def test_unverified_legacy_synthetic_history_is_excluded_without_mutating_origin
     assert len(original) == 1
 
 
-def continuity_fixture(tmp_path, monkeypatch):
+def continuity_fixture(tmp_path, monkeypatch, *, independent_proof=True):
     predecessor, current = instant("2026-10-14T17:00Z"), instant("2026-10-14T17:15Z")
     predecessor_attempts = []
     def behavior(reference, symbol, number):
@@ -264,17 +272,20 @@ def continuity_fixture(tmp_path, monkeypatch):
             predecessor_attempts.append(number)
             return {"status":"unavailable_coverage"} if len(predecessor_attempts) == 1 else {}
         return {"rows": tuple(dict(opened_at=(reference+timedelta(minutes=n)).isoformat(),
-            open=10+n*.01, high=11, low=9, close=10+n*.01, volume=100) for n in range(1, 15))}
+            open=10+n*.01, high=11, low=9, close=10+n*.01, volume=100) for n in range(1, 15)),
+            "no_trade_scope_evidence": independent_absence(symbol=symbol, dataset="EQUS.MINI",
+                opened_at=reference, closed_at=reference+timedelta(minutes=1),
+                verified_at=reference+STEP) if independent_proof else None}
     feed, args, clock, calls = setup(tmp_path, monkeypatch, now="2026-10-14T17:31Z",
         start=predecessor, behavior=behavior, symbols=("ABCL",))
     feed.step()  # Current quarter, with an unconfirmed leading omission.
     feed.step()  # Predecessor temporarily unavailable.
     clock.advance(4)
-    feed.step()  # Current omission now confirmed while predecessor is pending.
+    feed.step()  # Independent absence can be confirmed; MINI omission alone is terminal.
     return feed, clock, calls, predecessor, current
 
 
-def test_confirmed_leading_omission_stays_pending_until_own_predecessor_completes(tmp_path, monkeypatch):
+def test_independently_verified_leading_absence_waits_for_own_predecessor(tmp_path, monkeypatch):
     feed, clock, calls, predecessor, current = continuity_fixture(tmp_path, monkeypatch)
     assert (current,"ABCL") not in feed.outcomes
     assert "ABCL" in feed.pending[current] and "ABCL" in feed.pending[predecessor]
@@ -288,7 +299,7 @@ def test_confirmed_leading_omission_stays_pending_until_own_predecessor_complete
     assert len(feed.store.observed_candles("ABCL")) == 2
 
 
-def test_late_predecessor_receipt_requires_fresh_current_attempt_instead_of_invalid_completion(tmp_path, monkeypatch):
+def test_independently_verified_absence_with_late_prior_requires_fresh_receipt(tmp_path, monkeypatch):
     feed, clock, calls, predecessor, current = continuity_fixture(tmp_path, monkeypatch)
     old_response_end = instant(feed._attempts("ABCL",current)[-1].request_ended_at)
     clock.advance(4)
@@ -302,3 +313,41 @@ def test_late_predecessor_receipt_requires_fresh_current_attempt_instead_of_inva
     candle = feed.store.observed_candles("ABCL")[-1]
     assert instant(candle["available_at"]) >= instant(previous["available_at"])
     assert instant(feed._attempts("ABCL",current)[-1].request_ended_at) > old_response_end
+
+
+def test_mini_omission_is_terminal_without_waiting_for_or_carrying_prior_price(tmp_path, monkeypatch):
+    feed, clock, calls, predecessor, current = continuity_fixture(tmp_path, monkeypatch, independent_proof=False)
+    outcome = feed.outcomes[current, "ABCL"]
+    assert outcome["status"] == "resolved_no_usable_15m"
+    assert outcome["reason"] == "unverified_source_omission"
+    assert len(outcome["attempt_ids"]) == 1
+    assert not feed.pending[current]
+    # The predecessor can complete independently. Its later price cannot turn
+    # this source's omitted minute into an observed or no-trade minute.
+    assert feed.outcomes[predecessor, "ABCL"]["status"] == "observed"
+    clock.advance(4)
+    feed.step()
+    assert sum(r == current for r, _, _ in calls) == 1
+    candles = feed.store.observed_candles("ABCL")
+    assert len(candles) == 1 and instant(candles[0]["opened_at"]) == predecessor
+    assert not candles[0]["synthetic"]
+    with pytest.raises(ContractError, match="unverified_source_omission"):
+        feed.history_source(current).get("ABCL")
+
+
+def test_restoration_preserves_mixed_whole_second_and_microsecond_receipts(tmp_path,monkeypatch):
+    feed,args,clock,calls=setup(tmp_path,monkeypatch)
+    feed.step()
+    clock.advance(900)
+    clock.value += timedelta(microseconds=134631)
+    feed.step()
+    saved=feed.store.observed_candles("ABCL")
+    assert len(saved)==2
+    assert instant(saved[0]["available_at"]).microsecond==0
+    assert instant(saved[1]["available_at"]).microsecond==134631
+    args["histories"]={}
+    restored=QuarterHourMinuteFeed(**args)
+    frame=restored.histories["ABCL"].frame
+    assert frame.available_at.tolist()==[pd.Timestamp(instant(row["available_at"])) for row in saved]
+    assert len(calls)==2
+    assert restored.store.observed_candles("ABCL")==saved

@@ -50,7 +50,7 @@ GAMEPLAN_STATS_STAGE = "gameplan_stats"
 STATS_FIRST_STAGE_ORDER = (STAGE_ORDER[0], INDEPENDENT_HISTORY_STAGE, GAMEPLAN_STATS_STAGE,
                            *STAGE_ORDER[1:], INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE)
 ALL_STAGE_ORDER = (*LEGACY_STAGE_ORDER, GAMEPLAN_STATS_STAGE)
-STOCK_PRICE_SOURCES = ("canonical-equity-minute-v1", "xnas-itch-archive-v1")
+STOCK_PRICE_SOURCES = ("canonical-equity-minute-v1", "xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2")
 
 
 @dataclass(frozen=True)
@@ -295,7 +295,7 @@ def run_overnight_pipeline(
     stock_price_source = stock_price_source or STOCK_PRICE_SOURCES[0]
     if stock_price_source not in STOCK_PRICE_SOURCES:
         raise ValueError("Unknown stock price source contract")
-    if archive_history and (not independent_stock_horizons or stock_price_source != "xnas-itch-archive-v1"):
+    if archive_history and (not independent_stock_horizons or stock_price_source not in {"xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2"}):
         raise ValueError("Archive history requires independent XNAS stock preparation")
     if independent_stock_horizons and not stock_only:
         raise ValueError("Independent stock horizons require explicit stock-only preparation")
@@ -333,7 +333,7 @@ def run_overnight_pipeline(
     if resume:
         # New stages must not extend the boundaries of a saved attempt.
         selected = tuple(stage for stage in selected if stage in resume["stage_order"])
-    if stock_price_source != "xnas-itch-archive-v1":
+    if stock_price_source not in {"xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2"}:
         selected = tuple(stage for stage in selected if stage != INDEPENDENT_HISTORY_STAGE)
     omitted_option_stages: list[str] = []
     if stock_only:
@@ -431,6 +431,8 @@ def run_overnight_pipeline(
             "--bar-readiness-recovery-poll-seconds",
             "10",
             "--once",
+            *(("--include-schwab-price-history",) if stock_price_source in {"observed-multi-source-stock-v1", "observed-multi-source-stock-v2"} else ()),
+            *(("--include-fmp-price-history",) if stock_price_source == "observed-multi-source-stock-v2" else ()),
         ),
         "loop_b_directional_generation": (
             python,

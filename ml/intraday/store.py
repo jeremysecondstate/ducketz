@@ -230,6 +230,14 @@ class ShadowStore:
 
     def record_candle(self, candle):
         value = dict(candle)
+        if value.get("population_contract"):
+            from .coverage import verified_source_observation, RECOVERY_POPULATION_CONTRACT
+            validator = verified_source_observation
+            if value["population_contract"] == RECOVERY_POPULATION_CONTRACT:
+                from .recovered_population import verified_recovery_candle
+                validator = verified_recovery_candle
+            if not validator(value):
+                raise ContractError("Population candle requires its frozen source/recovery evidence")
         for name in ("opened_at", "available_at"):
             value[name] = instant(value[name]).isoformat()
         if instant(value["available_at"]) < instant(value["opened_at"]) + STEP:
@@ -280,6 +288,8 @@ class ShadowStore:
                 raise ContractError("Outcome source differs from the forecast's selected dataset")
             if forecast.get("source_id") and candle.get("source_id")!=forecast["source_id"]:
                 raise ContractError("Outcome source provenance differs from the original input")
+            if forecast.get("population_contract") != candle.get("population_contract"):
+                raise ContractError("Outcome population contract differs from the frozen forecast")
             if forecast["mode"] in {"shadow", "live"} and candle.get("availability_kind") != "actual":
                 raise ContractError("Shadow outcome availability must be observed")
             candle_id = self.record_candle(candle)

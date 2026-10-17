@@ -108,7 +108,8 @@ def test_manual_stop_skips_queued_symbol_work_with_explicit_failures(tmp_path):
     assert all("Manual stop" in value["message"] for value in result["failures"].values())
 
 
-def test_live_history_restore_excludes_unverified_synthetic_without_mutating_originals(tmp_path):
+@pytest.mark.parametrize("receipt_microseconds", [0, 134631])
+def test_live_history_restore_excludes_unverified_synthetic_without_mutating_originals(tmp_path, receipt_microseconds):
     from ml.intraday.data import History, IntervalResponse, SessionBounds, resolve_interval
     from ml.intraday.prediction import STEP, digest
     from ml.intraday.runtime import LiveHistories
@@ -128,12 +129,16 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
     history = History(original,{"source_dataset":"EQUS.MINI","historical-evidence":"retained"})
     saved_old = row(REF-4*STEP,synthetic=True)
     saved_observed = row(REF)
+    saved_observed["available_at"] += timedelta(microseconds=receipt_microseconds)
     def attempt(index):
+        from tests.test_intraday_data import independent_absence
         op=REF+STEP
         return IntervalResponse(str(index),"AAPL",source,"EQUS.MINI",op.isoformat(),(op+STEP).isoformat(),
             (op+STEP+timedelta(seconds=5*index)).isoformat(),
             (op+STEP+timedelta(seconds=5*index+1)).isoformat(),"success",(),op.isoformat(),
-            (op+STEP).isoformat(),"successful covered provider omission")
+            (op+STEP).isoformat(),"independent complete scope fixture",
+            no_trade_scope_evidence=independent_absence(symbol="AAPL",dataset="EQUS.MINI",opened_at=op,
+                closed_at=op+STEP,verified_at=op+STEP+timedelta(seconds=5*index+1)))
     valid_synthetic = resolve_interval([attempt(1),attempt(2)],session=session,
                                       previous=saved_observed)["candle"]
     old_hash=store.record_candle(saved_old)
@@ -149,6 +154,7 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
                                      pd.Timestamp(REF),pd.Timestamp(REF+STEP)}
     assert admitted.loc[admitted.opened_at.eq(REF+STEP),"synthetic"].all()
     assert not admitted.loc[admitted.opened_at.eq(REF),"synthetic"].any()
+    assert admitted.loc[admitted.opened_at.eq(REF),"available_at"].iloc[0] == saved_observed["available_at"]
     pd.testing.assert_frame_equal(original,before)
     assert original.attrs==before.attrs and history.frame is original
     assert store.observed_candles("AAPL")==persisted_before
