@@ -228,7 +228,7 @@ def _short_closing_gap(minutes=13):
     return prices
 
 
-def test_bounded_reference_completion_unblocks_all_clocks_without_filling_observed_samples():
+def test_bounded_reference_completion_does_not_invent_missing_closing_prices():
     from ml.gameplan_price_bands import _observation
     prices, forecasts = _short_closing_gap(), pd.DataFrame([_forecast()])
     original = prices.copy(deep=True)
@@ -237,23 +237,23 @@ def test_bounded_reference_completion_unblocks_all_clocks_without_filling_observ
     path = build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"],
                                      entry_bands=bands, allow_reference_forward_fill=True)
     assert strict["rows"][0]["price_band_status"] == "UNAVAILABLE_REFERENCE_PRICE"
-    assert bands["rows"][0]["price_band_status"] == "AVAILABLE"
-    assert bands["rows"][0]["price_reference_is_synthetic"] is True
-    assert bands["rows"][0]["price_reference_observed_at"] == "2026-09-08T23:47:00+00:00"
-    assert bands["rows"][0]["price_reference_effective_at"] == "2026-09-09T00:00:00+00:00"
+    assert bands["rows"][0]["price_band_status"] == "UNAVAILABLE_REFERENCE_PRICE"
+    assert bands["rows"][0]["price_reference_is_synthetic"] is False
+    assert bands["rows"][0]["price_reference_observed_at"] is None
+    assert bands["rows"][0]["price_reference_effective_at"] is None
     assert next(iter(bands["statistics"].values()))["samples"] == next(iter(strict["statistics"].values()))["samples"]
     assert bands["reference_completion"] == path["reference_completion"]
     assert len(path["points"]) == 14
-    assert all(point["status"] == "AVAILABLE" and point["reference_price"] == 200
-               and point["reference_fill_count"] == 13 and point["reference_is_synthetic"]
+    assert all(point["status"] == "UNAVAILABLE_REFERENCE_PRICE" and point["reference_price"] is None
+               and point["reference_fill_count"] == 0 and not point["reference_is_synthetic"]
                for point in path["points"].values())
-    assert len(bands["reference_completion"]["synthetic_bars"]) == 13
+    assert len(bands["reference_completion"]["synthetic_bars"]) == 0
     assert _observation(prices.sort_values("timestamp"), pd.Timestamp("2026-09-09T00:00Z"), close=True) is None
     pd.testing.assert_frame_equal(prices, original)
     json.dumps(path, allow_nan=False)
 
 
-@pytest.mark.parametrize("gap,status", [(15, "AVAILABLE"), (16, "UNAVAILABLE_REFERENCE_PRICE")])
+@pytest.mark.parametrize("gap,status", [(15, "UNAVAILABLE_REFERENCE_PRICE"), (16, "UNAVAILABLE_REFERENCE_PRICE")])
 def test_explicit_reference_completion_is_bounded_at_fifteen_minutes(gap, status):
     assert _build(_short_closing_gap(gap), allow_reference_forward_fill=True)["rows"][0]["price_band_status"] == status
 
@@ -277,7 +277,7 @@ def _sparse_closing_history():
     return prices
 
 
-def test_sparse_closing_policy_restores_planning_pairs_with_full_provenance_and_native_entries():
+def test_sparse_closing_policy_preserves_missing_reference_and_does_not_create_pairs():
     prices = _sparse_closing_history()
     before = prices.copy(deep=True)
     forecasts = pd.DataFrame([_forecast()])
@@ -287,21 +287,16 @@ def test_sparse_closing_policy_restores_planning_pairs_with_full_provenance_and_
     path = build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"], entry_bands=bands,
                                      allow_reference_forward_fill=True, allow_sparse_session_references=True)
     assert len(path["points"]) == 14
-    assert all(p["status"] == "AVAILABLE" and p["sample_count"] == 3 for p in path["points"].values())
+    assert all(p["status"] == "UNAVAILABLE_REFERENCE_PRICE" and p["sample_count"] == 0 for p in path["points"].values())
     point = path["points"]["COST|2026-09-09|04:00"]
-    assert point["synthetic_close_sample_count"] == 3
+    assert point["synthetic_close_sample_count"] == 0
     assert point["observed_only_sample_count"] == 0
     assert point["reference_gap_minutes"] == 48
-    assert point["ratio_median"] == 1.05
-    assert point["planned_price_mid"] == 210
-    for sample in point["samples"]:
-        ref = bands["reference_completion"]["historical_references"][sample["prior_close_reference_key"]]
-        assert ref["source_coverage"]["native_partition_verified"] is True
-        assert sample["prior_close_is_synthetic"] is True
-        assert sample["prior_close_observed_at"] == ref["observed_at"]
-        assert sample["prior_close_effective_at"] == ref["effective_at"]
-        assert pd.Timestamp(sample["entry_open_observed_at"]).tz_convert("America/Los_Angeles").hour == 4
-    assert path["points"]["COST|2026-09-09|17:00"]["samples"][-1]["endpoint_is_synthetic"] is True
+    assert point["ratio_median"] is None
+    assert point["planned_price_mid"] is None
+    assert point["samples"] == []
+    assert path["points"]["COST|2026-09-09|17:00"]["samples"] == []
+    assert bands["reference_completion"]["synthetic_bars"] == []
     pd.testing.assert_frame_equal(prices, before)
     json.dumps(path, allow_nan=False)
 
@@ -311,7 +306,7 @@ def test_sparse_policy_keeps_entry_gaps_missing_and_ignores_forecast_day_outcome
     local = prices.timestamp.dt.tz_convert("America/Los_Angeles")
     prices = prices.loc[~local.dt.hour.eq(4)].copy()
     bands = _build(prices, allow_reference_forward_fill=True, allow_sparse_session_references=True)
-    assert bands["rows"][0]["price_band_status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
+    assert bands["rows"][0]["price_band_status"] == "UNAVAILABLE_REFERENCE_PRICE"
     assert bands["rows"][0]["price_band_sample_count"] == 0
     # Today's and later outcomes must not change the historical planning path.
     original = _sparse_closing_history()

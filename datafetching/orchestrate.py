@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 import time
@@ -171,6 +172,10 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Fetch data without rebuilding point-in-time fundamental outputs.",
     )
+    parser.add_argument("--include-fmp-price-history", action="store_true",
+                        help="Retain real native FMP five-minute history for observed-source targets")
+    parser.add_argument("--include-schwab-price-history", action="store_true",
+        help="Persist actual Schwab price history alongside source-isolated Databento observations.")
     parser.add_argument(
         "--skip-technicals",
         action="store_true",
@@ -270,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
                                 args.cme_mode == "inline" and not args.skip_cme
                             ),
                             include_options=args.options_mode == "inline",
+                            include_schwab_price_history=args.include_schwab_price_history,
+                            include_fmp_price_history=args.include_fmp_price_history,
                             run_technical_calculations=not args.skip_technicals,
                             datastore_target=args.datastore_target,
                             datastore_path=args.datastore,
@@ -442,6 +449,7 @@ def run_cycle(
     datastore_path: Path | None,
     include_options: bool = False,
     include_schwab_price_history: bool = False,
+    include_fmp_price_history: bool = False,
     run_fundamental_calculations: bool = True,
     run_signal_calculations: bool = True,
     cycle_started_at: datetime | None = None,
@@ -633,6 +641,11 @@ def run_cycle(
             provider_completed=provider_completed,
             databento_minute_bars_completed=minute_bars_completed,
         )
+
+    if include_fmp_price_history:
+        from .observed_stock_history import capture_optional_fmp_history
+        history_result = capture_optional_fmp_history(store.root_dir, symbols_tuple, now=started_at)
+        print("Optional observed FMP history: " + json.dumps(history_result, default=str))
 
     # Test doubles and older in-process callers may not expose the provider
     # completion callback. The fallback preserves correctness, while the real
