@@ -30,6 +30,7 @@ from .prediction import ContractError, TARGET_VERSION, instant
 
 SCHEMA_VERSION = "intraday-manual-observed-calibrated-v1"
 FROZEN_SCHEMA_VERSION = "intraday-manual-observed-calibrated-v2"
+NATIVE_SCHEMA_VERSION = "intraday-manual-observed-calibrated-v3"
 SELECTION = "authorized_human_live_experiment"
 MAX_ROWS = 4096
 MIN_ROWS = 160
@@ -61,6 +62,13 @@ def _feature_contract():
             "feature_version": FEATURE_VERSION, "feature_policy": FEATURE_POLICY,
             "feature_names": list(FEATURE_NAMES), "label_provenance": LABEL_PROVENANCE,
             "synthetic_policy": "exclude", "target_version": TARGET_VERSION}
+
+
+def _native_feature_contract():
+    from .native_interval import CONTRACT, FEATURE_VERSION, FEATURE_POLICY, LABEL_PROVENANCE
+    return {**_feature_contract(), "version": "intraday-covered-native-feature-contract-v1",
+            "feature_version": FEATURE_VERSION, "feature_policy": FEATURE_POLICY,
+            "label_provenance": LABEL_PROVENANCE, "native_interval_contract": CONTRACT}
 
 
 def _dataset_scope(value):
@@ -154,12 +162,18 @@ def _validate_recipe(value, *, pc, symbols):
         raise ContractError("Manual model recipe contains noncanonical values") from exc
     if value.get("sha256") != checksum:
         raise ContractError("Manual model recipe checksum mismatch")
-    if value.get("schema_version") == FROZEN_SCHEMA_VERSION:
+    if value.get("schema_version") in {FROZEN_SCHEMA_VERSION, NATIVE_SCHEMA_VERSION}:
         symbols = _scope(pc, symbols)
         required = {"schema_version", "selection", "pc", "symbols", "installed_at", "authority_reference",
                     "target_version", "feature_version", "feature_policy", "label_provenance",
                     "synthetic_policy", "models", "training_support", "feature_contract",
                     "dataset_scope", "migrated_from_sha256", "sha256"}
+        if value["schema_version"] == NATIVE_SCHEMA_VERSION:
+            required.add("symbol_feature_contracts")
+            selected = value.get("symbol_feature_contracts")
+            if (not isinstance(selected, dict) or not selected or not set(selected).issubset(symbols)
+                    or any(contract != _native_feature_contract() for contract in selected.values())):
+                raise ContractError("Native manual recipe requires explicit local symbol feature contracts")
         contract = _feature_contract()
         if (set(value) != required or value["selection"] != SELECTION
                 or value["pc"] != pc or value["symbols"] != list(symbols)
@@ -199,6 +213,8 @@ def migrate_manual_recipe(value, *, pc, symbols, config, installed_at=None, auth
     rather than importing a peer's settings or selecting another candidate.
     """
     original = _validate_recipe(value, pc=pc, symbols=symbols)
+    if original["schema_version"] == NATIVE_SCHEMA_VERSION:
+        raise ContractError("A native manual recipe requires its explicit symbol-scoped migration")
     frozen = deepcopy(original)
     frozen.update(schema_version=FROZEN_SCHEMA_VERSION,
                   models=[asdict(freeze_model_spec(spec)) for spec in configured_models(original["models"])],
@@ -215,6 +231,28 @@ def migrate_manual_recipe(value, *, pc, symbols, config, installed_at=None, auth
     return _validate_recipe(frozen, pc=pc, symbols=symbols)
 
 
+def migrate_native_interval_recipe(value, *, pc, symbols, native_symbols, installed_at, authority_reference):
+    """Select a reviewed local population correction without changing model settings."""
+    original = _validate_recipe(value, pc=pc, symbols=symbols)
+    if original["schema_version"] not in {FROZEN_SCHEMA_VERSION, NATIVE_SCHEMA_VERSION}:
+        raise ContractError("Freeze the local model parameters before changing its population contract")
+    selected = tuple(native_symbols)
+    if not selected or len(set(selected)) != len(selected) or not set(selected).issubset(original["symbols"]):
+        raise ContractError("Native population selection must be an explicit subset of this PC's symbols")
+    revised = {**deepcopy(original), "schema_version": NATIVE_SCHEMA_VERSION,
+        "installed_at": instant(installed_at).isoformat(), "authority_reference": authority_reference,
+        "migrated_from_sha256": original["sha256"],
+        "symbol_feature_contracts": {symbol: _native_feature_contract() for symbol in selected}}
+    revised.pop("sha256", None)
+    revised["sha256"] = _sha(revised)
+    return _validate_recipe(revised, pc=pc, symbols=symbols)
+
+
+def native_interval_symbols_for_runtime(model_runtime):
+    """Read only the validated startup adapter, never mutable disk selection."""
+    return tuple(getattr(model_runtime.get("dataset_builder"), "native_interval_symbols", ()))
+
+
 def manual_recipe_migration_evidence(original, migrated, *, pc, symbols, config):
     """Compare the exact effective specifications without fitting either recipe."""
     previous = _validate_recipe(original, pc=pc, symbols=symbols)
@@ -223,7 +261,9 @@ def manual_recipe_migration_evidence(original, migrated, *, pc, symbols, config)
     return {"original_sha256": previous["sha256"], "migrated_sha256": current["sha256"],
             "effective_models_identical": _canonical(resolved) == _canonical(current["models"]),
             "training_support_identical": previous["training_support"] == current["training_support"],
-            "feature_contract_identical": _feature_contract() == current.get("feature_contract"),
+            "feature_contract_identical": (_feature_contract() == current.get("feature_contract")
+                and previous.get("symbol_feature_contracts", {}) == current.get("symbol_feature_contracts", {})),
+            "symbol_feature_contracts_identical": previous.get("symbol_feature_contracts", {}) == current.get("symbol_feature_contracts", {}),
             "dataset_scope_identical": previous.get("dataset_scope", {
                 "source_dataset": config.source_dataset, "lookback_days": config.lookback_days}) == current.get("dataset_scope"),
             "provider_calls": 0, "training_runs": 0, "files_written": 0}
@@ -409,6 +449,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
     support_contract = deepcopy(recipe["training_support"])
     max_rows = support_contract["newest_training_rows"]
     feature_contract = deepcopy(recipe.get("feature_contract", _feature_contract()))
+    symbol_contracts = deepcopy(recipe.get("symbol_feature_contracts", {}))
     frozen_scope = deepcopy(recipe.get("dataset_scope"))
     selected_config = replace(config, models=tuple(deepcopy(recipe["models"])),
                               synthetic_policy="exclude", use_supervised_models=False).validate()
@@ -422,10 +463,28 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             raise ContractError("Manual recipe feature contract changed after session startup")
         if frozen_scope is not None and lookback_days != frozen_scope["lookback_days"]:
             raise ContractError("Manual recipe dataset history scope differs from its frozen local selection")
-        dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-                                         lookback_days=lookback_days)
+        symbol = None
+        if symbol_contracts:
+            populations = set(candles["symbol"].unique())
+            if len(populations) != 1 or not populations.issubset(symbols):
+                raise ContractError("Manual recipe cannot train a symbol outside this PC's exact scope")
+            symbol = next(iter(populations))
+        selected_contract = symbol_contracts.get(symbol, feature_contract)
+        if symbol in symbol_contracts:
+            from .native_interval import build_native_interval_dataset
+            dataset = build_native_interval_dataset(candles, cutoff=cutoff, reference_at=reference_at,
+                                                     lookback_days=lookback_days)
+        else:
+            if candles is not None and "native_interval_contract" in candles and candles.native_interval_contract.notna().any():
+                raise ContractError("A default symbol cannot consume the opt-in native population")
+            dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
+                                             lookback_days=lookback_days)
+        if any(dataset.manifest.get(k) != selected_contract[k] for k in
+               ("feature_version", "feature_policy", "label_provenance")):
+            raise ContractError("Manual dataset differs from its frozen per-symbol feature contract")
         if dataset.inference.get("symbol") not in symbols:
             raise ContractError("Observed manual recipe cannot train a symbol outside this PC's scope")
+        symbol = dataset.inference["symbol"]
         if (frozen_scope is not None
                 and dataset.inference.get("source_dataset") != frozen_scope["source_dataset"]):
             raise ContractError("Manual recipe source dataset differs from its frozen local selection")
@@ -444,6 +503,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
                 "source_history_sha256": _sha(dataset.manifest.get("source_history", {})),
                 "lookback_days": lookback_days, "synthetic_policy": synthetic_policy})
         manifest = {**dataset.manifest, "manual_model_recipe": deepcopy(recipe),
+            "manual_recipe_symbol": symbol,
             "manual_recipe_training_support": support,
             "training_rows": len(dataset.y), "input_training_rows": input_rows,
             "first_training_reference": dataset.reference_at[0].isoformat(),
@@ -456,10 +516,14 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if tuple(asdict(spec) for spec in configured_models(config)) != tuple(asdict(spec) for spec in specs):
             raise ContractError("Manual recipe trainer received different model specifications")
         metadata = dataset_metadata or {}
+        selected_contract = symbol_contracts.get(metadata.get("manual_recipe_symbol"), feature_contract)
+        if symbol_contracts and metadata.get("manual_recipe_symbol") not in symbols:
+            raise ContractError("Scoped manual recipe requires exact dataset symbol evidence")
         if (metadata.get("manual_model_recipe") != recipe
-                or metadata.get("feature_version") != FEATURE_VERSION
-                or metadata.get("feature_policy") != FEATURE_POLICY
-                or metadata.get("label_provenance") != LABEL_PROVENANCE
+                or metadata.get("feature_version") != selected_contract["feature_version"]
+                or metadata.get("feature_policy") != selected_contract["feature_policy"]
+                or metadata.get("label_provenance") != selected_contract["label_provenance"]
+                or metadata.get("native_interval_contract") != selected_contract.get("native_interval_contract")
                 or metadata.get("synthetic_policy") != "exclude"
                 or metadata.get("synthetic_labels_included") != 0
                 or tuple(kwargs.get("feature_names", ())) != FEATURE_NAMES):
@@ -491,4 +555,5 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
                                        persistence_error=persistence_error)
         return result
 
+    dataset_builder.native_interval_symbols = tuple(symbol for symbol in symbols if symbol in symbol_contracts)
     return selected_config, {"dataset_builder": dataset_builder, "trainer": trainer}

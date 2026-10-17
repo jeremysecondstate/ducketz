@@ -423,6 +423,12 @@ def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
     if not isinstance(candle, Mapping):
         return False
     try:
+        contract = candle.get("native_interval_contract")
+        if not missing(contract):
+            from .native_interval import CONTRACT, completed_native_interval
+            return contract == CONTRACT and completed_native_interval(candle, from_frame=from_frame)
+        if "source_empty_constituents" in candle and not (from_frame and missing(candle["source_empty_constituents"])):
+            return False  # A stripped native contract cannot inherit legacy 900-second acceptance.
         opened, available = utc(candle["opened_at"]), utc(candle["available_at"])
         if pd.isna(opened) or pd.isna(available) or opened != opened.floor("15min") or available < opened + STEP:
             return False
@@ -444,6 +450,8 @@ def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
         raw_evidence = candle.get("evidence_json")
         evidence = {} if missing(raw_evidence) else (
             raw_evidence if isinstance(raw_evidence, Mapping) else json.loads(raw_evidence))
+        if isinstance(evidence, Mapping) and "native_interval_contract" in evidence:
+            return False
         if isinstance(evidence, Mapping) and "constituents" in evidence:
             constituents = evidence["constituents"]
             if not isinstance(constituents, list) or len(constituents) != 15:

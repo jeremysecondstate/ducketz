@@ -426,6 +426,9 @@ class ShadowRunner:
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
+        if inf.get("native_interval_contract"):
+            payload.update({key:inf[key] for key in
+                ("feature_version", "feature_policy", "label_provenance", "native_interval_contract")})
         reference_rows=[row for row in snapshot.get("candles", [])
                         if instant(row["opened_at"]) == reference]
         if reference_rows:
@@ -456,6 +459,7 @@ class ShadowRunner:
 
     def score_available(self,histories,*,as_of,mode=None):
         from .data import completed_15m_observation, synthetic_continuity_verified
+        from .native_interval import candle_matches_forecast
         results=[]
         for forecast in self.store.forecasts(pc=self.pc):
             if mode is not None and forecast["mode"]!=mode:
@@ -486,6 +490,7 @@ class ShadowRunner:
                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
                                 (pd.to_datetime(frame.available_at,utc=True)<=pd.Timestamp(instant(as_of)))]
                 match=match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                                and candle_matches_forecast(row, forecast)
                                 for row in match.to_dict("records")]]
                 if len(match):
                     match=match.sort_values("available_at")
