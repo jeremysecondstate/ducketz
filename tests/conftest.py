@@ -5,6 +5,24 @@ from pathlib import Path
 import sys
 from types import ModuleType
 
+
+def _exclude_cross_pc_script_directories():
+    # Running the pinned verifier as a script puts its tools/cross_pc directory
+    # on sys.path. Its qualified requests helper must not shadow the external
+    # requests package. Keep candidate and original repository roots intact so
+    # the verifier still audits every application import normally.
+    retained = []
+    for entry in sys.path:
+        path = Path(entry or ".").resolve()
+        collision = (path.name == "cross_pc" and path.parent.name == "tools"
+                     and (path / "test_runner.py").is_file() and (path / "requests.py").is_file())
+        if not collision:
+            retained.append(entry)
+    sys.path[:] = retained
+
+
+_exclude_cross_pc_script_directories()
+
 import pytest
 
 

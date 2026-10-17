@@ -410,10 +410,29 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
         selected[owner] = package
         price_metadata.append({k: v for k, v in package["price_path"].items() if k != "points"})
         points.update(deepcopy(package["price_path"]["points"]))
-    # Price observations may differ; the interpretation and planning policy may not.
-    comparable = [{k: v for k, v in item.items() if k not in {"observed_at", "reference_completion"}} for item in price_metadata]
+    # Each package already validates its exact source/dataset against its own
+    # forecasts. Independent producers may use different genuine sources; the
+    # interpretation and every planning-policy field must still agree.
+    lineage_fields = {"observed_at", "reference_completion", "price_source_contract", "price_dataset"}
+    comparable = [{k: v for k, v in item.items() if k not in lineage_fields} for item in price_metadata]
     if comparable[0] != comparable[1]:
         raise ValueError("Owner planning price policies disagree")
+    source_identities = {(item["price_source_contract"], item["price_dataset"]) for item in price_metadata}
+    merged_price_metadata = deepcopy(price_metadata[0])
+    owner_price_lineage = {owner: {
+        "price_source_contract": selected[owner]["price_path"]["price_source_contract"],
+        "price_dataset": selected[owner]["price_path"]["price_dataset"],
+        "observed_at": selected[owner]["price_path"]["observed_at"],
+        "package_sha256": selected[owner]["package_sha256"],
+        "symbols": deepcopy(selected[owner]["frozen_symbols"])} for owner in sorted(selected)}
+    if len(source_identities) > 1:
+        # No global source label may falsely attribute every merged point to the
+        # first producer. The numeric planning policy remains unchanged.
+        for key in ("price_source_contract", "price_dataset", "reference_completion"):
+            merged_price_metadata.pop(key, None)
+        merged_price_metadata.update(source_lineage_contract="owner-scoped-planning-price-lineage-v1",
+            owner_price_lineage=deepcopy(owner_price_lineage),
+            observed_at=max(_time(item["observed_at"], "price observed_at") for item in price_metadata).isoformat())
     fallback_policies = [selected[owner].get("cross_horizon_fallback_policy") for owner in sorted(selected)]
     if fallback_policies[0] != fallback_policies[1]:
         raise ValueError("Owner cross-horizon fallback policies disagree")
@@ -439,7 +458,7 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
         _validate_snapshot(snapshot, all_symbols, scope, now, maximum_snapshot_age_seconds,
             fallback=fallback_policy is not None, require_ownership=maximum_snapshot_age_seconds is not None)
         rows, ledger = project_direction_trades(pd.DataFrame(all_rows), deepcopy(snapshot),
-            {**deepcopy(price_metadata[0]), "points": points}, policy=effective_policy, signal_driven=True,
+            {**deepcopy(merged_price_metadata), "points": points}, policy=effective_policy, signal_driven=True,
             cross_horizon_fallback_policy=fallback_policy, saved_balance_math=maximum_snapshot_age_seconds is None)
     # DataFrame missing optional fields become NaN; preserve exact source fields
     # and add only the projection fields produced by the ledger.
@@ -479,7 +498,7 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
             "Source hashes verify consistency; caller-selected trusted bindings establish source provenance."]}
     if snapshot is None:
         plan.update(composition_mode=PLAN_ONLY_MODE,
-            price_path={**deepcopy(price_metadata[0]), "points": points},
+            price_path={**deepcopy(merged_price_metadata), "points": points},
             source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)},
             limitations=["The two source Gameplans determine trade intent; no account snapshot is required for synthesis.",
                 "The Gameplan executor sizes orders using its actual account cash, holdings and pending orders.",
@@ -490,6 +509,10 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
             account_basis_age_seconds=(now - _time(snapshot["observed_at"], "snapshot observed_at")).total_seconds(),
             source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)})
         plan["limitations"].append("Cash/share arithmetic uses the disclosed saved balance observation; execution uses actual available capacity.")
+    if len(source_identities) > 1:
+        plan.update(price_lineage_contract="owner-scoped-planning-price-lineage-v1",
+            owner_price_lineage=owner_price_lineage,
+            source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)})
     plan_id = "joint-capital:" + content_sha256(plan)
     plan["plan_id"] = plan_id
     plan["owner_views"] = {owner: {"plan_id": plan_id, "owner_id": owner,
