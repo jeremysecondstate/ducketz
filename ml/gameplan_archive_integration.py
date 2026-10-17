@@ -76,7 +76,14 @@ def exclude_quality_intervals(groups, intervals, *, split_boundaries=()):
             start, end = pd.Timestamp(item["start"]), pd.Timestamp(item["end"])
             if start.tzinfo is None or end.tzinfo is None or start >= end:
                 raise ValueError("Archive quality interval is invalid")
-            reject |= (frame.symbol.eq(item["symbol"])
+            affected_source = pd.Series(True, index=frame.index)
+            if "target_observation_dataset" in frame:
+                # These warnings describe XNAS. A new explicitly versioned
+                # target whose two real endpoints came from another feed does
+                # not inherit XNAS observation defects. Corporate actions below
+                # still apply across feeds.
+                affected_source = frame.target_observation_dataset.isna() | frame.target_observation_dataset.eq("XNAS.ITCH")
+            reject |= (affected_source & frame.symbol.eq(item["symbol"])
                        & pd.to_datetime(frame.target_window_start, utc=True).lt(end)
                        & pd.to_datetime(frame.target_window_end, utc=True).ge(start))
         for item in split_boundaries:

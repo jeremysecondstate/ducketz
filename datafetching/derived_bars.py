@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from math import isfinite
 
 import pandas as pd
 
@@ -93,9 +94,9 @@ def derive_intraday_bars(
     polling at arbitrary offsets safe and prevents an overlapping continuation
     tail from replacing a complete derived candle with a partial one. The 1h
     lane may instead use an explicit successful provider-request range. Within
-    that proven range, provider-omitted no-trade minutes are valid sparse
-    evidence; a wholly empty eligible hour carries only a strictly prior close.
-    Those coverage-proven hours follow the continuous v6 04:00--20:00 Eastern
+    that range only genuine returned observations contribute; a wholly empty
+    hour stays absent. Request coverage does not prove market-wide no trading.
+    Covered hours follow the continuous 04:00--20:00 Eastern
     source envelope, including the 09:00--10:00 open-boundary clock hour.
     """
     frequency = output_frequency.strip().lower()
@@ -124,8 +125,11 @@ def derive_intraday_bars(
                 "volume": bar.volume,
             }
             for bar in source_bars
+            if _genuine_source_bar(bar)
         ]
     )
+    if frame.empty:
+        return []
     frame = annotate_bar_timing(frame, timeframe="1m", as_of=observed_at)
     frame = (
         frame.loc[frame["bar_complete"]]
@@ -197,6 +201,22 @@ def derive_intraday_bars(
     ]
 
 
+def _genuine_source_bar(bar) -> bool:
+    """Reject unverified placeholders before OHLC projection and aggregation."""
+    for name in ("synthetic", "is_synthetic", "no_trade", "is_no_trade", "source_empty", "is_source_empty"):
+        if hasattr(bar, name) and getattr(bar, name) is not False:
+            return False
+    try:
+        if any(isinstance(getattr(bar, name), bool) for name in ("open", "high", "low", "close", "volume")):
+            return False
+        values = tuple(float(getattr(bar, name)) for name in ("open", "high", "low", "close", "volume"))
+    except (TypeError, ValueError, AttributeError):
+        return False
+    opening, high, low, close, volume = values
+    return (all(isfinite(value) and value > 0 for value in values)
+            and high >= max(opening, low, close) and low <= min(opening, high, close))
+
+
 def _derive_covered_hour_bars(
     symbol: str,
     source: pd.DataFrame,
@@ -205,7 +225,7 @@ def _derive_covered_hour_bars(
     coverage_start: pd.Timestamp,
     coverage_end: pd.Timestamp,
 ) -> list[DerivedMarketBar]:
-    """Build only clock hours proven covered by one successful 1m request."""
+    """Aggregate actual observations inside covered hours; never fill gaps."""
 
     if coverage_end <= coverage_start:
         raise ValueError("Provider coverage end must be after coverage start")
@@ -221,7 +241,6 @@ def _derive_covered_hour_bars(
         return []
 
     ordered = source.sort_values("timestamp", kind="mergesort").reset_index(drop=True)
-    ordered_timestamps = pd.DatetimeIndex(ordered["timestamp"])
     by_hour = {
         pd.Timestamp(hour): group
         for hour, group in ordered.groupby(
@@ -249,21 +268,8 @@ def _derive_covered_hour_bars(
             )
             continue
 
-        prior_location = ordered_timestamps.searchsorted(start, side="left") - 1
-        if prior_location < 0:
-            continue
-        prior_close = float(ordered.iloc[prior_location]["close"])
-        rows.append(
-            {
-                "timestamp": start,
-                "open": prior_close,
-                "high": prior_close,
-                "low": prior_close,
-                "close": prior_close,
-                "volume": 0.0,
-                "source_bar_count": 0,
-            }
-        )
+        # A covered empty response is not proof that no transactions occurred.
+        # Without affirmative no-trade evidence there is no price to emit here.
     if not rows:
         return []
 

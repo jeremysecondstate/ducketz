@@ -46,34 +46,24 @@ def _complete(prices=None, forecasts=None, **kwargs):
         observed_at=kwargs.pop("observed_at", "2026-09-11T05:30:00Z"), **kwargs)
 
 
-def test_cost_thirteen_minute_gap_gets_explicit_synthetic_bars_without_mutating_native_history():
+def test_thirteen_minute_gap_requires_no_trade_evidence_without_mutating_history():
     prices = _prices([_bar("2026-09-09 16:59", 900), _bar(), _bar("2026-09-10 16:44", 901)])
     before = prices.copy(deep=True)
     attrs = copy.deepcopy(prices.attrs)
     report = _complete(prices)
     ref = report["references"]["COST|2026-09-11"]
-    assert ref["status"] == "AVAILABLE_SYNTHETIC"
-    assert ref["price"] == 902.2
+    assert ref["status"] == "UNAVAILABLE"
+    assert ref["reason"] == "UNVERIFIED_NO_TRADES"
+    assert ref["price"] is None
     assert ref["observed_at"] == "2026-09-10T23:47:00+00:00"
-    assert ref["effective_at"] == "2026-09-11T00:00:00+00:00"
+    assert ref["effective_at"] is None
     assert ref["session"] == "2026-09-10"
-    assert ref["gap_minutes"] == ref["fill_count"] == 13
+    assert ref["gap_minutes"] == 13 and ref["fill_count"] == 0
     assert ref["source_coverage"]["native_partition_verified"] is True
     assert ref["source_coverage"]["end"] == ref["boundary_at"]
     synthetic = report["synthetic_bars"]
-    assert len(synthetic) == 13
-    assert synthetic[0]["timestamp"] == "2026-09-10T23:47:00+00:00"
-    assert synthetic[-1]["timestamp"] == "2026-09-10T23:59:00+00:00"
-    for bar in synthetic:
-        assert [bar[field] for field in ("open", "high", "low", "close")] == [902.2] * 4
-        assert bar["volume"] == 0
-        assert bar["is_synthetic"] is True
-        assert bar["reason"] == "ASSUMED_NO_TRADES"
-        assert bar["origin_source_contract"] == XNAS_STOCK_PRICE_SOURCE
-        assert bar["origin_dataset"] == "XNAS.ITCH"
-        assert bar["source_contract"] != XNAS_STOCK_PRICE_SOURCE
-        assert bar["origin_bar_start"] == "2026-09-10T23:46:00+00:00"
-        assert bar["original_observed_at"] == ref["observed_at"]
+    assert synthetic == []
+    assert report["no_trade_evidence_status"] == "NOT_AVAILABLE"
     assert report["historical_samples_modified"] is report["native_prices_modified"] is False
     assert_frame_equal(prices, before)
     assert prices.attrs == attrs
@@ -81,7 +71,7 @@ def test_cost_thirteen_minute_gap_gets_explicit_synthetic_bars_without_mutating_
 
 
 @pytest.mark.parametrize("gap,status,fills", [(0, "AVAILABLE_OBSERVED", 0), (5, "AVAILABLE_OBSERVED", 0),
-    (6, "AVAILABLE_SYNTHETIC", 6), (15, "AVAILABLE_SYNTHETIC", 15), (16, "UNAVAILABLE", 0)])
+    (6, "UNAVAILABLE", 0), (15, "UNAVAILABLE", 0), (16, "UNAVAILABLE", 0)])
 def test_freshness_and_hard_gap_boundaries(gap, status, fills):
     row = _bar("2026-09-10 16:59")
     row["timestamp"] -= pd.Timedelta(minutes=gap)
@@ -91,7 +81,7 @@ def test_freshness_and_hard_gap_boundaries(gap, status, fills):
     assert ref["fill_count"] == len(report["synthetic_bars"]) == fills
     if status == "UNAVAILABLE":
         assert ref["price"] is ref["effective_at"] is None
-        assert ref["reason"] == "GAP_EXCEEDS_MAXIMUM"
+        assert ref["reason"] == ("GAP_EXCEEDS_MAXIMUM" if gap > 15 else "UNVERIFIED_NO_TRADES")
 
 
 @pytest.mark.parametrize("rows,reason", [
@@ -118,7 +108,7 @@ def test_native_historical_date_bounds_mean_utc_calendar_boundaries():
     prices = _prices()
     prices.attrs["stock_price_source"]["partitions"][0].update(start="2026-09-08", end="2026-09-11")
     reference = _complete(prices)["references"]["COST|2026-09-11"]
-    assert reference["status"] == "AVAILABLE_SYNTHETIC"
+    assert reference["status"] == "UNAVAILABLE" and reference["reason"] == "UNVERIFIED_NO_TRADES"
     assert reference["source_coverage"]["start"] == "2026-09-08T00:00:00+00:00"
     assert reference["source_coverage"]["end"] == "2026-09-11T00:00:00+00:00"
 
@@ -166,8 +156,9 @@ def test_synthetic_fill_requires_completed_verified_native_acquisition_through_b
 def test_latest_native_minute_wins_and_never_gets_replaced():
     rows = [_bar(), _bar("2026-09-10 16:50", 903), _bar("2026-09-10 16:50", 903)]
     report = _complete(_prices(rows))
-    assert report["references"]["COST|2026-09-11"]["price"] == 903
-    assert len(report["synthetic_bars"]) == 9
+    assert report["references"]["COST|2026-09-11"]["price"] is None
+    assert report["references"]["COST|2026-09-11"]["observed_at"] == "2026-09-10T23:51:00+00:00"
+    assert len(report["synthetic_bars"]) == 0
     native_times = {row["timestamp"].isoformat() for row in rows}
     assert not native_times.intersection(bar["timestamp"] for bar in report["synthetic_bars"])
 
@@ -179,10 +170,10 @@ def test_latest_native_minute_wins_and_never_gets_replaced():
 def test_exchange_holidays_weekends_and_dst_preserve_exact_prior_session(day, local, boundary):
     report = _complete(_prices([_bar(local)]), _forecasts(day), observed_at=pd.Timestamp(day, tz="UTC") + pd.Timedelta(hours=5))
     ref = report["references"][f"COST|{day}"]
-    assert ref["status"] == "AVAILABLE_SYNTHETIC"
+    assert ref["status"] == "UNAVAILABLE"
     assert ref["session"] == local[:10]
-    assert ref["effective_at"] == boundary
-    assert ref["fill_count"] == 13
+    assert ref["boundary_at"] == boundary and ref["effective_at"] is None
+    assert ref["gap_minutes"] == 13 and ref["fill_count"] == 0
 
 
 @pytest.mark.parametrize("damage", ["conflict", "nan_close", "zero_close", "negative_open", "bool_close",
@@ -235,11 +226,11 @@ def test_configured_limit_can_be_tighter_but_cannot_relabel_a_longer_gap():
     assert ref["max_gap_minutes"] == 10
 
 
-def test_duplicate_forecasts_share_one_reference_and_one_fill_sequence():
+def test_duplicate_forecasts_share_one_missing_reference_without_fill():
     forecasts = pd.concat([_forecasts(), _forecasts()], ignore_index=True)
     report = _complete(forecasts=forecasts)
     assert len(report["references"]) == 1
-    assert len(report["synthetic_bars"]) == 13
+    assert len(report["synthetic_bars"]) == 0
 
 
 def test_empty_forecasts_are_json_safe_and_do_not_require_price_rows():
@@ -253,19 +244,19 @@ def test_empty_forecasts_are_json_safe_and_do_not_require_price_rows():
     ("CROX", "2026-09-11 14:36", 143), ("TWST", "2026-09-11 16:11", 48),
     ("CROX", "2026-09-11 12:59", 240),
 ])
-def test_explicit_after_hours_policy_carries_sparse_same_session_close(symbol, local, gap):
+def test_explicit_after_hours_policy_cannot_infer_no_market_trades(symbol, local, gap):
     prices = _prices([_bar(local, 100, symbol=symbol)])
     before = prices.copy(deep=True)
     report = _complete(prices, _forecasts("2026-09-14", symbol),
                        observed_at="2026-09-14T11:00Z", allow_extended_hours=True, historical_sessions=3)
     ref = report["references"][f"{symbol}|2026-09-14"]
-    assert ref["status"] == "AVAILABLE_SYNTHETIC"
-    assert ref["gap_minutes"] == ref["fill_count"] == gap
+    assert ref["status"] == "UNAVAILABLE" and ref["reason"] == "UNVERIFIED_NO_TRADES"
+    assert ref["gap_minutes"] == gap and ref["fill_count"] == 0
     assert ref["max_gap_minutes"] == 240
     assert ref["observed_at"] == (pd.Timestamp(local, tz="America/Los_Angeles") + pd.Timedelta(minutes=1)).tz_convert("UTC").isoformat()
     assert report["historical_references"][f"{symbol}|2026-09-11"] == ref
-    assert len(report["synthetic_bars"]) == gap
-    assert report["historical_samples_modified"] is True
+    assert len(report["synthetic_bars"]) == 0
+    assert report["historical_samples_modified"] is False
     assert report["native_prices_modified"] is report["model_training_prices_modified"] is False
     assert_frame_equal(prices, before)
     json.dumps(report, allow_nan=False)
@@ -300,10 +291,10 @@ def test_historical_undefined_prices_do_not_veto_valid_path_planning_anchor():
                        observed_at="2026-09-14T11:00Z", allow_extended_hours=True,
                        historical_sessions=3)
     ref = report["references"]["PATH|2026-09-14"]
-    assert ref["status"] == "AVAILABLE_SYNTHETIC"
-    assert ref["price"] == 18.25 and ref["gap_minutes"] == 12
+    assert ref["status"] == "UNAVAILABLE" and ref["reason"] == "UNVERIFIED_NO_TRADES"
+    assert ref["price"] is None and ref["gap_minutes"] == 12
     assert ref["source_coverage"]["native_partition_verified"] is True
-    assert len(report["synthetic_bars"]) == 12
+    assert len(report["synthetic_bars"]) == 0
     assert report["historical_references"]["PATH|2026-09-11"] == ref
     assert_frame_equal(prices, before)
     assert prices.attrs == before.attrs
