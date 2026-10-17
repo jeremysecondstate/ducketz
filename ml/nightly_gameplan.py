@@ -222,6 +222,31 @@ def run_nightly_gameplan_once(
     if not all(path.is_file() for path in (samples_path, predictions_path, *strategy_inputs)):
         raise RuntimeError("Nightly gameplan inputs are incomplete")
 
+    feedback_context = None
+    if feedback is not None:
+        # Bind the verified publication before consuming its training rows.
+        # A replacement must never become the provenance of already-read data.
+        manifest_path = loop_b.run_directory / "manifest.json"
+        manifest_sha256 = file_checksum(manifest_path)
+        samples_sha256 = loop_b.manifest["output_files"]["samples.parquet"]["checksum_sha256"]
+        if (json.loads(manifest_path.read_text(encoding="utf-8")) != loop_b.manifest
+                or file_checksum(samples_path) != samples_sha256):
+            raise RuntimeError("Reviewed training inputs changed before fitting")
+        feedback_context = {
+            "review_sha256": feedback["checksum_sha256"], "stats": feedback["stats"],
+            "loop_b_manifest_sha256": manifest_sha256, "samples_sha256": samples_sha256,
+        }
+
+    def verify_feedback_inputs():
+        if feedback is None:
+            return
+        verified = load_feedback_review(root, model_feedback, probability_target=probability_target)
+        if verified["checksum_sha256"] != feedback["checksum_sha256"]:
+            raise RuntimeError("Model review changed during training")
+        if (file_checksum(samples_path) != feedback_context["samples_sha256"]
+                or file_checksum(loop_b.run_directory / "manifest.json") != feedback_context["loop_b_manifest_sha256"]):
+            raise RuntimeError("Reviewed training inputs changed during fitting")
+
     samples = pd.read_parquet(samples_path)
     candidates = (
         pd.DataFrame(columns=["symbol", "horizon"])
@@ -388,11 +413,6 @@ def run_nightly_gameplan_once(
     training_cohort_names: list[str] = []
     champion_input_files: list[Path] = []
     feedback_results: dict[str, object] = {}
-    feedback_context = None if feedback is None else {
-        "review_sha256": feedback["checksum_sha256"], "stats": feedback["stats"],
-        "loop_b_manifest_sha256": file_checksum(loop_b.run_directory / "manifest.json"),
-        "samples_sha256": file_checksum(samples_path),
-    }
     for group in MODEL_GROUPS:
         champion = None
         incumbent_specification = None
@@ -601,12 +621,7 @@ def run_nightly_gameplan_once(
     if feedback is not None:
         # Reject mutation or a newer Stats publication after a long fit. A new
         # review is needed, rather than attributing these models to changed bytes.
-        verified_feedback = load_feedback_review(root, model_feedback, probability_target=probability_target)
-        if verified_feedback["checksum_sha256"] != feedback["checksum_sha256"]:
-            raise RuntimeError("Model review changed during training")
-        if (file_checksum(samples_path) != feedback_context["samples_sha256"]
-                or file_checksum(loop_b.run_directory / "manifest.json") != feedback_context["loop_b_manifest_sha256"]):
-            raise RuntimeError("Reviewed training inputs changed during fitting")
+        verify_feedback_inputs()
         stats_run = root / feedback["stats"]["run_path"]
         feedback_inputs = (Path(model_feedback), Path(model_feedback).parent / "diagnostics.json",
                            *(stats_run / name for name in ("receipt.json", "manifest.json", "forecast-results.parquet", "report.json")))
@@ -683,6 +698,8 @@ def run_nightly_gameplan_once(
             f"action_date={action_date.isoformat()}; "
             f"finished_at={published_at.isoformat()}"
         )
+    # Manifest construction also reads inputs; reject changes during that step.
+    verify_feedback_inputs()
     _publish_gameplan(
         root,
         run=run,
