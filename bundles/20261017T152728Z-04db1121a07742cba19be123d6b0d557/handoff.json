@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T15:27:28.884789Z",
+  "id": "20261017T152728Z-04db1121a07742cba19be123d6b0d557",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas corrected CME live request scope and unexplained Schwab ACK diagnosis in superseding PR212"
+}
