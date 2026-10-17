@@ -295,7 +295,7 @@ def _partition(train, validation, *, X, y, references, targets, availability, se
     return capped, validation, evidence
 
 
-def _fit_predict(spec, partition, data, config, deadline):
+def _fit_predict(spec, partition, data, config, deadline, *, feature_names):
     if time.monotonic() >= deadline:
         raise _SearchDeadlineReached("Bounded candidate search deadline reached before next fit")
     X, y, references, targets, availability, sessions, _, _ = data
@@ -323,7 +323,7 @@ def _fit_predict(spec, partition, data, config, deadline):
         estimator, fit_evidence = fit_calibrated_estimator(
             spec, X[train], y[train], reference_at=[references[i] for i in train],
             target_close_at=[targets[i] for i in train], label_available_at=[availability[i] for i in train],
-            training_cutoff=evidence["training_cutoff"])
+            training_cutoff=evidence["training_cutoff"], feature_names=feature_names)
         matrix = np.asarray(estimator.predict_proba(X[validation]), dtype=float)
     classes = np.asarray(estimator.classes_)
     if (matrix.shape != (len(validation), 2) or set(classes.tolist()) != {0, 1}
@@ -459,7 +459,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
             if spec.name in resolution_errors:
                 raise resolution_errors[spec.name]
             for fold in folds:
-                p, fitted = _fit_predict(spec, fold, data, config, deadline)
+                p, fitted = _fit_predict(spec, fold, data, config, deadline, feature_names=dataset.feature_names)
                 fold_metrics = metric(y[fold[1]], p)
                 fold_baseline = {name: metric(y[fold[1]], value) for name, value in _baseline_predictions([fold], y).items()}
                 row["folds"].append({"session": fold[2]["session"], "metrics": fold_metrics,
@@ -527,7 +527,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         if incumbent_error is not None:
             raise incumbent_error
         if incumbents:
-            incumbent_predictions = [np.concatenate([_fit_predict(spec, fold, data, config, deadline)[0] for fold in incumbent_folds])
+            incumbent_predictions = [np.concatenate([_fit_predict(spec, fold, data, config, deadline, feature_names=dataset.feature_names)[0] for fold in incumbent_folds])
                                      for spec in incumbents]
             incumbent_cv = metric(cv_y, np.mean(incumbent_predictions, axis=0))
             report["incumbent"] = {"specs": [asdict(spec) for spec in incumbents], "cv_metrics": incumbent_cv,
@@ -545,7 +545,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
                           for name, probabilities in _baseline_predictions([holdout_partition], y).items()}
         held_predictions, held_models, held_reasons = [], [], []
         for spec in shortlist:
-            p, evidence = _fit_predict(spec, holdout_partition, data, config, deadline)
+            p, evidence = _fit_predict(spec, holdout_partition, data, config, deadline, feature_names=dataset.feature_names)
             scores = metric(held_y, p)
             reasons = _metric_gates(scores, held_baselines, config)
             held_predictions.append(p)
@@ -556,7 +556,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         report["holdout"] = {"session": holdout_session, "baselines": held_baselines,
                              "models": held_models, "proposal_metrics": proposal_holdout}
         if incumbents:
-            incumbent_p = [_fit_predict(spec, incumbent_holdout_partition, data, config, deadline)[0] for spec in incumbents]
+            incumbent_p = [_fit_predict(spec, incumbent_holdout_partition, data, config, deadline, feature_names=dataset.feature_names)[0] for spec in incumbents]
             incumbent_holdout = metric(held_y, np.mean(incumbent_p, axis=0))
             report["incumbent"]["holdout_metrics"] = incumbent_holdout
             for score in ("brier", "log_loss"):

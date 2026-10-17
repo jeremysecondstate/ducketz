@@ -11,7 +11,7 @@ import pytest
 
 from ml.intraday.market_collection import (
     CollectionResult, QuarterHourMarketCollector, SourceRequest, canonical,
-    collection_window_open, load_snapshots, snapshot_digest,
+    collection_window_open, instant, load_snapshots, snapshot_digest,
 )
 from ml.intraday.market_collection_adapters import DatabentoAdapter, FmpAdapter, SchwabAdapter, default_requests
 
@@ -499,7 +499,7 @@ def test_current_native_stream_requires_observed_window_and_never_replay_complet
             timeout_seconds=.04, client_factory=CurrentLive)
 
 
-def test_fmp_commodity_batch_uses_configured_native_scope_without_substitution():
+def test_fmp_legacy_commodity_batch_is_disabled_before_provider_access():
     from ml.intraday.market_collection_adapters import FmpAdapter
     calls = []
     class Provider:
@@ -511,6 +511,21 @@ def test_fmp_commodity_batch_uses_configured_native_scope_without_substitution()
         schema="commodity-quote", endpoint="batch-commodity-quotes",
         params={"configured_symbols": ["CLUSD", "NGUSD"]})
     result = FmpAdapter(provider_factory=Provider)(req, START, END, 100)
-    assert calls == [("batch-commodity-quotes", {})]
-    assert [r["symbol"] for r in result.records] == ["CLUSD"]
-    assert result.status == "PARTIAL" and result.evidence["missing_configured_symbols"] == ["NGUSD"]
+    assert calls == []
+    assert result.records == []
+    assert result.status == "UNSUPPORTED" and result.evidence["provider_called"] is False
+
+
+def test_fmp_chart_requests_exchange_dates_across_utc_midnight():
+    calls = []
+    class Provider:
+        def _get_json(self, endpoint, params):
+            calls.append((endpoint, params))
+            return [{"symbol": "SDGR", "date": "2026-10-16 19:45:00", "close": 10},
+                    {"symbol": "SDGR", "date": "2026-10-16 20:00:00", "close": 11}]
+    req = source(schema="historical-chart-5min", endpoint="historical-chart/5min", source_kind="stock_bars")
+    start, end = instant("2026-10-16T23:45:00Z"), instant("2026-10-17T00:00:00Z")
+    result = FmpAdapter(provider_factory=Provider)(req, start, end, 100)
+    assert calls[0][1] == {"symbol": "SDGR", "from": "2026-10-16", "to": "2026-10-16"}
+    assert [r["close"] for r in result.records] == [10]
+    assert result.records[0]["event_at"] == "2026-10-16T23:45:00+00:00"

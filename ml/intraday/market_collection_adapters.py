@@ -1,8 +1,9 @@
 """Market-only provider adapters; entitlement is established by response evidence.
 
-No account/order endpoint or historical Databento billing API is called here.
-Databento uses bounded replay on the existing Live subscription. REST snapshots
-are observations at receipt, never a reconstruction of the requested quarter.
+No account/order endpoint is called here. Databento uses existing Live access
+where entitled; CME depth uses separately identified, zero-quoted-cost bounded
+Historical access. REST snapshots are observations at receipt, never a
+reconstruction of the requested quarter.
 """
 from __future__ import annotations
 
@@ -29,6 +30,9 @@ def default_requests(symbols):
     from app.services.fmp_corporate_data import FmpCorporateDataProvider
     from app.services.databento_cme_context import DatabentoCmeContextProvider
     from app.services.fmp_macro_context import FmpMacroContextProvider
+    from dataclasses import replace
+    from .market_collection_replay import PROJECTION_VERSION
+    from .market_collection_history import historical_request, is_cme_depth
     requests = []
     equities = os.getenv("DATABENTO_EQUITIES_DATASET", "EQUS.MINI").strip() or "EQUS.MINI"
     if equities != "EQUS.MINI":
@@ -83,16 +87,25 @@ def default_requests(symbols):
         for scope, stype in ((cme.context_symbols, cme.context_stype_in),
                              (cme.contract_symbols, cme.contract_stype_in)):
             for schema in schemas if scope else ():
-                requests.append(SourceRequest("databento", "cross_asset", "*", cme.dataset, schema,
-                    params={"symbols": list(scope), "stype_in": stype}))
+                request = SourceRequest("databento", "cross_asset", "*", cme.dataset, schema,
+                    params={"symbols": list(scope), "stype_in": stype, "projection_version": PROJECTION_VERSION})
+                if is_cme_depth(request):
+                    # Retain the old identity as a visible descriptor. Historical
+                    # transport has a new identity and cannot rebind a model.
+                    requests.append(replace(request, capability="UNSUPPORTED",
+                        capability_reason="Standard CME depth is historical-only; this legacy Live source is disabled"))
+                    requests.append(historical_request(request))
+                else:
+                    requests.append(request)
     # These are the existing local commodity symbols, not another PC's tuning.
     macro = FmpMacroContextProvider()
     commodity_symbols = [spec.output_symbol for spec in macro.commodity_proxy_specs()]
     if commodity_symbols:
         requests.append(SourceRequest("fmp", "cross_asset", "*", "stable", "commodity-quote",
-            "batch-commodity-quotes", {"configured_symbols": commodity_symbols}))
-    from dataclasses import replace
-    from .market_collection_replay import PROJECTION_VERSION
+            "batch-commodity-quotes", {"configured_symbols": commodity_symbols},
+            capability="UNSUPPORTED", capability_reason="Legacy bulk commodity source replaced by distinct exact single-symbol quote requests"))
+        from .market_collection_fmp_commodities import native_commodity_requests
+        requests.extend(native_commodity_requests(commodity_symbols))
     from .market_collection_extended import extended_requests
     from .market_collection_fmp_context import context_requests
     from .market_collection_schwab_stream import stream_requests
@@ -124,8 +137,9 @@ def capability_catalog():
          "unsupported": ["mbo", "computed-greeks"],
          "limitation": "CMBP has no replay: a bounded current stream window is retained. Other schemas request replay; source retention/capacity failures remain explicit"},
         {"provider": "databento", "dataset": "GLBX.MDP3", "status": "LOCAL_CONFIGURATION_REQUIRED",
-         "collected_schemas": ["configured schemas", "mbo", "trades", "definition", "statistics", "status"],
-         "limitation": "Existing configured futures only. Quarter MBO events lack prior full-book initialization; no reconstructed order book is claimed"},
+         "collected_schemas": ["configured entitled Live schemas", "trades", "definition", "statistics", "status"],
+         "historical_only": ["mbp-10", "mbo"],
+         "limitation": "Existing futures scopes only. Depth uses the included rolling month, zero-cost quote, full available historical quarter, and explicit capacity bounds. Older depth is collection-only until a model explicitly admits its distinct identity; no current-quarter or reconstructed MBO book claim"},
         {"provider": "schwab", "dataset": "marketdata-v1", "status": "CONFIGURED_UNPROBED",
          "implemented": ["equity quote", "bounded one-minute OHLCV", "full provider-returnable current options chain with Greeks", "instrument fundamental projection", "bounded native LEVELONE_EQUITIES/OPTIONS/FUTURES, CHART_EQUITY/FUTURES, NYSE/NASDAQ/OPTIONS_BOOK streams"],
          "unimplemented": ["uninterrupted between-refresh stream recording", "futures options outside the configured context scope"],
@@ -252,22 +266,26 @@ class FmpAdapter:
         self.provider_factory = provider_factory
         self.provider = None
 
+    def _provider(self):
+        if self.provider is None:
+            from app.services.fmp_corporate_data import FmpCorporateDataProvider
+            self.provider = (self.provider_factory or FmpCorporateDataProvider)()
+        return self.provider
+
     def __call__(self, request, start, end, max_records):
+        from .market_collection_fmp_commodities import handles as commodity_handles, collect as collect_commodity
+        if commodity_handles(request):
+            return collect_commodity(request, start, end, max_records, provider_factory=self._provider)
         from .market_collection_fmp_context import handles as context_handles, collect_context
         if context_handles(request):
-            if self.provider is None:
-                from app.services.fmp_corporate_data import FmpCorporateDataProvider
-                self.provider = (self.provider_factory or FmpCorporateDataProvider)()
-            return collect_context(request, start, end, max_records, fmp_provider=self.provider)
+            return collect_context(request, start, end, max_records, fmp_provider=self._provider())
         from .market_collection_extended import handles, collect_extended
         if handles(request):
             return collect_extended(request, start, end, max_records, fmp_fetch_page=self._collect_page)
         return self._collect_page(request, start, end, max_records)
 
     def _collect_page(self, request, start, end, max_records):
-        if self.provider is None:
-            from app.services.fmp_corporate_data import FmpCorporateDataProvider
-            self.provider = (self.provider_factory or FmpCorporateDataProvider)()
+        self._provider()
         params = dict(request.params)
         commodity_symbols = params.pop("configured_symbols", None)
         if commodity_symbols is not None and (request.endpoint != "batch-commodity-quotes"
@@ -276,7 +294,8 @@ class FmpAdapter:
                 or any(not re.fullmatch(r"[A-Z0-9._/-]{1,30}", symbol) for symbol in commodity_symbols)):
             raise ValueError("Invalid exact configured commodity scope")
         if request.endpoint.startswith("historical-chart/"):
-            params.update({"from": start.date().isoformat(), "to": end.date().isoformat()})
+            params.update({"from": instant(start).tz_convert("America/New_York").date().isoformat(),
+                           "to": instant(end).tz_convert("America/New_York").date().isoformat()})
         if request.endpoint == "sec-filings-search/symbol":
             today = datetime.now(timezone.utc).date()
             params.update({"from": (today - timedelta(days=370)).isoformat(), "to": today.isoformat()})
@@ -342,9 +361,10 @@ class FmpAdapter:
 
 
 class DatabentoAdapter:
-    def __init__(self, root, replay=None, requests=()):
+    def __init__(self, root, replay=None, requests=(), *, historical=None):
         import threading
         self.root, self.replay = Path(root), replay
+        self.historical = historical
         self.requests = tuple(requests)
         self.cache = {}
         self.failures = {}
@@ -353,6 +373,7 @@ class DatabentoAdapter:
 
     def _batch(self, request, start, end, max_records, key):
         from .market_collection_replay import capture
+        from .market_collection_history import MODE, capture as capture_historical
         from .market_collection import canonical
         from dataclasses import replace
         import hashlib
@@ -367,11 +388,12 @@ class DatabentoAdapter:
                 scopes.extend(other.params.get("symbols", []))
         scopes = sorted(set(scopes or request.params["symbols"]))
         params = {**request.params, "symbols": scopes}
+        historical = request.params.get("capture_mode") == MODE
         identity = hashlib.sha256(canonical([request.dataset, request.schema, params, start, end])).hexdigest()
         with self.cache_lock:
             lock = self.group_locks.setdefault(identity, threading.Lock())
         with lock:
-            if identity in self.cache:
+            if identity in self.cache and not historical:
                 return self.cache[identity]
             import time
             failed = self.failures.get(identity)
@@ -379,7 +401,7 @@ class DatabentoAdapter:
                 raise failed[1]
             response_path = self.root / "responses" / start.date().isoformat() / (identity + ".json")
             from .market_collection import _sha
-            if response_path.exists():
+            if response_path.exists() and not historical:
                 saved = json.loads(response_path.read_text(encoding="utf-8"))
                 claimed = saved.pop("response_sha256", None)
                 if claimed != _sha(saved):
@@ -388,13 +410,15 @@ class DatabentoAdapter:
                 return self.cache[identity]
             path = self.root / "raw" / start.date().isoformat() / (uuid.uuid4().hex + ".dbn")
             try:
-                rows, evidence = (self.replay or capture)(key, replace(request, params=params), start, end, path,
-                    max_records=max_records)
+                operation = (self.historical or capture_historical) if historical else (self.replay or capture)
+                rows, evidence = operation(key, replace(request, params=params), start, end, path,
+                    max_records=max_records, **({"cache_root": self.root / "historical"} if historical else {}))
             except Exception as exc:
                 from .market_collection import classify_error, CollectionFailure
                 status, reason = classify_error(exc)
-                evidence = {**getattr(exc, "collection_evidence", {}), "acquisition_symbols": scopes,
-                            "acquisition_stype_in": params["stype_in"], "raw_path": str(path), "completed": False}
+                evidence = {"raw_path": str(path), **getattr(exc, "collection_evidence", {}), "acquisition_symbols": scopes,
+                            "acquisition_stype_in": params["stype_in"], "completed": False}
+                path = Path(evidence["raw_path"])
                 if path.exists():
                     digest = hashlib.sha256()
                     with path.open("rb") as handle:
@@ -430,6 +454,11 @@ class DatabentoAdapter:
             return rows, evidence
 
     def __call__(self, request, start, end, max_records):
+        from .market_collection_history import MODE, is_cme_depth
+        if is_cme_depth(request) and request.params.get("capture_mode") != MODE:
+            return CollectionResult([], "UNSUPPORTED",
+                "Standard CME MBP-10/MBO is historical-only; legacy Live request disabled before provider access",
+                {"provider_called": False, "required_historical_policy": "databento-standard-historical-depth-v1"})
         key = os.getenv("DATABENTO_API_KEY", "").strip()
         if not key:
             raise RuntimeError("Missing API credentials")
@@ -443,7 +472,7 @@ class DatabentoAdapter:
                            if request.source_kind == "opra_options" else symbol == request.symbol)
                 if not matches:
                     continue  # another explicitly configured scope in this shared replay
-            observation_clock = "ts_recv" if request.schema in {"bbo-1m", "bbo-1s", "cbbo-1m", "cbbo-1s", "mbp-1", "mbp-10", "cmbp-1"} else "ts_event"
+            observation_clock = "ts_recv" if request.schema in {"bbo-1m", "bbo-1s", "cbbo-1m", "cbbo-1s", "mbp-1", "mbp-10", "cmbp-1"} or request.params.get("capture_mode") == MODE else "ts_event"
             stamp = _utc(raw.get(observation_clock), local_zone="UTC")
             if stamp is None:
                 raise ValueError("Databento market row lacks an event timestamp")

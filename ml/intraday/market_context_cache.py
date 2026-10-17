@@ -23,7 +23,9 @@ from .market_context import (
 )
 from .prediction import ContractError
 
-VERSION = "intraday-exact-causal-context-cache-v1"
+# Do not reuse vectors produced before explicit observation-marker/positive-
+# volume admission. Original immutable provider receipts are retained.
+VERSION = "intraday-exact-causal-context-cache-v2"
 MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
 MAX_DECODED_BYTES = 16 * 1024 * 1024
 
