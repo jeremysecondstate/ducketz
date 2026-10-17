@@ -1,0 +1,60 @@
+{
+  "author": "Scout",
+  "base_sha": "28ef18efe477c43375a363dc436f5780ea1a1494",
+  "branch": "codex/scout/20261017T155041Z-14a27e11c53b415f9c7cbc53c0aa6f35",
+  "change_id": "20261017T155041Z-14a27e11c53b415f9c7cbc53c0aa6f35",
+  "commit_sha": "7e34c70f46bc69e35ce993832c968ca4d4b4d362",
+  "details": [
+    "Disable legacy Live CME depth requests and add distinct bounded zero-cost Historical depth identities with full native receipt evidence.",
+    "Separate native commodity quote entitlements and correct exchange-local intraday chart request dates.",
+    "Collect a bounded rotating options-book subset with truthful independent service scope and capacity evidence.",
+    "Reject synthetic and invalid market observations, invalidate prior derived context caches, and freeze unsupported optional coordinates using only base training rows.",
+    "Preserve existing source identities, per-PC model parameters and private configuration; new identities require explicit reviewed model admission."
+  ],
+  "files": [
+    "docs/development/intraday-provider-plan-boundaries.md",
+    "ml/intraday/feature_support.py",
+    "ml/intraday/market_collection_adapters.py",
+    "ml/intraday/market_collection_fmp_commodities.py",
+    "ml/intraday/market_collection_history.py",
+    "ml/intraday/market_collection_schwab_stream.py",
+    "ml/intraday/market_context.py",
+    "ml/intraday/market_context_cache.py",
+    "ml/intraday/model_selection.py",
+    "ml/intraday/models.py",
+    "tests/test_intraday_context_observation_quality.py",
+    "tests/test_intraday_feature_support.py",
+    "tests/test_intraday_fmp_native_commodities.py",
+    "tests/test_intraday_market_collection.py",
+    "tests/test_intraday_market_collection_history.py",
+    "tests/test_intraday_market_collection_schwab_stream.py"
+  ],
+  "installation_stage": "separate_local_adoption",
+  "integration_stage": "draft_pr",
+  "limitations": [
+    "Stacked on published PR205; no merge, peer installation or running-process adoption is claimed.",
+    "Historical depth may be delayed, empty, capacity-blocked or unavailable. Complete delivery means the bounded source response, not market-wide completeness.",
+    "Options-book subset collection remains partial; provider entitlement and runtime limits are independently evidenced.",
+    "Five existing optional account/adoption integration modules are absent from this older published base and are outside the tested broker-local provider/model path; the closure evidence names them explicitly.",
+    "Offline checks only; no private recipes, raw data, fitted models, provider probe evidence, orders or account details are published.",
+    "No main integration, peer installation or running-process adoption is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/214"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Separate local review must migrate collection configuration and any new model selectors, refit under frozen settings, and install source. Publication does not start traders or change subscriptions.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared source behavior; per-PC model choices, symbols and operating material remain local.",
+  "summary": "Respect market-data plan transports and observed training support",
+  "tests": [
+    {
+      "check": "isolated-publication",
+      "command": "python -B -m pytest tests/test_intraday_market_collection_history.py tests/test_intraday_market_collection.py tests/test_intraday_fmp_native_commodities.py tests/test_intraday_market_collection_schwab_stream.py tests/test_intraday_market_collection_extended.py tests/test_intraday_market_collection_fmp_context.py tests/test_intraday_market_context.py tests/test_intraday_market_context_cache.py tests/test_intraday_market_collection_index.py tests/test_intraday_context_observation_quality.py tests/test_intraday_feature_support.py tests/test_intraday_models.py tests/test_intraday_model_contracts.py tests/test_intraday_model_selection.py tests/test_intraday_live_model_recipe.py tests/test_intraday_live_minute_provider.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-17T15:52:14.802168Z",
+      "output_sha256": "6a3dd999e9cefbf66e1f85df3dbcc3800bfd47610b35c7bc0e6c8173c500e0c4",
+      "result": "489 passed, 1 skipped, 1980 warnings in 25.65s; network disabled; candidate imports bound",
+      "started_at_utc": "2026-10-17T15:51:47.392246Z"
+    }
+  ]
+}

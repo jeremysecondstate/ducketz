@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T15:53:37.543378Z",
+  "id": "20261017T155337Z-1cdb62802c2e4364b776325a0fe17d7b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Respect market-data plan transports and observed training support"
+}
