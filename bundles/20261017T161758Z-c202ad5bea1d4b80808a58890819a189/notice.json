@@ -1,0 +1,43 @@
+{
+  "author": "Scout",
+  "base_sha": "f6f1bd8cf9f4252672d862ec4c2927473989f2ea",
+  "branch": "codex/scout/20261017T161531Z-8aa1b0d670db43229e1ac48e06567ec4",
+  "change_id": "20261017T161531Z-8aa1b0d670db43229e1ac48e06567ec4",
+  "commit_sha": "04f53f20517bb4678a85243e85ee73535f4a43d6",
+  "details": [
+    "Validate each consumed symbol's full native interval column once and reuse copied immutable timestamp and price arrays during repeated planning boundary queries.",
+    "Reuse per-call lookup metadata in closing-reference completion while preserving source selection, timing, duplicate handling, tolerance, prices and all serialized policy identities.",
+    "Preserve the direct DataFrame endpoint interface and clarify that legacy carry-window flags do not authorize new synthetic prices."
+  ],
+  "files": [
+    "ml/gameplan_price_bands.py",
+    "ml/gameplan_price_completion.py",
+    "tests/test_gameplan_price_lookup.py"
+  ],
+  "installation_stage": "separate_local_adoption",
+  "integration_stage": "draft_pr",
+  "limitations": [
+    "Stacked on the exact published PR208 source. No main merge, peer installation or running-process adoption is implied.",
+    "Offline fixtures cover numeric and timing equivalence. Microbenchmark gains do not predict full production runtime; data loading and source selection remain unchanged.",
+    "Each lookup copies timestamp/open/close columns for the duration of its builder call; no persistent or cross-cutoff cache is introduced.",
+    "Private source data, recipes, fitted models, reports and operating evidence are excluded."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/215"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New planning invocations use the installed source. Existing processes retain their loaded implementation. No model settings, gates, lookback or acquisition behavior changes.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared planning correctness-preserving performance improvement; no per-PC data or model settings",
+  "summary": "Reuse call-local native price lookups during Gameplan planning",
+  "tests": [
+    {
+      "check": "isolated-publication",
+      "command": "python -B -m pytest tests/test_gameplan_price_lookup.py tests/test_gameplan_price_bands.py tests/test_gameplan_price_completion.py tests/test_gameplan_observed_recovery.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-17T16:17:05.026131Z",
+      "output_sha256": "4407d69c9267f368d1854c72a70568d235bc1592fabbadfb9308b1ca0c65288f",
+      "result": "166 passed in21.54s; network disabled; candidate imports bound",
+      "started_at_utc": "2026-10-17T16:16:42.111211Z"
+    }
+  ]
+}

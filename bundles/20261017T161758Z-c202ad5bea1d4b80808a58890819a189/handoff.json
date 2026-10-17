@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T16:17:58.367650Z",
+  "id": "20261017T161758Z-c202ad5bea1d4b80808a58890819a189",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Reuse call-local native price lookups during Gameplan planning"
+}
