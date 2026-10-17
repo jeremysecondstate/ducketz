@@ -1,0 +1,36 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261017T102412Z-efb9bdb0d5514011a06c0cfe5fe228e6",
+  "change_id": "20261017T102412Z-efb9bdb0d5514011a06c0cfe5fe228e6",
+  "commit_sha": "1e8b697e4fe5eec9e7034f51c2371d0021568656",
+  "files": [
+    "ml/intraday/native_interval.py",
+    "ml/intraday/live_model_recipe.py",
+    "ml/intraday/data.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/store.py",
+    "ml/intraday/live_session.py",
+    "ml/intraday/minute_feed.py",
+    "tests/test_intraday_native_feed.py",
+    "tests/test_intraday_native_interval.py",
+    "docs/development/intraday-native-interval-contract.md"
+  ],
+  "limitations": [
+    "Builds on PR 203 at 2f5ba6a1d506d80f44185604fff30aa2ed8930d7 and its PR 198 diagnostics dependency.",
+    "Historical evidence describes canonical merged source files with assumed historical-close availability; it is not represented as an original point-in-time response snapshot.",
+    "Empty, failed, unstable or conflicting source windows remain unavailable.",
+    "Source adoption alone does not migrate a peer recipe; a population choice requires that PC's own evidence assessment.",
+    "Successful manual-experiment model fitting does not constitute supervised qualification; failed assessment findings remain intact.",
+    "Private recipes, market data, fitted models, assessments and broker evidence are not included. No trader was started."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/204",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed local source and the locally assessed frozen recipe load on the next normal manual startup. No automatic model selection change, provider switch, synthetic price filling or historical forecast rewrite. Main integration, peer installation and running process versions remain separate facts.",
+  "scope": "Shared opt-in correctness machinery. Each PC retains its own model selection, parameters, calibration, support gates and privately selected population recipes.",
+  "summary": "Versioned native-observation intervals are published; Scout's separately reviewed local recipe is installed for the next manual session.",
+  "tests": [
+    "775 offline tests passed on the exact isolated final candidate on 2026-10-17 at 10:28 UTC.",
+    "97 owned and dependency fingerprints verified; private-value scan and remote SHA readback passed.",
+    "Regression coverage includes stable consecutive source responses, canonical historical proof, exact interval boundaries, frozen model specifications, recipe scope preservation, and rejection of cross-contract scoring."
+  ]
+}

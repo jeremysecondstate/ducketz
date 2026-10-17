@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T10:29:44.300448Z",
+  "id": "20261017T102944Z-cfa7a8df7c0a4e6a869a03d592c76c87",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Versioned native-observation intervals are published; Scout's separately reviewed local recipe is installed for the next manual session."
+}
