@@ -1,0 +1,81 @@
+{
+  "author": "Scout",
+  "base_sha": "6792abd38873b3aab98db82b7f091525a49a428b",
+  "branch": "codex/scout/20261017T142452Z-68b8869ddd6e49928fd84018a76847c1",
+  "change_id": "20261017T142452Z-68b8869ddd6e49928fd84018a76847c1",
+  "commit_sha": "f6f1bd8cf9f4252672d862ec4c2927473989f2ea",
+  "details": [
+    "Adopt reviewed same-source observed price recovery and preserve native five-minute duration and source markers.",
+    "Rebuild optional Gameplan technical features under a new source contract, excluding empty or invalid bars before recursive calculations and retaining causal lineage.",
+    "Preserve the historical outcome deadline while admitting later acquisition receipts at the actual Stats review time.",
+    "Stop emitting carried-close derived hours for empty covered responses; retain existing saved artifacts and per-PC model settings."
+  ],
+  "files": [
+    "datafetching/databento_fetch.py",
+    "datafetching/derived_bars.py",
+    "datafetching/fmp_price_history_receipts.py",
+    "datafetching/observed_stock_history.py",
+    "datafetching/orchestrate.py",
+    "datafetching/schwab_fetch.py",
+    "datafetching/schwab_price_history_receipts.py",
+    "docs/development/fmp-native-five-minute-receipts.md",
+    "docs/development/gameplan-observed-technical-inputs.md",
+    "docs/development/observed-market-populations.md",
+    "ml/gameplan_actuals_review.py",
+    "ml/gameplan_archive_features.py",
+    "ml/gameplan_archive_integration.py",
+    "ml/gameplan_champions.py",
+    "ml/gameplan_evaluation.py",
+    "ml/gameplan_input_evidence.py",
+    "ml/gameplan_model_feedback.py",
+    "ml/gameplan_observed_technicals.py",
+    "ml/gameplan_price_bands.py",
+    "ml/gameplan_price_completion.py",
+    "ml/gameplan_source_selection.py",
+    "ml/independent_stock_targets.py",
+    "ml/market_provenance.py",
+    "ml/nightly_gameplan.py",
+    "ml/overnight_runtime.py",
+    "ml/stock_observation_sources.py",
+    "ml/stock_target_prices.py",
+    "tests/test_databento_derived_bars.py",
+    "tests/test_fmp_price_history_receipts.py",
+    "tests/test_gameplan_actuals_review.py",
+    "tests/test_gameplan_archive_features.py",
+    "tests/test_gameplan_evaluation.py",
+    "tests/test_gameplan_observed_context_integration.py",
+    "tests/test_gameplan_observed_recovery.py",
+    "tests/test_gameplan_observed_technicals.py",
+    "tests/test_gameplan_price_bands.py",
+    "tests/test_gameplan_price_completion.py",
+    "tests/test_market_runtime_provenance.py",
+    "tests/test_observed_source_workflow.py"
+  ],
+  "installation_stage": "separate_local_adoption",
+  "integration_stage": "draft_pr",
+  "limitations": [
+    "Offline fixture checks do not establish live provider entitlement, training qualification or running-process adoption.",
+    "Historical-close and reconstructed technical availability remain explicit assumptions, not contemporaneous receipts; unverifiable lifecycle history stays missing.",
+    "Private datasets, model recipes, fitted models and operating evidence are excluded. The independent 15-minute implementation is outside this change.",
+    "Nightly dispatch integration is published separately against its existing reviewed stack; this candidate does not import that unrelated baseline.",
+    "No main integration, peer installation or running-process adoption is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/208"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Requires reviewed source adoption and explicit local source-policy selection. Existing saved artifacts are preserved; no trader starts or order operations occur.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared source behavior; per-PC model choices, symbols and operating material remain local.",
+  "summary": "Rebuild Gameplan technical inputs from verified observations and preserve outcome timing",
+  "tests": [
+    {
+      "check": "isolated-publication",
+      "command": "python -B -m pytest tests/test_fmp_price_history_receipts.py tests/test_gameplan_observed_recovery.py tests/test_gameplan_actuals_review.py tests/test_gameplan_archive_features.py tests/test_gameplan_price_bands.py tests/test_gameplan_price_completion.py tests/test_gameplan_champions.py tests/test_gameplan_evaluation.py tests/test_nightly_gameplan.py tests/test_independent_stock_targets.py tests/test_stock_target_prices.py tests/test_gameplan_archive_integration.py tests/test_schwab_loop_a_features.py tests/test_research_onboarding.py tests/test_independent_loop_isolation.py tests/test_market_runtime_provenance.py tests/test_gameplan_observed_technicals.py tests/test_gameplan_observed_context_integration.py tests/test_databento_derived_bars.py tests/test_gameplan_source_selection.py tests/test_gameplan_model_feedback.py tests/test_gameplan_feedback_receipt_binding.py tests/test_observed_source_workflow.py tests/test_independent_stock_runtime.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-17T14:28:55.044858Z",
+      "output_sha256": "521fa4d6ec0f50fd8ad772ab4ab18579960e64d19f30db246f64d2cf23a4aa83",
+      "result": "587 passed, 32 warnings in 99.60s (0:01:39); network disabled; candidate imports bound",
+      "started_at_utc": "2026-10-17T14:27:13.346694Z"
+    }
+  ]
+}
