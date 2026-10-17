@@ -1,0 +1,28 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261017T101051Z-fe4d0aa30a3c43689262f1cee257f4b3",
+  "change_id": "20261017T101051Z-fe4d0aa30a3c43689262f1cee257f4b3",
+  "commit_sha": "2f5ba6a1d506d80f44185604fff30aa2ed8930d7",
+  "files": [
+    "ml/intraday/technical_sizing.py",
+    "ml/intraday/commitment_clearance.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_sizing_population.py",
+    "tests/test_intraday_commitment_clearance.py"
+  ],
+  "limitations": [
+    "Builds on the reviewed diagnostics repair at 3778704010af45de4055c633d19e2472999e3049 (PR 198).",
+    "Clearance requires a separately reviewed private broker evidence installation; it never manufactures historical acceptance, fills or profit.",
+    "No trader was started. Main integration, peer installation and running process versions are separate facts."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/203",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed source is installed locally for the next manual start. Future observed-only sizing follows frozen inputs. Distinct new forecasts require fresh broker capacity and existing controls; original uncertain sends cannot replay. Private evidence is not published.",
+  "scope": "Shared sizing correctness applies independently to both PCs. Historical commitment recovery applies only to Scout local journals. Private model recipes remain local.",
+  "summary": "Frozen-population technical sizing and evidence-bound historical commitment recovery are published and installed on Scout for the next manual session.",
+  "tests": [
+    "335 offline tests passed in isolated review and again against the exact final candidate on 2026-10-17 at 10:12 UTC.",
+    "54 owned and dependency fingerprints bound; private-value scan and remote SHA readback passed.",
+    "Tests cover immutable UNKNOWN history, no replay, positive and zero fresh capacity, later exact acceptance recovery, malformed and incomplete evidence, and frozen sizing population provenance."
+  ]
+}
