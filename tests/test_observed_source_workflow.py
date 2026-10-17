@@ -53,3 +53,60 @@ def test_optional_source_failure_keeps_core_work_continuing(tmp_path,monkeypatch
     assert result["error_type"]=="OSError"
     assert "private URL" not in str(result)
     assert result["core_work_continues"]
+
+
+def test_dated_policy_preserves_completed_configuration_binding():
+    from ml.nightly_workflow import _configuration_binding, _verify_configuration_binding
+    from ml.gameplan_price_policy import POLICY_VERSION
+    config = {"repository": "C:/repo", "datastore": "C:/data", "local_profile": "C:/profile.json"}
+    old = _configuration_binding(config, "2026-10-19")
+    config["stock_price_source_policy"] = {"version": POLICY_VERSION,
+        "effective_from_action_date": "2026-10-20", "source_contract": "observed-multi-source-stock-v2"}
+    _verify_configuration_binding(config, {"action_date": "2026-10-19", "configuration_binding": old})
+    new = _configuration_binding(config, "2026-10-20")
+    assert new["stock_price_source"] == "observed-multi-source-stock-v2"
+    with pytest.raises(ValueError, match="configuration changed"):
+        _verify_configuration_binding(config, {"action_date": "2026-10-20", "configuration_binding": old})
+
+
+@pytest.mark.parametrize("day,source", [("2026-10-19", "xnas-itch-archive-v1"),
+    ("2026-10-20", "observed-multi-source-stock-v2")])
+def test_dated_native_catchup_keeps_archive_maintenance(tmp_path, monkeypatch, day, source):
+    from ml.nightly_workflow import _run_native
+    from ml.gameplan_price_policy import POLICY_VERSION
+    calls = []
+    def run(root, **kwargs):
+        calls.append(kwargs)
+        return tmp_path / "attempt"
+    monkeypatch.setattr("ml.overnight_runtime.run_overnight_pipeline", run)
+    monkeypatch.setattr("ml.overnight_runtime.overnight_status", lambda root: {})
+    monkeypatch.setattr("ml.nightly_workflow._native_outputs", lambda path: {"native_run": str(path)})
+    config = {"repository": str(tmp_path), "datastore": str(tmp_path), "continue_until_complete": False,
+        "stock_price_source_policy": {"version": POLICY_VERSION,
+            "effective_from_action_date": "2026-10-20", "source_contract": "observed-multi-source-stock-v2"}}
+    state = {"action_date": day, "source_session": "2026-10-16", "deadline_at": "2026-10-20T11:00:00Z",
+        "steps": {"datastore_catchup": {}}}
+    _run_native(config, state, "datastore_catchup", lambda: None)
+    assert calls[0]["stock_price_source"] == source
+    assert calls[0]["stop_after"] == "stock_target_history"
+
+
+@pytest.mark.parametrize("source,valid", [
+    ("technicals/calculations/market_regime.py", True),
+    ("technicals/../outside.py", False),
+    ("scratch/private.py", False),
+])
+def test_frozen_feedback_accepts_verified_technical_namespace(tmp_path, monkeypatch, source, valid):
+    from ml import gameplan_model_feedback as feedback
+    from ml.nightly_workflow import _frozen_feedback_diagnostics
+    actual = {"reviewed_at": "2026-10-17T01:00:00Z", "outcomes_through": "2026-10-17T00:00:00Z"}
+    monkeypatch.setattr(feedback, "_stats", lambda root, frozen_binding: (object(), actual))
+    monkeypatch.setattr(feedback, "_diagnostic_groups", lambda review: {})
+    monkeypatch.setattr(feedback, "_intended_target", lambda actual, target: None)
+    diagnostics = {"schema_version": feedback.VERSION, "training_code": {source: "a" * 64},
+        "stats": actual, "groups": {}, "created_at": "2026-10-17T02:00:00Z"}
+    if valid:
+        _frozen_feedback_diagnostics(tmp_path, diagnostics)
+    else:
+        with pytest.raises(ValueError, match="invalid training binding"):
+            _frozen_feedback_diagnostics(tmp_path, diagnostics)
