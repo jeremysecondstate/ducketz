@@ -1,0 +1,50 @@
+{
+  "author": "Atlas",
+  "base_commit": "bab316cad4369a0fe7b1d12a3d23b1eaec6d2c82",
+  "branch": "codex/atlas/20261017T052329Z-fa67f8e279ad4f87b54d6fd66542b3f1",
+  "change_id": "20261017T052329Z-fa67f8e279ad4f87b54d6fd66542b3f1",
+  "commit_sha": "15b6c083e5d12467ff0472942c5e98ecda5ac22b",
+  "files": [
+    "ml/nightly_gameplan.py",
+    "tests/test_nightly_late_producer.py"
+  ],
+  "installation_stage": "installed_on_atlas",
+  "integration_stage": "draft_pr_stacked_on_pr199",
+  "limitations": [
+    "Draft PR stacked on PR199; current main contains later peer producer work requiring separate composition.",
+    "Champions published after the causal cutoff remain excluded even when fitted on older observations.",
+    "Offline fixtures only; no loaded-process assertion."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/200"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_record": "20261016T074949Z-4d89a97616264bca896cab7b7f180338",
+  "retained_peer_source": "caa408aba80022588c9cefd4676c0d2675aaea9e",
+  "runtime_implications": "Two source/test paths installed on Atlas; original recovery, continuation and local model policy preserved. No runtime restart or production prerequisite.",
+  "scope": "Shared Gameplan producer correctness applies independently to both PCs.",
+  "summary": "Atlas installed causal late-producer feedback and promoted-model cutoff repair.",
+  "tests": [
+    {
+      "check": "Causal late producer sealed source",
+      "completed_at_utc": "2026-10-17T05:24:08.810027Z",
+      "output_sha256": "ec49dac4e18f7c35e6283a02fa96fa1fa15084c1a9d90b44ea0ab1c7ab60554d",
+      "result": "320 passed; 74 existing dependency/synthetic warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-17T05:23:30.442831Z"
+    },
+    {
+      "check": "Causal late producer isolated publication",
+      "completed_at_utc": "2026-10-17T05:25:32.214936Z",
+      "output_sha256": "387658ac00401a9566f3b3d867295d8bb61e49b708dff64072f555caec420e12",
+      "result": "320 passed; 74 existing dependency/synthetic warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-17T05:24:54.085713Z"
+    },
+    {
+      "check": "Causal late producer installed Atlas",
+      "completed_at_utc": "2026-10-17T05:24:27.105909Z",
+      "output_sha256": "1b58b85ab1bb0fcf4b50c70eecfeb14800ea4f54468492a6ff63ac4009de502b",
+      "result": "403 passed; 74 existing dependency/synthetic warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-17T05:23:39.916761Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T05:26:26.924503Z",
+  "id": "20261017T052626Z-fa3b9e386a7d4943a3a6c7ba8a4feeec",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed causal late-producer feedback and promoted-model cutoff repair."
+}
