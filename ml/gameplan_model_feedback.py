@@ -27,6 +27,12 @@ _POLICY_FILES = ("ml/gameplan_model_feedback.py", "ml/nightly_gameplan.py",
                  "ml/gameplan_development_selection.py", "ml/gameplan_promotion.py",
                  "ml/gameplan_champions.py", "ml/gameplan_probability_target.py",
                  "ml/calibration.py", "ml/independent_stock_targets.py",
+                 "ml/gameplan_source_selection.py", "ml/gameplan_archive_features.py",
+                 "ml/gameplan_observed_technicals.py", "ml/feature_registry.py",
+                 "technicals/calculations/market_regime.py",
+                 "technicals/calculations/breakout_pressure.py",
+                 "technicals/calculations/session_aware_breakout.py",
+                 "technicals/calculations/bar_shape.py",
                  "app/ui/gameplan_stats_data.py")
 _BOUNDS = {
     "tree": {"learning_rate": (0.005, 0.2, False), "max_iter": (30, 300, True),

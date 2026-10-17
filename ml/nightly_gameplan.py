@@ -42,6 +42,7 @@ from ml.current_publication import read_current_publication
 from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend, PriorProbabilityShrinkage
 from ml.gameplan_source_selection import (
     GAMEPLAN_SOURCE_SELECTION_VERSION, ARCHIVE_SOURCE_SELECTION_VERSION, SOURCE_SELECTION_VERSIONS, SOURCE_SELECTION_COLUMNS,
+    ARCHIVE_SOURCE_SELECTION_VERSIONS, OBSERVED_TECHNICAL_SOURCE_SELECTION_VERSION,
     select_prior_session_sources, source_selection_contract,
 )
 from ml.gameplan_promotion import (
@@ -271,7 +272,8 @@ def run_nightly_gameplan_once(
     archive = None
     archive_files = ()
     if archive_history:
-        if not independent_stock_horizons or stock_price_source != "xnas-itch-archive-v1":
+        if not independent_stock_horizons or stock_price_source not in (
+                "xnas-itch-archive-v1", "observed-multi-source-stock-v1", "observed-multi-source-stock-v2"):
             raise ValueError("Archive history requires independent XNAS stock preparation")
         from ml.gameplan_archive_features import load_archive_feature_sources
         from ml.gameplan_archive_integration import combine_archive_sources
@@ -283,6 +285,14 @@ def run_nightly_gameplan_once(
         archive = combine_archive_sources(
             load_archive_feature_sources(root, symbols=symbols, available_at=information_cutoff, **archive_clocks),
             operational_sources, feature_columns=source_feature_columns)
+        if stock_price_source == "observed-multi-source-stock-v2":
+            from ml.gameplan_observed_technicals import rebuild_observed_technicals
+            archive = rebuild_observed_technicals(
+                root, archive, symbols=symbols, feature_columns=source_feature_columns,
+                available_at=information_cutoff, **archive_clocks)
+            archive.sources["source_selection_contract"] = OBSERVED_TECHNICAL_SOURCE_SELECTION_VERSION
+            archive = replace(archive, report={**archive.report,
+                "source_selection_contract": OBSERVED_TECHNICAL_SOURCE_SELECTION_VERSION})
         seconds_report, seconds_files = verify_second_minute_overlap(
             root, symbols=symbols, available_at=information_cutoff, **archive_clocks)
         archive = replace(archive, report={**archive.report, "second_minute_consistency": seconds_report},
@@ -332,6 +342,7 @@ def run_nightly_gameplan_once(
             available_at=information_cutoff,
             price_source_contract=stock_price_source,
             probability_target=probability_target,
+            evidence_available_at=created if recovery or late_action_date else information_cutoff,
         )
         if archive is not None:
             from ml.gameplan_archive_integration import exclude_quality_intervals
@@ -374,14 +385,15 @@ def run_nightly_gameplan_once(
                 )
                 evaluation_price_files.extend(historical_files)
             historical_sources = operational_sources if selection_contract == GAMEPLAN_SOURCE_SELECTION_VERSION else legacy_sources
-            if selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+            if selection_contract in ARCHIVE_SOURCE_SELECTION_VERSIONS:
                 from ml.gameplan_archive_features import load_archive_feature_sources
                 historical_archive = archive or load_archive_feature_sources(root, symbols=symbols, available_at=created)
-                historical_sources = historical_archive.sources
+                historical_sources = historical_archive.sources.copy()
+                historical_sources["source_selection_contract"] = selection_contract
                 evaluation_price_files.extend(historical_archive.source_files)
             historical = build_stock_training_groups(historical_sources, feature_columns=(),
                 minute_bars=historical_bars, available_at=created, price_source_contract=historical_source)
-            if selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+            if selection_contract in ARCHIVE_SOURCE_SELECTION_VERSIONS:
                 from ml.gameplan_archive_integration import exclude_quality_intervals
                 historical = exclude_quality_intervals(historical, historical_archive.report.get("excluded_intervals", ()),
                                                        split_boundaries=(*historical_archive.report.get("split_boundaries", ()),
@@ -468,6 +480,7 @@ def run_nightly_gameplan_once(
             }
         forecast_frames.append(trained["forecasts"])
         model_reports[group] = trained["report"]
+        model_output_names.extend(trained.get("input_evidence_outputs", ()))
         model_output_names.append(
             (Path("models") / group / "model.joblib").as_posix()
         )
@@ -607,8 +620,15 @@ def run_nightly_gameplan_once(
                     "last_action_date": str(rows.action_date.max())} for symbol, rows in frame.groupby("symbol")},
                 "quality_excluded_rows": frame.attrs.get("archive_quality_excluded_rows", 0)}
                 for group, frame in groups.items()}}
-        _write_json_atomic(run / "archive-history.json", history_report)
         archive_outputs = ("archive-history.json",)
+        if selection_version == OBSERVED_TECHNICAL_SOURCE_SELECTION_VERSION:
+            technical_sources_name = "observed-technical-sources.parquet"
+            archive.sources.to_parquet(run / technical_sources_name, index=False)
+            history_report["observed_technical_sources"] = {
+                "path": technical_sources_name, "rows": len(archive.sources),
+                "sha256": file_checksum(run / technical_sources_name)}
+            archive_outputs += (technical_sources_name,)
+        _write_json_atomic(run / "archive-history.json", history_report)
 
     output_names = (
         forecasts_name,
@@ -1378,15 +1398,6 @@ def _build_current_groups(
     }
 
 
-
-def _feedback_estimator(specification, numeric, categorical):
-    estimator = _estimator(specification["family"], numeric, categorical)
-    parameters = {f"classifier__{key}": tuple(value) if key == "hidden_layer_sizes" else value
-                  for key, value in specification["parameters"].items()}
-    return estimator.set_params(**parameters)
-
-
-
 def _fit_group_model(
     samples: pd.DataFrame,
     *,
@@ -1641,6 +1652,7 @@ def _fit_group_model(
         )
     support_by_symbol, assessment_by_symbol = _symbol_target_support(
         samples, fitted=fit_frame, assessment=assessment_frame,
+        calibration=partitions["calibration"],
         symbols=current["symbol"].astype("string").unique(),
     )
 
@@ -1677,6 +1689,7 @@ def _fit_group_model(
     current_matrix = _model_frame(current, admitted, categorical)
     current_raw = estimator.predict_proba(current_matrix)[:, 1]
     current_probability = calibrator.predict(current_raw)
+    from ml.gameplan_input_evidence import FEATURE_EVIDENCE_COLUMNS
     forecasts = current.loc[:, [
         "symbol",
         "model_group",
@@ -1687,7 +1700,7 @@ def _fit_group_model(
         "target_window_start",
         "target_window_end",
         "target_semantics",
-        *(column for column in ("target_role", "execution_eligible", "target_contract_version", "trading_hours", "trading_segments_json", "target_price_source_contract", "target_price_dataset", *SOURCE_SELECTION_COLUMNS) if column in current),
+        *(column for column in ("target_role", "execution_eligible", "target_contract_version", "trading_hours", "trading_segments_json", "target_price_source_contract", "target_price_dataset", *SOURCE_SELECTION_COLUMNS, *FEATURE_EVIDENCE_COLUMNS) if column in current),
     ]].copy()
     for name, value in probability_metadata.items():
         forecasts[name] = value
@@ -1731,6 +1744,8 @@ def _fit_group_model(
     forecasts["option_feature_count"] = sum(
         column.startswith(("opt__", "opx__")) for column in admitted
     )
+    from ml.gameplan_input_evidence import annotate_local_support, freeze_inference_inputs
+    forecasts = annotate_local_support(forecasts, support_by_symbol)
     report = {
         "schema_version": GAMEPLAN_VERSION,
         **probability_metadata,
@@ -1769,6 +1784,8 @@ def _fit_group_model(
         "assessment_by_route": route_metrics,
         "assessment_by_symbol": assessment_by_symbol,
         "target_support_by_symbol": support_by_symbol,
+        "qualification_scope": "pooled symbol-and-route model; no per-symbol or per-route qualification claimed",
+        "local_support_policy": "descriptive evidence only; original pooled promotion thresholds unchanged",
         "promotion_gate": gate,
         "features": {
             "admitted_count": len(admitted),
@@ -1793,23 +1810,35 @@ def _fit_group_model(
             "checksum_sha256": file_checksum(model_path),
         },
     }
-    return {"forecasts": forecasts, "report": report}
+    report["inference_input_evidence"], evidence_outputs = freeze_inference_inputs(
+        current, numeric=admitted, categorical=categorical, directory=model_directory, report=report,
+        matrix=current_matrix)
+    return {"forecasts": forecasts, "report": report, "input_evidence_outputs": evidence_outputs}
 
 
 def _symbol_target_support(
     samples: pd.DataFrame, *, fitted: pd.DataFrame, assessment: pd.DataFrame,
-    symbols: Sequence[str],
+    symbols: Sequence[str], calibration: pd.DataFrame | None = None,
 ) -> tuple[dict[str, object], dict[str, object]]:
     support, metrics = {}, {}
     for symbol in sorted(set(map(str, symbols)) | set(samples["symbol"].astype(str))):
         counts = {}
-        for name, source in (("admitted", samples), ("fitted", fitted), ("assessment", assessment)):
+        populations = [("admitted", samples), ("fitted", fitted), ("assessment", assessment)]
+        if calibration is not None:
+            populations.append(("calibration", calibration))
+        for name, source in populations:
             frame = source.loc[source["symbol"].astype(str).eq(symbol)]
             counts[f"{name}_rows"] = len(frame)
             counts[f"{name}_decision_clusters"] = int(frame["decision_timestamp"].nunique())
             counts[f"{name}_rows_by_route"] = {
                 str(route): int(count) for route, count in frame.groupby("route").size().items()
             }
+            counts[f"{name}_class_counts"] = {str(label): int(count) for label, count in frame.groupby("target").size().items()}
+            counts[f"{name}_decision_clusters_by_route"] = {
+                str(route): int(group.decision_timestamp.nunique()) for route, group in frame.groupby("route")}
+            counts[f"{name}_class_counts_by_route"] = {
+                str(route): {str(label): int(count) for label, count in group.groupby("target").size().items()}
+                for route, group in frame.groupby("route")}
         held_out = assessment.loc[assessment["symbol"].astype(str).eq(symbol)]
         metrics[symbol] = (
             _proper_scores(held_out["target"].astype(int).to_numpy(), held_out["probability"].to_numpy())
@@ -1908,6 +1937,13 @@ def _chronological_partitions(
             )
         partitions[name] = partition.reset_index(drop=True)
     return partitions
+
+
+def _feedback_estimator(specification, numeric, categorical):
+    estimator = _estimator(specification["family"], numeric, categorical)
+    parameters = {f"classifier__{key}": tuple(value) if key == "hidden_layer_sizes" else value
+                  for key, value in specification["parameters"].items()}
+    return estimator.set_params(**parameters)
 
 
 def _estimator(
@@ -2531,16 +2567,27 @@ def _verify_source_selection_metadata(run: Path, manifest: Mapping) -> None:
             or config.get("source_selection", {}).get("source_selection_contract") != contract):
         raise RuntimeError("Gameplan source selection configuration is invalid")
     outputs = manifest.get("output_files", {})
-    if contract == ARCHIVE_SOURCE_SELECTION_VERSION and "archive-history.json" not in outputs:
+    if contract in ARCHIVE_SOURCE_SELECTION_VERSIONS and "archive-history.json" not in outputs:
         raise RuntimeError("Archive history evidence is not manifest-bound")
-    if (config.get("archive_history") is True) != (contract == ARCHIVE_SOURCE_SELECTION_VERSION):
+    if (config.get("archive_history") is True) != (contract in ARCHIVE_SOURCE_SELECTION_VERSIONS):
         raise RuntimeError("Archive history configuration and feature contract disagree")
-    if contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+    if contract in ARCHIVE_SOURCE_SELECTION_VERSIONS:
         history = json.loads((run / "archive-history.json").read_text(encoding="utf-8"))
         if (any(history.get(key) != value for key, value in config["source_selection"].items())
                 or history.get("orders_placed") != 0
                 or set(history.get("training_cohorts", {})) != set(MODEL_GROUPS)):
             raise RuntimeError("Archive history report and source selection configuration disagree")
+        if contract == OBSERVED_TECHNICAL_SOURCE_SELECTION_VERSION:
+            from ml.gameplan_observed_technicals import validate_observed_technical_sources
+            name = "observed-technical-sources.parquet"
+            binding = history.get("observed_technical_sources", {})
+            if (name not in outputs or binding.get("path") != name
+                    or binding.get("sha256") != file_checksum(run / name)):
+                raise RuntimeError("Observed technical reconstruction is not manifest-bound")
+            reconstructed = pd.read_parquet(run / name)
+            if len(reconstructed) != binding.get("rows") or source_selection_contract(reconstructed) != contract:
+                raise RuntimeError("Observed technical reconstruction identity differs")
+            validate_observed_technical_sources(reconstructed, feature_columns=tuple(reconstructed.columns))
     required = ("gameplan.json", "model-reports.json", "forecasts.parquet",
                 *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS))
     if not set(required).issubset(outputs):
@@ -2556,9 +2603,12 @@ def _verify_source_selection_metadata(run: Path, manifest: Mapping) -> None:
         if (frame.empty or not set(SOURCE_SELECTION_COLUMNS).issubset(frame)
                 or source_selection_contract(frame) != contract):
             raise RuntimeError("Gameplan rows lack their source selection evidence")
-        if contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+        if contract in ARCHIVE_SOURCE_SELECTION_VERSIONS:
             from ml.gameplan_archive_integration import validate_archive_feature_clocks
             validate_archive_feature_clocks(frame)
+        if contract == OBSERVED_TECHNICAL_SOURCE_SELECTION_VERSION:
+            from ml.gameplan_observed_technicals import validate_observed_technical_sources
+            validate_observed_technical_sources(frame, feature_columns=tuple(frame.columns))
 
 
 def _verify_probability_cohort(frame: pd.DataFrame, contract: str) -> None:

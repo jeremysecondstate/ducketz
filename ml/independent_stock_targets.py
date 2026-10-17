@@ -14,7 +14,9 @@ import exchange_calendars as xcals
 import numpy as np
 import pandas as pd
 
-from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE, stock_price_dataset
+from ml.stock_target_prices import (
+    CANONICAL_STOCK_PRICE_SOURCE, OBSERVED_MULTI_STOCK_PRICE_SOURCES, stock_price_dataset,
+)
 from ml.gameplan_probability_target import (
     LEGACY_COST_TARGET, RAW_DIRECTION_TARGET, probability_target_metadata,
     resolve_probability_target,
@@ -126,6 +128,7 @@ def build_stock_current_groups(
     if sources.empty:
         raise RuntimeError("Independent stock targets require causal source rows")
     from ml.gameplan_source_selection import SOURCE_SELECTION_COLUMNS, source_selection_contract
+    from ml.gameplan_input_evidence import FEATURE_EVIDENCE_COLUMNS
     source_selection_contract(sources)
     dates = [pd.Timestamp(value).date() for value in sources["action_date"]]
     calendar = _calendar(min(dates), max(dates))
@@ -139,6 +142,7 @@ def build_stock_current_groups(
             raise RuntimeError("Independent stock features must be available before the action session")
         base = {key: source.get(key) for key in feature_columns}
         base.update({key: source[key] for key in SOURCE_SELECTION_COLUMNS if key in source})
+        base.update({key: source[key] for key in FEATURE_EVIDENCE_COLUMNS if key in source})
         base.update(symbol=str(source["symbol"]).upper(), action_date=day,
                     decision_timestamp=decision, information_available_at=information,
                     assumed_round_trip_cost=source.get("assumed_round_trip_cost", 0.001),
@@ -153,8 +157,12 @@ def build_stock_current_groups(
 def build_stock_training_groups(sources: pd.DataFrame, *, feature_columns: Sequence[str],
                                 minute_bars: pd.DataFrame, available_at: object,
                                 price_source_contract: str | None = None,
-                                probability_target: str = LEGACY_COST_TARGET) -> dict[str, pd.DataFrame]:
+                                probability_target: str = LEGACY_COST_TARGET,
+                                evidence_available_at: object | None = None) -> dict[str, pd.DataFrame]:
     """Use the native five-minute boundary policy and genuine equity observations."""
+    from ml.stock_observation_sources import genuine_observation_mask
+    if not genuine_observation_mask(minute_bars).all():
+        raise ValueError("Independent target observations contain synthetic/no-trade or nonboolean native markers")
     source_report = minute_bars.attrs.get("stock_price_source", {})
     selected_source = price_source_contract or source_report.get("source_contract", CANONICAL_STOCK_PRICE_SOURCE)
     if source_report and source_report.get("source_contract") != selected_source:
@@ -163,28 +171,52 @@ def build_stock_training_groups(sources: pd.DataFrame, *, feature_columns: Seque
                                         price_source_contract=selected_source,
                                         probability_target=probability_target)
     now = pd.to_datetime(available_at, utc=True)
-    bars = minute_bars.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    evidence_cutoff = pd.to_datetime(evidence_available_at if evidence_available_at is not None else available_at, utc=True)
+    if evidence_cutoff < now:
+        raise ValueError("Target evidence cutoff precedes label cutoff")
+    from ml.stock_observation_sources import OBSERVATION_COLUMNS, source_order_for_contract
+    evidence_columns = [column for column in OBSERVATION_COLUMNS if column in minute_bars]
+    bars = minute_bars.loc[:, ["symbol", "timestamp", "open", "close", *evidence_columns]].copy()
     bars["symbol"] = bars.symbol.astype("string").str.upper()
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="coerce")
-    bars = bars.loc[bars.timestamp.notna() & bars.timestamp.add(pd.Timedelta(minutes=1)).le(now)]
-    bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
-    # Conflicting canonical observations are unavailable, never chosen arbitrarily.
-    conflicts = bars.duplicated(["symbol", "timestamp"], keep=False)
-    bars = bars.loc[~conflicts]
+    multi_source = selected_source in OBSERVED_MULTI_STOCK_PRICE_SOURCES
+    if multi_source and not set(OBSERVATION_COLUMNS).issubset(bars):
+        raise RuntimeError("Multi-source targets require source-identified raw observations")
+    if "observation_interval_seconds" not in bars:
+        bars["observation_interval_seconds"] = 60
+    duration = pd.to_timedelta(bars.observation_interval_seconds, unit="s")
+    bars = bars.loc[bars.timestamp.notna() & bars.timestamp.add(duration).le(now)]
+    if multi_source:
+        recorded = pd.to_datetime(bars.observation_recorded_at, utc=True, errors="coerce")
+        # Unknown original acquisition time stays explicitly unknown. Known
+        # receipts after this run's evidence clock cannot supply earlier labels.
+        bars = bars.loc[recorded.isna() | recorded.le(evidence_cutoff)]
+    # Apply dated provider revisions only after this run's evidence cutoff.
+    from ml.stock_observation_sources import select_observation_revisions
+    bars, conflict_count = select_observation_revisions(bars)
     by_symbol = {str(symbol): frame.sort_values("timestamp", kind="stable")
                  for symbol, frame in bars.groupby("symbol", sort=False)}
     output = {}
     for group, targets in groups.items():
         targets = targets.loc[targets.target_window_end.le(now)].copy()
-        observations = _target_observations(targets, by_symbol=by_symbol)
+        if multi_source:
+            observations = None
+            for source in source_order_for_contract(selected_source):
+                candidate = _target_observations(targets, by_symbol={
+                    symbol: frame.loc[frame.observation_source.eq(source)] for symbol, frame in by_symbol.items()})
+                eligible = _valid_target_observations(targets, candidate)
+                if observations is None:
+                    observations = candidate.copy()
+                    observations.loc[~eligible, ["entry_price", "exit_price"]] = np.nan
+                else:
+                    choose = observations.entry_price.isna() & eligible
+                    observations.loc[choose, candidate.columns] = candidate.loc[choose]
+        else:
+            observations = _target_observations(targets, by_symbol=by_symbol)
         entry_prices, exit_prices = observations["entry_price"], observations["exit_price"]
         start_gap = (observations.observed_open_timestamp - targets.target_window_start).abs()
         end_gap = (observations.observed_close_timestamp - targets.target_window_end).abs()
-        valid = (np.isfinite(entry_prices) & np.isfinite(exit_prices)
-                 & entry_prices.gt(0) & exit_prices.gt(0)
-                 & start_gap.le(STOCK_TARGET_BOUNDARY_TOLERANCE)
-                 & end_gap.le(STOCK_TARGET_BOUNDARY_TOLERANCE)
-                 & observations.observed_open_timestamp.lt(observations.observed_close_timestamp))
+        valid = _valid_target_observations(targets, observations)
         admitted = targets.loc[valid].copy()
         admitted["observed_return"] = exit_prices.loc[valid] / entry_prices.loc[valid] - 1.0
         cost = pd.to_numeric(admitted.assumed_round_trip_cost, errors="coerce").fillna(0.001)
@@ -202,6 +234,9 @@ def build_stock_training_groups(sources: pd.DataFrame, *, feature_columns: Seque
         admitted["target_boundary_aligned"] = True
         admitted["target_start_gap_seconds"] = start_gap.loc[valid].dt.total_seconds()
         admitted["target_end_gap_seconds"] = end_gap.loc[valid].dt.total_seconds()
+        for column in observations:
+            if column.startswith("target_observation_"):
+                admitted[column] = observations.loc[valid, column]
         admitted = admitted.sort_values(["decision_timestamp", "symbol", "route"], kind="stable").reset_index(drop=True)
         admitted.attrs["target_boundary_quality"] = {
             "policy": "clock-window-boundaries-within-five-minutes-v1", "enforced": True,
@@ -210,13 +245,27 @@ def build_stock_training_groups(sources: pd.DataFrame, *, feature_columns: Seque
             "excluded_rows_by_route": {str(key): int(value) for key, value in targets.loc[~valid].groupby("route").size().items()},
             "admitted_rows_by_symbol": {str(key): int(value) for key, value in admitted.groupby("symbol").size().items()},
             "admitted_rows_by_route": {str(key): int(value) for key, value in admitted.groupby("route").size().items()},
-            "conflicting_minute_rows_excluded": int(conflicts.sum()),
+            "conflicting_minute_rows_excluded": conflict_count,
             "target_contract_version": STOCK_TARGET_CONTRACT_VERSION,
             "target_price_source_contract": selected_source,
             "target_price_dataset": stock_price_dataset(selected_source),
+            "label_cutoff": now.isoformat(), "evidence_cutoff": evidence_cutoff.isoformat(),
+            "admitted_rows_by_observation_source": (admitted.groupby("target_observation_source").size().to_dict()
+                if "target_observation_source" in admitted else {}),
+            "excluded_rows_by_symbol_route": [
+                {"symbol": str(symbol), "route": str(route), "rows": int(count)}
+                for (symbol, route), count in targets.loc[~valid].groupby(["symbol", "route"]).size().items()],
         }
         output[group] = admitted
     return output
+
+
+def _valid_target_observations(targets, observations):
+    return (np.isfinite(observations.entry_price) & np.isfinite(observations.exit_price)
+            & observations.entry_price.gt(0) & observations.exit_price.gt(0)
+            & (observations.observed_open_timestamp - targets.target_window_start).abs().le(STOCK_TARGET_BOUNDARY_TOLERANCE)
+            & (observations.observed_close_timestamp - targets.target_window_end).abs().le(STOCK_TARGET_BOUNDARY_TOLERANCE)
+            & observations.observed_open_timestamp.lt(observations.observed_close_timestamp))
 
 
 def _target_observations(targets: pd.DataFrame, *, by_symbol: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -232,14 +281,20 @@ def _target_observations(targets: pd.DataFrame, *, by_symbol: dict[str, pd.DataF
     result["exit_price"] = np.nan
     for column in ("observed_open_timestamp", "observed_close_timestamp"):
         result[column] = pd.Series(pd.NaT, index=targets.index, dtype="datetime64[ns, UTC]")
+    for column in ("source", "dataset", "entry_input_sha256", "exit_input_sha256", "entry_record_id", "exit_record_id"):
+        result["target_observation_" + column] = pd.Series(None, index=targets.index, dtype=object)
     for symbol, selected in targets.groupby("symbol", sort=False):
         bars = by_symbol.get(str(symbol))
         if bars is None or bars.empty:
             continue
         timestamps = pd.DatetimeIndex(bars.timestamp)
+        intervals = pd.to_numeric(bars.get("observation_interval_seconds", pd.Series(60, index=bars.index)))
+        if intervals.nunique() != 1 or not intervals.isin((1, 60, 300)).all():
+            raise ValueError("Target source must use one supported native observation interval")
+        interval = pd.Timedelta(seconds=float(intervals.iloc[0]))
         gap = selected.target_role.eq("OPENING_GAP_RESEARCH").to_numpy()
-        entry_offset = pd.to_timedelta(gap.astype(int), unit="m")
-        exit_offset = pd.to_timedelta((~gap).astype(int), unit="m")
+        entry_offset = pd.to_timedelta(gap.astype(int) * interval.value, unit="ns")
+        exit_offset = pd.to_timedelta((~gap).astype(int) * interval.value, unit="ns")
         entry_clock = pd.DatetimeIndex(selected.target_window_start) - entry_offset
         exit_clock = pd.DatetimeIndex(selected.target_window_end) - exit_offset
         entry_position = np.where(gap, timestamps.searchsorted(entry_clock, side="right") - 1,
@@ -257,4 +312,15 @@ def _target_observations(targets: pd.DataFrame, *, by_symbol: dict[str, pd.DataF
         result.loc[index, "exit_price"] = np.where(gap[exists], exit_rows["open"], exit_rows["close"])
         result.loc[index, "observed_open_timestamp"] = pd.DatetimeIndex(entry.timestamp) + entry_offset[exists]
         result.loc[index, "observed_close_timestamp"] = pd.DatetimeIndex(exit_rows.timestamp) + exit_offset[exists]
+        for field in ("source", "dataset"):
+            column = "observation_" + field
+            if column in bars:
+                if not np.array_equal(entry[column].to_numpy(), exit_rows[column].to_numpy()):
+                    raise ValueError("A target cannot mix endpoint sources")
+                result.loc[index, "target_observation_" + field] = entry[column].to_numpy()
+        if "observation_input_sha256" in bars:
+            for prefix, endpoint in (("entry", entry), ("exit", exit_rows)):
+                result.loc[index, f"target_observation_{prefix}_input_sha256"] = endpoint.observation_input_sha256.to_numpy()
+                result.loc[index, f"target_observation_{prefix}_record_id"] = [
+                    f"{row.observation_input_sha256}:{symbol}:{row.timestamp.isoformat()}" for row in endpoint.itertuples()]
     return result

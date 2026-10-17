@@ -163,7 +163,7 @@ def test_hourly_fallback_aggregates_sparse_trades_with_proven_coverage() -> None
     assert derived[0].source_bar_count == 2
 
 
-def test_hourly_fallback_carries_prior_close_without_future_or_trailing_fill() -> None:
+def test_hourly_fallback_keeps_source_empty_hours_unavailable() -> None:
     bars = [
         _minute_bar("2026-09-03T20:10:00Z", close=101.0),
         _minute_bar("2026-09-03T22:10:00Z", close=999.0),
@@ -180,19 +180,12 @@ def test_hourly_fallback_carries_prior_close_without_future_or_trailing_fill() -
 
     assert [bar.timestamp for bar in derived] == list(
         pd.to_datetime(
-            ["2026-09-03T20:00:00Z", "2026-09-03T21:00:00Z"],
+            ["2026-09-03T20:00:00Z"],
             utc=True,
         ).to_pydatetime()
     )
-    no_trade = derived[1]
-    assert (no_trade.open, no_trade.high, no_trade.low, no_trade.close) == (
-        101.0,
-        101.0,
-        101.0,
-        101.0,
-    )
-    assert no_trade.volume == 0.0
-    assert no_trade.source_bar_count == 0
+    assert derived[0].source_bar_count == 1
+    assert derived[0].volume > 0
 
 
 def test_hourly_fallback_omits_partial_leading_coverage_hour() -> None:
@@ -207,15 +200,27 @@ def test_hourly_fallback_omits_partial_leading_coverage_hour() -> None:
         coverage_end=pd.Timestamp("2026-09-03T22:00:00Z"),
     )
 
-    assert [bar.timestamp for bar in derived] == [
-        pd.Timestamp("2026-09-03T21:00:00Z").to_pydatetime()
-    ]
-    assert derived[0].source_bar_count == 0
+    assert derived == []
+
+
+def test_hourly_fallback_rejects_unverified_values_before_projection() -> None:
+    real = _minute_bar("2026-09-03T20:10:00Z", close=101.0)
+    fields = {name: getattr(real, name) for name in ("timestamp", "open", "high", "low", "close", "volume")}
+    for invalid in ({"volume": 0}, {"synthetic": True}, {"source_empty": "false"},
+                    {"volume": float("nan")}, {"high": 0}, {"close": True}):
+        bad = SimpleNamespace(**{**fields, "timestamp": pd.Timestamp("2026-09-03T20:20Z"), **invalid})
+        rows = derive_intraday_bars("AMZN", [real, bad], "1h",
+            as_of=pd.Timestamp("2026-09-03T22:00Z"),
+            coverage_start=pd.Timestamp("2026-09-03T20:00Z"),
+            coverage_end=pd.Timestamp("2026-09-03T22:00Z"))
+        assert len(rows) == 1 and rows[0].source_bar_count == 1
+        assert rows[0].volume == real.volume and rows[0].close == real.close
 
 
 def test_hourly_fallback_retains_continuous_nine_eastern_source_hour() -> None:
     bars = [
         _minute_bar("2026-09-03T12:15:00Z", close=101.0),
+        _minute_bar("2026-09-03T13:15:00Z", close=102.0),
         _minute_bar("2026-09-03T14:15:00Z", close=103.0),
     ]
 
@@ -239,8 +244,8 @@ def test_hourly_fallback_retains_continuous_nine_eastern_source_hour() -> None:
         ).to_pydatetime()
     )
     boundary_hour = derived[1]
-    assert boundary_hour.close == 101.0
-    assert boundary_hour.source_bar_count == 0
+    assert boundary_hour.close == 102.0
+    assert boundary_hour.source_bar_count == 1
 
 
 def test_hourly_fallback_never_synthesizes_weekends_or_holidays() -> None:
@@ -268,7 +273,8 @@ def test_hourly_fallback_never_synthesizes_weekends_or_holidays() -> None:
 
 
 def test_hourly_fallback_uses_only_regular_hours_on_early_close() -> None:
-    bars = [_minute_bar("2026-11-27T14:30:00Z", close=101.0)]
+    bars = [_minute_bar(f"2026-11-27T{hour}:30:00Z", close=101.0)
+            for hour in (14, 15, 16, 17, 18)]
 
     derived = derive_intraday_bars(
         "AMZN",

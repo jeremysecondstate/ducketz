@@ -86,16 +86,18 @@ def _number(value) -> float | None:
     return number if np.isfinite(number) else None
 
 
-def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object) -> dict:
+def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object,
+                     *, evidence_available_at: object | None = None) -> dict:
     _source_identity(prices, forecasts)
     now = _aware_timestamp(observed_at, "observed_at")
-    bars = prices.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    from ml.stock_observation_sources import completed_observation_bars
+    bars = completed_observation_bars(prices, now, evidence_available_at=evidence_available_at)
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="raise")
     bars["symbol"] = bars.symbol.astype(str).str.upper()
     # The close of a minute is not available until that minute has completed.
-    bars = bars.loc[bars.timestamp.add(pd.Timedelta(minutes=1)).le(now)]
-    bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
-    if bars.duplicated(["symbol", "timestamp"]).any():
+    identity = ["symbol", "timestamp", *(["observation_source"] if "observation_source" in bars else [])]
+    bars = bars.drop_duplicates([*identity, "open", "close"])
+    if bars.duplicated(identity).any():
         raise ValueError("Actual price evidence contains conflicting minute observations")
     for field in ("open", "close"):
         bars[field] = pd.to_numeric(bars[field], errors="coerce")
@@ -154,7 +156,8 @@ def _source_window_coverage(inventory: Mapping, symbol: str, start: pd.Timestamp
 def _boundary_evidence(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: bool,
                        now: pd.Timestamp, inventory: Mapping, symbol: str) -> dict:
     """Explain the existing selector without changing its five-minute eligibility."""
-    minute = pd.Timedelta(minutes=1)
+    from ml.gameplan_price_bands import _observation_interval
+    minute = _observation_interval(bars)
     # Open at boundary+5m needs that entire minute; close at boundary-5m
     # belongs to the minute beginning boundary-6m. Archive ends are exclusive.
     start = boundary - STOCK_TARGET_BOUNDARY_TOLERANCE - minute if close else boundary
@@ -201,7 +204,8 @@ def _match_trade_rows(forecasts: pd.DataFrame, trades: pd.DataFrame) -> None:
 
 
 def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed_at: object,
-                      trade_rows: pd.DataFrame | None = None) -> pd.DataFrame:
+                      trade_rows: pd.DataFrame | None = None,
+                      evidence_available_at: object | None = None) -> pd.DataFrame:
     """Retain every frozen row, admitting only genuine, mature endpoint prices."""
     now = _aware_timestamp(observed_at, "observed_at")
     if forecasts.empty or forecasts.id.duplicated().any():
@@ -210,7 +214,7 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
     target_metadata = probability_target_metadata(target_contract)
     if "gameplan_variant" in forecasts and not forecasts.gameplan_variant.eq(target_metadata["gameplan_variant"]).all():
         raise ValueError("Saved Gameplan variant disagrees with its probability target")
-    by_symbol = _observed_prices(prices, forecasts, now)
+    by_symbol = _observed_prices(prices, forecasts, now, evidence_available_at=evidence_available_at)
     inventory = prices.attrs.get("stock_price_source", {})
     if trade_rows is not None:
         _match_trade_rows(forecasts, trade_rows)
@@ -223,6 +227,11 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
         if end <= start:
             raise ValueError("Frozen forecast has an invalid target window")
         bars = by_symbol.get(str(row["symbol"]).upper(), prices.iloc[:0])
+        from ml.stock_observation_sources import choose_target_source
+        bars = choose_target_source(bars, row)
+        if len(bars) and "observation_source" in bars:
+            row["actual_observation_source"] = str(bars.observation_source.iloc[0])
+            row["actual_observation_dataset"] = str(bars.observation_dataset.iloc[0])
         gap = row["target_role"] == "OPENING_GAP_RESEARCH"
         entry = _observation(bars, start, close=gap) if start <= now else None
         finish = _observation(bars, end, close=not gap) if end <= now else None
@@ -263,11 +272,12 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
 
 
 def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, action_date: str,
-                         observed_at: object, planning_path: Mapping | None = None) -> pd.DataFrame:
+                         observed_at: object, planning_path: Mapping | None = None,
+                         evidence_available_at: object | None = None) -> pd.DataFrame:
     """Compare the saved 04:00-17:00 working estimates with the same market clocks."""
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
-    by_symbol = _observed_prices(prices, forecasts, now)
+    by_symbol = _observed_prices(prices, forecasts, now, evidence_available_at=evidence_available_at)
     inventory = prices.attrs.get("stock_price_source", {})
     if planning_path is not None and (planning_path.get("price_source_contract") != contract
                                       or planning_path.get("price_dataset") != dataset
@@ -293,7 +303,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                               if estimate else (None, None, None))
             if estimate and (None in (low, mid, high) or not 0 < low <= mid <= high):
                 raise ValueError("Saved planning prices are invalid")
-            actual = _observation(bars, timestamp, close=hour == 17) if timestamp <= now else None
+            from ml.stock_observation_sources import choose_boundary_source
+            selected_bars = choose_boundary_source(bars, timestamp, close=hour == 17, source_contract=contract)
+            actual = _observation(selected_bars, timestamp, close=hour == 17) if timestamp <= now else None
             status = "PENDING_MATURITY" if timestamp > now else "MATURE_AWAITING_DATA" if actual is None else "COMPARED" if estimate else "NO_SAVED_ESTIMATE"
             rows.append({"symbol": symbol, "action_date": action_date, "clock_local": clock,
                          "timestamp": timestamp, "planned_price_low": low, "planned_price_mid": mid, "planned_price_high": high,
@@ -302,7 +314,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                          "price_error_fraction": actual[0] / mid - 1 if actual and estimate else None,
                          "in_planned_range": bool(low <= actual[0] <= high) if actual and estimate else None,
                          "comparison_status": status,
-                         **_evidence_columns("actual", _boundary_evidence(bars, timestamp, close=hour == 17,
+                         "actual_observation_source": (str(selected_bars.observation_source.iloc[0])
+                            if len(selected_bars) and "observation_source" in selected_bars else None),
+                         **_evidence_columns("actual", _boundary_evidence(selected_bars, timestamp, close=hour == 17,
                             now=now, inventory=inventory, symbol=str(symbol).upper()))})
     return pd.DataFrame(rows)
 
@@ -561,9 +575,10 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
         contract = original.manifest["configuration"]["target_price_source_contract"]
         prices, price_files, inventory = (price_loader or load_stock_target_prices)(
             root, symbols=tuple(sorted(forecasts.symbol.unique())), source_contract=contract)
-        results = compare_forecasts(forecasts, prices, observed_at=cutoff, trade_rows=trades[1] if trades else None)
+        results = compare_forecasts(forecasts, prices, observed_at=cutoff, trade_rows=trades[1] if trades else None,
+                                    evidence_available_at=now)
         price_results = compare_price_points(forecasts, prices, observed_at=cutoff, action_date=action_date,
-                                            planning_path=trades[2] if trades else None)
+                                            planning_path=trades[2] if trades else None, evidence_available_at=now)
         inputs += [original.run_directory / "receipt.json", original.run_directory / "manifest.json",
                    original.run_directory / "forecasts.parquet", *price_files]
         if trades:
@@ -574,6 +589,8 @@ def _publish_session_review(root: Path, *, report: dict, inputs: list,
                       **probability_target_metadata(probability_target_contract(forecasts)),
                       source_gameplan_path=original.run_directory.as_posix(),
                       source_trade_plan_path=trades[0].as_posix() if trades else None,
+                      price_evidence_available_at=now.isoformat(),
+                      price_clock_policy="completed-session-events-through-outcomes-cutoff; receipts-through-actual-review-time",
                       target_price_source_contract=contract, price_inventory=inventory,
                       forecasts={"total": len(results), "evaluated": int(results.actuals_status.eq("EVALUATED").sum()),
                                  "pending_maturity": int(results.actuals_status.eq("PENDING_MATURITY").sum()),

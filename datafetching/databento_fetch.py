@@ -655,20 +655,20 @@ def _save_derived_intraday_bars(
             "source_frequency": "1m",
             "output_frequency": output_frequency,
             "aggregation_method": (
-                "coverage_proven_sparse_hour_from_complete_1m"
+                "covered_observed_sparse_hour_from_native_1m"
                 if use_proven_sparse_hour
                 else "session_resampled_from_complete_1m"
             ),
             "fetch_profile": profile,
             "price_basis": "unadjusted_market_scale",
             "volume_basis": (
-                "summed_trade_volume_or_zero_for_proven_empty_hour"
+                "summed_positive_observed_trade_volume"
                 if use_proven_sparse_hour
                 else "summed_from_complete_1m"
             ),
             "corporate_action_adjustment": "none",
             "normalized_bar_policy": (
-                "completed_coverage_proven_sparse_intervals_only"
+                "completed_covered_observed_intervals_only"
                 if use_proven_sparse_hour
                 else "completed_intervals_only"
             ),
@@ -678,7 +678,9 @@ def _save_derived_intraday_bars(
                 {
                     "range_start": source_range.start.isoformat(),
                     "range_end": source_range.end.isoformat(),
-                    "no_trade_price_policy": "strictly_prior_close_never_future_fill",
+                    "aggregation_contract": "covered-observed-hour-no-fill-v2",
+                    "no_trade_price_policy": "unverified_empty_hours_unavailable_no_fill",
+                    "coverage_interpretation": "source_request_range_not_market_wide_trade_completeness",
                 }
             )
         try:

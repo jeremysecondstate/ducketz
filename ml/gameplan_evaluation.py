@@ -20,6 +20,12 @@ from ml.gameplan_probability_target import (
 
 FIRST_GAMEPLAN_ACTION_DATE = "2026-09-04"
 EVALUATION_VERSION = "saved-gameplan-evaluations-v1"
+ENDPOINT_EVIDENCE_COLUMNS = (
+    "target_observation_source", "target_observation_dataset",
+    "target_observation_entry_input_sha256", "target_observation_exit_input_sha256",
+    "target_observation_entry_record_id", "target_observation_exit_record_id",
+    "observed_open_timestamp", "observed_close_timestamp", "target_open", "target_close",
+)
 EVALUATION_COLUMNS = (
     "id", "source_gameplan_run", "source_forecast_id", "action_date", "symbol",
     "model_group", "model_status", "route", "target_window_start", "target_window_end",
@@ -28,6 +34,7 @@ EVALUATION_COLUMNS = (
     "probability_target_contract", "gameplan_variant", "direction", "raw_direction_correct",
     "assumed_round_trip_cost", "observed_cost_adjusted_positive", "cost_adjusted_return",
     "target_price_source_contract", "target_price_dataset",
+    *ENDPOINT_EVIDENCE_COLUMNS,
 )
 
 
@@ -187,6 +194,7 @@ def evaluate_forecasts(
             "evaluation_status": "EVALUATED" if scored else "MATURE_AWAITING_DATA" if matured else "PENDING_MATURITY",
             "evaluated_at": now if scored else pd.NaT,
             **evidence(change),
+            **{column: outcome.get(column) if scored else None for column in ENDPOINT_EVIDENCE_COLUMNS},
         })
     frame = pd.DataFrame(rows, columns=EVALUATION_COLUMNS)
     if len(frame) and frame["id"].duplicated().any():
@@ -360,7 +368,7 @@ def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = No
     daily, weekly = _daily_weekly_outcomes(samples, feature_columns=())
     from ml.independent_stock_targets import build_stock_training_groups
     from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE, load_stock_target_prices
-    from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION, ARCHIVE_SOURCE_SELECTION_VERSION, select_prior_session_sources
+    from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION, ARCHIVE_SOURCE_SELECTION_VERSIONS, select_prior_session_sources
     groups = {"1h": hourly, "4h": four, "1d": daily, "1w": weekly}
     price_files = list(bar_files)
     independent_sources = None
@@ -379,15 +387,16 @@ def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = No
                 independent_sources = select_prior_session_sources(samples, symbols=symbols, available_at=now,
                     feature_columns=_feature_columns(source.manifest, samples))
             selected_sources = independent_sources
-        elif selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+        elif selection_contract in ARCHIVE_SOURCE_SELECTION_VERSIONS:
             if archive_sources is None:
                 from ml.gameplan_archive_features import load_archive_feature_sources
                 archive_sources = load_archive_feature_sources(root, symbols=symbols, available_at=now)
                 price_files.extend(archive_sources.source_files)
-            selected_sources = archive_sources.sources
+            selected_sources = archive_sources.sources.copy()
+            selected_sources["source_selection_contract"] = selection_contract
         independent = build_stock_training_groups(selected_sources, feature_columns=(), minute_bars=source_bars,
                                                    available_at=now, price_source_contract=contract)
-        if selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+        if selection_contract in ARCHIVE_SOURCE_SELECTION_VERSIONS:
             from ml.gameplan_archive_integration import exclude_quality_intervals
             independent = exclude_quality_intervals(independent, archive_sources.report.get("excluded_intervals", ()),
                                                     split_boundaries=(*archive_sources.report.get("split_boundaries", ()),
