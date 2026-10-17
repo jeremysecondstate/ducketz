@@ -206,19 +206,19 @@ def test_native_sparse_planning_close_keeps_observed_actuals_strict(stale_actual
                                      entry_bands=bands,
                                      allow_reference_forward_fill=True, allow_sparse_session_references=True)
     point = saved["points"]["AAPL|2026-09-09|17:00"]
-    assert point["endpoint_kind"] == "planning_close" and point["status"] == "AVAILABLE"
-    assert point["reference_is_synthetic"] and point["synthetic_close_sample_count"] == 3
+    assert point["endpoint_kind"] == "planning_close" and point["status"] == "UNAVAILABLE_REFERENCE_PRICE"
+    assert not point["reference_is_synthetic"] and point["synthetic_close_sample_count"] == 0
     original = copy.deepcopy(saved)
     bars = prices([("2026-09-09T11:00Z", 100., 100.),
                    ("2026-09-09T23:53Z" if stale_actual else "2026-09-09T23:59Z", 108., 110.)])
     result = compare_price_points(forecasts(), bars, action_date="2026-09-09",
                                   observed_at="2026-09-10T00:00Z", planning_path=saved).iloc[-1]
-    assert result.planned_price_mid == point["planned_price_mid"]
+    assert pd.isna(result.planned_price_mid) and point["planned_price_mid"] is None
     if stale_actual:
         assert result.comparison_status == "MATURE_AWAITING_DATA" and pd.isna(result.actual_price)
     else:
-        assert result.comparison_status == "COMPARED" and result.actual_price == 110
-        assert result.price_error == 110 - point["planned_price_mid"]
+        assert result.comparison_status == "NO_SAVED_ESTIMATE" and result.actual_price == 110
+        assert pd.isna(result.price_error)
     assert saved == original
 
 

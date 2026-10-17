@@ -43,17 +43,27 @@ def _observation(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: bool) -> 
     if bars.empty:
         return None
     timestamps = pd.DatetimeIndex(bars.timestamp)
-    position = (timestamps.searchsorted(boundary - _MINUTE, side="right") - 1
+    interval = _observation_interval(bars)
+    position = (timestamps.searchsorted(boundary - interval, side="right") - 1
                 if close else timestamps.searchsorted(boundary, side="left"))
     if position < 0 or position >= len(bars):
         return None
     row = bars.iloc[position]
-    observed = row.timestamp + (_MINUTE if close else pd.Timedelta(0))
+    observed = row.timestamp + (interval if close else pd.Timedelta(0))
     gap = boundary - observed if close else observed - boundary
     price = float(row["close" if close else "open"])
     if not pd.Timedelta(0) <= gap <= STOCK_TARGET_BOUNDARY_TOLERANCE or not np.isfinite(price) or price <= 0:
         return None
     return price, observed.isoformat()
+
+
+def _observation_interval(bars):
+    if "observation_interval_seconds" not in bars or bars.empty:
+        return _MINUTE
+    values = pd.to_numeric(bars.observation_interval_seconds)
+    if values.nunique() != 1 or not values.isin((1, 60, 300)).all():
+        raise ValueError("Planning endpoints require one native source interval")
+    return pd.Timedelta(seconds=float(values.iloc[0]))
 
 
 def _source_identity(prices: pd.DataFrame, forecasts: pd.DataFrame) -> tuple[str, str]:
@@ -168,6 +178,8 @@ def build_entry_price_bands(
         raise ValueError("Price-band sample settings require 2 <= minimum_samples <= lookback_sessions")
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
+    from ml.stock_observation_sources import planning_source_view, completed_observation_bars
+    prices = planning_source_view(prices, forecasts, now=now)
     completion = _reference_completion(prices, forecasts, now, allow_reference_forward_fill,
                                        allow_sparse_session_references, lookback_sessions)
     report = {
@@ -182,6 +194,8 @@ def build_entry_price_bands(
         "reference_policy": "Exact prior XNYS session 17:00 Pacific observed close; no older-close or cross-source substitution",
         "boundary_tolerance_seconds": STOCK_TARGET_BOUNDARY_TOLERANCE.total_seconds(),
         "rows": [], "statistics": {},
+        "observation_sources_by_symbol": prices.attrs.get("planning_source_selection", {}),
+        "new_synthetic_prices_allowed": False,
     }
     if completion is not None:
         report["reference_completion"] = completion
@@ -202,10 +216,9 @@ def build_entry_price_bands(
                                   end=pd.Timestamp(max(dates)) + pd.Timedelta(days=10))
     sessions = pd.DatetimeIndex(calendar.sessions)
     # The source report is retained above; only copied, observed minute data is consumed.
-    bars = prices.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    bars = completed_observation_bars(prices, now)
     bars["symbol"] = bars.symbol.astype(str).str.upper()
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="coerce")
-    bars = bars.loc[bars.timestamp.notna() & bars.timestamp.add(_MINUTE).le(now)]
     bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
     if bars.duplicated(["symbol", "timestamp"]).any():
         raise ValueError("Planning price observations contain conflicting minutes")
@@ -336,6 +349,8 @@ def build_planning_price_path(
         raise ValueError("Working price half-width must be finite and between 0 and 10000 basis points")
     now = _aware_timestamp(observed_at, "observed_at")
     source_contract, dataset = _source_identity(prices, forecasts)
+    from ml.stock_observation_sources import planning_source_view, completed_observation_bars
+    prices = planning_source_view(prices, forecasts, now=now)
     existing = (build_entry_price_bands(prices, forecasts, observed_at=now,
                                       allow_reference_forward_fill=allow_reference_forward_fill,
                                       allow_sparse_session_references=allow_sparse_session_references)
@@ -379,6 +394,8 @@ def build_planning_price_path(
         "historical_range_semantics": "Historical central 90% stress range retained separately from working fill assumptions",
         "market_gap_policy": "Price and cash estimates never gate execution. Use the current tradable quote and actual available cash and holdings, including when they fall outside the estimates.",
         "lookback_sessions": lookback, "minimum_samples": minimum, "points": {},
+        "observation_sources_by_symbol": prices.attrs.get("planning_source_selection", {}),
+        "new_synthetic_prices_allowed": False,
     }
     if completion is not None:
         result["reference_completion"] = completion
@@ -391,10 +408,9 @@ def build_planning_price_path(
     calendar = xcals.get_calendar("XNYS", start=pd.Timestamp(min(days)) - pd.Timedelta(days=max(370, lookback * 3)),
                                   end=pd.Timestamp(max(days)) + pd.Timedelta(days=10))
     sessions = pd.DatetimeIndex(calendar.sessions)
-    bars = prices.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    bars = completed_observation_bars(prices, now)
     bars["symbol"] = bars.symbol.astype(str).str.upper()
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="coerce")
-    bars = bars.loc[bars.timestamp.notna() & bars.timestamp.add(_MINUTE).le(now)]
     bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
     if bars.duplicated(["symbol", "timestamp"]).any():
         raise ValueError("Planning price observations contain conflicting minutes")
