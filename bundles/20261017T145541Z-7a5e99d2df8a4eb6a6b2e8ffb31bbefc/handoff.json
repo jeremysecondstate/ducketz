@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T14:55:41.553942Z",
+  "id": "20261017T145541Z-7a5e99d2df8a4eb6a6b2e8ffb31bbefc",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Append immutable revised nightly research with per-owner price lineage"
+}

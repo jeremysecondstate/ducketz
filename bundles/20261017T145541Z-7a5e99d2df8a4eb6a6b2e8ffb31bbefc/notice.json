@@ -1,0 +1,53 @@
+{
+  "author": "Scout",
+  "base_sha": "94599b56c9493331f024b330382421c41347d9ca",
+  "branch": "codex/scout/20261017T145111Z-e4d46ecd06294d50ae6f2ccb61c81e7e",
+  "change_id": "20261017T145111Z-e4d46ecd06294d50ae6f2ccb61c81e7e",
+  "commit_sha": "7572cbdad8a23bedfedf77c0817368417d52b91e",
+  "details": [
+    "Add an explicit same-date research revision path that verifies the original completed handoff and exact predecessor identities.",
+    "Append and read back a bounded immutable research packet in the existing authorized exchange; preserve original execution and display selections.",
+    "Retain independent validated source/dataset identities for mixed-owner planning prices while enforcing unchanged planning-policy equality.",
+    "Bind three exact PR208 price-reader dependencies so observed-multi-source-stock-v2 package identities are recognized on this published exchange base.",
+    "Preserve repaired source-selection metadata on owner forecast rows; no model choice, forecast value, scoring rule or execution authority is changed."
+  ],
+  "files": [
+    "datafetching/fmp_price_history_receipts.py",
+    "ml/joint_capital_plan.py",
+    "ml/stock_observation_sources.py",
+    "ml/stock_target_prices.py",
+    "tests/conftest.py",
+    "tests/test_joint_capital_source_lineage.py",
+    "tests/test_nightly_exchange_revision.py",
+    "tools/nightly_exchange_revision.py"
+  ],
+  "installation_stage": "separate_local_adoption",
+  "integration_stage": "draft_pr",
+  "limitations": [
+    "Stacked on published PR121; this candidate does not merge or install that existing exchange stack.",
+    "One revision may claim each original predecessor. Delivery/readback is not peer adoption or execution.",
+    "The original accepted execution pointer and main joint UI selection remain unchanged.",
+    "Without an exact saved account basis, composition remains plan-only and execution sizing is deferred to the existing trader.",
+    "Three reader support files are exact previously reviewed PR208 bytes; the revision reads frozen packages and does not rebuild models or acquire market history.",
+    "Offline fixtures only. No providers, broker orders, trader starts, private packets or operational configuration are included.",
+    "No main integration, peer installation or running-process adoption is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/211"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "An explicitly selected revision can append a research packet through the existing private exchange after local adoption. Publication does not activate it or change a running trader.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared source behavior; per-PC model choices, symbols and operating material remain local.",
+  "summary": "Append immutable revised nightly research with per-owner price lineage",
+  "tests": [
+    {
+      "check": "isolated-publication",
+      "command": "python -B -m pytest tests/test_joint_capital_source_lineage.py tests/test_joint_capital_plan.py tests/test_nightly_exchange_revision.py tests/test_nightly_synthesis.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-17T14:54:50.818993Z",
+      "output_sha256": "e19c47312932842546434614c86391bd679acc5934510f772815d343d6dd2ad4",
+      "result": "105 passed in 106.44s (0:01:46); network disabled; candidate imports bound",
+      "started_at_utc": "2026-10-17T14:53:02.429457Z"
+    }
+  ]
+}
