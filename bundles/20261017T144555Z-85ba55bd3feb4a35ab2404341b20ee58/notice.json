@@ -1,0 +1,58 @@
+{
+  "author": "Scout",
+  "base_sha": "f6f1bd8cf9f4252672d862ec4c2927473989f2ea",
+  "branch": "codex/scout/20261017T144241Z-2d306556c78f4c3ba4394cd6d14dca49",
+  "change_id": "20261017T144241Z-2d306556c78f4c3ba4394cd6d14dca49",
+  "commit_sha": "3e21ba0ab6152ad58817f1926df4d5252b7917d7",
+  "details": [
+    "Adopt the exact previously published nightly workflow dependencies absent from main, preserving their source identity.",
+    "Resolve the price-source policy consistently by action date for saved bindings, fetch/history stages and new Gameplan preparation.",
+    "Preserve completed pre-migration nights and local symbol/model settings while enabling explicitly configured future source migrations.",
+    "Compose only the required saved-run reader and native recovery interfaces, retaining main continuation semantics and excluding unrelated account UI and account-tail stages.",
+    "Accept technical-calculation paths in frozen model diagnostic evidence while retaining canonical relative path and hash validation."
+  ],
+  "files": [
+    "app/ui/gameplan_data.py",
+    "docs/development/gameplan-price-source-policy.md",
+    "ml/gameplan_price_policy.py",
+    "ml/nightly_dispatch.py",
+    "ml/nightly_repair_registry.py",
+    "ml/nightly_stage_repair.py",
+    "ml/nightly_workflow.py",
+    "ml/overnight_runtime.py",
+    "tests/test_gameplan_price_policy.py",
+    "tests/test_nightly_dispatch.py",
+    "tests/test_nightly_feedback_recovery.py",
+    "tests/test_nightly_workflow.py",
+    "tests/test_observed_source_workflow.py"
+  ],
+  "installation_stage": "separate_local_adoption",
+  "integration_stage": "draft_pr",
+  "limitations": [
+    "This is a source integration atop the separate reviewed Gameplan core repair; it does not merge or deploy either change.",
+    "Five baseline files are exact previously published source, and one published test fixture has the explicitly reviewed three-flag correction; the action-dated helper is also separately published. Operating configuration, account data and datasets remain private.",
+    "Offline tests use fixtures and mocked orchestration. No provider, model-training, order, trader-start or task-registration action is performed.",
+    "The published baseline account-UI default-selection test is retained unchanged but excluded: that broader account/joint UI integration is outside this candidate. Explicit pinned local display is tested.",
+    "One PR118 recovery fixture now explicitly records the three required Stats-first/stock-only/independent flags. Its original behavioral assertions are preserved; the other five imported baseline files remain exact published bytes.",
+    "Application UI/runtime files are not overwritten by this publication; the isolated composition contains only reviewed required interfaces.",
+    "No main integration, peer installation or running-process adoption is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/210"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Existing nightly users can explicitly select dated observed-source migration through their own local configuration after reviewed adoption. A source publication alone does not change a running process.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared source behavior; per-PC model choices, symbols and operating material remain local.",
+  "summary": "Apply action-dated observed-source policy throughout nightly preparation",
+  "tests": [
+    {
+      "check": "isolated-publication",
+      "command": "python -B -m pytest tests/test_nightly_workflow.py tests/test_nightly_dispatch.py tests/test_nightly_feedback_recovery.py tests/test_observed_source_workflow.py tests/test_gameplan_price_policy.py tests/test_independent_stock_runtime.py tests/test_gameplan_model_feedback.py tests/test_gameplan_data.py -k not test_local_display_uses_reviewed_stats_before_joint_handoff -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-17T14:44:40.131628Z",
+      "output_sha256": "e8e2718351c242ad500debcfc829ec3a4aa5ab4466de4da4f00a8cb2c1f4cc66",
+      "result": "220 passed, 1 deselected in 40.98s; network disabled; candidate imports bound",
+      "started_at_utc": "2026-10-17T14:43:57.063337Z"
+    }
+  ]
+}

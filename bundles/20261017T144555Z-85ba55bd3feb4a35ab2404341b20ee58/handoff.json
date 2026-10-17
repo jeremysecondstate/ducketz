@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T14:45:55.108532Z",
+  "id": "20261017T144555Z-85ba55bd3feb4a35ab2404341b20ee58",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Apply action-dated observed-source policy throughout nightly preparation"
+}
