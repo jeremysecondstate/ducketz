@@ -1,0 +1,41 @@
+{
+  "author": "Scout",
+  "base_sha": "6792abd38873b3aab98db82b7f091525a49a428b",
+  "branch": "codex/scout/20261017T140339Z-603957bc49c2438b99cb82afaf2f3a06",
+  "change_id": "20261017T140339Z-603957bc49c2438b99cb82afaf2f3a06",
+  "commit_sha": "e4ae6fe0047f9ca54ced5db56547430d5f75a945",
+  "details": [
+    "Add a strict versioned effective-action-date policy that retains the configured baseline before migration and resolves the selected source afterward.",
+    "Reject malformed policy fields, unsupported sources and noncanonical dates without mutating configuration, saved outputs or model definitions.",
+    "Document consistent workflow binding and the separate integration required to use observed-source contracts. Preserve per-PC symbols and model tuning."
+  ],
+  "files": [
+    "ml/gameplan_price_policy.py",
+    "tests/test_gameplan_price_policy.py",
+    "docs/development/gameplan-price-source-policy.md"
+  ],
+  "installation_stage": "caller_integration_separate",
+  "integration_stage": "draft_pr",
+  "limitations": [
+    "Only the resolver, its tests and documentation are included. Nightly workflow integration and observed-source acquisition are separate reviewed changes.",
+    "No main integration, peer installation or running-process adoption is claimed."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/207"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "No behavior changes until a separately reviewed caller and local dated configuration use the resolver. Publishing these three files does not install the nightly workflow stack, start a trader or deploy a running process.",
+  "runtime_stage": "not_deployed",
+  "scope": "Shared standalone Gameplan policy resolver; no per-PC tuning or private inputs.",
+  "summary": "Dated Gameplan source-policy helper published with isolated offline validation.",
+  "tests": [
+    {
+      "check": "isolated-publication",
+      "command": "python -B -m pytest tests/test_gameplan_price_policy.py -q -p no:cacheprovider",
+      "completed_at_utc": "2026-10-17T14:04:13.163514Z",
+      "output_sha256": "1189d0bbad3f46908aae62afacbeb8dc70a02746284318a1deaeb1b4059a05d4",
+      "result": "15 passed; network disabled; all candidate imports bound",
+      "started_at_utc": "2026-10-17T14:04:12.143792Z"
+    }
+  ]
+}
