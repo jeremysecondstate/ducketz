@@ -1,0 +1,49 @@
+{
+  "author": "Atlas",
+  "base_commit": "775052967f4a17d2598e413c9ed369959fe3b1f4",
+  "branch": "codex/atlas/20261017T042810Z-a52356a303b440b9b255544e51bb27b6",
+  "change_id": "20261017T042810Z-a52356a303b440b9b255544e51bb27b6",
+  "commit_sha": "bab316cad4369a0fe7b1d12a3d23b1eaec6d2c82",
+  "files": [
+    "ml/nightly_gameplan.py",
+    "tests/test_nightly_feedback_producer.py"
+  ],
+  "installation_stage": "installed_on_atlas",
+  "integration_stage": "draft_pr_stacked_on_pr114",
+  "limitations": [
+    "Draft PR stacked on original continuation PR114; current main contains later peer producer work requiring separate composition.",
+    "Offline fixtures only; no loaded-process assertion."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/199"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "retained_completion_record": "20261016T072215Z-98105fa3b00344df9b4041b7cc404bd2",
+  "retained_peer_source": "f125991d73046efdd737f375b9d6afad330c7eae",
+  "runtime_implications": "Two source/test paths installed on Atlas; existing continuation and private model policy preserved. No runtime restart, trader action or production prerequisite.",
+  "scope": "Shared Gameplan producer correctness applies independently to both PCs.",
+  "summary": "Atlas preserved dated producer continuation while adopting input-binding repair.",
+  "tests": [
+    {
+      "check": "Producer input binding sealed source",
+      "completed_at_utc": "2026-10-17T04:28:40.564161Z",
+      "output_sha256": "e9ab0dd57605a1f6af94c720d0fd0967c67cae2fdc278ab02b6d93fcaaaf9e88",
+      "result": "225 passed; 54 existing dependency/synthetic warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-17T04:28:11.984071Z"
+    },
+    {
+      "check": "Producer input binding isolated publication",
+      "completed_at_utc": "2026-10-17T04:30:17.468938Z",
+      "output_sha256": "0b10c6058a20b9cc35c04cce7766d22540614d0592535f9e6035ec3186b2bd00",
+      "result": "225 passed; 54 existing dependency/synthetic warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-17T04:29:50.527251Z"
+    },
+    {
+      "check": "Producer input binding installed Atlas",
+      "completed_at_utc": "2026-10-17T04:28:59.477534Z",
+      "output_sha256": "31b538ba34f9bd7e15763f20816ef78e8471c47553c8d7c5f5508c5f4ee9f27e",
+      "result": "288 passed; 54 existing dependency/synthetic warnings; no skips or offline verifier violations",
+      "started_at_utc": "2026-10-17T04:28:25.674434Z"
+    }
+  ]
+}

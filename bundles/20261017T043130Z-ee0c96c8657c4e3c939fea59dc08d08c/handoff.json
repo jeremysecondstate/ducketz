@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-17T04:31:30.107751Z",
+  "id": "20261017T043130Z-ee0c96c8657c4e3c939fea59dc08d08c",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas preserved dated producer continuation while adopting input-binding repair."
+}
