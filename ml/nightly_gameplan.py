@@ -205,6 +205,10 @@ def run_nightly_gameplan_once(
         from ml.gameplan_model_feedback import load_feedback_review
         feedback = load_feedback_review(root, model_feedback, as_of=created,
                                         probability_target=probability_target)
+        if (late_action_date is not None
+                and not feedback["stats"]["baseline_no_saved_predictions"]
+                and utc_timestamp(feedback["stats"]["outcomes_through"]) > information_cutoff):
+            raise ValueError("Model feedback outcomes extend beyond the preparation information cutoff")
     loop_b = read_current_publication(root)
     strategy = None if stock_only else read_current_strategy_publication(root)
     samples_path = loop_b.run_directory / "samples.parquet"
@@ -419,7 +423,7 @@ def run_nightly_gameplan_once(
         if feedback is not None:
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                symbols=symbols, price_source=stock_price_source, before=created,
+                symbols=symbols, price_source=stock_price_source, before=information_cutoff,
                 source_selection_contract=selection_version, probability_target=probability_target,
                 allow_prior_sessions=True)
             if champion is not None:
@@ -446,7 +450,7 @@ def run_nightly_gameplan_once(
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             if feedback is None:
                 champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                    symbols=symbols, price_source=stock_price_source, before=created,
+                    symbols=symbols, price_source=stock_price_source, before=information_cutoff,
                     source_selection_contract=selection_version, probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
