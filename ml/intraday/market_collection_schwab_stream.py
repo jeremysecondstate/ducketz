@@ -25,6 +25,7 @@ FIELDS = {"LEVELONE_EQUITIES": 52, "LEVELONE_OPTIONS": 56,
           "LEVELONE_FUTURES": 41, "CHART_EQUITY": 9, "CHART_FUTURES": 7,
           "NYSE_BOOK": 4, "NASDAQ_BOOK": 4, "OPTIONS_BOOK": 4}
 BOOKS = {"NYSE_BOOK", "NASDAQ_BOOK", "OPTIONS_BOOK"}
+OPTION_SCOPE_LIMITS = {"LEVELONE_OPTIONS": 1000, "OPTIONS_BOOK": 100}
 
 
 def _scope_keys(service, scopes, observed_at):
@@ -37,7 +38,16 @@ def _scope_keys(service, scopes, observed_at):
     groups = {}
     for key in keys:
         groups.setdefault(scopes[key], []).append(key)
-    offset = int(instant(observed_at).timestamp()//900)*250
+    quarter = int(instant(observed_at).timestamp()//900)
+    if service == "OPTIONS_BOOK":
+        groups = [values for _, values in sorted(groups.items())]
+        ordered = [values[index] for index in range(max(map(len, groups)))
+            for values in groups if index < len(values)]
+        # Page the complete round-robin scope, so every contract and later
+        # underlying is eventually visited even when a chain exceeds the cap.
+        offset = quarter*OPTION_SCOPE_LIMITS[service] % len(ordered)
+        return ordered[offset:]+ordered[:offset]
+    offset = quarter*250
     groups = [values[offset % len(values):]+values[:offset % len(values)]
         for _, values in sorted(groups.items())]
     return [values[index] for index in range(max(map(len, groups)))
@@ -317,11 +327,13 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
             for service in sorted(subscriptions, key=lambda name: "OPTIONS" in name):
                 scopes = subscriptions[service]
                 all_keys = _scope_keys(service, scopes, started_at)
-                # Actual gateway rejected combined option capacity in the
-                # initial full-chain attempt. This conservative local bound
-                # reserves room for other market services; it is not a claim
-                # about the provider's exact entitlement or global key limit.
-                keys = all_keys[:1000] if "OPTIONS" in service else all_keys
+                # Actual isolated and loaded captures acknowledged 100 book
+                # keys; an isolated 250-key book request was rejected. 100
+                # is the largest tested working scope, not a proven
+                # maximum or a claim about paid entitlement. Level-one options
+                # retain their separately acknowledged 1,000-key bound.
+                scope_limit = OPTION_SCOPE_LIMITS.get(service, len(all_keys))
+                keys = all_keys[:scope_limit]
                 accepted = 0
                 submitted = 0
                 status, reason = (("PARTIAL", "Bounded rotating option stream subset; full returnable chain exceeds local concurrent scope")
@@ -342,6 +354,8 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
                     accepted += len(keys[offset:offset+250])
                 results[service] = {"status": status, "reason": reason,
                     "requested_symbols": len(all_keys), "submitted_symbols": submitted, "acknowledged_symbols": accepted,
+                    "concurrent_scope_limit": scope_limit,
+                    "scope_limit_basis": "observed 100-key book acceptance; exact provider maximum unverified" if service == "OPTIONS_BOOK" else "local bounded scope",
                     "requested_scope_sha256": _sha(all_keys),
                     "submitted_scope": keys[:submitted], "acknowledged_scope": keys[:accepted],
                     "omitted_scope_count": len(all_keys)-accepted,

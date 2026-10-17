@@ -184,6 +184,56 @@ def test_option_capacity_order_spreads_underlyings_and_rotates_quarters():
     assert first != second and {scopes[k] for k in first[:2]} == {"A", "B"}
 
 
+@pytest.mark.parametrize("book_scope_size", [5, 100, 330])
+def test_book_service_bound_preserves_full_scope_and_levelone_capacity(tmp_path, book_scope_size):
+    class ServiceCapacitySocket(Socket):
+        def send(self, message):
+            request = json.loads(message)["requests"][0]
+            self.sent.append(request)
+            keys = request["parameters"].get("keys", "").split(",")
+            code = 19 if request["service"] == "OPTIONS_BOOK" and len(keys) > 100 else 0
+            self.pending.append({"response": [{"service": request["service"],
+                "command": request["command"], "requestid": request["requestid"],
+                "content": {"code": code, "msg": "fixture"}}]})
+    socket = ServiceCapacitySocket()
+    tick = [0]
+    def clock():
+        tick[0] += .001
+        return tick[0]
+    book = {f"OPTION{i:04d}": f"STOCK{i % 11:02d}" for i in range(book_scope_size)}
+    _, evidence = capture(Session(), {"OPTIONS_BOOK": book,
+        "LEVELONE_OPTIONS": {f"OPTION{i:04d}": "SDGR" for i in range(1001)}},
+        tmp_path/"book-capacity.jsonl", capture_seconds=.1, timeout_seconds=2,
+        http_get=lambda *a, **k: Response(), socket_factory=lambda *a, **k: socket, monotonic=clock)
+    actual = evidence["service_results"]["OPTIONS_BOOK"]
+    assert actual["requested_symbols"] == book_scope_size
+    acknowledged = min(book_scope_size, 100)
+    assert actual["submitted_symbols"] == actual["acknowledged_symbols"] == acknowledged
+    assert actual["omitted_scope_count"] == book_scope_size-acknowledged
+    assert actual["status"] == ("COMPLETE" if book_scope_size <= 100 else "PARTIAL")
+    assert "maximum unverified" in actual["scope_limit_basis"]
+    assert len({book[key] for key in actual["acknowledged_scope"]}) == min(book_scope_size, 11)
+    levelone = evidence["service_results"]["LEVELONE_OPTIONS"]
+    assert levelone["submitted_symbols"] == levelone["acknowledged_symbols"] == 1000
+    assert levelone["requested_symbols"] == 1001 and levelone["status"] == "PARTIAL"
+    assert all(ack["code"] == 0 for ack in evidence["acknowledgements"])
+
+
+def test_book_subset_eventually_visits_every_contract_and_underlying():
+    from ml.intraday.market_collection_schwab_stream import _scope_keys
+    scopes = {f"STOCK{symbol:02d}-{contract:03d}": f"STOCK{symbol:02d}"
+        for symbol in range(11) for contract in range(30)}
+    start = datetime(2026, 10, 17, 12, tzinfo=timezone.utc)
+    accepted_keys = set()
+    for quarter in range(4):
+        ordered = _scope_keys("OPTIONS_BOOK", scopes, start+timedelta(minutes=15*quarter))
+        assert len(ordered) == len(scopes) and set(ordered) == set(scopes)
+        current = {scopes[key] for key in ordered[:100]}
+        assert current == set(scopes.values())
+        accepted_keys.update(ordered[:100])
+    assert accepted_keys == set(scopes)
+
+
 def test_delta_prices_are_never_carried_forward_and_scope_is_exact():
     row = normalize("LEVELONE_EQUITIES", {"key": "SDGR", "34": MILLIS, "2": 10.2},
         receipt_at=NOW.isoformat(), scope={"SDGR": "SDGR"})

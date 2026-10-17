@@ -263,6 +263,28 @@ def _rows(snapshot, *, symbol, cutoff, kind):
             excluded["invalid_row"] += 1
             continue
         row = dict(source)
+        # Normalization must not hide explicit source provenance. Absence of a
+        # marker is not a no-trade attestation; present markers must be Boolean
+        # false in both the projection and retained native record.
+        marker_fields = ("synthetic", "is_synthetic", "no_trade", "is_no_trade",
+                         "source_empty", "is_source_empty")
+        native = row.get("raw") if isinstance(row.get("raw"), Mapping) else {}
+        if any(field in value and value[field] is not False
+               for value in (row, native) for field in marker_fields):
+            excluded["synthetic_or_unverified_observation_marker"] += 1
+            continue
+        bar_observation = (kind == "stock_bars" or
+            (kind in {"cross_asset", "opra_options"} and snapshot.get("schema") in _BAR_SECONDS))
+        trade_observation = kind == "stock_trades" or (kind in {"opra_options", "cross_asset"} and snapshot.get("schema") == "trades")
+        volume_field = "volume" if bar_observation or "size" not in row else "size"
+        if (bar_observation or trade_observation) and _number(row, volume_field, positive=True) is None:
+            excluded["missing_or_nonpositive_observed_volume"] += 1
+            continue
+        if bar_observation:
+            op, hi, lo, cl = (_number(row, field, positive=True) for field in ("open", "high", "low", "close"))
+            if None in (op, hi, lo, cl) or not lo <= min(op, cl) <= max(op, cl) <= hi:
+                excluded["invalid_observed_ohlc"] += 1
+                continue
         if delayed_delivery or row.get("is_delayed") is True or row.get("realtime") is False:
             excluded["provider_delayed"] += 1
             continue
@@ -392,11 +414,11 @@ def _prices(rows, *, trades):
             else:
                 op = cl = _number(row, "price", "last", positive=True)
                 count = 1
-            volume = _number(row, "size", "volume", nonnegative=True)
+            volume = _number(row, "size" if "size" in row else "volume", positive=True)
         else:
             count = 1
             op, cl = _number(row, "open", positive=True), _number(row, "close", positive=True)
-            volume = _number(row, "volume", nonnegative=True)
+            volume = _number(row, "volume", positive=True)
             hi, lo = _number(row, "high", positive=True), _number(row, "low", positive=True)
             if None in (op, cl, hi, lo) or not lo <= min(op, cl) <= max(op, cl) <= hi:
                 continue

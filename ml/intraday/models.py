@@ -415,13 +415,15 @@ class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
 
 
 def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=None,
-                             label_available_at=None, training_cutoff=None):
+                             label_available_at=None, training_cutoff=None, feature_names=None):
     """Fit a new pipeline and, when requested, a disjoint probability calibrator.
 
     The base estimator's preprocessing fits only its own earlier partition.
     Neither the base nor sigmoid sees later validation or inference rows. A
     missing timestamp or one-class partition is a failure, with no fallback.
     """
+    if feature_names is None and hasattr(X, "columns"):
+        feature_names = tuple(str(name) for name in X.columns)
     features, labels = np.asarray(X, dtype=float), np.asarray(y)
     if (features.ndim != 2 or not len(features) or not features.shape[1]
             or labels.shape != (len(features),) or not np.isin(labels, [0, 1]).all()
@@ -485,6 +487,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     else:
         base_rows = len(features)
     estimator = build_estimator(spec)
+    from .feature_support import attach_market_support
+    estimator = attach_market_support(estimator, feature_names)
     if spec.family == "knn":
         requested = evidence["effective_parameters"]["n_neighbors"]
         effective = min(requested, base_rows)
@@ -497,6 +501,9 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
         evidence["calibration"]["score_interface"] = estimator.score_interface_
     else:
         estimator.fit(features, labels)
+    base = estimator.base if calibrated else estimator
+    if "market_support" in base.named_steps:
+        evidence["market_feature_support"] = base.named_steps["market_support"].evidence()
     return estimator, evidence
 
 
@@ -623,7 +630,7 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                 warnings.simplefilter("always")
                 estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
                     reference_at=reference_at, target_close_at=target_close_at,
-                    label_available_at=available, training_cutoff=cutoff)
+                    label_available_at=available, training_cutoff=cutoff, feature_names=names)
                 metadata.update(fitting_evidence)
                 output["training_seconds"] = time.perf_counter() - start
                 output["training_completed_at"] = _now()
