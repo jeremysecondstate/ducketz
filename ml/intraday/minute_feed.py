@@ -13,6 +13,7 @@ import uuid
 import pandas as pd
 
 from . import data
+from .coverage import response_no_trade_verified
 from .prediction import ContractError, PACIFIC, STEP, instant
 from .store import utcnow
 
@@ -123,7 +124,7 @@ class QuarterHourMinuteFeed:
         original = history.frame if history is not None else pd.DataFrame()
         addition = pd.DataFrame(candles)
         for column in ("opened_at", "available_at"):
-            addition[column] = pd.to_datetime(addition[column], utc=True)
+            addition[column] = [pd.Timestamp(instant(value)) for value in addition[column]]
         merged = (pd.concat([original, addition], ignore_index=True)
                   .sort_values("available_at").drop_duplicates("opened_at", keep="last")
                   .sort_values("opened_at").reset_index(drop=True))
@@ -205,13 +206,15 @@ class QuarterHourMinuteFeed:
         previous = self._previous(symbol, reference)
         final = attempts[-1]
         needs_previous = (final.status == "success" and final.covered()
+                          and response_no_trade_verified(final, opened_at=reference,
+                                                         closed_at=reference + data.MINUTE)
                           and not any(data.utc(row.get("opened_at", row.get("timestamp"))) == data.utc(reference)
                                       for row in final.rows))
         if needs_previous:
             with self._lock:
                 predecessor_pending = symbol in self.pending.get(reference - STEP, set())
             if predecessor_pending:
-                # Confirmed leading omissions can become usable when this
+                # Independently verified no-trade omissions can become usable when this
                 # feed's own preceding quarter completes. Keep native evidence
                 # pending rather than sealing a premature unusable outcome.
                 return False
@@ -234,7 +237,9 @@ class QuarterHourMinuteFeed:
         candle = result.get("candle")
         terminal_missing = result.get("status") == "missing" and result.get("reason") in {
             "no_prior_known_price", "unverified_prior_price_continuity"}
-        if candle is None and not terminal_missing and result.get("status") != "unusable":
+        terminal_unavailable = (result.get("final") is True and result.get("status") == "unavailable"
+                                and result.get("reason") in {"source_empty", "unverified_source_omission"})
+        if candle is None and not terminal_missing and not terminal_unavailable and result.get("status") != "unusable":
             return False
         value = {"reference_at": reference.isoformat(), "status": result["status"],
                  "reason": result.get("reason"), "attempt_ids": [a.attempt_id for a in attempts],

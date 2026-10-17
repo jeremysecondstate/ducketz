@@ -20,6 +20,12 @@ from ml.gameplan_probability_target import (
 
 FIRST_GAMEPLAN_ACTION_DATE = "2026-09-04"
 EVALUATION_VERSION = "saved-gameplan-evaluations-v1"
+ENDPOINT_EVIDENCE_COLUMNS = (
+    "target_observation_source", "target_observation_dataset",
+    "target_observation_entry_input_sha256", "target_observation_exit_input_sha256",
+    "target_observation_entry_record_id", "target_observation_exit_record_id",
+    "observed_open_timestamp", "observed_close_timestamp", "target_open", "target_close",
+)
 EVALUATION_COLUMNS = (
     "id", "source_gameplan_run", "source_forecast_id", "action_date", "symbol",
     "model_group", "model_status", "route", "target_window_start", "target_window_end",
@@ -28,6 +34,7 @@ EVALUATION_COLUMNS = (
     "probability_target_contract", "gameplan_variant", "direction", "raw_direction_correct",
     "assumed_round_trip_cost", "observed_cost_adjusted_positive", "cost_adjusted_return",
     "target_price_source_contract", "target_price_dataset",
+    *ENDPOINT_EVIDENCE_COLUMNS,
 )
 
 
@@ -187,6 +194,7 @@ def evaluate_forecasts(
             "evaluation_status": "EVALUATED" if scored else "MATURE_AWAITING_DATA" if matured else "PENDING_MATURITY",
             "evaluated_at": now if scored else pd.NaT,
             **evidence(change),
+            **{column: outcome.get(column) if scored else None for column in ENDPOINT_EVIDENCE_COLUMNS},
         })
     frame = pd.DataFrame(rows, columns=EVALUATION_COLUMNS)
     if len(frame) and frame["id"].duplicated().any():

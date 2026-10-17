@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 import re
+import json
 
 import exchange_calendars as xcals
 import numpy as np
@@ -70,6 +71,9 @@ def _empty():
 
 def _normalize(frame: pd.DataFrame, interval: pd.Timedelta, *, as_of) -> pd.DataFrame:
     """Validate observed bars and their declared complete source intervals."""
+    from ml.stock_observation_sources import genuine_observation_mask
+    if not genuine_observation_mask(frame).all():
+        raise ValueError("Archive feature bars contain synthetic/no-trade or nonboolean native markers")
     if frame.empty:
         return _empty()
     required = {"symbol", "timestamp", *_VALUES, *_COVERAGE}
@@ -122,7 +126,7 @@ def _covered(start, end, ranges):
 
 
 def _aggregate_minutes(minutes, *, frequency, coverage, as_of):
-    """Aggregate actual trades only; source receipts prove absent-minute coverage."""
+    """Aggregate observations; request coverage is not proof of market-wide trades."""
     if minutes.empty:
         return _empty()
     interval = pd.Timedelta(frequency.replace("d", "D"))
@@ -140,9 +144,18 @@ def _aggregate_minutes(minutes, *, frequency, coverage, as_of):
                      "volume": ordered.volume.sum(), "source_coverage_start": start,
                      "source_coverage_end": end, "source_kind": "verified-native-1m-aggregate",
                      "observed_constituent_count": len(ordered),
+                     "source_raw_input_hashes_json": _input_hashes(ordered),
                      "first_actual_observation": ordered.timestamp.min(),
                      "last_actual_observation": ordered.timestamp.max()})
     return pd.DataFrame(rows) if rows else _empty()
+
+
+def _input_hashes(frame):
+    hashes = set()
+    if "source_raw_input_hashes_json" in frame:
+        for value in frame.source_raw_input_hashes_json.dropna():
+            hashes.update(json.loads(value))
+    return json.dumps(sorted(hashes), separators=(",", ":"))
 
 
 def _prefer_native(native, derived):
@@ -196,6 +209,11 @@ def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
         request = part.request
         if request["symbol_scope"][0] not in symbols:
             continue
+        # A later acquisition does not invalidate older evidence already saved.
+        # Exclude it from an ordinary as-of reconstruction; explicit recovery
+        # supplies a separate, truthful evidence_available_at clock.
+        if _utc(part.manifest["published_at"]) > evidence_cutoff:
+            continue
         if (request.get("dataset") != DATASET or request.get("stype_in") != "raw_symbol"
                 or request.get("schema") != schema or len(request["symbol_scope"]) != 1):
             raise ValueError("Archive feature source identity mismatch")
@@ -211,11 +229,12 @@ def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
                 or file_checksum(raw_path) != raw.get("checksum_sha256")
                 or part.receipt.get("raw_checksum_sha256") != raw.get("checksum_sha256")):
             raise ValueError("Archive feature raw evidence verification failed")
-        if _utc(part.manifest["published_at"]) > evidence_cutoff:
-            raise ValueError("Archive feature evidence was published after the frozen as-of")
         start, end = pd.Timestamp(request["start"], tz="UTC"), pd.Timestamp(request["end"], tz="UTC")
         symbol = request["symbol_scope"][0]
         frame = pd.read_parquet(normalized_path)
+        from ml.stock_observation_sources import genuine_observation_mask
+        if not genuine_observation_mask(frame).all():
+            raise ValueError("Archive feature source contains synthetic/no-trade or nonboolean native markers")
         timestamp = part.manifest["normalized"]["timestamp_column"]
         if timestamp not in frame and frame.index.name == timestamp:
             frame = frame.reset_index()
@@ -223,7 +242,8 @@ def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
             raise ValueError("Archive feature payload contains another symbol")
         frame = frame.rename(columns={timestamp: "timestamp"}).assign(
             symbol=symbol, source_coverage_start=start, source_coverage_end=end,
-            source_kind=f"verified-native-{schema}")
+            source_kind=f"verified-native-{schema}",
+            source_raw_input_hashes_json=json.dumps([raw["checksum_sha256"]]))
         missing_prices = frame[list(_VALUES[:-1])].isna()
         if (missing_prices.any(axis=1) & ~missing_prices.all(axis=1)).any():
             raise ValueError("Partially undefined archive feature OHLCV")
@@ -234,7 +254,7 @@ def _load_schema(root, symbols, schema, *, as_of, evidence_available_at=None):
                                "reason": "UNDEFINED_OBSERVED_OHLC", "schema": schema,
                                "manifest_path": str(part.manifest_path)})
         frame = frame.loc[~missing_prices.all(axis=1)]
-        frames.append(frame[["symbol", "timestamp", *_VALUES, *_COVERAGE]])
+        frames.append(frame[["symbol", "timestamp", *_VALUES, *_COVERAGE, "source_raw_input_hashes_json"]])
         coverage[symbol].append((start, end))
         exclusions.extend(_quality_intervals(part))
         files.extend((*part.source_files, raw_path))
@@ -398,6 +418,9 @@ def build_archive_feature_sources(daily_bars: pd.DataFrame, hourly_bars: pd.Data
                     last_hour = None
             if information >= action_start:
                 continue
+            daily_inputs = featured.loc[featured.timestamp.between(item["segment_start"], item["timestamp"])].tail(21)
+            hourly_inputs = hours.tail(21) if last_hour is not None else hours.iloc[:0]
+            input_hashes = _input_hashes(pd.concat([daily_inputs, hourly_inputs], ignore_index=True))
             rows.append({"symbol": symbol, "action_date": action, "source_session": day,
                          "source_selection_contract": ARCHIVE_FEATURE_CONTRACT,
                          "archive_feature_contract": ARCHIVE_FEATURE_CONTRACT,
@@ -408,6 +431,8 @@ def build_archive_feature_sources(daily_bars: pd.DataFrame, hourly_bars: pd.Data
                          "information_available_at": information, "decision_timestamp": information,
                          "source_feature_timeframe": "1d", "source_feature_dataset": DATASET,
                          "source_feature_bar_kind": item["source_kind"], "archive_core_ready": True,
+                         "feature_raw_input_hashes_json": input_hashes,
+                         "feature_availability_basis": "reconstructed_interval_end_plus_processing_delay_not_historical_receipt",
                          "archive_hourly_observed_at": last_hour.timestamp if last_hour is not None else pd.NaT,
                          "assumed_round_trip_cost": 0.001,
                          **{name: float(item[name]) for name in CORE_FEATURE_COLUMNS}, **optional})
@@ -427,6 +452,7 @@ def build_archive_feature_sources(daily_bars: pd.DataFrame, hourly_bars: pd.Data
               "core_features": list(CORE_FEATURE_COLUMNS), "optional_hourly_features": list(HOURLY_FEATURE_COLUMNS),
               "feature_non_null_rows": {name: int(sources[name].notna().sum()) for name in ARCHIVE_FEATURE_COLUMNS},
               "minimum_core_daily_observations": 21, "synthetic_feature_bars": 0,
+              "provenance_policy": "selected feature rows bind retained raw payload hashes; historical ingestion timestamps are not reconstructed",
               "daily_timestamp_semantics": "UTC interval start; availability is full interval end plus five minutes",
               "split_policy": "causal warmup reset; no historical backadjustment; >=3x heuristic is not complete split detection",
               "quality_resets": resets, "excluded_intervals": exclusions,

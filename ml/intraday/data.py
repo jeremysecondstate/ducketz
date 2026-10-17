@@ -126,6 +126,27 @@ def equity_sessions(start, end) -> tuple[SessionBounds, ...]:
     return tuple(result)
 
 
+def _require_native_observations(rows):
+    """Never erase explicit synthetic provenance while normalizing native rows."""
+    from ml.market_gap_evidence import MARKERS as markers
+    def valid_flag(value):
+        return isinstance(value, (bool, np.bool_)) and not bool(value)
+    def valid_count(value):
+        return (not isinstance(value, (bool, np.bool_))
+                and isinstance(value, (int, float, np.integer, np.floating))
+                and math.isfinite(float(value)) and float(value) == 0)
+    if isinstance(rows, pd.DataFrame):
+        invalid = any(not rows[key].map(valid_flag).all() for key in markers if key in rows)
+        invalid |= ("synthetic_constituents" in rows
+                    and not rows.synthetic_constituents.map(valid_count).all())
+    else:
+        invalid = any(any(key in row and not valid_flag(row[key]) for key in markers)
+            or ("synthetic_constituents" in row and not valid_count(row["synthetic_constituents"]))
+            for row in rows)
+    if invalid:
+        raise ContractError("Native source observations cannot contain synthetic or no-trade markers")
+
+
 @dataclass(frozen=True)
 class IntervalResponse:
     """One provider attempt. Empty rows alone do not establish no trades."""
@@ -144,6 +165,8 @@ class IntervalResponse:
     provider_no_trade_evidence: str | None = None
     retry_after_seconds: float = 0.0
     error: str | None = None
+    native_response: dict | None = None
+    no_trade_scope_evidence: dict | None = None
 
     def validate(self):
         if not self.attempt_id or not self.symbol or not self.source_id or not self.source_dataset:
@@ -158,6 +181,7 @@ class IntervalResponse:
             raise ContractError("Invalid provider waiting interval")
         if self.rows and self.status != "success":
             raise ContractError("Failed response cannot supply usable observations")
+        _require_native_observations(self.rows)
         return self
 
     def covered(self) -> bool:
@@ -173,6 +197,8 @@ class AcquisitionJournal:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("CREATE TABLE IF NOT EXISTS attempts(id TEXT PRIMARY KEY, slot TEXT, payload TEXT)")
+            db.execute("CREATE INDEX IF NOT EXISTS attempts_slot ON attempts(slot)")
+            db.execute("CREATE TABLE IF NOT EXISTS attempt_provenance(attempt_id TEXT NOT NULL, receipt_sha256 TEXT NOT NULL, receipt_path TEXT NOT NULL, PRIMARY KEY(attempt_id,receipt_sha256))")
             existed = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='provider_waits'").fetchone()
             db.execute("CREATE TABLE IF NOT EXISTS provider_waits(provider TEXT PRIMARY KEY,due_at TEXT NOT NULL)")
             if not existed:
@@ -188,6 +214,17 @@ class AcquisitionJournal:
         response.validate()
         payload = _json(asdict(response))
         slot = self.slot(response.symbol, response.source_id, response.interval_open, response.interval_close)
+        # Sidecar identity retains the actual loaded acquisition implementation;
+        # old journal rows are never upgraded into invented historical evidence.
+        from ml.market_provenance import capture_runtime, preserve_bytes
+        runtime = capture_runtime([__name__, "app.services.databento_market_data",
+            "app.services.databento_lifecycle", "app.services.databento_retry"],
+            object_root=self.path.parent / "acquisition-source-objects")
+        receipt = preserve_bytes(self.path.parent / "acquisition-receipts", _json({
+            "attempt_id": response.attempt_id, "response_sha256": hashlib.sha256(payload.encode()).hexdigest(),
+            "response": asdict(response), "producer_runtime": runtime,
+            "native_response_scope": "SDK-returned native DataFrame before minute projection; not raw HTTP/DBN wire bytes"
+        }).encode(), suffix=".json")
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("BEGIN IMMEDIATE")
             existing = db.execute("SELECT payload FROM attempts WHERE id=?", (response.attempt_id,)).fetchone()
@@ -195,6 +232,8 @@ class AcquisitionJournal:
                 raise ContractError("Attempt identity is immutable")
             db.execute("INSERT OR IGNORE INTO attempts VALUES(?,?,?)", (response.attempt_id, slot, payload))
             self._provider_wait(db, response)
+            db.execute("INSERT OR IGNORE INTO attempt_provenance VALUES(?,?,?)",
+                (response.attempt_id, receipt["sha256"], receipt["path"]))
 
     @staticmethod
     def _provider_wait(db, response):
@@ -256,9 +295,23 @@ def resolve_interval(responses: Sequence[IntervalResponse], *, session: SessionB
                                 synthetic=False, evidence=evidence)
         validate_candles(pd.DataFrame([candle]), duration=duration)
         return {"status": "observed", "candle": candle, "evidence": evidence}
+    from .coverage import response_no_trade_verified
+    if last.status == "success" and last.covered() and not last.rows and not response_no_trade_verified(last):
+        prior_covered = [response for response in rows[:-1] if response.status == "success" and response.covered()]
+        previous_response = prior_covered[-1] if prior_covered else None
+        stable_empty = (previous_response is not None and not previous_response.rows
+            and previous_response.attempt_id != last.attempt_id
+            and (utc(last.request_started_at)-utc(previous_response.request_ended_at)).total_seconds()
+                >= max(4.0,previous_response.retry_after_seconds))
+        if not stable_empty:
+            return {"status":"retry", "reason":"source_observations_unstable", "candle":None,
+                    "retry_after_seconds":max(4.0,last.retry_after_seconds), "evidence":evidence}
+        return {"status": "unavailable", "reason": "source_empty", "final": True,
+                "candle": None, "evidence": evidence}
     qualifying = []
     for response in rows:
-        if response.status == "success" and response.covered() and not response.rows and response.provider_no_trade_evidence:
+        if (response.status == "success" and response.covered() and not response.rows
+                and response.provider_no_trade_evidence and response_no_trade_verified(response)):
             if not qualifying or (response.attempt_id != qualifying[-1].attempt_id
                                   and (utc(response.request_started_at) - utc(qualifying[-1].request_ended_at)).total_seconds()
                                   >= max(4.0, qualifying[-1].retry_after_seconds)):
@@ -283,6 +336,7 @@ def resolve_interval(responses: Sequence[IntervalResponse], *, session: SessionB
         candle["prior_price_opened_at"] = utc(previous["opened_at"]).isoformat()
         candle["prior_price_close"] = close
         candle["synthetic_continuity"] = proof
+        candle["no_trade_scope_evidence"] = dict(last.no_trade_scope_evidence)
         validate_candles(pd.DataFrame([candle]), duration=duration)
         return {"status": "synthetic_no_trade", "candle": candle, "evidence": evidence}
     return {"status": "retry", "reason": last.status if last.status != "success" else "publication_lag_or_unconfirmed_gap",
@@ -372,10 +426,20 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
     """
     try:
         synthetic = candle.get("synthetic")
+        from .coverage import RECOVERY_POPULATION_CONTRACT
+        if candle.get("population_contract") == RECOVERY_POPULATION_CONTRACT:
+            from .recovered_population import verified_recovery_candle
+            return verified_recovery_candle(candle)
         if not isinstance(synthetic, (bool, np.bool_)):
             return False
         if not synthetic:
             return True
+        from .coverage import independently_verified_no_trade
+        def scope_verified(value, duration):
+            return independently_verified_no_trade(value.get("no_trade_scope_evidence"),
+                symbol=candle["symbol"], source_id=candle["source_id"], source_dataset=candle["source_dataset"],
+                opened_at=value["opened_at"], closed_at=utc(value["opened_at"])+duration,
+                available_at=value["available_at"])
         evidence = json.loads(candle.get("evidence_json", "{}"))
         if isinstance(evidence, dict) and "constituents" in evidence:
             constituents = evidence["constituents"]
@@ -393,6 +457,8 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
                 found += 1
                 proof = constituent.get("synthetic_continuity")
                 admitted = {**candle, **constituent}
+                if not scope_verified(admitted, MINUTE):
+                    return False
                 if not _verified_continuity_proof(admitted, proof, duration=MINUTE):
                     return False
                 if any(constituent.get(field) != proof.get(key) for field, key in (
@@ -402,16 +468,18 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
                     return False
             return found > 0 and found == candle.get("synthetic_constituents")
         duration = timedelta(seconds=candle.get("interval_seconds", 900))
-        return _verified_continuity_proof(candle, candle.get("synthetic_continuity"), duration=duration)
+        return (scope_verified(candle, duration)
+                and _verified_continuity_proof(candle, candle.get("synthetic_continuity"), duration=duration))
     except (KeyError, ValueError, TypeError, OverflowError, ContractError, json.JSONDecodeError):
         return False
 
 
 def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
-    """Require positive full-quarter evidence before reusing an observation.
+    """Require evidence for the selected completed-quarter definition.
 
-    Native rows and incomplete aggregates cannot replace or score a completed
-    quarter. Legacy explicit 900-second bars remain valid. Only DataFrame rows
+    The source-observation contract accepts covered nonempty sparse aggregates.
+    Bare native rows and undocumented partial aggregates do not qualify.
+    Legacy explicit 900-second bars remain valid. Only DataFrame rows
     may treat null optional fields introduced by concatenation as absent proof;
     raw durable mappings retain strict validation of explicitly present fields.
     Synthetic price continuity remains a separate check at each caller.
@@ -422,6 +490,12 @@ def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
 
     if not isinstance(candle, Mapping):
         return False
+    from .coverage import POPULATION_CONTRACT, RECOVERY_POPULATION_CONTRACT, verified_source_observation
+    if candle.get("population_contract") == RECOVERY_POPULATION_CONTRACT:
+        from .recovered_population import verified_recovery_candle
+        return verified_recovery_candle(candle)
+    if isinstance(candle.get("population_contract"), str) and candle["population_contract"] == POPULATION_CONTRACT:
+        return verified_source_observation(candle)
     try:
         opened, available = utc(candle["opened_at"]), utc(candle["available_at"])
         if pd.isna(opened) or pd.isna(available) or opened != opened.floor("15min") or available < opened + STEP:
@@ -521,6 +595,8 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
     begin = utc(clock())
     if begin < cl:
         raise ContractError("Cannot acquire an unfinished reference candle")
+    if stopped():
+        raise InterruptedError("Candle acquisition stopped before request")
     dataset = str(getattr(provider, "dataset", "")).strip()
     if not dataset:
         raise ContractError("Existing provider must declare its dataset")
@@ -550,13 +626,15 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
         if symbol not in results or utc(selected.start) != op or utc(selected.end) != cl:
             raise ContractError("Provider did not preserve exact requested interval or symbol")
         bars, _raw = results[symbol]
+        if _raw is not None:
+            _require_native_observations(_raw)
         if _raw is not None and len(_raw) != len(bars):
             raise ContractError("Provider raw rows were omitted during price parsing; invalid data is not no-trade evidence")
         native = tuple(dict(opened_at=utc(bar.timestamp).isoformat(), open=bar.open, high=bar.high,
                             low=bar.low, close=bar.close, volume=bar.volume) for bar in bars)
         return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
             begin.isoformat(), utc(clock()).isoformat(), "success", native, coverage[0], coverage[1],
-            "Databento native OHLCV omits intervals with no trades; successful exact-range response is within advertised coverage")
+            None, native_response=_native_response_snapshot(_raw))
     except (ContractError, InterruptedError):
         raise
     except Exception as exc:
@@ -577,6 +655,8 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
     subscribed data or alternate dataset is requested. This reduces eleven
     per-symbol price requests to one request for the same interval/symbol set.
     """
+    if stopped():
+        raise InterruptedError("Candle acquisition stopped before batch request")
     clean = tuple(str(s).strip().upper() for s in symbols)
     if not clean or len(set(clean)) != len(clean):
         raise ContractError("A nonempty unique symbol set is required")
@@ -623,6 +703,8 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
     responses = {}
     for symbol in clean:
         bars = results[symbol][0] if status == "success" else ()
+        if status == "success" and results[symbol][1] is not None:
+            _require_native_observations(results[symbol][1])
         if status == "success" and results[symbol][1] is not None and len(results[symbol][1]) != len(bars):
             raise ContractError("Provider raw rows were omitted during price parsing; invalid data is not no-trade evidence")
         native = tuple(dict(opened_at=utc(bar.timestamp).isoformat(), open=bar.open, high=bar.high,
@@ -630,22 +712,31 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
         responses[symbol] = IntervalResponse(f"{attempt_id}:{symbol}", symbol, source_id, dataset,
             op.isoformat(), cl.isoformat(), begin.isoformat(), finished.isoformat(), status, native,
             coverage[0] if coverage else None, coverage[1] if coverage else None,
-            "Databento native OHLCV omits intervals with no trades; successful exact-range response is within advertised coverage"
-            if status == "success" else None, wait, error).validate()
+            None, wait, error, native_response=_native_response_snapshot(results[symbol][1]) if status == "success" else None).validate()
     return responses
 
 
+def _native_response_snapshot(frame):
+    """Retain original SDK-native identities/fields before OHLCV projection."""
+    if frame is None:
+        return None
+    return json.loads(frame.to_json(orient="table", date_format="iso", date_unit="ns", double_precision=15))
+
+
 def resolve_minute_candle(responses: Sequence[IntervalResponse], *, session: SessionBounds,
-                          previous: Mapping | None) -> dict:
+                          previous: Mapping | None, population_contract=None) -> dict:
     """Validate one exact 15m response; retry that range for omitted minutes.
 
-    All native rows are 1m. An omitted constituent is confirmed only by two
-    distinct covered successful exact-range responses, separated by the waiting
-    rule, both omitting that minute and retaining the provider omission evidence.
-    Every synthetic minute refers to an adjacent same-session known close. No
+    All native rows are 1m. The source-observation contract admits stable covered
+    sparse payloads without filling missing minutes; stable emptiness remains
+    unavailable. Legacy carry requires independent complete-market no-trade
+    evidence plus separated confirmations and an adjacent known close. No
     previous whole OHLC range is copied. Observed data in the final response is
     the snapshot; older response rows never silently supplement missing rows.
     """
+    from .coverage import (POPULATION_CONTRACT, check_population_contract,
+                           aggregate_source_minutes, response_no_trade_verified)
+    check_population_contract(population_contract)
     if not responses:
         return {"status": "missing", "reason": "no_attempts", "candle": None}
     attempts = [response.validate() for response in responses]
@@ -673,15 +764,64 @@ def resolve_minute_candle(responses: Sequence[IntervalResponse], *, session: Ses
             lookup[timestamp] = record
         lookup_by_attempt.append(lookup)
     native = lookup_by_attempt[-1]
+    if not native and population_contract is None and not response_no_trade_verified(final):
+        return resolve_interval(attempts,session=session,previous=previous)
+    if population_contract == POPULATION_CONTRACT:
+        if len(native) < 15:
+            # Covered range publication can precede the settled sparse payload.
+            # Stability is evidence about this selected source, not all markets.
+            def canonical_rows(lookup):
+                return _json([{"opened_at": stamp.isoformat(), **{field: float(row[field])
+                    for field in ("open", "high", "low", "close", "volume")}}
+                    for stamp, row in sorted(lookup.items())])
+            final_rows = canonical_rows(native)
+            prior_covered = [(attempt, lookup) for attempt, lookup in zip(attempts[:-1], lookup_by_attempt[:-1])
+                             if attempt.status == "success" and attempt.covered()]
+            stable = False
+            if prior_covered:
+                attempt, lookup = prior_covered[-1]
+                stable = (attempt.attempt_id != final.attempt_id
+                    and (utc(final.request_started_at)-utc(attempt.request_ended_at)).total_seconds() >= max(4.0, attempt.retry_after_seconds)
+                    and canonical_rows(lookup) == final_rows)
+            if not stable:
+                return {"status": "retry", "reason": "source_observations_unstable", "candle": None,
+                        "retry_after_seconds": max(4.0, final.retry_after_seconds),
+                        "population_contract": population_contract, "evidence": [asdict(item) for item in attempts]}
+        if not native:
+            return {"status": "unavailable", "reason": "source_empty", "final": True,
+                    "candle": None, "population_contract": population_contract,
+                    "evidence": [asdict(item) for item in attempts]}
+        observed = []
+        for timestamp, row in sorted(native.items()):
+            record = _candle_record(final, session,
+                {field: row[field] for field in ("open", "high", "low", "close", "volume")},
+                synthetic=False, evidence=[asdict(final)], duration=MINUTE)
+            record["opened_at"] = timestamp.isoformat()
+            observed.append(record)
+        coverage = [{"opened_at": final.interval_open, "closed_at": final.interval_close,
+                     "basis": "successful_exact_source_request", "attempt_id": final.attempt_id,
+                     "request_ended_at": final.request_ended_at}]
+        frame, report = aggregate_source_minutes(pd.DataFrame(observed), sessions=[session], source_coverage=coverage)
+        candle = frame.iloc[0].to_dict()
+        for key in ("opened_at", "available_at"):
+            candle[key] = candle[key].isoformat()
+        return {"status": "observed" if len(native) == 15 else "sparse_observed",
+                "candle": candle, "constituents": observed, "aggregation": report,
+                "population_contract": population_contract, "evidence": [asdict(item) for item in attempts]}
     observed, prior = [], dict(previous) if previous is not None else None
     for timestamp in pd.date_range(op, periods=15, freq="1min"):
         if timestamp in native:
             values = {field: native[timestamp][field] for field in ("open", "high", "low", "close", "volume")}
             synthetic = False
         else:
+            if not response_no_trade_verified(final, opened_at=timestamp, closed_at=timestamp+MINUTE):
+                return {"status": "unavailable", "reason": "source_empty" if not native else "unverified_source_omission",
+                        "final": True, "candle": None, "missing_minute": timestamp.isoformat(),
+                        "evidence": [asdict(item) for item in attempts]}
             confirmations = []
             for attempt, lookup in zip(attempts, lookup_by_attempt):
                 if (attempt.status == "success" and attempt.covered() and attempt.provider_no_trade_evidence
+                        and response_no_trade_verified(attempt, opened_at=timestamp, closed_at=timestamp+MINUTE)
                         and timestamp not in lookup):
                     if not confirmations or (attempt.attempt_id != confirmations[-1].attempt_id
                             and (utc(attempt.request_started_at)-utc(confirmations[-1].request_ended_at)).total_seconds()
@@ -711,7 +851,8 @@ def resolve_minute_candle(responses: Sequence[IntervalResponse], *, session: Ses
         record["opened_at"] = timestamp.isoformat()
         if synthetic:
             record.update(prior_price_opened_at=utc(prior["opened_at"]).isoformat(),
-                          prior_price_close=float(prior["close"]), synthetic_continuity=proof)
+                          prior_price_close=float(prior["close"]), synthetic_continuity=proof,
+                          no_trade_scope_evidence=dict(final.no_trade_scope_evidence))
         observed.append(record)
         prior = record
     frame, _ = aggregate_minutes(pd.DataFrame(observed), sessions=[session])
@@ -734,7 +875,7 @@ def _provider_request_lock(journal):
 def recover_databento_candle_step(provider, *, symbol, opened_at, journal: AcquisitionJournal,
                                   session: SessionBounds, previous: Mapping | None,
                                   clock: Callable = lambda: datetime.now(timezone.utc),
-                                  stopped: Callable = lambda: False) -> dict:
+                                  stopped: Callable = lambda: False, population_contract=None) -> dict:
     """One bounded exact attempt or durable wait; no internal sleep or retry cap.
 
     Provider temporary errors wait at least four seconds across all Databento
@@ -745,7 +886,7 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
     """
     import uuid
     if stopped():
-        raise InterruptedError("Candle recovery stopped before acquisition")
+        raise InterruptedError("Candle acquisition stopped before recovery step")
     op, now = utc(opened_at), utc(clock())
     if op != op.floor("15min"):
         raise ContractError("Expected quarter-hour reference opening")
@@ -771,7 +912,8 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
             due = utc(last.request_ended_at) + pd.Timedelta(seconds=max(4.0,last.retry_after_seconds))
             if (utc(last.request_ended_at) <= now < due
                     and (previous is None or utc(previous["available_at"]) <= utc(last.request_ended_at))):
-                resolved = _recoverable_prerequisite(resolve_minute_candle(attempts,session=session,previous=previous))
+                resolved = _recoverable_prerequisite(resolve_minute_candle(attempts,session=session,previous=previous,
+                                                                         population_contract=population_contract))
                 if resolved["status"] != "retry":
                     return resolved
         provider_due = journal.provider_retry_due()
@@ -788,7 +930,8 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
         if journal.slot(**actual) != journal.slot(**slot) or attempt.source_dataset != dataset.strip():
             raise ContractError("Recovery callback changed its exact interval or source identity")
         journal.save(attempt)
-        result = _recoverable_prerequisite(resolve_minute_candle(journal.responses(**slot),session=session,previous=previous))
+        result = _recoverable_prerequisite(resolve_minute_candle(journal.responses(**slot),session=session,previous=previous,
+                                                               population_contract=population_contract))
         if result["status"] == "retry":
             current = utc(clock())
             exact_due = utc(attempt.request_ended_at) + pd.Timedelta(seconds=max(4.0,attempt.retry_after_seconds))
@@ -803,11 +946,11 @@ def recover_databento_candle_step(provider, *, symbol, opened_at, journal: Acqui
 def recover_databento_candle(provider, *, symbol, opened_at, journal: AcquisitionJournal,
                              session: SessionBounds, previous: Mapping | None,
                              sleep: Callable[[float], None], clock: Callable = lambda: datetime.now(timezone.utc),
-                             stopped: Callable = lambda: False) -> dict:
+                             population_contract=None, stopped: Callable = lambda: False) -> dict:
     """Indefinite exact recovery around bounded steps, preserving provider waits."""
     while True:
         result = recover_databento_candle_step(provider,symbol=symbol,opened_at=opened_at,
-            journal=journal,session=session,previous=previous,clock=clock,stopped=stopped)
+            journal=journal,session=session,previous=previous,clock=clock,population_contract=population_contract,stopped=stopped)
         if result["status"] != "retry":
             return result
         if stopped():
@@ -818,11 +961,12 @@ def recover_databento_candle(provider, *, symbol, opened_at, journal: Acquisitio
 
 def fetch_15m(provider, *, symbol, reference, previous: Mapping | None, session: SessionBounds,
               journal: AcquisitionJournal, sleep: Callable[[float], None],
-              clock: Callable = lambda: datetime.now(timezone.utc),
+              clock: Callable = lambda: datetime.now(timezone.utc), population_contract=None,
               stopped: Callable = lambda: False) -> pd.DataFrame:
     """Convenience read-only live adapter returning an actual-availability row."""
     result = recover_databento_candle(provider, symbol=symbol, opened_at=reference, journal=journal,
-                                      session=session, previous=previous, sleep=sleep, clock=clock,stopped=stopped)
+                                      session=session, previous=previous, sleep=sleep, clock=clock,
+                                      population_contract=population_contract,stopped=stopped)
     if result["candle"] is None:
         raise ContractError("Live candle unavailable: " + result.get("reason", result["status"]))
     return validate_candles(pd.DataFrame([result["candle"]]))
@@ -910,6 +1054,7 @@ def aggregate_minutes(minutes: pd.DataFrame, *, sessions: Sequence[SessionBounds
                 proof = getattr(row, "synthetic_continuity", None)
                 if isinstance(proof, Mapping):
                     constituent.update(synthetic_continuity=dict(proof),
+                        no_trade_scope_evidence=getattr(row, "no_trade_scope_evidence", None),
                         prior_price_opened_at=proof["prior_opened_at"], prior_price_close=proof["prior_close"],
                         prior_price_interval_seconds=proof["prior_interval_seconds"],
                         prior_price_session_id=proof["prior_session_id"],
@@ -946,6 +1091,8 @@ class History:
 def _archive_native_frame(path: Path, *, symbol: str, request: Mapping) -> pd.DataFrame:
     """Decode already-saved DBN bytes locally; this constructs no API client."""
     import databento
+    from app.services.databento_lifecycle import register_databento_cleanup
+    register_databento_cleanup()
     saved = databento.DBNStore.from_file(path)
     if (saved.dataset != "XNAS.ITCH" or str(saved.schema) != "ohlcv-1m"
             or set(saved.symbols) != {symbol}
@@ -956,7 +1103,7 @@ def _archive_native_frame(path: Path, *, symbol: str, request: Mapping) -> pd.Da
 
 
 def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
-                              availability_offset_seconds: float = 0.0) -> History:
+                              availability_offset_seconds: float = 0.0, population_contract=None) -> History:
     """Verified venue-only XNAS history, never mixed with canonical EQUS bars.
 
     Each immutable cold partition must retain its receipt, manifest, normalized
@@ -973,7 +1120,9 @@ def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
     paths = sorted(folder.glob("*/manifest.json"))
     if not paths:
         raise ContractError(f"No existing XNAS minute archive for {symbol}")
-    frames, files = [], []
+    from .coverage import POPULATION_CONTRACT, check_population_contract, aggregate_source_minutes, clip_source_ranges
+    check_population_contract(population_contract)
+    frames, files, source_coverage = [], [], []
     columns = ["ts_event", "symbol", "open", "high", "low", "close", "volume"]
     for manifest_path in paths:
         receipt_path = manifest_path.with_name("receipt.json")
@@ -1011,6 +1160,8 @@ def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
                     or not isinstance(frame.ts_event.dtype, pd.DatetimeTZDtype)
                     or any(not pd.api.types.is_float_dtype(frame[c]) for c in ("open", "high", "low", "close"))):
                 raise ContractError("Archive needs exact symbol, aware timestamps and native float prices")
+            if population_contract is not None:
+                _require_native_observations(frame)
             frame = frame.loc[:, columns].reset_index(drop=True)
             frame["ts_event"] = frame.ts_event.dt.tz_convert("UTC")
             if (frame.empty or len(frame) != normalized["row_count"]
@@ -1021,6 +1172,8 @@ def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
                     or frame.ts_event.ge(pd.Timestamp(request["end"], tz="UTC")).any()):
                 raise ContractError("Archive timestamp bounds or row count differ")
             native = _archive_native_frame(raw_path, symbol=symbol, request=request)
+            if population_contract is not None:
+                _require_native_observations(native)
             # Exact comparison also rejects split-adjusted, rescaled, filtered or
             # otherwise transformed prices even if their local hashes agree.
             if not frame.equals(native.loc[:, columns].reset_index(drop=True)):
@@ -1038,6 +1191,10 @@ def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
         frames.append(frame.assign(availability_kind="assumed_historical_close",
             source_id="databento:XNAS.ITCH:ohlcv-1m", source_dataset="XNAS.ITCH",
             session_id="unassigned", synthetic=False, no_trade=False, evidence_json="{}"))
+        source_coverage.append({"opened_at": pd.Timestamp(request["start"], tz="UTC").isoformat(),
+            "closed_at": pd.Timestamp(request["end"], tz="UTC").isoformat(),
+            "basis": "receipt_verified_native_archive_request", "request_id": request["request_id"],
+            "manifest_sha256": before[manifest_path]})
     minutes = pd.concat(frames, ignore_index=True).drop_duplicates(["opened_at", "open", "high", "low", "close", "volume"])
     if minutes.opened_at.duplicated().any():
         raise ContractError("Conflicting archive minute revisions require explicit selection")
@@ -1068,7 +1225,11 @@ def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
     if minutes.empty:
         raise ContractError("Selected archive history has no valid native observations")
     sessions = equity_sessions(minutes.opened_at.min(), minutes.opened_at.max() + MINUTE)
-    frame, aggregation = aggregate_minutes(minutes, sessions=sessions)
+    if population_contract == POPULATION_CONTRACT:
+        source_coverage = clip_source_ranges(source_coverage,start=start,end=end)
+        frame, aggregation = aggregate_source_minutes(minutes, sessions=sessions, source_coverage=source_coverage)
+    else:
+        frame, aggregation = aggregate_minutes(minutes, sessions=sessions)
     manifest = {"symbol": symbol, "source_dataset": "XNAS.ITCH", "source_schema": "ohlcv-1m",
         "availability_kind": "assumed_historical_close", "availability_offset_seconds": availability_offset_seconds,
         "availability_limitation": "Historical publication/receipt timestamps not recorded; no point-in-time claim",
@@ -1081,22 +1242,59 @@ def load_xnas_archive_history(root, symbol: str, *, start=None, end=None,
         "first_candle_open": frame.opened_at.min().isoformat() if len(frame) else None,
         "last_candle_open": frame.opened_at.max().isoformat() if len(frame) else None,
         "files": files, "aggregation": aggregation}
+    if population_contract is not None:
+        manifest.update(population_contract=population_contract, source_coverage=source_coverage,
+                        source_policy="verified_native_source_observations_no_fill_no_fallback")
     frame.attrs["intraday_history"] = manifest
     return History(frame, manifest)
 
 
 def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=None, end=None,
-                       availability_offset_seconds: float = 0.0) -> History:
-    """Read canonical minute files and their native raw provenance, no writes.
+                       availability_offset_seconds: float = 0.0, population_contract=None, recovery_cutoff=None) -> History:
+    """Read canonical minutes and retain native input objects for the new contract.
 
     Current compact canonical files contain no dataset/receipt columns. Dataset
     identity is therefore verified in their exact adjacent raw provider file.
     Close-plus-offset is an explicit historical assumption, never an actual
     receipt time and never a file-mtime proxy. No source mixing or gap fill.
     """
+    from .coverage import POPULATION_CONTRACT, check_population_contract, aggregate_source_minutes, clip_source_ranges
+    check_population_contract(population_contract)
+    from .coverage import RECOVERY_POPULATION_CONTRACT
+    if population_contract == RECOVERY_POPULATION_CONTRACT:
+        # Canonical native source bytes remain unchanged. The model population
+        # explicitly names its multi-provider selection and retains each origin.
+        if source_dataset != "EQUS.MINI":
+            raise ContractError("Recovery population requires the explicit primary EQUS.MINI binding")
+        recovery_as_of = utc(recovery_cutoff) if recovery_cutoff is not None else utc(datetime.now(timezone.utc))
+        original = load_local_history(root, symbol, source_dataset=source_dataset, start=start, end=end,
+            availability_offset_seconds=availability_offset_seconds, population_contract=POPULATION_CONTRACT)
+        from .recovered_population import wrap_primary, load_recovery_candles
+        frame = pd.DataFrame([wrap_primary(row) for row in original.frame.to_dict("records")])
+        recovered = load_recovery_candles(root, symbol, start=start, end=end,
+            cutoff=recovery_as_of)
+        represented = {utc(value) for value in frame.opened_at}
+        recovered = [row for row in recovered if utc(row["opened_at"]) not in represented]
+        if recovered:
+            frame = pd.concat([frame, pd.DataFrame(recovered)], ignore_index=True)
+        for column in ("opened_at", "available_at"):
+            # Primary close clocks and actual recovery receipts have different ISO precision.
+            # Parse each aware instant without pandas inferring one format for the column.
+            frame[column] = [utc(value) for value in frame[column]]
+        frame = frame.sort_values("opened_at").reset_index(drop=True)
+        manifest = {**original.manifest, "population_contract": RECOVERY_POPULATION_CONTRACT,
+            "source_policy": "primary_EQUS_observations_with_explicit_cross_provider_recovery",
+            "model_candle_dataset": "MULTI_PROVIDER", "primary_source_dataset": source_dataset,
+            "saved_recovery_rows": len(recovered), "recovery_precedence": "primary_observed_quarters_first",
+            "recovery_selection_cutoff": recovery_as_of.isoformat(),
+            "candle_rows": len(frame), "first_candle_open": frame.opened_at.min().isoformat(),
+            "last_candle_open": frame.opened_at.max().isoformat()}
+        frame.attrs["intraday_history"] = manifest
+        return History(frame, manifest)
     if source_dataset == "XNAS.ITCH":
         return load_xnas_archive_history(root, symbol, start=start, end=end,
-                                        availability_offset_seconds=availability_offset_seconds)
+                                        availability_offset_seconds=availability_offset_seconds,
+                                        population_contract=population_contract)
     if source_dataset != "EQUS.MINI":
         raise ContractError("Select explicit EQUS.MINI canonical history or XNAS.ITCH archive history")
     if not symbol or not symbol.replace(".", "").isalnum():
@@ -1107,13 +1305,14 @@ def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=N
     paths = sorted(folder.glob("*_ohlcv-1m_1m.parquet"))
     if not paths:
         raise ContractError(f"No existing canonical EQUS minute history for {symbol}")
-    frames, files = [], []
+    frames, files, source_coverage, native_objects = [], [], [], []
     for path in paths:
         raw_path = path.parent.parent / "raw" / (path.stem + "_raw.parquet")
         if not raw_path.is_file():
             raise ContractError(f"Canonical dataset provenance is unavailable: {raw_path}")
         before = {item: _hash_file(item) for item in (path, raw_path)}
-        raw = pd.read_parquet(raw_path, columns=["provider_dataset", "source_schema", "symbol", "price_basis"])
+        raw = pd.read_parquet(raw_path) if population_contract else pd.read_parquet(
+            raw_path, columns=["provider_dataset", "source_schema", "symbol", "price_basis"])
         if (set(raw.provider_dataset.dropna().astype(str)) != {source_dataset}
                 or set(raw.source_schema.dropna().astype(str)) != {"ohlcv-1m"}
                 or set(raw.symbol.dropna().astype(str).str.upper()) != {symbol.upper()}
@@ -1122,10 +1321,50 @@ def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=N
         frame = pd.read_parquet(path)
         if not {"timestamp", "open", "high", "low", "close", "volume"} <= set(frame):
             raise ContractError("Canonical minute format is incompatible")
+        if population_contract is not None:
+            _require_native_observations(raw)
+            _require_native_observations(frame)
+            required = {"ts_event", "open", "high", "low", "close", "volume", "range_start", "range_end"}
+            if required - set(raw):
+                raise ContractError("Source-observation history requires native OHLCV and saved request ranges")
+            if raw[["provider_dataset", "source_schema", "symbol", "price_basis"]].isna().any().any():
+                raise ContractError("Raw source identity cannot contain missing values")
+            if not isinstance(raw.ts_event.dtype, pd.DatetimeTZDtype) or not isinstance(frame.timestamp.dtype, pd.DatetimeTZDtype):
+                raise ContractError("Native and canonical timestamps must be timezone aware")
+            left = raw.rename(columns={"ts_event": "timestamp"})[["timestamp", "open", "high", "low", "close", "volume"]]
+            right = frame[["timestamp", "open", "high", "low", "close", "volume"]]
+            left, right = (item.sort_values("timestamp").reset_index(drop=True) for item in (left, right))
+            if (len(left) != len(right) or not left.timestamp.equals(right.timestamp)
+                    or not np.array_equal(left.iloc[:, 1:].to_numpy(dtype=float), right.iloc[:, 1:].to_numpy(dtype=float), equal_nan=True)):
+                raise ContractError("Canonical observations differ from the saved native source")
+            starts, ends = pd.DatetimeIndex([utc(v) for v in raw.range_start]), pd.DatetimeIndex([utc(v) for v in raw.range_end])
+            if (raw.ts_event.lt(starts).any() or (raw.ts_event + MINUTE).gt(ends).any()):
+                raise ContractError("Native observations escape their recorded source request range")
+            for first, last in raw[["range_start", "range_end"]].drop_duplicates().itertuples(index=False, name=None):
+                source_coverage.append({"opened_at": utc(first).isoformat(), "closed_at": utc(last).isoformat(),
+                    "basis": "saved_native_request_range_historical_receipt_unrecorded", "raw_sha256": before[raw_path]})
         for item, checksum in before.items():
             if _hash_file(item) != checksum:
                 raise ContractError("Concurrent source mutation during history read")
             files.append({"path": str(item), "sha256": checksum, "bytes": item.stat().st_size})
+        if population_contract is not None:
+            from io import BytesIO
+            from ml.market_provenance import preserve_bytes
+            # Preserve exactly the selected native observations and their saved
+            # identity/ranges. Receipt times were not saved by this old format;
+            # preserving bytes now cannot invent historical availability.
+            native = raw.copy()
+            if start is not None:
+                native = native.loc[native.ts_event.ge(utc(start))]
+            if end is not None:
+                native = native.loc[native.ts_event.lt(utc(end))]
+            native = native.sort_values("ts_event").reset_index(drop=True)
+            payload = BytesIO()
+            native.to_parquet(payload, index=False, compression="zstd")
+            obj = preserve_bytes(Path(root) / "intraday/source-objects", payload.getvalue(), suffix=".parquet")
+            native_objects.append({**obj, "rows": len(native), "original_raw_sha256": before[raw_path],
+                "canonical_sha256": before[path], "content": "native_rows_with_original_source_identity_and_request_ranges",
+                "availability_kind": "historical_receipt_unrecorded"})
         frame["opened_at"] = pd.to_datetime(frame.timestamp, utc=True)
         frame["available_at"] = frame.opened_at + MINUTE + pd.Timedelta(seconds=availability_offset_seconds)
         frame = frame.assign(symbol=symbol.upper(), availability_kind="assumed_historical_close",
@@ -1145,7 +1384,11 @@ def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=N
     if minutes.empty:
         raise ContractError("Selected historical window has no observations")
     sessions = equity_sessions(minutes.opened_at.min(), minutes.opened_at.max() + MINUTE)
-    frame, aggregation = aggregate_minutes(minutes, sessions=sessions)
+    if population_contract == POPULATION_CONTRACT:
+        source_coverage = clip_source_ranges(source_coverage,start=start,end=end)
+        frame, aggregation = aggregate_source_minutes(minutes, sessions=sessions, source_coverage=source_coverage)
+    else:
+        frame, aggregation = aggregate_minutes(minutes, sessions=sessions)
     manifest = {"symbol": symbol.upper(), "source_dataset": source_dataset, "source_schema": "ohlcv-1m",
         "availability_kind": "assumed_historical_close", "availability_offset_seconds": availability_offset_seconds,
         "availability_limitation": "Historical publication/receipt timestamps not recorded; no point-in-time claim",
@@ -1155,6 +1398,10 @@ def load_local_history(root, symbol: str, *, source_dataset="EQUS.MINI", start=N
         "first_candle_open": frame.opened_at.min().isoformat() if len(frame) else None,
         "last_candle_open": frame.opened_at.max().isoformat() if len(frame) else None,
         "files": files, "aggregation": aggregation}
+    if population_contract is not None:
+        manifest.update(population_contract=population_contract, source_coverage=source_coverage,
+                        native_objects=native_objects,
+                        source_policy="verified_native_source_observations_no_fill_no_fallback")
     frame.attrs["intraday_history"] = manifest
     return History(frame, manifest)
 
@@ -1216,7 +1463,7 @@ class Dataset:
 
 
 def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days: float | None = None,
-                  synthetic_policy: str | None = None) -> Dataset:
+                  synthetic_policy: str | None = None, population_contract=None) -> Dataset:
     """Labels are >= reference OPEN at exact third CLOSE, mature by joint receipt.
 
     Training sample availability includes its features/reference as well as the
@@ -1232,8 +1479,12 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         raise ContractError("Synthetic label policy must be include/exclude or unresolved")
     cutoff, reference = utc(cutoff), utc(reference_at)
     target_open, target_close = exact_target(reference)
-    frame = validate_candles(candles)
     attrs = dict(candles.attrs.get("intraday_history", {}))
+    from .coverage import population_frame, check_population_contract
+    population_contract = population_contract or attrs.get("population_contract")
+    check_population_contract(population_contract)
+    admitted = population_frame(candles, population_contract)
+    frame = validate_candles(admitted)
     frame = frame.loc[frame.available_at.le(cutoff) & (frame.opened_at + STEP).le(cutoff)].reset_index(drop=True)
     if lookback_days is not None:
         if not math.isfinite(lookback_days) or lookback_days <= 0:
@@ -1320,6 +1571,11 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         "features": inference_values.tolist(), "source": str(inference_row.source_id),
         "source_dataset": str(inference_row.source_dataset), "availability_kind": str(inference_row.availability_kind),
         "snapshot": snapshot, "snapshot_sha256": fingerprint}
+    if population_contract is not None:
+        inference["population_contract"] = population_contract
+        snapshot["population_contract"] = population_contract
+        fingerprint = hashlib.sha256(_json(snapshot).encode()).hexdigest()
+        inference["snapshot_sha256"] = fingerprint
     manifest = {"target_version": TARGET_VERSION, "feature_version": FEATURE_VERSION, "training_cutoff": cutoff.isoformat(),
         "training_rows": len(X), "label_available_at_max": max(available).isoformat(),
         "label_availability_policy": "max_target_and_feature_receipt",
@@ -1329,6 +1585,10 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         "availability_kinds": sorted(frame.availability_kind.unique().tolist()), "source_history": attrs,
         "feature_policy": "trailing_observed_steps_explicit_elapsed_gaps_no_fitted_global_preprocessing",
         "validation_requirement": "chronological_purge_targets_and_joint_information_receipts_before_validation_decisions"}
+    if population_contract is not None:
+        manifest.update(population_contract=population_contract,
+            unverified_or_other_population_candles_excluded=len(candles)-len(admitted),
+            absence_policy="source_empty_unavailable_never_unverified_synthetic")
     return Dataset(np.asarray(X, dtype=float), np.asarray(y, dtype=np.uint8), inference_values.reshape(1, -1),
                    FEATURE_NAMES, pd.DatetimeIndex(available), pd.DatetimeIndex(references), pd.DatetimeIndex(closes),
                    inference, manifest)

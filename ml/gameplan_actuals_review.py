@@ -89,13 +89,14 @@ def _number(value) -> float | None:
 def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at: object) -> dict:
     _source_identity(prices, forecasts)
     now = _aware_timestamp(observed_at, "observed_at")
-    bars = prices.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    from ml.stock_observation_sources import completed_observation_bars
+    bars = completed_observation_bars(prices, now)
     bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="raise")
     bars["symbol"] = bars.symbol.astype(str).str.upper()
     # The close of a minute is not available until that minute has completed.
-    bars = bars.loc[bars.timestamp.add(pd.Timedelta(minutes=1)).le(now)]
-    bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
-    if bars.duplicated(["symbol", "timestamp"]).any():
+    identity = ["symbol", "timestamp", *(["observation_source"] if "observation_source" in bars else [])]
+    bars = bars.drop_duplicates([*identity, "open", "close"])
+    if bars.duplicated(identity).any():
         raise ValueError("Actual price evidence contains conflicting minute observations")
     for field in ("open", "close"):
         bars[field] = pd.to_numeric(bars[field], errors="coerce")
@@ -154,7 +155,8 @@ def _source_window_coverage(inventory: Mapping, symbol: str, start: pd.Timestamp
 def _boundary_evidence(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: bool,
                        now: pd.Timestamp, inventory: Mapping, symbol: str) -> dict:
     """Explain the existing selector without changing its five-minute eligibility."""
-    minute = pd.Timedelta(minutes=1)
+    from ml.gameplan_price_bands import _observation_interval
+    minute = _observation_interval(bars)
     # Open at boundary+5m needs that entire minute; close at boundary-5m
     # belongs to the minute beginning boundary-6m. Archive ends are exclusive.
     start = boundary - STOCK_TARGET_BOUNDARY_TOLERANCE - minute if close else boundary
@@ -223,6 +225,11 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
         if end <= start:
             raise ValueError("Frozen forecast has an invalid target window")
         bars = by_symbol.get(str(row["symbol"]).upper(), prices.iloc[:0])
+        from ml.stock_observation_sources import choose_target_source
+        bars = choose_target_source(bars, row)
+        if len(bars) and "observation_source" in bars:
+            row["actual_observation_source"] = str(bars.observation_source.iloc[0])
+            row["actual_observation_dataset"] = str(bars.observation_dataset.iloc[0])
         gap = row["target_role"] == "OPENING_GAP_RESEARCH"
         entry = _observation(bars, start, close=gap) if start <= now else None
         finish = _observation(bars, end, close=not gap) if end <= now else None
@@ -293,7 +300,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                               if estimate else (None, None, None))
             if estimate and (None in (low, mid, high) or not 0 < low <= mid <= high):
                 raise ValueError("Saved planning prices are invalid")
-            actual = _observation(bars, timestamp, close=hour == 17) if timestamp <= now else None
+            from ml.stock_observation_sources import choose_boundary_source
+            selected_bars = choose_boundary_source(bars, timestamp, close=hour == 17, source_contract=contract)
+            actual = _observation(selected_bars, timestamp, close=hour == 17) if timestamp <= now else None
             status = "PENDING_MATURITY" if timestamp > now else "MATURE_AWAITING_DATA" if actual is None else "COMPARED" if estimate else "NO_SAVED_ESTIMATE"
             rows.append({"symbol": symbol, "action_date": action_date, "clock_local": clock,
                          "timestamp": timestamp, "planned_price_low": low, "planned_price_mid": mid, "planned_price_high": high,
@@ -302,7 +311,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                          "price_error_fraction": actual[0] / mid - 1 if actual and estimate else None,
                          "in_planned_range": bool(low <= actual[0] <= high) if actual and estimate else None,
                          "comparison_status": status,
-                         **_evidence_columns("actual", _boundary_evidence(bars, timestamp, close=hour == 17,
+                         "actual_observation_source": (str(selected_bars.observation_source.iloc[0])
+                            if len(selected_bars) and "observation_source" in selected_bars else None),
+                         **_evidence_columns("actual", _boundary_evidence(selected_bars, timestamp, close=hour == 17,
                             now=now, inventory=inventory, symbol=str(symbol).upper()))})
     return pd.DataFrame(rows)
 
