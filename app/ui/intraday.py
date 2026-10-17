@@ -11,7 +11,7 @@ from typing import Mapping
 from app.ui.intraday_data import (
     PACIFIC, WINDOWS, FORECAST_MODES, DEFAULT_FORECAST_MODE, DEFAULT_METRIC_SCOPE, METRIC_SCOPES,
     IntradaySnapshot, configured_actor, default_databases, error_correlations,
-    filter_forecasts, forecast_metrics, latest_matrix, load_intraday_snapshot,
+    cycle_symbol_evidence, filter_forecasts, forecast_metrics, load_intraday_snapshot, symbol_coverage,
     metric_rows, model_metrics, prediction_timing, probability, probability_geometry, regime_metrics, source_dataset_label, timestamp,
     reference_input_label, reference_input_provenance, saved_forecast_context,
     window_rows,
@@ -41,6 +41,13 @@ def age(value, now):
         return "unknown"
     seconds = (now - parsed).total_seconds()
     return "future timestamp" if seconds < 0 else f"{seconds / 60:.1f}m ago"
+
+
+def coverage_text(row):
+    if not row.get("coverage_reason"):
+        return ""
+    return (f"{row['coverage_reason']} Recorded {clock(row.get('evidence_at'))}; "
+            f"cycle started {clock(row.get('started_at'))}; reference {clock(row.get('reference_at'))}.")
 
 
 def _label(parent, text="", *, color=TEXT, size=10, bold=False, **kwargs):
@@ -166,7 +173,7 @@ class IntradayTab:
         self.consensus_page = pages["consensus"]
         chooser = tk.Frame(self.consensus_page, bg=SURFACE)
         chooser.pack(fill="x", padx=14, pady=(10, 4))
-        _label(chooser, "Latest saved issue in filters for", color=MUTED_TEXT).pack(side="left")
+        _label(chooser, "Saved issue / cycle coverage for", color=MUTED_TEXT).pack(side="left")
         self.consensus_box = ttk.Combobox(chooser, textvariable=self.consensus_choice, state="readonly", width=62)
         self.consensus_box.pack(side="left", padx=10)
         self.consensus_box.bind("<<ComboboxSelected>>", lambda _event: self._render_consensus())
@@ -193,9 +200,10 @@ class IntradayTab:
             ("direction", "Class", 90), ("count", "Models", 80), ("ensemble", "Ensemble", 95),
             ("outcome", "Outcome", 90), ("issue", "Issue Pacific", 170), ("target", "Target close Pacific", 170),
             ("age", "Issue age", 100), ("basis", "Availability evidence", 140), ("mode", "Mode", 140),
+            ("coverage", "Latest cycle evidence", 500),
             ("timing", "Forecast timing", 190),
         ])
-        _label(pages["matrix"], "Newest issue per PC/symbol/source dataset/mode in the filters. No newer issue in 15m is a freshness observation; it does not change the saved outcome.",
+        _label(pages["matrix"], "Newest saved issue per PC/symbol/source dataset/mode. Symbols recorded in saved cycles remain visible without a forecast. Missing-issue rows use the cycle start date for the session filter and do not enter scores. A later cycle failure does not change an older saved probability or outcome.",
                color=MUTED_TEXT, wraplength=1200).pack(anchor="w", padx=10, pady=5)
         _label(pages["metrics"], "The score cohort applies before each window. By default, scores use observed outcomes from forecasts issued before target open. During-target and late catch-up results remain available in their own cohorts; All saved outcomes retains the historical combined view. Pending, missing and unscorable targets do not enter score denominators. The majority baseline describes the same scored sample and is not a prediction. Small samples cannot establish model quality or trading profitability.",
                color=MUTED_TEXT, wraplength=1200, justify="left").pack(anchor="w", padx=10, pady=8)
@@ -248,14 +256,17 @@ class IntradayTab:
     def set_snapshot(self, snapshot: IntradaySnapshot):
         self.snapshot = snapshot
         research = research_choices(self.model_research)
+        coverage = cycle_symbol_evidence(snapshot)
         choices = {
-            "pc": ["All", *sorted({str(row.get("pc")) for row in snapshot.forecasts} | set(research["pcs"]))],
-            "symbol": ["All", *sorted({str(row.get("symbol")) for row in snapshot.forecasts} | set(research["symbols"]))],
-            "source_dataset": ["All", *sorted({source_dataset_label(row) for row in snapshot.forecasts} | set(research["datasets"]))],
+            "pc": ["All", *sorted({str(row.get("pc")) for row in (*snapshot.forecasts, *coverage)} | set(research["pcs"]))],
+            "symbol": ["All", *sorted({str(row.get("symbol")) for row in (*snapshot.forecasts, *coverage)} | set(research["symbols"]))],
+            "source_dataset": ["All", *sorted({source_dataset_label(row) for row in (*snapshot.forecasts, *coverage)} | set(research["datasets"]))],
             "session": ["All", *sorted({timestamp(row.get("issued_at")).astimezone(PACIFIC).date().isoformat()
-                         for row in snapshot.forecasts if timestamp(row.get("issued_at"))}, reverse=True)],
+                         for row in snapshot.forecasts if timestamp(row.get("issued_at"))}
+                         | {timestamp(row.get("started_at")).astimezone(PACIFIC).date().isoformat()
+                            for row in coverage if timestamp(row.get("started_at"))}, reverse=True)],
             "reference_slot": ["All", *sorted({timestamp(row.get("reference_at")).astimezone(PACIFIC).strftime("%H:%M")
-                               for row in snapshot.forecasts if timestamp(row.get("reference_at"))})],
+                               for row in (*snapshot.forecasts, *coverage) if timestamp(row.get("reference_at"))})],
         }
         for key, values in choices.items():
             self.boxes[key].configure(values=values)
@@ -272,15 +283,30 @@ class IntradayTab:
         self.visible_rows = filter_forecasts(self.snapshot, pc=self.pc.get(), symbol=self.symbol.get(),
                                             session=self.session.get(), mode=self.mode.get(), reference_slot=self.reference_slot.get(),
                                             source_dataset=self.source_dataset.get())
-        newest = latest_matrix(self.visible_rows)
-        self.consensus_rows = {f"{row.get('pc')} · {row.get('symbol')} · {source_dataset_label(row)} · {row.get('mode', 'shadow')}": row
-                               for row in newest}
+        newest = symbol_coverage(self.snapshot, pc=self.pc.get(), symbol=self.symbol.get(),
+            session=self.session.get(), mode=self.mode.get(), reference_slot=self.reference_slot.get(),
+            source_dataset=self.source_dataset.get())
+        missing = [row for row in newest if row["forecast"] is None]
+        coverage_status = (
+            f"Coverage: {len(newest)-len(missing)} with saved forecasts · {len(missing)} without"
+            + (": " + ", ".join(f"{row['pc']} {row['symbol']} ({source_dataset_label(row)})" for row in missing) if missing else "")
+            + ". Scope comes from saved cycle records; absent peer scope remains unknown.")
+        self.consensus_evidence = {f"{row.get('pc')} · {row.get('symbol')} · {source_dataset_label(row)} · {row.get('mode', 'shadow')}": row
+                                   for row in newest}
+        self.consensus_rows = {key: row["forecast"] for key, row in self.consensus_evidence.items()}
         self.consensus_box.configure(values=list(self.consensus_rows))
         if self.consensus_choice.get() not in self.consensus_rows:
             self.consensus_choice.set(next(iter(self.consensus_rows), ""))
         self._render_consensus()
         matrix = []
-        for row in newest:
+        for display in newest:
+            row = display["forecast"]
+            detail = coverage_text(display)
+            if row is None:
+                matrix.append(((display.get("pc"), display.get("symbol"), source_dataset_label(display), "—",
+                    "unavailable", "—", "No saved forecast", "—", "—", "—", "—", "—", display.get("mode"),
+                    detail, "No saved forecast"), ("missing",)))
+                continue
             p = probability(row.get("probability_not_down"))
             classification = "not-down" if p is not None and p >= .5 else "down" if p is not None else "unavailable"
             issued = timestamp(row.get("issued_at"))
@@ -292,7 +318,7 @@ class IntradayTab:
             matrix.append(((row.get("pc"), row.get("symbol"), source_dataset_label(row), percent(p), classification,
                             f"{row.get('successful_count', 0)}/{row.get('configured_count', 0)}", row.get("ensemble_status", "unknown"),
                             row["outcome_status"], clock(row.get("issued_at")), clock(row.get("target_close")), age_text,
-                            row.get("availability_basis", "unknown"), row.get("mode", "shadow"), prediction_timing(row)),
+                            row.get("availability_basis", "unknown"), row.get("mode", "shadow"), detail, prediction_timing(row)),
                            (classification.split(" · ")[0],)))
         _replace(self.matrix, matrix)
         cohort = metric_rows(self.visible_rows, scope=self.metric_scope.get())
@@ -301,7 +327,7 @@ class IntradayTab:
             f" · before target open {sum(prediction_timing(row) == 'Before target open' for row in self.visible_rows)}"
             f" · during target {sum(prediction_timing(row) == 'During target' for row in self.visible_rows)}"
             f" · at/after close {sum(prediction_timing(row) == 'At or after target close' for row in self.visible_rows)}."
-            " Consensus and matrix retain all saved issues.")
+            " Consensus and matrix retain all saved issues.\n" + coverage_status)
         _replace(self.window_table, [(self._metric_values(window, forecast_metrics(window_rows(cohort, window, self.snapshot.loaded_at))), ()) for window in WINDOWS])
         metrics = model_metrics(current)
         detailed = [(self._metric_values(name, values), ()) for name, values in metrics.items()]
@@ -342,12 +368,13 @@ class IntradayTab:
         for child in self.models_frame.winfo_children():
             child.destroy()
         row = getattr(self, "consensus_rows", {}).get(self.consensus_choice.get())
+        display = getattr(self, "consensus_evidence", {}).get(self.consensus_choice.get()) or row
         # The research view remains usable before a manual trader has produced
         # a forecast. Explicit PC/source filters still apply in that case.
-        pc = row.get("pc") if row else self.pc.get()
-        source = source_dataset_label(row) if row else self.source_dataset.get()
+        pc = display.get("pc") if display else self.pc.get()
+        source = source_dataset_label(display) if display else self.source_dataset.get()
         view = research_view(self.model_research, pc=self.local_pc if pc == "All" else pc,
-                             symbol=row.get("symbol") if row else self.symbol.get(),
+                             symbol=display.get("symbol") if display else self.symbol.get(),
                              source_dataset=None if source == "All" else source)
         self.research_status.configure(text=view["summary"])
         if view.get("holdout_label"):
@@ -357,12 +384,17 @@ class IntradayTab:
             percent(item.get("validation_balanced_accuracy")), numeric(item.get("baseline_improvement")),
             numeric(item.get("holdout_brier")), numeric(item.get("seconds"))), ()) for item in view["rows"]])
         if row is None:
-            self.consensus_context.configure(text="")
-            self.consensus_value.configure(text="No saved predictions in these filters", fg=MUTED_TEXT)
-            self.consensus_meta.configure(text="The display will populate when a trained ensemble persists its issue. Historical replay is selectable separately.")
+            self.consensus_context.configure(text=coverage_text(display) if display else "")
+            self.consensus_value.configure(text="No saved forecast for this symbol" if display else "No saved predictions in these filters", fg=MUTED_TEXT)
+            self.consensus_meta.configure(text=(
+                f"{display.get('pc')} · {display.get('symbol')} · Source dataset {source_dataset_label(display)} · {display.get('mode')}\n"
+                "Saved cycle evidence provides no probability or model result for this selection. "
+                "A missing forecast alone does not establish training, order, fill or market-wide trading activity."
+                if display else "The display will populate when a trained ensemble persists its issue. Historical replay is selectable separately."))
             return
         p = probability(row.get("probability_not_down"))
-        self.consensus_context.configure(text=saved_forecast_context(row, now=self.snapshot.loaded_at))
+        self.consensus_context.configure(text=saved_forecast_context(row, now=self.snapshot.loaded_at)
+            + ("\nLatest cycle evidence: " + coverage_text(display) if display.get("coverage_reason") else ""))
         classification = "not-down" if p is not None and p >= .5 else "down" if p is not None else "unavailable"
         color = SUCCESS if classification == "not-down" else DANGER if classification == "down" else MUTED_TEXT
         self.consensus_value.configure(text=f"{percent(p)} ensemble probability · {classification}", fg=color)
@@ -442,7 +474,7 @@ class IntradayTab:
             latest[(row.get("source_label"), row.get("pc"))] = row
         def evidence(row):
             keys = ("mode", "timings", "latency", "resources", "resources_before", "resources_after", "acquisition",
-                    "failures", "finished_at", "completed_at", "workload", "successful_symbols", "failed_symbols",
+                    "failures", "failed_symbol_names", "symbols", "finished_at", "completed_at", "workload", "successful_symbols", "failed_symbols",
                     "total_cycle_seconds", "compute_cycle_seconds", "compute_persist_seconds", "acquisition_seconds",
                     "process_cpu_seconds", "exceeds_15m", "overrun_seconds", "measurement_scope",
                     "cumulative_attempt_seconds", "wall_elapsed_seconds", "wall_exceeds_15m", "wall_overrun_seconds",
