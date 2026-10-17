@@ -24,7 +24,7 @@ from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, d
 from .sizing import size
 
 
-VERSION = "intraday-transparent-technical-sizing-research-v1"
+VERSION = "intraday-transparent-technical-sizing-research-v2"
 
 
 def _finite(value, label):
@@ -334,6 +334,26 @@ def _indicator_config(specs, window):
     return _clean({"indicators": [asdict(spec) for spec in specs], "window": asdict(window)})
 
 
+def _frozen_synthetic_policy(snapshot):
+    """Read the issued forecast's population choice, never current PC settings."""
+    scope = snapshot.get("dataset_scope")
+    manifest = snapshot.get("manifest")
+    if scope is not None and not isinstance(scope, Mapping):
+        raise ContractError("Frozen sizing dataset scope is invalid")
+    declared = []
+    for basis, values in (("dataset_scope", scope), ("manifest", manifest)):
+        if isinstance(values, Mapping) and "synthetic_policy" in values:
+            policy = values["synthetic_policy"]
+            if policy is None and basis == "manifest":
+                continue  # Legacy unrecorded population retains its original include behavior.
+            if not isinstance(policy, str) or policy not in {"include", "exclude"}:
+                raise ContractError("Frozen sizing synthetic policy is invalid")
+            declared.append((policy, basis))
+    if len({policy for policy, _ in declared}) > 1:
+        raise ContractError("Frozen sizing population declarations disagree")
+    return declared[0] if declared else ("include", "legacy_unrecorded")
+
+
 def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_specs,
                        window_policy, forecast_snapshot, forecast_snapshot_hash):
     """Calculate solely from a verified frozen runtime snapshot's modern bars.
@@ -341,6 +361,8 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
     ``candles`` may be that snapshot's records or a frame containing additional
     future rows; admitted rows must match the frozen original byte semantics.
     No later price revision can replace the information used by the forecast.
+    The frozen synthetic policy is applied before indicators and their warmup,
+    so an observed-only forecast cannot acquire synthetic sizing inputs.
     """
     identity(symbol)
     reference, cutoff = instant(reference_at), instant(data_cutoff)
@@ -355,9 +377,11 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
     if not specs or len({spec.name for spec in specs}) != len(specs):
         raise ContractError("Unique explicit indicator specifications required")
     config = _indicator_config(specs, window_policy)
+    synthetic_policy, population_basis = _frozen_synthetic_policy(forecast_snapshot)
     value = {"version": VERSION, "symbol": symbol, "reference_at": reference.isoformat(),
              "data_cutoff": cutoff.isoformat(), "forecast_snapshot_hash": forecast_snapshot_hash,
              "indicator_config": config, "indicator_config_hash": digest(config),
+             "input_population": {"synthetic_policy": synthetic_policy, "basis": population_basis},
              "status": "unavailable", "features": {}, "candles": [], "reason": None}
     try:
         def admitted(rows):
@@ -380,6 +404,13 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
         value["reason"] = "original_completed_reference_unavailable"
     else:
         admitted = len(frame)
+        excluded_synthetic = int(frame.synthetic.sum()) if synthetic_policy == "exclude" else 0
+        if synthetic_policy == "exclude":
+            frame = frame.loc[~frame.synthetic].copy()
+            if frame.empty or frame.opened_at.iloc[-1] != pd.Timestamp(reference):
+                value["reason"] = "original_observed_reference_unavailable"
+                return IndicatorSnapshot(digest(value), encoded(value))
+        population_rows = len(frame)
         if window_policy.basis == "contiguous_session":
             frame = frame.loc[frame.session_id.eq(frame.session_id.iloc[-1])].copy()
             breaks = frame.opened_at.diff().ne(pd.Timedelta(STEP))
@@ -401,14 +432,18 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
                      reference_price_basis="frozen_inference" if "reference_open" in inference else "frozen_bar",
                      source_id=str(frame.source_id.iloc[0]), source_dataset=str(frame.source_dataset.iloc[0]),
                      information_available_at=frame.available_at.max().isoformat(),
-                     provenance={"used_rows": len(frame), "excluded_window_rows": admitted - len(frame),
+                     provenance={"used_rows": len(frame), "input_candle_rows": admitted,
+                        "excluded_synthetic_rows": excluded_synthetic,
+                        "excluded_window_rows": population_rows - len(frame),
                         "synthetic_rows": int(frame.synthetic.sum()),
                         "availability_kinds": sorted(frame.availability_kind.unique().tolist()),
                         "session_ids": frame.session_id.drop_duplicates().tolist(),
                         "elapsed_minutes_previous": float(frame.opened_at.diff().dt.total_seconds().iloc[-1] / 60) if len(frame) > 1 else None,
                         "elapsed_minutes_total": float((frame.opened_at.iloc[-1] - frame.opened_at.iloc[0]).total_seconds() / 60),
                         "gaps_or_closures": int(frame.opened_at.diff().dropna().ne(pd.Timedelta(STEP)).sum()),
-                        "missing_policy": "no_filling", "synthetic_policy": "include_validated_with_original_evidence",
+                        "missing_policy": "no_filling", "synthetic_policy": (
+                            "exclude_before_indicators" if synthetic_policy == "exclude" else "include_validated_with_original_evidence"),
+                        "synthetic_policy_basis": population_basis,
                         "derivative_basis": "first_and_second_differences_per_observed_step"})
         value["candles_hash"] = digest(value["candles"])
     return IndicatorSnapshot(digest(value), encoded(value))

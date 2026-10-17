@@ -3,6 +3,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 import json
 import socket
+import sqlite3
 
 import pytest
 
@@ -252,6 +253,51 @@ def test_unknown_post_stays_fenced_across_recovery_and_new_forecast(env, error):
     value = env.executor.step(env.forecast)
     assert value['disposition'] == 'submission_recovery_required'
     assert value['desired_quantity'] == 4
+    assert len(env.broker.posts) == 1 and env.broker.deletes == []
+
+
+def test_failed_final_forecast_read_records_exact_operation_without_post(env, monkeypatch):
+    original = execution._saved_forecast
+    checks = []
+    def busy_after_claim(*args, **kwargs):
+        current = record(env)
+        checks.append(current["state"] if current else None)
+        if current and current["state"] == "SENDING":
+            raise sqlite3.OperationalError("database is locked")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(execution, "_saved_forecast", busy_after_claim)
+    value = env.executor.step(env.forecast)
+    failure = value["evidence"]["submission_failure"]
+    assert value["evidence"]["error_type"] == "OperationalError"
+    assert failure["stage"] == "final_gate"
+    primary = failure["original"]["chain"][0]
+    assert primary["message"] == "database is locked"
+    assert primary["frames"][-1]["function"] == "busy_after_claim"
+    assert record(env)["state"] == "UNKNOWN" and env.broker.posts == []
+    assert env.executor.intents.history(env.forecast["forecast_id"])[-1]["evidence"]["submission_failure"] == failure
+    env.executor.recover()
+    assert record(env)["state"] == "UNKNOWN" and env.broker.posts == []
+
+
+@pytest.mark.parametrize("sender_succeeds", [False, True])
+def test_submission_activity_preserves_original_and_journal_failure_without_resend(env, monkeypatch, sender_succeeds):
+    if not sender_succeeds:
+        env.broker.post_error = TimeoutError("Bearer private-fixture-token")
+    def failed_outcome(*args):
+        raise sqlite3.OperationalError("disk I/O error")
+    monkeypatch.setattr(env.executor.journal, "outcome", failed_outcome)
+    value = env.executor.step(env.forecast)
+    failure = value["evidence"]["submission_failure"]
+    assert failure["stage"] == ("record_acceptance" if sender_succeeds else "send")
+    assert failure["original"]["chain"][0]["type"] == ("OperationalError" if sender_succeeds else "TimeoutError")
+    assert failure["uncertainty_persistence_error"]["chain"][0]["message"] == "disk I/O error"
+    assert failure.get("returned_broker_order_id") == ("123" if sender_succeeds else None)
+    assert "private-fixture-token" not in json.dumps(value)
+    assert value["submitted_quantity"] is None and value["broker_order_id"] is None
+    assert record(env)["state"] == "SENDING"
+    history = env.executor.intents.history(env.forecast["forecast_id"])
+    assert history[-1]["evidence"]["submission_failure"] == failure
+    assert env.executor.step(env.forecast)["disposition"] == "recover_existing_intention"
     assert len(env.broker.posts) == 1 and env.broker.deletes == []
 
 

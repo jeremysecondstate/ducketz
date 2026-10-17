@@ -462,8 +462,13 @@ def test_scoring_audits_legacy_synthetic_and_continues_after_unavailable_target(
     first_missing=store.observe(forecasts["AAPL"],as_of="2026-10-08T17:46:00Z")
     first_legacy=target("AAPL",synthetic=True)
     first_hash=store.record_candle(first_legacy)
-    previous_synthetic=store.observe(forecasts["MSFT"],as_of="2026-10-08T17:46:00Z",
-                                    candle=target("MSFT",synthetic=True))
+    # Seed a historical outcome using the legacy admission behavior. Production
+    # observe now rejects this proof; the scoring loop must audit saved evidence.
+    from ml.intraday import data
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr(data, "synthetic_continuity_verified", lambda candle: True)
+        previous_synthetic=store.observe(forecasts["MSFT"],as_of="2026-10-08T17:46:00Z",
+                                        candle=target("MSFT",synthetic=True))
     preserved={symbol:store.revisions(forecasts[symbol]["forecast_id"]) for symbol in ("AAPL","MSFT")}
     original_candles=store.observed_candles()
     calls,passes=[],[]
@@ -488,7 +493,10 @@ def test_scoring_audits_legacy_synthetic_and_continues_after_unavailable_target(
         pause=lambda seconds:passes.append(seconds))
     assert calls==["AAPL","IONQ","AAPL"] and passes==[3,3]
     assert store.revisions(forecasts["AAPL"]["forecast_id"])==preserved["AAPL"]==[first_missing]
-    assert store.revisions(forecasts["MSFT"]["forecast_id"])==preserved["MSFT"]==[previous_synthetic]
+    revised = store.revisions(forecasts["MSFT"]["forecast_id"])
+    assert revised[:1] == preserved["MSFT"] == [previous_synthetic]
+    assert len(revised) == 2 and revised[-1]["status"] == "unscorable"
+    assert revised[-1]["invalidates_revision_id"] == previous_synthetic["revision_id"]
     scored=store.revisions(forecasts["IONQ"]["forecast_id"])
     assert len(scored)==1 and scored[0]["status"]=="scored" and scored[0]["target_not_down"] is True
     assert store.forecasts()==list(forecasts.values())

@@ -14,6 +14,7 @@ from ml.intraday.prediction import ContractError, STEP, digest, instant
 from ml.intraday.runtime import LiveHistories, ShadowRunner
 from ml.intraday.store import ShadowStore, encoded
 from tests.test_intraday_store import forecast
+from tests.test_intraday_verified_no_trade import attest, sparse_rows
 
 
 OPEN = instant("2026-10-08T17:30:00Z")
@@ -293,12 +294,12 @@ def verified_synthetic():
     session = data.SessionBounds("2026-10-08", "2026-10-08T11:00:00Z", "2026-10-09T00:00:00Z")
     previous = observation(opened_at=(OPEN - STEP).isoformat(), available_at=OPEN.isoformat(),
         session_id=session.session_id, session_open=session.opened_at, session_close=session.closed_at)
-    attempts = [data.IntervalResponse(str(index), "AAPL", SOURCE, "EQUS.MINI", OPEN.isoformat(),
+    attempts = [attest(data.IntervalResponse(str(index), "AAPL", SOURCE, "EQUS.MINI", OPEN.isoformat(),
         (OPEN + STEP).isoformat(), (OPEN + STEP + timedelta(seconds=5 * index)).isoformat(),
-        (OPEN + STEP + timedelta(seconds=5 * index + 1)).isoformat(), "success", (), OPEN.isoformat(),
-        (OPEN + STEP).isoformat(), "successful covered provider omission") for index in (1, 2)]
-    result = data.resolve_interval(attempts, session=session, previous=previous)
-    assert result["status"] == "synthetic_no_trade"
+        (OPEN + STEP + timedelta(seconds=5 * index + 1)).isoformat(), "success", sparse_rows(OPEN), OPEN.isoformat(),
+        (OPEN + STEP).isoformat())) for index in (1, 2)]
+    result = data.resolve_minute_candle(attempts, session=session, previous=previous)
+    assert result["status"] == "mixed_synthetic"
     return result["candle"]
 
 
@@ -324,19 +325,29 @@ def test_verified_synthetic_full_quarter_retains_separate_outcome_status(tmp_pat
 
 
 @pytest.mark.parametrize("synthetic", [False, True])
-def test_shadow_invalid_candidate_preserves_existing_scored_or_synthetic_revision(tmp_path, synthetic):
+def test_shadow_invalid_candidate_preserves_existing_scored_or_synthetic_revision(tmp_path, monkeypatch, synthetic):
     store = ShadowStore(tmp_path / "prior-outcome.sqlite3")
     own, peer = forecasts(store)
     original = observation(synthetic=synthetic, evidence_json='{"legacy_confirmations":2}')
-    prior = store.observe(own, as_of="2026-10-08T17:49:00Z", candle=original)
+    # Seed an immutable legacy revision under the former admission rule, then
+    # restore the current guard before exercising new candidate selection.
+    with monkeypatch.context() as legacy:
+        legacy.setattr(data, "synthetic_continuity_verified", lambda _: True)
+        prior = store.observe(own, as_of="2026-10-08T17:49:00Z", candle=original)
     saved = raw_rows(store)
-    # The old synthetic score remains immutable even though its provenance is no
-    # longer sufficient to admit that candle as a fresh scoring candidate.
+    # The old synthetic score remains immutable while the current admission
+    # rule appends an unavailable revision instead of reusing its label.
     incoming = data.History(frame([observation(synthetic=True,
         evidence_json='{"legacy_confirmations":2}', available_at="2026-10-08T17:48:00Z", close=99)]),
         {"source_dataset": "EQUS.MINI"})
     scores = ShadowRunner(store=store, pc="Scout", symbols=("AAPL",)).score_available(
         {"AAPL": incoming}, as_of=NOW, mode="live")
-    assert scores == [prior] and store.revisions(own["forecast_id"]) == [prior]
+    if synthetic:
+        revisions = store.revisions(own["forecast_id"])
+        assert revisions[0] == prior and len(revisions) == 2
+        assert scores == [revisions[-1]] and revisions[-1]["status"] == "unscorable"
+        assert revisions[-1]["target_not_down"] is None
+    else:
+        assert scores == [prior] and store.revisions(own["forecast_id"]) == [prior]
     assert prior["status"] == ("synthetic" if synthetic else "scored")
     assert raw_rows(store) == saved and not store.revisions(peer["forecast_id"])
