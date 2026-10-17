@@ -361,6 +361,40 @@ def _validate_snapshot(snapshot: Mapping, symbols: set[str], scope: str, now: pd
             _number(allocation.get(name, 0), name)
 
 
+def _observed_planning_points(package: Mapping) -> tuple[dict, dict]:
+    """Exclude historical carry assumptions from a new composition, without relabeling its source."""
+    points, excluded = deepcopy(package["price_path"]["points"]), {}
+    for key, point in points.items():
+        marker = point.get("reference_is_synthetic", False)
+        count = point.get("synthetic_close_sample_count", 0)
+        fill_count = point.get("reference_fill_count", 0)
+        if (type(marker) is not bool or type(count) is not int or count < 0
+                or type(fill_count) is not int or fill_count < 0):
+            raise ValueError("Invalid planning synthetic-reference provenance")
+        anchor_is_synthetic = marker or fill_count > 0 or point.get("reference_completion_status") == "AVAILABLE_SYNTHETIC"
+        if not anchor_is_synthetic and count == 0:
+            continue
+        reasons = (["SYNTHETIC_CURRENT_REFERENCE"] if anchor_is_synthetic else []) + (
+            ["SYNTHETIC_HISTORICAL_SAMPLES"] if count else [])
+        excluded[key] = {"reasons": reasons, "source_point_sha256": content_sha256(point),
+            "source_status": point["status"], "source_sample_count": point["sample_count"],
+            "source_synthetic_close_sample_count": count, "source_reference_is_synthetic": marker,
+            "source_reference_fill_count": fill_count,
+            "source_reference_completion_status": point.get("reference_completion_status")}
+        # Exported aggregate medians cannot be recomputed after removing their
+        # synthetic constituent observations. Preserve the authentic source as
+        # evidence and make this projection unavailable instead of guessing.
+        point.update(status="UNAVAILABLE_REFERENCE_PRICE", reason="UNVERIFIED_SYNTHETIC_REFERENCE_EXCLUDED",
+            reference_price=None, ratio_median=None, sample_count=0,
+            observed_only_sample_count=0, synthetic_close_sample_count=0,
+            source_point_sha256=excluded[key]["source_point_sha256"],
+            planning_exclusion_reasons=reasons)
+        for field in ("planned_price_low", "planned_price_mid", "planned_price_high",
+                      "historical_price_low", "historical_price_high"):
+            point[field] = None
+    return points, excluded
+
+
 def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = None, *, action_date: str,
                        expected_universes: Mapping[str, Sequence[str]], expected_package_sha256: Mapping[str, str],
                        account_scope_sha256: str, as_of: str, executor_owner: str,
@@ -388,6 +422,7 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
     selected = {}
     all_symbols, all_rows, points = set(), [], {}
     price_metadata = []
+    planning_exclusions = {}
     for package in packages:
         _validate_package(package)
         owner = package["owner_id"]
@@ -409,7 +444,9 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
         all_symbols |= symbols
         selected[owner] = package
         price_metadata.append({k: v for k, v in package["price_path"].items() if k != "points"})
-        points.update(deepcopy(package["price_path"]["points"]))
+        observed_points, exclusions = _observed_planning_points(package)
+        points.update(observed_points)
+        planning_exclusions[owner] = exclusions
     # Each package already validates its exact source/dataset against its own
     # forecasts. Independent producers may use different genuine sources; the
     # interpretation and every planning-policy field must still agree.
@@ -513,6 +550,12 @@ def compose_joint_plan(packages: Sequence[Mapping], snapshot: Mapping | None = N
         plan.update(price_lineage_contract="owner-scoped-planning-price-lineage-v1",
             owner_price_lineage=owner_price_lineage,
             source_price_paths={owner: deepcopy(selected[owner]["price_path"]) for owner in sorted(selected)})
+    if any(planning_exclusions.values()):
+        plan.update(planning_observation_policy="observed-only-joint-planning-projection-v1",
+            planning_point_exclusions=planning_exclusions,
+            source_price_paths_usage="IMMUTABLE_SOURCE_EVIDENCE_ONLY; excluded points cannot supply projection prices")
+        plan["limitations"].append(
+            "Source packages retain historical planning assumptions as evidence. Synthetic anchors or historical samples are excluded from this new projection; no replacement price or median is invented.")
     plan_id = "joint-capital:" + content_sha256(plan)
     plan["plan_id"] = plan_id
     plan["owner_views"] = {owner: {"plan_id": plan_id, "owner_id": owner,
