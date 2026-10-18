@@ -1,8 +1,8 @@
 # Directional Loop B
 
-> **Current deployment (2026-09-04):** Directional Loop B runs once as stage 2
-> of the sequential overnight owner. The former 30-minute supervisor is stopped;
-> cadence details below are legacy implementation capability.
+Reviewed on October 11, 2026 against the Atlas working checkout at `90704d21801f60426493bd6cc650a7fac38d4f61` plus separately inventoried working changes. Source contracts, historical observations and local schedules are different evidence. See [the relevance review](../RELEVANCE_REVIEW.md) for scope and limitations; Scout must establish its own installed state.
+
+Loop B remains the directional model/publication component. In Atlas's split Stats-first workflow its bounded training segment follows saved Stats and substantive model review; it is no longer described by an unconditional stage-2 number. The 30-minute supervisor and its freshness alarms below are retained capabilities, not today's schedule. The independent stock Gameplan builds its own target contracts from accepted research evidence; Loop B target geometry must not be copied into stock execution windows.
 
 ## Identity
 
@@ -11,7 +11,7 @@
 - Runtime entry point: `python -m ml.prediction_runtime`
 - Owning package: `ml`
 - Classification: bounded overnight model/prediction stage
-- Scheduling mechanism: invoked after successful Loop A close fetch
+- Scheduling mechanism: invoked by an eligible reviewed preparation segment after the required acquisition and Stats/model-review boundaries
 - Cadence and phase: once per overnight run
 - Lock or single-writer mechanism: `.duckets-ml-prediction-runtime.lock` plus Loop A’s shared datastore-cycle lock during each run
 - Primary code evidence: **Confirmed.** `ml/prediction_runtime.py:26`, `ml/prediction_runtime.py:76`, `ml/prediction_runtime.py:189`, `ml/prediction_runtime.py:192`, `ml/prediction_runtime.py:209`
@@ -79,9 +79,9 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 - **Confirmed:** Strategy consumes this run’s samples, LIVE probabilities, configuration and cutoff. `ml/strategy_runtime.py:63`, `ml/strategy_runtime.py:82`, `ml/strategy_runtime.py:91`
 - **Confirmed:** Daily ALFRED reads the current sample decision grid to scope planned series/decision coverage; this is asynchronous historical-coverage feedback, not a same-cycle barrier. `datafetching/fred_alfred_readiness.py:400`, `datafetching/fred_alfred_readiness.py:420`
 
-### Timing and control relationships
+### Legacy supervisor timing and current control boundary
 
-**Confirmed:** Loop B runs at the 30-minute `:06`/`:36` phase and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options also uses phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command`
+**Legacy recurring capability:** Loop B runs at the 30-minute `:06`/`:36` phase and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options also uses phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command`
 
 ## Prediction contribution
 
@@ -142,7 +142,7 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 
 ## Runtime and evaluation monitoring
 
-**Confirmed deployment contract:** Directional Loop B is a standalone hidden
+**Historical recurring deployment contract:** Directional Loop B was a standalone hidden
 owner whose worker owns the executable singleton lock
 `.duckets-ml-prediction-runtime.lock`. The monitor verifies the exact pair,
 lock, immutable run receipt/pointer, freshness, route inventory, Strategy
@@ -151,7 +151,7 @@ publication. Freshness uses the receipt's `promoted_at` availability clock,
 warns after 35 minutes, and fails after 45 minutes. `ml/system_monitor.py`,
 `docs/datafetch-ml/start_all_loops.ps1:18`
 
-Daily monitoring evaluates every public and component route—`1h`, `4h`, `1d`,
+The retained daily-monitor implementation evaluates every public and component route—`1h`, `4h`, `1d`,
 `1w`, and `1w-d1` through `1w-d5`—and keeps insufficient mature LIVE labels
 separate from measured poor results. Weekly monitoring is not an alias for this
 loop's `1w` route: it uses immutable `LIVE` evaluations from the last two
@@ -163,7 +163,7 @@ and at least 30 independent observations per period, and otherwise returns
 **Observed 2026-08-19 22:45:36 UTC:** one Loop B launcher/worker pair, matching
 worker lock, active primary logs, current publication, Strategy lineage, and
 Rolling Forecast UI contract passed. Immutable run
-`ml/runs/20260819T223552.337574Z` passed manifest and publication-receipt
+`<dated immutable run retained in the original report>` passed manifest and publication-receipt
 verification. Its 54 intelligence rows were all `OPERATIONALLY_CURRENT`; every
 symbol had primary `1h`, `4h`, `1d`, and `1w` coverage and no stale cell.
 
@@ -172,7 +172,7 @@ remaining-week bundle was `1w`, `1w-d1` (Thursday), and `1w-d2` (Friday).
 Slots `1w-d3` through `1w-d5` were correctly
 `NOT_APPLICABLE_TO_REMAINING_WEEK`, with no synthesized probability, rather
 than missing forecasts. A 22:59:29 UTC read-only follow-up verified a newer
-current run `ml/runs/20260819T225107.106040Z` with the same 54-row, stale-free
+current run `<dated immutable run retained in the original report>` with the same 54-row, stale-free
 UI contract. Run paths and the weekday-specific prefix are observations, not
 fixed architecture.
 

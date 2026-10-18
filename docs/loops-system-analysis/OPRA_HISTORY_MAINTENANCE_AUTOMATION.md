@@ -1,9 +1,13 @@
 # OPRA strategy-history maintenance contract
 
+**MIXED — current acquisition contract with dated catch-up evidence.** Reviewed October 11, 2026 against source and the local native inventory. Retain the bounded three-schema maintenance, cursor/preflight and single-writer rules. September 4 counts and outcomes remain historical; newer watchlists do not inherit their completion. See [the relevance review](RELEVANCE_REVIEW.md).
+
 This checked-in file is the durable production OPRA maintenance contract. The
-active owner is Loop A's bounded stage inside `ml.overnight_runtime`. The former
-`loops-opra-history-maintenance` standalone Scheduled task is paused to prevent
-duplicate ownership. Read this file before manually invoking that fallback.
+implemented owner is Loop A's bounded acquisition stage, also used by split
+preparation through `ml.overnight_runtime`. Its current local registration must
+be read independently. The former standalone maintenance task is historical;
+manual fallback requires an explicitly authorized invocation without a competing
+owner. This contract does not establish current provider entitlement or coverage.
 
 ## Purpose and ownership boundary
 
@@ -24,13 +28,13 @@ If the legacy Options runtime is explicitly launched, it uses
 
 ## Exactly one maintenance attempt
 
-Operate from `C:\dev\ducketz`. First verify that no OPRA history synchronization
+Operate from `<checkout>`. First verify that no OPRA history synchronization
 is already active by observing the canonical sync lock and its PID through the
 normal runtime-lock reader semantics. Do not delete or edit a lock. If the lock
 is live, unverifiable, or changes during inspection, report `DEFERRED_LOCKED`
 and perform no provider request.
 
-The overnight owner runs the equivalent command once per UTC date after the
+The bounded acquisition stage permits the equivalent maintenance once per UTC date after the
 17:00 PT stock close (00:00 UTC during daylight time). If the nightly owner is
 intentionally offline and the fallback is explicitly invoked, run this command
 exactly once:
@@ -97,8 +101,8 @@ secrets in output.
 **Observed 2026-09-04 UTC:** a manual execution of the exact production scope
 preflighted and completed all 18 symbol/schema pairs. It selected an estimated
 11,464,500,352 bytes at USD 0 and reported zero failed, deferred,
-capacity-blocked, or bootstrap-required scopes. All six symbols' `ohlcv-1h`,
-`cbbo-1m`, and `definition` cursors now have `completed_through=2026-09-04`;
+capacity-blocked, or bootstrap-required scopes. The six then-configured symbols' `ohlcv-1h`,
+`cbbo-1m`, and `definition` cursors at that observation had `completed_through=2026-09-04`;
 `health/current.json` reports latest events on September 3. The stack and the
 former standalone schedule remained paused during this repair, and no broker or
 order action occurred.

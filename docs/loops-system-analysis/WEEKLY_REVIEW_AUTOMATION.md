@@ -1,12 +1,21 @@
 # Saturday Gameplan review
 
-`Loops Gameplan Weekly Review` runs Saturday at 09:00 America/Los_Angeles.
-The review starts with the first Gameplan, **September 4, 2026**. Saturday
-September 5 therefore reviews Friday's plan only. It does not import earlier
+Reviewed October 11, 2026: this remains the retained forecast-evaluation contract.
+Atlas's saved `Loops Gameplan Weekly Review` definition is **paused**, with a
+retained Saturday 09:00 America/Los_Angeles rule. That recurrence is configuration,
+not proof of a current wake or completed review; Scout requires its own readback.
+See [current task observations](CURRENT_SYSTEM.md#atlas-task-observation-on-october-11).
+The stable path remains referenced by the saved task.
+
+The evaluator starts with the first Gameplan, **September 4, 2026**. The first
+scheduled September 5 review was intended to cover Friday's plan only. This weekly Gameplan
+evaluation is distinct from the named Loop C options/risk observer and its paper
+ledger, regardless of historical task naming. It does not import earlier
 predictions, refresh a paper ledger, create risk proposals, contact a broker,
 or retrain models.
 
-From `C:\dev\ducketz`, run:
+For an authorized review, the retained entry point from this checkout is below.
+It was not run for the documentation audit.
 
 ```powershell
 .\.venv\Scripts\python.exe -u -m ml.gameplan_evaluation --datastore-target pc
@@ -19,7 +28,8 @@ Already scored forecasts retain their scores. Missing/corrupt saved evidence
 is an error, not permission to silently omit a plan.
 
 Use `ml.gameplan_evaluation.read_evaluation_history` to verify
-`C:\DATASTORE\ml\gameplan-evaluation-latest\run.json` and its selected
+`ml/gameplan-evaluation-latest/run.json` under the configured datastore and its
+selected
 manifest, receipt, and outputs. The run contains `evaluations.parquet`,
 `summary.json`, and `review.md`. Report:
 

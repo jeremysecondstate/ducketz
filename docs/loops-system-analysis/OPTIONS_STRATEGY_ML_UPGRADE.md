@@ -1,5 +1,7 @@
 # Options Strategy ML upgrade
 
+**MIXED — shared options model contract and dated rollout evidence.** Reviewed October 11, 2026. Metric meanings, chronological separation and independent per-horizon promotion remain relevant. The September 4 cohort sizes, cursor counts and successful generations below are historical. Atlas's current stock-only preparation omits options Strategy training/candidate stages and publishes stock plans; this does not retire the shared options implementation. See [Strategy runtime](loops/strategy-runtime.md) and [the relevance review](RELEVANCE_REVIEW.md).
+
 ## Metric meanings
 
 - **Direction Up (ML):** calibrated probability that the underlying finishes up
@@ -19,7 +21,7 @@ including fixed convex blends. Selection uses a later purged chronological
 training sub-window. Calibration and assessment remain isolated; assessment is
 never used to choose or fit the model.
 
-The 4-hour evidence set contains only 65 independent windows with both entry
+The September 4 evidence set contained only 65 independent four-hour windows with both entry
 and exit inside the listed-options session. Its declared chronological minimums
 are therefore 30 training, 15 calibration, and 15 untouched assessment windows.
 The 1-hour split remains 60/30/30; daily and weekly remain 252/63/63. These are
@@ -53,7 +55,7 @@ an exact duplicate of the full identity remains a hard error.
 
 ## Freshness semantics
 
-The trainer requires all 18 production OPRA cursors to cover the newest complete
+The trainer requires the production OPRA cursors for each configured symbol and the three required schemas to cover the newest complete
 session needed by the current Loop B samples. At night, the closing quote can be
 hours old and still be the correct latest session evidence.
 
@@ -69,10 +71,9 @@ may select and freeze exact legs using completed-session evidence. A future live
 executor must obtain a current tradable quote for those same legs and choose
 execute or skip; it cannot switch strikes, expirations, or strategy families.
 
-## Nightly outputs
+## Optional options-enabled nightly outputs
 
-The Strategy authority feeds `ml.nightly_gameplan`, which freezes 24 options
-intents per symbol alongside 24 directional forecasts. Every intent records its
+The retained options-enabled `ml.nightly_gameplan` path consumes Strategy authority and freezes options intents beside directional forecasts. The stock-only path omits Strategy-derived candidate/leg intents and emits 24 non-executable `NO_TRADE_STOCK_ONLY` placeholders per saved symbol; an options-enabled example does not describe every current invocation. Every intent records its
 source Strategy generation, candidate identity, exact legs where available,
 model basis, planning evidence time, and order-time revalidation requirement.
 
@@ -82,7 +83,7 @@ positive expected return and net profit, direction edge and matching delta,
 completed-session quote quality, and an options-session-compatible anchor.
 Failure of any one condition publishes a specific `NO_TRADE` reason.
 
-The first deployment is advisory/paper-only. Model promotion is evidence of
+The options-intent deployment described here is advisory/paper-only; it does not describe the separately authorized stock executor. Model promotion is evidence of
 offline gate performance, not a promise of profitability, and no historical
 loss can be attributed to one missing feature without a controlled evaluation.
 Each horizon is promoted independently. A rejected horizon remains recorded as
@@ -95,13 +96,13 @@ available.
 On 2026-09-04 UTC, the production-history catch-up completed all 18
 symbol/schema scopes through the exclusive `2026-09-04` cursor boundary. That
 includes the complete September 3 session. Training run
-`ml/strategy-profit-training-runs/20260904T085857.373205Z` then assessed each
+`ml/strategy-profit-training-runs/<dated-run>` then assessed each
 horizon independently. `1h`, `1d`, and `1w` passed and were atomically published;
 `4h` remained research-only after its 15-window assessment was worse than the
 training-base-rate benchmark and exceeded the calibration-error gate. A failed
 `4h` assessment did not suppress the three independently valid models.
 
-Strategy run `ml/strategy-runs/20260904T105214.742761Z` used the filtered
+Strategy run `<dated immutable run retained in the original report>` used the filtered
 completed-session inference path and published 3,840 candidates. Every candidate
 used a valid OPRA BBO from `2026-09-03T20:00:00Z`; every net delta was finite
 after same-timestamp Schwab analytical enrichment. The earlier unbounded

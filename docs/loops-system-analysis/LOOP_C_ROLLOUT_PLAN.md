@@ -1,5 +1,9 @@
 # Loop C immediate-run and evidence-gated rollout
 
+**October 11, 2026 review:** retain the shared implemented contract below. The historical scheduler windows do not establish a current owner on either PC. Atlas native readback found the legacy overnight and weekly-review tasks paused and the split Stats-first preparation owners active. These stock workflows do not replace named Loop C or authorize it. See [the relevance review](RELEVANCE_REVIEW.md).
+
+**Section disposition:** risk inputs, observe-only outputs, explicit operator issuance and evidence floors remain current component contracts. The activation timetable and Saturday/daily recurrence are historical rollout design. Commands below are retained capability references; no current schedule or operational action is authorized by this document.
+
 ## Boundary
 
 Loop A and the existing Loop B production owners do not wait for this rollout.
@@ -7,8 +11,7 @@ The pooled sequence computation begins as soon as its one scheduler-valid
 stage-13/stage-14 run verifies, and its Loop B and Options Strategy report seams
 may consume that verified shadow publication immediately.
 
-Loop C also does not wait eight weeks before running. It starts observe-only on
-the first open-session hourly wake after both prerequisites exist:
+Loop C's implemented evidence gate does not require eight weeks before an initial observation. A separately authorized owner could run observe-only in an eligible open session after both prerequisites exist:
 
 1. a verified `SHADOW_ONLY` pooled-sequence publication; and
 2. all four strict current inputs: an explicit unexpired operator risk approval,
@@ -24,10 +27,11 @@ ledger never chooses a candidate, contacts a broker, or grants authority. The
 eligible labels are `1d` One-Session and `1w` Remaining-Week Aggregate. The
 weekly aggregate is dynamic rather than always five sessions.
 
-## Activation sequence
+## Historical activation sequence
 
-The first-publication path is governed by the current checksum-valid scheduler
-handoff. Do not infer missed work from a wall-clock date or catch up a stage.
+The retained encoder implementation requires a checksum-valid stage-13 scheduler
+handoff. The former guardian timetable below describes its historical owner;
+current local scheduling must be verified separately. Do not infer missed work from a wall-clock date or catch up a stage.
 When the guardian selects the normal sequence, these are the eligible windows:
 
 | Milestone | Pacific schedule | Meaning |
@@ -43,7 +47,7 @@ The stage-13 and stage-14 times are eligibility windows, not promises. A
 guardian-selected incident or a different higher-value bottleneck correctly
 defers the encoder rather than bypassing the scheduler contract.
 
-## Operator-input preparation
+## Current operator-input and authority contract
 
 The checked-in read-only Schwab adapter produces the current portfolio and
 broker files; they must not be hand-authored:
@@ -70,10 +74,10 @@ approval into the canonical current directory. The four eventual current paths
 are:
 
 ```text
-C:\DATASTORE\controls\loop-c\current\risk-approval.json
-C:\DATASTORE\controls\loop-c\current\portfolio-snapshot.json
-C:\DATASTORE\controls\loop-c\current\broker-snapshot.json
-C:\DATASTORE\controls\loop-c\current\halt-control.json
+<datastore>\controls\loop-c\current\risk-approval.json
+<datastore>\controls\loop-c\current\portfolio-snapshot.json
+<datastore>\controls\loop-c\current\broker-snapshot.json
+<datastore>\controls\loop-c\current\halt-control.json
 ```
 
 The operator must explicitly accept or revise every model-binding field,
@@ -109,10 +113,10 @@ replace, or cancel orders. A safe preflight is:
 .\.venv\Scripts\python.exe -m ml.loop_c.runtime `
   --datastore-target pc `
   --decision-timestamp <current-UTC> `
-  --risk-limits C:\DATASTORE\controls\loop-c\current\risk-approval.json `
-  --portfolio-snapshot C:\DATASTORE\controls\loop-c\current\portfolio-snapshot.json `
-  --broker-snapshot C:\DATASTORE\controls\loop-c\current\broker-snapshot.json `
-  --halt-control C:\DATASTORE\controls\loop-c\current\halt-control.json `
+  --risk-limits <datastore>\controls\loop-c\current\risk-approval.json `
+  --portfolio-snapshot <datastore>\controls\loop-c\current\portfolio-snapshot.json `
+  --broker-snapshot <datastore>\controls\loop-c\current\broker-snapshot.json `
+  --halt-control <datastore>\controls\loop-c\current\halt-control.json `
   --validate-inputs-only `
   --compact
 ```
@@ -127,9 +131,10 @@ expires Friday at 17:00 America/Los_Angeles. The expiry is a pilot governance
 choice, not a permanent schema rule. Loop C fails closed at expiry, and neither
 the hourly scheduler nor the weekly review may renew it.
 
-At 09:00 Pacific each Saturday, the separate task defined in
-[`WEEKLY_REVIEW_AUTOMATION.md`](WEEKLY_REVIEW_AUTOMATION.md) runs the checked-in
-weekly review:
+The former rollout assigned Saturday 09:00 Pacific to a separate operator review.
+The current [weekly-review document](WEEKLY_REVIEW_AUTOMATION.md) describes a different
+Gameplan review contract and is not evidence of an active Loop C review schedule.
+The retained Loop C review capability first refreshes its paper ledger:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.loop_c.paper_ledger `
@@ -165,8 +170,7 @@ exit buffers, and assignment controls remain outside this rollout.
 
 ## Evidence floor
 
-The evidence clock starts at the first successful open-session Loop C
-publication. `loop-c-options-1d-plus-observe-evidence-gate-v2` requires all of the following
+The prospective evidence clock starts only with a successful accepted open-session Loop C publication. The runtime writes a run by default; advancing its accepted pointer requires the explicit `--publish` option. Input-only validation and an unpublished run do not start an accepted publication history. `loop-c-options-1d-plus-observe-evidence-gate-v2` requires all of the following
 before an authority-expansion proposal may even be presented for review:
 
 - 40 completed XNYS sessions with valid observations;

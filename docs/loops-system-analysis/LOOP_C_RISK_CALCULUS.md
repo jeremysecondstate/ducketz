@@ -1,5 +1,7 @@
 # Loop C account-equity risk calculus
 
+**KEEP CURRENT — shared observe-only contract, reviewed October 11, 2026.** The formulas and explicit approval boundary match `ml/loop_c/risk_proposal.py`, `policy.py`, `engine.py`, `inputs.py` and `operator_controls.py` at the reviewed source. They are pending proposal defaults, not evidence of an installed approval or effectiveness. Named Loop C remains separate from stock execution. See [the relevance review](RELEVANCE_REVIEW.md).
+
 ## Scope and authority
 
 This calculus filters and sizes observe-only research proposals. It cannot
@@ -29,7 +31,7 @@ read-only account, order-history, and transaction-history methods. It writes an
 immutable receipt-backed run under:
 
 ```text
-C:\DATASTORE\accounts\schwab\loop-c-read-only-runs\<timestamp>\
+<datastore>\accounts\schwab\loop-c-read-only-runs\<timestamp>\
 ```
 
 The persisted evidence includes balances, current positions, aggregate
@@ -37,7 +39,7 @@ per-underlying exposure, working-order reserves, and aggregate closed-options
 history. It excludes account numbers and hashes, OAuth tokens, and raw order,
 activity, transaction, and execution identifiers. The derived current
 portfolio and broker inputs are atomically written under
-`C:\DATASTORE\controls\loop-c\current`.
+`<datastore>\controls\loop-c\current`.
 
 The deployable-capital value is the minimum reported non-marginable available
 funds/buying-power value, less normalized working-order cash reserves. The
@@ -104,8 +106,8 @@ five sessions remain.
 The assessment reports must show their coverage, calibration, realized net
 return after modeled costs, and stability before a later change is considered.
 
-The pilot approval normally expires Friday at 17:00 Pacific. Saturday's
-receipt-verified weekly review presents the exact threshold set used and a
+The current pilot issuer enforces Friday at 17:00 Pacific expiry. This is an issuer policy, not a universal input-schema rule or evidence of an active weekly task. The retained
+receipt-verified weekly-review component presents the exact threshold set used and a
 fresh pending equity-based proposal. Expiry and review do not imply renewal:
 the next set remains inert until the operator explicitly approves its identity,
 values, rationale, expiry, and independent halt state.

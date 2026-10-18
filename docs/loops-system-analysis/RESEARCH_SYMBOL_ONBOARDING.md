@@ -1,7 +1,23 @@
-# From a Sunday research memo to the Loops stack
+# From a research memo to the Loops stack
 
-The Sunday researcher publishes evidence and maintains its recommendation ledger.
-The operator then selects companies to onboard. Publication alone never changes
+Reviewed October 11, 2026: **mixed retained batch interface and dated rollout
+history**. The explicit batch/receipt/activation contract remains implemented.
+Its helper still invokes the native stock-only overnight stages and account
+ownership preparation described below; it has not been rewritten here as a
+Stats-first entry point. [Current system](CURRENT_SYSTEM.md) describes the newer
+normal preparation and combined-account responsibilities.
+
+**Unresolved cross-PC operating applicability:** the retained helper's ownership
+preparation is not proof it is suitable for Scout's research-only role or Atlas's
+broader combined execution binding. Review that local compatibility before a
+new authorized run; this documentation audit performed no onboarding and changed
+no provider, account or membership authority. The September batch remains useful
+verified history, not a standing instruction to repeat it.
+
+The historical Sunday researcher published evidence and maintained its
+recommendation ledger. An operator explicitly selects companies to onboard;
+the old Sunday cadence does not establish a current native schedule. Publication
+alone never changes
 the production universe. A selection can come from a watch memo; onboarding does
 not upgrade its investment assessment or claim that a recommendation qualified.
 
@@ -10,21 +26,24 @@ all selected companies as one candidate batch, runs the existing native stock
 pipeline, verifies the outputs, and activates the complete batch atomically.
 The durable production authority is `datafetching/watchlist.local.txt` when
 present in this checkout, otherwise the shared `datafetching/watchlist.txt`.
-Every consumer and Scheduled task must resolve this PC's configured watchlist
-rather than maintain a separate literal symbol list. Candidate runs can use
+Local research consumers must resolve this PC's configured watchlist rather
+than maintain separate literal symbol lists. The combined executor's accepted
+account-wide universe is a separate binding and must not be replaced with one
+producer's research selection. Candidate runs can use
 `DUCKETS_PRODUCTION_WATCHLIST`; activation still updates the durable production
 list. See [Running Ducketz on two PCs](../multiple-pcs.md) for setup and precedence.
 
 ## Plan an explicitly selected batch
 
-Use the repository virtual environment in `C:/dev/ducketz`. Read the current
-overnight status and follow the supervision claim procedure in
-[NIGHTLY_GAMEPLAN.md](NIGHTLY_GAMEPLAN.md#active-overnight-supervision). Leave any
-healthy existing worker intact. Carry out preparation after the action close
+Use the repository virtual environment and resolve the installed owner/binding
+through [current recovery guidance](CURRENT_SYSTEM.md#recovery-and-evidence-limits).
+The retained batch helper uses the
+[native supervision lease](NIGHTLY_GAMEPLAN.md#active-overnight-supervision).
+Leave any healthy existing worker intact. Carry out preparation after the action close
 and before the next exchange session's 04:00 Pacific publication deadline.
 
 ```powershell
-.\.venv\Scripts\python.exe -m datafetching.research_onboarding plan --edition 2026-09-13 --symbols CROX PATH TWST IONQ --reference COST --datastore-target pc --output artifacts/analysis/research-onboarding-20260913/plan.json
+.\.venv\Scripts\python.exe -m datafetching.research_onboarding plan --edition 2026-09-13 --symbols EXAMPLE_EQUITY EXAMPLE_EQUITY EXAMPLE_EQUITY EXAMPLE_EQUITY --reference EXAMPLE_EQUITY --datastore-target pc --output artifacts/analysis/research-onboarding-20260913/plan.json
 ```
 
 For a future Sunday edition, substitute its date, the operator-selected symbols,
@@ -33,7 +52,7 @@ snapshot checksums, requires a company memo for every selection, verifies the
 company CIK against FMP, and records the research publication digest. It performs
 current-ticker inception checks against Databento symbology: a SPAC predecessor's
 profile date cannot pull predecessor prices into the selected company's series.
-For example, IONQ begins October 1, 2021, despite FMP's January 4 SPAC date. It uses
+For example, EXAMPLE_EQUITY begins October 1, 2021, despite FMP's January 4 SPAC date. It uses
 provider metadata preflights and writes a reviewable plan; it does not register
 an active bootstrap, change membership, or submit data download jobs.
 
@@ -94,7 +113,7 @@ It preserves manual inventory as unallocated and does not start a trader.
 Other discrepancies require the normal reconciliation workflow; this step does
 not waive them. Its receipts are `ownership.json` and `ownership-snapshot.json`.
 
-The native stages are:
+The retained batch helper invokes these native stages:
 
 1. Loop A close fetch and production OPRA catchup.
 2. Loop B directional training and predictions.
@@ -103,9 +122,10 @@ The native stages are:
 5. Independent stock enrichment training from the exact published cohorts.
 6. Account-aware trade planning and completed-session actuals review.
 
-This is the current stock-only preparation mode. Options data is collected and
-retained, while option-strategy rows remain the normal `NO_TRADE_STOCK_ONLY`
-placeholders. Paused options Strategy jobs and legacy traders remain paused.
+This is the batch helper's stock-only preparation path, distinct from the normal
+Stats-first responsibility coordinator. Options data is collected and retained,
+while option-strategy rows remain `NO_TRADE_STOCK_ONLY` placeholders. This path
+does not authorize enabling options Strategy schedules or legacy traders.
 Historical research documents do not become invented point-in-time features;
 normal feature admission and availability timestamps still govern training.
 Minute rows with both open and close undefined are disclosed as missing price
@@ -147,9 +167,11 @@ references. A failed candidate attempt restores only references proven to belong
 to that batch; an independent publication change blocks automatic restoration.
 The immutable candidate files and restoration receipt remain available.
 
-For eleven symbols the expected publication contains **264 forecasts and 264
-options placeholders**, with **33 production OPRA cursors**. Use `24 × N` and
-`3 × N` for later universes. Evaluate older six/seven-symbol publications against
+The expected candidate publication contains **24 × N forecasts and 24 × N
+options placeholders**, with **3 × N production OPRA cursors**, using that saved
+candidate's research universe. The eleven-symbol September batch therefore
+required 264 rows in each table and 33 cursors. Evaluate older six/seven-symbol
+publications against
 their own saved manifests; never rewrite their membership or outcomes.
 
 Activation admits companies to the operational universe. Model assessment,
@@ -176,7 +198,7 @@ candidate environment and recorded run. After a verified repair or new provider
 availability, continue with:
 
 ```powershell
-.\.venv\Scripts\python.exe -u -m datafetching.research_onboarding train --plan artifacts/analysis/research-onboarding-20260913/plan.json --resume-run C:/DATASTORE/ml/overnight-runs/EXACT_RECORDED_RUN
+.\.venv\Scripts\python.exe -u -m datafetching.research_onboarding train --plan artifacts/analysis/research-onboarding-20260913/plan.json --resume-run DATASTORE_ROOT/ml/overnight-runs/EXACT_RECORDED_RUN
 .\.venv\Scripts\python.exe -m datafetching.research_onboarding finalize --plan artifacts/analysis/research-onboarding-20260913/plan.json
 ```
 
@@ -188,13 +210,19 @@ failure. A completed bound attempt is reused. The same 04:00 deadline applies;
 missing a deadline does not authorize intraday publication.
 
 An explicit operator exception is distinct from normal recovery. The supported
-`--deadline-exception PATH` accepts a recorded authorization bound to the exact
+`--deadline-exception EXAMPLE_EQUITY` accepts a recorded authorization bound to the exact
 immutable Gameplan receipt, original action date/deadline and expiry. It permits
 only resuming the stock planning/actuals tail, never retraining or selecting new
 intraday forecasts. Original attempts and deadlines are retained; reports record
 the exception and effective cutoff. Historical actuals still select only
 estimates saved before their original opening. Scheduled tasks must not invent
 an exception or treat one expired authorization as standing permission.
+
+The following role assignments describe the **September 2026 supervisory
+arrangement**, not installed October task states. Retain the explicit-selection,
+single-owner and saved-universe rules; resolve present ownership through
+[current system](CURRENT_SYSTEM.md). `DATASTORE_ROOT` in the historical command
+above denotes that attempt's configured datastore.
 
 - **Loops Weekly Opportunity Research:** publish Sunday research and explain
   which memo symbols could be selected. Link to this path. Do not create or
@@ -212,7 +240,11 @@ an exception or treat one expired authorization as standing permission.
 
 ## September 13 batch
 
-The operator explicitly selected CROX, PATH, TWST, and IONQ from the published
+**Historical September 13–14, 2026 outcome.** Original exceptions, provider
+quotes, counts, model status and task observations below retain their event
+dates. They establish neither today's membership nor current execution readiness.
+
+The operator explicitly selected EXAMPLE_EQUITY, EXAMPLE_EQUITY, EXAMPLE_EQUITY, and EXAMPLE_EQUITY from the published
 September 13 edition. Evidence and logs are under
 `artifacts/analysis/research-onboarding-20260913`.
 The saved metadata preflight totals 230,492,746,800 uncompressed billable bytes,
@@ -235,7 +267,7 @@ The final read-only audit is `completion-verification.json`; the account,
 ownership and forecast preflight is `trading-readiness.json`. Symbol-path logical
 sizes, including retained native/normalized/staging files, total approximately
 70.8 GiB. This is not a measurement of physical disk growth. The original review
-had no shared cash projection because CROX and TWST's 143- and 48-minute trailing
+had no shared cash projection because EXAMPLE_EQUITY and EXAMPLE_EQUITY's 143- and 48-minute trailing
 gaps exceeded its 15-minute allowance. The subsequent September 14 sparse-session
 planning policy carries these verified same-session closing prices explicitly,
 including historical planning closes. All 154 hourly planning points across the

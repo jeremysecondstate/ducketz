@@ -1,8 +1,12 @@
 # Pooled causal sequence encoder and Loop C
 
+**October 11, 2026 review:** retain the shared implemented contract below. The historical scheduler windows do not establish a current owner on either PC. Atlas native readback found the legacy overnight and weekly-review tasks paused and the split Stats-first preparation owners active. These stock workflows do not replace named Loop C or authorize it. See [the relevance review](RELEVANCE_REVIEW.md).
+
+**Section disposition:** causal encoder, exact model binding, observer calculus, paper attribution and authority gates remain implemented shared contracts. Scheduler behavior and stage-13/14 clock examples are retained historical orchestration. The observer CLI has no internal hourly recurrence. Its default run output is unpublished; `--publish` explicitly advances the verified observer pointer. No accepted publication or active observer is inferred here.
+
 ## Authority boundary
 
-This is a production-hardened **shadow and observe-only** lane. It is designed
+This is an implemented **shadow and observe-only research** lane. It is designed
 to accumulate prospective evidence safely before any separate activation
 proposal. It does not replace Directional Loop B, alter Options Strategies
 ranking, or expose a broker order method. Its Schwab lane is limited to the
@@ -113,7 +117,7 @@ Stateful constructions without
 a bounded receipt-proven target exit are ineligible. The paper lane creates no
 broker payload and cannot cause exercise or assignment.
 
-## Scheduler behavior
+## Historical scheduler design and retained preregistration contract
 
 Ordinary open-market wakes may run only bounded inference against an already
 verified model and only when the current Loop B source changed. Training is
@@ -130,12 +134,13 @@ session wake for which all four inputs validate. The prospective evidence clock
 starts with that first successful Loop C observation; it limits only a later
 authority-expansion proposal.
 
-The durable source of truth is
-[`HOURLY_AUTOMATION.md`](HOURLY_AUTOMATION.md). The scheduler must preserve its
-current checksum-valid handoff stage: adding this lane does not permit a new
-experiment to displace an in-progress compare/stress/freeze sequence.
+The historical guardian contract used the stable path
+[`HOURLY_AUTOMATION.md`](HOURLY_AUTOMATION.md), which now documents overnight
+operation. Its filename is not evidence of a current hourly observer. The
+encoder still validates a stage-13 preregistration and refuses stale, mismatched
+or consumed receipts; no current split-nightly task is assumed to supply one.
 
-## Commands
+## Retained capability commands — separate operating authority required
 
 At a scheduler-selected stage 13, construct the receipt actions from the
 current verified source without mutation:
@@ -227,7 +232,7 @@ Friday 17:00 Pacific expiry, and an explicit halt/unhalt choice; archives the
 issuance lineage; and still has no broker-order capability. The exact command
 is documented in [`LOOP_C_ROLLOUT_PLAN.md`](LOOP_C_ROLLOUT_PLAN.md).
 
-The separate Saturday review captures the week's read-only account context,
+The separately invoked review capability captures the week's read-only account context,
 joins Loop C proposals only to causally mature receipt-matched outcomes, and
 builds the next pending proposal:
 
@@ -252,27 +257,29 @@ Its summary keeps open targets separate from mature and evidence-pending rows
 and exposes current BUY-share, SELL-share, total gross, maximum single-position,
 and earliest-expiration obligations for Saturday review.
 
-It is scheduled at 00:17 Pacific Tuesday through Saturday, after the prior
+The historical rollout scheduled it at 00:17 Pacific Tuesday through Saturday, after the prior
 market day's causally mature Strategy-outcome evaluation. It distinguishes
 `OPEN_PENDING_TARGET`, `PENDING_MATURE_OUTCOME_EVIDENCE`, and
 `MATURE_RECEIPT_MATCHED`; an interim mark is never used as a final result. The
 durable task contract is
 [`OPTIONS_STRATEGY_PAPER_AUTOMATION.md`](OPTIONS_STRATEGY_PAPER_AUTOMATION.md).
 
-Its durable authority and attribution rules are in
-[`WEEKLY_REVIEW_AUTOMATION.md`](WEEKLY_REVIEW_AUTOMATION.md). It cannot approve
+Its retained Loop C authority and attribution rules are in
+[`LOOP_C_ROLLOUT_PLAN.md`](LOOP_C_ROLLOUT_PLAN.md) and the checked-in weekly-review component.
+The current Gameplan weekly-review contract is a different workflow. Neither can approve
 the proposal, unhalt Loop C, retrain or swap the bound model, or call a broker
 mutation.
 
 No risk-limit proposal is self-approved: every value remains an explicit
 operator decision and a prerequisite to running even the observe lane. The
-scheduler looks only at these canonical current-input locations:
+historical scheduler convention used these current-input locations; the observer
+CLI itself accepts explicit input paths:
 
 ```text
-C:\DATASTORE\controls\loop-c\current\risk-approval.json
-C:\DATASTORE\controls\loop-c\current\portfolio-snapshot.json
-C:\DATASTORE\controls\loop-c\current\broker-snapshot.json
-C:\DATASTORE\controls\loop-c\current\halt-control.json
+<datastore>\controls\loop-c\current\risk-approval.json
+<datastore>\controls\loop-c\current\portfolio-snapshot.json
+<datastore>\controls\loop-c\current\broker-snapshot.json
+<datastore>\controls\loop-c\current\halt-control.json
 ```
 
 The four non-authoritative examples in [`templates`](templates) contain no
