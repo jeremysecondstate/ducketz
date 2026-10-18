@@ -45,8 +45,22 @@ def test_version_only_uses_project_defaults_without_reading_market_config(tmp_pa
     settings = load_config(write_config(tmp_path))
     assert settings == ModelConfig()
     assert settings.max_train_rows is None
+    assert settings.retrain_before_predict is False
     missing = load_config(write_config(tmp_path, markets_config="not-created-yet.json"))
     assert missing.markets_config == tmp_path / "not-created-yet.json"
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_retraining_sequence_is_explicit_and_does_not_change_estimator_recipe(tmp_path, enabled):
+    settings = load_config(write_config(tmp_path, retrain_before_predict=enabled))
+    assert settings.retrain_before_predict is enabled
+    assert settings.model_settings(4) == ModelConfig().model_settings(4)
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "true", "false", []])
+def test_retraining_sequence_requires_an_actual_boolean(tmp_path, value):
+    with pytest.raises(ValueError, match="retrain_before_predict"):
+        load_config(write_config(tmp_path, retrain_before_predict=value))
 
 
 def test_relative_market_path_belongs_to_model_config_directory(tmp_path, monkeypatch):

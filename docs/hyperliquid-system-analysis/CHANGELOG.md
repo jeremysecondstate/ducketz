@@ -3,6 +3,29 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-10-15 — Fresh fitting before each five-minute Paper forecast
+
+Added the [five-minute Paper loop contract](FIVE_MINUTE_PAPER_LOOP.md) and
+single `ml.hyperliquid_paper_loop` launcher around the existing data, model and
+Paper workers. The enabled `retrain_before_predict` mode requires fitting the
+exact completed source run before its forecast, with Paper checking matching
+training provenance. A previous active model cannot fill a new cycle's fresh
+training requirement. Immutable earlier forecasts and ledger cycles remain
+unchanged.
+
+The real public 5m candle archive continues to grow through overlap fetching,
+timestamp deduplication and corrections. Bootstrap/full-window requests now
+anchor their start to the completed candle boundary so a publication delay
+does not omit the earliest available opening. Offline tests cover an initial
+5,000-candle batch, full-window refresh, corrected overlaps, exclusion of a
+forming candle and retention past 5,000 candles.
+
+The existing next-close target, five-family recipe, 70/15/15 evaluation split,
+research-allowed Paper setting, risk/accounting rules and simulated-only
+execution remain explicit. Source changes and passing offline tests do not
+claim a running deployment or measured trading performance; those belong in
+the actual operating journals.
+
 ## 2026-10-02 — Two-hour Paper cadence floor
 
 The user changed future Paper Improvement rounds to one step forward and one

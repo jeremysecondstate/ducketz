@@ -1,6 +1,7 @@
 # Hyperliquid portfolio system analysis
 
-Last updated: **2026-09-28** for native five-minute candles, next-five-minute forecasts and adaptive Paper improvement rounds.
+Last updated: **2026-10-15** for source-matched five-minute retraining before
+prediction and a single Paper-loop launcher.
 
 This is the maintained system-level reference for the Hyperliquid data,
 forecasting, paper portfolio and H.Y.P.E.R. operations workspace. It follows the
@@ -10,6 +11,11 @@ this system's own processes, accounting and evidence.
 
 ## Current operating model
 
+The [five-minute Paper loop](FIVE_MINUTE_PAPER_LOOP.md) is the current ordered
+fetch, persist, retrain, predict and Paper contract, launched with
+`python -m ml.hyperliquid_paper_loop`. Its source-identity checks connect the
+three independent workers described below.
+
 Three analysis/simulation runtimes and an optional user-activated Powder runner share local artifacts under
 `C:/DATASTORE/hyperliquid`:
 
@@ -17,17 +23,18 @@ Three analysis/simulation runtimes and an optional user-activated Powder runner 
    five-minute candle, feature and label publications using shared code. It
    retains the growing five-minute history and reconciles every 288 cycles.
 2. **Models:** one runtime consumes completed publications, fits per-market
-   models on a five-minute source-candle schedule, and records a next-five-minute
-   forecast for each completed five-minute candle (`5m/h1`). The live configuration uses
+   models before predicting each new source run, and records a next-five-minute
+   forecast for each completed five-minute candle (`5m/h1`). The configuration uses
    chronological 70/15/15 fitting/calibration/assessment with strict horizon
-   purges and retains logistic/ExtraTrees/HistGradientBoosting/MLP at weights
-   40/20/20/20 with calibration C=0.1. Model polling is five seconds; polling is
+   purges and Logistic Regression, Extra Trees, Histogram Gradient Boosting,
+   MLP and Random Forest at configured weights. Model polling is five seconds; polling is
    not fitting or a new forecast. Reserved evaluation blocks still create a
    fitting cutoff lag, about 5.2 days in the initial five-minute measurement.
-3. **Paper portfolio:** one runtime allocates only from fresh, validated Qualified
-   forecasts under the current configuration. Without one, it holds current
-   exposure subject to stop/cooldown and exposure-cap reductions; rejected
-   signals cannot cause new exposure or virtual transfers.
+3. **Paper portfolio:** one runtime consumes fresh, validated forecasts with
+   matching training provenance. The existing
+   `require_qualified_forecasts: false` permits research-candidate forecasts;
+   their qualification status remains explicit. The configured no-signal policy,
+   stop/cooldown and exposure-cap rules continue to govern allocation.
    It performs account-local risk checks, observes public books, and commits simulated fills,
    virtual transfers, funding estimates and valuations to a SQLite ledger.
    Its configured quote/risk polling interval is 30 seconds.
@@ -78,6 +85,7 @@ active production members. See the
 
 | Question | Reference |
 | --- | --- |
+| How does the real five-minute fetch → retrain → predict → Paper loop run? | [Five-minute Paper loop](FIVE_MINUTE_PAPER_LOOP.md) |
 | What is implemented, and what is still unavailable? | [System functionality](SYSTEM_FUNCTIONALITY.md) |
 | How do the pieces connect? | [Loop map and relationships](LOOP_MAP.md) |
 | Which process owns each job, clock and artifact? | [Loop inventory](LOOP_INVENTORY.md) |
