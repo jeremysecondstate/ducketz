@@ -1,0 +1,57 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261018T195558Z-e781f8b20d9e49c98f7cc6786cd4a608",
+  "change_id": "20261018T195558Z-e781f8b20d9e49c98f7cc6786cd4a608-final-source-and-worker-adoption",
+  "files": [
+    "docs/development/intraday-prospective-collection.md",
+    "ml/intraday/assessment_reservation.py",
+    "ml/intraday/live_model_recipe.py",
+    "ml/intraday/preparation.py",
+    "ml/intraday/supervision.py",
+    "ml/intraday/prospective.py",
+    "ml/intraday/prospective_worker.py",
+    "ml/intraday/prospective_context.py",
+    "tests/test_intraday_assessment_reservation.py",
+    "tests/test_intraday_supervision.py",
+    "tests/test_intraday_prospective.py",
+    "tests/test_intraday_prospective_context.py"
+  ],
+  "limitations": [
+    "Closed-market mechanics and process restarts do not establish live prospective forecasts or independent qualification.",
+    "Existing source gaps and exact entitlement denials remain explicit; no data or instrument substitutions.",
+    "Private recipes, artifacts, raw records and operating evidence are not included. Each host retains its model recipe and scope.",
+    "Optional CatBoost check skipped because dependency is absent; the frozen local members do not use it."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/219",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Common source is available for reviewed adoption. Each host must retain its own private recipe, frozen fitted artifacts, symbols and scheduler bindings. Scout prediction/context workers run independently of traders; saved preparation continues with fitting disabled. Assessment reservation prevents automatic reuse of held-out observations. Manual trader stop remains intact. No trader adoption or peer installation is authorized by this notice.",
+  "scope": "shared",
+  "source_commit": "698761152b8b7ac5c9ff0a109d248ecdf1127dfb",
+  "source_remote_verified": true,
+  "summary": "Scout published non-trading frozen-model prospective collection and verified its independent local worker installation.",
+  "tests": [
+    {
+      "completed_at": "2026-10-18T19:59:52.095693Z",
+      "output_sha256": "74aced3bebd4ab99e3371eb603485ad50776136d1c5f3ab0341f2b5e424c8e39",
+      "passed": 1141,
+      "scope": "exact isolated source completion",
+      "skipped": 1
+    },
+    {
+      "import_violations": 0,
+      "passed": 1365,
+      "scope": "cumulative main candidate",
+      "skipped": 1,
+      "verified_at": "2026-10-18T20:06:51.387710+00:00"
+    },
+    {
+      "passed": 10,
+      "scope": "offline installer failure and retry cases"
+    }
+  ],
+  "trader_adoption": false,
+  "worker_adoption_verified": true
+}

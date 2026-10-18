@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-18T20:09:01.026131Z",
+  "id": "20261018T200901Z-9c85bb21d6294d06a17d468dfa4dcca1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published non-trading frozen-model prospective collection and verified its independent local worker installation."
+}
