@@ -110,9 +110,12 @@ def test_late_receipt_and_future_row_unavailable_before_actual_clock(tmp_path):
     col.enqueue(START)
     receipt = col.step()[0]
     assert load_snapshots(tmp_path, symbol="SDGR", cutoff=END) == ()
-    assert load_snapshots(tmp_path, symbol="SDGR", cutoff=NOW) == ()
+    observed = load_snapshots(tmp_path, symbol="SDGR", cutoff=NOW)
+    assert len(observed) == 1  # response really arrived; invalid event stays unavailable
+    from ml.intraday.market_context import build_market_context
+    assert build_market_context(observed, symbol="SDGR", cutoff=NOW).features["ctx_stock_quote_source_available"] == 0
     assert len(load_snapshots(tmp_path, symbol="SDGR", cutoff=NOW + timedelta(minutes=1))) == 1
-    assert receipt["available_at"] > receipt["receipt_at"]
+    assert receipt["available_at"] == receipt["receipt_at"]
 
 
 def test_latest_error_remains_visible_to_feature_missingness(tmp_path):

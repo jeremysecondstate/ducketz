@@ -21,7 +21,7 @@ import uuid
 from .market_collection import CollectionFailure, CollectionResult, SourceRequest, canonical, classify_error, instant, _atomic, _sha
 
 VERSION = "intraday-schwab-current-stream-v1"
-NORMALIZATION_VERSION = "intraday-schwab-normalization-v2"
+NORMALIZATION_VERSION = "intraday-schwab-normalization-v3"
 SCOPE_VERSION = "intraday-schwab-fair-option-scope-v2"
 BOOTSTRAP_VERSION = "intraday-schwab-chain-bootstrap-receipt-v1"
 MAX_BOOTSTRAP_BYTES = 32 * 1024 * 1024
@@ -65,6 +65,10 @@ def _store_bootstrap(root, *, symbol, started_at, ended_at, start, end, payload,
 
 
 def _verify_bootstrap(evidence):
+    if evidence.get("state_checkpoint_path"):
+        checkpoint = json.loads(Path(evidence["state_checkpoint_path"]).read_text(encoding="utf-8"))
+        if _sha(checkpoint) != evidence.get("state_checkpoint_sha256"):
+            raise ValueError("Stream state checkpoint checksum changed")
     for symbol, receipt in evidence.get("chain_bootstrap_receipts", {}).items():
         path = Path(receipt["path"])
         if not 0 < path.stat().st_size == receipt["bytes"] <= MAX_BOOTSTRAP_BYTES:
@@ -166,6 +170,9 @@ def normalize(service, native, *, receipt_at, scope):
                 raise ValueError("Unexpected market book level schema")
             usable = [r for r in levels or [] if isinstance(r, dict)
                 and isinstance(r.get("0"), (float, int)) and r["0"] > 0]
+            if levels == []:
+                row[side+"_depth_levels"] = 0
+                row[side+"_depth_volume"] = 0
             if usable:
                 top = (max if side == "bid" else min)(usable, key=lambda x: x["0"])
                 row[side], row[side+"_size"] = top["0"], top.get("1")
@@ -270,6 +277,10 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
     future_identities = {}
     chart_rows = {}
     digest = hashlib.sha256()
+    from .market_state import StreamState, VERSION as state_version
+    connection_id = uuid.uuid4().hex
+    state = StreamState(connection_id)
+    last_transport_at = None
 
     def send(service, command, params):
         nonlocal sequence
@@ -282,7 +293,7 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
         return request_id
 
     def receive(handle):
-        nonlocal total_bytes
+        nonlocal total_bytes, last_transport_at
         if monotonic()-began >= timeout_seconds:
             raise TimeoutError("Market stream capture deadline exceeded")
         try:
@@ -339,6 +350,7 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
                 observed_count[service] += 1
                 row["sequence"] = observed_count[service]
                 row["identity_basis"] = "connection-local received market record sequence; not an exchange sequence"
+                state.observe(service, row)
                 key = (service, row["provider_symbol"], tuple(sorted(native_row)))
                 if service.startswith("CHART_"):
                     chart_rows[(service, row["provider_symbol"], row.get("event_at"))] = row
@@ -363,6 +375,7 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
         handle.write(native)
         total_bytes += len(native)
         digest.update(native)
+        last_transport_at = receipt
         return True
 
     def await_ack(handle, request_id):
@@ -424,7 +437,14 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
             until = observation_started+capture_seconds
             if until > began+timeout_seconds:
                 raise TimeoutError("Subscription acknowledgements left insufficient observation time")
-            while monotonic() < until:
+            # The minimum capture window is not proof that a book baseline was
+            # delivered. Allow a bounded 30-second baseline opportunity without
+            # changing subscription scope or claiming quiet sockets are broken.
+            baseline_deadline = min(observation_started+30, began+timeout_seconds-1)
+            def missing_book_baseline():
+                return any((service, key) not in state.states for service, result in results.items()
+                    if service in BOOKS for key in result.get("acknowledged_scope", ()))
+            while monotonic() < until or (monotonic() < baseline_deadline and missing_book_baseline()):
                 receive(handle)
             actual_observation_seconds = monotonic()-observation_started
             handle.flush()
@@ -432,11 +452,19 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
             os.fsync(handle.fileno())
     except Exception as exc:
         status, reason = classify_error(exc)
+        interrupted_at = datetime.now(timezone.utc).isoformat()
+        interrupted = {"version": state_version, "connection_id": connection_id,
+            "completed": False, "disconnected_at": interrupted_at, "reusable_on_reconnect": False,
+            "states": state.checkpoint({name: value.get("acknowledged_scope", ()) for name, value in results.items()},
+                ended_at=interrupted_at, healthy=False)}
+        state_path = raw_path.with_suffix(".state.json")
+        _atomic(state_path, interrupted)
         raise CollectionFailure(status, reason, {"mode": "current_stream_snapshot",
             "raw_path": str(raw_path), "raw_sha256": digest.hexdigest(), "raw_bytes": total_bytes,
             "capture_started_at": started_at, "completed": False,
             "service_results": results, "acknowledgements": list(acknowledgements.values()),
-            "followup_controls": followup_controls}) from None
+            "followup_controls": followup_controls, "state_checkpoint_path": str(state_path),
+            "state_checkpoint_sha256": _sha(interrupted), "continuity_terminated": True}) from None
     finally:
         if socket is not None:
             try:
@@ -448,6 +476,22 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
             rows[key[0]].append(row)
     for row_key, row in {**latest, **chart_rows}.items():
         rows[row_key[0]].append(row)
+    ended_at = datetime.now(timezone.utc).isoformat()
+    accepted = {name: value.get("acknowledged_scope", ()) for name, value in results.items()}
+    states = state.checkpoint(accepted, ended_at=ended_at, healthy=True, transport_confirmed_at=last_transport_at)
+    for service, values in states.items():
+        rows[service].extend(values)
+    checkpoint = {"version": state_version, "connection_id": connection_id, "completed": True,
+        "disconnected_at": ended_at, "reusable_on_reconnect": False, "states": states}
+    state_path = raw_path.with_suffix(".state.json")
+    _atomic(state_path, checkpoint)
+    for service, result in results.items():
+        observed = {row["provider_symbol"] for row in rows[service]}
+        confirmed = {row["provider_symbol"] for row in states.get(service, ())
+            if row.get("market_state", {}).get("field_confirmed_at")}
+        result.update(observed_symbols=len(observed), observed_scope=sorted(observed),
+            confirmed_current_symbols=len(confirmed), confirmed_current_scope=sorted(confirmed),
+            persisted_symbols=len(observed), missing_baseline_symbols=len(set(result.get("acknowledged_scope", ()))-confirmed))
     for service in ("LEVELONE_FUTURES", "CHART_FUTURES"):
         for row in rows.get(service, []):
             identities = future_identities.get(row["provider_symbol"], [])
@@ -460,7 +504,7 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
             else:
                 row["root_symbol"] = None  # no backdated identity or across-roll returns
     return rows, {"mode": "current_stream_snapshot", "projection_version": VERSION,
-        "capture_started_at": started_at, "capture_finished_at": datetime.now(timezone.utc).isoformat(),
+        "capture_started_at": started_at, "capture_finished_at": ended_at,
         "completed": True, "capture_seconds": capture_seconds, "raw_path": str(raw_path),
         "actual_post_ack_observation_seconds": actual_observation_seconds,
         "raw_sha256": digest.hexdigest(), "raw_bytes": total_bytes,
@@ -468,8 +512,12 @@ def capture(session, subscriptions, raw_path, *, capture_seconds=5, timeout_seco
         "delayed_record_counts": {service: sum(r.get("is_delayed") is True for r in values) for service, values in rows.items()},
         "acknowledgements": list(acknowledgements.values()),
         "followup_controls": followup_controls,
+        "state_version": state_version, "state_checkpoint_path": str(state_path),
+        "state_checkpoint_sha256": _sha(checkpoint), "connection_id": connection_id,
+        "baseline_wait_limit_seconds": 30, "continuity_terminated": True,
+        "reconnect_policy": "new_connection_requires_new_instrument_baseline; persisted_state_is_audit_only",
         "coverage_claim": "Actual current stream observation window only; no complete quarter, market, or missed-event replay claim",
-        "projection_policy": "First/last actual delta for each field pattern; validated native market messages retained, control messages sanitized; no cross-message price filling"}
+        "projection_policy": "Native first/last deltas plus field-provenanced state after an actual baseline within one connection; no cross-connection carry"}
 
 
 class SchwabStreamCollector:

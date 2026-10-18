@@ -29,7 +29,9 @@ from .prediction import ContractError
 
 SNAPSHOT_VERSION = "intraday-market-snapshot-v1"
 LEGACY_FEATURE_VERSION = "intraday-causal-market-context-v1"
-FEATURE_VERSION = "intraday-causal-market-context-v2"
+PREVIOUS_FEATURE_VERSION = "intraday-causal-market-context-v2"
+FEATURE_VERSION = "intraday-causal-market-context-v3"
+STATE_POLICY = "field_confirmation_quote_change_trade_age_and_session_v1"
 PROJECTION_VERSION = "intraday-native-context-projection-v1"
 FEATURE_POLICY = "actual_receipt_and_row_clocks_asof_explicit_missingness_no_historical_backfill_v1"
 SOURCE_KINDS = ("stock_quote", "stock_trades", "stock_bars", "options",
@@ -136,7 +138,9 @@ def _fields(kind, version):
             "target_quarter_average", "target_quarter_count", "target_year_average", "target_year_count",
             "target_all_time_average", "target_all_time_count", "log_observed_filing_count"),
     }
-    return (*_FIELDS[kind], *(extra.get(kind, ()) if version == FEATURE_VERSION else ()))
+    state_fields = (("quote_change_age_seconds", "last_trade_age_seconds", "state_confirmation_age_seconds", "state_continuity_age_seconds",
+                     "quote_state_current", "market_session_open") if version == FEATURE_VERSION and kind in _MARKET_KINDS else ())
+    return (*_FIELDS[kind], *(extra.get(kind, ()) if version != LEGACY_FEATURE_VERSION else ()), *state_fields)
 
 
 def _names(selectors, version=FEATURE_VERSION):
@@ -153,10 +157,10 @@ VALUE_FEATURE_NAMES, CONTEXT_FEATURE_NAMES = _names({})
 
 def market_context_contract(source_ids: Mapping | None = None, *, version=FEATURE_VERSION) -> dict:
     """Serializable exact contract to freeze alongside a PC-local recipe."""
-    if version not in {LEGACY_FEATURE_VERSION, FEATURE_VERSION}:
+    if version not in {LEGACY_FEATURE_VERSION, PREVIOUS_FEATURE_VERSION, FEATURE_VERSION}:
         raise ContractError("Unsupported market context feature version")
     selectors = _selectors(source_ids)
-    return {"version": version, "snapshot_version": SNAPSHOT_VERSION,
+    result = {"version": version, "snapshot_version": SNAPSHOT_VERSION,
             "feature_names": list(_names(selectors, version)[1]),
             "source_ids": {k: list(v) for k, v in sorted(selectors.items())},
             "timing_policy": FEATURE_POLICY, "max_receipt_age_seconds": dict(_MAX_RECEIPT_AGE),
@@ -173,6 +177,14 @@ def market_context_contract(source_ids: Mapping | None = None, *, version=FEATUR
             "partial_policy": ("unavailable" if version == LEGACY_FEATURE_VERSION else
                 "eligible_observed_records_only_keep_partial_scope_and_row_exclusions"), "option_iv_unit": "decimal",
             "missing_encoding": "zero_plus_per_value_missing_indicator"}
+    if version == FEATURE_VERSION:
+        from .market_state import VERSION as state_version
+        result.update(timing_policy=STATE_POLICY, market_state_version=state_version,
+            max_market_event_age_seconds="1800_for_unconfirmed_events_not_confirmed_state",
+            freshness="per_field_confirmations_preserve_event_clocks; no_ack_or_empty_baseline",
+            closed_sessions="explicit_status_confirmed_last_state_not_new_trade",
+            empty_policy="missing_instrument_state")
+    return result
 
 
 def validate_market_context_contract(contract: Mapping) -> dict:
@@ -208,7 +220,7 @@ class MarketContext:
     @property
     def snapshot(self):
         return {"symbol": self.symbol, "cutoff": self.cutoff,
-                "feature_version": self.feature_version, "feature_policy": FEATURE_POLICY,
+                "feature_version": self.feature_version, "feature_policy": (STATE_POLICY if self.feature_version == FEATURE_VERSION else FEATURE_POLICY),
                 "feature_names": list(self.feature_names), "features": list(self.values),
                 "source_ids": {k: list(v) for k, v in self.source_ids}, "sources": deepcopy(list(self.source_evidence)),
                 "missing_encoding": "zero_placeholder_plus_per_value_missing_indicator"}
@@ -228,14 +240,135 @@ def _number(row, *names, nonnegative=False, positive=False):
     return None
 
 
-def _row_clock(row, cutoff, *, kind, receipt):
-    """Return the true event/publication clock, or an explicit exclusion reason."""
+def _field_state(row, *, cutoff, receipt, kind, schema):
+    """Project eligible fields without rewriting the retained native record."""
+    if kind not in _MARKET_KINDS:
+        return row
+    from .market_state import VERSION, QUOTE_FIELDS, OPTION_FIELDS, STATE_FIELDS, session_status
+    row = dict(row)
+    state = row.get("market_state") or {}
+    if not isinstance(state, Mapping):
+        row["_invalid_market_state"] = True
+        return row
+    confirmations = {}
+    continuous_through = None
+    if state.get("version") == VERSION and state.get("basis") in {
+            "authoritative_current_snapshot", "connection_baseline_and_updates"}:
+        try:
+            confirmed = instant(state["confirmed_at"])
+            valid = confirmed <= receipt and confirmed <= cutoff
+            if state["basis"] == "connection_baseline_and_updates":
+                valid = valid and bool(state.get("connection_id")) and instant(state["baseline_at"]) <= confirmed
+                if (valid and state.get("continuity_basis") == "same_websocket_received_messages_only"
+                        and state.get("connection_health") in {"receiving", "closed_after_capture"}
+                        and state.get("continuity_through") is not None
+                        and state.get("last_validated_transport_at") == state.get("continuity_through")):
+                    through = instant(state["continuity_through"])
+                    if confirmed <= through <= min(receipt, cutoff):
+                        continuous_through = through
+            if valid:
+                for field, stamp in state.get("field_confirmed_at", {}).items():
+                    value = instant(stamp)
+                    effective = max(value, continuous_through) if continuous_through is not None else value
+                    if field in STATE_FIELDS and value <= confirmed and 0 <= (cutoff-effective).total_seconds() <= 1800:
+                        confirmations[field] = value
+        except (ContractError, KeyError, TypeError, AttributeError):
+            confirmations = {}
+            row["_invalid_market_state"] = True
+    # A future/invalid underlying input cannot support option estimates. Its
+    # clock does not invalidate an independently confirmed option bid/ask.
+    if kind in {"options", "opra_options"} and row.get("underlying_quote_timestamp") is not None:
+        try:
+            valid_underlying_clock = instant(row["underlying_quote_timestamp"]) <= cutoff
+        except ContractError:
+            valid_underlying_clock = False
+        if not valid_underlying_clock:
+            invalid = ("implied_volatility", "delta", "gamma", "theta", "vega", "rho")
+            for field in invalid:
+                row.pop(field, None)
+                confirmations.pop(field, None)
+            row["_field_exclusions"] = {"invalid_or_future_underlying_clock": list(invalid)}
+    row["_confirmed_state_fields"] = sorted(confirmations)
+    row["_session_state"] = session_status(cutoff, kind=kind, schema=schema)
+    for name, field in (("quote_timestamp", "_quote_age"), ("trade_timestamp", "_trade_age")):
+        try:
+            stamp = instant(row[name])
+            if stamp <= cutoff:
+                row[field] = (cutoff-stamp).total_seconds()
+        except (KeyError, ContractError):
+            pass
+    if row.get("quote_timestamp") is not None and "_quote_age" not in row:
+        for field in QUOTE_FIELDS:
+            row.pop(field, None)
+            confirmations.pop(field, None)
+        row["_confirmed_state_fields"] = sorted(confirmations)
+        if row.get("event_at") == row.get("quote_timestamp"):
+            row["_invalid_selected_event"] = True
+    # Generic historical rows retain their event convention. Explicit quote and
+    # trade clocks, when supplied, can never lend freshness to each other.
     try:
-        event = instant(row["event_at"])
+        event_age = (cutoff-instant(row["event_at"])).total_seconds()
+    except (KeyError, ContractError):
+        event_age = None
+    quote_age = row.get("_quote_age")
+    if not row.get("quote_timestamp") and not row.get("trade_timestamp"):
+        quote_age = event_age
+    quote_current = (all(name in confirmations for name in ("bid", "ask")) or
+                     quote_age is not None and 0 <= quote_age <= 1800)
+    row["_quote_state_current"] = bool(quote_current and _number(row, "bid", positive=True) is not None
+                                       and _number(row, "ask", positive=True) is not None)
+    for field in QUOTE_FIELDS:
+        if field not in confirmations and not (quote_age is not None and 0 <= quote_age <= 1800):
+            row.pop(field, None)
+    # Greeks, cumulative totals and interest are state fields, never trades.
+    for field in OPTION_FIELDS:
+        if field not in confirmations and not (event_age is not None and 0 <= event_age <= 1800):
+            row.pop(field, None)
+    if row.get("trade_timestamp") and "_trade_age" not in row:
+        row.pop("last", None)
+        row.pop("price", None)
+        confirmations.pop("last", None)
+        confirmations.pop("price", None)
+        row["_confirmed_state_fields"] = sorted(confirmations)
+        if row.get("event_at") == row.get("trade_timestamp"):
+            row["_invalid_selected_event"] = True
+    if confirmations:
+        row["_confirmation_age"] = (cutoff-min(confirmations.values())).total_seconds()
+    if continuous_through is not None:
+        row["_continuity_age"] = (cutoff-continuous_through).total_seconds()
+    return row
+
+
+def _state_features(rows, *, cutoff, kind, schema):
+    result = {}
+    for key, target in (("_quote_age", "quote_change_age_seconds"),
+                        ("_trade_age", "last_trade_age_seconds"),
+                        ("_confirmation_age", "state_confirmation_age_seconds"),
+                        ("_continuity_age", "state_continuity_age_seconds")):
+        values = [row[key] for _, row in rows if key in row]
+        if values:
+            result[target] = median(values)
+    result["quote_state_current"] = float(any(row.get("_quote_state_current") for _, row in rows))
+    session = rows[-1][1].get("_session_state", {}).get("status")
+    if session != "UNKNOWN":
+        result["market_session_open"] = float(session in {"REGULAR", "EXTENDED"})
+    return result
+
+
+def _row_clock(row, cutoff, *, kind, receipt, state_policy=False):
+    """Return the true event/publication clock, or an explicit exclusion reason."""
+    if state_policy and row.get("_invalid_market_state"):
+        return None, "invalid_market_state"
+    try:
+        if state_policy and row.get("_invalid_selected_event") and row.get("_confirmed_state_fields"):
+            event = instant(row["market_state"]["confirmed_at"])
+        else:
+            event = instant(row["event_at"]) if row.get("event_at") is not None else (
+                instant(row["market_state"]["confirmed_at"]) if state_policy else instant(row["event_at"]))
         available = instant(row.get("available_at", receipt.isoformat()))
         if event > cutoff or available > cutoff:
             return None, "future_row_clock"
-        for name in ("receipt_at", "quote_timestamp", "trade_timestamp", "underlying_quote_timestamp",
+        for name in ("receipt_at", *( () if state_policy else ("quote_timestamp", "trade_timestamp", "underlying_quote_timestamp")),
                      "bar_end_at", "bar_end_timestamp"):
             if row.get(name) is not None and instant(row[name]) > cutoff:
                 return None, "future_row_clock"
@@ -245,7 +378,8 @@ def _row_clock(row, cutoff, *, kind, receipt):
                 return None, "future_publication"
             if row.get("publication_time_basis") == "receipt_only" and published < receipt:
                 return None, "backdated_unknown_publication"
-        if kind in _MARKET_KINDS and (cutoff - event).total_seconds() > 1800:
+        if kind in _MARKET_KINDS and (cutoff - event).total_seconds() > 1800 and not (
+                state_policy and row.get("_confirmed_state_fields")):
             return None, "stale_market_event"
     except (KeyError, ContractError):
         return None, "missing_or_invalid_row_clock"
@@ -253,6 +387,9 @@ def _row_clock(row, cutoff, *, kind, receipt):
 
 
 def _row_identity(row, *, kind, event):
+    if row.get("market_state"):
+        identity = row.get("contract_symbol") or row.get("provider_symbol") or row.get("symbol")
+        return (str(identity), event.isoformat(), _hash(row["market_state"]))
     if kind in {"options", "opra_options"}:
         identity = row.get("contract_symbol") or row.get("instrument_id")
         if identity is None:
@@ -283,7 +420,7 @@ def _sequence(row):
     return -1
 
 
-def _rows(snapshot, *, symbol, cutoff, kind):
+def _rows(snapshot, *, symbol, cutoff, kind, version=PREVIOUS_FEATURE_VERSION):
     records = snapshot.get("records", [])
     if not isinstance(records, list) or len(records) > _MAX_ROWS:
         raise ContractError("Market context snapshot records exceed the bounded list contract")
@@ -325,7 +462,9 @@ def _rows(snapshot, *, symbol, cutoff, kind):
         if kind != "cross_asset" and row_symbol not in ({symbol, "*"} if kind in {"events", "macro"} else {symbol}):
             excluded["wrong_or_missing_row_symbol"] += 1
             continue
-        event, reason = _row_clock(row, cutoff, kind=kind, receipt=receipt)
+        if version == FEATURE_VERSION:
+            row = _field_state(row, cutoff=cutoff, receipt=receipt, kind=kind, schema=snapshot.get("schema"))
+        event, reason = _row_clock(row, cutoff, kind=kind, receipt=receipt, state_policy=version == FEATURE_VERSION)
         if reason:
             excluded[reason] += 1
             continue
@@ -417,7 +556,24 @@ def _rows(snapshot, *, symbol, cutoff, kind):
         if previous is not None:
             excluded["identical_duplicate"] += 1
         selected[identity] = (event, row)
-    return sorted(selected.values(), key=lambda x: (x[0], _sequence(x[1]), _json(x[1]))), dict(sorted(excluded.items()))
+    observations = list(selected.values())
+    if version == FEATURE_VERSION:
+        # A final state is authoritative for its own instrument, including
+        # explicit missing/cleared fields. Never fall back to a superseded raw
+        # baseline when the current side has been cleared.
+        def instrument(row):
+            return str(row.get("contract_symbol") or row.get("provider_symbol") or row.get("symbol"))
+        states = {}
+        for item in observations:
+            row = item[1]
+            if row.get("market_state"):
+                identity = instrument(row)
+                order = (instant(row["market_state"]["confirmed_at"]), _sequence(row))
+                if identity not in states or order > states[identity][0]:
+                    states[identity] = (order, item)
+        observations = [item for item in observations if instrument(item[1]) not in states]
+        observations.extend(value[1] for value in states.values())
+    return sorted(observations, key=lambda x: (x[0], _sequence(x[1]), bool(x[1].get("market_state")), _json(x[1]))), dict(sorted(excluded.items()))
 
 
 def _quote(rows):
@@ -536,7 +692,7 @@ def _fundamentals(rows, *, cutoff, version=LEGACY_FEATURE_VERSION, schema=None):
         if direct["analyst_bullish_fraction"] is not None and direct["analyst_bullish_fraction"] > 1:
             direct["analyst_bullish_fraction"] = None
         result.update({k: v for k, v in direct.items() if v is not None})
-        if version == FEATURE_VERSION:
+        if version != LEGACY_FEATURE_VERSION:
             # Source-specific same-record fields. Never join a current balance
             # sheet to a different income period to manufacture a ratio.
             extra = {}
@@ -603,7 +759,7 @@ def _fundamentals(rows, *, cutoff, version=LEGACY_FEATURE_VERSION, schema=None):
             key = (str(row.get("period_end", row.get("date", ""))), event)
             for name, value in {**{k:v for k,v in direct.items() if v is not None}, **extra}.items():
                 candidates[name].append((key, value))
-    if version == FEATURE_VERSION:
+    if version != LEGACY_FEATURE_VERSION:
         result = {}
         for name, values in candidates.items():
             latest = max(key for key, _ in values)
@@ -629,7 +785,7 @@ def _fundamentals(rows, *, cutoff, version=LEGACY_FEATURE_VERSION, schema=None):
             values.discard(None)
             if len(values) == 1:
                 result[field] = values.pop()
-    if version == FEATURE_VERSION and schema == "sec_filings_search_symbol" and rows:
+    if version != LEGACY_FEATURE_VERSION and schema == "sec_filings_search_symbol" and rows:
         result["log_observed_filing_count"] = math.log1p(len(rows))
     return result
 
@@ -765,7 +921,7 @@ def _build_resolved_context(snapshots, *, symbol, cutoff, source_ids, contract):
     Receipt scope, clocks, hashes and row eligibility remain checked here.
     """
     cutoff = instant(cutoff)
-    partial_records = contract["version"] == FEATURE_VERSION
+    partial_records = contract["version"] != LEGACY_FEATURE_VERSION
     if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,19}", symbol):
         raise ContractError("Explicit equity symbol required for market context")
     selectors = _selectors(source_ids)
@@ -838,11 +994,12 @@ def _build_resolved_context(snapshots, *, symbol, cutoff, source_ids, contract):
             if age > _MAX_RECEIPT_AGE[kind]:
                 entry["status"] = "STALE_RECEIPT"
             elif status in _SUCCESS or (partial_records and status == "PARTIAL"):
-                rows, excluded = _rows(snapshot, symbol=symbol, cutoff=cutoff, kind=kind)
+                rows, excluded = _rows(snapshot, symbol=symbol, cutoff=cutoff, kind=kind, version=contract["version"])
                 entry.update(records_used=len(rows), exclusions=excluded)
-                available_flags[prefix] = float(bool(rows) or status == "EMPTY")
+                available_flags[prefix] = float(bool(rows) or (status == "EMPTY" and contract["version"] != FEATURE_VERSION))
                 if rows:
-                    measured[f"{prefix}_source_age_seconds"] = (cutoff - rows[-1][0]).total_seconds()
+                    if rows[-1][1].get("event_at") is not None and not rows[-1][1].get("_invalid_selected_event"):
+                        measured[f"{prefix}_source_age_seconds"] = (cutoff - instant(rows[-1][1]["event_at"])).total_seconds()
                     if kind == "stock_quote": values = _quote(rows)
                     elif kind in {"stock_trades", "stock_bars"}: values = _prices(rows, trades=kind == "stock_trades")
                     elif kind in {"options", "opra_options"}: values = _options(rows,
@@ -854,6 +1011,12 @@ def _build_resolved_context(snapshots, *, symbol, cutoff, source_ids, contract):
                     elif kind == "technical": values = _technical(rows)
                     elif kind == "macro": values = _macro(rows, cutoff=cutoff)
                     else: values = _cross_asset(rows, schema=snapshot.get("schema"), delivery=snapshot.get("evidence"))
+                    if contract["version"] == FEATURE_VERSION and kind in _MARKET_KINDS:
+                        values.update(_state_features(rows, cutoff=cutoff, kind=kind, schema=snapshot.get("schema")))
+                        entry["field_state"] = {"confirmed_records": sum(bool(r.get("_confirmed_state_fields")) for _, r in rows),
+                            "quote_current_records": sum(r.get("_quote_state_current", False) for _, r in rows),
+                            "session": rows[-1][1].get("_session_state"),
+                            "last_trade_clock_preserved": True}
                     measured.update({f"{prefix}_{k}": v for k, v in values.items()})
         evidence.append(entry)
     if any(not math.isfinite(value) for value in measured.values()):

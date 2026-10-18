@@ -21,11 +21,11 @@ import pandas as pd
 
 from .prediction import ContractError, instant
 
-VERSION = 'intraday-causal-preparation-v1'
+VERSION = 'intraday-causal-preparation-v2'
 SOURCE_FILES = ('data.py', 'observed_data.py', 'native_interval.py', 'native_recovery.py',
                 'live_model_recipe.py', 'models.py', 'feature_support.py', 'market_context.py',
                 'market_context_cache.py', 'market_collection_index.py', 'preparation.py',
-                'preparation_watch.py')
+                'preparation_watch.py', 'training_timing.py', 'market_state.py')
 
 
 def _json(value):
@@ -147,6 +147,7 @@ def prepare_cycle(*, datastore, pc, symbols, histories, reference_at, cutoff,
                     lookback_days=config.lookback_days, synthetic_policy='exclude')
                 recipe = dataset.manifest['manual_model_recipe']
                 training = {'recipe_sha256':recipe['sha256'], 'symbol':symbol, 'source_sha256':sources,
+                    'training_timing_contract':dataset.manifest.get('training_timing_contract'),
                     'feature_names':list(dataset.feature_names),
                     'matrix_sha256':_matrix_hash(dataset.X, dataset.y),
                     'references':[str(x) for x in dataset.reference_at],
@@ -155,6 +156,7 @@ def prepare_cycle(*, datastore, pc, symbols, histories, reference_at, cutoff,
                     'context_training_sha256':dataset.manifest.get('market_context',{}).get('training_sha256')}
                 training_key = _digest(training)
                 item.update(status='prepared', training_key=training_key, recipe_sha256=recipe['sha256'],
+                    training_timing_contract=training['training_timing_contract'],
                     training_rows=len(dataset.y), feature_count=len(dataset.feature_names),
                     class_counts={str(int(v)):int(np.sum(dataset.y==v)) for v in np.unique(dataset.y)},
                     latest_mature_label=str(max(dataset.label_available_at)),

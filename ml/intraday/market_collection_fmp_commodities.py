@@ -7,6 +7,7 @@ the provider's previous close.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import re
 
 from .market_collection import CollectionFailure, CollectionResult, SourceRequest, classify_error, _http_status
@@ -48,6 +49,7 @@ def collect(request, start, end, max_records, *, provider_factory):
         "mode": "current_rest_snapshot", "provider_called": True}
     try:
         payload = provider_factory()._get_json("quote", {"symbol": symbol})
+        confirmed_at = datetime.now(timezone.utc).isoformat()
     except Exception as exc:
         status, reason = classify_error(exc)
         http_status = _http_status(exc)
@@ -63,6 +65,9 @@ def collect(request, start, end, max_records, *, provider_factory):
     from .market_collection_adapters import _utc, quote_record
     records = [quote_record(row, symbol, event_at=_utc(row.get("timestamp"), unit="s", local_zone="UTC"))
         for row in payload]
+    from .market_state import confirm_snapshot
+    records = [confirm_snapshot({**row, "trade_timestamp": row["event_at"]}, confirmed_at=confirmed_at)
+               for row in records]
     evidence["missing_configured_symbols"] = [] if records else [symbol]
     evidence["returned_records"] = len(records)
     return CollectionResult(records, evidence=evidence)
