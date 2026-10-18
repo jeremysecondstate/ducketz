@@ -1,5 +1,49 @@
 # Atlas: Codex and Ducketz scheduled tasks
 
+## October 11, 2026 current-state revision
+
+Read-only native inspection at **12:46:17 p.m. PDT** confirms the reviewed
+weekday handoff is already installed. Atlas retains its own checkpoint times;
+this audit made no native task or Windows registration changes. The
+[alignment report](atlas-loop-schedule-alignment-2026-10-11.md) records the full
+comparison, nominal and assigned next runs, executable stage boundaries and
+validation limits. This revision supersedes scheduling claims in the older
+snapshots below; those observations remain historical evidence.
+
+| Responsibility | Verified active native schedule, Pacific |
+| --- | --- |
+| DATASTORE CATCH-UP | Monday-Friday 21:05; no Atlas 04:05 fallback definition was found |
+| GAMEPLAN STATS | Monday-Friday 03:00 |
+| MODEL REVIEW/TRAINING/PREDICTING | Monday-Friday 03:00 |
+| GAMEPLAN | Monday-Friday 03:00 |
+| DUCKETZ DISPLAY | Monday-Friday 03:35 |
+| Joint Gameplan Handoff | Monday-Friday 21:00-23:40 every 20 minutes; existing companion Tuesday-Saturday 00:00, 00:20, 00:40 |
+| Priority Source Reconciliation | Monday-Friday 21:00-23:40 every 20 minutes; existing companion Tuesday-Saturday 00:00, 00:20, 00:40 |
+
+Atlas still has fifteen Ducketz-related native definitions: ten active and five
+paused. The active Handoff and Reconciliation pairs supersede the noon paused
+snapshot. Reconciliation's ordinary source review uses the first eligible evening wake,
+with the companion retaining the preceding operating-evening date; **01:25 is
+not the current reconciliation gate**. The 03:00 readiness-risk and 03:35
+missed-confirmation checkpoints remain dated, deduplicated responsibilities.
+
+These are supervisory checkpoints. The common dispatcher advances an eligible
+stage when its prerequisite receipt is complete. Friday preparation selects the
+next exchange session, normally Monday, and the Saturday companions continue
+Friday's evening. Morning checkpoints remain Monday-Friday. Application-calendar
+selection, the original 04:00 action-date deadline, fixed recovery limits and
+completed-session receipts remain authoritative across holidays and DST.
+
+Windows dispatch retains its separate daily 21:05, five-minute and logon
+triggers. The enabled Windows cleanup retains a five-minute timer and logon
+trigger, but its installed exact-five-minute Codex eligibility predicate rejects
+the two allowlisted twenty-minute definitions; the after-midnight companions
+are not allowlisted. This is a verified cleanup coverage gap, not evidence of
+archival and not permission to broaden eligibility. Native assigned launch times
+can differ from nominal checkpoints; neither establishes actual completion.
+
+## Preserved October 10 inventory
+
 **Inventory date:** October 10, 2026, approximately 12:00–12:10 p.m. PDT
 
 **Machine:** Atlas (`pc-original`)
