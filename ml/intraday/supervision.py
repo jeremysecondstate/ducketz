@@ -157,6 +157,14 @@ def supervise(*, repository, datastore, as_of=None, execute=False, force=False,
                     if session is None:
                         raise ContractError("No completed trading session available")
                     sid = session["session_id"]
+                    from .assessment_reservation import load_reservation
+                    reservation = load_reservation(datastore, pc=pc, symbol=symbol)
+                    if reservation and sid >= instant(reservation["protected_from"]).astimezone(PACIFIC).date().isoformat():
+                        report["symbols"][symbol] = {"status": "reserved_for_prospective_assessment",
+                            "session_id": sid, "reservation_sha256": reservation["sha256"],
+                            "training_runs": 0, "policy_changes": 0,
+                            "reason": "No automatic fitting, calibration, selection or performance inspection of reserved observations"}
+                        continue
                     readiness = assessment_readiness(report["refresh"], symbol=symbol, completed_session=session)
                     item = {"data": audit, "assessment_readiness": readiness,
                             "current_inputs_fresh": bool(audit["freshness_ok"]),

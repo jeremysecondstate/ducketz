@@ -368,6 +368,11 @@ class ShadowRunner:
             snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
         snapshot_hash,snapshot=frozen
+        if (snapshot.get("manifest", {}).get("preparation_only")
+                or snapshot.get("inference", {}).get("preparation_only")
+                or snapshot.get("manifest", {}).get("executable_forecast") is False
+                or snapshot.get("inference", {}).get("executable_forecast") is False):
+            raise ContractError("Non-trading preparation snapshots cannot publish forecasts")
         # Immutable inputs and their actual manifest take precedence on retry,
         # including snapshots created before dataset scope was recorded.
         fallback_scope = (supervised_policy["dataset_scope_by_symbol"][symbol] if supervised_policy is not None
@@ -426,6 +431,9 @@ class ShadowRunner:
                  "synthetic_policy":dataset_scope["synthetic_policy"],"dataset_scope":dataset_scope,
                  "features":dict(zip(snapshot["feature_names"],snapshot["inference_X"][0])),
                  "regime_measurements":regime_measurements(snapshot)}
+        if inf.get("native_interval_contract"):
+            payload.update({key:inf[key] for key in
+                ("feature_version", "feature_policy", "label_provenance", "native_interval_contract")})
         reference_rows=[row for row in snapshot.get("candles", [])
                         if instant(row["opened_at"]) == reference]
         if reference_rows:
@@ -456,6 +464,7 @@ class ShadowRunner:
 
     def score_available(self,histories,*,as_of,mode=None):
         from .data import completed_15m_observation, synthetic_continuity_verified
+        from .native_interval import candle_matches_forecast
         results=[]
         for forecast in self.store.forecasts(pc=self.pc):
             if mode is not None and forecast["mode"]!=mode:
@@ -467,6 +476,8 @@ class ShadowRunner:
                 # A retrospective experiment cannot overwrite later recorded
                 # evidence or expose that future outcome at its earlier cutoff.
                 continue
+            if revisions and revisions[-1]["status"] == "synthetic":
+                self.store.invalidate_unverified_outcome(forecast["forecast_id"], as_of=as_of)
             history=histories.get(forecast["symbol"])
             candle=None
             if history is not None:
@@ -486,6 +497,7 @@ class ShadowRunner:
                 match=frame.loc[(pd.to_datetime(frame.opened_at,utc=True)==pd.Timestamp(forecast["target_open"])) &
                                 (pd.to_datetime(frame.available_at,utc=True)<=pd.Timestamp(instant(as_of)))]
                 match=match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                                and candle_matches_forecast(row, forecast)
                                 for row in match.to_dict("records")]]
                 if len(match):
                     match=match.sort_values("available_at")
@@ -541,7 +553,8 @@ class LiveHistories:
                 addition=pd.DataFrame(saved)
                 for column in ("opened_at","available_at"):
                     addition[column]=pd.to_datetime(addition[column],utc=True)
-                merged=pd.concat([_frame(history),addition],ignore_index=True).sort_values("available_at").drop_duplicates("opened_at",keep="last").sort_values("opened_at").reset_index(drop=True)
+                from .native_interval import merge_native_history_frames
+                merged=merge_native_history_frames(_frame(history),addition)
                 merged.attrs["intraday_history"]=history.manifest
                 histories[symbol]=History(merged,history.manifest)
 
@@ -607,7 +620,8 @@ class LiveHistories:
         addition=pd.DataFrame([candle])
         for column in ("opened_at","available_at"):
             addition[column]=pd.to_datetime(addition[column],utc=True)
-        merged=pd.concat([frame,addition],ignore_index=True).sort_values("available_at").drop_duplicates("opened_at",keep="last").sort_values("opened_at").reset_index(drop=True)
+        from .native_interval import merge_native_history_frames
+        merged=merge_native_history_frames(frame,addition)
         merged.attrs["intraday_history"]=history.manifest
         updated=History(merged,{**history.manifest,"current_reference_availability":"actual","source_dataset":self.provider.dataset})
         self.histories[symbol]=updated

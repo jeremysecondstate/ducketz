@@ -13,6 +13,7 @@ import pytest
 from ml.intraday.prediction import ContractError
 from ml.intraday.runtime import ResearchConfig, ShadowRunner
 from ml.intraday.store import ShadowStore
+from tests.test_intraday_verified_no_trade import attest, sparse_rows
 
 REF = datetime(2026,10,8,17,tzinfo=timezone.utc)
 
@@ -109,7 +110,7 @@ def test_manual_stop_skips_queued_symbol_work_with_explicit_failures(tmp_path):
 
 
 def test_live_history_restore_excludes_unverified_synthetic_without_mutating_originals(tmp_path):
-    from ml.intraday.data import History, IntervalResponse, SessionBounds, resolve_interval
+    from ml.intraday.data import History, IntervalResponse, SessionBounds, resolve_minute_candle
     from ml.intraday.prediction import STEP, digest
     from ml.intraday.runtime import LiveHistories
     store = ShadowStore(tmp_path/"synthetic-audit.sqlite3")
@@ -130,11 +131,11 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
     saved_observed = row(REF)
     def attempt(index):
         op=REF+STEP
-        return IntervalResponse(str(index),"AAPL",source,"EQUS.MINI",op.isoformat(),(op+STEP).isoformat(),
+        return attest(IntervalResponse(str(index),"AAPL",source,"EQUS.MINI",op.isoformat(),(op+STEP).isoformat(),
             (op+STEP+timedelta(seconds=5*index)).isoformat(),
-            (op+STEP+timedelta(seconds=5*index+1)).isoformat(),"success",(),op.isoformat(),
-            (op+STEP).isoformat(),"successful covered provider omission")
-    valid_synthetic = resolve_interval([attempt(1),attempt(2)],session=session,
+            (op+STEP+timedelta(seconds=5*index+1)).isoformat(),"success",sparse_rows(op),op.isoformat(),
+            (op+STEP).isoformat()))
+    valid_synthetic = resolve_minute_candle([attempt(1),attempt(2)],session=session,
                                       previous=saved_observed)["candle"]
     old_hash=store.record_candle(saved_old)
     store.record_candle(saved_observed)
@@ -159,7 +160,7 @@ def test_live_history_restore_excludes_unverified_synthetic_without_mutating_ori
     evidence=json.loads(audits[0][1])
     assert evidence["history_rows_excluded"]==1 and evidence["immutable_originals_retained"] is True
     assert evidence["saved_candle_hashes"]==[old_hash]
-    assert old_hash==digest(next(c for c in persisted_before if c["synthetic"] and "synthetic_continuity" not in c))
+    assert old_hash==digest(next(c for c in persisted_before if c["synthetic"] and c["evidence_json"]=='{"legacy_confirmations":2}'))
 
 
 def test_live_publication_consumer_failure_preserves_forecast_and_retries_without_refitting(tmp_path):
@@ -298,7 +299,7 @@ def test_live_history_refreshes_late_prior_or_acquires_exact_predecessor_once_pe
     provider=SimpleNamespace(dataset="EQUS.MINI")
     def fetch(provider,**kwargs):
         reads.append(pd.Timestamp(kwargs["opened_at"]))
-        return _bounded_attempt(provider,**kwargs,empty=pd.Timestamp(kwargs["opened_at"])==reference)
+        return _bounded_attempt(provider,**kwargs,sparse=pd.Timestamp(kwargs["opened_at"])==reference)
     monkeypatch.setattr(data,"fetch_databento_interval_attempt",fetch)
     live=runtime.LiveHistories(histories={"AAPL":data.History(frame,{"source_dataset":"EQUS.MINI"})},
         provider=provider,store=store,journal=journal,reference_at=reference,clock=lambda:now[0],bounded=True)
@@ -581,17 +582,26 @@ def install_live_policy(tmp_path, symbol, *, feature_names=("x",), synthetic_pol
 
 
 def population_history(symbol):
+    from ml.intraday import data
     rows = []
     for days_ago in (1, 0):
         start = REF - timedelta(days=days_ago, hours=10)
         for index in range(42):
             op = start + timedelta(minutes=15 * index)
             price = 100 + index % 7 / 10
+            if index == 30:
+                session = data.SessionBounds(str(start.date()), start.isoformat(), (start+timedelta(hours=12)).isoformat())
+                attempts = [attest(data.IntervalResponse(str(n), symbol, "databento:EQUS.MINI:ohlcv-1m", "EQUS.MINI",
+                    op.isoformat(), (op+data.STEP).isoformat(), (op+data.STEP+timedelta(seconds=5*n)).isoformat(),
+                    (op+data.STEP+timedelta(seconds=5*n+1)).isoformat(), "success", sparse_rows(op, missing=(1,)),
+                    op.isoformat(), (op+data.STEP).isoformat())) for n in (1, 2)]
+                rows.append(data.resolve_minute_candle(attempts, session=session, previous=None)["candle"])
+                continue
             rows.append(dict(symbol=symbol, opened_at=op, available_at=op + timedelta(minutes=15),
                 availability_kind="actual", open=price, high=price + 1, low=price - 1,
-                close=price + .1, volume=100 + index, source_id="fixture:EQUS.MINI", source_dataset="EQUS.MINI",
+                close=price + .1, volume=100 + index, source_id="databento:EQUS.MINI:ohlcv-1m", source_dataset="EQUS.MINI",
                 session_id=str(start.date()), session_open=start.isoformat(),
-                session_close=(start + timedelta(hours=12)).isoformat(), synthetic=index == 30, no_trade=False))
+                session_close=(start + timedelta(hours=12)).isoformat(), synthetic=False, no_trade=False))
     return pd.DataFrame(rows)
 
 
@@ -616,6 +626,8 @@ def test_live_policy_scope_drives_actual_population_and_next_cycle_adopts_new_sc
     assert selected["model_selection"]["active_policy_sha256"] == policy_id
     assert selected["dataset_manifest"]["synthetic_labels_excluded"] > 0
     assert defaults["dataset_manifest"]["synthetic_labels_included"] > 0
+    assert selected["dataset_manifest"]["unverified_synthetic_rows_excluded"] == 0
+    assert defaults["dataset_manifest"]["unverified_synthetic_rows_excluded"] == 0
     assert fits["AAPL"][0] < fits["IONQ"][0]
     expected = build_dataset(histories["AAPL"], reference_at=REF, cutoff=REF + timedelta(minutes=16),
                              synthetic_policy="exclude", lookback_days=1)

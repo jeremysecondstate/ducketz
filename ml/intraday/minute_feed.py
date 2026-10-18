@@ -35,7 +35,7 @@ class _HistorySource:
 class QuarterHourMinuteFeed:
     def __init__(self, *, provider, store, journal, histories, pc, symbols,
                  session_id, clock=utcnow, start_reference=None,
-                 publication_offset_seconds=0, on_closed=None):
+                 publication_offset_seconds=0, on_closed=None, native_interval_symbols=()):
         self.provider, self.store, self.journal = provider, store, journal
         self.histories, self.clock = histories, clock
         self.pc, self.symbols, self.session_id = pc, tuple(symbols), session_id
@@ -43,6 +43,16 @@ class QuarterHourMinuteFeed:
                 or len(set(self.symbols)) != len(self.symbols) or not session_id
                 or any(not isinstance(s, str) or not s for s in self.symbols)):
             raise ContractError("An explicit independent local feed identity is required")
+        if (not isinstance(native_interval_symbols, (list, tuple))
+                or any(not isinstance(s, str) for s in native_interval_symbols)
+                or len(set(native_interval_symbols)) != len(native_interval_symbols)
+                or not set(native_interval_symbols) <= set(self.symbols)):
+            raise ContractError("Native interval scope must be an explicit subset of this feed's symbols")
+        self.native_interval_symbols = tuple(native_interval_symbols)
+        self.native_interval_contract = None
+        if self.native_interval_symbols:
+            from .native_interval import CONTRACT
+            self.native_interval_contract = CONTRACT
         self.dataset = getattr(provider, "dataset", None)
         if self.dataset != "EQUS.MINI":
             raise ContractError("Minute feed requires the existing EQUS.MINI provider")
@@ -65,7 +75,9 @@ class QuarterHourMinuteFeed:
             initial = initialized[0]
             if (initial.get("version") != VERSION or initial.get("pc") != pc
                     or initial.get("symbols") != list(self.symbols)
-                    or initial.get("source_dataset") != self.dataset):
+                    or initial.get("source_dataset") != self.dataset
+                    or initial.get("native_interval_symbols", []) != list(self.native_interval_symbols)
+                    or initial.get("native_interval_contract") != self.native_interval_contract):
                 raise ContractError("Saved minute feed identity or source differs")
             self.day = pd.Timestamp(initial["day"]).date()
             self.first = instant(initial["first_reference"])
@@ -89,7 +101,9 @@ class QuarterHourMinuteFeed:
         if not initialized:
             self._event("minute_feed_initialized", dict(version=VERSION, pc=pc,
                 symbols=list(self.symbols), source_dataset=self.dataset, day=str(self.day),
-                first_reference=self.first.isoformat(), close_at=self.end.isoformat()))
+                first_reference=self.first.isoformat(), close_at=self.end.isoformat(),
+                **({"native_interval_symbols": list(self.native_interval_symbols),
+                    "native_interval_contract": self.native_interval_contract} if self.native_interval_symbols else {})))
         for kind, symbol, raw in saved:
             value = json.loads(raw)
             if kind == "minute_feed_window_queued":
@@ -113,9 +127,18 @@ class QuarterHourMinuteFeed:
         self.store.event(self.identity, kind, value, symbol=symbol,
                          recorded_at=instant(self.clock()).isoformat())
 
+    def _matches_interval_contract(self, symbol, candle):
+        contract = candle.get("native_interval_contract")
+        if symbol in self.native_interval_symbols:
+            return isinstance(contract, str) and contract == self.native_interval_contract
+        # Concatenated legacy frames may have an absent optional tag as NaN.
+        return contract is None or isinstance(contract, float) and pd.isna(contract)
+
     def _merge(self, symbol, candles):
         if not candles:
             return
+        if any(not self._matches_interval_contract(symbol, candle) for candle in candles):
+            raise ContractError("Saved candle differs from this symbol's frozen interval contract")
         history = self.histories.get(symbol)
         manifest = dict(history.manifest) if history is not None else {"source_dataset": self.dataset}
         if manifest.get("source_dataset") != self.dataset:
@@ -124,10 +147,13 @@ class QuarterHourMinuteFeed:
         addition = pd.DataFrame(candles)
         for column in ("opened_at", "available_at"):
             addition[column] = pd.to_datetime(addition[column], utc=True)
-        merged = (pd.concat([original, addition], ignore_index=True)
-                  .sort_values("available_at").drop_duplicates("opened_at", keep="last")
-                  .sort_values("opened_at").reset_index(drop=True))
+        from .native_interval import merge_native_history_frames
+        merged = merge_native_history_frames(original, addition)
         manifest.update(source_dataset=self.dataset, current_reference_availability="actual")
+        if symbol in self.native_interval_symbols:
+            manifest["native_interval_contract"] = self.native_interval_contract
+        else:
+            manifest.pop("native_interval_contract", None)
         merged.attrs["intraday_history"] = manifest
         self.histories[symbol] = data.History(merged, manifest)
 
@@ -146,7 +172,8 @@ class QuarterHourMinuteFeed:
                         self._event("minute_feed_invalid_synthetic_excluded", {
                             "history_rows_excluded": len(invalid), "immutable_originals_retained": True}, symbol)
                     history = self.histories[symbol]
-                    eligible = [data.completed_15m_observation(row, from_frame=True)
+                    eligible = [self._matches_interval_contract(symbol, row)
+                                and data.completed_15m_observation(row, from_frame=True)
                                 and instant(row["available_at"]) <= now
                                 for row in history.frame.to_dict("records")]
                     clean = history.frame.loc[eligible].copy()
@@ -155,6 +182,7 @@ class QuarterHourMinuteFeed:
                 saved = [c for c in self.store.observed_candles(symbol)
                          if c.get("source_id") == self.source_id
                          and c.get("source_dataset") == self.dataset
+                         and self._matches_interval_contract(symbol, c)
                          and data.completed_15m_observation(c)
                          and instant(c["available_at"]) <= now
                          and data.synthetic_continuity_verified(c)]
@@ -202,9 +230,10 @@ class QuarterHourMinuteFeed:
     def _resolve(self, symbol, reference, attempts):
         if not attempts:
             return False
-        previous = self._previous(symbol, reference)
+        native = symbol in self.native_interval_symbols
+        previous = None if native else self._previous(symbol, reference)
         final = attempts[-1]
-        needs_previous = (final.status == "success" and final.covered()
+        needs_previous = (not native and final.status == "success" and final.covered()
                           and not any(data.utc(row.get("opened_at", row.get("timestamp"))) == data.utc(reference)
                                       for row in final.rows))
         if needs_previous:
@@ -222,8 +251,12 @@ class QuarterHourMinuteFeed:
                 # availability can include the genuinely late dependency.
                 return False
         try:
-            result = data.resolve_minute_candle(attempts, session=self._session(reference),
-                                               previous=previous)
+            if native:
+                from .native_interval import resolve_native_interval
+                result = resolve_native_interval(attempts, session=self._session(reference))
+            else:
+                result = data.resolve_minute_candle(attempts, session=self._session(reference),
+                                                   previous=previous)
         except (ContractError, IndexError) as exc:
             # Canonical native bytes and immutable attempts are already saved.
             # Invalid zero/other OHLC is never turned into a fake usable candle.
@@ -232,14 +265,22 @@ class QuarterHourMinuteFeed:
             result = {"status": "unusable", "reason": "invalid_observed_aggregate", "candle": None,
                       "error_type": type(exc).__name__, "message": str(exc)}
         candle = result.get("candle")
-        terminal_missing = result.get("status") == "missing" and result.get("reason") in {
-            "no_prior_known_price", "unverified_prior_price_continuity"}
+        terminal_missing = result.get("status") == "missing" and (
+            result.get("reason") in {"no_prior_known_price", "unverified_prior_price_continuity", "unverified_source_no_trade"}
+            or native and result.get("reason") == "source_empty_interval")
         if candle is None and not terminal_missing and result.get("status") != "unusable":
             return False
         value = {"reference_at": reference.isoformat(), "status": result["status"],
                  "reason": result.get("reason"), "attempt_ids": [a.attempt_id for a in attempts],
                  "source_dataset": self.dataset, "native_window_saved": True}
+        if native:
+            value["native_interval_contract"] = self.native_interval_contract
         if candle is not None:
+            if (not self._matches_interval_contract(symbol, candle)
+                    or candle.get("symbol") != symbol or candle.get("source_id") != self.source_id
+                    or candle.get("source_dataset") != self.dataset
+                    or instant(candle["opened_at"]) != reference):
+                raise ContractError("Resolved candle differs from this symbol's frozen interval contract")
             value["candle_sha256"] = self.store.record_candle(candle)
             with self._lock:
                 self._merge(symbol, [candle])
@@ -362,7 +403,8 @@ class QuarterHourMinuteFeed:
                         & pd.to_datetime(frame.available_at, utc=True).le(pd.Timestamp(instant(self.clock())))
                         & frame.availability_kind.eq("actual")
                         & frame.source_id.eq(self.source_id) & frame.source_dataset.eq(self.dataset)]
-                    if any(data.completed_15m_observation(row, from_frame=True) and data.synthetic_continuity_verified(row)
+                    if any(self._matches_interval_contract(symbol, row)
+                           and data.completed_15m_observation(row, from_frame=True) and data.synthetic_continuity_verified(row)
                            for row in matching.to_dict("records")):
                         return history
             raise ContractError("History reference lies outside this feed's latched eligible day")

@@ -66,6 +66,43 @@ def eligible_reference(reference):
                     for session in equity_sessions(reference, reference + 3*STEP)))
 
 
+def prepare_market_collection(model_runtime, *, datastore, pc, symbols, clock=utcnow):
+    """Latch data-only sources when this PC's private recipe explicitly opts in."""
+    contract = getattr(model_runtime.get("dataset_builder"), "market_context_contract", None)
+    if contract is None:
+        return None
+    from .market_context import validate_market_context_contract
+    from .market_collection import load_local_collection_config, collector_from_config, SourceRequest
+    contract = validate_market_context_contract(contract)
+    config = load_local_collection_config(datastore, pc, symbols)
+    expected_hash = getattr(model_runtime["dataset_builder"], "market_collection_configuration_sha256", None)
+    if config.get("configuration_sha256") != expected_hash:
+        raise ContractError("Market collection configuration differs from the frozen local recipe")
+    available = {}
+    for payload in config["requests"]:
+        request = SourceRequest(**payload)
+        available.setdefault(request.source_kind, set()).add(request.source_id)
+    for kind, selection in contract["source_ids"].items():
+        selected = {selection} if isinstance(selection, str) else set(selection)
+        if not selected.issubset(available.get(kind, set())):
+            raise ContractError("Frozen model context sources differ from this PC's collection configuration")
+    return collector_from_config(config, datastore=datastore, pc=pc, clock=clock)
+
+
+def prepare_minute_provider(model_runtime, *, datastore, pc, symbols, source_dataset, clock=utcnow):
+    """Keep old recipes bound to their source; v4 obtains current native Live bars."""
+    if getattr(model_runtime.get("dataset_builder"), "market_context_contract", None) is not None:
+        from .live_minute_provider import LiveMinuteReplayProvider
+        provider = LiveMinuteReplayProvider(datastore=datastore, pc=pc, symbols=symbols, clock=clock)
+    else:
+        from app.services.databento_market_data import DatabentoMarketDataProvider
+        provider = DatabentoMarketDataProvider()
+    if provider.dataset != source_dataset:
+        raise ContractError("Provider binding differs from selected single source")
+    from .minute_persistence import PersistedMinuteProvider
+    return PersistedMinuteProvider(provider, datastore=datastore, pc=pc, symbols=symbols, clock=clock)
+
+
 class ExecutionQueue:
     def __init__(self, store, session_id, *, pc="Atlas", event_sink=None):
         if pc not in {"Atlas", "Scout"}:
@@ -239,6 +276,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     Local copies of the history mapping keep scoring out of the training writer.
     """
     from .data import completed_15m_observation, synthetic_continuity_verified
+    from .native_interval import candle_matches_forecast
     if pc not in {"Atlas", "Scout"}:
         raise ContractError("Explicit Atlas or Scout scoring participant required")
     audited = set()
@@ -261,10 +299,16 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
                 continue
             revisions = store.revisions(forecast["forecast_id"])
+            if (revisions and revisions[-1]["status"] == "synthetic"
+                    and "outcome:" + revisions[-1]["revision_id"] not in audited):
+                audited.add("outcome:" + revisions[-1]["revision_id"])
+                store.invalidate_unverified_outcome(forecast["forecast_id"], as_of=clock())
+                revisions = store.revisions(forecast["forecast_id"])
             candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
             observed = next((row for row in reversed(candidates)
                 if all(not forecast.get(field) or row.get(field) == forecast[field]
-                       for field in ("source_dataset", "source_id"))), None)
+                       for field in ("source_dataset", "source_id"))
+                and candle_matches_forecast(row, forecast)), None)
             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
                 store.observe(forecast,as_of=clock(),candle=observed)
                 continue
@@ -281,6 +325,7 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                 history = incoming.get(symbol)
                 match = history.frame.loc[history.frame.opened_at.eq(instant(forecast["target_open"]))]
                 match = match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                    and candle_matches_forecast(row, forecast)
                     and instant(row["available_at"]) <= instant(clock())
                     and row.get("availability_kind") == "actual"
                     and all(not forecast.get(field) or row.get(field) == forecast[field]
@@ -438,8 +483,9 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 status("STARTING")
             # Read overnight-installed recipes and compatibility at wake, not
             # when the operator first launches the sleeping process.
-            from .live_model_recipe import prepare_manual_models
+            from .live_model_recipe import prepare_manual_models, native_interval_symbols_for_runtime
             config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols)
+            native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
             if pc == "Atlas":
                 proof = compatibility()
                 if not proof["ready"]:
@@ -474,21 +520,26 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 if should_stop():
                     raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
                 try:
-                    histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
+                    if symbol in native_interval_symbols:
+                        from .native_interval import load_native_interval_history
+                        histories[symbol] = load_native_interval_history(root,symbol,source_dataset=config.source_dataset,
+                            pc=pc, recovery_contract=getattr(model_runtime.get("dataset_builder"), "historical_recovery_contract", None))
+                    else:
+                        histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
                 except Exception as exc:
                     store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
             if should_stop():
                 raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
-            provider = DatabentoMarketDataProvider()
-            if provider.dataset != config.source_dataset:
-                raise ContractError("Provider binding differs from selected single source")
-            from .minute_persistence import PersistedMinuteProvider
             from .minute_feed import QuarterHourMinuteFeed
-            provider = PersistedMinuteProvider(provider, datastore=root, pc=pc, symbols=symbols, clock=clock)
+            provider = prepare_minute_provider(model_runtime, datastore=root, pc=pc,
+                symbols=symbols, source_dataset=config.source_dataset, clock=clock)
+            market_collector = prepare_market_collection(model_runtime, datastore=root,
+                                                        pc=pc, symbols=symbols, clock=clock)
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
             minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
                 pc=pc,symbols=symbols,session_id=session_id,clock=clock,
                 publication_offset_seconds=config.publication_offset_seconds,
+                native_interval_symbols=native_interval_symbols,
                 on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                                   stopped=should_stop,**model_runtime)
@@ -539,9 +590,27 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 worker_errors.append({"worker":"minute_data","error_type":type(exc).__name__,"message":str(exc)})
                 stopped.set()
         data_worker = threading.Thread(target=data_work,name="intraday-manual-minute-data",daemon=True)
+        def context_work():
+            if market_collector is None:
+                return
+            try:
+                market_collector.run(stopped=should_stop, pause=pause)
+            except InterruptedError:
+                pass
+            except BaseException as exc:
+                # Provider adapters retain safe categories in their private
+                # snapshots; authenticated exception URLs must not reach logs.
+                store.event(session_id, "market_context_worker_stopped", {"error_type":type(exc).__name__})
+                worker_errors.append({"worker":"market_context", "error_type":type(exc).__name__,
+                    "message":"Inspect private collection status"})
+                stopped.set()
+        context_worker = (threading.Thread(target=context_work,name="intraday-manual-market-context",daemon=True)
+                          if market_collector is not None else None)
         worker.start()
         scorer.start()
         data_worker.start()
+        if context_worker is not None:
+            context_worker.start()
         print(f"{pc} 15m manual session running. New predictions can submit real orders. Ctrl-C stops this worker; resting orders retain their broker identities.",flush=True)
         if automatic_stop_at is not None:
             print("Automatic graceful stop: 5:00pm America/Los_Angeles; active work drains and resting orders retain their identities.",flush=True)
@@ -608,11 +677,14 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             status("STOPPING",broker_orders_automatically_cancelled=False,
                    stop_reason=stop_reason())
             print("15m order authority stopped. Waiting for active computation to finish; pending broker identities are retained.",flush=True)
-            while worker.is_alive() or scorer.is_alive() or data_worker.is_alive():
+            while (worker.is_alive() or scorer.is_alive() or data_worker.is_alive()
+                   or context_worker is not None and context_worker.is_alive()):
                 try:
                     worker.join(timeout=1)
                     scorer.join(timeout=1)
                     data_worker.join(timeout=1)
+                    if context_worker is not None:
+                        context_worker.join(timeout=1)
                     status("STOPPING",broker_orders_automatically_cancelled=False,
                            stop_reason=stop_reason())
                 except KeyboardInterrupt:

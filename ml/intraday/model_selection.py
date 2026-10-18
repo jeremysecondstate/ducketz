@@ -25,6 +25,8 @@ from ml.intraday.models import (
     purged_chronological_split, registry_status,
 )
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
+from .training_timing import (LEGACY, HISTORICAL_RESEARCH, timing_contract,
+                              timing_mode_from_metadata, validate_timing_mode)
 
 SELECTION_VERSION = "intraday-purged-session-selection-v2"
 
@@ -267,9 +269,15 @@ def _arrays(dataset, as_of, session_ids, session_timezone):
     return X, y.astype(np.uint8), references, targets, availability, sessions, eligible, cutoff
 
 
-def _partition(train, validation, *, X, y, references, targets, availability, sessions, config, holdout=False):
-    fit_cutoff = references[validation[0]]
-    available_train = np.array([i for i in train if targets[i] <= fit_cutoff and availability[i] <= fit_cutoff], dtype=int)
+def _partition(train, validation, *, X, y, references, targets, availability, sessions, config,
+               holdout=False, timing_mode=LEGACY, research_cutoff=None):
+    validate_timing_mode(timing_mode)
+    market_boundary = references[validation[0]]
+    if timing_mode == HISTORICAL_RESEARCH and research_cutoff is None:
+        raise ContractError("Historical research requires its actual construction cutoff")
+    fit_cutoff = instant(research_cutoff) if timing_mode == HISTORICAL_RESEARCH else market_boundary
+    available_train = np.array([i for i in train if targets[i] <= market_boundary
+                                and availability[i] <= fit_cutoff], dtype=int)
     capped = available_train[-config.max_training_rows:]
     reasons = []
     if len(capped) < config.min_training_rows:
@@ -281,7 +289,11 @@ def _partition(train, validation, *, X, y, references, targets, availability, se
     reasons.extend(_class_gate(y[capped], config.min_class_count, "training"))
     reasons.extend(_class_gate(y[validation], config.min_class_count, "holdout" if holdout else "validation"))
     evidence = {"session": sessions[validation[0]], "training_cutoff": fit_cutoff.isoformat(),
+                "training_timing_contract": timing_contract(timing_mode),
+                "market_partition_boundary": market_boundary.isoformat(),
                 "training_rows": len(capped), "validation_rows": len(validation),
+                "training_class_counts": {str(label): int((y[capped] == label).sum()) for label in (0, 1)},
+                "validation_class_counts": {str(label): int((y[validation] == label).sum()) for label in (0, 1)},
                 "overlap_or_unavailable_rows_purged": len(train) - len(available_train),
                 "row_budget_excluded": len(available_train) - len(capped),
                 "training_first_reference": references[capped[0]].isoformat() if len(capped) else None,
@@ -295,11 +307,12 @@ def _partition(train, validation, *, X, y, references, targets, availability, se
     return capped, validation, evidence
 
 
-def _fit_predict(spec, partition, data, config, deadline):
+def _fit_predict(spec, partition, data, config, deadline, *, feature_names):
     if time.monotonic() >= deadline:
         raise _SearchDeadlineReached("Bounded candidate search deadline reached before next fit")
     X, y, references, targets, availability, sessions, _, _ = data
     train, validation, evidence = partition
+    timing_mode = timing_mode_from_metadata(evidence)
     if spec.training_max_rows is not None:
         train = train[-spec.training_max_rows:]
     if len(train) < config.min_training_rows or len({sessions[i] for i in train}) < config.min_training_sessions:
@@ -308,9 +321,8 @@ def _fit_predict(spec, partition, data, config, deadline):
         raise InsufficientEvidenceError("Actual model history cap has insufficient examples of a target class")
     if getattr(spec, "probability_calibration", "none") == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}:
         base, calibration = purged_chronological_split([references[i] for i in train], [targets[i] for i in train],
-                                                      fraction=spec.calibration_fraction)
-        first_calibration = references[train[calibration[0]]]
-        base = np.array([j for j in base if availability[train[j]] <= first_calibration], dtype=int)
+            fraction=spec.calibration_fraction, label_available_at=[availability[i] for i in train],
+            timing_mode=timing_mode)
         if len(calibration) < config.min_calibration_rows:
             raise InsufficientEvidenceError("Chronological calibration rows below minimum")
         reasons = (_class_gate(y[train[base]], config.min_class_count, "calibration_base")
@@ -323,7 +335,7 @@ def _fit_predict(spec, partition, data, config, deadline):
         estimator, fit_evidence = fit_calibrated_estimator(
             spec, X[train], y[train], reference_at=[references[i] for i in train],
             target_close_at=[targets[i] for i in train], label_available_at=[availability[i] for i in train],
-            training_cutoff=evidence["training_cutoff"])
+            training_cutoff=evidence["training_cutoff"], feature_names=feature_names, timing_mode=timing_mode)
         matrix = np.asarray(estimator.predict_proba(X[validation]), dtype=float)
     classes = np.asarray(estimator.classes_)
     if (matrix.shape != (len(validation), 2) or set(classes.tolist()) != {0, 1}
@@ -343,6 +355,146 @@ def _baseline_predictions(partitions, y):
         priors.append(np.full(len(validation), prevalence))
         neutral.append(np.full(len(validation), 0.5))
     return {"training_prevalence": np.concatenate(priors), "neutral_0_5": np.concatenate(neutral)}
+
+
+def assess_frozen_ensemble(dataset, *, models, as_of=None, config=None, session_ids=None,
+                           session_timezone="America/Los_Angeles", holdout_already_examined=True):
+    """Assess every member of an existing recipe without selecting replacements.
+
+    Unlike candidate selection, this path measures the exact installed manual
+    ensemble even when one member would not make a supervised shortlist. Sparse
+    validation partitions retain descriptive scores and their failed support
+    gates. Training/calibration gates still prevent unsupported fits. A spent
+    holdout can diagnose a repaired pipeline but cannot qualify its recipe; this
+    result is never an installable selection report.
+    """
+    if type(holdout_already_examined) is not bool:
+        raise ContractError("Holdout examination history must be explicit boolean")
+    config = config if isinstance(config, SelectionConfig) else SelectionConfig(**(config or {}))
+    specs = tuple(freeze_model_spec(spec) for spec in configured_models(models))
+    if len(specs) > config.max_candidates or any(spec.probability_calibration != "sigmoid" for spec in specs):
+        raise ContractError("Frozen assessment requires bounded explicitly calibrated members")
+    # Do not silently impose a different history cap on the installed recipe.
+    if any(spec.training_max_rows is None or spec.training_max_rows > config.max_training_rows for spec in specs):
+        raise ContractError("Frozen assessment budget must cover each recipe's explicit history cap")
+    data = _arrays(dataset, as_of, session_ids, session_timezone)
+    X, y, references, targets, availability, sessions, eligible, cutoff = data
+    timing_mode = timing_mode_from_metadata(dataset.manifest)
+    ordered = list(dict.fromkeys(sessions[i] for i in eligible))
+    recipe = dataset.manifest.get("manual_model_recipe", {})
+    if recipe.get("models") is not None and [asdict(spec) for spec in specs] != [
+            asdict(freeze_model_spec(spec)) for spec in configured_models(recipe["models"])]:
+        raise ContractError("Exact manual assessment must use the dataset's frozen recipe members")
+    binding = {"symbol": dataset.inference.get("symbol"), "recipe_sha256": recipe.get("sha256"),
+        "manifest_sha256": _digest(dataset.manifest),
+        "source_history_sha256": _digest(dataset.manifest.get("source_history", {})),
+        "feature_contract_sha256": _digest({key: dataset.manifest.get(key) for key in
+            ("feature_version", "feature_policy", "label_provenance", "native_interval_contract", "market_context")}),
+        "feature_names_sha256": _digest(list(dataset.feature_names)), "feature_count": len(dataset.feature_names)}
+    data_hash = hashlib.sha256(X.tobytes() + y.tobytes() + json.dumps({
+        "binding": binding, "references": [value.isoformat() for value in references],
+        "targets": [value.isoformat() for value in targets],
+        "availability": [value.isoformat() for value in availability], "sessions": sessions}, sort_keys=True).encode()).hexdigest()
+    report = {"assessment_version": "intraday-frozen-ensemble-assessment-v1",
+        "training_timing_contract": timing_contract(timing_mode),
+        "assessment_kind": "exact_frozen_manual_ensemble_no_selection", "status": "insufficient_data",
+        "qualification": "not_established", "source_binding": binding, "dataset_sha256": data_hash,
+        "as_of": cutoff.isoformat(), "target_version": TARGET_VERSION, "config": asdict(config),
+        "models": [asdict(spec) for spec in specs], "partitions": [], "reasons": [],
+        "holdout_session": ordered[-1], "holdout_already_examined": holdout_already_examined,
+        "holdout_use": "diagnostic_only" if holdout_already_examined else "independent_fixed_recipe_gate",
+        "selected_specs": [], "policy_installation_authorized": False,
+        "availability_kinds": dataset.manifest.get("availability_kinds", []),
+        "historical_availability_limitation": ("Historical close availability is assumed where explicitly declared; no receipt was backdated."
+            if any(kind != "actual" for kind in dataset.manifest.get("availability_kinds", [])) else None)}
+    report["assessment_id"] = _digest({"data": data_hash, "models": report["models"],
+        "config": asdict(config), "holdout_already_examined": holdout_already_examined})
+    if len(ordered) < config.min_training_sessions + config.cv_folds + 1:
+        report["reasons"] = ["insufficient_chronological_sessions"]
+        return report
+    deadline = time.monotonic() + config.max_search_seconds
+    metric = lambda labels, p: probability_metrics(labels, p, extreme_probability=config.extreme_probability)
+    cv_parts, cv_probabilities, cv_labels = [], [], []
+    cv_member_probabilities = {spec.name: [] for spec in specs}
+    for session in ordered[-config.cv_folds - 1:]:
+        validation = np.asarray([i for i in eligible if sessions[i] == session], dtype=int)
+        train = np.asarray([i for i in eligible if references[i] < references[validation[0]]], dtype=int)
+        held = session == ordered[-1]
+        partition = _partition(train, validation, X=X, y=y, references=references, targets=targets,
+            availability=availability, sessions=sessions, config=config, holdout=held,
+            timing_mode=timing_mode, research_cutoff=cutoff)
+        if (recipe and dataset.manifest.get("input_training_rows", len(X)) > len(X)
+                and len(partition[0]) < max(spec.training_max_rows for spec in specs)):
+            raise ContractError("Exact manual assessment requires enough uncapped history for every fold's recipe window")
+        entry = {**partition[2], "role": "holdout" if held else "development", "models": [],
+            "ensemble_metrics": None, "metric_reasons": [], "complete": False,
+            "scores_are_descriptive_only": held and holdout_already_examined or bool(partition[2]["gate_reasons"])}
+        entry["baselines"] = {name: metric(y[validation], p) for name, p in _baseline_predictions([partition], y).items()}
+        train_reasons = [reason for reason in entry["gate_reasons"] if reason.startswith("training")]
+        pieces = []
+        for spec in specs:
+            member = {"name": spec.name, "status": "not_fit", "metrics": None, "reasons": list(train_reasons)}
+            if not train_reasons:
+                try:
+                    p, fitted = _fit_predict(spec, partition, data, config, deadline, feature_names=dataset.feature_names)
+                    member.update(status="fitted", metrics=metric(y[validation], p), **fitted)
+                    member["reasons"] = _metric_gates(member["metrics"], entry["baselines"], config)
+                    pieces.append(p)
+                    if not held:
+                        cv_member_probabilities[spec.name].append(p)
+                except Exception as exc:
+                    member.update(status="insufficient_data" if isinstance(exc, InsufficientEvidenceError) else "failed",
+                        error={"type": type(exc).__name__, "message": str(exc)})
+            entry["models"].append(member)
+        entry["complete"] = len(pieces) == len(specs)
+        if entry["complete"]:
+            probability = np.mean(pieces, axis=0)
+            entry["ensemble_metrics"] = metric(y[validation], probability)
+            entry["metric_reasons"] = _metric_gates(entry["ensemble_metrics"], entry["baselines"], config)
+            if not held:
+                cv_parts.append(partition)
+                cv_probabilities.append(probability)
+                cv_labels.append(y[validation])
+        report["partitions"].append(entry)
+    reasons = [f"{part['session']}:{reason}" for part in report["partitions"] for reason in part["gate_reasons"]]
+    if not all(part["complete"] for part in report["partitions"]):
+        reasons.append("incomplete_frozen_ensemble")
+        reasons.extend(f"{part['session']}:{member['name']}:{member['error']['type']}:{member['error']['message']}"
+            for part in report["partitions"] for member in part["models"] if "error" in member)
+    if len(cv_parts) == config.cv_folds:
+        labels = np.concatenate(cv_labels)
+        report["development_metrics"] = metric(labels, np.concatenate(cv_probabilities))
+        report["development_baselines"] = {name: metric(labels, p) for name, p in _baseline_predictions(cv_parts, y).items()}
+        reasons.extend("development:" + reason for reason in _metric_gates(
+            report["development_metrics"], report["development_baselines"], config))
+        wins = sum(all(part["ensemble_metrics"]["brier"] < base["brier"] for base in part["baselines"].values())
+            for part in report["partitions"] if part["role"] == "development")
+        report["development_winning_folds"] = wins
+        if wins < math.ceil(config.min_winning_fold_fraction * config.cv_folds):
+            reasons.append("development:too_few_folds_improve_baseline")
+        report["development_members"] = []
+        for spec in specs:
+            member_metrics = metric(labels, np.concatenate(cv_member_probabilities[spec.name]))
+            member_reasons = _metric_gates(member_metrics, report["development_baselines"], config)
+            member_wins = sum(all(next(member for member in part["models"] if member["name"] == spec.name)
+                ["metrics"]["brier"] < base["brier"] for base in part["baselines"].values())
+                for part in report["partitions"] if part["role"] == "development")
+            if member_wins < math.ceil(config.min_winning_fold_fraction * config.cv_folds):
+                member_reasons.append("too_few_folds_improve_baseline")
+            report["development_members"].append({"name": spec.name, "metrics": member_metrics,
+                "winning_folds": member_wins, "reasons": member_reasons})
+            reasons.extend("development:" + spec.name + ":" + reason for reason in member_reasons)
+    held = report["partitions"][-1]
+    reasons.extend("holdout:" + reason for reason in held["metric_reasons"])
+    for member in held["models"]:
+        reasons.extend("holdout:" + member["name"] + ":" + reason for reason in member["reasons"])
+    report["reasons"] = sorted(set(reasons))
+    report["status"] = ("insufficient_data" if any(part["gate_reasons"] or any(
+        member["status"] == "insufficient_data" for member in part["models"]) for part in report["partitions"])
+        else "failed" if not all(part["complete"] for part in report["partitions"]) else "assessed")
+    report["qualification"] = ("not_qualified" if reasons else
+        "requires_new_independent_holdout" if holdout_already_examined else "fixed_recipe_gates_passed")
+    return report
 
 
 def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, session_ids=None,
@@ -391,15 +543,18 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         incumbent_error = exc
     data = _arrays(dataset, as_of, session_ids, session_timezone)
     X, y, references, targets, availability, sessions, eligible, cutoff = data
+    timing_mode = timing_mode_from_metadata(dataset.manifest)
     ordered_sessions = list(dict.fromkeys(sessions[i] for i in eligible))
     holdout_session = ordered_sessions[-1]
     data_hash = hashlib.sha256(X.tobytes() + y.tobytes() + json.dumps({
         "references": [value.isoformat() for value in references],
         "availability": [value.isoformat() for value in availability], "sessions": sessions,
         "feature_names": list(dataset.feature_names), "feature_version": dataset.manifest.get("feature_version"),
-        "target_version": TARGET_VERSION, "synthetic_policy": dataset.manifest.get("synthetic_policy")}, sort_keys=True).encode()).hexdigest()
+        "target_version": TARGET_VERSION, "synthetic_policy": dataset.manifest.get("synthetic_policy"),
+        "training_timing_contract": timing_contract(timing_mode)}, sort_keys=True).encode()).hexdigest()
     spec_dicts = [asdict(spec) for spec in specs]
     report = {"selection_version": SELECTION_VERSION, "target_version": TARGET_VERSION,
+              "training_timing_contract": timing_contract(timing_mode),
               "status": "insufficient_data", "as_of": cutoff.isoformat(), "config": asdict(config),
               "dataset_sha256": data_hash, "candidate_manifest_sha256": _digest(spec_dicts),
               "holdout_session": holdout_session, "holdout_policy": "one_final_gate_after_frozen_cv_shortlist_no_replacements",
@@ -427,16 +582,20 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         validation = np.array([i for i in eligible if sessions[i] == session], dtype=int)
         train = np.array([i for i in eligible if references[i] < references[validation[0]]], dtype=int)
         folds.append(_partition(train, validation, X=X, y=y, references=references, targets=targets,
-                                availability=availability, sessions=sessions, config=config))
+                                availability=availability, sessions=sessions, config=config,
+                                timing_mode=timing_mode, research_cutoff=cutoff))
         if incumbents:
             incumbent_folds.append(_partition(train, validation, X=X, y=y, references=references, targets=targets,
-                                              availability=availability, sessions=sessions, config=incumbent_config))
+                                              availability=availability, sessions=sessions, config=incumbent_config,
+                                              timing_mode=timing_mode, research_cutoff=cutoff))
     holdout_rows = np.array([i for i in eligible if sessions[i] == holdout_session], dtype=int)
     pre_holdout = np.array([i for i in eligible if references[i] < references[holdout_rows[0]]], dtype=int)
     holdout_partition = _partition(pre_holdout, holdout_rows, X=X, y=y, references=references, targets=targets,
-                                   availability=availability, sessions=sessions, config=config, holdout=True)
+                                   availability=availability, sessions=sessions, config=config, holdout=True,
+                                   timing_mode=timing_mode, research_cutoff=cutoff)
     incumbent_holdout_partition = _partition(pre_holdout, holdout_rows, X=X, y=y, references=references, targets=targets,
-                                             availability=availability, sessions=sessions, config=incumbent_config, holdout=True)
+                                             availability=availability, sessions=sessions, config=incumbent_config, holdout=True,
+                                             timing_mode=timing_mode, research_cutoff=cutoff)
     report["folds"] = [partition[2] for partition in folds]
     report["holdout_partition"] = holdout_partition[2]
     partition_reasons = [reason for partition in [*folds, holdout_partition] for reason in partition[2]["gate_reasons"]]
@@ -459,7 +618,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
             if spec.name in resolution_errors:
                 raise resolution_errors[spec.name]
             for fold in folds:
-                p, fitted = _fit_predict(spec, fold, data, config, deadline)
+                p, fitted = _fit_predict(spec, fold, data, config, deadline, feature_names=dataset.feature_names)
                 fold_metrics = metric(y[fold[1]], p)
                 fold_baseline = {name: metric(y[fold[1]], value) for name, value in _baseline_predictions([fold], y).items()}
                 row["folds"].append({"session": fold[2]["session"], "metrics": fold_metrics,
@@ -527,7 +686,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         if incumbent_error is not None:
             raise incumbent_error
         if incumbents:
-            incumbent_predictions = [np.concatenate([_fit_predict(spec, fold, data, config, deadline)[0] for fold in incumbent_folds])
+            incumbent_predictions = [np.concatenate([_fit_predict(spec, fold, data, config, deadline, feature_names=dataset.feature_names)[0] for fold in incumbent_folds])
                                      for spec in incumbents]
             incumbent_cv = metric(cv_y, np.mean(incumbent_predictions, axis=0))
             report["incumbent"] = {"specs": [asdict(spec) for spec in incumbents], "cv_metrics": incumbent_cv,
@@ -545,7 +704,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
                           for name, probabilities in _baseline_predictions([holdout_partition], y).items()}
         held_predictions, held_models, held_reasons = [], [], []
         for spec in shortlist:
-            p, evidence = _fit_predict(spec, holdout_partition, data, config, deadline)
+            p, evidence = _fit_predict(spec, holdout_partition, data, config, deadline, feature_names=dataset.feature_names)
             scores = metric(held_y, p)
             reasons = _metric_gates(scores, held_baselines, config)
             held_predictions.append(p)
@@ -556,7 +715,7 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         report["holdout"] = {"session": holdout_session, "baselines": held_baselines,
                              "models": held_models, "proposal_metrics": proposal_holdout}
         if incumbents:
-            incumbent_p = [_fit_predict(spec, incumbent_holdout_partition, data, config, deadline)[0] for spec in incumbents]
+            incumbent_p = [_fit_predict(spec, incumbent_holdout_partition, data, config, deadline, feature_names=dataset.feature_names)[0] for spec in incumbents]
             incumbent_holdout = metric(held_y, np.mean(incumbent_p, axis=0))
             report["incumbent"]["holdout_metrics"] = incumbent_holdout
             for score in ("brier", "log_loss"):

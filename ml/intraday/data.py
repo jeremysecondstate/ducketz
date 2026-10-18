@@ -22,9 +22,12 @@ import numpy as np
 import pandas as pd
 
 from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, instant
+from .training_timing import (LEGACY, HISTORICAL_RESEARCH, OPERATIONAL_REPLAY,
+                              timing_contract, validate_timing_mode)
 
 MINUTE = timedelta(minutes=1)
 FEATURE_VERSION = "intraday-observed-causal-features-v1"
+PREPARATION_CONTRACT = "intraday-nontrading-dataset-preparation-v1"
 SYNTHETIC_CONTINUITY_POLICY = "same-session-adjacent-prior-close-v1"
 _PROVIDER_LOCKS = {}
 _PROVIDER_LOCKS_GUARD = threading.Lock()
@@ -141,7 +144,7 @@ class IntervalResponse:
     rows: tuple[dict, ...] = ()
     coverage_open: str | None = None
     coverage_close: str | None = None
-    provider_no_trade_evidence: str | None = None
+    provider_no_trade_evidence: str | dict | None = None  # Legacy prose remains readable, never new proof.
     retry_after_seconds: float = 0.0
     error: str | None = None
 
@@ -220,9 +223,10 @@ def resolve_interval(responses: Sequence[IntervalResponse], *, session: SessionB
                      previous: Mapping | None, duration=STEP) -> dict:
     """Resolve observed/no-trade/missing separately, with exact retry evidence.
 
-    At least two distinct successful covered empty attempts must be separated
-    by a positive wait. Both must assert explicit provider no-trade evidence.
-    Failures and advertised-range lag never contribute to that confirmation.
+    Only a versioned source-specific omission proof can authorize synthesis.
+    Empty responses without symbol resolution remain unavailable even after
+    repeated successful requests. Failures and advertised-range lag cannot
+    contribute to a proof.
     """
     if not responses:
         return {"status": "missing", "reason": "no_attempts", "candle": None}
@@ -256,14 +260,8 @@ def resolve_interval(responses: Sequence[IntervalResponse], *, session: SessionB
                                 synthetic=False, evidence=evidence)
         validate_candles(pd.DataFrame([candle]), duration=duration)
         return {"status": "observed", "candle": candle, "evidence": evidence}
-    qualifying = []
-    for response in rows:
-        if response.status == "success" and response.covered() and not response.rows and response.provider_no_trade_evidence:
-            if not qualifying or (response.attempt_id != qualifying[-1].attempt_id
-                                  and (utc(response.request_started_at) - utc(qualifying[-1].request_ended_at)).total_seconds()
-                                  >= max(4.0, qualifying[-1].retry_after_seconds)):
-                qualifying.append(response)
-    if last in qualifying and len(qualifying) >= 2:
+    from .no_trade import verified_omission_pair, stable_success_pair
+    if verified_omission_pair(rows, opened_at=last.interval_open, duration=duration):
         if previous is None:
             return {"status": "missing", "reason": "no_prior_known_price", "candle": None, "evidence": evidence}
         if (previous.get("symbol") != last.symbol or previous.get("source_id") != last.source_id
@@ -285,6 +283,8 @@ def resolve_interval(responses: Sequence[IntervalResponse], *, session: SessionB
         candle["synthetic_continuity"] = proof
         validate_candles(pd.DataFrame([candle]), duration=duration)
         return {"status": "synthetic_no_trade", "candle": candle, "evidence": evidence}
+    if stable_success_pair(rows) and not last.rows:
+        return {"status": "missing", "reason": "unverified_source_no_trade", "candle": None, "evidence": evidence}
     return {"status": "retry", "reason": last.status if last.status != "success" else "publication_lag_or_unconfirmed_gap",
             "candle": None, "evidence": evidence,
             "retry_after_seconds": max(4.0, last.retry_after_seconds)}
@@ -377,11 +377,19 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
         if not synthetic:
             return True
         evidence = json.loads(candle.get("evidence_json", "{}"))
+        from .no_trade import verified_omission_pair, response_rows
+        def source_matches(responses, available_at):
+            return (isinstance(responses, list) and len(responses) >= 2
+                and isinstance(responses[-1], Mapping)
+                and all(responses[-1].get(field) == candle[field]
+                        for field in ("symbol", "source_id", "source_dataset"))
+                and utc(responses[-1]["request_ended_at"]) == utc(available_at))
         if isinstance(evidence, dict) and "constituents" in evidence:
             constituents = evidence["constituents"]
             if len(constituents) != 15 or evidence.get("synthetic_continuity_policy") != SYNTHETIC_CONTINUITY_POLICY:
                 return False
             found = 0
+            observed = None
             for index, constituent in enumerate(constituents):
                 if (utc(constituent["opened_at"]) != utc(candle["opened_at"]) + index * MINUTE
                         or constituent.get("source_id") != candle["source_id"]
@@ -395,14 +403,34 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
                 admitted = {**candle, **constituent}
                 if not _verified_continuity_proof(admitted, proof, duration=MINUTE):
                     return False
+                responses = constituent.get("evidence")
+                if (not source_matches(responses, constituent["available_at"]) or not verified_omission_pair(
+                        responses, opened_at=constituent["opened_at"], duration=MINUTE)):
+                    return False
+                snapshot = {utc(row["opened_at"]): row for row in response_rows(responses[-1])}
+                if observed is not None and observed != snapshot:
+                    return False
+                observed = snapshot
                 if any(constituent.get(field) != proof.get(key) for field, key in (
                         ("prior_price_opened_at", "prior_opened_at"), ("prior_price_close", "prior_close"),
                         ("prior_price_interval_seconds", "prior_interval_seconds"),
                         ("prior_price_session_id", "prior_session_id"), ("prior_price_available_at", "prior_available_at"))):
                     return False
-            return found > 0 and found == candle.get("synthetic_constituents")
+            if not found or found != candle.get("synthetic_constituents"):
+                return False
+            # Bind the aggregate's actual prices to the complete response too;
+            # copying a proof onto a different symbol, receipt or OHLC candle
+            # cannot establish its provenance.
+            prices = [item if item["synthetic"] else observed[utc(item["opened_at"])]
+                      for item in constituents]
+            expected = dict(open=prices[0]["open"], high=max(p["high"] for p in prices),
+                low=min(p["low"] for p in prices), close=prices[-1]["close"],
+                volume=float(np.sum([p["volume"] for p in prices])))
+            return all(float(candle[field]) == value for field, value in expected.items())
         duration = timedelta(seconds=candle.get("interval_seconds", 900))
-        return _verified_continuity_proof(candle, candle.get("synthetic_continuity"), duration=duration)
+        return (_verified_continuity_proof(candle, candle.get("synthetic_continuity"), duration=duration)
+                and source_matches(evidence, candle["available_at"])
+                and verified_omission_pair(evidence, opened_at=candle["opened_at"], duration=duration))
     except (KeyError, ValueError, TypeError, OverflowError, ContractError, json.JSONDecodeError):
         return False
 
@@ -423,6 +451,12 @@ def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
     if not isinstance(candle, Mapping):
         return False
     try:
+        contract = candle.get("native_interval_contract")
+        if not missing(contract):
+            from .native_interval import CONTRACT, completed_native_interval
+            return contract == CONTRACT and completed_native_interval(candle, from_frame=from_frame)
+        if "source_empty_constituents" in candle and not (from_frame and missing(candle["source_empty_constituents"])):
+            return False  # A stripped native contract cannot inherit legacy 900-second acceptance.
         opened, available = utc(candle["opened_at"]), utc(candle["available_at"])
         if pd.isna(opened) or pd.isna(available) or opened != opened.floor("15min") or available < opened + STEP:
             return False
@@ -444,6 +478,8 @@ def completed_15m_observation(candle: Mapping, *, from_frame=False) -> bool:
         raw_evidence = candle.get("evidence_json")
         evidence = {} if missing(raw_evidence) else (
             raw_evidence if isinstance(raw_evidence, Mapping) else json.loads(raw_evidence))
+        if isinstance(evidence, Mapping) and "native_interval_contract" in evidence:
+            return False
         if isinstance(evidence, Mapping) and "constituents" in evidence:
             constituents = evidence["constituents"]
             if not isinstance(constituents, list) or len(constituents) != 15:
@@ -554,9 +590,12 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
             raise ContractError("Provider raw rows were omitted during price parsing; invalid data is not no-trade evidence")
         native = tuple(dict(opened_at=utc(bar.timestamp).isoformat(), open=bar.open, high=bar.high,
                             low=bar.low, close=bar.close, volume=bar.volume) for bar in bars)
-        return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
-            begin.isoformat(), utc(clock()).isoformat(), "success", native, coverage[0], coverage[1],
-            "Databento native OHLCV omits intervals with no trades; successful exact-range response is within advertised coverage")
+        response = IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
+            begin.isoformat(), utc(clock()).isoformat(), "success", native, coverage[0], coverage[1])
+        from .no_trade import make_omission_evidence
+        from dataclasses import replace
+        return replace(response, provider_no_trade_evidence=make_omission_evidence(
+            response, getattr(provider, "last_receipt", None)))
     except (ContractError, InterruptedError):
         raise
     except Exception as exc:
@@ -630,8 +669,13 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
         responses[symbol] = IntervalResponse(f"{attempt_id}:{symbol}", symbol, source_id, dataset,
             op.isoformat(), cl.isoformat(), begin.isoformat(), finished.isoformat(), status, native,
             coverage[0] if coverage else None, coverage[1] if coverage else None,
-            "Databento native OHLCV omits intervals with no trades; successful exact-range response is within advertised coverage"
-            if status == "success" else None, wait, error).validate()
+            None, wait, error).validate()
+        if status == "success":
+            from .no_trade import make_omission_evidence
+            from dataclasses import replace
+            response = responses[symbol]
+            responses[symbol] = replace(response, provider_no_trade_evidence=make_omission_evidence(
+                response, getattr(provider, "last_receipt", None)))
     return responses
 
 
@@ -679,16 +723,11 @@ def resolve_minute_candle(responses: Sequence[IntervalResponse], *, session: Ses
             values = {field: native[timestamp][field] for field in ("open", "high", "low", "close", "volume")}
             synthetic = False
         else:
-            confirmations = []
-            for attempt, lookup in zip(attempts, lookup_by_attempt):
-                if (attempt.status == "success" and attempt.covered() and attempt.provider_no_trade_evidence
-                        and timestamp not in lookup):
-                    if not confirmations or (attempt.attempt_id != confirmations[-1].attempt_id
-                            and (utc(attempt.request_started_at)-utc(confirmations[-1].request_ended_at)).total_seconds()
-                            >= max(4.0, confirmations[-1].retry_after_seconds)):
-                        confirmations.append(attempt)
-            if len(confirmations) < 2 or confirmations[-1].attempt_id != final.attempt_id:
-                return {"status": "retry", "reason": "unconfirmed_no_trade_constituent", "candle": None,
+            from .no_trade import verified_omission_pair, stable_success_pair
+            if not verified_omission_pair(attempts, opened_at=timestamp):
+                stable = stable_success_pair(attempts)
+                return {"status": "missing" if stable else "retry",
+                        "reason": "unverified_source_no_trade" if stable else "unconfirmed_no_trade_constituent", "candle": None,
                         "missing_minute": timestamp.isoformat(), "retry_after_seconds": max(4.0, final.retry_after_seconds)}
             if prior is None:
                 return {"status": "missing", "reason": "no_prior_known_price", "candle": None}
@@ -845,8 +884,21 @@ def validate_candles(frame: pd.DataFrame, *, duration=STEP) -> pd.DataFrame:
         raise ContractError("Candles must be named by interval opening times")
     if out.available_at.lt(out.opened_at + duration).any():
         raise ContractError("Candle availability precedes interval completion")
-    if not out.availability_kind.isin(["actual", "assumed_historical_close"]).all():
+    if not out.availability_kind.isin(["actual", "assumed_historical_close", "actual_historical_recovery"]).all():
         raise ContractError("Unknown information availability basis")
+    recovered = out.availability_kind.eq("actual_historical_recovery")
+    if recovered.any():
+        # A current receipt is never a historical close assumption. Only the
+        # separately reviewed recovery contract can carry a reconstructed
+        # feature clock, while the real acquisition clock still gates fitting.
+        from .native_interval import RECOVERY_CONTRACT
+        if ("native_recovery_contract" not in out or "feature_cutoff_at" not in out
+                or not out.loc[recovered, "native_recovery_contract"].eq(RECOVERY_CONTRACT).all()):
+            raise ContractError("Historical recovery requires explicit versioned source lineage")
+        clocks = pd.to_datetime(out.loc[recovered, "feature_cutoff_at"], utc=True, errors="raise")
+        if (clocks.isna().any() or not clocks.eq(out.loc[recovered, "opened_at"] + duration).all()
+                or out.loc[recovered, "available_at"].lt(clocks).any()):
+            raise ContractError("Historical recovery feature and actual receipt clocks disagree")
     for field in ("open", "high", "low", "close", "volume"):
         out[field] = pd.to_numeric(out[field], errors="raise")
         if not np.isfinite(out[field]).all() or (out[field] < (0 if field == "volume" else np.nextafter(0, 1))).any():
@@ -1216,7 +1268,8 @@ class Dataset:
 
 
 def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days: float | None = None,
-                  synthetic_policy: str | None = None) -> Dataset:
+                  synthetic_policy: str | None = None, preparation_only: bool = False,
+                  timing_mode=LEGACY) -> Dataset:
     """Labels are >= reference OPEN at exact third CLOSE, mature by joint receipt.
 
     Training sample availability includes its features/reference as well as the
@@ -1228,12 +1281,27 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
     the unresolved research/headline treatment. Feature inputs can carry
     synthetic intervals, retained in the input snapshot and fraction feature.
     """
+    validate_timing_mode(timing_mode)
     if synthetic_policy not in {None, "include", "exclude"}:
         raise ContractError("Synthetic label policy must be include/exclude or unresolved")
+    if type(preparation_only) is not bool:
+        raise ContractError("Dataset preparation mode must be explicit boolean")
     cutoff, reference = utc(cutoff), utc(reference_at)
     target_open, target_close = exact_target(reference)
     frame = validate_candles(candles)
+    if timing_mode == OPERATIONAL_REPLAY and frame.availability_kind.eq("assumed_historical_close").any():
+        raise ContractError("Exact operational replay requires actual possession evidence; assumed historical close is not a receipt")
     attrs = dict(candles.attrs.get("intraday_history", {}))
+    # Preserve provenance once in the manifest. Pandas otherwise deep-copies
+    # potentially large source receipts into every per-row/slice result below.
+    # validate_candles returned a private frame; caller metadata stays intact.
+    frame.attrs = {}
+    # The requested inclusion policy applies only after provenance admission.
+    # Legacy/nightly synthetic prices with prose-only omission claims remain
+    # readable, but cannot supply features, reference prices or target labels.
+    verified = frame.apply(lambda row: synthetic_continuity_verified(row.to_dict()), axis=1)
+    unverified_synthetic_excluded = int((~verified).sum())
+    frame = frame.loc[verified].reset_index(drop=True)
     frame = frame.loc[frame.available_at.le(cutoff) & (frame.opened_at + STEP).le(cutoff)].reset_index(drop=True)
     if lookback_days is not None:
         if not math.isfinite(lookback_days) or lookback_days <= 0:
@@ -1256,10 +1324,10 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         raise ContractError("Inference lacks causal observed-history feature warmup")
     if {"session_open", "session_close"} <= set(frame):
         bounds = SessionBounds(str(inference_row.session_id), inference_row.session_open, inference_row.session_close)
-        if not bounds.contains(target_open):
+        if not preparation_only and not bounds.contains(target_open):
             raise UnresolvedPolicy("Exact intraday target crosses session closure; next-session policy is unresolved")
     X, y, references, closes, available, synthetic_excluded, synthetic_included = [], [], [], [], [], 0, 0
-    for row in frame.itertuples():
+    for position, row in enumerate(frame.itertuples()):
         ref = row.opened_at
         if ref < window_start:
             continue
@@ -1269,12 +1337,20 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         outcome = lookup.loc[targ]
         if str(outcome.session_id) != str(row.session_id) or outcome.available_at > cutoff or finish > cutoff:
             continue
-        # Information used in each historical feature must have matured by that
-        # row's own decision time, not merely the later overall training cutoff.
-        position = int(frame.index[frame.opened_at.eq(ref)][0])
+        # Receipt remains provenance and gates the actual fitting cutoff. Only
+        # replay requires earlier feature dependencies at the original decision.
         own_cutoff = row.available_at
         history = frame.iloc[max(0, position - 20):position + 1]
-        if history.available_at.gt(own_cutoff).any():
+        # Recovered historical observations are reconstructed only under their
+        # explicit contract. Their actual acquisition clocks can differ across
+        # overlap requests, so the complete feature vector becomes available at
+        # the latest constituent receipt, never the earlier reference receipt.
+        # Existing actual decision rows retain their original receipt exclusion.
+        reconstructed = row.availability_kind == "actual_historical_recovery"
+        if timing_mode != HISTORICAL_RESEARCH and not reconstructed and history.available_at.gt(own_cutoff).any():
+            continue
+        if timing_mode == OPERATIONAL_REPLAY and (own_cutoff >= ref + 2 * STEP
+                or history.available_at.gt(own_cutoff).any()):
             continue
         values = features.loc[ref].to_numpy(dtype=float)
         if not np.isfinite(values).all():
@@ -1290,7 +1366,7 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         y.append(int(float(outcome.close) >= float(row.open)))
         references.append(ref)
         closes.append(finish)
-        available.append(max(outcome.available_at, own_cutoff))
+        available.append(max(outcome.available_at, own_cutoff, history.available_at.max()))
     if not X:
         raise InsufficientTrainingData("No matured finite training labels for this cycle/window")
     causal_input_rows = frame.tail(21)
@@ -1311,6 +1387,9 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         records.append(clean)
     snapshot = {"candles": records, "feature_version": FEATURE_VERSION,
                 "feature_names": list(FEATURE_NAMES), "features": inference_values.tolist()}
+    if preparation_only:
+        snapshot.update(preparation_only=True, preparation_contract=PREPARATION_CONTRACT,
+                        executable_forecast=False)
     fingerprint = hashlib.sha256(_json(snapshot).encode()).hexdigest()
     information_available = causal_input_rows.available_at.max()
     inference = {"symbol": str(inference_row.symbol), "reference_at": reference.isoformat(),
@@ -1326,9 +1405,23 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         "first_training_reference": min(references).isoformat(), "last_training_reference": max(references).isoformat(),
         "lookback_days": lookback_days, "synthetic_policy": synthetic_policy, "synthetic_labels_excluded": synthetic_excluded,
         "synthetic_labels_included": synthetic_included,
+        "unverified_synthetic_rows_excluded": unverified_synthetic_excluded,
         "availability_kinds": sorted(frame.availability_kind.unique().tolist()), "source_history": attrs,
         "feature_policy": "trailing_observed_steps_explicit_elapsed_gaps_no_fitted_global_preprocessing",
         "validation_requirement": "chronological_purge_targets_and_joint_information_receipts_before_validation_decisions"}
+    if timing_mode != LEGACY:
+        manifest.update(training_timing_contract=timing_contract(timing_mode),
+            validation_requirement=("market_time_horizon_purge_and_actual_fit_cutoff_receipts"
+                if timing_mode == HISTORICAL_RESEARCH else "actual_possession_at_original_decision_and_fit"),
+            historical_receipt_limitation="Assumed historical close is market completion, not proof of local possession")
+    if preparation_only:
+        # Session-end observations can mature earlier labels without defining
+        # any next-session forecast. Keep their exact closed reference solely
+        # as a preparation snapshot; ordinary live callers retain their gate.
+        inference.update(preparation_only=True, preparation_contract=PREPARATION_CONTRACT,
+                         executable_forecast=False, target_open=None, target_close=None)
+        manifest.update(preparation_only=True, preparation_contract=PREPARATION_CONTRACT,
+                        executable_forecast=False)
     return Dataset(np.asarray(X, dtype=float), np.asarray(y, dtype=np.uint8), inference_values.reshape(1, -1),
                    FEATURE_NAMES, pd.DatetimeIndex(available), pd.DatetimeIndex(references), pd.DatetimeIndex(closes),
                    inference, manifest)
