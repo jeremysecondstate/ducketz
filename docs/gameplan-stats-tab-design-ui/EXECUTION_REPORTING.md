@@ -39,6 +39,32 @@ These are private account-activity records, even when identifiers are hashed.
 They are not included in prediction manifests, forecast handoffs or Git output
 publication. Existing prediction export allowlists remain unchanged.
 
+Jeremy's October 16 request authorizes sharing this saved Gameplan execution
+display with Scout. After Atlas saves a report, `ml.gameplan_execution_handoff`
+publishes its exact validated bytes through the existing privately bound
+CODEXSTORE exchange. The separate display channel retains dated immutable
+versions and an atomic selection pointer. It includes the saved counts, rows,
+order details and original observation times; it never copies an execution
+database or supplies execution inputs to any trader. The local private-value
+scan and fixed summary field allowlist run before publication.
+
+Scout imports that report during its ordinary Stats reporting or when the
+Gameplan Stats execution panel refreshes. Atlas's UI refresh remains a local
+read. Scout preserves the prior summary and import receipt; older exports cannot
+replace a newer imported version. A missing Atlas report, unavailable mount or
+invalid packet leaves the current saved display intact. This optional exchange
+does not block prediction Stats, Gameplan synthesis or independent 15-minute
+preparation. Original source and broker-observation timestamps remain visible;
+receiving a report does not claim a new broker observation.
+
+Both PCs use their existing local `scratch/nightly-workflow/exchange-config.json`
+and its private exchange authorization. No new schedule or trader is required.
+Changes to this shared reporting/UI behavior must include the Scout receiving
+and display path in the source handoff, with actual local adoption recorded
+separately. Atlas may publish first; Scout adoption does not delay Atlas's work.
+For historical corrections, sync the exact report's Pacific session date;
+do not relabel it as the latest session or repeat Gameplan synthesis.
+
 The Stats reporting workflow attempts this sidecar after prediction publication
 has completed. Execution errors cannot invalidate prediction Stats or become a
 nightly prerequisite. A summary can also be regenerated independently, offline:

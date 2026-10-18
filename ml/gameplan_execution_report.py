@@ -422,6 +422,10 @@ def publish_execution_summary(root, session, observed_at=None):
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+    # Display-only exchange is independent of prediction publication and all
+    # traders. Atlas sends the saved sidecar; Scout can receive that same report.
+    from ml.gameplan_execution_handoff import sync_execution_summary
+    sync_execution_summary(root, session)
     return destination
 
 

@@ -174,6 +174,10 @@ def load_gameplan_execution(datastore_root: Path | None, session: str, *, now=No
         if date.fromisoformat(session).isoformat() != session:
             raise ValueError("Invalid Pacific session date")
         root = resolve_datastore_dir(root_dir=datastore_root)
+        # Scout refreshes the saved display export through its existing private
+        # binding. This never opens a trading ledger or contacts a broker.
+        from ml.gameplan_execution_handoff import sync_execution_summary
+        sync_execution_summary(root, session, receive_only=True)
         report_path = root / "state/gameplan-execution-reports" / session / "summary.json"
         try:
             contents = report_path.read_text(encoding="utf-8")
