@@ -562,6 +562,8 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if dataset.inference.get("symbol") not in symbols:
             raise ContractError("Observed manual recipe cannot train a symbol outside this PC's scope")
         symbol = dataset.inference["symbol"]
+        from .assessment_reservation import load_reservation, protect_dataset
+        dataset = protect_dataset(dataset, load_reservation(datastore, pc=pc, symbol=symbol))
         if (frozen_scope is not None
                 and dataset.inference.get("source_dataset") != frozen_scope["source_dataset"]):
             raise ContractError("Manual recipe source dataset differs from its frozen local selection")
@@ -658,6 +660,9 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if tuple(asdict(spec) for spec in configured_models(config)) != tuple(asdict(spec) for spec in specs):
             raise ContractError("Manual recipe trainer received different model specifications")
         metadata = dataset_metadata or {}
+        from .assessment_reservation import load_reservation, assert_training_unreserved
+        assert_training_unreserved(kwargs.get("target_close_at", ()),
+            load_reservation(datastore, pc=pc, symbol=metadata.get("manual_recipe_symbol")))
         from .data import PREPARATION_CONTRACT
         if (type(preparation_only) is not bool
                 or bool(metadata.get("preparation_only")) != preparation_only

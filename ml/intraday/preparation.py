@@ -25,7 +25,7 @@ VERSION = 'intraday-causal-preparation-v2'
 SOURCE_FILES = ('data.py', 'observed_data.py', 'native_interval.py', 'native_recovery.py',
                 'live_model_recipe.py', 'models.py', 'feature_support.py', 'market_context.py',
                 'market_context_cache.py', 'market_collection_index.py', 'preparation.py',
-                'preparation_watch.py', 'training_timing.py', 'market_state.py')
+                'preparation_watch.py', 'training_timing.py', 'market_state.py', 'assessment_reservation.py')
 
 
 def _json(value):
