@@ -12,6 +12,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
 
 from app.services.hyperliquid_powder_view import HyperliquidWorkspaceViewService
+from ml.hyperliquid_paper_review import verify_runtime_identity
 import psutil
 
 
@@ -76,6 +77,16 @@ def configured_slot_health(root, project, snapshot, now):
                     record = json.loads((run / "record.json").read_text(encoding="utf-8"))
                     if record.get("settings") != asdict(models.model_settings(horizon)):
                         raise ValueError("Forecast model recipe differs from configured settings")
+                    if models.retrain_before_predict:
+                        latest = json.loads((root / coin / interval / "latest.json").read_text(encoding="utf-8"))
+                        source = prediction["data_run_id"]
+                        if (record.get("source_run_id") != source
+                                or prediction.get("model_source_run_id") != source
+                                or latest.get("run_id") != source):
+                            raise ValueError("Forecast was not retrained on the latest candle snapshot")
+                        if (datetime.fromisoformat(record["trained_at_utc"])
+                                < datetime.fromisoformat(prediction["decision_close_utc"])):
+                            raise ValueError("Model fitting predates the completed decision candle")
                     report["slots"][key] = {"result": "passed", **{
                         field: prediction[field] for field in ("prediction_id", "model_id", "data_run_id",
                             "decision_close_utc", "target_close_utc", "created_at_utc", "qualified")},
@@ -121,8 +132,6 @@ def main():
         return value
     runtimes = {"paper": runtime(snapshot.runtime), "models": runtime(snapshot.runtime.get("models", {})),
                 "coordinator": runtime(snapshot.runtime.get("coordinator", {})), "powder": runtime(snapshot.powder.runtime)}
-    modules = {"paper": "ml.hyperliquid_paper_runtime", "models": "ml.hyperliquid_model_runtime",
-               "coordinator": "ml.hyperliquid_coordinator", "powder": "ml.hyperliquid_powder_runtime"}
     identities = {}
     for component, row in runtimes.items():
         pid = row.get("pid")
@@ -131,25 +140,18 @@ def main():
             continue
         try:
             process = psutil.Process(pid)
-            argv = process.cmdline()
-            index = argv.index("-m") if "-m" in argv else -1
-            valid = index >= 0 and argv[index + 1] == modules[component]
-            if not valid:
-                raise ValueError("Saved PID belongs to a different module; unrelated arguments omitted")
-            config_path = str(PROJECT / "configs" / {"paper": "hyperliquid-paper.json", "models": "hyperliquid-models.json",
-                                                   "coordinator": "hyperliquid-markets.json", "powder": "hyperliquid-powder.json"}[component])
-            config_index = argv.index("--config") if "--config" in argv else -1
-            valid &= config_index >= 0 and Path(argv[config_index + 1]).resolve() == Path(config_path).resolve()
-            valid &= Path(process.cwd()).resolve() == PROJECT.resolve()
+            identity = verify_runtime_identity(root, PROJECT, component, row, process=process)
             parents = []
             for parent in process.parents()[:2]:
                 parents.append({"pid": parent.pid, "name": parent.name(), "command": parent.cmdline(),
                                 "created_at_utc": datetime.fromtimestamp(parent.create_time(), timezone.utc).isoformat()})
-            identities[component] = {"pid": pid, "identity_verified": bool(valid), "command": argv, "cwd": process.cwd(),
-                                     "created_at_utc": datetime.fromtimestamp(process.create_time(), timezone.utc).isoformat(), "parents": parents}
-        except (psutil.Error, OSError, ValueError, IndexError) as error:
+            identities[component] = {**identity, "parents": parents}
+        except (psutil.Error, OSError, ValueError, TypeError, KeyError, IndexError) as error:
             identities[component] = {"pid": pid, "identity_verified": False, "error": type(error).__name__ + ": " + str(error)}
-    controls = {"coordinator": "_coordinator", "models": "_models/_runtime", "paper": "_paper/_runtime", "powder": "_powder/_runtime"}
+    if "paper_loop" in snapshot.runtime:
+        runtimes["paper_loop"] = runtime(snapshot.runtime["paper_loop"])
+    controls = {"coordinator": "_coordinator", "models": "_models/_runtime", "paper": "_paper/_runtime", "powder": "_powder/_runtime",
+                "paper_loop": "_paper_loop"}
     record = {"read_at_utc": snapshot.observed_at_utc, "expectation": args.expect,
               "config_sha256": {name: hashlib.sha256((PROJECT / "configs" / name).read_bytes()).hexdigest()
                                 for name in ("hyperliquid-markets.json", "hyperliquid-models.json", "hyperliquid-paper.json", "hyperliquid-powder.json")},
@@ -177,8 +179,11 @@ def main():
         for name in ("coordinator", "models"):
             assert identities[name]["identity_verified"]
             assert not any(runtimes[name].get(key) for key in ("last_error", "config_error", "slot_errors")), runtimes[name]
+        loop_owned = any(value.get("process_owner") == "paper_loop" and value.get("identity_verified")
+                         for value in identities.values())
         required_sources = {key: value for key, value in record["sources"].items()
-                            if args.expect == "trading" or key not in {"ledger", "paper", "performance"}}
+                            if (loop_owned or key != "paper_loop")
+                            and (args.expect == "trading" or key not in {"ledger", "paper", "performance"})}
         assert all(value["state"] == "fresh" for value in required_sources.values()), {
             key: value for key, value in required_sources.items() if value["state"] != "fresh"}
         assert not snapshot.powder.runtime.get("connected") and snapshot.powder.runtime.get("pending_intents", 0) == 0

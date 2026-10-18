@@ -145,9 +145,9 @@ def _load_record(directory: Path, name: str, *, now: float, max_age_seconds: flo
 
 def load_predictor(
     data_root, coin, interval, horizon, *, now: float, max_age_seconds: float,
-    expected_feature_revision=None,
+    expected_feature_revision=None, expected_source_run_id=None, expected_settings=None,
 ) -> dict | None:
-    """Prefer a fresh eligible release, otherwise return the fresh research model."""
+    """Prefer an eligible release among models matching all requested evidence."""
     _utc(now)
     if not math.isfinite(max_age_seconds) or max_age_seconds <= 0:
         raise ValueError("Model maximum age must be finite and positive.")
@@ -157,6 +157,10 @@ def load_predictor(
         if loaded is not None:
             record, bundle_path = loaded
             if expected_feature_revision is not None and record.get("feature_revision") != expected_feature_revision:
+                continue
+            if expected_source_run_id is not None and record.get("source_run_id") != expected_source_run_id:
+                continue
+            if expected_settings is not None and record.get("settings") != expected_settings:
                 continue
             return {"bundle": joblib.load(bundle_path), "record": record, "role": role}
     return None
@@ -173,8 +177,15 @@ def _prediction_record(row: dict) -> dict:
     return _jsonable(result)
 
 
-def record_prediction(data_root, coin, interval, horizon, prediction: dict, model_record: dict, *, now: float) -> dict:
+def record_prediction(data_root, coin, interval, horizon, prediction: dict, model_record: dict, *,
+                      now: float, require_source_match: bool = False) -> dict:
     """Keep the first forecast for a decision candle, including its model version."""
+    metadata = model_record.get("record", model_record)
+    if require_source_match and (
+            not metadata.get("source_run_id")
+            or metadata["source_run_id"] != prediction.get("data_run_id")
+            or prediction.get("model_source_run_id", metadata["source_run_id"]) != metadata["source_run_id"]):
+        raise ValueError("A retrained forecast requires the model and prediction to share an exact source run.")
     directory = model_dir(data_root, coin, interval, horizon)
     directory.mkdir(parents=True, exist_ok=True)
     decision_time = _timestamp(prediction["decision_close_utc"], "decision_close_utc")
@@ -184,12 +195,18 @@ def record_prediction(data_root, coin, interval, horizon, prediction: dict, mode
         decision_times = pd.to_datetime(existing["decision_close_utc"], utc=True)
         duplicate = decision_times.eq(decision_time)
         if duplicate.any():
+            saved = _prediction_record(existing.loc[duplicate].iloc[0].to_dict())
+            if require_source_match and (
+                    saved.get("model_id") != metadata.get("model_id")
+                    or saved.get("data_run_id") != prediction.get("data_run_id")
+                    or saved.get("model_source_run_id") != metadata.get("source_run_id")):
+                raise ValueError("The decision candle already has a different recorded forecast; its history is preserved.")
             # The journal commits first. Repair its JSON projection if a prior
             # write stopped between the Parquet and JSON replacements, using
             # the newest forecast even when this retry concerns an older row.
             latest = _prediction_record(existing.loc[decision_times.idxmax()].to_dict())
             _atomic_json(directory / "latest_prediction.json", latest)
-            return _prediction_record(existing.loc[duplicate].iloc[0].to_dict())
+            return saved
     current = _timestamp(_utc(now), "now")
     target = _timestamp(prediction["target_close_utc"], "target_close_utc")
     timestamp = _timestamp(prediction["decision_timestamp_utc"], "decision_timestamp_utc")
@@ -205,7 +222,6 @@ def record_prediction(data_root, coin, interval, horizon, prediction: dict, mode
         raise ValueError("The decision price must be finite and positive.")
     if not all(math.isfinite(value) and 0 <= value <= 1 for value in (p, q)) or not math.isclose(p + q, 1.0, abs_tol=1e-9):
         raise ValueError("Direction probabilities must be finite, bounded, and complementary.")
-    metadata = model_record.get("record", model_record)
     role = model_record.get("role", "active" if metadata.get("eligible") else "research_candidate")
     if role not in ("active", "research_candidate"):
         raise ValueError("Unsupported model role.")
@@ -214,6 +230,7 @@ def record_prediction(data_root, coin, interval, horizon, prediction: dict, mode
     record = _jsonable({
         "prediction_id": uuid4().hex,
         "model_id": metadata["model_id"],
+        "model_source_run_id": metadata.get("source_run_id"),
         "data_run_id": prediction["data_run_id"],
         "coin": coin,
         "interval": interval,

@@ -219,6 +219,59 @@ def test_five_minute_recipe_updates_operations_preview_and_preserves_historical_
     assert view.mode_status.cget("text") == "Not connected"
 
 
+def test_unified_paper_workflow_is_visible_with_training_stage_and_hidden_for_powder(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    snapshot.runtime["paper_loop"] = {"status": "running", "ownership_verified": True}
+    snapshot.runtime["models"] = {"training_market": "ETH/5m/h1"}
+    snapshot.sources["paper_loop"] = SourceState("paper_loop", "fresh", snapshot.observed_at_utc, 1, 5)
+    view.show_snapshot(snapshot)
+    window.update()
+    assert view.workflow_label.winfo_ismapped()
+    summary = view.workflow_label.cget("text")
+    assert "5-minute Paper loop · Running · Retraining ETH" in summary
+    assert "Real candles → overlap / dedup → saved dataframe" in summary
+    assert "preprocess + retrain → predict → simulated trades" in summary
+    view.mode.set("Powder")
+    window.update()
+    assert not view.workflow_label.winfo_ismapped()
+    view.mode.set("Paper")
+    window.geometry("850x760")
+    window.update()
+    assert view.workflow_label.winfo_ismapped()
+    assert view.workflow_label.winfo_x() + view.workflow_label.winfo_width() <= view.page.winfo_width()
+    assert int(view.workflow_label.cget("wraplength")) <= view.workflow_label.winfo_width()
+
+
+def test_workflow_preserves_unverified_stale_and_read_failure_states(workspace):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    snapshot.runtime["paper_loop"] = {"status": "stale", "ownership_verified": False}
+    snapshot.runtime["models"] = {"training_market": "ETH/5m/h1"}
+    snapshot.sources["paper_loop"] = SourceState("paper_loop", "stale", snapshot.observed_at_utc, 60, 5)
+    view.show_snapshot(snapshot)
+    window.update()
+    assert "Paper loop · Stale" in view.workflow_label.cget("text")
+    assert "Retraining" not in view.workflow_label.cget("text")
+    view._error = "Read failed"
+    view._render()
+    assert "Paper loop · Read failed" in view.workflow_label.cget("text")
+    assert "Running" not in view.workflow_label.cget("text")
+    view._error = None
+    snapshot.runtime["paper_loop"].update(status="running", ownership_verified=True)
+    snapshot.sources["paper_loop"] = replace(snapshot.sources["paper_loop"], state="fresh", age_seconds=1)
+    snapshot.sources["models"] = replace(snapshot.sources["models"], state="stale")
+    view.show_snapshot(snapshot)
+    assert "Paper loop · Running" in view.workflow_label.cget("text")
+    assert "Retraining" not in view.workflow_label.cget("text")
+
+
+def test_legacy_workspace_does_not_claim_unified_workflow(workspace):
+    view, window, _ = workspace
+    window.update()
+    assert not view.workflow_label.winfo_ismapped()
+
+
 def test_immutable_opening_stays_visible_beside_postfill_portfolio_and_inventory(workspace):
     view, window, _ = workspace
     snapshot = _snapshot()

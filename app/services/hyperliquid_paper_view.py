@@ -176,6 +176,23 @@ def filter_rows(rows, *, account="all", asset="all", qualification="all", includ
     return result
 
 
+def _command_module(argv):
+    """Return Python's executed module, excluding script and -c arguments."""
+    index = 1
+    while index < len(argv):
+        option = argv[index]
+        if not isinstance(option, str):
+            return None
+        if option == "-m":
+            return argv[index + 1] if index + 1 < len(argv) else None
+        if option in {"-c", "--"} or option.startswith("-c") or not option.startswith("-"):
+            return None
+        if option.startswith("-m") and len(option) > 2:
+            return option[2:]
+        index += 2 if option in {"-W", "-X"} else 1
+    return None
+
+
 def _process_matches(pid, module):
     """Inspect process identity without opening or touching runtime lock files."""
     if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
@@ -186,7 +203,8 @@ def _process_matches(pid, module):
         return None
     try:
         process = psutil.Process(pid)
-        return process.is_running() and module in " ".join(process.cmdline())
+        expected = module if module.startswith("ml.") else "ml." + module
+        return process.is_running() and _command_module(process.cmdline()) == expected
     except psutil.NoSuchProcess:
         return False
     except (psutil.AccessDenied, OSError):
@@ -413,10 +431,29 @@ class HyperliquidPaperViewService:
                 state = "stale" if age > (grace if grace is not None else cadence * 2) else "fresh"
         return SourceState(name, state, stamp, age, cadence, detail)
 
-    def _runtime(self, path, key, module, cadence, now, snapshot, warnings):
-        payload, error = self._json(path, warnings)
+    def _runtime(self, path, key, module, cadence, now, snapshot, warnings, *, owner=None, optional=False):
+        payload, error = self._json(path, warnings, optional=optional)
+        if optional and error == "missing":
+            return {}
         reported = payload.get("status")
         alive = self.process_probe(payload.get("pid"), module) if payload else None
+        process_owner, process_module, ownership_detail = None, None, ""
+        if alive is True:
+            process_module = module if module.startswith("ml.") else "ml." + module
+        elif owner and type(payload.get("pid")) is int and payload["pid"] == owner.get("pid"):
+            worker = _mapping(_mapping(owner.get("workers")).get("data" if key == "coordinator" else key))
+            owner_start, observed = _timestamp(owner.get("started_at_utc")), _timestamp(payload.get("updated_at_utc"))
+            worker_start = _timestamp(payload.get("started_at_utc"))
+            same_lifetime = (owner_start is not None and observed is not None and observed >= owner_start
+                             and ("started_at_utc" not in payload
+                                  or worker_start is not None and worker_start >= owner_start))
+            if owner.get("ownership_verified") is True and worker.get("status") == "running" and same_lifetime:
+                alive, process_owner, process_module = True, "paper_loop", "ml.hyperliquid_paper_loop"
+                ownership_detail = "Worker belongs to the verified five-minute Paper loop"
+            elif owner.get("process_alive") is not False:
+                alive = None
+                ownership_detail = ("Saved worker status predates the current Paper loop" if not same_lifetime else
+                                    "Paper loop ownership is unavailable, stale, or its worker is not running")
         state = error
         detail = str(payload.get("last_error") or payload.get("config_error") or "")
         if error is None:
@@ -431,7 +468,8 @@ class HyperliquidPaperViewService:
                 detail = detail or "Runtime reports source errors; inspect operation details"
             elif alive is None:
                 state = "partial"
-                detail = "Process identity unverified; saved status is not proof of a running process"
+                detail = ownership_detail or "Process identity unverified; saved status is not proof of a running process"
+        detail = detail or ownership_detail
         source = self._source(key, payload.get("updated_at_utc"), now, cadence,
                               state=state, detail=detail)
         # A stale observation remains visible even when the PID is still alive.
@@ -439,9 +477,30 @@ class HyperliquidPaperViewService:
             source = replace(source, state="stale")
         snapshot.sources[key] = source
         payload = dict(payload)
-        payload.update(reported_status=reported, process_alive=alive)
+        payload.update(reported_status=reported, process_alive=alive,
+                       process_owner=process_owner, process_module=process_module)
         payload["status"] = ("running" if source.state == "fresh" else source.state)
         return payload
+
+    def _paper_loop(self, now, snapshot, warnings):
+        owner = self._runtime(self.data_root / "_paper_loop" / "status.json", "paper_loop",
+                              "hyperliquid_paper_loop", 5, now, snapshot, warnings, optional=True)
+        if not owner:
+            return {}
+        source = snapshot.sources["paper_loop"]
+        started, observed = _timestamp(owner.get("started_at_utc")), _timestamp(owner.get("updated_at_utc"))
+        contract_matches = (owner.get("mode") == "paper" and owner.get("interval") == "5m"
+                            and type(owner.get("horizon_bars")) is int and owner["horizon_bars"] == 1
+                            and owner.get("retrain_before_predict") is True
+                            and started is not None and observed is not None and started <= observed <= now + 5)
+        owner["ownership_verified"] = (contract_matches and source.state == "fresh"
+                                       and owner.get("process_alive") is True
+                                       and owner.get("reported_status") == "running")
+        if not owner["ownership_verified"] and source.state == "fresh":
+            owner["status"] = "partial"
+            snapshot.sources["paper_loop"] = replace(source, state="partial",
+                detail="The saved Paper loop has incomplete ownership or five-minute workflow evidence")
+        return owner
 
     @staticmethod
     def _decoded(row, warnings):
@@ -822,14 +881,17 @@ class HyperliquidPaperViewService:
         warnings = []
         self._ledger(snapshot, now, warnings)
         paper = self.data_root / "_paper"
+        owner = self._paper_loop(now, snapshot, warnings)
         snapshot.runtime = self._runtime(paper / "_runtime" / "status.json", "paper",
-            "hyperliquid_paper_runtime", 30, now, snapshot, warnings)
+            "hyperliquid_paper_runtime", 30, now, snapshot, warnings, owner=owner)
         # Avoid exposing a second, potentially older set of balances to the UI.
         snapshot.runtime.pop("portfolio", None)
         snapshot.runtime["models"] = self._runtime(self.data_root / "_models" / "_runtime" / "status.json",
-            "models", "hyperliquid_model_runtime", 5, now, snapshot, warnings)
+            "models", "hyperliquid_model_runtime", 5, now, snapshot, warnings, owner=owner)
         snapshot.runtime["coordinator"] = self._runtime(self.data_root / "_coordinator" / "coordinator_status.json",
-            "coordinator", "hyperliquid_coordinator", 5, now, snapshot, warnings)
+            "coordinator", "hyperliquid_coordinator", 5, now, snapshot, warnings, owner=owner)
+        if owner:
+            snapshot.runtime["paper_loop"] = owner
         snapshot.policy, _ = self._json(paper / "policy.json", warnings, optional=True)
         snapshot.performance, error = self._json(paper / "performance.json", warnings, optional=True)
         snapshot.sources["performance"] = self._source("performance", snapshot.performance.get("as_of_utc"),
