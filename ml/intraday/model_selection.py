@@ -25,6 +25,8 @@ from ml.intraday.models import (
     purged_chronological_split, registry_status,
 )
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
+from .training_timing import (LEGACY, HISTORICAL_RESEARCH, timing_contract,
+                              timing_mode_from_metadata, validate_timing_mode)
 
 SELECTION_VERSION = "intraday-purged-session-selection-v2"
 
@@ -267,9 +269,15 @@ def _arrays(dataset, as_of, session_ids, session_timezone):
     return X, y.astype(np.uint8), references, targets, availability, sessions, eligible, cutoff
 
 
-def _partition(train, validation, *, X, y, references, targets, availability, sessions, config, holdout=False):
-    fit_cutoff = references[validation[0]]
-    available_train = np.array([i for i in train if targets[i] <= fit_cutoff and availability[i] <= fit_cutoff], dtype=int)
+def _partition(train, validation, *, X, y, references, targets, availability, sessions, config,
+               holdout=False, timing_mode=LEGACY, research_cutoff=None):
+    validate_timing_mode(timing_mode)
+    market_boundary = references[validation[0]]
+    if timing_mode == HISTORICAL_RESEARCH and research_cutoff is None:
+        raise ContractError("Historical research requires its actual construction cutoff")
+    fit_cutoff = instant(research_cutoff) if timing_mode == HISTORICAL_RESEARCH else market_boundary
+    available_train = np.array([i for i in train if targets[i] <= market_boundary
+                                and availability[i] <= fit_cutoff], dtype=int)
     capped = available_train[-config.max_training_rows:]
     reasons = []
     if len(capped) < config.min_training_rows:
@@ -281,6 +289,8 @@ def _partition(train, validation, *, X, y, references, targets, availability, se
     reasons.extend(_class_gate(y[capped], config.min_class_count, "training"))
     reasons.extend(_class_gate(y[validation], config.min_class_count, "holdout" if holdout else "validation"))
     evidence = {"session": sessions[validation[0]], "training_cutoff": fit_cutoff.isoformat(),
+                "training_timing_contract": timing_contract(timing_mode),
+                "market_partition_boundary": market_boundary.isoformat(),
                 "training_rows": len(capped), "validation_rows": len(validation),
                 "training_class_counts": {str(label): int((y[capped] == label).sum()) for label in (0, 1)},
                 "validation_class_counts": {str(label): int((y[validation] == label).sum()) for label in (0, 1)},
@@ -302,6 +312,7 @@ def _fit_predict(spec, partition, data, config, deadline, *, feature_names):
         raise _SearchDeadlineReached("Bounded candidate search deadline reached before next fit")
     X, y, references, targets, availability, sessions, _, _ = data
     train, validation, evidence = partition
+    timing_mode = timing_mode_from_metadata(evidence)
     if spec.training_max_rows is not None:
         train = train[-spec.training_max_rows:]
     if len(train) < config.min_training_rows or len({sessions[i] for i in train}) < config.min_training_sessions:
@@ -310,9 +321,8 @@ def _fit_predict(spec, partition, data, config, deadline, *, feature_names):
         raise InsufficientEvidenceError("Actual model history cap has insufficient examples of a target class")
     if getattr(spec, "probability_calibration", "none") == "sigmoid" or spec.family in {"ridge", "passive_aggressive"}:
         base, calibration = purged_chronological_split([references[i] for i in train], [targets[i] for i in train],
-                                                      fraction=spec.calibration_fraction)
-        first_calibration = references[train[calibration[0]]]
-        base = np.array([j for j in base if availability[train[j]] <= first_calibration], dtype=int)
+            fraction=spec.calibration_fraction, label_available_at=[availability[i] for i in train],
+            timing_mode=timing_mode)
         if len(calibration) < config.min_calibration_rows:
             raise InsufficientEvidenceError("Chronological calibration rows below minimum")
         reasons = (_class_gate(y[train[base]], config.min_class_count, "calibration_base")
@@ -325,7 +335,7 @@ def _fit_predict(spec, partition, data, config, deadline, *, feature_names):
         estimator, fit_evidence = fit_calibrated_estimator(
             spec, X[train], y[train], reference_at=[references[i] for i in train],
             target_close_at=[targets[i] for i in train], label_available_at=[availability[i] for i in train],
-            training_cutoff=evidence["training_cutoff"], feature_names=feature_names)
+            training_cutoff=evidence["training_cutoff"], feature_names=feature_names, timing_mode=timing_mode)
         matrix = np.asarray(estimator.predict_proba(X[validation]), dtype=float)
     classes = np.asarray(estimator.classes_)
     if (matrix.shape != (len(validation), 2) or set(classes.tolist()) != {0, 1}
@@ -369,6 +379,7 @@ def assess_frozen_ensemble(dataset, *, models, as_of=None, config=None, session_
         raise ContractError("Frozen assessment budget must cover each recipe's explicit history cap")
     data = _arrays(dataset, as_of, session_ids, session_timezone)
     X, y, references, targets, availability, sessions, eligible, cutoff = data
+    timing_mode = timing_mode_from_metadata(dataset.manifest)
     ordered = list(dict.fromkeys(sessions[i] for i in eligible))
     recipe = dataset.manifest.get("manual_model_recipe", {})
     if recipe.get("models") is not None and [asdict(spec) for spec in specs] != [
@@ -385,6 +396,7 @@ def assess_frozen_ensemble(dataset, *, models, as_of=None, config=None, session_
         "targets": [value.isoformat() for value in targets],
         "availability": [value.isoformat() for value in availability], "sessions": sessions}, sort_keys=True).encode()).hexdigest()
     report = {"assessment_version": "intraday-frozen-ensemble-assessment-v1",
+        "training_timing_contract": timing_contract(timing_mode),
         "assessment_kind": "exact_frozen_manual_ensemble_no_selection", "status": "insufficient_data",
         "qualification": "not_established", "source_binding": binding, "dataset_sha256": data_hash,
         "as_of": cutoff.isoformat(), "target_version": TARGET_VERSION, "config": asdict(config),
@@ -409,7 +421,8 @@ def assess_frozen_ensemble(dataset, *, models, as_of=None, config=None, session_
         train = np.asarray([i for i in eligible if references[i] < references[validation[0]]], dtype=int)
         held = session == ordered[-1]
         partition = _partition(train, validation, X=X, y=y, references=references, targets=targets,
-            availability=availability, sessions=sessions, config=config, holdout=held)
+            availability=availability, sessions=sessions, config=config, holdout=held,
+            timing_mode=timing_mode, research_cutoff=cutoff)
         if (recipe and dataset.manifest.get("input_training_rows", len(X)) > len(X)
                 and len(partition[0]) < max(spec.training_max_rows for spec in specs)):
             raise ContractError("Exact manual assessment requires enough uncapped history for every fold's recipe window")
@@ -530,15 +543,18 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         incumbent_error = exc
     data = _arrays(dataset, as_of, session_ids, session_timezone)
     X, y, references, targets, availability, sessions, eligible, cutoff = data
+    timing_mode = timing_mode_from_metadata(dataset.manifest)
     ordered_sessions = list(dict.fromkeys(sessions[i] for i in eligible))
     holdout_session = ordered_sessions[-1]
     data_hash = hashlib.sha256(X.tobytes() + y.tobytes() + json.dumps({
         "references": [value.isoformat() for value in references],
         "availability": [value.isoformat() for value in availability], "sessions": sessions,
         "feature_names": list(dataset.feature_names), "feature_version": dataset.manifest.get("feature_version"),
-        "target_version": TARGET_VERSION, "synthetic_policy": dataset.manifest.get("synthetic_policy")}, sort_keys=True).encode()).hexdigest()
+        "target_version": TARGET_VERSION, "synthetic_policy": dataset.manifest.get("synthetic_policy"),
+        "training_timing_contract": timing_contract(timing_mode)}, sort_keys=True).encode()).hexdigest()
     spec_dicts = [asdict(spec) for spec in specs]
     report = {"selection_version": SELECTION_VERSION, "target_version": TARGET_VERSION,
+              "training_timing_contract": timing_contract(timing_mode),
               "status": "insufficient_data", "as_of": cutoff.isoformat(), "config": asdict(config),
               "dataset_sha256": data_hash, "candidate_manifest_sha256": _digest(spec_dicts),
               "holdout_session": holdout_session, "holdout_policy": "one_final_gate_after_frozen_cv_shortlist_no_replacements",
@@ -566,16 +582,20 @@ def evaluate_candidates(dataset, *, as_of=None, candidates=None, config=None, se
         validation = np.array([i for i in eligible if sessions[i] == session], dtype=int)
         train = np.array([i for i in eligible if references[i] < references[validation[0]]], dtype=int)
         folds.append(_partition(train, validation, X=X, y=y, references=references, targets=targets,
-                                availability=availability, sessions=sessions, config=config))
+                                availability=availability, sessions=sessions, config=config,
+                                timing_mode=timing_mode, research_cutoff=cutoff))
         if incumbents:
             incumbent_folds.append(_partition(train, validation, X=X, y=y, references=references, targets=targets,
-                                              availability=availability, sessions=sessions, config=incumbent_config))
+                                              availability=availability, sessions=sessions, config=incumbent_config,
+                                              timing_mode=timing_mode, research_cutoff=cutoff))
     holdout_rows = np.array([i for i in eligible if sessions[i] == holdout_session], dtype=int)
     pre_holdout = np.array([i for i in eligible if references[i] < references[holdout_rows[0]]], dtype=int)
     holdout_partition = _partition(pre_holdout, holdout_rows, X=X, y=y, references=references, targets=targets,
-                                   availability=availability, sessions=sessions, config=config, holdout=True)
+                                   availability=availability, sessions=sessions, config=config, holdout=True,
+                                   timing_mode=timing_mode, research_cutoff=cutoff)
     incumbent_holdout_partition = _partition(pre_holdout, holdout_rows, X=X, y=y, references=references, targets=targets,
-                                             availability=availability, sessions=sessions, config=incumbent_config, holdout=True)
+                                             availability=availability, sessions=sessions, config=incumbent_config, holdout=True,
+                                             timing_mode=timing_mode, research_cutoff=cutoff)
     report["folds"] = [partition[2] for partition in folds]
     report["holdout_partition"] = holdout_partition[2]
     partition_reasons = [reason for partition in [*folds, holdout_partition] for reason in partition[2]["gate_reasons"]]

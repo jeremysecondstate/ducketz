@@ -22,6 +22,8 @@ import numpy as np
 import pandas as pd
 
 from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, instant
+from .training_timing import (LEGACY, HISTORICAL_RESEARCH, OPERATIONAL_REPLAY,
+                              timing_contract, validate_timing_mode)
 
 MINUTE = timedelta(minutes=1)
 FEATURE_VERSION = "intraday-observed-causal-features-v1"
@@ -1266,7 +1268,8 @@ class Dataset:
 
 
 def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days: float | None = None,
-                  synthetic_policy: str | None = None, preparation_only: bool = False) -> Dataset:
+                  synthetic_policy: str | None = None, preparation_only: bool = False,
+                  timing_mode=LEGACY) -> Dataset:
     """Labels are >= reference OPEN at exact third CLOSE, mature by joint receipt.
 
     Training sample availability includes its features/reference as well as the
@@ -1278,6 +1281,7 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
     the unresolved research/headline treatment. Feature inputs can carry
     synthetic intervals, retained in the input snapshot and fraction feature.
     """
+    validate_timing_mode(timing_mode)
     if synthetic_policy not in {None, "include", "exclude"}:
         raise ContractError("Synthetic label policy must be include/exclude or unresolved")
     if type(preparation_only) is not bool:
@@ -1285,6 +1289,8 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
     cutoff, reference = utc(cutoff), utc(reference_at)
     target_open, target_close = exact_target(reference)
     frame = validate_candles(candles)
+    if timing_mode == OPERATIONAL_REPLAY and frame.availability_kind.eq("assumed_historical_close").any():
+        raise ContractError("Exact operational replay requires actual possession evidence; assumed historical close is not a receipt")
     attrs = dict(candles.attrs.get("intraday_history", {}))
     # Preserve provenance once in the manifest. Pandas otherwise deep-copies
     # potentially large source receipts into every per-row/slice result below.
@@ -1331,8 +1337,8 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         outcome = lookup.loc[targ]
         if str(outcome.session_id) != str(row.session_id) or outcome.available_at > cutoff or finish > cutoff:
             continue
-        # Information used in each historical feature must have matured by that
-        # row's own decision time, not merely the later overall training cutoff.
+        # Receipt remains provenance and gates the actual fitting cutoff. Only
+        # replay requires earlier feature dependencies at the original decision.
         own_cutoff = row.available_at
         history = frame.iloc[max(0, position - 20):position + 1]
         # Recovered historical observations are reconstructed only under their
@@ -1341,7 +1347,10 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         # the latest constituent receipt, never the earlier reference receipt.
         # Existing actual decision rows retain their original receipt exclusion.
         reconstructed = row.availability_kind == "actual_historical_recovery"
-        if not reconstructed and history.available_at.gt(own_cutoff).any():
+        if timing_mode != HISTORICAL_RESEARCH and not reconstructed and history.available_at.gt(own_cutoff).any():
+            continue
+        if timing_mode == OPERATIONAL_REPLAY and (own_cutoff >= ref + 2 * STEP
+                or history.available_at.gt(own_cutoff).any()):
             continue
         values = features.loc[ref].to_numpy(dtype=float)
         if not np.isfinite(values).all():
@@ -1400,6 +1409,11 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         "availability_kinds": sorted(frame.availability_kind.unique().tolist()), "source_history": attrs,
         "feature_policy": "trailing_observed_steps_explicit_elapsed_gaps_no_fitted_global_preprocessing",
         "validation_requirement": "chronological_purge_targets_and_joint_information_receipts_before_validation_decisions"}
+    if timing_mode != LEGACY:
+        manifest.update(training_timing_contract=timing_contract(timing_mode),
+            validation_requirement=("market_time_horizon_purge_and_actual_fit_cutoff_receipts"
+                if timing_mode == HISTORICAL_RESEARCH else "actual_possession_at_original_decision_and_fit"),
+            historical_receipt_limitation="Assumed historical close is market completion, not proof of local possession")
     if preparation_only:
         # Session-end observations can mature earlier labels without defining
         # any next-session forecast. Keep their exact closed reference solely

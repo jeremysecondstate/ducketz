@@ -182,7 +182,7 @@ def test_stale_events_and_crossed_quotes_are_not_fabricated_current_prices():
     assert context(old).features["ctx_stock_quote_relative_spread_missing"] == 1
     assert context(sealed(rows=[quote(ask=98)])).features["ctx_stock_quote_relative_spread_missing"] == 1
     absent = context(sealed(rows=[], status="EMPTY"))
-    assert absent.features["ctx_stock_quote_source_available"] == 1
+    assert absent.features["ctx_stock_quote_source_available"] == 0
     assert absent.features["ctx_stock_quote_last_mid_return_missing"] == 1
 
 

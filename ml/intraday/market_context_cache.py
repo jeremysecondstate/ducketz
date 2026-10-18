@@ -24,9 +24,16 @@ from .prediction import ContractError
 
 # Do not reuse vectors produced before explicit observation-marker/positive-
 # volume admission. Original immutable provider receipts are retained.
-VERSION = "intraday-exact-causal-context-cache-v4"
+VERSION = "intraday-exact-causal-context-cache-v6"
 MAX_COMPRESSED_BYTES = 4 * 1024 * 1024
 MAX_DECODED_BYTES = 16 * 1024 * 1024
+
+
+def _implementation_digest():
+    """Bind disposable vectors to exact derivation code, not a manual bump."""
+    from . import market_context, market_state
+    paths = (Path(__file__), Path(market_context.__file__), Path(market_state.__file__))
+    return _hash({path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
 
 
 class ContextCache(AbstractContextManager):
@@ -38,6 +45,7 @@ class ContextCache(AbstractContextManager):
         self.hits = self.misses = self.invalid_entries = 0
         self._contracts = {}
         self._lazy_refs = {}
+        self.implementation_sha256 = _implementation_digest()
 
     def _contract(self, source_ids, contract, selectors):
         # Keep the caller alive, so an id cannot be reused during this dataset.
@@ -71,6 +79,8 @@ class ContextCache(AbstractContextManager):
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             if exc_type is None:
+                if self.implementation_sha256 != _implementation_digest():
+                    raise ContractError("Market context implementation changed during cache transaction")
                 # One check before first use and again before the dataset is
                 # released. Rechecking an unchanged receipt for every adjacent
                 # historical decision adds no evidence and scales poorly.
@@ -110,7 +120,8 @@ class ContextCache(AbstractContextManager):
                 raise ContractError("Market snapshot content hash mismatch")
             selected.append(snapshot)
         contract, contract_sha256 = self._contract(source_ids, contract, selectors)
-        key = _hash({"cache_version": VERSION, "contract_sha256": contract_sha256, "symbol": symbol,
+        key = _hash({"cache_version": VERSION, "implementation_sha256": self.implementation_sha256,
+                     "contract_sha256": contract_sha256, "symbol": symbol,
                      "cutoff": cutoff.isoformat(), "receipts": sorted(
                          (s["source_id"], s["snapshot_id"], s["snapshot_sha256"]) for s in selected)})
         row = self.connection.execute("SELECT payload,payload_sha256 FROM contexts WHERE cache_key=?", (key,)).fetchone()

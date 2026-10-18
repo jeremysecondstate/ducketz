@@ -21,6 +21,7 @@ from .data import (History, IntervalResponse, MINUTE, STEP, equity_sessions,
                    utc, validate_candles)
 from .observed_data import build_observed_dataset
 from .prediction import ContractError
+from .training_timing import LEGACY
 
 
 CONTRACT = "intraday-covered-native-interval-v1"
@@ -374,7 +375,7 @@ def load_native_interval_history(root, symbol, *, source_dataset="EQUS.MINI",
 
 
 def build_native_interval_dataset(candles, *, cutoff, reference_at, lookback_days=None,
-                                  recovery_contract=None, preparation_only=False):
+                                  recovery_contract=None, preparation_only=False, timing_mode=LEGACY):
     if recovery_contract not in {None, RECOVERY_CONTRACT}:
         raise ContractError("Unknown native recovery projection contract")
     recovered = candles.availability_kind.eq("actual_historical_recovery")
@@ -383,7 +384,7 @@ def build_native_interval_dataset(candles, *, cutoff, reference_at, lookback_day
     if any(not completed_native_interval(row, from_frame=True) for row in candles.to_dict("records")):
         raise ContractError("Native interval recipe cannot consume another candle contract")
     dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-        lookback_days=lookback_days, preparation_only=preparation_only)
+        lookback_days=lookback_days, preparation_only=preparation_only, timing_mode=timing_mode)
     provenance = {"feature_version": FEATURE_VERSION, "feature_policy": FEATURE_POLICY,
         "label_provenance": LABEL_PROVENANCE, "native_interval_contract": CONTRACT}
     if recovery_contract is not None:

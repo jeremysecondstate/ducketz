@@ -26,6 +26,8 @@ from .observed_data import (
     FEATURE_POLICY, FEATURE_VERSION, LABEL_PROVENANCE, build_observed_dataset,
 )
 from .prediction import ContractError, TARGET_VERSION, instant
+from .training_timing import (LEGACY, HISTORICAL_RESEARCH, OPERATIONAL_REPLAY,
+                              timing_contract, timing_mode_from_metadata)
 
 
 SCHEMA_VERSION = "intraday-manual-observed-calibrated-v1"
@@ -169,6 +171,10 @@ def _validate_recipe(value, *, pc, symbols):
                     "target_version", "feature_version", "feature_policy", "label_provenance",
                     "synthetic_policy", "models", "training_support", "feature_contract",
                     "dataset_scope", "migrated_from_sha256", "sha256"}
+        if "training_timing_contract" in value:
+            required.add("training_timing_contract")
+            if timing_mode_from_metadata(value) not in {HISTORICAL_RESEARCH, OPERATIONAL_REPLAY}:
+                raise ContractError("A migrated recipe must explicitly select research or exact replay")
         if value["schema_version"] in {NATIVE_SCHEMA_VERSION, MARKET_SCHEMA_VERSION}:
             required.add("symbol_feature_contracts")
             selected = value.get("symbol_feature_contracts")
@@ -188,10 +194,10 @@ def _validate_recipe(value, *, pc, symbols):
                 raise ContractError("Market context requires a frozen source contract and native observations for every local symbol")
             if "historical_recovery_contract" in value:
                 from .native_interval import RECOVERY_CONTRACT
-                from .market_context import FEATURE_VERSION as CONTEXT_VERSION
+                from .market_context import validate_market_context_contract
                 required.add("historical_recovery_contract")
                 if (value["historical_recovery_contract"] != RECOVERY_CONTRACT
-                        or context["version"] != CONTEXT_VERSION):
+                        or context != validate_market_context_contract(context)):
                     raise ContractError("Historical recovery requires an explicit supported local context contract")
         contract = _feature_contract()
         if (set(value) != required or value["selection"] != SELECTION
@@ -208,9 +214,12 @@ def _validate_recipe(value, *, pc, symbols):
         support = _validate_support(value["training_support"])
         specs = configured_models(value["models"])
         if (len(specs) > 16 or any(spec.runtime_contract is None
-                or spec.probability_calibration != "sigmoid" or spec.calibration_fraction != .25
+                or spec.probability_calibration != "sigmoid"
                 or spec.training_max_rows != support["newest_training_rows"] for spec in specs)):
             raise ContractError("Frozen manual recipe requires complete calibrated model contracts")
+        if (len({spec.calibration_fraction for spec in specs}) != 1
+                or "training_timing_contract" not in value and any(spec.calibration_fraction != .25 for spec in specs)):
+            raise ContractError("A different common calibration fraction requires explicit local timing migration")
         for spec in specs:
             freeze_model_spec(spec)  # Validate compatibility without fitting or changing the saved specification.
         return deepcopy(value)
@@ -313,6 +322,20 @@ def manual_recipe_migration_evidence(original, migrated, *, pc, symbols, config)
             "provider_calls": 0, "training_runs": 0, "files_written": 0}
 
 
+def migrate_training_timing_recipe(value, *, pc, symbols, installed_at, authority_reference,
+                                    mode=HISTORICAL_RESEARCH):
+    """Select a local timing contract while retaining every model and gate."""
+    original = _validate_recipe(value, pc=pc, symbols=symbols)
+    if original["schema_version"] == SCHEMA_VERSION or mode not in {HISTORICAL_RESEARCH, OPERATIONAL_REPLAY}:
+        raise ContractError("Explicit training timing requires a frozen recipe and supported mode")
+    revised = {**deepcopy(original), "installed_at": instant(installed_at).isoformat(),
+        "authority_reference": authority_reference, "migrated_from_sha256": original["sha256"],
+        "training_timing_contract": timing_contract(mode)}
+    revised.pop("sha256", None)
+    revised["sha256"] = _sha(revised)
+    return _validate_recipe(revised, pc=pc, symbols=symbols)
+
+
 class ManualRecipeSupportError(ContractError):
     """Bounded rejected-input evidence survives the runtime's string-only error log."""
     def __init__(self, message, diagnostics):
@@ -321,7 +344,7 @@ class ManualRecipeSupportError(ContractError):
 
 
 def _training_support(y, reference_at, target_close_at, label_available_at, *, cutoff, support=None,
-                      diagnostic_context=None):
+                      diagnostic_context=None, timing_mode=LEGACY, calibration_fraction=.25):
     support = _validate_support(support or {
         "newest_training_rows": MAX_ROWS, "minimum_rows": MIN_ROWS, "minimum_training_dates": MIN_DATES,
         "minimum_each_class": MIN_CLASS, "minimum_calibration_rows": MIN_CALIBRATION_ROWS,
@@ -397,7 +420,7 @@ def _training_support(y, reference_at, target_close_at, label_available_at, *, c
             and rows >= 4 and len(timestamps) == 3):
         try:
             train, calibration = purged_chronological_split(references, targets,
-                fraction=0.25, label_available_at=available)
+                fraction=calibration_fraction, label_available_at=available, timing_mode=timing_mode)
         except ContractError as exc:
             split_error = str(exc)
     diagnostics["split_error"] = split_error
@@ -491,6 +514,8 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         raise ContractError("Invalid manual model recipe: " + str(exc)) from exc
     specs = configured_models(recipe["models"])
     support_contract = deepcopy(recipe["training_support"])
+    timing_mode = timing_mode_from_metadata(recipe)
+    calibration_fraction = specs[0].calibration_fraction
     max_rows = support_contract["newest_training_rows"]
     feature_contract = deepcopy(recipe.get("feature_contract", _feature_contract()))
     symbol_contracts = deepcopy(recipe.get("symbol_feature_contracts", {}))
@@ -524,12 +549,13 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if symbol in symbol_contracts:
             from .native_interval import build_native_interval_dataset
             dataset = build_native_interval_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-                lookback_days=lookback_days, recovery_contract=recovery_contract, preparation_only=_preparation)
+                lookback_days=lookback_days, recovery_contract=recovery_contract, preparation_only=_preparation,
+                timing_mode=timing_mode)
         else:
             if candles is not None and "native_interval_contract" in candles and candles.native_interval_contract.notna().any():
                 raise ContractError("A default symbol cannot consume the opt-in native population")
             dataset = build_observed_dataset(candles, cutoff=cutoff, reference_at=reference_at,
-                lookback_days=lookback_days, preparation_only=_preparation)
+                lookback_days=lookback_days, preparation_only=_preparation, timing_mode=timing_mode)
         if any(dataset.manifest.get(k) != selected_contract[k] for k in
                ("feature_version", "feature_policy", "label_provenance")):
             raise ContractError("Manual dataset differs from its frozen per-symbol feature contract")
@@ -547,7 +573,8 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             # the historical reference close, never today's receipt. Native
             # contract validation proves the tag, cutoff and retained receipts.
             decisions = {instant(row["opened_at"]): instant(
-                row["feature_cutoff_at"] if recovery_contract is not None
+                instant(row["opened_at"]) + pd.Timedelta(minutes=15) if timing_mode == HISTORICAL_RESEARCH
+                else row["feature_cutoff_at"] if recovery_contract is not None
                     and row.get("availability_kind") == "actual_historical_recovery"
                 else row["available_at"]) for row in candles.to_dict("records")}
             causal = np.asarray([instant(reference) + pd.Timedelta(minutes=15)
@@ -576,7 +603,8 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             training_reference_at=dataset.reference_at[-history_limit:],
             target_close_at=dataset.target_close_at[-history_limit:]) if _assessment else runtime_dataset
         support = _training_support(runtime_dataset.y, runtime_dataset.reference_at, runtime_dataset.target_close_at,
-            runtime_dataset.label_available_at, cutoff=cutoff, support=support_contract,
+            runtime_dataset.label_available_at, cutoff=cutoff, support=support_contract, timing_mode=timing_mode,
+            calibration_fraction=calibration_fraction,
             diagnostic_context={"symbol": dataset.inference.get("symbol"),
                 "reference_at": instant(reference_at).isoformat(), "feature_shape": list(runtime_dataset.X.shape),
                 "inference_shape": list(dataset.inference_X.shape), "input_training_rows": input_rows,
@@ -642,6 +670,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if symbol_contracts and metadata.get("manual_recipe_symbol") not in symbols:
             raise ContractError("Scoped manual recipe requires exact dataset symbol evidence")
         if (metadata.get("manual_model_recipe") != recipe
+                or timing_mode_from_metadata(metadata) != timing_mode
                 or metadata.get("feature_version") != selected_contract["feature_version"]
                 or metadata.get("feature_policy") != selected_contract["feature_policy"]
                 or metadata.get("label_provenance") != selected_contract["label_provenance"]
@@ -662,7 +691,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             raise ContractError("Manual recipe fit requires finite observed-only feature matrices")
         _training_support(y, kwargs.get("reference_at", ()), kwargs.get("target_close_at", ()),
                           kwargs.get("label_available_at", ()), cutoff=kwargs.get("training_cutoff"),
-                          support=support_contract)
+                          support=support_contract, timing_mode=timing_mode, calibration_fraction=calibration_fraction)
         result = fit_ensemble(X, y, inference_X, config=specs, dataset_metadata=metadata, **kwargs)
         if preparation_only:
             result.update(preparation_only=True, executable_forecast=False)

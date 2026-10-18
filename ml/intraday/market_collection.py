@@ -419,7 +419,11 @@ class QuarterHourMarketCollector:
                     row["published_at"] = receipt.isoformat()
                     row["event_at"] = receipt.isoformat()
                 clocks = [receipt]
-                for name in ("available_at", "published_at", "event_at"):
+                # A malformed future market event is a field-quality problem,
+                # not proof that an already-received response arrives later.
+                # Preserve its original timestamp for per-field admission.
+                event_availability = request.source_kind in {"fundamentals", "events", "macro", "technical"}
+                for name in ("available_at", "published_at", *(("event_at",) if event_availability else ())):
                     if row.get(name) is not None:
                         try:
                             clocks.append(instant(row[name]))

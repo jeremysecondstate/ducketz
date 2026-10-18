@@ -59,8 +59,12 @@ def test_saved_journal_three_quarters_prepare_new_labels_and_restart_without_ref
     # A new reader recovers saved actual candle clocks and skips a durable completed cycle.
     before=hashlib.sha256(journal.path.read_bytes()).hexdigest()
     state['stop']=False
-    restarted=run_preparation(**options,pause=lambda seconds:state.update(stop=True),emit=results.append)
+    reused=[]
+    restarted=run_preparation(**options,pause=lambda seconds:state.update(stop=True),emit=results.append,
+        on_verified_reuse=reused.append)
     assert restarted['cycles_prepared']==0 and len(results)==3
+    assert len(reused)==1 and reused[0]['sha256']==results[-1]['sha256']
+    assert reused[0]['evidence_path']==results[-1]['evidence_path']
     assert hashlib.sha256(journal.path.read_bytes()).hexdigest()==before
     restored,receipt=SavedHistorySource(datastore=tmp_path,pc='Scout',symbols=('TEST',),
         histories={'TEST':base}).refresh(clock())
@@ -185,6 +189,110 @@ def test_malformed_unrelated_and_selected_attempts_do_not_starve_valid_observati
     assert len(histories['TEST'].frame)==len(data)
     assert [item['symbol'] for item in receipt['quarantined']]==['TEST']
     assert receipt['cursor']['rowid']==4
+
+
+def test_corrupt_symbol_projection_isolated_across_restart_without_rewriting_journal(tmp_path):
+    data=frame()
+    broken=data.copy()
+    broken['symbol']='BROKEN'
+    journal=AcquisitionJournal(tmp_path/'intraday/acquisition.sqlite3')
+    publish(journal,data.iloc[-1].to_dict())
+    reader=SavedHistorySource(datastore=tmp_path,pc='Scout',symbols=('BROKEN','TEST'),
+        histories={'BROKEN':broken,'TEST':data})
+    cutoff=pd.Timestamp(data.opened_at.iloc[-1])+pd.Timedelta(minutes=16)
+    _,first=reader.refresh(cutoff)
+    with sqlite3.connect(reader.path) as db:
+        # The owned checkpoint can suffer a per-symbol corrupt persisted row.
+        # Never silently replace that unavailable state with the pinned base.
+        db.execute('INSERT INTO candles VALUES(?,?,?,?)',
+            ('BROKEN',str(broken.opened_at.iloc[-1]),'{"corrupt":true}','0'*64))
+    journal_before=hashlib.sha256(journal.path.read_bytes()).hexdigest()
+    for source in (reader,SavedHistorySource(datastore=tmp_path,pc='Scout',symbols=('BROKEN','TEST'),
+            histories={'BROKEN':broken,'TEST':data})):
+        histories,receipt=source.refresh(cutoff)
+        assert set(histories)=={'TEST'}
+        assert receipt['symbol_errors']['BROKEN']['stage']=='saved_projection'
+        assert receipt['symbol_errors']['BROKEN']['reason']=='Saved preparation candle checksum mismatch'
+        assert receipt['cursor']==first['cursor'] and receipt['source_rows_read']==0
+        with sqlite3.connect(reader.path) as db:
+            assert db.execute('SELECT payload FROM candles WHERE symbol=?',('BROKEN',)).fetchone()[0]=='{"corrupt":true}'
+    assert hashlib.sha256(journal.path.read_bytes()).hexdigest()==journal_before
+
+
+def test_projection_error_receipt_preserves_healthy_symbol_preparation(tmp_path):
+    save(tmp_path,candidate())
+    config,runtime=recipes.prepare_manual_models(ResearchConfig(),datastore=tmp_path,pc='Scout',symbols=('TEST',))
+    runtime['dataset_builder'].native_interval_symbols=('BROKEN','TEST')
+    data=frame()
+    cutoff=pd.Timestamp(data.opened_at.iloc[-1])+pd.Timedelta(minutes=16)
+    class Source:
+        def refresh(self,now):
+            return {'TEST':data},{'cursor':{'rowid':1},'symbol_errors':{'BROKEN':{
+                'stage':'saved_projection','error_type':'ContractError','reason':'checksum mismatch'}}}
+    state={'stop':False};results=[]
+    run_preparation(datastore=tmp_path,pc='Scout',symbols=('BROKEN','TEST'),histories={'TEST':data},
+        config=config,model_runtime=runtime,saved_source=Source(),clock=lambda:cutoff,
+        stopped=lambda:state['stop'],pause=lambda seconds:state.update(stop=True),emit=results.append)
+    assert results[0]['results']['BROKEN']['status']=='unavailable'
+    assert results[0]['results']['BROKEN']['stage']=='saved_projection'
+    assert results[0]['results']['TEST']['status']=='prepared'
+
+
+def test_corrupt_dirty_symbol_does_not_starve_new_healthy_observation(tmp_path):
+    data=frame()
+    broken=data.iloc[:-1].copy()
+    broken['symbol']='BROKEN'
+    journal=AcquisitionJournal(tmp_path/'intraday/acquisition.sqlite3')
+    publish(journal,data.iloc[-2].to_dict())
+    with sqlite3.connect(journal.path) as db:
+        initial=[IntervalResponse(**json.loads(row[0])) for row in db.execute('SELECT payload FROM attempts ORDER BY rowid')]
+    for response in initial:
+        journal.save(replace(response,symbol='BROKEN',attempt_id='broken-'+response.attempt_id))
+    source=SavedHistorySource(datastore=tmp_path,pc='Scout',symbols=('BROKEN','TEST'),
+        histories={'BROKEN':broken,'TEST':data.iloc[:-1]})
+    cutoff=pd.Timestamp(data.opened_at.iloc[-1])+pd.Timedelta(minutes=16)
+    source.refresh(cutoff)
+    with sqlite3.connect(source.path) as db:
+        db.execute('UPDATE candles SET payload=? WHERE symbol=?',('{"corrupt":true}','BROKEN'))
+    for response in initial:
+        journal.save(replace(response,symbol='BROKEN',attempt_id='repeat-broken-'+response.attempt_id,
+            request_started_at=(pd.Timestamp(response.request_started_at)+pd.Timedelta(seconds=20)).isoformat(),
+            request_ended_at=(pd.Timestamp(response.request_ended_at)+pd.Timedelta(seconds=20)).isoformat()))
+    publish(journal,data.iloc[-1].to_dict())
+    source_bytes=hashlib.sha256(journal.path.read_bytes()).hexdigest()
+    histories,receipt=source.refresh(cutoff)
+    assert set(histories)=={'TEST'} and len(histories['TEST'].frame)==len(data)
+    assert receipt['symbol_errors']['BROKEN']['reason']=='Saved preparation candle checksum mismatch'
+    failed=[item for item in receipt['outcomes'] if item['symbol']=='BROKEN']
+    assert failed and all(item['status']=='unavailable' and item['persisted'] is False for item in failed)
+    with sqlite3.connect(source.path) as db:
+        assert db.execute('SELECT payload FROM candles WHERE symbol=?',('BROKEN',)).fetchone()[0]=='{"corrupt":true}'
+        assert db.execute('SELECT dirty FROM slots WHERE symbol=?',('BROKEN',)).fetchone()[0]==1
+    assert hashlib.sha256(journal.path.read_bytes()).hexdigest()==source_bytes
+
+
+def test_dirty_projection_budget_is_fair_when_failed_symbol_owns_oldest_slots(tmp_path,monkeypatch):
+    from ml.intraday import preparation_watch as watch
+    data=frame()
+    broken=data.iloc[:-1].copy()
+    broken['symbol']='BROKEN'
+    journal=AcquisitionJournal(tmp_path/'intraday/acquisition.sqlite3')
+    for candle in broken.iloc[-2:].to_dict('records'):
+        publish(journal,candle)
+    source=SavedHistorySource(datastore=tmp_path,pc='Scout',symbols=('BROKEN','TEST'),
+        histories={'BROKEN':broken,'TEST':data.iloc[:-1]})
+    cutoff=pd.Timestamp(data.opened_at.iloc[-1])+pd.Timedelta(minutes=16)
+    source.refresh(cutoff)
+    with sqlite3.connect(source.path) as db:
+        db.execute('UPDATE candles SET payload=? WHERE symbol=?',('{"corrupt":true}','BROKEN'))
+        db.execute('UPDATE slots SET dirty=1 WHERE symbol=?',('BROKEN',))
+    publish(journal,data.iloc[-1].to_dict())
+    monkeypatch.setattr(watch,'BATCH_ROWS',2)
+    histories,receipt=source.refresh(cutoff)
+    assert receipt['backlog'] is False and 'BROKEN' in receipt['symbol_backlog']
+    assert receipt['symbol_errors']['BROKEN']['reason']=='Saved preparation candle checksum mismatch'
+    assert set(histories)=={'TEST'} and len(histories['TEST'].frame)==len(data)
+    assert any(item['symbol']=='TEST' and item['status']=='observed' for item in receipt['outcomes'])
 
 
 def test_already_read_future_receipt_matures_without_cursor_change(tmp_path):

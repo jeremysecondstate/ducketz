@@ -90,6 +90,7 @@ class SavedHistorySource:
                 CREATE TABLE IF NOT EXISTS attempts(id TEXT PRIMARY KEY, slot TEXT, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS attempts_slot ON attempts(slot);
                 CREATE TABLE IF NOT EXISTS slots(slot TEXT PRIMARY KEY, symbol TEXT, opened_at TEXT, dirty INTEGER);
+                CREATE INDEX IF NOT EXISTS slots_dirty_symbol ON slots(symbol,dirty,opened_at);
                 CREATE TABLE IF NOT EXISTS candles(symbol TEXT, opened_at TEXT, payload TEXT, sha256 TEXT,
                     PRIMARY KEY(symbol,opened_at));
                 CREATE TABLE IF NOT EXISTS receipts(sha256 TEXT PRIMARY KEY, payload TEXT NOT NULL);
@@ -159,146 +160,200 @@ class SavedHistorySource:
                     db.execute('INSERT OR IGNORE INTO quarantine VALUES(?,?)',(identity,json.dumps(item)))
             db.execute("INSERT INTO state VALUES('cursor',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload",
                        (json.dumps(cursor),))
-            pending = db.execute('SELECT slot,symbol,opened_at FROM slots WHERE dirty=1 ORDER BY opened_at LIMIT ?',
-                                 (BATCH_ROWS,)).fetchall()
+            # One failed symbol must not monopolize the oldest dirty-slot page.
+            # Every symbol receives a bounded share, rotating if the configured
+            # batch is smaller than the scope. Extra work stays explicitly local.
+            prior=db.execute("SELECT payload FROM state WHERE key='projection_symbol_cursor'").fetchone()
+            first=int(prior[0]) if prior else 0
+            order=self.symbols[first:]+self.symbols[:first]
+            quota,extra=divmod(BATCH_ROWS,len(order))
+            pending=[]
+            symbol_backlog=[]
+            for index,symbol in enumerate(order):
+                limit=quota+(index<extra)
+                selected=db.execute('SELECT slot,symbol,opened_at FROM slots WHERE symbol=? AND dirty=1 '
+                                    'ORDER BY opened_at LIMIT ?', (symbol,limit+1)).fetchall()
+                if len(selected)>limit:
+                    symbol_backlog.append(symbol)
+                pending.extend(selected[:limit])
+            pending.sort(key=lambda row:row[2])
+            db.execute("INSERT INTO state VALUES('projection_symbol_cursor',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload",
+                       (str((first+1)%len(self.symbols)),))
             outcomes=[]
+            symbol_errors={}
             sessions = equity_sessions(pending[0][2],pending[-1][2]) if pending else ()
             for slot,symbol,opened in pending:
-                attempts=_slot_responses(db,slot)
-                eligible=[a for a in attempts if instant(a.request_ended_at)<=cutoff]
-                eligible.sort(key=lambda a:(instant(a.request_started_at),instant(a.request_ended_at),a.attempt_id))
-                session=next((s for s in sessions if s.contains(opened)),None)
-                if eligible and session is not None:
-                    try:
-                        result=resolve_native_interval(eligible[-2:],session=session)
-                    except ContractError as exc:
-                        result={'status':'unusable','reason':str(exc),'candle':None}
-                    candle=result.get('candle')
-                    if candle is not None:
-                        # Locate the first adequate receipt for this exact native
-                        # snapshot since its last observed revision. A/B/A must
-                        # not inherit A's superseded original receipt clock.
-                        final_observations=json.loads(candle['evidence_json'])['observations']
-                        revision_start=0
-                        revision_boundary=None
-                        for index,attempt in enumerate(eligible[:-1]):
-                            if attempt.status!='success' or not attempt.covered():
-                                continue
-                            try:
-                                observed=_native_rows(attempt.rows,opened=pd.Timestamp(attempt.interval_open),
-                                                      closed=pd.Timestamp(attempt.interval_close))
-                            except ContractError:
-                                observed=None
-                            if observed!=final_observations:
-                                revision_start=index+1
-                                revision_boundary={'kind':'observed_native_revision_v1',
-                                    'attempt_id':attempt.attempt_id,'available_at':attempt.request_ended_at}
-                        for index in range(revision_start,len(eligible)-1):
-                            attempt=eligible[index]
-                            if not attempt.rows or attempt.status!='success':
-                                continue
-                            try:
-                                earlier=resolve_native_interval(eligible[max(0,index-1):index+1],session=session).get('candle')
-                            except ContractError:
-                                continue
-                            if (earlier is not None and
-                                    json.loads(earlier['evidence_json'])['observations']==final_observations):
-                                candle=earlier
-                                break
-                    outcomes.append({'symbol':symbol,'opened_at':opened,'status':result['status'],
-                                     'reason':result.get('reason')})
-                    if candle is not None:
-                        previous=db.execute('SELECT payload FROM candles WHERE symbol=? AND opened_at=?',
-                                            (symbol,opened)).fetchone()
-                        prior=json.loads(previous[0]) if previous else self._base_actual.get(symbol,{}).get(instant(opened))
-                        if (prior is not None and instant(prior['available_at'])<=instant(candle['available_at'])
-                                and (revision_boundary is None or
-                                     instant(prior['available_at'])>instant(revision_boundary['available_at']))
-                                and json.loads(prior['evidence_json'])['observations']==
-                                    json.loads(candle['evidence_json'])['observations']):
-                            candle=prior
-                        if revision_boundary is not None:
-                            evidence=json.loads(candle['evidence_json'])
-                            evidence['coverage']['revision_boundary']=revision_boundary
-                            candle['evidence_json']=json.dumps(evidence,sort_keys=True,separators=(',',':'))
-                        if previous is None or digest(json.loads(previous[0]))!=digest(candle):
-                            revision+=1
-                        db.execute('INSERT INTO candles VALUES(?,?,?,?) ON CONFLICT(symbol,opened_at) '
-                                   'DO UPDATE SET payload=excluded.payload,sha256=excluded.sha256',
-                                   (symbol,opened,json.dumps(candle),digest(candle)))
-                        revision+=db.execute('DELETE FROM exclusions WHERE symbol=? AND opened_at=?',(symbol,opened)).rowcount
-                    elif eligible[-1].status=='success' and eligible[-1].covered():
-                        # A failed request is not a revision of known prices.
-                        # A newly observed contradictory/empty/unusable native
-                        # snapshot is withheld until the exact resolver confirms
-                        # a usable replacement. Every attempt remains immutable.
-                        exclusion={'symbol':symbol,'opened_at':opened,'status':result['status'],
-                                   'reason':result.get('reason'),'available_at':eligible[-1].request_ended_at}
-                        previous=db.execute('SELECT sha256 FROM exclusions WHERE symbol=? AND opened_at=?',
-                                            (symbol,opened)).fetchone()
-                        if previous is None or previous[0]!=digest(exclusion):
-                            revision+=1
-                        db.execute('INSERT INTO exclusions VALUES(?,?,?,?) ON CONFLICT(symbol,opened_at) '
-                                   'DO UPDATE SET payload=excluded.payload,sha256=excluded.sha256',
-                                   (symbol,opened,json.dumps(exclusion),digest(exclusion)))
-                if len(eligible)==len(attempts):
-                    db.execute('UPDATE slots SET dirty=0 WHERE slot=?',(slot,))
+                if symbol in symbol_errors:
+                    continue
+                slot_revision=revision
+                outcome_start=len(outcomes)
+                db.execute('SAVEPOINT slot_projection')
+                try:
+                    attempts=_slot_responses(db,slot)
+                    eligible=[a for a in attempts if instant(a.request_ended_at)<=cutoff]
+                    eligible.sort(key=lambda a:(instant(a.request_started_at),instant(a.request_ended_at),a.attempt_id))
+                    session=next((s for s in sessions if s.contains(opened)),None)
+                    if eligible and session is not None:
+                        try:
+                            result=resolve_native_interval(eligible[-2:],session=session)
+                        except ContractError as exc:
+                            result={'status':'unusable','reason':str(exc),'candle':None}
+                        candle=result.get('candle')
+                        if candle is not None:
+                            # Locate the first adequate receipt for this exact native
+                            # snapshot since its last observed revision. A/B/A must
+                            # not inherit A's superseded original receipt clock.
+                            final_observations=json.loads(candle['evidence_json'])['observations']
+                            revision_start=0
+                            revision_boundary=None
+                            for index,attempt in enumerate(eligible[:-1]):
+                                if attempt.status!='success' or not attempt.covered():
+                                    continue
+                                try:
+                                    observed=_native_rows(attempt.rows,opened=pd.Timestamp(attempt.interval_open),
+                                                          closed=pd.Timestamp(attempt.interval_close))
+                                except ContractError:
+                                    observed=None
+                                if observed!=final_observations:
+                                    revision_start=index+1
+                                    revision_boundary={'kind':'observed_native_revision_v1',
+                                        'attempt_id':attempt.attempt_id,'available_at':attempt.request_ended_at}
+                            for index in range(revision_start,len(eligible)-1):
+                                attempt=eligible[index]
+                                if not attempt.rows or attempt.status!='success':
+                                    continue
+                                try:
+                                    earlier=resolve_native_interval(eligible[max(0,index-1):index+1],session=session).get('candle')
+                                except ContractError:
+                                    continue
+                                if (earlier is not None and
+                                        json.loads(earlier['evidence_json'])['observations']==final_observations):
+                                    candle=earlier
+                                    break
+                        outcomes.append({'symbol':symbol,'opened_at':opened,'status':result['status'],
+                                         'reason':result.get('reason')})
+                        if candle is not None:
+                            previous=db.execute('SELECT payload,sha256 FROM candles WHERE symbol=? AND opened_at=?',
+                                                (symbol,opened)).fetchone()
+                            if previous and digest(json.loads(previous[0]))!=previous[1]:
+                                raise ContractError('Saved preparation candle checksum mismatch')
+                            prior=json.loads(previous[0]) if previous else self._base_actual.get(symbol,{}).get(instant(opened))
+                            if (prior is not None and instant(prior['available_at'])<=instant(candle['available_at'])
+                                    and (revision_boundary is None or
+                                         instant(prior['available_at'])>instant(revision_boundary['available_at']))
+                                    and json.loads(prior['evidence_json'])['observations']==
+                                        json.loads(candle['evidence_json'])['observations']):
+                                candle=prior
+                            if revision_boundary is not None:
+                                evidence=json.loads(candle['evidence_json'])
+                                evidence['coverage']['revision_boundary']=revision_boundary
+                                candle['evidence_json']=json.dumps(evidence,sort_keys=True,separators=(',',':'))
+                            if previous is None or digest(json.loads(previous[0]))!=digest(candle):
+                                revision+=1
+                            db.execute('INSERT INTO candles VALUES(?,?,?,?) ON CONFLICT(symbol,opened_at) '
+                                       'DO UPDATE SET payload=excluded.payload,sha256=excluded.sha256',
+                                       (symbol,opened,json.dumps(candle),digest(candle)))
+                            revision+=db.execute('DELETE FROM exclusions WHERE symbol=? AND opened_at=?',(symbol,opened)).rowcount
+                        elif eligible[-1].status=='success' and eligible[-1].covered():
+                            # A failed request is not a revision of known prices.
+                            # A newly observed contradictory/empty/unusable native
+                            # snapshot is withheld until the exact resolver confirms
+                            # a usable replacement. Every attempt remains immutable.
+                            exclusion={'symbol':symbol,'opened_at':opened,'status':result['status'],
+                                       'reason':result.get('reason'),'available_at':eligible[-1].request_ended_at}
+                            previous=db.execute('SELECT sha256 FROM exclusions WHERE symbol=? AND opened_at=?',
+                                                (symbol,opened)).fetchone()
+                            if previous is None or previous[0]!=digest(exclusion):
+                                revision+=1
+                            db.execute('INSERT INTO exclusions VALUES(?,?,?,?) ON CONFLICT(symbol,opened_at) '
+                                       'DO UPDATE SET payload=excluded.payload,sha256=excluded.sha256',
+                                       (symbol,opened,json.dumps(exclusion),digest(exclusion)))
+                    if len(eligible)==len(attempts):
+                        db.execute('UPDATE slots SET dirty=0 WHERE slot=?',(slot,))
+                except (ContractError, ValueError, TypeError, KeyError) as exc:
+                    db.execute('ROLLBACK TO slot_projection')
+                    revision=slot_revision
+                    del outcomes[outcome_start:]
+                    outcomes.append({'symbol':symbol,'opened_at':opened,'status':'unavailable',
+                                     'reason':str(exc),'persisted':False})
+                    symbol_errors[symbol]={'stage':'saved_projection',
+                        'error_type':type(exc).__name__,'reason':str(exc)}
+                finally:
+                    db.execute('RELEASE slot_projection')
             db.execute("INSERT INTO state VALUES('projection_revision',?) ON CONFLICT(key) DO UPDATE SET payload=excluded.payload",
                        (str(revision),))
             receipt={'cursor':cursor,'projection_revision':revision,'backlog':backlog,
-                     'source_rows_read':len(rows),'outcomes':outcomes,'quarantined':quarantined}
-            receipt_sha=digest(receipt)
-            db.execute('INSERT OR IGNORE INTO receipts VALUES(?,?)',(receipt_sha,json.dumps(receipt)))
+                     'source_rows_read':len(rows),'outcomes':outcomes,'quarantined':quarantined,
+                     'symbol_backlog':symbol_backlog}
             histories={}
             for symbol in self.symbols:
+                if symbol in symbol_errors:
+                    continue
+                if symbol in symbol_backlog:
+                    symbol_errors[symbol]={'stage':'saved_projection',
+                        'reason':'Bounded saved projection has pending slots for this symbol','retryable':True}
+                    continue
                 base=self.histories.get(symbol)
                 if base is None:
                     continue
-                frame=base.frame if hasattr(base,'frame') else base
-                manifest=dict(getattr(base,'manifest',frame.attrs.get('intraday_history',{})))
-                current={instant(row['opened_at']):row for row in frame.to_dict('records')}
-                used=0
-                for raw,sha in _saved_rows(db,'candles',symbol):
-                    candle=json.loads(raw)
-                    if digest(candle)!=sha:
-                        raise ContractError('Saved preparation candle checksum mismatch')
-                    if instant(candle['available_at'])>cutoff:
-                        continue
-                    opened=instant(candle['opened_at'])
-                    previous=current.get(opened)
-                    if previous is not None and previous.get('availability_kind')=='actual':
-                        same=(json.loads(previous['evidence_json'])['observations']==
-                              json.loads(candle['evidence_json'])['observations'])
-                        earlier=instant(previous['available_at'])<=instant(candle['available_at'])
-                        boundary=json.loads(candle['evidence_json'])['coverage'].get('revision_boundary')
-                        current_revision=(boundary is None or
-                                          instant(previous['available_at'])>instant(boundary['available_at']))
-                        # A sibling may supply its pinned base only after the
-                        # shared journal checkpoint was built. Reconcile here
-                        # even when that slot is no longer dirty.
-                        if (same and earlier and current_revision) or (not same and not earlier):
-                            if same and boundary is not None:
-                                evidence=json.loads(previous['evidence_json'])
-                                evidence['coverage']['revision_boundary']=boundary
-                                current[opened]={**previous,'evidence_json':json.dumps(
-                                    evidence,sort_keys=True,separators=(',',':'))}
+                try:
+                    frame=base.frame if hasattr(base,'frame') else base
+                    manifest=dict(getattr(base,'manifest',frame.attrs.get('intraday_history',{})))
+                    current={instant(row['opened_at']):row for row in frame.to_dict('records')}
+                    used=0
+                    for raw,sha in _saved_rows(db,'candles',symbol):
+                        candle=json.loads(raw)
+                        if digest(candle)!=sha:
+                            raise ContractError('Saved preparation candle checksum mismatch')
+                        if instant(candle['available_at'])>cutoff:
                             continue
-                    current[opened]=candle
-                    used+=1
-                excluded=0
-                for raw,sha in _saved_rows(db,'exclusions',symbol):
-                    exclusion=json.loads(raw)
-                    if digest(exclusion)!=sha:
-                        raise ContractError('Saved source exclusion checksum mismatch')
-                    if instant(exclusion['available_at'])<=cutoff:
-                        current.pop(instant(exclusion['opened_at']),None)
-                        excluded+=1
-                merged=validate_candles(pd.DataFrame(list(current.values())))
-                manifest['saved_preparation_overlay']={'source':'normal_acquisition_journal',
-                    'cursor':cursor,'actual_candles':used,'exclusions':excluded,
-                    'backlog':backlog,'receipt_sha256':receipt_sha}
-                merged.attrs['intraday_history']=manifest
-                histories[symbol]=History(merged,manifest)
+                        opened=instant(candle['opened_at'])
+                        previous=current.get(opened)
+                        if previous is not None and previous.get('availability_kind')=='actual':
+                            same=(json.loads(previous['evidence_json'])['observations']==
+                                  json.loads(candle['evidence_json'])['observations'])
+                            earlier=instant(previous['available_at'])<=instant(candle['available_at'])
+                            boundary=json.loads(candle['evidence_json'])['coverage'].get('revision_boundary')
+                            current_revision=(boundary is None or
+                                              instant(previous['available_at'])>instant(boundary['available_at']))
+                            # A sibling may supply its pinned base only after the
+                            # shared journal checkpoint was built. Reconcile here
+                            # even when that slot is no longer dirty.
+                            if (same and earlier and current_revision) or (not same and not earlier):
+                                if same and boundary is not None:
+                                    evidence=json.loads(previous['evidence_json'])
+                                    evidence['coverage']['revision_boundary']=boundary
+                                    current[opened]={**previous,'evidence_json':json.dumps(
+                                        evidence,sort_keys=True,separators=(',',':'))}
+                                continue
+                        current[opened]=candle
+                        used+=1
+                    excluded=0
+                    for raw,sha in _saved_rows(db,'exclusions',symbol):
+                        exclusion=json.loads(raw)
+                        if digest(exclusion)!=sha:
+                            raise ContractError('Saved source exclusion checksum mismatch')
+                        if instant(exclusion['available_at'])<=cutoff:
+                            current.pop(instant(exclusion['opened_at']),None)
+                            excluded+=1
+                    merged=validate_candles(pd.DataFrame(list(current.values())))
+                    manifest['saved_preparation_overlay']={'source':'normal_acquisition_journal',
+                        'cursor':cursor,'actual_candles':used,'exclusions':excluded,
+                        'backlog':backlog}
+                    merged.attrs['intraday_history']=manifest
+                    histories[symbol]=History(merged,manifest)
+                except (ContractError, ValueError, TypeError, KeyError) as exc:
+                    # A corrupt symbol projection is unavailable, never silently
+                    # replaced by its base. Preserve its evidence and continue
+                    # healthy symbols; a global journal error still fails closed.
+                    symbol_errors[symbol]={'stage':'saved_projection',
+                        'error_type':type(exc).__name__,'reason':str(exc)}
+            receipt['symbol_errors']=symbol_errors
+            receipt_sha=digest(receipt)
+            db.execute('INSERT OR IGNORE INTO receipts VALUES(?,?)',(receipt_sha,json.dumps(receipt)))
+            for history in histories.values():
+                history.manifest['saved_preparation_overlay']['receipt_sha256']=receipt_sha
+                history.frame.attrs['intraday_history']=history.manifest
             return histories, {**receipt,'sha256':receipt_sha}
 
 
@@ -369,7 +424,9 @@ def overlay_saved_native_history(history, *, root, symbol, pc):
     cutoff=datetime.now(timezone.utc)
     for _ in range(32):
         histories,receipt=source.refresh(cutoff)
-        if not receipt['backlog']:
+        if not receipt['backlog'] and symbol not in receipt.get('symbol_backlog',[]):
+            if symbol in receipt.get('symbol_errors',{}):
+                raise ContractError(receipt['symbol_errors'][symbol]['reason'])
             if selection.read_bytes()!=raw:
                 raise ContractError('Recovery selection changed during actual journal projection')
             return histories[symbol]
@@ -394,15 +451,19 @@ def _verify_watch_completion(saved, signature, fit):
             evidence=item.get('fit',{})
             if evidence.get('status') in {'fitted','reused_verified_training_artifacts'}:
                 _verify_artifacts(_verified(Path(evidence['evidence_path'])))
+    return {**cycle,'evidence_path':saved['cycle_path']}
 
 
 def _run_preparation(*, datastore, pc, symbols, histories, config, model_runtime, fit=False,
                     stopped=lambda:False, clock=lambda:datetime.now(timezone.utc), pause=time.sleep,
-                    poll_seconds=15, output_root=None, history_errors=None, emit=None, saved_source=None):
+                    poll_seconds=15, output_root=None, history_errors=None, emit=None, saved_source=None,
+                    on_verified_reuse=None):
     """Watch saved inputs until stopped; persist progress and retry on new inputs.
 
     No service is installed or started by importing this entry point. The caller
     owns its stop event, clock and pause. Polling never fetches provider data.
+    An optional reuse callback reports verified durable state after restart
+    without representing it as a new cycle, fit, market observation or forecast.
     """
     from .preparation import prepare_cycle, _digest, _verified, _write_once, _sources
     if not 1<=poll_seconds<=60:
@@ -427,6 +488,7 @@ def _run_preparation(*, datastore, pc, symbols, histories, config, model_runtime
             errors=dict(history_errors or {})
             try:
                 current,receipt=source.refresh(now)
+                errors.update(receipt.get('symbol_errors',{}))
                 context_identity=context_receipt_identity(datastore,pc,symbols,model_runtime,now)
             except Exception as exc:
                 current,receipt={}, {'error_type':type(exc).__name__,'reason':str(exc)}
@@ -446,7 +508,9 @@ def _run_preparation(*, datastore, pc, symbols, histories, config, model_runtime
                 marker=root/'watch-completed'/(signature+'.json')
                 if marker.exists():
                     saved=_verified(marker)
-                    _verify_watch_completion(saved,signature,fit)
+                    reused=_verify_watch_completion(saved,signature,fit)
+                    if on_verified_reuse:
+                        on_verified_reuse(reused)
                 else:
                     prior_attempts=[]
                     for number in range(1,4):
@@ -456,8 +520,10 @@ def _run_preparation(*, datastore, pc, symbols, histories, config, model_runtime
                     if prior_attempts and (not prior_attempts[-1]['retryable'] or len(prior_attempts)>=3):
                         # Recover a crash after the immutable attempt write but
                         # before its completion marker, without another fit.
-                        _verify_watch_completion(prior_attempts[-1],signature,fit)
+                        reused=_verify_watch_completion(prior_attempts[-1],signature,fit)
                         _write_once(marker,prior_attempts[-1])
+                        if on_verified_reuse:
+                            on_verified_reuse(reused)
                         if not stopped():
                             pause(poll_seconds)
                         continue

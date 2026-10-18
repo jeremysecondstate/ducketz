@@ -226,6 +226,8 @@ class SchwabAdapter:
             row = quote_record(raw, symbol, event_at=_utc(_first(raw, ("quoteTime", "tradeTime")), unit="ms", local_zone="UTC"))
             row.update(quote_timestamp=_utc(raw.get("quoteTime"), unit="ms", local_zone="UTC"),
                        trade_timestamp=_utc(raw.get("tradeTime"), unit="ms", local_zone="UTC"))
+            from .market_state import confirm_snapshot
+            row = confirm_snapshot(row)
             return CollectionResult([row], evidence={"mode": "current_snapshot", "realtime": raw.get("quote_realtime")})
         if request.endpoint == "pricehistory":
             raw = session.get_price_history(symbol, period_type="day", period=None,
@@ -239,6 +241,7 @@ class SchwabAdapter:
             return CollectionResult([], "UNSUPPORTED", "Unknown Schwab market endpoint")
         full_surface = request.params.get("surface") == "full"
         raw = fetch_full_schwab_chain(session, symbol) if full_surface else session.get_option_chain_snapshot(symbol)
+        confirmed_at = datetime.now(timezone.utc).isoformat()
         records = []
         for field, option_type in (("callExpDateMap", "call"), ("putExpDateMap", "put")):
             for strikes in raw.get(field, {}).values():
@@ -257,7 +260,8 @@ class SchwabAdapter:
                             underlying_quote_timestamp=_utc((raw.get("underlying") or {}).get("quoteTime"), unit="ms", local_zone="UTC"),
                             expiration_at=_utc(contract.get("expirationDate"), local_zone="UTC",
                                 unit="ms" if isinstance(contract.get("expirationDate"), (int, float)) else None))
-                        records.append(row)
+                        from .market_state import confirm_snapshot
+                        records.append(confirm_snapshot(row, confirmed_at=confirmed_at))
         return CollectionResult(records, evidence={"mode": "current_option_chain", "is_delayed": raw.get("isDelayed"),
             "underlying": raw.get("underlying"),
             "surface": "all provider-returnable strikes/expirations requested without slice filters" if full_surface else "100 strikes, 200 calendar days",
@@ -304,6 +308,7 @@ class FmpAdapter:
             today = datetime.now(timezone.utc).date()
             params.update({"from": (today - timedelta(days=370)).isoformat(), "to": today.isoformat()})
         payload = self.provider._get_json(request.endpoint, params)
+        confirmed_at = datetime.now(timezone.utc).isoformat()
         rows = payload if isinstance(payload, list) else payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(rows, list):
             raise ValueError("Unexpected FMP result shape")
@@ -325,6 +330,10 @@ class FmpAdapter:
                 if stamp is None or not start <= instant(stamp) < end:
                     continue
             row = quote_record(raw, symbol, event_at=stamp)
+            if request.endpoint in {"quote", "batch-commodity-quotes", "aftermarket-quote"}:
+                from .market_state import confirm_snapshot
+                row["quote_timestamp" if request.endpoint == "aftermarket-quote" else "trade_timestamp"] = stamp
+                row = confirm_snapshot(row, confirmed_at=confirmed_at)
             if request.source_kind in {"fundamentals", "events"}:
                 # Accepted/filing strings lacking a timezone cannot prove an
                 # intraday publication instant. Preserve them raw and use receipt.
