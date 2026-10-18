@@ -312,6 +312,41 @@ class ReviewCycle:
                                    "powder": "inactive; no real account mutation"})
             return operation
 
+    def bootstrap(self):
+        """Claim a human-authorized first session, never repair missing history.
+
+        No predecessor exists to archive. Existing operating namespaces or
+        lifecycle receipts require the ordinary review/recovery workflow.
+        """
+        with self.lock():
+            if self.guard.exists() or (self.operations / BASELINE_NAME).exists():
+                raise ValueError("Existing lifecycle state forbids first-session bootstrap")
+            if any(child(self.root, name).exists() for name in NAMESPACES):
+                raise ValueError("Existing Paper/model namespace forbids first-session bootstrap")
+            if (self.operations / "paper-improvement-cadence.json").exists():
+                raise ValueError("Existing cadence forbids first-session bootstrap")
+            if any(self.directory.parent.iterdir()) or any(self.archive_parent.iterdir()):
+                raise ValueError("Existing experiment history forbids first-session bootstrap")
+            if runtime_processes():
+                raise ValueError("Paper/model/Powder runtime exists before first-session bootstrap")
+            self.directory.mkdir()
+            provenance = snapshot_provenance(self.project, self.directory / "before")
+            operation = {"owner": OWNER, "cycle_id": self.cycle_id, "phase": "archived",
+                         "created_at_utc": utc(), "root": str(self.root), "project": str(self.project),
+                         "evidence_directory": str(self.directory), "archive_directory": None,
+                         "previous_experiment": {}, "before_provenance": provenance,
+                         "first_session": True,
+                         "archive_note": "No predecessor exists; no archive was created."}
+            write_json(self.operation_path, operation, exclusive=True)
+            write_json(self.guard, {"status": "in_progress", "owner": OWNER, "cycle_id": self.cycle_id,
+                                   "requested_at_utc": utc(), "phase": "archived",
+                                   "evidence_directory": str(self.directory), "archive": None,
+                                   "reason": "Human-authorized first local simulated Paper session",
+                                   "expected_paper_state": "maintenance; no watchdog recovery or reseeding",
+                                   "expected_upstream_state": "data continues; models operator-controlled",
+                                   "powder": "inactive; no real account mutation"})
+            return operation
+
     def archive(self):
         with self.lock():
             operation = self.operation("begun", "archiving", "archived")
@@ -470,8 +505,8 @@ class ReviewCycle:
                       "opening_verification_path": str(self.directory / "opening-verification.json"),
                       "source_verification_path": str(self.directory / "opening-public-account-reads.json"),
                       "immutable_opening_hashes": opening["immutable_opening_hashes"],
-                      "preserved_previous_archive": str(self.archive_path),
-                      "superseded_experiment_id": operation["previous_experiment"]["experiment_id"],
+                      "preserved_previous_archive": operation["archive_directory"],
+                      "superseded_experiment_id": operation["previous_experiment"].get("experiment_id"),
                       "evidence_directory": str(self.directory), "provenance": provenance,
                       "config_sha256": {Path(row["relative_path"]).name: row["sha256"] for row in provenance["files"]
                                         if row["relative_path"].startswith("configs/")}}
@@ -668,7 +703,7 @@ def verify_running(root, project):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=("begin", "archive", "prepare", "accept", "complete"))
+    parser.add_argument("stage", choices=("bootstrap", "begin", "archive", "prepare", "accept", "complete"))
     parser.add_argument("--cycle-id", required=True)
     parser.add_argument("--root", type=Path, default=Path("C:/DATASTORE/hyperliquid"))
     parser.add_argument("--project", type=Path, default=Path(__file__).resolve().parents[1])

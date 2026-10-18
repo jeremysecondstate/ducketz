@@ -13,6 +13,21 @@ settings. Watch cannot tune either policy, initiate a mirror, or change scoring.
 
 ## Current accepted run and improvement handoff
 
+For an explicitly human-authorized first local Paper session with no Paper/model
+namespaces or lifecycle history, the operator may use
+`python -m ml.hyperliquid_paper_review bootstrap --cycle-id <stable-id>`.
+This records maintenance and provenance without inventing a predecessor or
+archive. Then start data/models and use the ordinary `prepare`, independent
+opening checks, `accept`, Paper launch, advancing trading health and `complete`
+stages. Bootstrap rejects existing or incomplete lifecycle history and living
+Paper/model/Powder workers. It is never a watch recovery action. Native cadence
+`init` adopts this initial session as a two-hour UNSCORED carry-in; the first
+verified successor is scored under the recorded forecast admission rule.
+
+Model and effort examples in this document are historical. The saved native
+automation settings and newer direct local human instructions control those
+choices; preserve them during ordinary runtime handoffs.
+
 The user authorized a separate [Paper improvement task](PAPER_IMPROVEMENT.md)
 on September 28, 2026. That task now owns adaptive competitive rounds starting
 at two hours, intentional archives,
