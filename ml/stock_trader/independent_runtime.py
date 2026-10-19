@@ -455,8 +455,9 @@ def run_independent_stock_trader_once(
         capture_started = utc(clock())
         local_day = capture_started.tz_convert("America/Los_Angeles").normalize()
         read_deadline = local_day + pd.Timedelta(hours=17)
-        if qualified:
-            read_deadline = min(read_deadline, *(utc(signal.actionable_until) for signal in qualified.values()))
+        signal_deadline = min((utc(signal.actionable_until) for signal in qualified.values()), default=None)
+        if signal_deadline is not None:
+            read_deadline = min(read_deadline, signal_deadline)
         maximum_retry_seconds = min(broker_state_retry_max_seconds, max(0.,
             (read_deadline - capture_started).total_seconds() - DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS))
 
@@ -466,11 +467,15 @@ def run_independent_stock_trader_once(
             if not read_gameplan_stock_activation_intent(root).active:
                 raise ValueError("TRADER_INACTIVE_DURING_BROKER_CAPTURE")
             now = utc(clock())
-            if now >= read_deadline:
+            # Actual signal expiry remains a failed read. The daily cutoff may
+            # instead coincide with an ordinary final calendar closure.
+            if signal_deadline is not None and now >= signal_deadline:
                 raise ValueError("BROKER_READ_EXECUTION_WINDOW_CLOSED")
             current_window = stock_execution_window(now)
             if not current_window.executable:
                 raise _BrokerReadWindowClosed(current_window, now)
+            if now >= read_deadline:
+                raise ValueError("BROKER_READ_EXECUTION_WINDOW_CLOSED")
             identity = broker.stable_account_fingerprint()
             if account_config is not None and identity != account_config.account_fingerprint:
                 raise ValueError("BROKER_ACCOUNT_DIFFERS_FROM_REVIEWED_COORDINATOR_BINDING")
