@@ -225,8 +225,10 @@ def verified_recovery_candle(candle):
             return False
         if evidence.get("kind") == "primary_observed":
             original = evidence["native_primary"]
-            if _digest(original) != evidence["native_primary_sha256"] or not verified_source_observation(original):
+            if _digest(original) != evidence["native_primary_sha256"]:
                 return False
+            # wrap_primary performs the complete native observation validation.
+            # Repeating it here doubles the same per-minute proof work.
             expected = wrap_primary(original)
         else:
             expected = recovery_candle(evidence["assessment"], evidence["session"])

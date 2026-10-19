@@ -1555,25 +1555,30 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
         bounds = SessionBounds(str(inference_row.session_id), inference_row.session_open, inference_row.session_close)
         if not bounds.contains(target_open):
             raise UnresolvedPolicy("Exact intraday target crosses session closure; next-session policy is unresolved")
+    rows = tuple(frame.itertuples())
+    rows_by_open = {row.opened_at: row for row in rows}
+    feature_values = features.to_numpy(dtype=float)
+    receipt_times = frame.available_at.tolist()
+    # Retain exact receipt timestamps (including sub-microsecond precision).
+    # Each feature uses at most this row and its 20 preceding observations.
+    feature_receipts = [max(receipt_times[max(0, i - 20):i + 1]) for i in range(len(rows))]
     X, y, references, closes, available, synthetic_excluded, synthetic_included = [], [], [], [], [], 0, 0
-    for row in frame.itertuples():
+    for row in rows:
         ref = row.opened_at
         if ref < window_start:
             continue
         targ, finish = exact_target(ref)
-        if targ not in lookup.index:
+        outcome = rows_by_open.get(targ)
+        if outcome is None:
             continue
-        outcome = lookup.loc[targ]
         if str(outcome.session_id) != str(row.session_id) or outcome.available_at > cutoff or finish > cutoff:
             continue
         # Information used in each historical feature must have matured by that
         # row's own decision time, not merely the later overall training cutoff.
-        position = int(frame.index[frame.opened_at.eq(ref)][0])
         own_cutoff = row.available_at
-        history = frame.iloc[max(0, position - 20):position + 1]
-        if history.available_at.gt(own_cutoff).any():
+        if feature_receipts[row.Index] > own_cutoff:
             continue
-        values = features.loc[ref].to_numpy(dtype=float)
+        values = feature_values[row.Index]
         if not np.isfinite(values).all():
             continue
         if bool(row.synthetic) or bool(outcome.synthetic):
