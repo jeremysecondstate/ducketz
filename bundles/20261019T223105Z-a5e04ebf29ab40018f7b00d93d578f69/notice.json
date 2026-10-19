@@ -1,0 +1,68 @@
+{
+  "author": "Atlas",
+  "base_sha": "6792abd38873b3aab98db82b7f091525a49a428b",
+  "branch": "codex/atlas/20261019T222720Z-35a4281489544f5b9a0f4a225b24ee58",
+  "change_id": "20261019T222720Z-35a4281489544f5b9a0f4a225b24ee58",
+  "files": [
+    "app/ui/gameplan.py",
+    "docs/development/oct19-account-planner-compatibility.md",
+    "docs/development/stock-direction-and-horizon-autonomy.md",
+    "ml/gameplan_cash_ledger.py",
+    "ml/gameplan_policy_revision.py",
+    "ml/gameplan_trade_planning.py",
+    "ml/gameplan_trade_review.py",
+    "ml/intraday/intentions.py",
+    "ml/intraday/starter_sizing.py",
+    "ml/intraday/store.py",
+    "ml/intraday/technical_sizing.py",
+    "ml/joint_capital_handoff.py",
+    "ml/nightly_gameplan.py",
+    "ml/stock_direction_policy.py",
+    "ml/stock_trader/catchup.py",
+    "ml/stock_trader/contracts.py",
+    "ml/stock_trader/fixed_horizon_budget.py",
+    "ml/stock_trader/gameplan_direction_engine.py",
+    "ml/stock_trader/gameplan_execution.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "ml/stock_trader/independent_runtime.py",
+    "ml/stock_trader/independent_signals.py",
+    "tests/test_fixed_horizon_budget.py",
+    "tests/test_fixed_horizon_engine.py",
+    "tests/test_gameplan_direction_engine.py",
+    "tests/test_gameplan_policy_revision.py",
+    "tests/test_gameplan_policy_revision_catchup.py",
+    "tests/test_gameplan_trade_planning.py",
+    "tests/test_gameplan_trade_review.py",
+    "tests/test_gameplan_ui.py",
+    "tests/test_independent_stock_targets.py",
+    "tests/test_intraday_starter_sizing.py",
+    "tests/test_intraday_technical_sizing.py",
+    "tests/test_joint_capital_handoff.py",
+    "tests/test_oct19_direction_execution.py",
+    "tests/test_oct19_direction_planning.py",
+    "tests/test_oct19_intraday_direction.py",
+    "tests/test_stock_direction_policy.py"
+  ],
+  "limitations": [
+    "Offline synthetic and saved-input checks only; no broker, provider, training or running-process verification.",
+    "Legacy account-planner compatibility is supplied as an exact reviewed portable diff because the reviewed main base has removed that package.",
+    "Scout source and private correction are available; peer installation and loaded runtime are not verified."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/257"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source applies on next manual launch or application reload. Preserve manual starts/stops and private execution state; no automatic trader restart or order is authorized by publication.",
+  "scope": "shared",
+  "source_sha": "98b5cfcf644c6776b1f598d5168a12ac4ee3acef",
+  "summary": "Atlas: apply global direction cutoffs and hourly horizon autonomy for all traders",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T22:30:10.626744Z",
+      "isolated_candidate": true,
+      "output_sha256": "8e4073f57d501a7c88c44f9cc78998efed222507e9f7366ee73bd8fc3321dd88",
+      "result": "839 passed across 27 suites",
+      "started_at_utc": "2026-10-19T22:28:59.067024Z"
+    }
+  ]
+}

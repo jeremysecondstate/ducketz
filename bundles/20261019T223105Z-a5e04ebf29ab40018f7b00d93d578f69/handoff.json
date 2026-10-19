@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T22:31:05.672387Z",
+  "id": "20261019T223105Z-a5e04ebf29ab40018f7b00d93d578f69",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: apply global direction cutoffs and hourly horizon autonomy for all traders"
+}
