@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T23:14:43.867901Z",
+  "id": "20261019T231443Z-151344c79b7944ca8463cca909367824",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Reuse completed nightly synthesis after a saved policy revision"
+}

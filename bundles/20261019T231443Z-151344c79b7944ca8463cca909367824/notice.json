@@ -1,0 +1,31 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T230951Z-8566422602ef41a98c9b8c3157a0c8c1",
+  "completion_record": "20261019T230951Z-8566422602ef41a98c9b8c3157a0c8c1",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/nightly_direct_exchange.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_nightly_direct_exchange.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixture checks do not establish a live trade or peer installation.",
+    "Current main omits the installed nightly module and dependencies; publish a tested stacked PR rather than reintroduce obsolete whole components."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/263",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install exact reviewed source locally for the next nightly invocation; preserve all trader manual starts and stops. No automatic start or restart.",
+  "scope": "shared",
+  "source_commit": "c44d1364fbcbe38d40acc284ff2fb1320ce7f86a",
+  "summary": "Atlas: Reuse completed nightly synthesis after a saved policy revision",
+  "tests": [
+    "Sealed 17 passed in 60.15s (0:01:00)",
+    "Isolated 17 passed in 56.77s",
+    "Installed 17 passed in 58.28s with stable imported sources and packages",
+    "Actual prior nightly retry path returned COMPLETE and reused existing revision publication; original receipt and transport bytes preserved"
+  ]
+}
