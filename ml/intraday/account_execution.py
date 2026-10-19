@@ -106,18 +106,22 @@ class _ExecutionTrace:
         self.phases = self.phases[-32:]
         self.stage, self.stage_started = stage, now
 
+    def snapshot(self):
+        """Copy bounded timings for either an exception or a normal result."""
+        now = time.monotonic()
+        return dict(execution_stage=self.stage,
+            execution_elapsed_seconds=round(max(0, now-self.started), 6),
+            execution_stage_elapsed_seconds=round(max(0, now-self.stage_started), 6),
+            execution_phases=[dict(phase) for phase in self.phases],
+            lease_expires_at=self.lease_expires_at, snapshot_observed_at=self.snapshot_observed_at)
+
     def remember(self, exc):
         saved = getattr(exc, "intraday_execution_failure", None)
         if isinstance(saved, _ExecutionFailure) and saved.trace is self:
             return
-        now = time.monotonic()
         evidence = _submission_failure_evidence(exc, self.stage)
         evidence.pop("submission_stage")
-        evidence.update(execution_stage=self.stage,
-            execution_elapsed_seconds=round(max(0, now-self.started), 6),
-            execution_stage_elapsed_seconds=round(max(0, now-self.stage_started), 6),
-            execution_phases=list(self.phases), lease_expires_at=self.lease_expires_at,
-            snapshot_observed_at=self.snapshot_observed_at)
+        evidence.update(self.snapshot())
         exc.intraday_execution_failure = _ExecutionFailure(evidence, self)
 
 
@@ -555,6 +559,14 @@ class IntradayAccountExecutor:
                 original = self.intents.save_sizing(forecast, result)
                 if result.status != "sized":
                     unavailable = original
+                    # Unavailable sizing is a normal result, so exception
+                    # diagnostics never retain its slow phases. Keep a separate
+                    # observation without changing the immutable sizing entry.
+                    self.store.event(forecast["cycle_id"], "sizing_unavailable_diagnostics",
+                        {"forecast_id":forecast["forecast_id"], "sizing_id":result.result_id,
+                         "disposition":original["disposition"],
+                         "diagnostics":self._execution_trace.snapshot()},
+                        symbol=forecast["symbol"], recorded_at=self.clock())
             # Supersession is independent of whether the new intention can trade.
             # A zero desired or elapsed forecast still retires an old intention.
             self._execution_stage("execution_after_sizing")
