@@ -167,6 +167,7 @@ class IntervalResponse:
     error: str | None = None
     native_response: dict | None = None
     no_trade_scope_evidence: dict | None = None
+    failure_diagnostics: dict | None = None
 
     def validate(self):
         if not self.attempt_id or not self.symbol or not self.source_id or not self.source_dataset:
@@ -212,7 +213,12 @@ class AcquisitionJournal:
 
     def save(self, response: IntervalResponse):
         response.validate()
-        payload = _json(asdict(response))
+        record = asdict(response)
+        # Old immutable attempts predate diagnostics. Reading and saving one
+        # again must not add an absent optional field to its original bytes.
+        if record["failure_diagnostics"] is None:
+            record.pop("failure_diagnostics")
+        payload = _json(record)
         slot = self.slot(response.symbol, response.source_id, response.interval_open, response.interval_close)
         # Sidecar identity retains the actual loaded acquisition implementation;
         # old journal rows are never upgraded into invented historical evidence.
@@ -222,7 +228,7 @@ class AcquisitionJournal:
             object_root=self.path.parent / "acquisition-source-objects")
         receipt = preserve_bytes(self.path.parent / "acquisition-receipts", _json({
             "attempt_id": response.attempt_id, "response_sha256": hashlib.sha256(payload.encode()).hexdigest(),
-            "response": asdict(response), "producer_runtime": runtime,
+            "response": record, "producer_runtime": runtime,
             "native_response_scope": "SDK-returned native DataFrame before minute projection; not raw HTTP/DBN wire bytes"
         }).encode(), suffix=".json")
         with closing(sqlite3.connect(self.path)) as db, db:
@@ -577,6 +583,30 @@ def recover_interval(fetch: Callable[[], IntervalResponse], *, journal: Acquisit
         sleep(result["retry_after_seconds"])
 
 
+def _acquisition_failure_diagnostics(exc, *, stage, provider):
+    """Bounded exception messages only; never copy response bodies or headers."""
+    import re
+    from app.services.databento_retry import _http_status
+    from .provider_recovery import sanitize_cause
+    try:
+        key = getattr(provider, "api_key", None)
+        secrets = (key,) if isinstance(key, str) and key else ()
+        chain, seen, current = [], set(), exc
+        while isinstance(current, Exception) and id(current) not in seen and len(chain) < 4:
+            seen.add(id(current))
+            # Basic credentials are not covered by the shared Bearer sanitizer.
+            message = re.sub(r"(?i)\b(?:basic|bearer)\s+[^\s,;}\"']+",
+                             "[AUTH REDACTED]", str(current))
+            chain.append({"error_type": type(current).__name__[:120],
+                          "http_status": _http_status(current),
+                          "cause": sanitize_cause(message, secrets)})
+            current = current.__cause__ or current.__context__
+        return {"stage": stage, "chain": chain, "chain_truncated": isinstance(current, Exception)}
+    except Exception as diagnostic_error:
+        # Diagnostics must not change the original classification or retry.
+        return {"stage": stage, "diagnostics_error_type": type(diagnostic_error).__name__[:120]}
+
+
 def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attempt_id: str,
                                     clock: Callable = lambda: datetime.now(timezone.utc),
                                     stopped: Callable = lambda: False) -> IntervalResponse:
@@ -602,6 +632,7 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
         raise ContractError("Existing provider must declare its dataset")
     source_id = f"databento:{dataset}:ohlcv-1m"
     coverage = None
+    stage = "native_specs"
     try:
         if stopped():
             raise InterruptedError("Candle acquisition stopped before metadata request")
@@ -610,9 +641,11 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
             raise ContractError("One native ohlcv-1m provider spec is required")
         if stopped():
             raise InterruptedError("Candle acquisition stopped before dataset range request")
+        stage = "dataset_range"
         dataset_range = provider.dataset_range()
         if stopped():
             raise InterruptedError("Candle acquisition stopped before schema range request")
+        stage = "schema_range"
         advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=dataset_range)
         coverage = (utc(advertised.start).isoformat(), utc(advertised.end).isoformat())
         if utc(advertised.start) > op or utc(advertised.end) < cl:
@@ -621,6 +654,7 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
                 coverage_close=coverage[1], error="requested_interval_outside_advertised_schema_range")
         if stopped():
             raise InterruptedError("Candle acquisition stopped before price request")
+        stage = "native_bars"
         results, selected = provider.fetch_native_bars_range([symbol], specs[0], start=op.to_pydatetime(),
                                                             end=cl.to_pydatetime(), available_range=advertised)
         if symbol not in results or utc(selected.start) != op or utc(selected.end) != cl:
@@ -643,7 +677,8 @@ def fetch_databento_interval_attempt(provider, *, symbol: str, opened_at, attemp
         return IntervalResponse(attempt_id, symbol, source_id, dataset, op.isoformat(), cl.isoformat(),
             begin.isoformat(), utc(clock()).isoformat(), "temporary_error" if retryable else "permanent_error",
             coverage_open=coverage[0] if coverage else None, coverage_close=coverage[1] if coverage else None,
-            retry_after_seconds=_retry_after_seconds(exc), error=type(exc).__name__)
+            retry_after_seconds=_retry_after_seconds(exc), error=type(exc).__name__,
+            failure_diagnostics=_acquisition_failure_diagnostics(exc, stage=stage, provider=provider))
 
 
 def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opened_at, attempt_id: str,
@@ -671,6 +706,7 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
         raise ContractError("Existing provider must declare its dataset")
     source_id, coverage = f"databento:{dataset}:ohlcv-1m", None
     status, error, wait, results = "success", None, 0.0, {}
+    stage, diagnostics = "native_specs", None
     try:
         if stopped():
             raise InterruptedError("Candle acquisition stopped before metadata request")
@@ -679,9 +715,11 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
             raise ContractError("One native ohlcv-1m provider spec is required")
         if stopped():
             raise InterruptedError("Candle acquisition stopped before dataset range request")
+        stage = "dataset_range"
         dataset_range = provider.dataset_range()
         if stopped():
             raise InterruptedError("Candle acquisition stopped before schema range request")
+        stage = "schema_range"
         advertised = provider.available_range_for_schema("ohlcv-1m", dataset_range=dataset_range)
         coverage = (utc(advertised.start).isoformat(), utc(advertised.end).isoformat())
         if utc(advertised.start) > op or utc(advertised.end) < cl:
@@ -689,6 +727,7 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
         else:
             if stopped():
                 raise InterruptedError("Candle acquisition stopped before price request")
+            stage = "native_bars"
             results, selected = provider.fetch_native_bars_range(clean, specs[0], start=op.to_pydatetime(),
                 end=cl.to_pydatetime(), available_range=advertised)
             if set(results) != set(clean) or utc(selected.start) != op or utc(selected.end) != cl:
@@ -699,6 +738,7 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
         from app.services.databento_retry import is_retryable_databento_error, _retry_after_seconds, _http_status
         status = "temporary_error" if is_retryable_databento_error(exc) or _http_status(exc) == 429 else "permanent_error"
         wait, error = _retry_after_seconds(exc), type(exc).__name__
+        diagnostics = _acquisition_failure_diagnostics(exc, stage=stage, provider=provider)
     finished = utc(clock())
     responses = {}
     for symbol in clean:
@@ -712,7 +752,8 @@ def fetch_databento_interval_attempts(provider, *, symbols: Sequence[str], opene
         responses[symbol] = IntervalResponse(f"{attempt_id}:{symbol}", symbol, source_id, dataset,
             op.isoformat(), cl.isoformat(), begin.isoformat(), finished.isoformat(), status, native,
             coverage[0] if coverage else None, coverage[1] if coverage else None,
-            None, wait, error, native_response=_native_response_snapshot(results[symbol][1]) if status == "success" else None).validate()
+            None, wait, error, native_response=_native_response_snapshot(results[symbol][1]) if status == "success" else None,
+            failure_diagnostics=diagnostics).validate()
     return responses
 
 
