@@ -141,6 +141,19 @@ def submit(env):
     return result
 
 
+@pytest.mark.parametrize('probability', [.499900001, .5, .500099999])
+def test_saved_old_neutral_intention_cannot_create_a_new_post(env, monkeypatch, probability):
+    from ml.intraday import intentions
+    with monkeypatch.context() as previous_policy:
+        previous_policy.setattr(intentions, 'stock_action', lambda probability: 'BUY' if probability >= .5 else 'SELL', raising=False)
+        saved = save_forecast(env, probability=probability)
+    original = env.executor.intents.get(saved['forecast_id'])
+    result = env.executor.step(saved)
+    assert result['disposition'] == 'probability_between_action_cutoffs'
+    assert env.broker.posts == [] and record(env, saved) is None
+    assert env.executor.intents.get(saved['forecast_id']) == original
+
+
 def test_real_wire_authorization_and_durable_local_claim_precede_one_exact_reduced_post(env):
     checks = []
     def before_post():

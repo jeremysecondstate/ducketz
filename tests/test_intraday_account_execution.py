@@ -156,6 +156,23 @@ def test_same_forecast_status_recovery_never_repeats_submission(env):
     assert account(env).read_state()["reservations"][0]["broker_order_id"] == "1001"
 
 
+@pytest.mark.parametrize("probability", [.499900001, .5, .500099999])
+def test_saved_old_neutral_intention_cannot_create_a_new_post(env, monkeypatch, probability):
+    from ml.intraday import intentions
+    from ml.intraday.prediction import encoded
+    from ml.intraday.technical_sizing import SizingResult
+    saved = env.forecast(probability=probability)
+    with monkeypatch.context() as previous_policy:
+        previous_policy.setattr(intentions, "stock_action", lambda probability: "BUY" if probability >= .5 else "SELL", raising=False)
+        value = dict(status="sized", forecast_id=saved["forecast_id"], symbol=saved["symbol"],
+            side="BUY" if probability >= .5 else "SELL", desired_quantity=4, calculated_at=env.clock())
+        original = env.executor.intents.save_sizing(saved, SizingResult(digest(value), encoded(value)))
+    result = env.executor.step(saved)
+    assert result["disposition"] == "probability_between_action_cutoffs"
+    assert env.broker.submissions == [] and native(env).snapshot().reservations == ()
+    assert env.executor.intents.get(saved["forecast_id"]) == original
+
+
 def test_zero_cash_logs_positive_desired_zero_adjusted_without_post(env):
     env.cash = 0
     forecast = env.forecast()

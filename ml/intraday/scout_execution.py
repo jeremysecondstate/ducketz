@@ -17,6 +17,7 @@ import sqlite3
 import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
+from ml.stock_direction_policy import stock_action
 from ml.stock_trader.horizon_ledger import FillEvidence, OrderEvidence, ReservationState
 from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
@@ -52,6 +53,8 @@ def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
         raise ContractError('Forecast issue lies in the future')
     if forecast['ensemble_status'] != 'full' or forecast['successful_count'] != forecast['configured_count']:
         return 'incomplete_ensemble'
+    if stock_action(forecast['probability_not_down']) == 'HOLD':
+        return 'probability_between_action_cutoffs'
     gate = submission_gate(as_of=now, eligible_session=instant(forecast['reference_at']).astimezone(PACIFIC).date())
     if gate.state != 'before_submission_cutoff':
         return gate.state
