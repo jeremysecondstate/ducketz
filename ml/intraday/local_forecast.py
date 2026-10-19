@@ -3,7 +3,8 @@
 The classifier assumes a forecast payload and checks its immutable identity,
 local scope, manual-session time, ensemble and fixed-target eligibility. The
 saved reader validates the persisted forecast, cycle and frozen snapshot in one
-zero-wait read transaction. Neither helper grants execution authority or reads
+read transaction, with bounded fresh attempts for transient SQLite contention.
+Neither helper grants execution authority or reads
 another trader's state. Callers still enforce their own current manual controls,
 quote freshness, broker capacity and one-send order journal.
 """
@@ -15,6 +16,7 @@ import os
 from pathlib import Path
 import sqlite3
 import stat
+import time
 
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
 from .store import ShadowStore
@@ -22,6 +24,9 @@ from .submission_time import submission_gate
 
 
 _FORECAST_COLUMNS = "id,pc,symbol,cycle_id,reference_at,issued_at,payload"
+_READ_RETRY_SECONDS = .25
+_READ_RETRY_PAUSE_SECONDS = .01
+_READ_MAX_ATTEMPTS = 8
 
 
 def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
@@ -88,9 +93,9 @@ def _cycle(db, cycle_id):
     return value
 
 
-def _saved_forecast(path, forecast, *, session_id, session_started):
-    # mode=ro must not silently create an absent database. Zero timeout prevents
-    # a locked writer from delaying the final effect gate until evidence expires.
+def _saved_forecast_once(path, forecast, *, session_id, session_started):
+    # mode=ro cannot create absent evidence. Each attempt uses a fresh, zero-wait
+    # connection and one consistent transaction; failures close it before retry.
     with closing(sqlite3.connect(_safe_path(path).as_uri() + "?mode=ro",
                                  uri=True, timeout=0)) as db:
         db.execute("PRAGMA query_only=ON")
@@ -128,6 +133,27 @@ def _saved_forecast(path, forecast, *, session_id, session_started):
             if (source.get("pc") == "Scout" and source.get("mode") == "live"
                     and source.get("experiment") == session_id):
                 raise ContractError("Newer current-session forecast supersedes this intention")
+
+
+def _saved_forecast(path, forecast, *, session_id, session_started):
+    # A new WAL reader can encounter SQLITE_BUSY_RECOVERY even without a stale
+    # or conflicting forecast. Retry only native contention, never failed
+    # evidence validation or I/O. Callers must recheck time/manual authority
+    # after this read, as they must after any potentially slow integrity check.
+    deadline = time.monotonic() + _READ_RETRY_SECONDS
+    for attempt in range(_READ_MAX_ATTEMPTS):
+        try:
+            return _saved_forecast_once(path, forecast, session_id=session_id,
+                                        session_started=session_started)
+        except sqlite3.OperationalError as exc:
+            code = getattr(exc, "sqlite_errorcode", None)
+            remaining = deadline - time.monotonic()
+            if (type(code) is not int or code < 0 or code & 255 not in {sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED}
+                    or attempt + 1 == _READ_MAX_ATTEMPTS or remaining <= 0):
+                raise
+            time.sleep(min(_READ_RETRY_PAUSE_SECONDS, remaining))
+            if time.monotonic() >= deadline:
+                raise
 
 
 def saved_forecast(path, forecast, *, session_id, session_started):
