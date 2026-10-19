@@ -1,0 +1,39 @@
+{
+  "author": "Scout",
+  "base_commit": "40964c1858e6585e80b501e9c79ba1f02bf6cde8",
+  "branch": "codex/scout/20261019T174909Z-917387db502742618000bb55926cc439",
+  "change_id": "20261019T174909Z-917387db502742618000bb55926cc439",
+  "commit_sha": "9fb6f7a3a0e79f0e5f67673e5c8c1a8817550a53",
+  "details": [
+    "One due saved acquisition recovery turn follows each fresh cycle despite sustained overruns, then the next fresh turn selects the latest reference.",
+    "Existing independent PC/session scope, retry ordering, original fixed targets, immutable forecasts, local model recipes and manual controls are preserved. Older recovered forecasts never enter execution.",
+    "Scout daytime repair; peer applicability is shared scheduler correctness with each PC retaining its own model recipe and operating bindings."
+  ],
+  "files": [
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_live_session.py"
+  ],
+  "limitations": [
+    "Offline reproduction and regression passed; manual reload and affected runtime observation remain pending.",
+    "A later manual session does not adopt unfinished cycles from earlier sessions.",
+    "Draft PR is stacked on prior reviewed source PR237. Main integration and peer installation are not claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/238",
+  "remote_sha": "9fb6f7a3a0e79f0e5f67673e5c8c1a8817550a53",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed locally with179offline checks also passed in the immutable runtime. Manual trader restart required to load the startup-imported forecasting loop; no automatic trader control or expired execution replay.",
+  "scope": "shared",
+  "source_stage": "remote_sha_verified",
+  "summary": "Prevent acquisition recovery starvation during consecutive forecast overruns",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T17:52:17.190522Z",
+      "import_evidence_sha256": "950239bcc97fa7dcc0c72e117a020de81f61eea2f32e118cb661a9050ac18a8f",
+      "network_disabled": true,
+      "output_sha256": "d6362cde19a9cd2c277ece91e5643a54170189b6c49b86ffa3d41427521ceb2a",
+      "result": "179 passed in 21.78s",
+      "source_dependency_fingerprints": 213,
+      "started_at_utc": "2026-10-19T17:51:53.831683Z"
+    }
+  ]
+}
