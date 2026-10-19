@@ -16,7 +16,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
     IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted)
 from ml.stock_trader.horizon_broker import capture_order_evidence
-from ml.stock_trader.horizon_ledger import PortfolioEvidence
+from ml.stock_trader.horizon_ledger import LedgerError, PortfolioEvidence
 from .local_execution import (load_local_binding, IntradayLedger as HorizonLedger, NATIVE_PATH, AUTHORITY_PATH, LOCK_PATH, broker_pending)
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.session import stock_execution_window
@@ -231,8 +231,13 @@ class IntradayAccountExecutor:
             {s:portfolio.account_equity for s in self.config.symbols}, portfolio.source_fingerprint)
         reconciliation = self.ledger.reconcile(native_evidence, order_evidence=evidence)
         by_native = {item.reservation_id:item for item in evidence}
+        # Validate every retained identity using one native transaction. Reopening
+        # the database per historical order can outlive the unchanged 60s fence.
+        native_by_id = {item.reservation_id:item for item in self.ledger.snapshot().reservations}
         for record in self.authority.read_state()["reservations"]:
-            native = self.ledger.lookup_reservation(record["request"]["native_reservation_id"])
+            native = native_by_id.get(record["request"]["native_reservation_id"])
+            if native is None:
+                raise LedgerError("UNKNOWN_RESERVATION")
             if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
                 raise ContractError("Local authority/native identity mismatch")
             observed = by_native.get(native.reservation_id)
@@ -392,11 +397,24 @@ class IntradayAccountExecutor:
         """Reconcile tracked orders even after cutoff; never submit from history."""
         with self._account():
             self._capture()
-            forecasts = {f["forecast_id"]:f for f in self.store.forecasts(pc=self.actor)}
+            # _snapshot retains the reservation/provenance validation used by
+            # lookup_reservation; _stream retains the existing legacy fallback.
+            # Both run in one transaction instead of reopening for every order.
+            with self.ledger._transaction() as db:
+                owned = tuple(native for native in self.ledger._snapshot(db).reservations
+                    if self.ledger._stream(db, "reservation", native.reservation_id) == self.stream)
+            if not owned:
+                return []
+            identities = sorted({native.forecast_id for native in owned})
+            with self.store.connect() as db:
+                rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts "
+                    "WHERE pc=? AND id IN (SELECT value FROM json_each(?)) ORDER BY rowid",
+                    (self.actor, json.dumps(identities))).fetchall()
+            # Selected rows still undergo the complete immutable/indexed-identity
+            # validator. Unrelated historical model payloads need no decoding.
+            forecasts = {row[0]:self.store._forecast_value(row) for row in rows}
             results = []
-            for native in self.ledger.snapshot().reservations:
-                if self.ledger.reservation_stream(native.reservation_id) != self.stream:
-                    continue
+            for native in owned:
                 forecast = forecasts.get(native.forecast_id)
                 if forecast is None or self.intents.get(native.forecast_id) is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
