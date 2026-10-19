@@ -1,0 +1,908 @@
+{
+  "author": "Scout",
+  "change_id": "20261019T230841Z-9ca7e6a73ffb4fc98b300d1372f12be0",
+  "coordination": {
+    "evidence": [
+      {
+        "commit_sha": "f9385d622694bb5a44de5f4e403ba75d27183f71",
+        "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md",
+        "sha256": "0c465bb7c426a1b6e4ddb46b6d791748ce750833a4578c1199b4aa2ebfa5cc8a"
+      }
+    ],
+    "kind": "request",
+    "purposes": [
+      "nightly_gameplan",
+      "gameplan_stats",
+      "nightly_synthesis",
+      "intraday_nightly_model_review"
+    ],
+    "recipient": "pc-original",
+    "repository": "jeremysecondstate/ducketz",
+    "request_id": "scout-durable-stock-rules-20261019",
+    "request_type": "source_review",
+    "schema_version": 1,
+    "sender": "pc-new",
+    "source_commit": "f9385d622694bb5a44de5f4e403ba75d27183f71",
+    "summary": "Jeremy requested these exact rules for both PCs, all configured symbols and every stock trader including both 15-minute traders. Review the advertised exact source and task instruction block under existing local standing peer-adoption authority. Apply the current BUY at 50.01 percent or higher, SELL at 49.99 percent or lower, neutral interval, 1h/4h ownership autonomy and saved-policy Stats behavior to future Gameplan and nightly work. Preserve Atlas local model recipes, symbols, task settings and manual trader starts. The optional legacy supplement retains receipt/producer metadata only and is adopted together with the primary source by field. Report actual installation stages; this adds no nightly approval or cross-trader prerequisite."
+  },
+  "coordination_issue": "https://github.com/jeremysecondstate/atlas-scout/issues/22",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_stats.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_stats_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_actuals_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_evaluation.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/gameplan_execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/gameplan_saved_direction.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_stats_handoff.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_planning.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/local_forecast.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/starter_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/technical_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/joint_capital_handoff.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/cross_horizon_fallback.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/fixed_horizon_budget.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_direction_engine.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/stock_trader/gameplan_inventory_slices.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_signals.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_fixed_horizon_budget.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_actuals_review.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_autonomy_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_direction_engine.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_evaluation.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_execution_policy.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_horizon_autonomy.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_saved_direction.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_stats_handoff.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_stats_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_targets.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_local_forecast.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scout_local_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_starter_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_technical_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_stock_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_synthesis.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_nightly_synthesis_policy.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures only; no broker/provider calls, production training, trader starts, restarts or runtime deployment.",
+    "Main integration, Atlas source and native task installation and loaded runtime versions remain unverified.",
+    "Native definitions, private paths, scheduler identities, task memory, local model recipes and account state are retained locally.",
+    "The optional legacy metadata supplement uses its existing source lineage and must not overwrite unrelated primary or peer changes."
+  ],
+  "native_task_updates": {
+    "actor": "Scout",
+    "all_nonprompt_settings_preserved": true,
+    "atlas_installation": "not_yet_verified",
+    "count": 9
+  },
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/262",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New Gameplan artifacts and Stats handoffs retain exact current cutoffs and ownership policy. Historical saved calls keep their original policies and labels. Native nightly work retains automatic preparation, synthesis and delivery authority, existing schedules and independent manually started traders. Shared correctness changes preserve local model recipes and actual capacity reservations.",
+  "scope": "shared",
+  "sources": [
+    {
+      "base_commit": "6792abd38873b3aab98db82b7f091525a49a428b",
+      "branch": "codex/scout/20261019T230841Z-9ca7e6a73ffb4fc98b300d1372f12be0",
+      "commit_sha": "f9385d622694bb5a44de5f4e403ba75d27183f71",
+      "completion_record": "20261019T230841Z-9ca7e6a73ffb4fc98b300d1372f12be0",
+      "dependency_fingerprints": {
+        "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/config.py": "2b38d3ee2c814d714faf964bdb9cc59a2877cbcb74478b7fba2fce024dc51b1d",
+        "app/hyperliquid_accounts.py": "76f89f2f23251482357fa2a10f3d210cb8d2392ffa91bc39e46769d277a529b2",
+        "app/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/models/market_data.py": "c28724cbc075f1b57eca2bb23c86c5dc12b410d4241b660e793c8f55fead63bd",
+        "app/models/option_management.py": "c8cd27bef3679035872745f818ceb93de50958e67c2895c38b9ff7c5456a0eda",
+        "app/models/portfolio.py": "fc3149c587703db8d442eb806654f34b94462a222f892b27a54eccc826bc615d",
+        "app/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/services/databento_cme_context.py": "e0bcfe1c96651a2b6f8ba37dbb7516a5815fba5ab8c8407c182f909d7eb96fe1",
+        "app/services/databento_market_data.py": "fb8e4a61428b3821a5ea1d30cf7aec2d14556a51d58f64b31afafe66c026c0fa",
+        "app/services/databento_retry.py": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c",
+        "app/services/fmp_corporate_data.py": "b5d512ad9a1523312d2fb6907bcaec78916226e197a9a58a9266117db466801b",
+        "app/services/fmp_macro_context.py": "f15c136818789b98fe02681cc7dbdc3490686f97997efef96a4b080262b1e4dd",
+        "app/services/market_fetch_specs.py": "c40ceb7aaaed0804956dfded3407fc295b9c5a7390e0732058ec7d18068db6e4",
+        "app/services/schwab.py": "76d3d9adea02030e9b419aa032be882a6dcd3b2eb1438e613da6bc1da9258308",
+        "app/services/schwab_market_data.py": "19535ea3d048d01f65802b7a2b52d59b0302723521a56658efe7c28ed24f0c0a",
+        "app/services/schwab_option_management.py": "59d02ffa5223df6dae22bf7b69723dadf26a551f34a96b7e086ed4f62e6883b2",
+        "app/services/schwab_order_fields.py": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321",
+        "app/services/schwab_policy_inputs.py": "0eb11577966952cf5890c8f84d6c4bf74c9650b486e4a28f41b5a2350c8a1b39",
+        "app/services/schwab_retry.py": "dcf97fdae508dabe4a9b1499abd73d6225bb03cfefcdbeb5168c014f72e0fa16",
+        "app/services/schwab_stock_orders.py": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+        "app/services/schwab_strategy_orders.py": "3ad5d499716a00df315f1dcf7dceeec813f76f94907fd6e0d7428958037abe4b",
+        "app/services/schwab_token_store.py": "6bf4bba20b41d891501d55853f448d5a71d39d32de1f84392ccad12f7eb96850",
+        "app/services/sec_capital_structure.py": "853497a03c21b937e3f0b3c2631b4154c1af4c1d2147f0427983bf9cd6889a70",
+        "app/ui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/ui/gameplan_execution_data.py": "d6f95d7d0fcdf5d77cae47d68090c5c5c4ab1a8f2e8160553d43ecf89e1bd199",
+        "app/ui/gameplan_execution_widgets.py": "4fabd4c12ee27783abc64909c21b7e207a0c1ea0a9d311507f967c3718ab0f32",
+        "app/ui/gameplan_widgets.py": "caa600f5b0fd0ffa06d3dc08a842b0458dd74989c3533c872cf20f182a0ca526",
+        "app/ui/theme.py": "7b8a2edf4890eb176955c5e4cc8ede84c64006d9a219fd870b92fee6605a78ff",
+        "datafetching/__init__.py": "5545a124cd32e3dda499f6b1c1359951d07ff3c29e8f95204c1ed87387e02cce",
+        "datafetching/bar_consolidation.py": "c328eae4715cd850b30bd7917ee38cdef2f6bec765e809e906b5872659ccf461",
+        "datafetching/bar_readiness.py": "9e760e130138985cb9e3708315279a412845d7db4be0bc3b26c6330e541c6b28",
+        "datafetching/bar_schema.py": "a27b8b795bd6a9d936b5e3b0ad18dc96fda8c799db6fe4b10405eade80147950",
+        "datafetching/bar_timing.py": "16650cc616ff2b766e9ba45552c2b218ec2cd2cb596156f9a04a3484be1c4004",
+        "datafetching/calculated_features.py": "97f974f484bef43515607c162b80248da28f531f903056c72658b5f238e06ce9",
+        "datafetching/cme_cross_asset_context.py": "0cdb50d7c8acee77139e8496afc4bc715ceaa80b59e26c4ddb619cde8cf14dc2",
+        "datafetching/cme_history.py": "c541e0c1f8c8b4dc18aef6f5a2429d63a1f35d0d320d0df3647184398773754d",
+        "datafetching/cme_runtime.py": "7acbc622020b9ea5dc6ea4b0cb9ac0ecbae6e969aff9902e5124312d85459557",
+        "datafetching/continuation.py": "f6eaa978d4f4dfe6886f71f67a4967a168a6686a5546bd577a6e94b4d65c3b7d",
+        "datafetching/databento_archive.py": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83",
+        "datafetching/databento_cold_start.py": "fcee81a4e4467f298fbdeb4f2aa3d99b0f9a35cc6a30f1f688458d6f5c98428f",
+        "datafetching/databento_fetch.py": "7aa1431157a8344826386f60b718a4d34af8611fa786accfb8dd12c30317e257",
+        "datafetching/databento_history_policy.py": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b",
+        "datafetching/databento_opra_history.py": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d",
+        "datafetching/databento_storage.py": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9",
+        "datafetching/decision_time.py": "7a683551970d0b9be64ca4e4ed8e56cfb6a0fce553ced3b6cd6fe27d6fa16064",
+        "datafetching/derived_bars.py": "9a630bc36366f7efb37ba39d5754da2b7f485df631362eb45d84aa77814543f1",
+        "datafetching/fmp_energy_context.py": "d7d648aafc4f1bc064c7d5d93ab099169a712fb933c4b4e3e9c28c7f0e8fc9ab",
+        "datafetching/fmp_fetch.py": "532d13db7c76c1433a6253e38e3fd492bae802d6dc0fc2eb5ab8c03009b857a8",
+        "datafetching/fred_fetch.py": "975f66050c0cdd6de11f4574273cfe3e12421ebb2fc3c8f27bacd1f120bb3c39",
+        "datafetching/fred_vintages.py": "6942bf0ae1e8740c9d22973808491f87e9a18ae5daf5cef7a2fd19474dbf2222",
+        "datafetching/ids.py": "daead3e39055cc9bd4ea4adef9dd715d4371da4c606269a4d88f2e9f088e850a",
+        "datafetching/layout.py": "20719c8416759435691457adee1936dd9598b3e4c1f31a785dfa5a7252d6c976",
+        "datafetching/loop_a_cycle.py": "6c95fadc3b0a4224174942be9d8df23b9999cd2759e319293dea71e7cf6720fb",
+        "datafetching/main.py": "1dc4ea3f40cd21eb69fb70d0e134392267bded23b016a9b50dca001154c7efcd",
+        "datafetching/observability.py": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e",
+        "datafetching/options_runtime.py": "a012181ef5badea60020f243dc5e7d9404fbbae9368ef80ea44f8deba4196c35",
+        "datafetching/orchestrate.py": "04c70f7a0514ae28f783e5e8dff1186ca893d526a3b046a67129aea70156fdee",
+        "datafetching/parquet_store.py": "f54d54544cdf574f8ed261dd3b62c1942d0bd12d7a2e0b53a4123e6164d930c7",
+        "datafetching/pricing_barrier.py": "3eeaf8be2d847c60589c03eff1fe872cd230c424f4cb22934246abca8245b710",
+        "datafetching/quote_liquidity.py": "1a03232208bb7dce98633b548e0d6c53d77db059de2db79582c75d863a85b366",
+        "datafetching/readiness_lane.py": "a07f376a8f74aa1f89df5c970403dbd1dbe5704eed40e6d76005f5cf0152e886",
+        "datafetching/runtime_lock.py": "5d4561c68af90cb52f248140cab74beea67abcbc998194bd3c044252f19980fd",
+        "datafetching/schwab_fetch.py": "51bf16455ed16c2f10f5fd19580dc020cf05b80ce0dfb66b2da1a8d08698ad8c",
+        "datafetching/sec_events.py": "38dd42b0c4730c72edf7db33cbf6df4d14b4c42aa905dca4de75bb7b314e12ef",
+        "datafetching/sec_fetch.py": "1fb0f0235210a5d96230c0428d0d2deb68d69f46dedd6121b7942167f2bc3af8",
+        "datafetching/symbol_onboarding.py": "81014c0ae701f56a2782a381e7fe4e74b6ff4dcb316340e94dfae91d8b8c2eb8",
+        "datafetching/symbol_universe.py": "4547943d6c8a8670348082fef7e33637467c92c8a6a0cdcc1c876da1e93ee88b",
+        "fundamentals/__init__.py": "8b535c883ea067208c7a038855a92c87c6820887dd555c25dba850acdcfbefff",
+        "fundamentals/calculation.py": "9876f717f4c9d06a2d57a9e69838d2617007e0da894fb6baa17e4e7605b4431d",
+        "fundamentals/join.py": "672edf328d23abecd7899448ffdb09006601f3c83d0d72e15fd0816fd922d0c5",
+        "fundamentals/main.py": "899882888f9bf8712cc2284e3ffeccc6069cd0a5df02e3bab3784dba468a1d64",
+        "fundamentals/parquet_io.py": "4d75ff5dc665b693efe0f24ac7296800030d42909f50ffb213728b0d156810f6",
+        "fundamentals/point_in_time.py": "9934daeae28c204a4b6b9497a08f85650ab0e9cc827a04c0d4140313740d84b3",
+        "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ml/artifacts.py": "8e76f065038ab878cb25deeaa973053b06e031b0df32861849da0911fae8d399",
+        "ml/calendars.py": "c87adbd5527daa93c84490903611cb20a7e57cc6355e3c77b63b67c880663dcc",
+        "ml/calibration.py": "07e8d9468f7f7d58f4f566d4eda0b40c329d95ee8b7aa6d54985e0b7095d8926",
+        "ml/contracts.py": "0cdd68b74d3c7b4f75634a0d66a2806368f5285791d1605aa2e51d53b3485c05",
+        "ml/current_publication.py": "45f4524c2ea2aa146b6ac3ddfb8c200d9657a49300a93a27a7d1ca54cf94a465",
+        "ml/directional_forecast_evaluation.py": "04d8bb069b17a64feaa5c7b9781d92265311ad549b7e4c34d23098814546cb57",
+        "ml/directional_forecasts.py": "fcb27a76d0ae404ff04669c47c6ebc2ab18817e08e2341a56e10e58094fddcaa",
+        "ml/gameplan_champions.py": "d25284aebe46b42db1a7fcacafe81f1a70ad325110a88ddfda42353ff84b61af",
+        "ml/gameplan_deployment.py": "f583af5eff2f5a889f743d7fb85f604aa81bffba3369fc1dc2ebb2f6e6f21bf4",
+        "ml/gameplan_development_selection.py": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a",
+        "ml/gameplan_estimators.py": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2",
+        "ml/gameplan_execution_report.py": "39d75b80e52d90fd2881b36c1d8a7f88205cc165b041c7abdfaa298e40e9d2e1",
+        "ml/gameplan_price_bands.py": "ab43a3b36bf9958b4692d668204cf443cbb58184f4c0632d1f6e7d13305bca99",
+        "ml/gameplan_price_completion.py": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0",
+        "ml/gameplan_probability_target.py": "78744f567ee87603de3137353482c03bf739a7a8661743ac75b1168577007b3d",
+        "ml/gameplan_promotion.py": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1",
+        "ml/gameplan_source_selection.py": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3",
+        "ml/gameplan_trade_snapshot.py": "f031e868e965cd0c55c3833b722584491086bd2081a2daa2411dcf1482b80869",
+        "ml/independent_stock_targets.py": "d083d8454ab8c81866a8b892fb27866b0c2ee2b3558b7585b4a72307826d8016",
+        "ml/intraday/__init__.py": "2b1407361de7dc4b7233ee8329adf4383336afbd0b4f53266e2da38edd236cf8",
+        "ml/intraday/capacity.py": "8fc7579132f5d064844281a8d8227093a28eaa9fb88a52d8eb8752c505373711",
+        "ml/intraday/data.py": "2ebe75c89726774514af61298785ff7dfad83caf5e58388d774a8d0456f203c7",
+        "ml/intraday/exact_status.py": "69952793cba1ed0f18f25b4b0c8366c4ad97d9388928ba891088fd499b883c99",
+        "ml/intraday/prediction.py": "37e3c7d9c16fea801625e2231ab34d5fc4e18ca78cef768f22db565dd4dfa95c",
+        "ml/intraday/scout_broker.py": "e2627a1ec521105822520322961fee72e97b34d6684267dfa959ab3ade2400a8",
+        "ml/intraday/scout_client.py": "0f4466458cf4f9946a541ed9a4983d114f0d9a4cc6ac047091227352e159ecd2",
+        "ml/intraday/scout_journal.py": "a9da4c9b5735bf9f446f0449be451c3a4c82cb5674802fef5151728053c6cead",
+        "ml/intraday/scout_local_execution.py": "018a3d96b91c8985cddda5ae88b9aa5cc5ed2e45241b7e25c24e57495e4bc512",
+        "ml/intraday/scout_protocol.py": "292fd0d5bb3a7737f22e33c4cf5162a5f160f6b8d56f9aa3e8bc29fa72055f83",
+        "ml/intraday/scout_session_books.py": "6dd7fba1190053763e29aa1fcf45d716b13bb8c8af48bbb22ce2d82a0b643a67",
+        "ml/intraday/sizing.py": "c760cba18da2d053300d42f6d405b975659d7cfdbd05902b8fee445122c5beba",
+        "ml/intraday/submission_time.py": "cbe6b81dedfb72c70c50f09c8d237d6107eb5dd97452fe96b374240adb937a56",
+        "ml/joint_capital_plan.py": "66ef55fecba9b92113c05ca6d85a36bee5b4821f9b3b747ac63ad4d4d15faad4",
+        "ml/nightly_continuation.py": "ed99ae04d54d2764398f5db160eeb090a819e4883d84f8fc97042e8d4aec8c50",
+        "ml/nightly_recovery.py": "1b07a833806e0c57c210098c439fcf4d74a658242789e52b02ed827150ee873e",
+        "ml/option_pricing/__init__.py": "cbe926bcf69cc090d120ca88f75a9d85b3cacca2ca3a4ef9488a98fe021478d3",
+        "ml/option_pricing/black_scholes.py": "37a838a75b752d46ceb6d3eb5324eceb2a94ba30b24c470666938d13ea933470",
+        "ml/option_pricing/policies.py": "0435494ab712a187dc45ed3ce4ac3e7026214a33100eb1ca67e67a840002b9c0",
+        "ml/option_pricing/target_outcome.py": "53cf4b88a174a40c06bfd27554a29d20987665843f1ed18653b3777925f3eaa4",
+        "ml/parquet_contracts.py": "e274a16295d26b9ccf2af7548419829d3412fcc98aad160ab9b9514e77bee43c",
+        "ml/preparation_deadline.py": "ce6fc0fabffa95a3bfe3d527b91941c6a9b4bea00b92c1c9f8454cd7d9e7cce8",
+        "ml/stock_target_prices.py": "f9f52937ea14232365c04c2ae9302f946bf29a7ded31482e8db47df7c3d155da",
+        "ml/stock_trader/__init__.py": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312",
+        "ml/stock_trader/contracts.py": "7561035b05058d1f44ed0c98fec65cf91439c63786ef81216c1d39c56a38e234",
+        "ml/stock_trader/control.py": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4",
+        "ml/stock_trader/engine.py": "f0d034120ab916113359bea43c5f423a71372cbb12c8864b65080ed7469dca23",
+        "ml/stock_trader/fixed_horizon_engine.py": "dfbf5b8ef6aed29556c313cb5736880d18c3741c50b84b12fd3b3ef050eaeb0c",
+        "ml/stock_trader/handoff.py": "2843c9c6cad8e4e4ee51177bd06ceb4ba285c2da199fd0df2eebfd25e989e91f",
+        "ml/stock_trader/horizon_broker.py": "95a5d01165eb8c8f38d226fbe5ea3b3f6c29ea5d2a27715926a482dbcb29f915",
+        "ml/stock_trader/independent_engine.py": "f4f1387cb4afaf9dcb4374eaeb21be810891fe69351db08caa3d08f722c83b8a",
+        "ml/stock_trader/independent_session.py": "460f07c1e42c269466e231573aeb16d87cc26db31d422c557c9b4e50fbf0e29f",
+        "ml/stock_trader/inputs.py": "31b154c5f5f95b971abbe30cbcc40b4c7f26c4d9df65451d096094ccafaad664",
+        "ml/stock_trader/market_features.py": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f",
+        "ml/stock_trader/model.py": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21",
+        "ml/stock_trader/price_comparison.py": "ab7d0565c86742d42da1134faa67e43958c9c8cf30e06c3cf21a66be1e0a0a08",
+        "ml/stock_trader/publication.py": "510c5a7b5878d61babdc7dceefd94f9a5460f19de6eb8b841ad73daca714ef19",
+        "ml/stock_trader/quote_recovery.py": "0a567e5f3683dc5b4c25c50c6bfd44198233a97d6e42e6811f18dd69604d747c",
+        "ml/stock_trader/runtime.py": "0740f5c2e1cf51601e2d239eb3a22cc3c3dbb56255f712ef24ff52bdbf53c483",
+        "ml/stock_trader/session.py": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+        "ml/stock_trader/session_reporting.py": "ad662d5ec9b841a67be6d506bc844c0b9abb154a2f23cfacbcccf52ea3bd0f4d",
+        "ml/stock_trader/sizing_policy.py": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b",
+        "ml/stock_trader/state.py": "cb2563e83b44fd0aff39e23e033448de534fbe2dfe682f52225497bc73ce8ff0",
+        "ml/strategy_publication.py": "85c9afea6b3847091c4c9cac6d83f73f5fe10b9e7dc9531cf60410c691bfcf87",
+        "ml/strategy_selection/__init__.py": "93f30056c7858a9df158485b20ebd9f8f3372bed0b1005ea9552e37d20687f72",
+        "ml/strategy_selection/contracts.py": "84efdc4dd225a3fbe95ea8bb025af5d5c52650cab1da5e79a31c99cb0ad42527",
+        "ml/strategy_selection/registry.py": "2e363317bfba811c87c87962d7b7d8e5d736403f48e323ad5caec8696b15076c",
+        "ml/training_progress.py": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e",
+        "ml/universe.py": "ad91c1a5dcc3ed0b521cb1664045815140ebd56b8765e11267d841cfc2de9880",
+        "options/__init__.py": "5ecb3bc7b73b37a28167302d8d085964f49bf68ed2c3cd7155938a8ef421bff5",
+        "options/databento_live.py": "b5de1175ec6d311d6d320fdfda963acc2f20003f59d62a52e5f8235a0b0ad83b",
+        "options/features.py": "d346c5e9b3d943450398152f1641bc0edfaa39297c7e4f13083df60de3ef8252",
+        "options/pending_capture.py": "c8066efa30c0d125bf335d6e5af5f4cc3efdcc39b5091fb1a1956f7f9a80fa8c",
+        "options/providers.py": "9e1039bdb4ba88dc15cb10fae0dc5bdfa27d3a8e6a85748e71348bd36e7dd3ec",
+        "options/publication.py": "a01a9b7ede9e8784d253aab0144ce8826efe21fc3e5f9a598e76680ad45e8d6d",
+        "options/snapshot.py": "af8a2d0c74e2f97e2f14b07585a6fde04928a1595f33d28a7c7fc9de314ed4ef",
+        "signals/__init__.py": "88b949169975624109bca24355ff728c0a931bca690c43a08ff81bcb54115403",
+        "signals/calculation.py": "2d208b5eccf3e6b26ec0f488267e309798e7244167152987408886e5accf6d30",
+        "signals/consensus.py": "6e4aa30b2488522bb5a3c1270350e8526279c0adb9dbe878bb677e7985ca883e",
+        "signals/fundamental_context.py": "cdefe273c16c0e146aea89db0076926668c646442565896e50c1a2ce472d93e3",
+        "signals/main.py": "ce8a85a16523be3101564d24236521369663de30b4f8f8e2273266b29da407c8",
+        "signals/parquet_io.py": "c9a8668964bf99f38a9bc57facbe863c6bd417c836b666f97ca61006929f561e",
+        "signals/technical_lifecycle.py": "686a443b3f23123c8cbd45fe80bb8a63b50747d0bcdb821c714e9be3a810ae42",
+        "technicals/__init__.py": "1efc66c02ed6cd95f37f5edf7544fcde252c2a9242018153bd1ad0923eb8a4a3",
+        "technicals/calculations/__init__.py": "4479d4a0e8d97eafa245b457c1462bd7d95271b3c2c4c1299c8d2902302520e8",
+        "technicals/calculations/bar_shape.py": "97f24db22504537a4347ef60cf5f9b0d2f6ddacfda82858556faf66c2d5940c1",
+        "technicals/calculations/breakout_pressure.py": "a1c00934faf8e6ba1e6f2d7a707c90cd8f9b61980c4b6fea4f1cce1f3c8bb3ee",
+        "technicals/calculations/market_regime.py": "929c1039f624aa6bc1a4188eaa2bbfbe10470658935723cd124e8ce2c3df3a01",
+        "technicals/calculations/session_aware_breakout.py": "52ead979d91d0f456e6d065a514c7a6c2447b008aca7814d64b3b3e1f64ef16e",
+        "technicals/calculations/weekly_context.py": "b24d794a8fdf391b05631a8298b123ad38814961f4cb76624325a230936d9a9e",
+        "technicals/hyperliquid_features.py": "c77b7f521e3abd63203161d110c066a449974ec8d688478b898edfde49e0bc23",
+        "technicals/main.py": "d5f679d5a55461b5d9bdc2c7bb665ad207a9b620274fe46a706ec78d88153cbc",
+        "technicals/parquet_io.py": "103d73460bc36b060121ca637f34419257a2128cc40199a8e8b6e9a727ca9460",
+        "technicals/split_adjustments.py": "cc2e053c5dd353d11d3fb1315db17077cc5715d72734cc2f1d3479e7ac79b084",
+        "tests/conftest.py": "3976f2d6278cee593df88981882b3b7745ca55b6f7f2617f231915ee8f00acde",
+        "tests/gameplan_fixture.py": "be3c8d0a3725cde1e470e4bea2cc623eebe95a1c075ef87d4e6f9f8644fbfd2f",
+        "tests/gameplan_stats_fixture.py": "2a89329a7548d454e0c0eacefb88c88cb5515c947d6930e3c10fc2024ed1d1e6",
+        "tests/test_cross_horizon_fallback_ledger.py": "72e6f6e3050d85ea6181bcdb1f0d8df96e8467c0e80550f34fd610ab666a737b",
+        "tests/test_cross_horizon_fallback_policy.py": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "tests/test_cross_horizon_fallback_runtime.py": "52df15e2fcfafeb9f9f245e03b300a23ad51248e1d4a950a4523847575455872",
+        "tests/test_gameplan_cash_ledger.py": "1a15eee95b78039f46aa8f4747c413d2d2b617d416cbea26374c67d6570c8680",
+        "tests/test_gameplan_direction_runtime.py": "ba7867c57265ebdcdc99e25ce0850c47a6f689174b59258cbe12c16bc60a5c8f",
+        "tests/test_gameplan_fallback_planning.py": "5bb0e7b6532aeaa62de391f5dbaf8cb58ac26dc16825605c0a38d08a777f186d",
+        "tests/test_gameplan_quote_recovery.py": "499bac225bf43029fffedeec173207f02781f6e3890c399ba91fadf8d6caddd8",
+        "tests/test_gameplan_stats_data.py": "2ba0f594ed8c24e7dd09dd8c26601a1a2bf62f1d066e8bd5dedd5924873a88e3",
+        "tests/test_gameplan_trade_planning.py": "46feadb7d0c354d2d27f288d1f8b47a8d3dc8487686d8acc88357d5a5faecf93",
+        "tests/test_independent_stock_runtime.py": "c80d5464bf9920aa9eb9630a8b2e59ba039dbb8cce8f5ea05a89ba14e218dbce",
+        "tests/test_independent_stock_session.py": "72706d9ddacaac808d8aa65da56ca6cff2cb0532e124fbc50f92e5983b48dd8a",
+        "tests/test_intraday_intentions.py": "5fc742a3d4d2949b3af4a52808608f4963397c1d617928e5f8d5554a2dd9db99",
+        "tests/test_intraday_local_executor_dependencies.py": "647017c096fc9987f36a714534aa7365754b4117881cd26667e03992154f3730",
+        "tests/test_intraday_scout_broker.py": "0958135b4d24effecc41cafde1fcb3e58bd09d8b4ed950e486468b398f3b0383",
+        "tests/test_intraday_store.py": "38a8c3d20cbc060c1ea9925e3acae525eebf9ad90a4412eb1d974811233b86ec",
+        "tests/test_joint_capital_handoff.py": "463b5364acde609f1ca3970774dc9d51963e2267b827eb88ee4cff293a9f7003",
+        "tests/test_joint_capital_plan.py": "d1e2679cae2ffc4f9da7bfffb71e9053422ac99797db6332bf87986dd5078e82",
+        "tests/test_preparation_deadline.py": "46c6c7879e97792cda3be17d2addeef059742bcbe0cf6263cff4163307ca8dab",
+        "tests/test_stock_horizon_ledger.py": "6705ff0c6955237813263667136ca6742aa7c3cf7bad04d1a72c799b70dc2eac",
+        "tests/test_stock_only_gameplan.py": "66ddd23f2c5a5301930aabd9a3dd2e8e3dc69e4d3e5e526aba4599f1d430b0cd"
+      },
+      "files": [
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan.py",
+          "sha256": "c11dec4155e277a6fd8c67bb5fb67e13258eaa11d525cef8b2990c15514a2fea"
+        },
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan_data.py",
+          "sha256": "a2f0915c0770b927b6de6b784f5c2c262df45628eb36f910ac216dd6684334b7"
+        },
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan_stats.py",
+          "sha256": "a787f2655def6fd9f6117a6c9cbeb87f9cecfd6f1e7216562e6a6944a8b059dc"
+        },
+        {
+          "operation": "modify",
+          "path": "app/ui/gameplan_stats_data.py",
+          "sha256": "820a43e3c60b9c45a24b1146ac3db65055533bc4446e3af0e23ba027804a8124"
+        },
+        {
+          "operation": "modify",
+          "path": "docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md",
+          "sha256": "9fa6838ebf30f9f1e61fc7fba5bb1a80e2be5fed34b9ef0cca7d41b50c9136ef"
+        },
+        {
+          "operation": "add",
+          "path": "docs/loops-system-analysis/NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md",
+          "sha256": "0c465bb7c426a1b6e4ddb46b6d791748ce750833a4578c1199b4aa2ebfa5cc8a"
+        },
+        {
+          "operation": "add",
+          "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md",
+          "sha256": "48e1205e01c9ec843b1aaf5a44e0159015769beeacc094d9c142774f1d9f1564"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_actuals_review.py",
+          "sha256": "eefd04a040a16611724ec1498ef1cf9446af8bc1b198190e06f307d1b990b75c"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_cash_ledger.py",
+          "sha256": "ea243e3965d78443ad640f7291e46b6d10173123ac3280440681afbc32dafd8f"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_evaluation.py",
+          "sha256": "8151059d68464d85a141e4d33a9f4480909e9288de5cf3667bdbf844b1c8e8fe"
+        },
+        {
+          "operation": "add",
+          "path": "ml/gameplan_execution_policy.py",
+          "sha256": "f9ebd8427992bf862b5cc3691c301ca6c892a80fd82959508d4532646ce493be"
+        },
+        {
+          "operation": "add",
+          "path": "ml/gameplan_saved_direction.py",
+          "sha256": "4e5b2b82844776510329b75c1821a4c240edb8da78ad7edf0ade4a41c8a7f3ef"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_stats_handoff.py",
+          "sha256": "a09cbf4e021ad966fa5d60d300abad48dec814cc20d287c2cce277279c746626"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_trade_planning.py",
+          "sha256": "5b8f81ea38274a7eb937ef96454a59731e02924f529f3d8e84cc8cb865f44613"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_trade_review.py",
+          "sha256": "eb6bc23c660177d142422ae159be26e5721fee82ec18a6edcbd4cdc31263087f"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/intraday/intentions.py",
+          "sha256": "7caa7106ae413e25721e645c808dd059baa0e3952bc28232603702e194e4243c"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/intraday/local_forecast.py",
+          "sha256": "7a4407c2239f35a1f00f9e61442fbe8e06a5895d26e9b65cd976a81d21165423"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/intraday/starter_sizing.py",
+          "sha256": "c047e055c8718ebe5b54a5f6ddda4d84efc199d202cd3cc5d4120fb63223c3c2"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/intraday/store.py",
+          "sha256": "2ee8397412017124162cf0df9fb9767928b73e1696a5c2e04f5caacd4b1f9031"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/intraday/technical_sizing.py",
+          "sha256": "30c87e9d85e647efe992e72b3ba330d51becf17684b3f6a17d7eeac26f0b0348"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/joint_capital_handoff.py",
+          "sha256": "a9937024843c085a8ecf81d7131ed26294ee7299f8273c00c4b1006ae8fde3fc"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/nightly_gameplan.py",
+          "sha256": "0e023ed5a53c7ab752dbd6745f10f8145a6f942c17b071d6465a9fc361d24b5a"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_direction_policy.py",
+          "sha256": "43ee4fe415a178e1a875e7a6bece33094d36657df3d91193ea60b22be51e89c8"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/cross_horizon_fallback.py",
+          "sha256": "9a8bb9394ed395331d4618a18e976561fcc8df18d58c52899fd88c5930dca0e1"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/fixed_horizon_budget.py",
+          "sha256": "ad3f8bdfac04e940287e80d93d4e5c7daa755e3575630de0e013ec6f005cb642"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan.py",
+          "sha256": "566408f07f6985e4b09322ae91c7b94346dad451163865b868b73a9643e9ff12"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_direction_engine.py",
+          "sha256": "e5d713e0ce49f891b5ca1775c011076f3f4b2db783b13b1ee28274d73102eb26"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/gameplan_execution.py",
+          "sha256": "fece88c564e227da1812d09bc44f1e34693bdae448078d9d9c677ed08a916c10"
+        },
+        {
+          "operation": "add",
+          "path": "ml/stock_trader/gameplan_inventory_slices.py",
+          "sha256": "4dfa1742a1e88fc8265a59fe77e674b9b925ab1868800994df9e385846f8259b"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/horizon_ledger.py",
+          "sha256": "60d2fe9e5ef1ffbec13507a35ceabf490ec6495106228f6fea5ea18e4a0c34e2"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/independent_runtime.py",
+          "sha256": "19e8ad7302fa7fd8aa2a2ddc863c5cbe790cb71e49668f0c75c558d9afaf0f24"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/independent_signals.py",
+          "sha256": "e470742afb154866183ce1eb5c66cd9144faa582a8d10b32d41377f71158c287"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_fixed_horizon_budget.py",
+          "sha256": "8a066212b899534c09079e08b45e1af86f9198ec1413df3848d62e313f013a49"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_actuals_review.py",
+          "sha256": "50d1745da172ef7cfa1bdcc7be0e2fd3e8c2673aedc506bd9cc9fe4312c4de04"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_autonomy_runtime.py",
+          "sha256": "79ac33138945a666210ed0a99130f78fc9bc7c4d9534c1ae3bac29993b986193"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_data.py",
+          "sha256": "3d1d4dd732e973525d0eb5d89398d6ddd32b23066fad0339aeacb0e3780e55b4"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_direction_engine.py",
+          "sha256": "b7361a036f5dc894ebb88e6477c98ce6d23bbacced69c94504a726133bf67ab3"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_evaluation.py",
+          "sha256": "0a449c8a617cf2bde7d5b075f943e986f11fac69bb8616889872ed51178c5c19"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_execution.py",
+          "sha256": "7a9e17fc3047da64dbc7acd4a557354190d9a37ea62d601475eca253b3b5ae96"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_execution_policy.py",
+          "sha256": "b63fad6d5d5379435e508c2043fa00d53a3edd7b5dbf7b56a043eeadb2571597"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_horizon_autonomy.py",
+          "sha256": "6f94d8d563ad51c84da20b031ffb100c901a79b54dd79ad789959efe50175d6e"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_gameplan_saved_direction.py",
+          "sha256": "f4b7109b0ca10f490046a763fb5a4e794cbdaee2efd1d94651abeb9af0251d0b"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_stats_handoff.py",
+          "sha256": "a78f0c9351f96888821e5d1982ea15e08cdff466b4785d37cf153ccd01a734bc"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_stats_ui.py",
+          "sha256": "bdca02117daa279ef5e939974164a1a8dd90dde155607f4eca48dbaf800aeb36"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_trade_review.py",
+          "sha256": "faeeacc5da66f759f4674029492bcdaf285a3696408a06839f44a571af11e0b2"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_gameplan_ui.py",
+          "sha256": "f93eaa52547d8ebe68652ac394f137f029558225c8c9375a16fa87dcb01f3d49"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_independent_stock_targets.py",
+          "sha256": "214699f011dd8b4483f52bf7ffe352f7270b995a6dc5d528e98c44fa38b6d3f0"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_intraday_direction_policy.py",
+          "sha256": "da06b0e0df596980e435da265150aba372d74e70a6d525744524416cbe3e904b"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_intraday_local_forecast.py",
+          "sha256": "b58429b9fe26594f091052036b14c8ed33e9672ae42fe574db7e6c56d1f19d82"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_intraday_scout_local_execution.py",
+          "sha256": "275905eb4058abe2a860f5fb23e189c6c9129a1830a9f2b8ba3dd027a5c9c6f9"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_intraday_starter_sizing.py",
+          "sha256": "84a5a2f39c7c37633c6d978ad420959a0497238bf249745a18dacb524e40376c"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_intraday_technical_sizing.py",
+          "sha256": "88ea8e51fd4b6c0a8e645786ce8bb6d03e83461da9f0fc7e32a263a8435d2902"
+        },
+        {
+          "operation": "modify",
+          "path": "tests/test_stock_direction_policy.py",
+          "sha256": "fa365ed10f7ba18fb9f8c4fc29148fb237c206576b6004c64809a7a8d92d5639"
+        }
+      ],
+      "peer": "Scout",
+      "repository": "jeremysecondstate/ducketz"
+    },
+    {
+      "base_commit": "2f55c18283eacad9494af1a82bd723e05782a44c",
+      "branch": "codex/scout/20261019T231335Z-36a8d11648ea411fb1d5cf9b7802f8e8",
+      "commit_sha": "225388b112b17b3797b253cef621cb5cad0889dc",
+      "completion_record": "20261019T231335Z-36a8d11648ea411fb1d5cf9b7802f8e8",
+      "dependency_fingerprints": {
+        "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/config.py": "2b38d3ee2c814d714faf964bdb9cc59a2877cbcb74478b7fba2fce024dc51b1d",
+        "app/hyperliquid_accounts.py": "76f89f2f23251482357fa2a10f3d210cb8d2392ffa91bc39e46769d277a529b2",
+        "app/models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/models/market_data.py": "c28724cbc075f1b57eca2bb23c86c5dc12b410d4241b660e793c8f55fead63bd",
+        "app/models/option_management.py": "c8cd27bef3679035872745f818ceb93de50958e67c2895c38b9ff7c5456a0eda",
+        "app/models/portfolio.py": "fc3149c587703db8d442eb806654f34b94462a222f892b27a54eccc826bc615d",
+        "app/services/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/services/databento_retry.py": "5feb3103b2b0f57933fbe2f3a80effcceca17d44f525a0bc837c277d3f7c902c",
+        "app/services/market_fetch_specs.py": "c40ceb7aaaed0804956dfded3407fc295b9c5a7390e0732058ec7d18068db6e4",
+        "app/services/schwab.py": "76d3d9adea02030e9b419aa032be882a6dcd3b2eb1438e613da6bc1da9258308",
+        "app/services/schwab_option_management.py": "59d02ffa5223df6dae22bf7b69723dadf26a551f34a96b7e086ed4f62e6883b2",
+        "app/services/schwab_order_fields.py": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321",
+        "app/services/schwab_policy_inputs.py": "0eb11577966952cf5890c8f84d6c4bf74c9650b486e4a28f41b5a2350c8a1b39",
+        "app/services/schwab_retry.py": "dcf97fdae508dabe4a9b1499abd73d6225bb03cfefcdbeb5168c014f72e0fa16",
+        "app/services/schwab_stock_orders.py": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+        "app/services/schwab_strategy_orders.py": "3ad5d499716a00df315f1dcf7dceeec813f76f94907fd6e0d7428958037abe4b",
+        "app/services/schwab_token_store.py": "6bf4bba20b41d891501d55853f448d5a71d39d32de1f84392ccad12f7eb96850",
+        "app/ui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "app/ui/gameplan_data.py": "9fb1e83a363e71e7c4752fad0f8373cd89d17576e9f60eb8b006db31d4305179",
+        "app/ui/gameplan_stats_data.py": "20c8d3a6502b7e75cdfcbf4f2465ff9e8dddb31d2bcca57e92701aca552823f5",
+        "datafetching/__init__.py": "5545a124cd32e3dda499f6b1c1359951d07ff3c29e8f95204c1ed87387e02cce",
+        "datafetching/bar_schema.py": "a27b8b795bd6a9d936b5e3b0ad18dc96fda8c799db6fe4b10405eade80147950",
+        "datafetching/bar_timing.py": "16650cc616ff2b766e9ba45552c2b218ec2cd2cb596156f9a04a3484be1c4004",
+        "datafetching/continuation.py": "f6eaa978d4f4dfe6886f71f67a4967a168a6686a5546bd577a6e94b4d65c3b7d",
+        "datafetching/databento_archive.py": "145cbbdb8346872f32eebed4589520e422bffa4eda34081a664c3ae4941c0a83",
+        "datafetching/databento_history_policy.py": "88f71ee866eb14eef57cf174e445cf6df6d46e10aed7d5af167b2e9f49de960b",
+        "datafetching/databento_opra_history.py": "c5bc673cb6bdb7134d1514bb9e522b3cc51557734beaecf749acc20173d86f5d",
+        "datafetching/databento_storage.py": "553a7d71bdb6836c901a78411a9965a71803947eefb6b852b2b2580d362789f9",
+        "datafetching/ids.py": "daead3e39055cc9bd4ea4adef9dd715d4371da4c606269a4d88f2e9f088e850a",
+        "datafetching/layout.py": "20719c8416759435691457adee1936dd9598b3e4c1f31a785dfa5a7252d6c976",
+        "datafetching/observability.py": "24c0e9e4742a6f12ef556b5c959f5da818ba558d1e6063ceda7d54a33eafbc4e",
+        "datafetching/parquet_store.py": "f54d54544cdf574f8ed261dd3b62c1942d0bd12d7a2e0b53a4123e6164d930c7",
+        "datafetching/runtime_lock.py": "5d4561c68af90cb52f248140cab74beea67abcbc998194bd3c044252f19980fd",
+        "datafetching/symbol_universe.py": "4547943d6c8a8670348082fef7e33637467c92c8a6a0cdcc1c876da1e93ee88b",
+        "ml/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ml/account_gameplan/__init__.py": "9e91f038d8d3c6b24fbefd894f58568634d607f4d1b7f696f6561580ab811be8",
+        "ml/account_gameplan/config.py": "98b11be488262ca5fbc921f316fddd45314617c640b37671ac9387409aebcf38",
+        "ml/account_gameplan/sources.py": "b8475cc04a8fa3233938e77c1413afe79770f01bc149603ac3c8c823997fa7b4",
+        "ml/artifacts.py": "8e76f065038ab878cb25deeaa973053b06e031b0df32861849da0911fae8d399",
+        "ml/calendars.py": "c87adbd5527daa93c84490903611cb20a7e57cc6355e3c77b63b67c880663dcc",
+        "ml/calibration.py": "07e8d9468f7f7d58f4f566d4eda0b40c329d95ee8b7aa6d54985e0b7095d8926",
+        "ml/contracts.py": "0cdd68b74d3c7b4f75634a0d66a2806368f5285791d1605aa2e51d53b3485c05",
+        "ml/current_publication.py": "45f4524c2ea2aa146b6ac3ddfb8c200d9657a49300a93a27a7d1ca54cf94a465",
+        "ml/gameplan_actuals_review.py": "3dd28e203e418bf608def8219be33fcc2e7600eda6fe81eefade78f9cd3a007a",
+        "ml/gameplan_cash_ledger.py": "8edde57449119329ca7926e9bf4ed649638feb84e0500d9fe2b82e9c847dde20",
+        "ml/gameplan_deployment.py": "308fbc0a3b088f2d39ca125d7b73b4151168907e1333a0e918eb267fafa5d572",
+        "ml/gameplan_development_selection.py": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a",
+        "ml/gameplan_estimators.py": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2",
+        "ml/gameplan_price_bands.py": "ab43a3b36bf9958b4692d668204cf443cbb58184f4c0632d1f6e7d13305bca99",
+        "ml/gameplan_price_completion.py": "404743b9dde9bffb24c8f6dfbbd97a069695b07719e0dc21721b8a9b3a15e5e0",
+        "ml/gameplan_probability_target.py": "78744f567ee87603de3137353482c03bf739a7a8661743ac75b1168577007b3d",
+        "ml/gameplan_promotion.py": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1",
+        "ml/gameplan_source_selection.py": "4661a3d636c8bf91a11809e6b59ce3d3802a5022b4fa33919fa74a47e22164f3",
+        "ml/gameplan_stats_handoff.py": "76759dfcfead75c2925bd14a2bd75582224a85a3cb0c4521c2eda4484445d5c4",
+        "ml/gameplan_trade_review.py": "64c202ee7834dc2985c425cfa8f80343e6899077ce65742013244f8c2861e415",
+        "ml/gameplan_trade_snapshot.py": "4d6f7747e97e0fd5a76cb246c76fd1e372e730cdae259616617439ffbb686d0f",
+        "ml/independent_stock_targets.py": "d083d8454ab8c81866a8b892fb27866b0c2ee2b3558b7585b4a72307826d8016",
+        "ml/joint_capital_adoption.py": "c84c48e2e74da7465facd8b302ed53c9cd83bf855b52013735f7f2dfc3f66e48",
+        "ml/joint_capital_handoff.py": "dadec4f9255945689f78765f9093dfbdf7d8cd3be382e6e5c3c721a655155149",
+        "ml/joint_capital_plan.py": "9a36098a9ca655bbd025d45beb1783be53767a0ac01760b02c083727db4a6dec",
+        "ml/nightly_gameplan.py": "2f48a1a8bdc4bc83fef8b81dd4d3522ebc5194e0822426c09edaf788109ec4e1",
+        "ml/nightly_joint_readiness.py": "668ae2e613fa183c0def42dad5e5b3c62bda1a5811026d1d19f8a6a9e98866a0",
+        "ml/nightly_recovery.py": "a53e33297d60bc9bdb0c2fd76283a7024f0d94b05ea89f22ed0b072f65d09ee0",
+        "ml/parquet_contracts.py": "e274a16295d26b9ccf2af7548419829d3412fcc98aad160ab9b9514e77bee43c",
+        "ml/preparation_deadline.py": "8d2e5790aeb7cc32282a1fdfe28fa994b9fa33e0eccf218dff16b343c5b87d8e",
+        "ml/stock_direction_policy.py": "43ee4fe415a178e1a875e7a6bece33094d36657df3d91193ea60b22be51e89c8",
+        "ml/stock_target_prices.py": "d7098d92ea2f8e9846033bb5eeb4632dc5a8b6d82bf07b3591c8713d56e89b3f",
+        "ml/stock_trader/__init__.py": "ded48318735c9d8d27a2ced9bc45d50fe27e15b1496271e9677f8820a8d62312",
+        "ml/stock_trader/contracts.py": "9b20941167702594ac6dfbd6a8215ce5a58d65e3f9c552cb79f9681fb5cb37ae",
+        "ml/stock_trader/control.py": "35db2f2e529c2856280b3a81a76ded1e5537b939a3c90ba2b2d3d9724d08a1e4",
+        "ml/stock_trader/engine.py": "f0d034120ab916113359bea43c5f423a71372cbb12c8864b65080ed7469dca23",
+        "ml/stock_trader/fixed_horizon_budget.py": "06651eeb504f4103e10310d6fac71adad72b1f8a62f495b302b870f1ffdb2abc",
+        "ml/stock_trader/gameplan.py": "7bfa48a0bc3bbd5076bf8a089cebd034fcede1d7dfd30de44be60172f2fc84ee",
+        "ml/stock_trader/gameplan_execution.py": "52c643cbea66f9294c81dd3d16f02ea98e2053a435a0406643f0ce7b35550b31",
+        "ml/stock_trader/handoff.py": "2843c9c6cad8e4e4ee51177bd06ceb4ba285c2da199fd0df2eebfd25e989e91f",
+        "ml/stock_trader/independent_signals.py": "55e03300e062e427d602b9da598a2d8837ea484daf6be50367d01ad6dc433dbc",
+        "ml/stock_trader/inputs.py": "31b154c5f5f95b971abbe30cbcc40b4c7f26c4d9df65451d096094ccafaad664",
+        "ml/stock_trader/market_features.py": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f",
+        "ml/stock_trader/model.py": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21",
+        "ml/stock_trader/price_comparison.py": "ab7d0565c86742d42da1134faa67e43958c9c8cf30e06c3cf21a66be1e0a0a08",
+        "ml/stock_trader/publication.py": "510c5a7b5878d61babdc7dceefd94f9a5460f19de6eb8b841ad73daca714ef19",
+        "ml/stock_trader/runtime.py": "5c1050d19f7c1cd6070b127d08107cf7bbd4de63761b9f4511b5ea9ebb97bb9d",
+        "ml/stock_trader/session.py": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+        "ml/stock_trader/sizing_policy.py": "04700f00be98034c41b7f6672fdbcf72cbc6ddd438ec685e5ca40a2bbc01c35b",
+        "ml/stock_trader/state.py": "cb2563e83b44fd0aff39e23e033448de534fbe2dfe682f52225497bc73ce8ff0",
+        "ml/strategy_publication.py": "85c9afea6b3847091c4c9cac6d83f73f5fe10b9e7dc9531cf60410c691bfcf87",
+        "ml/strategy_selection/__init__.py": "93f30056c7858a9df158485b20ebd9f8f3372bed0b1005ea9552e37d20687f72",
+        "ml/strategy_selection/contracts.py": "84efdc4dd225a3fbe95ea8bb025af5d5c52650cab1da5e79a31c99cb0ad42527",
+        "ml/strategy_selection/registry.py": "2e363317bfba811c87c87962d7b7d8e5d736403f48e323ad5caec8696b15076c",
+        "ml/training_progress.py": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e",
+        "ml/universe.py": "ad91c1a5dcc3ed0b521cb1664045815140ebd56b8765e11267d841cfc2de9880",
+        "tests/conftest.py": "3976f2d6278cee593df88981882b3b7745ca55b6f7f2617f231915ee8f00acde",
+        "tests/gameplan_stats_fixture.py": "4cc017355a439500794097ee7aa78840e87913dd53edc6e0153892728051bd3c",
+        "tests/test_account_gameplan_config.py": "ccb334845cbd48e847a7b8f9b915cfda0e268bcb4cd36916187bfdecd15ef0e7",
+        "tests/test_account_gameplan_producer_prices.py": "4c6cef7c428e36b2747a7106f375a6732d90380c32516c0e5aeb3e9936bb68e0",
+        "tests/test_account_gameplan_sources.py": "7a23d4920da309ea775f9376c4c7e6c10f67d1b667758b2df1e1a49a7f7b1191",
+        "tests/test_cross_horizon_fallback_policy.py": "9241f233ce845d931b6760ecbce5ad3486e82d413f6c977ec072a2522ef9d059",
+        "tests/test_gameplan_actuals_review.py": "53ee55ef2733dd23d6ec1cc25cc763675118d09477301fc27aeea46d482afa4e",
+        "tests/test_gameplan_stats_handoff.py": "9ef89fd87899868b49f3a976c3d314e70af734cfbead0a421a35d1dc5f8d6095",
+        "tests/test_gameplan_trade_planning.py": "0bfe83b9ee8948bbdf1620383941df7563758daf699ffea9e6af34293c861dd4",
+        "tests/test_joint_capital_plan.py": "428a113ea4398989669bacaacec66f8a46bb631d8febbec5cc7f5895b92ab1ed",
+        "tests/test_nightly_synthesis.py": "a258c1994fa6629ded51cd291670b1ab7950f2b451a14008465b0da6f8b7e782",
+        "tests/test_preparation_deadline.py": "338bb8f53713a0a9a8e9a7c6a1eed32e251046cd30aa0225680541f1d6588268"
+      },
+      "files": [
+        {
+          "operation": "modify",
+          "path": "ml/nightly_synthesis.py",
+          "sha256": "c211dd0ebaf714e2bfaeb000bf304a69f343ca872a523c0b1584447079d2e3c9"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/gameplan_trade_planning.py",
+          "sha256": "e19872c2c65a9578b72c16da3627e6e4317bc1b721bbd63e143caba46ba5f1f1"
+        },
+        {
+          "operation": "modify",
+          "path": "ml/stock_trader/cross_horizon_fallback.py",
+          "sha256": "9a8bb9394ed395331d4618a18e976561fcc8df18d58c52899fd88c5930dca0e1"
+        },
+        {
+          "operation": "add",
+          "path": "ml/gameplan_execution_policy.py",
+          "sha256": "f9ebd8427992bf862b5cc3691c301ca6c892a80fd82959508d4532646ce493be"
+        },
+        {
+          "operation": "add",
+          "path": "tests/test_nightly_synthesis_policy.py",
+          "sha256": "5d51dae75772a6f5230e9de9f44559123f38bfe238cfc9e25787fbe81c4f44de"
+        }
+      ],
+      "peer": "Scout",
+      "repository": "jeremysecondstate/ducketz"
+    }
+  ],
+  "summary": "Persist exact stock direction and horizon ownership rules in future Gameplan, Stats, nightly preparation, synthesis and both 15-minute traders.",
+  "supersedes_pull_request": "https://github.com/jeremysecondstate/ducketz/pull/258",
+  "task": "durable-gameplan-stats-nightly-rules",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T23:13:09.317011Z",
+      "completion_record": "20261019T230841Z-9ca7e6a73ffb4fc98b300d1372f12be0",
+      "exit_code": 0,
+      "output_sha256": "9f0ede4b5ea06d569fbb3630d36527b44a3f49dac369b978942c595755281428",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-19T23:11:13.612239Z"
+    },
+    {
+      "completed_at_utc": "2026-10-19T23:16:20.152451Z",
+      "completion_record": "20261019T231335Z-36a8d11648ea411fb1d5cf9b7802f8e8",
+      "exit_code": 0,
+      "output_sha256": "bdbb9a9c2da876939eb8e3236082485106852ab7fc5b78283b017170232053f8",
+      "stage": "isolated",
+      "started_at_utc": "2026-10-19T23:15:09.136736Z"
+    },
+    {
+      "completed_at_utc": "2026-10-19T23:14:24.137247Z",
+      "completion_record": "20261019T230841Z-9ca7e6a73ffb4fc98b300d1372f12be0",
+      "exit_code": 0,
+      "output_sha256": "42e85b82321ce407d6e8e4e28d450d4270ef237def5dc67aa9512541ee7dc4f1",
+      "stage": "isolated_tk_startup_recheck",
+      "started_at_utc": "2026-10-19T23:14:19.809155Z"
+    }
+  ],
+  "validation_summary": "Primary source: 1040 tests passed. Isolated publication: 1039 passed and one transient Tk startup skip; that exact UI check passed separately on the published bytes. Optional legacy source and isolated publication: 126 tests passed. No import/network violations or source mutations."
+}

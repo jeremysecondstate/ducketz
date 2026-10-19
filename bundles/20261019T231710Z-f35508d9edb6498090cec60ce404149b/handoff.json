@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T23:17:10.696315Z",
+  "id": "20261019T231710Z-f35508d9edb6498090cec60ce404149b",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Persist exact stock direction and horizon ownership rules in future Gameplan, Stats, nightly preparation, synthesis and both 15-minute traders."
+}
