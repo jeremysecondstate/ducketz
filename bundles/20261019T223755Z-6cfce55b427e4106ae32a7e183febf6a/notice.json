@@ -1,0 +1,230 @@
+{
+  "author": "Scout",
+  "change_id": "20261019T223318Z-871238f82c9e4cb18b8336ca39a0c658",
+  "coordination_issue": "https://github.com/jeremysecondstate/atlas-scout/issues/22",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "app/ui/gameplan_data.py"
+    },
+    {
+      "operation": "add",
+      "path": "docs/loops-system-analysis/STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_cash_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/gameplan_trade_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/local_forecast.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/starter_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/technical_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/nightly_gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/cross_horizon_fallback.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/fixed_horizon_budget.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_direction_engine.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/gameplan_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "ml/stock_trader/gameplan_inventory_slices.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/horizon_ledger.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_signals.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_fixed_horizon_budget.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_autonomy_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_data.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_direction_engine.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_horizon_autonomy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_trade_review.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_gameplan_ui.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_targets.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_local_forecast.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scout_local_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_starter_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_technical_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_stock_direction_policy.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_runtime_gate.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scout_runtime_gate.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/scout_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scout_execution.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures; no broker/provider calls, live trades, production training or application restarts.",
+    "Source is applied to Scout checkout; main integration, Atlas installation and loaded process versions are unverified.",
+    "Optional legacy execution modules use their reviewed supplemental source lineage; retain unrelated peer changes."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/258",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "New stock decisions on both PCs use the exact cutoffs. Hourly and four-hour sales can reserve actual available stock across owners with exact fill attribution. Daily/weekly ownership rules, model recipes, private symbols, reservations and manual starts are preserved. Review and local installation proceed under existing standing human authority; source notices do not add operating authority.",
+  "scope": "shared",
+  "sources": [
+    {
+      "base_commit": "6792abd38873b3aab98db82b7f091525a49a428b",
+      "branch": "codex/scout/20261019T223318Z-871238f82c9e4cb18b8336ca39a0c658",
+      "commit_sha": "04a86d5c0acbd0763781e58b14656f00a226f98d",
+      "completion_record": "20261019T223318Z-871238f82c9e4cb18b8336ca39a0c658"
+    },
+    {
+      "base_commit": "edeb8416b5bda5f00202a82db67c7c7c8f45ec51",
+      "branch": "codex/scout/20261019T222622Z-66cc545442d84e70aa7df8c55ed1dfec",
+      "commit_sha": "c808d88883319da26774a1174c673cfab7e99232",
+      "completion_record": "20261019T222622Z-66cc545442d84e70aa7df8c55ed1dfec"
+    },
+    {
+      "base_commit": "c808d88883319da26774a1174c673cfab7e99232",
+      "branch": "codex/scout/20261019T223430Z-39eb529e49324499b31a1f65306f5c2e",
+      "commit_sha": "2f55c18283eacad9494af1a82bd723e05782a44c",
+      "completion_record": "20261019T223430Z-39eb529e49324499b31a1f65306f5c2e"
+    }
+  ],
+  "summary": "Exact BUY 50.01 percent or higher and SELL 49.99 percent or lower for all stock traders; hourly and four-hour inventory autonomy; estimated Gameplan prices removed.",
+  "task": "stock-direction-autonomy-all-traders",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T22:35:45.917289Z",
+      "completion_record": "20261019T223318Z-871238f82c9e4cb18b8336ca39a0c658",
+      "exit_code": 0,
+      "output_sha256": "26099a3af69b128f306afdc757cb6dae597f016a4783d3bd0125c80cb414b52e",
+      "started_at_utc": "2026-10-19T22:34:49.606811Z"
+    },
+    {
+      "completed_at_utc": "2026-10-19T22:27:31.405231Z",
+      "completion_record": "20261019T222622Z-66cc545442d84e70aa7df8c55ed1dfec",
+      "exit_code": 0,
+      "output_sha256": "8ad6b7183e0b3be8b29a51f2364ed6c13a96e1c5ff089e1267b54401b267ad31",
+      "started_at_utc": "2026-10-19T22:27:24.928251Z"
+    },
+    {
+      "completed_at_utc": "2026-10-19T22:36:39.211311Z",
+      "completion_record": "20261019T223430Z-39eb529e49324499b31a1f65306f5c2e",
+      "exit_code": 0,
+      "output_sha256": "4bcfe581e8cab5e86256635ebf721d67f49563223cecb84f55d743de18316c23",
+      "started_at_utc": "2026-10-19T22:36:32.027110Z"
+    }
+  ],
+  "validation_summary": "704 primary tests, 93 optional-gate tests and 8 legacy eligibility checks passed; no skips or network/import violations."
+}

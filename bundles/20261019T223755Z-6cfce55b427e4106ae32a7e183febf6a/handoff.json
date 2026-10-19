@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T22:37:55.398091Z",
+  "id": "20261019T223755Z-6cfce55b427e4106ae32a7e183febf6a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Exact BUY 50.01 percent or higher and SELL 49.99 percent or lower for all stock traders; hourly and four-hour inventory autonomy; estimated Gameplan prices removed."
+}
