@@ -18,7 +18,8 @@ import psutil
 
 from datafetching.runtime_lock import exclusive_runtime_lock
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
-from .runtime import ResearchConfig, ShadowRunner, LiveHistories, local_symbols, recorded_symbol_failures
+from .runtime import (ResearchConfig, ShadowRunner, LiveHistories, local_symbols,
+                      recorded_symbol_failures, _symbol_exception_diagnostics)
 from .store import ShadowStore, utcnow
 
 VERSION = "manual-atlas-15m-session-v1"
@@ -649,7 +650,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         delay = retry_delay(exc,clock())
                         queue.defer(forecast["forecast_id"],now=clock(),seconds=delay,broker_wait=True)
                         store.event(session_id,"execution_retry",{"forecast_id":forecast["forecast_id"],
-                            "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay},symbol=forecast["symbol"])
+                            "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay,
+                            "diagnostics":_symbol_exception_diagnostics(exc)},symbol=forecast["symbol"])
                         break
                 if not should_stop() and instant(clock()) >= next_recovery and queue.broker_due(clock()):
                     try:
@@ -659,7 +661,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         delay = retry_delay(exc,clock())
                         queue.broker_wait(now=clock(),seconds=delay)
                         store.event(session_id,"order_recovery_retry",{"error_type":type(exc).__name__,
-                            "message":str(exc),"retry_after_seconds":delay})
+                            "message":str(exc),"retry_after_seconds":delay,
+                            "diagnostics":_symbol_exception_diagnostics(exc)})
                     next_recovery = instant(clock()) + timedelta(seconds=delay)
                 if not should_stop():
                     sleep(1)
