@@ -1,0 +1,51 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T133049Z-e0b11ae6d8d34cffa6b5f886f0c5c9ab",
+  "change_id": "20261019T133049Z-e0b11ae6d8d34cffa6b5f886f0c5c9ab",
+  "files": [
+    "ml/intraday/market_context_cache.py",
+    "ml/intraday/runtime.py",
+    "tests/test_intraday_market_context_cache.py",
+    "tests/test_intraday_runtime.py"
+  ],
+  "limitations": [
+    "Existing live imports need manual reload; affected runtime confirmation remains pending.",
+    "Original historical exception lacked exact frames/code; preserved concurrent cache records and offline reproduction establish repaired mechanism.",
+    "Private recipes, source observations, model artifacts and operating bindings are excluded.",
+    "Stacked on installed predecessor; main integration and peer adoption remain separate."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/228",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Each PC preserves its own model recipe and symbol scope. Cache entries bind exact derivation code, so first use recomputes disposable entries; nonblocking bounded persistence never delays valid derivation behind another cache writer. Manual restart required for Scout new source, without replay of expired requests.",
+  "scope": "shared",
+  "source_commit": "40672a93637633372a55f504c72d2f4884fc82db",
+  "source_remote_verified": true,
+  "summary": "Scout repaired concurrent disposable context-cache writes and added bounded symbol exception diagnostics.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T13:31:34.820138Z",
+      "output_sha256": "445a34bb79d55c01c698748b357bdde55fac7b74f4ccdcbf04f3d1df86b7e3e6",
+      "passed": 288,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T13:34:12.500301Z",
+      "output_sha256": "4923528286d620f56afa02415f25770f023b0e6259a9630b00c97afb769dcf95",
+      "passed": 288,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T13:33:31.458956Z",
+      "output_sha256": "edba2f44f27353ea656b073160eb72f0a46bfd4f0ead1c112f64b5ac264e5f1b",
+      "passed": 288,
+      "scope": "installed isolated live source",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}

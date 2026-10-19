@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T13:35:55.282416Z",
+  "id": "20261019T133555Z-44ef1f5edfcd4451beb849cb84e26a0e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repaired concurrent disposable context-cache writes and added bounded symbol exception diagnostics."
+}
