@@ -730,6 +730,46 @@ def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path
     assert (session_root/"status.json").read_bytes() == prior_bytes
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_market_context_failure_records_safe_os_cause_and_keeps_manual_control(tmp_path, monkeypatch, wrapped):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+
+    class Collector:
+        def run(self, **unused):
+            try:
+                error = PermissionError(13, "https://provider.invalid/?token=PRIVATE_TOKEN", "PRIVATE_FILENAME")
+                error.winerror = 5
+                raise error
+            except PermissionError as exc:
+                if wrapped:
+                    raise RuntimeError("PRIVATE_WRAPPER") from exc
+                raise
+
+    monkeypatch.setattr(live_session, "prepare_market_collection", lambda *a, **k: Collector())
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "FAILED"
+    assert "step" not in calls and "recover" not in calls
+    assert not executors[0].kwargs["manual_authority"]()
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["stop_reason"] == "worker_failure"
+    assert status["broker_orders_automatically_cancelled"] is False
+    failure = status["worker_errors"][0]
+    assert failure["worker"] == "market_context"
+    assert failure["error_type"] == ("RuntimeError" if wrapped else "PermissionError")
+    chain = failure["diagnostics"]["exception_chain"]
+    assert [entry["relation"] for entry in chain] == (["raised", "cause"] if wrapped else ["raised"])
+    assert chain[-1]["type"] == "PermissionError"
+    assert chain[-1]["errno"] == 13 and chain[-1]["winerror"] == 5
+    assert chain[-1]["frames"][-1]["function"] == "run"
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        saved = json.loads(db.execute("SELECT payload FROM events WHERE kind='market_context_worker_stopped'").fetchone()[0])
+    assert saved["diagnostics"] == failure["diagnostics"]
+    session_root = tmp_path / "intraday/sessions" / result["session_id"].replace(":", "-")
+    serialized = json.dumps(saved) + json.dumps(status) + (session_root / "events.jsonl").read_text()
+    assert all(secret not in serialized for secret in ["PRIVATE_TOKEN", "PRIVATE_FILENAME", "PRIVATE_WRAPPER"])
+
+
 @pytest.mark.parametrize("operation", ["execution", "recovery"])
 @pytest.mark.parametrize("wrapped", [False, True])
 def test_scout_retry_records_real_sqlite_cause_without_changing_retry_or_forecast(

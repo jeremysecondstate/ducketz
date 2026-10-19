@@ -14,6 +14,7 @@ import json
 import math
 from pathlib import Path
 import re
+import time
 import uuid
 from typing import Callable, Mapping, Sequence
 
@@ -142,9 +143,27 @@ def _atomic(path: Path, value):
             handle.flush()
             import os
             os.fsync(handle.fileno())
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+        # A Windows reader can briefly deny replacement without changing the
+        # destination's permissions. Retry only publication of these already
+        # flushed bytes, while the caller retains its queue lock; never repeat
+        # collection or expose a partially written queue.
+        delays = (0.05, 0.1, 0.2, 0.4)
+        for attempt in range(len(delays) + 1):
+            try:
+                temporary.replace(path)
+                break
+            except PermissionError as exc:
+                if getattr(exc, "winerror", None) not in {5, 32, 33} or attempt == len(delays):
+                    raise
+                time.sleep(delays[attempt])
+    except BaseException:
+        # Cleanup can also meet an open Windows handle. Preserve the original
+        # publication failure and its diagnostic chain if cleanup is denied.
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 @dataclass(frozen=True)

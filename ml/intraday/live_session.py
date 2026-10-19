@@ -603,9 +603,11 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             except BaseException as exc:
                 # Provider adapters retain safe categories in their private
                 # snapshots; authenticated exception URLs must not reach logs.
-                store.event(session_id, "market_context_worker_stopped", {"error_type":type(exc).__name__})
+                diagnostics = _symbol_exception_diagnostics(exc)
+                store.event(session_id, "market_context_worker_stopped", {
+                    "error_type":type(exc).__name__, "diagnostics":diagnostics})
                 worker_errors.append({"worker":"market_context", "error_type":type(exc).__name__,
-                    "message":"Inspect private collection status"})
+                    "message":"Inspect private collection status", "diagnostics":diagnostics})
                 stopped.set()
         context_worker = (threading.Thread(target=context_work,name="intraday-manual-market-context",daemon=True)
                           if market_collector is not None else None)

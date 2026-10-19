@@ -142,6 +142,13 @@ def _symbol_exception_diagnostics(exc):
             trace = trace.tb_next
         item = {"type": re.sub(r"[^A-Za-z0-9_]", "_", type(current).__name__)[:96],
                 "relation": relation, "frames": list(frames), "frames_truncated": count > len(frames)}
+        if isinstance(current, OSError):
+            # Numeric OS categories distinguish sharing contention from denied
+            # permissions without exposing filenames or authenticated messages.
+            for name in ("errno", "winerror"):
+                code = getattr(current, name, None)
+                if type(code) is int and 0 <= code <= 0x7fffffff:
+                    item[name] = code
         if isinstance(current, sqlite3.Error):
             code = getattr(current, "sqlite_errorcode", None)
             name = getattr(current, "sqlite_errorname", None)
