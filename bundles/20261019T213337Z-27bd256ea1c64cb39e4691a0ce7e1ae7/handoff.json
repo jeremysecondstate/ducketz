@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T21:33:37.344758Z",
+  "id": "20261019T213337Z-27bd256ea1c64cb39e4691a0ce7e1ae7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Treat final Gameplan calendar close as a normal capture interruption"
+}

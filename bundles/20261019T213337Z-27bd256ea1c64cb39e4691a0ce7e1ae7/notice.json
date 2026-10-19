@@ -1,0 +1,31 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T212542Z-1da9d49a6dc7449d9a071918b6e70219",
+  "completion_record": "20261019T212542Z-1da9d49a6dc7449d9a071918b6e70219",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_independent_stock_runtime.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic broker and calendar fixtures; no real orders, broker or provider calls.",
+    "Retains the existing published Gameplan source base; main integration and peer adoption are separate facts.",
+    "A running process does not load this installed change until Jeremy's future manual start or restart."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/254",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas Gameplan needs a future Jeremy-controlled manual start or restart to load this correction. Atlas fifteen-minute needs no restart for this change; no Scout restart is inferred. Production continues independently of development checks.",
+  "scope": "shared",
+  "source_commit": "d828fc959677364ec15fa479b5016f153d072d89",
+  "summary": "Atlas: Treat final Gameplan calendar close as a normal capture interruption",
+  "tests": [
+    "Sealed: 129 passed in 114.73s (0:01:54)",
+    "Isolated: 129 passed in 118.45s (0:01:58)",
+    "Installed: 129 passed in 130.18s (0:02:10); network disabled; source/package maps stable"
+  ]
+}
