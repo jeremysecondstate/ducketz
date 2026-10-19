@@ -1,0 +1,55 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T151305Z-a41cfc0455304c64be62af32e88eeae0",
+  "change_id": "20261019T151305Z-a41cfc0455304c64be62af32e88eeae0",
+  "files": [
+    "ml/intraday/local_forecast.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_scout_local_execution.py",
+    "tests/test_intraday_saved_forecast_busy.py"
+  ],
+  "limitations": [
+    "Historical requests remain unchanged and are never replayed. Bounded retries may still fail under persistent contention.",
+    "Offline regression proves retry and effect-gate behavior. The running trader must be manually restarted to load the repair; affected live behavior then needs observation."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/233",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Saved forecast validation permits at most eight fresh zero-timeout SQLite attempts, separated by at most 10 ms, with a 250 ms retry deadline. Current freshness, eligibility and controls are checked after the read. No model, account, sizing, journal or order replay changes.",
+  "scope": "shared",
+  "source_commit": "9bc6a9b61eb382d24aa10ef2bd85a13e6ede19ce",
+  "source_remote_verified": true,
+  "summary": "Scout repaired transient SQLite contention in saved-forecast validation with bounded fresh read transactions and post-read effect gates.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T15:13:30.656530Z",
+      "exit_code": 0,
+      "output_sha256": "98590cec4247fe6400a08444625fb136f4fd72c132c21bb46f2bfc6e8701c4a3",
+      "passed": 290,
+      "result": "........................................................................ [ 24%]\r\n........................................................................ [ 49%]\r\n........................................................................ [ 74%]\r\n........................................................................ [ 99%]\r\n..                                                                       [100%]\r\n290 passed in 23.35s\r\n\n",
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T15:14:34.681718Z",
+      "exit_code": 0,
+      "output_sha256": "b9cf4fbcc63e69c41d7e5a6388ff2cddf4b4ddcf296257d91ded1d956edad6aa",
+      "passed": 290,
+      "result": "........................................................................ [ 24%]\r\n........................................................................ [ 49%]\r\n........................................................................ [ 74%]\r\n........................................................................ [ 99%]\r\n..                                                                       [100%]\r\n290 passed in 22.77s\r\n\n",
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T15:13:55.561780Z",
+      "exit_code": 0,
+      "output_sha256": "d9e5a8cd2e870580f507bda2e0e86f45a27f14764d30f8af1093e75ad402f40d",
+      "passed": 290,
+      "result": "........................................................................ [ 24%]\r\n........................................................................ [ 49%]\r\n........................................................................ [ 74%]\r\n........................................................................ [ 99%]\r\n..                                                                       [100%]\r\n290 passed in 23.18s\r\n\n",
+      "scope": "installed immutable source",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}

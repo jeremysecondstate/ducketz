@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T15:16:37.765537Z",
+  "id": "20261019T151637Z-5ada3fcce5cf4eeb9671422fdabcf3b3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repaired transient SQLite contention in saved-forecast validation with bounded fresh read transactions and post-read effect gates."
+}
