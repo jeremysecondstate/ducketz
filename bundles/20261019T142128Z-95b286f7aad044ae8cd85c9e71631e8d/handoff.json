@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T14:21:28.968906Z",
+  "id": "20261019T142128Z-95b286f7aad044ae8cd85c9e71631e8d",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repaired native OPRA bar source identity to preserve distinct publishers and instruments while rejecting true conflicts."
+}

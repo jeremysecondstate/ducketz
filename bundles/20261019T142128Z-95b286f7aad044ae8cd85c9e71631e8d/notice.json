@@ -1,0 +1,54 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T141638Z-81862a7f7a5e424f9946181a43761971",
+  "change_id": "20261019T141638Z-81862a7f7a5e424f9946181a43761971",
+  "files": [
+    "ml/intraday/market_context.py",
+    "tests/test_intraday_market_context.py"
+  ],
+  "limitations": [
+    "Manual source reload and affected runtime confirmation pending.",
+    "Private source observations, recipes, fitted outputs and operating bindings remain local.",
+    "Stacked on predecessor PR228; no main merge or peer installation claimed."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/231",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Each PC preserves its own recipe and symbols. Native OPRA bar identity now includes validated publisher and instrument. Causal admission and true conflict rejection remain. Existing code-bound context caches naturally recompute. Manual reload required; no trade replay.",
+  "scope": "shared",
+  "source_commit": "7425075a4ddcb01abf4bda33d2159d78b21f6e6a",
+  "source_remote_verified": true,
+  "summary": "Scout repaired native OPRA bar source identity to preserve distinct publishers and instruments while rejecting true conflicts.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T14:17:23.083469Z",
+      "exit_code": 0,
+      "output_sha256": "0b263c48a7963b4a18dbaa499b55ab999707975b9d4d2111a879482aa1f37cd0",
+      "passed": 317,
+      "result": "........................................................................ [ 22%]\r\n........................................................................ [ 45%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 90%]\r\n.............................                                            [100%]\r\n317 passed in 42.79s\r\n\n",
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T14:19:20.168037Z",
+      "exit_code": 0,
+      "output_sha256": "59b0708d3625dc146e309274c0f4efabeccf4987408c218a11530703dc660d07",
+      "passed": 317,
+      "result": "........................................................................ [ 22%]\r\n........................................................................ [ 45%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 90%]\r\n.............................                                            [100%]\r\n317 passed in 42.21s\r\n\n",
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T14:18:03.846059Z",
+      "exit_code": 0,
+      "output_sha256": "c881596bc4914e7e97e6eaa584e678a7f1f65fb595bf2c64154d4d3e74724715",
+      "passed": 317,
+      "result": "........................................................................ [ 22%]\r\n........................................................................ [ 45%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 90%]\r\n.............................                                            [100%]\r\n317 passed in 42.67s\r\n\n",
+      "scope": "installed immutable source",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}
