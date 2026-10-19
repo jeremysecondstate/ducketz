@@ -27,6 +27,39 @@ from app.services.schwab_retry import is_retryable_schwab_error
 from ml.stock_trader.state import capture_portfolio_state
 
 
+@pytest.mark.parametrize('observer_fails', [False, True])
+def test_native_post_callback_failure_observed_before_http_and_preserves_original(monkeypatch, observer_fails):
+    from app.services.schwab import SchwabOrderSubmissionContext
+    session = object.__new__(SchwabSession)
+    context = SchwabOrderSubmissionContext('synthetic-account', 'offline-placeholder', 'synthetic-identity')
+    original = ValueError('offline final gate failure')
+    observed, posts = [], []
+    monkeypatch.setattr(schwab_module.requests, 'post', lambda *a, **kw: posts.append(kw))
+    def fail_gate():
+        raise original
+    def observe(error):
+        observed.append(error)
+        if observer_fails:
+            raise OSError('offline observation failure')
+    with pytest.raises(ValueError) as raised:
+        session.submit_prepared_order({}, context, before_post=fail_gate, on_before_post_failure=observe)
+    assert raised.value is original and observed == [original] and posts == []
+
+
+def test_native_post_transport_failure_is_never_a_callback_failure(monkeypatch):
+    from app.services.schwab import SchwabOrderSubmissionContext
+    session = object.__new__(SchwabSession)
+    context = SchwabOrderSubmissionContext('synthetic-account', 'offline-placeholder', 'synthetic-identity')
+    original = TimeoutError('offline lost response')
+    observed = []
+    def post(*args, **kwargs):
+        raise original
+    monkeypatch.setattr(schwab_module.requests, 'post', post)
+    with pytest.raises(TimeoutError) as raised:
+        session.submit_prepared_order({}, context, before_post=lambda: None, on_before_post_failure=observed.append)
+    assert raised.value is original and observed == []
+
+
 def test_default_token_cache_uses_project_data() -> None:
     assert schwab_token_store.DEFAULT_TOKEN_CACHE_PATH == (
         schwab_token_store.PROJECT_ROOT / "data" / "schwab_tokens.json"

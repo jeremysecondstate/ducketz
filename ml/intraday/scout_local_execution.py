@@ -411,7 +411,8 @@ class ScoutLocalAccountExecutor:
         except Exception as exc:
             record = self.journal.get(request.request_id)
             clearance, clearance_failure = None, None
-            if adapter is not None and adapter.initial_gate_failure is not None and record['state'] == 'UNKNOWN':
+            if (adapter is not None and record['state'] == 'UNKNOWN'
+                    and (adapter.initial_gate_failure is not None or adapter.native_before_post_failure is not None)):
                 try:
                     clearance = create_initial_gate_clearance(self.books, self.journal, record,
                         adapter=adapter, error=exc, as_of=self.clock())

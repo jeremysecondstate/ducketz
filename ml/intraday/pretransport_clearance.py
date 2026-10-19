@@ -1,4 +1,4 @@
-"""Reviewed first-gate failure proof for an immutable UNKNOWN Scout attempt.
+"""Reviewed pre-POST failure proof for an immutable UNKNOWN Scout attempt.
 
 This retrospective repair never changes a journal or rearms a send. A complete
 trace from one specifically reviewed sender proves that its order transport was
@@ -75,6 +75,35 @@ EXPIRED_GATE_FRAMES = [
     )
 ]
 
+# The native Schwab callback is directly before its sole requests.post call.
+# This profile accepts only the observed exact source and complete callback
+# stack; opaque broker implementations and all post/response failures remain
+# unknown. The original clean-stop/process-end requirements also still apply.
+NATIVE_CALLBACK_SOURCE = {
+    "ml/intraday/scout_client.py": "99afce435afd32ef27d148d0c46872ac4b1d9a5f6f4044ec567abf0db5bb4025",
+    "ml/intraday/scout_broker.py": "50b88b9c8a716ec632b952a2d27809c73d37fa6151a0dde226610554fab119d8",
+    "ml/intraday/scout_local_execution.py": "ec82ef8ef4561264d501293e8b468b3df48b29bd2831b63c51b584f6cc8890bd",
+    "ml/intraday/scout_journal.py": "a9da4c9b5735bf9f446f0449be451c3a4c82cb5674802fef5151728053c6cead",
+    "ml/intraday/local_forecast.py": "29af291cb125382ff05dcbbbc1e2cb0a7508ce01639dd0a21feb9a7b8daf5cb2",
+    "ml/intraday/live_session.py": "29ccec5ecab25b80085372afe4e2943487f1a5cc387c5ad3430d8c9435d7f731",
+    "app/services/schwab.py": "76d3d9adea02030e9b419aa032be882a6dcd3b2eb1438e613da6bc1da9258308",
+    "app/services/schwab_stock_orders.py": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+    "app/services/schwab_order_fields.py": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321",
+    "ml/stock_trader/session.py": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784",
+    "ml/intraday/pretransport_clearance.py": "8cd6f25ddd73902e1bf30f453208c1acca5be00d9722be034a4a59089982df50",
+    "ml/intraday/initial_gate_clearance.py": "72c9debccea3a1494b97ed8724812762b6b1f1c7524e4119792c941b4dffd214",
+}
+NATIVE_CALLBACK_FRAMES = [
+    {"file": file, "function": function, "line": line} for file, function, line in (
+        ("scout_client.py", "submit", 186),
+        ("scout_local_execution.py", "send", 404),
+        ("scout_broker.py", "send", 203),
+        ("schwab.py", "submit_prepared_order", 690),
+        ("scout_broker.py", "gate", 189),
+        ("scout_local_execution.py", "local_authorization", 391),
+    )
+]
+
 def _require(condition, message):
     if not condition:
         raise ContractError("Pretransport clearance: " + message)
@@ -118,9 +147,16 @@ def _audit(books, journal, record):
     return control["journal_id"], own
 
 
-def _source(value, error_type):
+def _source(value, error_type, frames):
     _require(error_type in {"OperationalError", "ContractError"}, "unsupported reviewed error")
-    supported = SUPPORTED_SOURCE if error_type == "OperationalError" else EXPIRED_GATE_SOURCE
+    if error_type == "OperationalError":
+        _require(frames == EXPECTED_FRAMES, "not the reviewed initial-gate SQLite failure")
+        supported = SUPPORTED_SOURCE
+    elif frames == NATIVE_CALLBACK_FRAMES:
+        supported = NATIVE_CALLBACK_SOURCE
+    else:
+        _require(frames == EXPIRED_GATE_FRAMES, "not the reviewed freshness rejection")
+        supported = EXPIRED_GATE_SOURCE
     _keys(value, {"manifest_text", "manifest_sha256", "files"}, "source proof fields differ")
     _require(type(value["manifest_text"]) is str, "manifest bytes missing")
     raw = value["manifest_text"].encode("utf-8")
@@ -153,7 +189,6 @@ def _proof(evidence, record, *, journal_id, events, as_of):
              and evidence["journal_id"] == journal_id and evidence["journal_events"] == events,
              "original record or single-claim history differs")
     error_type = evidence["execution_event"]["payload"]["evidence"]["error_type"]
-    manifest = _source(evidence["source"], error_type)
     request, permit = record["request"], record["grant"]
     session, rid = request["session_id"], request["request_id"]
     row = evidence["execution_event"]
@@ -181,6 +216,7 @@ def _proof(evidence, record, *, journal_id, events, as_of):
     _require(original["chain_truncated"] is False and type(original["chain"]) is list
              and len(original["chain"]) == 1, "complete single exception required")
     error = original["chain"][0]
+    manifest = _source(evidence["source"], error_type, error.get("frames"))
     if error_type == "OperationalError":
         _keys(error, {"type", "message", "sqlite_errorcode", "frames"}, "exception fields differ")
         _require(error["type"] == "OperationalError" and error["message"] == "database is locked"
@@ -190,8 +226,8 @@ def _proof(evidence, record, *, journal_id, events, as_of):
         _keys(error, {"type", "message", "frames"}, "exception fields differ")
         _require(error["type"] == "ContractError"
                  and error["message"] == "Exception text withheld; inspect error type and stack locations"
-                 and error["frames"] == EXPIRED_GATE_FRAMES,
-                 "not the reviewed initial-gate freshness rejection")
+                 and error["frames"] in [EXPIRED_GATE_FRAMES, NATIVE_CALLBACK_FRAMES],
+                 "not the reviewed freshness rejection")
     _require(instant(request["issued_at"]) <= instant(events[-2]["event"]["recorded_at"])
              <= instant(events[-1]["event"]["recorded_at"]) <= at
              and instant(payload["recorded_at"]) <= at

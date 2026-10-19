@@ -16,6 +16,7 @@ import math
 import re
 from urllib.parse import urlsplit
 
+from app.services.schwab import SchwabSession
 from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 from ml.stock_trader.horizon_ledger import OrderEvidence
 from ml.stock_trader.session import stock_execution_window
@@ -24,6 +25,10 @@ from .exact_status import TERMINAL, read_exact_status
 from .prediction import PACIFIC, instant
 from .scout_journal import ScoutJournal
 from .scout_protocol import Grant, ProtocolError, Request, canonical_sha256
+
+# Freeze the reviewed function identity. A wrapper/override may call its gate
+# after a POST and cannot supply this transport-boundary proof.
+_NATIVE_PREPARED_POST = SchwabSession.submit_prepared_order
 
 
 class ScoutBrokerError(ValueError):
@@ -48,6 +53,15 @@ class ScoutCancellationObservation:
 @dataclass(frozen=True)
 class InitialGateFailure:
     """This adapter's synchronous failure before entering order transport."""
+    request_sha256: str
+    grant_sha256: str
+    sending_record_sha256: str
+    error: Exception
+
+
+@dataclass(frozen=True)
+class NativeBeforePostFailure:
+    """The exact native sender observed its callback fail before its POST."""
     request_sha256: str
     grant_sha256: str
     sending_record_sha256: str
@@ -96,6 +110,7 @@ class ScoutBrokerAdapter:
         self.symbols, self.authority_epoch = frozenset(symbols), authority_epoch
         self.maximum_evidence_age_seconds, self.clock = maximum_evidence_age_seconds, clock
         self.initial_gate_failure = None
+        self.native_before_post_failure = None
 
     def _now(self):
         value = self.clock()
@@ -162,6 +177,7 @@ class ScoutBrokerAdapter:
         """Perform one prepared POST for the exact locally claimed grant quantity."""
         # Never carry an observation from an earlier invocation on this adapter.
         self.initial_gate_failure = None
+        self.native_before_post_failure = None
         sending = self._record(request, grant, "SENDING")
         window = self._current(request, grant)
         context = self.broker.prepare_order_submission()
@@ -195,12 +211,29 @@ class ScoutBrokerAdapter:
             gate()
         except Exception as error:
             # Only this outer gate is proven to precede the transport call.
-            # Exceptions from its inner before_post callback or the transport
-            # itself remain ambiguous. This observation never rearms a send.
+            # The native callback boundary has its separate observation below;
+            # generic callbacks and transport errors remain ambiguous.
+            # Neither observation ever rearms the original send.
             self.initial_gate_failure = InitialGateFailure(
                 request.sha256, grant.sha256, canonical_sha256(sending), error)
             raise
-        location = self.broker.submit_prepared_order(payload, context, before_post=gate)
+        native_failure = None
+        def observed_before_post_failure(error):
+            nonlocal native_failure
+            native_failure = NativeBeforePostFailure(
+                request.sha256, grant.sha256, canonical_sha256(sending), error)
+
+        sender = self.broker.submit_prepared_order
+        native = (isinstance(self.broker, SchwabSession)
+            and getattr(sender, '__self__', None) is self.broker
+            and getattr(sender, '__func__', None) is _NATIVE_PREPARED_POST)
+        try:
+            location = sender(payload, context, before_post=gate,
+                **({'on_before_post_failure': observed_before_post_failure} if native else {}))
+        except Exception as error:
+            if native and native_failure is not None and native_failure.error is error:
+                self.native_before_post_failure = native_failure
+            raise
         return self._accepted_id(location, context)
 
     def _accepted(self, request_id):

@@ -16,6 +16,173 @@ from ml.intraday.scout_protocol import Grant, Request, canonical_sha256
 from test_intraday_scout_local_execution import env, forecast, record
 
 
+def native_transport(env, monkeypatch):
+    """Run the real native POST boundary with a synthetic context/HTTP stub."""
+    from types import SimpleNamespace
+    from app.services import schwab
+    old = env.broker
+    broker = object.__new__(schwab.SchwabSession)
+    for name in ('stable_account_fingerprint', 'verify_read_snapshot', 'get_orders'):
+        setattr(broker, name, getattr(old, name))
+    broker.prepare_order_submission = lambda: schwab.SchwabOrderSubmissionContext(
+        account_hash='synthetic-account', access_token='offline-placeholder',
+        identity_fingerprint=old.generation)
+    broker.posts = old.posts
+    def post(*args, **kwargs):
+        old.posts.append(kwargs['json'])
+        if old.post_error:
+            raise old.post_error
+        return SimpleNamespace(raise_for_status=lambda: None, headers={'Location': old.location})
+    monkeypatch.setattr(schwab.requests, 'post', post)
+    env.executor.broker = env.broker = broker
+    return old
+
+
+@pytest.mark.parametrize('gate_number', [6, 7], ids=['native-authorization', 'native-final'])
+def test_native_before_post_expiry_has_exact_proof_and_never_replays(env, monkeypatch, gate_number):
+    native_transport(env, monkeypatch)
+    calls = expire_at(env, monkeypatch, gate_number)
+    result = env.executor.step(env.forecast)
+    old = record(env)
+    assert len(calls) == gate_number and env.broker.posts == []
+    assert old['state'] == 'UNKNOWN' and old['broker_order_id'] is None
+    assert result['evidence']['pretransport_clearance'] == load(env)
+    before = clearance._audit(env.executor.books, env.executor.journal, old)[1]
+    env.executor.recover()
+    env.executor.step(env.forecast)
+    assert record(env) == old and clearance._audit(env.executor.books, env.executor.journal, old)[1] == before
+    env.cash = 105
+    env.forecast = forecast(env, advance=True)
+    current = env.executor.step(env.forecast)
+    assert current['disposition'] == 'submitted' and current['adjusted_quantity'] == 1
+    assert len(env.broker.posts) == 1 and env.executor.journal.get(old['request']['request_id']) == old
+
+
+@pytest.mark.parametrize('failure', ['transport', 'receipt', 'overridden_sender', 'mutated_class_sender'])
+def test_native_proof_excludes_post_response_and_untrusted_senders(env, monkeypatch, failure):
+    from types import MethodType
+    from app.services.schwab import SchwabSession
+    old = native_transport(env, monkeypatch)
+    if failure == 'transport':
+        old.post_error = TimeoutError('offline uncertain POST')
+    elif failure == 'receipt':
+        old.location = 'missing-exact-receipt'
+    else:
+        native = SchwabSession.submit_prepared_order
+        def opaque(self, payload, context, *, before_post):
+            # An arbitrary wrapper can produce an effect before invoking its
+            # callback. Its later gate failure is not native boundary proof.
+            self.posts.append('opaque-side-effect')
+            return native(self, payload, context, before_post=before_post)
+        if failure == 'overridden_sender':
+            env.broker.submit_prepared_order = MethodType(opaque, env.broker)
+        else:
+            monkeypatch.setattr(SchwabSession, 'submit_prepared_order', opaque)
+        expire_at(env, monkeypatch, 7)
+    result = env.executor.step(env.forecast)
+    old_record = record(env)
+    assert old_record['state'] == 'UNKNOWN' and len(env.broker.posts) == 1
+    assert load(env) is None and 'pretransport_clearance' not in result['evidence']
+    env.forecast = forecast(env, advance=True)
+    assert env.executor.step(env.forecast)['disposition'] == 'submission_recovery_required'
+    assert len(env.broker.posts) == 1 and env.executor.journal.get(old_record['request']['request_id']) == old_record
+
+
+def test_native_observation_same_error_and_failed_reuse_cannot_mint_another_proof(env, monkeypatch):
+    native_transport(env, monkeypatch)
+    adapters = []
+    factory = env.executor._adapter
+    def capture(*args, **kwargs):
+        value = factory(*args, **kwargs)
+        adapters.append(value)
+        return value
+    monkeypatch.setattr(env.executor, '_adapter', capture)
+    expire_at(env, monkeypatch, 7)
+    env.executor.step(env.forecast)
+    old, adapter = record(env), adapters[-1]
+    observation = adapter.native_before_post_failure
+    assert observation is not None and adapter.initial_gate_failure is None
+    with pytest.raises(ContractError, match='retained adapter'):
+        clearance.create_clearance(env.executor.books, env.executor.journal, old,
+            adapter=adapter, error=ContractError('different'), as_of=env.state.now)
+    with pytest.raises(ScoutBrokerError):
+        adapter.send(Request.from_payload(old['request']), Grant.from_payload(old['grant']),
+            expected_snapshot_identity='unused', authorization_gate=lambda *_: True,
+            final_gate=lambda *_: True)
+    assert adapter.native_before_post_failure is None
+    with pytest.raises(ContractError, match='retained adapter'):
+        clearance.create_clearance(env.executor.books, env.executor.journal, old,
+            adapter=adapter, error=observation.error, as_of=env.state.now)
+    assert record(env) == old and env.broker.posts == []
+
+
+def test_native_proof_write_failure_keeps_exact_original_exception_and_block(env, monkeypatch):
+    native_transport(env, monkeypatch)
+    expire_at(env, monkeypatch, 7)
+    monkeypatch.setattr(clearance, '_write_once', lambda *_: (_ for _ in ()).throw(OSError('offline proof failure')))
+    result = env.executor.step(env.forecast)
+    assert record(env)['state'] == 'UNKNOWN' and env.broker.posts == [] and load(env) is None
+    assert result['evidence']['submission_failure']['original']['chain'][0]['type'] == 'ContractError'
+    assert result['evidence']['clearance_persistence_failure']['chain'][0]['type'] == 'OSError'
+    env.forecast = forecast(env, advance=True)
+    assert env.executor.step(env.forecast)['disposition'] == 'submission_recovery_required'
+
+
+@pytest.mark.parametrize('damage', ['sender', 'stage', 'version', 'request', 'journal'])
+def test_native_saved_proof_reaudits_exact_boundary_and_original(env, monkeypatch, damage):
+    native_transport(env, monkeypatch)
+    expire_at(env, monkeypatch, 7)
+    env.executor.step(env.forecast)
+    path = clearance._path(env.executor.books, record(env))
+    envelope = json.loads(path.read_text())
+    payload = envelope['payload']
+    if damage == 'sender': payload['observation']['native_sender'] = 'opaque-wrapper'
+    elif damage == 'stage': payload['observation']['stage'] = 'adapter_initial_gate'
+    elif damage == 'version': payload['version'] = clearance.VERSION
+    elif damage == 'request': payload['observation']['request_sha256'] = 'f' * 64
+    elif damage == 'journal': payload['journal_events_sha256'] = 'f' * 64
+    envelope['sha256'] = canonical_sha256(payload)
+    path.write_text(json.dumps(envelope))
+    with pytest.raises(ContractError):
+        load(env)
+    assert env.broker.posts == [] and record(env)['state'] == 'UNKNOWN'
+
+
+@pytest.mark.parametrize('guard', ['manual_stop', 'target_expiry'])
+def test_native_clearance_keeps_fresh_forecast_control_boundaries(env, monkeypatch, guard):
+    native_transport(env, monkeypatch)
+    expire_at(env, monkeypatch, 7)
+    env.executor.step(env.forecast)
+    assert load(env) is not None
+    old = record(env)
+    env.forecast = forecast(env, advance=True)
+    if guard == 'manual_stop':
+        env.state.stop = True
+        with pytest.raises(ContractError):
+            env.executor.step(env.forecast)
+    else:
+        env.state.now = instant(env.forecast['target_close'])
+        assert env.executor.step(env.forecast)['disposition'] != 'submitted'
+    assert env.broker.posts == [] and env.executor.journal.get(old['request']['request_id']) == old
+
+
+def test_native_callback_process_interrupt_never_mints_completion_proof(env, monkeypatch):
+    native_transport(env, monkeypatch)
+    original, calls = execution._saved_forecast, []
+    def interrupt(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 7:
+            raise KeyboardInterrupt('offline interrupted callback')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(execution, '_saved_forecast', interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        env.executor.step(env.forecast)
+    assert record(env)['state'] == 'SENDING' and load(env) is None and env.broker.posts == []
+    monkeypatch.setattr(execution, '_saved_forecast', original)
+    env.executor.recover()
+    assert record(env)['state'] == 'UNKNOWN' and load(env) is None
+
+
 @pytest.fixture(autouse=True)
 def journal_clock(env, monkeypatch):
     class Clock(datetime):

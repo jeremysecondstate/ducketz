@@ -19,17 +19,22 @@ from test_intraday_scout_local_execution import env, forecast, record
 REPOSITORY = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture(params=["sqlite", "expired"])
+@pytest.fixture(params=["sqlite", "expired", "native_callback"])
 def case(env, monkeypatch, tmp_path, request):
     # Historical callers predate synchronous initial-gate proof capture.
     monkeypatch.setattr(execution, "create_initial_gate_clearance", lambda *a, **kw: None)
     # Fixture source is the checked-out implementation. Only tests substitute
     # its hash map; production accepts the reviewed historical source constants.
+    native = request.param == "native_callback"
+    if native:
+        from test_intraday_initial_gate_clearance import native_transport
+        native_transport(env, monkeypatch)
     source_files = {name: (REPOSITORY / name).read_bytes().decode("utf-8")
-                    for name in clearance.SUPPORTED_SOURCE}
+                    for name in (clearance.NATIVE_CALLBACK_SOURCE if native else clearance.SUPPORTED_SOURCE)}
     supported = {name: hashlib.sha256(raw.encode()).hexdigest() for name, raw in source_files.items()}
     monkeypatch.setattr(clearance, "SUPPORTED_SOURCE", supported)
     monkeypatch.setattr(clearance, "EXPIRED_GATE_SOURCE", supported)
+    monkeypatch.setattr(clearance, "NATIVE_CALLBACK_SOURCE", supported)
     manifest_text = json.dumps(dict(schema="scout-isolated-live-runtime-v1", files=supported, source_root=str(REPOSITORY)))
     source = dict(manifest_text=manifest_text, manifest_sha256=hashlib.sha256(manifest_text.encode()).hexdigest(),
                   files=source_files)
@@ -46,7 +51,9 @@ def case(env, monkeypatch, tmp_path, request):
         calls.append(1)
         # step, outer client gate, claimed client gate, adapter authorization,
         # then adapter's initial final gate. No transport was entered.
-        if len(calls) == 5:
+        if native and len(calls) == 7:
+            env.state.now += timedelta(seconds=61)
+        elif not native and len(calls) == 5:
             exc = sqlite3.OperationalError("database is locked")
             exc.sqlite_errorcode = 261
             raise exc
@@ -55,7 +62,7 @@ def case(env, monkeypatch, tmp_path, request):
     monkeypatch.setattr(execution, "_saved_forecast", fail_first_adapter_final_gate)
     value = env.executor.step(env.forecast)
     monkeypatch.setattr(execution, "_saved_forecast", saved_read)
-    assert len(calls) == 5 and env.broker.posts == []
+    assert len(calls) == (7 if native else 5) and env.broker.posts == []
     original = record(env)
     assert original["state"] == "UNKNOWN"
     actual = value["evidence"]["submission_failure"]
@@ -68,11 +75,11 @@ def case(env, monkeypatch, tmp_path, request):
     value["evidence"]["submission_failure"] = dict(stage="send", original=dict(chain_truncated=False,
         chain=[dict(type="OperationalError", message="database is locked", sqlite_errorcode=261,
                     frames=deepcopy(clearance.EXPECTED_FRAMES))]))
-    if request.param == "expired":
+    if request.param in {"expired", "native_callback"}:
         value["evidence"]["error_type"] = "ContractError"
         value["evidence"]["submission_failure"]["original"]["chain"] = [dict(
             type="ContractError", message="Exception text withheld; inspect error type and stack locations",
-            frames=deepcopy(clearance.EXPIRED_GATE_FRAMES))]
+            frames=deepcopy(clearance.NATIVE_CALLBACK_FRAMES if native else clearance.EXPIRED_GATE_FRAMES))]
     session = env.executor.session_id
     at = env.state.now + timedelta(seconds=1)
     event = dict(id=100, cycle_id=session, symbol=original["request"]["symbol"],
@@ -139,6 +146,8 @@ def test_missing_receipt_is_read_only_none(case):
 def test_error_profile_cannot_borrow_other_profiles_reviewed_source(case, monkeypatch):
     error_type = case.evidence["execution_event"]["payload"]["evidence"]["error_type"]
     name = "SUPPORTED_SOURCE" if error_type == "OperationalError" else "EXPIRED_GATE_SOURCE"
+    if case.evidence["execution_event"]["payload"]["evidence"]["submission_failure"]["original"]["chain"][0]["frames"] == clearance.NATIVE_CALLBACK_FRAMES:
+        name = "NATIVE_CALLBACK_SOURCE"
     wrong = dict(getattr(clearance, name))
     wrong["ml/intraday/scout_broker.py"] = "0" * 64
     # The other profile still matches every source byte. It cannot rescue this
