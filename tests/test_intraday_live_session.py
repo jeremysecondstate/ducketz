@@ -300,11 +300,11 @@ def test_forecasting_start_and_overrun_do_not_trade_a_backlog(tmp_path, monkeypa
     assert missed["missed_count"] == 2
 
 
-def saved_pending_cycle(store,session,reference,*,retryable=True):
+def saved_pending_cycle(store,session,reference,*,retryable=True,pc="Atlas"):
     reference=instant(reference)
     identity=f"{session}:{reference.isoformat()}"
     begun=reference+STEP+timedelta(seconds=30)
-    store.begin_cycle(identity,{"pc":"Atlas","symbols":["AAPL"],"reference_at":reference.isoformat(),
+    store.begin_cycle(identity,{"pc":pc,"symbols":["AAPL"],"reference_at":reference.isoformat(),
         "mode":"live","experiment":session,"configuration_hash":"fixture","started_at":begun.isoformat(),
         "training_cutoff":begun.isoformat(),"status":"running"})
     store.update_cycle(identity,{"status":"partial_failure","completed_at":begun.isoformat(),
@@ -384,6 +384,96 @@ def test_new_quarter_first_then_bounded_old_recovery_survives_lost_cursor_and_ne
     with store.connect() as db:
         assert db.execute("SELECT COUNT(*) FROM events WHERE kind='forecast_execution_blocked'").fetchone()[0]==1
         assert db.execute("SELECT COUNT(*) FROM intraday_live_queue").fetchone()[0]==0
+
+
+@pytest.mark.parametrize("pc", ["Atlas", "Scout"])
+def test_sustained_overruns_share_turns_with_due_recovery_without_replaying_orders(tmp_path, monkeypatch, pc):
+    store = ShadowStore(tmp_path / "overrun.sqlite3")
+    first = saved_pending_cycle(store, "manual", "2026-10-12T16:45:00Z", pc=pc)
+    second = saved_pending_cycle(store, "manual", "2026-10-12T17:00:00Z", pc=pc)
+    saved_pending_cycle(store, "manual", "2026-10-12T16:30:00Z", retryable=False, pc=pc)
+    saved_pending_cycle(store, "older-human", "2026-10-12T17:30:00Z", pc=pc)
+    saved_pending_cycle(store, "manual", "2026-10-12T19:45:00Z",
+                        pc="Scout" if pc == "Atlas" else "Atlas")
+    queue = live_session.ExecutionQueue(store, "manual", pc=pc)
+    now = [instant("2026-10-12T17:31:00Z")]
+    calls, recovered = [], []
+
+    def run(inputs, **kwargs):
+        reference = kwargs["reference_at"]
+        calls.append({"at": now[0], **kwargs})
+        if kwargs["retry_symbols"] is None:
+            identity = "fresh:" + reference.isoformat()
+            store.begin_cycle(identity, {"pc": pc, "symbols": ["AAPL"], "reference_at": reference.isoformat(),
+                "mode": "live", "experiment": "manual", "configuration_hash": "fixture",
+                "started_at": now[0].isoformat(), "status": "running"})
+            # Genuine research may run longer than a quarter; do not shorten
+            # it, change workers, or substitute an older fitted model.
+            now[0] += timedelta(seconds=2218)
+            store.update_cycle(identity, {"status": "completed"})
+        else:
+            identity = first if reference == instant("2026-10-12T16:45:00Z") else second
+            assert kwargs["retry_symbols"] == ["AAPL"]
+            assert not kwargs["allow_execution"]
+            if identity == second:
+                value = forecast(mode="live", pc=pc, cycle_id=identity, reference_at=reference.isoformat(),
+                    issued_at=now[0].isoformat(), information_available_at=now[0].isoformat(),
+                    data_through=(reference + STEP).isoformat(), target_open=(reference + 2 * STEP).isoformat(),
+                    target_close=(reference + 3 * STEP).isoformat(), execution_blocked_reason="recovered_older_cycle")
+                issued = store.save_forecast(value)
+                recovered.append(issued)
+                kwargs["on_published"](issued)
+                store.update_cycle(identity, {"status": "completed", "failures": {}})
+            # The first retry remains unavailable. Updating its attempt time
+            # must let the other due cycle recover on the following turn.
+            now[0] += timedelta(seconds=5)
+        return {"cycle_id": identity}
+
+    runner = SimpleNamespace(store=store, config=SimpleNamespace(publication_offset_seconds=30), run_cycle=run)
+    monkeypatch.setattr(live_session, "eligible_reference", lambda reference: True)
+    live_session.forecasting_loop(runner, histories={}, provider=None, journal=None, queue=queue,
+        stopped=lambda: len(calls) == 5, clock=lambda: now[0], pause=lambda seconds: None,
+        history_source=lambda reference: object())
+
+    assert [call["retry_symbols"] for call in calls] == [None, ["AAPL"], None, ["AAPL"], None]
+    assert [calls[index]["reference_at"] for index in (1, 3)] == [
+        instant("2026-10-12T16:45:00Z"), instant("2026-10-12T17:00:00Z")]
+    for call in calls[::2]:
+        assert call["reference_at"] == live_session.latest_completed_reference(
+            call["at"], publication_offset_seconds=30)
+        assert call["allow_execution"]
+    assert [key for key, _, _ in live_session._pending_cycle_passes(store, "manual", now[0], pc=pc)] == [first]
+    assert store.forecast(second, "AAPL") == recovered[0]
+    assert len(store.forecasts(pc=pc)) == 1 and queue.due(now[0]) == []
+    with store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM intraday_live_queue").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='forecast_execution_blocked'").fetchone()[0] == 1
+
+
+@pytest.mark.parametrize("stop_after", [1, 2])
+def test_manual_stop_between_overrun_and_recovery_turns_does_not_start_more_work(tmp_path, monkeypatch, stop_after):
+    store = ShadowStore(tmp_path / "stop.sqlite3")
+    old = saved_pending_cycle(store, "manual", "2026-10-12T17:00:00Z", pc="Scout")
+    now = [instant("2026-10-12T17:31:00Z")]
+    calls, histories = [], []
+
+    def run(inputs, **kwargs):
+        calls.append(kwargs)
+        now[0] += timedelta(minutes=37)
+        return {"cycle_id": old} if kwargs["retry_symbols"] else None
+
+    runner = SimpleNamespace(store=store, config=SimpleNamespace(publication_offset_seconds=30), run_cycle=run)
+    monkeypatch.setattr(live_session, "eligible_reference", lambda reference: True)
+    live_session.forecasting_loop(runner, histories={}, provider=None, journal=None,
+        queue=SimpleNamespace(session_id="manual", pc="Scout", enqueue=lambda value: pytest.fail("No forecast")),
+        stopped=lambda: len(calls) == stop_after, clock=lambda: now[0], pause=lambda seconds: None,
+        history_source=lambda reference: histories.append(reference))
+
+    assert len(calls) == len(histories) == stop_after
+    assert calls[0]["retry_symbols"] is None
+    if stop_after == 2:
+        assert calls[1]["retry_symbols"] == ["AAPL"] and not calls[1]["allow_execution"]
+    assert [key for key, _, _ in live_session._pending_cycle_passes(store, "manual", now[0], pc="Scout")] == [old]
 
 
 def test_forecaster_restarts_same_pending_reference_without_lost_memory(tmp_path,monkeypatch):
