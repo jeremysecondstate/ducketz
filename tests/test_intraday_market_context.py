@@ -243,6 +243,98 @@ def test_opra_bar_close_cannot_enter_context_before_bar_completion():
     assert context(sealed("opra_options", [row], schema="ohlcv-1h")).features["ctx_opra_options_source_available"] == 0
 
 
+def native_opra_bar(*, publisher=11, price=2, volume=7, **changes):
+    return {"symbol": "DOCU", "underlying_symbol": "DOCU", "contract_symbol": "DOCU C",
+            "option_type": "call", "event_at": "2026-10-16T14:14:00+00:00",
+            "open": price, "high": price, "low": price, "close": price, "volume": volume,
+            "raw": {"publisher_id": publisher, "instrument_id": 12345}, **changes}
+
+
+def native_opra_snapshot(rows, **changes):
+    return sealed("opra_options", rows, provider="databento", dataset="OPRA.PILLAR",
+                  schema="ohlcv-1m", **changes)
+
+
+@pytest.mark.parametrize("second_price", [2, 3])
+def test_native_opra_bars_preserve_venue_volume_and_deduplicate_exact_observations(second_price):
+    first = native_opra_bar()
+    second = native_opra_bar(publisher=12, price=second_price, volume=11)
+    put = native_opra_bar(volume=23, contract_symbol="DOCU P", option_type="put")
+    rows = [first, second, put]
+    expected = context(native_opra_snapshot(rows))
+    duplicate = context(native_opra_snapshot(rows + [deepcopy(first)]))
+    reversed_rows = context(native_opra_snapshot(list(reversed(rows))))
+    assert duplicate.features == reversed_rows.features == expected.features
+    assert expected.features["ctx_opra_options_log_contract_count"] == pytest.approx(math.log1p(2))
+    assert expected.features["ctx_opra_options_put_call_volume_log_ratio"] == pytest.approx(
+        math.log1p(23) - math.log1p(18))
+    entry = next(row for row in duplicate.source_evidence if row["source_kind"] == "opra_options")
+    assert entry["records_used"] == 3
+    assert entry["exclusions"] == {"identical_duplicate": 1}
+
+
+@pytest.mark.parametrize("changed", [{"volume": 8}, {"close": 1}, {"sequence": 1}])
+def test_native_opra_bar_conflicts_within_one_publisher_still_reject(changed):
+    first = native_opra_bar()
+    other = {**deepcopy(first), **changed}
+    if "close" in changed:
+        other["low"] = changed["close"]
+    with pytest.raises(ContractError, match="Conflicting market observations"):
+        context(native_opra_snapshot([first, other]))
+
+
+def test_native_opra_bars_preserve_distinct_native_instruments_with_one_contract_label():
+    first = native_opra_bar()
+    second = native_opra_bar(volume=11, raw={"publisher_id": 11, "instrument_id": 54321})
+    put = native_opra_bar(volume=23, contract_symbol="DOCU P", option_type="put")
+    value = context(native_opra_snapshot([first, second, put]))
+    assert value.features["ctx_opra_options_log_contract_count"] == pytest.approx(math.log1p(2))
+    assert value.features["ctx_opra_options_put_call_volume_log_ratio"] == pytest.approx(
+        math.log1p(23) - math.log1p(18))
+
+
+@pytest.mark.parametrize("publisher", [None, True, False, 0, -1, 1.5, "11", {}, 65536])
+def test_native_opra_bar_rejects_invalid_publisher_identity(publisher):
+    with pytest.raises(ContractError, match="valid publisher identity"):
+        context(native_opra_snapshot([native_opra_bar(publisher=publisher)]))
+
+
+@pytest.mark.parametrize("instrument", [None, True, 0, -1, 1.5, "12345", {}, 4294967296])
+def test_native_opra_bar_rejects_invalid_instrument_identity(instrument):
+    with pytest.raises(ContractError, match="valid instrument identity"):
+        context(native_opra_snapshot([native_opra_bar(raw={"publisher_id": 11, "instrument_id": instrument})]))
+
+
+@pytest.mark.parametrize("fields", [{"publisher_id": 12}, {"instrument_id": 54321},
+    {"publisher_id": "11"}, {"instrument_id": True}])
+def test_native_opra_bar_rejects_normalized_identity_disagreeing_with_native(fields):
+    with pytest.raises(ContractError, match="normalized identity differs"):
+        context(native_opra_snapshot([native_opra_bar(**fields)]))
+    matching = native_opra_bar(publisher_id=11, instrument_id=12345)
+    assert context(native_opra_snapshot([matching])).features["ctx_opra_options_source_available"] == 1
+
+
+def test_native_opra_bar_rejects_missing_native_publisher_without_rebinding_legacy_sources():
+    row = native_opra_bar(raw={"instrument_id": 12345})
+    with pytest.raises(ContractError, match="valid publisher identity"):
+        context(native_opra_snapshot([row]))
+    # Other source populations retain their existing identity contract.
+    legacy = sealed("opra_options", [row], schema="ohlcv-1m")
+    assert context(legacy).features["ctx_opra_options_source_available"] == 1
+
+
+def test_native_opra_publisher_identity_does_not_admit_future_observations_or_receipts():
+    first = native_opra_bar()
+    expected = context(native_opra_snapshot([first]))
+    for future in (native_opra_bar(publisher=None, event_at="2026-10-16T14:15:10.000000001+00:00"),
+                   native_opra_bar(publisher=None, event_at="2026-10-16T14:15:00+00:00"),
+                   native_opra_bar(publisher=None, available_at="2026-10-16T14:16:00+00:00")):
+        assert context(native_opra_snapshot([first, future])).features == expected.features
+    late = native_opra_snapshot([native_opra_bar(publisher=None)],
+        receipt_at="2026-10-16T14:16:00+00:00", available_at="2026-10-16T14:16:00+00:00")
+    assert context(late) == context()
+
+
 def test_native_projection_preserves_observed_trade_count_return_and_volume():
     row = {"symbol": "DOCU", "event_at": "2026-10-16T14:14:59+00:00", "first_event_at": "2026-10-16T14:00:01+00:00",
            "last_event_at": "2026-10-16T14:14:59+00:00", "first_price": 100, "last_price": 102,

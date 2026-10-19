@@ -386,7 +386,7 @@ def _row_clock(row, cutoff, *, kind, receipt, state_policy=False):
     return event, None
 
 
-def _row_identity(row, *, kind, event):
+def _row_identity(row, *, kind, event, native_opra_bar=False):
     if row.get("market_state"):
         identity = row.get("contract_symbol") or row.get("provider_symbol") or row.get("symbol")
         return (str(identity), event.isoformat(), _hash(row["market_state"]))
@@ -394,6 +394,24 @@ def _row_identity(row, *, kind, event):
         identity = row.get("contract_symbol") or row.get("instrument_id")
         if identity is None:
             return None
+        if native_opra_bar:
+            # OPRA bars are venue observations: the same contract and minute
+            # can legitimately carry different prices/volume at each publisher.
+            # Keep native publisher/instrument IDs in the identity, without
+            # treating conflicting bytes from one native observation as distinct.
+            native = row.get("raw")
+            publisher = native.get("publisher_id") if isinstance(native, Mapping) else None
+            instrument = native.get("instrument_id") if isinstance(native, Mapping) else None
+            if type(publisher) is not int or not 0 < publisher <= 65535:
+                raise ContractError("Native OPRA bar requires a valid publisher identity")
+            if type(instrument) is not int or not 0 < instrument <= 4294967295:
+                raise ContractError("Native OPRA bar requires a valid instrument identity")
+            for field, value in (("publisher_id", publisher), ("instrument_id", instrument)):
+                if field in row and (type(row[field]) is not int or row[field] != value):
+                    raise ContractError("Native OPRA bar normalized identity differs from its native record")
+            # OHLCV identifies one bar per native instrument, publisher and
+            # opening; an added sequence field cannot disguise a conflicting bar.
+            return (str(identity), event.isoformat(), publisher, instrument)
         if row.get("trade_id") is not None:
             return (str(identity), event.isoformat(), str(row["trade_id"]))
         return (str(identity), event.isoformat(), _sequence(row))
@@ -546,7 +564,10 @@ def _rows(snapshot, *, symbol, cutoff, kind, version=PREVIOUS_FEATURE_VERSION):
             except ContractError:
                 excluded["invalid_expiration"] += 1
                 continue
-        identity = _row_identity(row, kind=kind, event=event)
+        identity = _row_identity(row, kind=kind, event=event,
+            native_opra_bar=(kind == "opra_options" and snapshot.get("provider") == "databento"
+                and snapshot.get("dataset") == "OPRA.PILLAR"
+                and snapshot.get("schema") in {"ohlcv-1s", "ohlcv-1m", "ohlcv-1h", "ohlcv-1d"}))
         if identity is None:
             excluded["missing_observation_identity"] += 1
             continue
