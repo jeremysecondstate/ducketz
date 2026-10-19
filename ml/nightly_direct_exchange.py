@@ -14,6 +14,57 @@ from filelock import FileLock, Timeout
 from ml.artifacts import file_checksum, utc_timestamp
 
 
+def _policy_revision_completion(native, receipt, selected):
+    """Reuse the selected policy descendant without rewriting synthesis history."""
+    from ml.joint_capital_plan import _hash, _time, content_sha256, load_joint_plan
+
+    plan, binding, run = selected
+    original_sha = receipt["ui_evidence"]["plan_sha256"]
+    root = Path(native["datastore"]) / "ml/joint-gameplan-runs"
+    original = load_joint_plan(root / original_sha, root / original_sha / "joint-plan.json",
+                               expected_sha256=original_sha)
+    fixed = ("action_date", "account_scope_sha256", "account_snapshot_sha256",
+             "account_snapshot_observed_at", "as_of", "sole_executor_owner",
+             "input_bindings", "risk_policy_fingerprint")
+    prediction = ("id", "original_forecast_id", "symbol", "model_group", "route",
+                  "owner_id", "owner_run_id", "calibrated_probability", "raw_probability",
+                  "model_artifact", "model_family", "model_status", "target_window_start",
+                  "target_window_end", "target_role", "target_contract_version",
+                  "probability_target_contract", "target_price_source_contract",
+                  "target_price_dataset", "information_available_at", "decision_timestamp", "frozen_at")
+    expected_rows = {row["id"]: {key: row.get(key) for key in prediction}
+                     for row in original["forecasts"]}
+    current, seen = plan, set()
+    if binding.get("policy_revision") != plan.get("policy_revision"):
+        raise ValueError("Selected policy revision differs from its acceptance record")
+    while current["plan_sha256"] != original_sha:
+        revision = current.get("policy_revision", {})
+        identity = {key: value for key, value in revision.items() if key != "revision_id"}
+        if (current["plan_sha256"] in seen
+                or revision.get("schema_version") != "gameplan-policy-revision-v1"
+                or revision.get("revision_id") != content_sha256(identity)
+                or any(current.get(key) != original.get(key) for key in fixed)
+                or {row["id"]: {key: row.get(key) for key in prediction}
+                    for row in current["forecasts"]} != expected_rows):
+            raise ValueError("Policy revision changed the saved synthesis inputs")
+        seen.add(current["plan_sha256"])
+        parent_sha = _hash(revision.get("parent_plan_sha256"), "revision parent")
+        parent = load_joint_plan(root / parent_sha, root / parent_sha / "joint-plan.json",
+                                 expected_sha256=parent_sha)
+        ancestors = list(dict.fromkeys([*parent.get("policy_revision", {}).get("ancestor_plan_sha256", ()), parent_sha]))
+        if (revision.get("ancestor_plan_sha256") != ancestors
+                or _time(revision.get("revised_at"), "revision time") < _time(
+                    parent.get("policy_revision", {}).get("revised_at", parent["as_of"]), "parent time")):
+            raise ValueError("Policy revision does not preserve immutable parent ancestry")
+        current = parent
+    evidence = {**receipt["ui_evidence"], "plan_sha256": plan["plan_sha256"], "plan_run": str(run)}
+    evidence["files"] = {**evidence.get("files", {}),
+                         **{str(run / name): file_checksum(run / name)
+                            for name in ("joint-plan.json", "accepted-plan.json")}}
+    return {**receipt, "ui_evidence": evidence, "policy_revision": plan["policy_revision"],
+            "synthesis_plan_sha256": original_sha}
+
+
 def _local_preparation(config, native, action, review):
     from tools import nightly_exchange as exchange
     path = Path(native["state_root"]) / "runs" / action / "state.json"
@@ -42,11 +93,12 @@ def _completion(config, native, action, review, session):
         raise ValueError("Saved synthesis receipt changed")
     receipt = exchange._object(exchange._read(receipt_path))
     selected = read_accepted_joint_plan(Path(native["datastore"]), action)
-    if (selected is None or selected[0]["plan_sha256"] != receipt["ui_evidence"]["plan_sha256"]
-            or receipt["local_actor"] != config["actor"].lower()
+    if (selected is None or receipt["local_actor"] != config["actor"].lower()
             or receipt["action_date"] != action or receipt["review_session"] != review
             or receipt["owner_packages"] != selected[1]["owner_packages"]):
         raise ValueError("Saved synthesis selection changed")
+    if selected[0]["plan_sha256"] != receipt["ui_evidence"]["plan_sha256"]:
+        return _policy_revision_completion(native, receipt, selected)
     return receipt
 
 
@@ -74,12 +126,24 @@ def _deliver(config, action, review, session, receipt):
     # condition on Atlas; the exact intent remains available for a later retry.
     try:
         intent = exchange._object(exchange._read(session / "direct-synthesis-selection.json"))
+        publication = config
         files = {"joint-plan.json": Path(receipt["ui_evidence"]["plan_run"]) / "joint-plan.json",
                  "atlas-synthesis-receipt.json": Path(receipt["receipt_path"])}
+        if "policy_revision" in receipt:
+            revision = receipt["policy_revision"]
+            suffix = Path("policy-revisions") / revision["revision_id"]
+            publication = {**config, "exchange_root": str(Path(config["exchange_root"]) / suffix),
+                           "state_root": str(Path(config["state_root"]) / suffix)}
+            files["atlas-synthesis-receipt.json"] = exchange._bytes({
+                "schema_version": "gameplan-policy-revision-publication-v1", "local_actor": "atlas",
+                "executor_owner": "atlas", "action_date": action, "review_session": review,
+                "owner_packages": receipt["owner_packages"],
+                "ui_evidence": {"plan_sha256": receipt["ui_evidence"]["plan_sha256"]},
+                "policy_revision": revision, "orders_placed": 0, "activation_changed": False})
         for actor, owner in intent["spec"]["owners"].items():
             files[actor + "-plan.json"] = Path(owner["plan_package"]["path"])
             files[actor + "-stats.json"] = Path(owner["stats_package"]["path"])
-        exchange._publish(config, action, review, "combined", files, intent["inputs"])
+        exchange._publish(publication, action, review, "combined", files, intent["inputs"])
         return "DELIVERED"
     except (OSError, ValueError, KeyError, TypeError):
         return "PENDING_DELIVERY"
@@ -206,6 +270,10 @@ def run_once(config, *, now=None):
                     return _save_result(session, {**common, "status": "PREPARATION_PUBLISHED", "reason": str(missing)})
             result = {**common, "status": "COMPLETE", "local_status": receipt["status"],
                 "joint_ready": True, "ui_ready": True, "receipt_path": receipt["receipt_path"]}
+            if "policy_revision" in receipt:
+                result.update(policy_revision=receipt["policy_revision"],
+                              plan_sha256=receipt["ui_evidence"]["plan_sha256"],
+                              synthesis_plan_sha256=receipt["synthesis_plan_sha256"])
             if actor == "atlas":
                 result["peer_output_delivery"] = _deliver(config, action, review, session, receipt)
             return _save_result(session, result)
