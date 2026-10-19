@@ -19,6 +19,7 @@ from ml.artifacts import create_timestamp_directory, file_checksum, verify_manif
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
 from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
+from ml.gameplan_execution_policy import current_gameplan_policy_metadata
 
 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
@@ -355,7 +356,9 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
     previous_pointer = latest_pointer.read_bytes() if latest_pointer.exists() else None
     committed_pointer = None
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
+    execution_policy_metadata = current_gameplan_policy_metadata(day)
     metadata = {"schema_version": VERSION, "action_date": day, **fallback_metadata, **probability_metadata,
+        **execution_policy_metadata,
         "publication_mode": RESEARCH_PRODUCER_MODE if research_producer_only else PRODUCER_MODE,
         "account_config_sha256": None if research_producer_only else binding.fingerprint,
         "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
@@ -411,7 +414,7 @@ def _publish_producer_prices(root, publication, forecasts, intents, *, binding, 
                 row[field] = None
             records.append(row)
         rows = pd.DataFrame(records)
-        ledger = {**fallback_metadata, "status": SHARED_PROJECTION_UNAVAILABLE, "events": [], "hourly": [],
+        ledger = {**fallback_metadata, **execution_policy_metadata, "status": SHARED_PROJECTION_UNAVAILABLE, "events": [], "hourly": [],
             "ending_positions": {}, "summary": {}, "orders_placed": 0, "broker_orders_enabled": False,
             "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
             "reason": "This producer prepares frozen prices only. Shared cash and holdings are projected once by the account coordinator."}
@@ -535,6 +538,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy
     fallback_policy = validate_fallback_policy(config.get("cross_horizon_fallback_policy"), action_date)
     fallback_metadata = {"cross_horizon_fallback_policy": fallback_policy} if fallback_policy is not None else {}
+    execution_policy_metadata = current_gameplan_policy_metadata(action_date)
     source_receipt_hash = file_checksum(source / "receipt.json")
     expected_deadline = pd.Timestamp(action_date).tz_localize("America/Los_Angeles") + pd.Timedelta(hours=4)
     deadline_at = utc(deadline) if deadline is not None else expected_deadline.tz_convert("UTC")
@@ -606,7 +610,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             original_deadline=original_deadline, late_action_date=late_action_date)
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
-              **probability_metadata, **fallback_metadata,
+              **probability_metadata, **fallback_metadata, **execution_policy_metadata,
               "source_gameplan_run": source.relative_to(root).as_posix(), "source_receipt_sha256": source_receipt_hash,
               "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
               "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
@@ -665,6 +669,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                 "orders_placed":0, "broker_orders_enabled":False,
                 "reason":"Required observed price references or historical pairs are missing; no shared cash projection was calculated.",
             }
+        direction_projection.update(execution_policy_metadata)
         rows.to_parquet(run / "trade-plan.parquet", index=False)
         _write_json(run / "price-bands.json", bands)
         _write_json(run / "planning-price-path.json", price_path)
@@ -728,7 +733,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         write_manifest(run, run_timestamp=observed,
                        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *price_files, *refresh_inputs],
                        output_files=outputs, configuration={"schema_version": VERSION, "action_date": action_date,
-                       **probability_metadata, **fallback_metadata,
+                       **probability_metadata, **fallback_metadata, **execution_policy_metadata,
                        "source_gameplan_run": report["source_gameplan_run"], "source_receipt_sha256": source_receipt_hash,
                        "reference_completion_contract": completion["contract_version"],
                        "allow_reference_forward_fill": True,
@@ -741,7 +746,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         if utc(clock()) >= deadline_at:
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         terminal = {"schema_version": VERSION, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
-                    **probability_metadata, **fallback_metadata,
+                    **probability_metadata, **fallback_metadata, **execution_policy_metadata,
                     "action_date": action_date, "source_gameplan_run": report["source_gameplan_run"],
                     "source_receipt_sha256": source_receipt_hash, "manifest_sha256": file_checksum(run / "manifest.json"),
                     "forecast_rows": len(rows), "orders_placed": 0, "broker_orders_enabled": False,

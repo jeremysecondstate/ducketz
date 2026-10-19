@@ -18,6 +18,7 @@ from app.ui.gameplan_data import load_gameplan
 from app.ui.gameplan_stats_data import load_gameplan_stats
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import file_checksum, utc_timestamp
+from ml.gameplan_execution_policy import current_gameplan_policy_metadata
 from ml.gameplan_actuals_review import _write_json, completed_session_context
 from ml.gameplan_stats_handoff import adopt_combined_stats, read_stats_package, combined_stats_target, combine_stats_frames
 from ml.joint_capital_adoption import accept_joint_plan, read_accepted_joint_plan
@@ -281,6 +282,7 @@ def run_synthesis(spec: dict, *, now=None) -> dict:
             _write_json(record, state)
             evidence = _verify_ui(root, spec, prepared)
             receipt = {"schema_version": VERSION, "completion_id": spec["completion_id"], "spec_sha256": spec_hash,
+                **current_gameplan_policy_metadata(spec["action_date"]),
                 "status": "JOINT_READY_LOCAL", "joint_ready": True, "ui_ready": True,
                 "peer_verified": False, "execution_authorized": False, "activation_changed": False, "orders_placed": 0,
                 "local_actor": spec["local_actor"], "executor_owner": "atlas", "action_date": spec["action_date"],
