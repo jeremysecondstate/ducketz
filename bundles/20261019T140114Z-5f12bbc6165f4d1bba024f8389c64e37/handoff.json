@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T14:01:14.087560Z",
+  "id": "20261019T140114Z-5f12bbc6165f4d1bba024f8389c64e37",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas completed-candle queue fairness repair published for independent local adoption"
+}

@@ -1,0 +1,29 @@
+{
+  "author": "Atlas",
+  "base_commit": "9ab1dc3737279503130db3d920713a815f9e2499",
+  "branch": "codex/atlas/20261019T135807Z-84151c1bfbb64735976739cfb07bbccf",
+  "change_id": "20261019T135807Z-84151c1bfbb64735976739cfb07bbccf",
+  "commit": "8fdb00672aa14e3bde3c1038f616411660733602",
+  "files": [
+    "ml/intraday/candle_collection.py",
+    "tests/test_intraday_collection_cadence.py"
+  ],
+  "limitations": [
+    "Draft stacked on reviewed recovered-population source PR224; no main integration or peer installation claimed.",
+    "Nine offline fake-clock/acquisition tests; live recovery not established."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/229",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas source files installed. Revised collector initializes its own per-session fairness row at a future human-controlled manual activation. No process start, restart, trade or manual-stop change performed.",
+  "scope": "Shared collector correctness: persistent bounded fresh turns, oldest-due retries and fresh-symbol rotation. Each PC retains local symbols and model policy.",
+  "summary": "Atlas completed-candle queue fairness repair published for independent local adoption",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T13:59:28.264333Z",
+      "exit_code": 0,
+      "output_sha256": "7db5df9f629dad5c108e39728ac62b0e9de3cfbbeb055dfdddee31382f361cda",
+      "result": ".........                                                                [100%]\r\n9 passed in 2.33s\r\n\n",
+      "started_at_utc": "2026-10-19T13:59:24.944703Z"
+    }
+  ]
+}
