@@ -13,6 +13,7 @@ from contextlib import closing
 from datetime import datetime, timedelta, timezone
 import copy
 import hashlib
+import heapq
 import json
 import math
 import os
@@ -156,6 +157,8 @@ class MarketInputStore:
     def __init__(self, datastore_root: str | Path):
         self.root = Path(datastore_root).resolve() / "intraday" / "market-inputs"
         self.database = self.root / "receipts.sqlite3"
+        self.pending_catalog = self.root / "pending-catalog"
+        self._catalog_recovery_cursor = ""
         self._lock = threading.RLock()
         self._verified = OrderedDict()
         self.producer_runtime = None
@@ -195,7 +198,8 @@ class MarketInputStore:
 
     def append(self, *, symbol: str, source: str, started_at: Any, received_at: Any,
                payload: Any, features: Mapping[str, Any], status: str = "ok",
-               request: Mapping[str, Any] | None = None, event_at: Any = None) -> dict:
+               request: Mapping[str, Any] | None = None, event_at: Any = None,
+               producer_runtime: Mapping[str, Any] | None = None) -> dict:
         started, received = _utc(started_at), _utc(received_at)
         if received < started:
             raise ValueError("Receipt precedes request start")
@@ -209,25 +213,191 @@ class MarketInputStore:
         if status != "ok":
             numeric = {name: None for name in numeric}
         payload_ref = self.persist_raw(payload, received)
-        if self.producer_runtime is None:
-            self.capture_producer()
+        if producer_runtime is None:
+            if self.producer_runtime is None:
+                self.capture_producer()
+            producer_runtime = self.producer_runtime
         value = {"version": VERSION, "symbol": symbol, "source": source,
                  "request_started_at": _iso(started), "received_at": _iso(received),
                  "event_at": _iso(event_at) if event_at is not None else None,
                  "status": status, "request": dict(request or {}), "features": numeric,
-                 "payload_ref": payload_ref, "producer_runtime": dict(self.producer_runtime)}
+                 "payload_ref": payload_ref, "producer_runtime": dict(producer_runtime)}
         raw = _bytes(value)
         identity = hashlib.sha256(raw).hexdigest()
         target = self.root / "objects" / received.strftime("%Y/%m/%d") / (identity + ".json")
         with self._lock:
             _write_immutable(target, raw)
-            with closing(sqlite3.connect(self.database, timeout=5)) as db:
-                db.execute("CREATE TABLE IF NOT EXISTS receipts (id TEXT PRIMARY KEY, symbol TEXT NOT NULL, source TEXT NOT NULL, received_at TEXT NOT NULL, status TEXT NOT NULL, features TEXT NOT NULL, object_path TEXT NOT NULL)")
-                db.execute("CREATE INDEX IF NOT EXISTS receipt_symbol_time ON receipts(symbol,received_at)")
-                db.execute("CREATE INDEX IF NOT EXISTS receipt_symbol_source_time ON receipts(symbol,source,received_at)")
-                db.execute("INSERT OR IGNORE INTO receipts VALUES(?,?,?,?,?,?,?)", (identity, symbol, source, _iso(received), status, json.dumps(numeric, allow_nan=False), str(target.relative_to(self.root))))
-                db.commit()
+            self._index_retained(target, value)
         return value | {"id": identity, "object_path": str(target)}
+
+    def _index_retained(self, target: Path, value: Mapping[str, Any], *, complete_projection: bool = False) -> None:
+        """Persist an index intent before SQLite; success never rewrites evidence."""
+        identity = target.stem
+        marker = self.pending_catalog / (identity + ".json")
+        _write_immutable(marker, _bytes({"version": "market-catalog-pending-v1", "id": identity,
+                                       "object_path": target.relative_to(self.root).as_posix()}))
+        features = {field: value["features"][field] for field in SOURCE_FIELDS[value["source"]]}
+        expected = (identity, value["symbol"], value["source"], value["received_at"], value["status"],
+                    json.dumps(features, allow_nan=False), str(target.relative_to(self.root)))
+        with closing(sqlite3.connect(self.database, timeout=5)) as db:
+            # Readers retain their receipt snapshot while this writer commits.
+            # Configure only writable access; an existing DELETE catalog is
+            # migrated without rewriting its receipts or immutable objects.
+            journal_deadline = time.monotonic() + 5
+            while True:
+                remaining_ms = max(0, int((journal_deadline - time.monotonic()) * 1000))
+                db.execute(f"PRAGMA busy_timeout={remaining_ms}")
+                try:
+                    db.execute("PRAGMA journal_mode=WAL").fetchone()
+                    break
+                except sqlite3.OperationalError as exc:
+                    # Concurrent first writers can collide while changing
+                    # the journal, before SQLite can apply its busy wait.
+                    remaining = journal_deadline - time.monotonic()
+                    if getattr(exc, "sqlite_errorcode", None) != sqlite3.SQLITE_BUSY or remaining <= 0:
+                        raise
+                    time.sleep(min(.01, remaining))
+            db.execute("PRAGMA busy_timeout=5000")
+            db.execute("CREATE TABLE IF NOT EXISTS receipts (id TEXT PRIMARY KEY, symbol TEXT NOT NULL, source TEXT NOT NULL, received_at TEXT NOT NULL, status TEXT NOT NULL, features TEXT NOT NULL, object_path TEXT NOT NULL)")
+            db.execute("CREATE INDEX IF NOT EXISTS receipt_symbol_time ON receipts(symbol,received_at)")
+            db.execute("CREATE INDEX IF NOT EXISTS receipt_symbol_source_time ON receipts(symbol,source,received_at)")
+            existing = db.execute("SELECT id,symbol,source,received_at,status,features,object_path FROM receipts WHERE id=?", (identity,)).fetchone()
+            if existing is not None:
+                try:
+                    same_features = json.loads(existing[5]) == features and not any(
+                        type(number) is bool for number in json.loads(existing[5]).values())
+                except (ValueError, TypeError, AttributeError):
+                    same_features = False
+                if existing[:5] != expected[:5] or existing[6] != expected[6] or not same_features:
+                    raise ValueError("Market catalog row differs from retained receipt")
+            db.execute("INSERT OR IGNORE INTO receipts VALUES(?,?,?,?,?,?,?)", expected)
+            db.commit()
+        if value["symbol"] != "*" or complete_projection:
+            marker.unlink(missing_ok=True)
+
+    def _validated_retained(self, object_path: str | Path) -> tuple[Path, dict]:
+        target = Path(object_path)
+        target = (target if target.is_absolute() else self.root / target).resolve()
+        if (not target.is_relative_to(self.root / "objects") or target.suffix != ".json"
+                or re.fullmatch(r"[a-f0-9]{64}", target.stem) is None):
+            raise ValueError("Invalid retained market receipt path")
+        if target.stat().st_size > 1024 * 1024:
+            raise ValueError("Retained market receipt exceeds compact 1 MiB bound")
+        raw = target.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != target.stem:
+            raise ValueError("Retained market receipt hash mismatch")
+        value = json.loads(raw)
+        required = {"version", "symbol", "source", "request_started_at", "received_at", "event_at",
+                    "status", "request", "features", "payload_ref", "producer_runtime"}
+        if (not isinstance(value, dict) or set(value) != required or value["version"] != VERSION
+                or not isinstance(value["source"], str) or value["source"] not in SOURCE_FIELDS
+                or not isinstance(value["symbol"], str)
+                or (value["symbol"] != "*" and re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", value["symbol"]) is None)
+                or not isinstance(value["status"], str) or not value["status"]
+                or not isinstance(value["request"], dict) or not isinstance(value["producer_runtime"], dict)
+                or not isinstance(value["features"], dict)
+                or set(value["features"]) != set(SOURCE_FIELDS[value["source"]])):
+            raise ValueError("Malformed retained market receipt")
+        if (_iso(value["request_started_at"]) != value["request_started_at"]
+                or _iso(value["received_at"]) != value["received_at"]
+                or _utc(value["received_at"]) < _utc(value["request_started_at"])):
+            raise ValueError("Invalid retained market receipt timestamps")
+        if value["event_at"] is not None and _iso(value["event_at"]) != value["event_at"]:
+            raise ValueError("Invalid retained market event timestamp")
+        if any(number is not None and (type(number) not in (int, float) or not math.isfinite(number))
+               for number in value["features"].values()):
+            raise ValueError("Invalid retained market features")
+        if ((value["status"] != "ok" and any(number is not None for number in value["features"].values()))
+                or (value["event_at"] is not None and _utc(value["event_at"]) > _utc(value["received_at"])
+                    and value["status"] != "future_event")):
+            raise ValueError("Retained market features disagree with receipt status")
+        ref = value["payload_ref"]
+        if (not isinstance(ref, dict) or set(ref) != {"sha256", "path", "bytes"}
+                or not isinstance(ref["path"], str) or not isinstance(ref["sha256"], str)
+                or re.fullmatch(r"[a-f0-9]{64}", ref["sha256"]) is None
+                or type(ref["bytes"]) is not int or ref["bytes"] < 0):
+            raise ValueError("Invalid retained market payload reference")
+        payload = (self.root / ref["path"]).resolve()
+        if (not payload.is_relative_to(self.root / "raw") or payload.name != ref["sha256"] + ".json"
+                or payload.stat().st_size != ref["bytes"]):
+            raise ValueError("Invalid retained market payload path or size")
+        digest = hashlib.sha256()
+        with payload.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != ref["sha256"]:
+            raise ValueError("Retained market payload hash mismatch")
+        producer = value["producer_runtime"]
+        if "path" in producer or "sha256" in producer:
+            if not isinstance(producer.get("path"), str) or not isinstance(producer.get("sha256"), str):
+                raise ValueError("Invalid retained producer reference")
+            provenance = (self.root / producer["path"]).resolve()
+            if (not provenance.is_relative_to(self.root / "producers")
+                    or re.fullmatch(r"[a-f0-9]{64}", producer["sha256"]) is None
+                    or provenance.name != producer["sha256"] + ".json"
+                    or hashlib.sha256(provenance.read_bytes()).hexdigest() != producer["sha256"]):
+                raise ValueError("Retained market producer hash mismatch")
+        return target, value
+
+    def index_retained_receipt(self, object_path: str | Path, *, complete_projection: bool = False) -> dict:
+        """Restore one original receipt, preserving its real clock and provenance."""
+        with self._lock:
+            target, value = self._validated_retained(object_path)
+            self._index_retained(target, value, complete_projection=complete_projection)
+        return value | {"id": target.stem, "object_path": str(target)}
+
+    def recover_pending_receipts(self, *, max_receipts: int = 8, budget_seconds: float = 20,
+                                 project: Callable[[dict], list[dict]] | None = None) -> dict:
+        """Bounded local indexing only; failed intents remain for the next pass."""
+        if type(max_receipts) is not int or not 1 <= max_receipts <= 100 or not 0 < budget_seconds <= 120:
+            raise ValueError("Explicit bounded catalog recovery budget required")
+        records, errors, attempted = [], [], 0
+        deadline, cursor = time.monotonic() + budget_seconds, self._catalog_recovery_cursor
+        if not self.pending_catalog.exists():
+            return {"receipts": records, "errors": errors, "attempted": attempted}
+        # Only the small intent directory is enumerated. Keep an ordered page
+        # in bounded memory, so corrupt intents cannot starve later identities.
+        def candidates():
+            with os.scandir(self.pending_catalog) as entries:
+                for entry in entries:
+                    if time.monotonic() >= deadline:
+                        break
+                    if entry.name.endswith(".json"):
+                        yield (entry.name <= cursor, entry.name, entry.path)
+        for _, name, path in heapq.nsmallest(max_receipts, candidates()):
+            if time.monotonic() >= deadline:
+                break
+            attempted += 1
+            self._catalog_recovery_cursor = name
+            marker = Path(path)
+            try:
+                if (marker.resolve().parent != self.pending_catalog.resolve()
+                        or marker.stat().st_size > 1024 or re.fullmatch(r"[a-f0-9]{64}\.json", marker.name) is None):
+                    raise ValueError("Invalid pending market receipt marker")
+                value = json.loads(marker.read_bytes())
+                if (not isinstance(value, dict) or set(value) != {"version", "id", "object_path"}
+                        or value["version"] != "market-catalog-pending-v1" or value["id"] != marker.stem
+                        or not isinstance(value["object_path"], str)):
+                    raise ValueError("Malformed pending market receipt marker")
+                target = (self.root / value["object_path"]).resolve()
+                if target.stem != marker.stem:
+                    raise ValueError("Pending market receipt identity mismatch")
+                receipt = self.index_retained_receipt(target)
+                projected = []
+                if receipt["symbol"] == "*" and project is not None:
+                    projected = project(receipt)
+                    if marker.exists():
+                        self.index_retained_receipt(target, complete_projection=True)
+                records.extend([receipt, *projected])
+            except FileNotFoundError:
+                # Another process may have completed this exact intent.
+                if marker.exists():
+                    errors.append({"id": marker.stem, "error_type": "FileNotFoundError",
+                                   "cause": "Pending market receipt evidence is missing"})
+            except Exception as exc:
+                from .provider_recovery import safe_failure
+                errors.append({"id": marker.stem, **safe_failure(exc, datetime.now(UTC))})
+        return {"receipts": records, "errors": errors, "attempted": attempted}
 
     def _verify_receipt(self, item, symbol, source):
         stamp,identity,status,features,relative = item
@@ -804,10 +974,14 @@ class MarketInputCollector:
         previous_deadline = self._deadline
         try:
             self._deadline = time.monotonic()+budget_seconds
-            due=[key for key in self._retry_ledger.due_keys() if key in self._retry_jobs][:max_jobs]
-            if not due:
-                return None
-            self.store.capture_producer()
+            catalog = self.store.recover_pending_receipts(max_receipts=max_jobs, budget_seconds=budget_seconds,
+                                                         project=self._complete_receipt_projection)
+            records.extend(catalog["receipts"])
+            errors.extend({"operation": "catalog_index", **error} for error in catalog["errors"])
+            due=([key for key in self._retry_ledger.due_keys() if key in self._retry_jobs][:max_jobs]
+                 if self._retry_jobs else [])
+            if due:
+                self.store.capture_producer()
             for key in due:
                 if self._closed or time.monotonic() >= self._deadline:
                     break
@@ -818,19 +992,15 @@ class MarketInputCollector:
                     operation,extractor=self._retry_operations.get(key) or self._rebuild_retry(job)
                     receipt=self._capture(job["symbol"],job["source"],job["request"],operation,extractor,context=job["context"])
                     records.append(receipt)
-                    if job["source"]=="schwab_quote" and job["symbol"]=="*":
-                        records.extend(self._retain_schwab_quotes(receipt))
-                    elif job["symbol"]=="*":
-                        original=read_response(self.store.root,receipt["object_path"])
-                        for equity in self.symbols:
-                            records.append(self.store.append(symbol=equity,source=receipt["source"],started_at=receipt["request_started_at"],received_at=receipt["received_at"],payload=original["payload"],features=receipt["features"],status=receipt["status"],request={**receipt["request"],"global_receipt_id":receipt["id"]},event_at=receipt.get("event_at")))
+                    records.extend(self._complete_receipt_projection(receipt))
                 except Exception as exc:
                     from .provider_recovery import safe_failure
                     errors.append({"key":key,**safe_failure(exc,self.clock())})
             if not records and not errors:
                 return None
             return {"status":"completed","receipts":records,"errors":errors,
-                    "pending_jobs":len(self._retry_jobs),"completed_at":_iso(self.clock())}
+                    "pending_jobs":len(self._retry_jobs),"completed_at":_iso(self.clock()),
+                    "catalog_recovery": {"attempted": catalog["attempted"], "indexed": len(catalog["receipts"])}}
         finally:
             self._deadline=previous_deadline
             self._collect_lock.release()
@@ -959,8 +1129,27 @@ class MarketInputCollector:
             rows.append(self.store.append(symbol=symbol,source="schwab_quote",started_at=receipt["request_started_at"],received_at=received,
                 payload=raw if receipt["status"]!="unavailable" else payload,features=features,status=status,event_at=event_at,
                 request={"endpoint":"quotes","symbols":list(self.symbols),"batch_receipt_id":receipt["id"],
-                    "adapter_batch_payload_ref":receipt["payload_ref"],"raw_response_retained":True}))
+                    "adapter_batch_payload_ref":receipt["payload_ref"],"raw_response_retained":True},
+                producer_runtime=receipt["producer_runtime"]))
+        self.store.index_retained_receipt(receipt["object_path"], complete_projection=True)
         return rows
+
+    def _retain_global_receipt(self, receipt):
+        original = read_response(self.store.root, receipt["object_path"])
+        rows = [self.store.append(symbol=equity, source=receipt["source"],
+            started_at=receipt["request_started_at"], received_at=receipt["received_at"],
+            payload=original["payload"], features=receipt["features"], status=receipt["status"],
+            request={**receipt["request"], "global_receipt_id": receipt["id"]}, event_at=receipt.get("event_at"),
+            producer_runtime=receipt["producer_runtime"]) for equity in self.symbols]
+        self.store.index_retained_receipt(receipt["object_path"], complete_projection=True)
+        return rows, original["payload"]
+
+    def _complete_receipt_projection(self, receipt):
+        if receipt["symbol"] != "*":
+            return []
+        if receipt["source"] == "schwab_quote":
+            return self._retain_schwab_quotes(receipt)
+        return self._retain_global_receipt(receipt)[0]
 
     def _schwab_collect(self) -> list[dict]:
         if self._closed:
@@ -1017,14 +1206,9 @@ class MarketInputCollector:
         response_cache = {}
 
         def retain_global(receipt):
-            original = read_response(self.store.root, receipt["object_path"])
-            for equity in self.symbols:
-                records.append(self.store.append(symbol=equity, source=receipt["source"],
-                    started_at=receipt["request_started_at"], received_at=receipt["received_at"],
-                    payload=original["payload"], features=receipt["features"], status=receipt["status"],
-                    request={**receipt["request"], "global_receipt_id": receipt["id"]},
-                    event_at=receipt.get("event_at")))
-            return original["payload"]
+            projected, payload = self._retain_global_receipt(receipt)
+            records.extend(projected)
+            return payload
 
         def pending_macro():
             if not self._pending_macro or not self._may_request("*","fmp_macro_gdp"):
