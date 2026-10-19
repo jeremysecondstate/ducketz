@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T12:23:39.979662Z",
+  "id": "20261019T122339Z-11b7735953a9409aa8edc98bee245496",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published optional genuine-close reference carry and durable fresh overlap recovery."
+}

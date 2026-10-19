@@ -1,0 +1,61 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T121651Z-9c4f245f73574b79b1a6a285f7164723",
+  "change_id": "20261019T121651Z-9c4f245f73574b79b1a6a285f7164723",
+  "files": [
+    "docs/development/intraday-model-ownership.md",
+    "ml/intraday/forward_fill.py",
+    "ml/intraday/data.py",
+    "ml/intraday/live_model_recipe.py",
+    "ml/intraday/live_session.py",
+    "ml/intraday/manual_launcher.py",
+    "ml/intraday/minute_feed.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/store.py",
+    "ml/intraday/technical_sizing.py",
+    "tests/test_intraday_forward_fill.py",
+    "tests/test_intraday_forward_fill_recipe.py",
+    "tests/test_intraday_forward_fill_runtime.py",
+    "tests/test_intraday_forward_fill_overlap.py"
+  ],
+  "limitations": [
+    "Local opt-in only; shared adoption leaves existing recipes unchanged.",
+    "Fresh affected model execution and overlap recovery await a manually loaded live session.",
+    "Private recipes, source observations, deployment bindings and fitted models are excluded.",
+    "Draft is stacked on its exact installed predecessor; main integration remains separate."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/225",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Live source and an explicit local recipe were installed separately to preserve existing study workers and original model parameters. Derived references retain provenance and never count as genuine training labels or qualification accuracy. Current acquisition has priority; expired replay coverage stays explicitly unrecovered for historical recovery. Each host preserves its own model recipe and scope.",
+  "scope": "shared",
+  "source_commit": "4682d4ba7b28157af5ece60bdb882c09e77e8f82",
+  "source_remote_verified": true,
+  "summary": "Scout published optional genuine-close reference carry and durable fresh overlap recovery.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T12:17:54.626997Z",
+      "output_sha256": "7ed59767543bd60fe7ac4b5362de8af84a64f284b92f965f0bf78818a6f59a3b",
+      "passed": 584,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T12:21:15.341368Z",
+      "output_sha256": "2e26144d58200321c547402374f17dfcffcca02394b61aaabd144138579c4542",
+      "passed": 584,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T12:20:36.123002Z",
+      "output_sha256": "30b95381cd1cb466c1d552588c738797d1d0fd102dd09dc2df8c119cfe91d6ce",
+      "passed": 584,
+      "scope": "installed isolated live source",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}
