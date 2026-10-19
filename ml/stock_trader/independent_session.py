@@ -325,6 +325,7 @@ def run_independent_stock_session(
             # No capture here can resolve an earlier failure; health stays
             # degraded until a later executable cycle verifies broker state.
             recover_now = recovery_pending and stock_execution_window(now).executable
+            refresh_immediately = False
             if due_entry or recover_now or (has_inventory and stock_execution_window(now).executable):
                 sizing_options = {"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}
                 if late_opening_date == local.date().isoformat() and local.hour == 4:
@@ -373,6 +374,9 @@ def run_independent_stock_session(
                 cycle_status = last_cycle.get("status", "")
                 failed = (bool(last_cycle.get("error")) or bool(last_cycle.get("stopped_after_error"))
                           or "UNAVAILABLE" in cycle_status or cycle_status.startswith("SUBMISSION_STOPPED"))
+                refresh_immediately = (sizing_policy == GAMEPLAN_SIZING_POLICY
+                                       and cycle_status == "BROKER_STATE_REFRESH_REQUIRED"
+                                       and result.submitted_orders > 0 and not failed)
                 failed_cycles += int(failed)
                 if failed:
                     consecutive_failures += 1
@@ -387,6 +391,11 @@ def run_independent_stock_session(
                     session_consecutive_failures=consecutive_failures,
                 )))
             publish_status("DEGRADED" if consecutive_failures else "RUNNING")
+            if refresh_immediately:
+                # Re-enter the ordinary loop: manual controls, close/window,
+                # current account/quotes and existing reservations all apply.
+                # No stale payload or previously submitted order is replayed.
+                continue
             # No new entries during the extra ownership/reconciliation checks.
             # Frequent checks around boundaries let exits settle before HH:01.
             seconds = 5 if local.minute in {0, 1, 5, 6, 59} and has_inventory else 30

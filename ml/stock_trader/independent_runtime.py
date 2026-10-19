@@ -332,12 +332,14 @@ def run_independent_stock_trader_once(
 
     def finish(status, *, decisions=(), error=None, submitted=0, duplicates=0, publication=None):
         if rejected_catchup and error is None and status in {
-                "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS"}:
+                "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS",
+                "BROKER_STATE_REFRESH_REQUIRED"}:
             status = ("ORDERS_SUBMITTED_WITH_REJECTION_REVIEW_REQUIRED" if submitted
                       else "CATCHUP_BROKER_REJECTION_REVIEW_REQUIRED")
             error = "Confirmed broker rejection blocks automatic retries of the affected Gameplan intention; review its saved order evidence."
         if deferred_orders and error is None and status in {
-                "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS"}:
+                "ORDERS_SUBMITTED", "NO_ORDERS_SUBMITTED", "DRY_RUN_INDEPENDENT_STOCK_DECISIONS",
+                "BROKER_STATE_REFRESH_REQUIRED"}:
             unavailable = metadata["self_trade_prevention"]["status"] == "EVIDENCE_UNAVAILABLE"
             status = ("WORKING_ORDER_EVIDENCE_UNAVAILABLE" if unavailable else
                       "ORDERS_SUBMITTED_WITH_SELF_TRADE_CONFLICT" if submitted else "SELF_TRADE_CONFLICT_DEFERRED")
@@ -777,7 +779,12 @@ def run_independent_stock_trader_once(
 
 
 def _direction_sell_capacities(signals, state, portfolio, exits):
-    """Partition current eligible shares once; never use projected inventory."""
+    """Admit actual stock; the builder and reservation bound the combined sale.
+
+    One-hour/four-hour forecasts may compete for every owned horizon from the
+    October 19 instruction onward. Longer horizons keep own/unallocated stock.
+    """
+    from ml.stock_direction_policy import autonomous_horizon_sales
     from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
     allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
     due_ids = {d.prediction.get("allocation_id") for d in exits}
@@ -791,7 +798,14 @@ def _direction_sell_capacities(signals, state, portfolio, exits):
     for key in sorted(signals, key=lambda item: (FIXED_HORIZON_WEIGHTS[item[1]], item[0])):
         if stock_direction(signals[key].calibrated_probability) != "BEARISH":
             continue
-        symbol, _ = key
+        symbol, horizon = key
+        day = utc(signals[key].target_window_start).tz_convert("America/Los_Angeles").date().isoformat()
+        if autonomous_horizon_sales(horizon, day):
+            due = sum(a.filled_shares - a.reserved_sell_shares for a in state.allocations
+                      if a.symbol == symbol and a.allocation_id in due_ids)
+            capacities[key] = max(0, int(portfolio.held_shares.get(symbol, 0)
+                - portfolio.pending_sell_shares.get(symbol, 0) - due))
+            continue
         allocation = allocations.get(key)
         if allocation and (allocation.reserved_buy_shares or allocation.allocation_id in due_ids):
             capacities[key] = 0
@@ -810,6 +824,7 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
     own/unallocated inventory before asking the ledger for a bounded donor.
     """
     from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+    from ml.stock_direction_policy import autonomous_horizon_sales
     allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
     reserved = {}
     normal_sales = set()
@@ -826,6 +841,9 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
         if stock_direction(signal.calibrated_probability) != "BEARISH":
             continue
         symbol, horizon = key
+        day = utc(signal.target_window_start).tz_convert("America/Los_Angeles").date().isoformat()
+        if autonomous_horizon_sales(horizon, day):
+            continue
         own = allocations.get(key)
         if own and (own.filled_shares or own.reserved_buy_shares or own.reserved_sell_shares):
             continue
@@ -974,6 +992,20 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
     for decision in decisions:
         if decision.quantity <= 0:
             continue
+        # A large successful batch can outlive its one current account/quote
+        # observation. Yield only after real progress and before reserving this
+        # intention; the managed session will capture and replan its remainder.
+        # The actual pre-POST freshness and identity checks stay unchanged.
+        if submitted and decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
+            quote_at = QuoteState(**decision.quote).freshness_observed_at
+            if quote_at:
+                now = utc(clock())
+                ages = [(now - utc(decision.portfolio["observed_at"])).total_seconds(),
+                        (now - utc(quote_at)).total_seconds()]
+                refresh_age = max(0., ledger.maximum_evidence_age_seconds - DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS)
+                if all(age >= 0 for age in ages) and max(ages) >= refresh_age:
+                    return finish("BROKER_STATE_REFRESH_REQUIRED", decisions=decisions, submitted=submitted,
+                                  duplicates=duplicates, publication=publication)
         reservation = event = account_reservation = None
         try:
             context = broker.prepare_order_submission()
