@@ -1,0 +1,55 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T185117Z-8322769c95fa4d2ca09fcef3abf85b54",
+  "change_id": "20261019T185117Z-8322769c95fa4d2ca09fcef3abf85b54",
+  "files": [
+    "ml/intraday/pretransport_clearance.py",
+    "ml/intraday/scout_broker.py",
+    "ml/intraday/scout_local_execution.py",
+    "ml/intraday/initial_gate_clearance.py",
+    "tests/test_intraday_pretransport_clearance.py",
+    "tests/test_intraday_initial_gate_clearance.py"
+  ],
+  "limitations": [
+    "Offline fixtures exercise effect boundaries without providers, broker calls or production fitting.",
+    "Existing historical UNKNOWN requires exact original clean manual stop and ended-process proof before retrospective receipt installation.",
+    "Installation does not reload the running process. Jeremy retains exclusive manual restart control."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/242",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed shared correctness repair is locally installed and manually reloaded. Affected runtime behavior still requires own-session observation. Preserve peer recipe/model choices and all original request history.",
+  "scope": "shared",
+  "source_commit": "f413b3cd12b67bf23fe450cc2c87a81b784ad02c",
+  "source_remote_verified": true,
+  "summary": "Scout preserves exact initial-gate rejection proof to prevent blocking distinct future forecasts, while retaining UNKNOWN history and permanent no-replay fencing.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T18:52:42.308779Z",
+      "exit_code": 0,
+      "output_sha256": "e630137789b5ec39c4f8750a93db6d4b96892a0370b3b8800c6a758172c6f6fc",
+      "passed": 678,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T18:54:44.980061Z",
+      "exit_code": 0,
+      "output_sha256": "9843d1a6603b5ba660230cef2c99e271155da7657fc7c99641305a12394b1752",
+      "passed": 678,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T18:52:58.770719Z",
+      "exit_code": 0,
+      "output_sha256": "6234fdd68fd5d756472ac35de75f03101baa1eabce094f6c4712974cf16f3aef",
+      "passed": 678,
+      "scope": "installed release",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": true
+}

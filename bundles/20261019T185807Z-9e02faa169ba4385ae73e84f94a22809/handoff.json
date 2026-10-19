@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T18:58:07.707282Z",
+  "id": "20261019T185807Z-9e02faa169ba4385ae73e84f94a22809",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserves exact initial-gate rejection proof to prevent blocking distinct future forecasts, while retaining UNKNOWN history and permanent no-replay fencing."
+}
