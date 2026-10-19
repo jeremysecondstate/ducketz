@@ -339,11 +339,26 @@ class QuarterHourMarketCollector:
         self.enqueue(end - STEP)
         return self.step(max_requests=max_requests)
 
-    def run(self, stopped, pause, *, max_requests=8):
+    def run(self, stopped, pause, *, max_requests=8, on_retry=None):
         """The host supplies cancellation and sleep; this worker has no trader dependency."""
         while not stopped():
             if collection_window_open(self.clock()):
-                results = self.collect(max_requests=max_requests)
+                try:
+                    results = self.collect(max_requests=max_requests)
+                except Timeout as exc:
+                    # Another local collector may own this shared queue. No
+                    # attempt is consumed by a failed acquisition; a receipt
+                    # written before a failed commit is recovered by _collect.
+                    # Other lock failures retain their original exception.
+                    if Path(exc.lock_file).resolve() != Path(self.lock.lock_file).resolve():
+                        raise
+                    delay = min(30.0, self.retry_seconds)
+                    if on_retry is not None:
+                        on_retry({"reason": "queue_lock_contention", "error_type": "Timeout",
+                                  "retry_after_seconds": delay})
+                    if not stopped():
+                        pause(delay)
+                    continue
                 pause(1.0 if results else 30.0)
             else:
                 pause(30.0)
@@ -369,7 +384,9 @@ class QuarterHourMarketCollector:
                         return None
                     with self.provider_limits[_lane(task["request"])]:
                         return self._collect(key, task)
-            except Timeout:
+            except Timeout as exc:
+                if Path(exc.lock_file).resolve() != Path(task_lock.lock_file).resolve():
+                    raise
                 return None  # another collector owns exactly this provider/window
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=min(4, max_requests)) as pool:

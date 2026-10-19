@@ -860,6 +860,27 @@ def test_market_context_failure_records_safe_os_cause_and_keeps_manual_control(t
     assert all(secret not in serialized for secret in ["PRIVATE_TOKEN", "PRIVATE_FILENAME", "PRIVATE_WRAPPER"])
 
 
+def test_market_context_queue_retry_is_own_session_evidence_not_worker_failure(tmp_path, monkeypatch):
+    kwargs, calls, _ = scout_manual_fixture(tmp_path, monkeypatch)
+    detail = {"reason": "queue_lock_contention", "error_type": "Timeout", "retry_after_seconds": 30.0}
+    class Collector:
+        def run(self, *, stopped, pause, on_retry):
+            assert not stopped()
+            on_retry(detail)
+            assert not stopped()
+    monkeypatch.setattr(live_session, "prepare_market_collection", lambda *a, **k: Collector())
+    result = live_session.run_manual(**kwargs)
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert result["status"] == "STOPPED" and status["stop_reason"] == "manual_stop"
+    assert status.get("worker_errors", []) == [] and "step" in calls
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        rows = db.execute("SELECT cycle_id,payload FROM events WHERE kind='market_context_queue_retry'").fetchall()
+        failures = db.execute("SELECT count(*) FROM events WHERE kind='market_context_worker_stopped'").fetchone()[0]
+    assert rows == [(result["session_id"], json.dumps(detail, sort_keys=True, separators=(",", ":")))]
+    assert failures == 0
+
+
 @pytest.mark.parametrize("operation", ["execution", "recovery"])
 @pytest.mark.parametrize("wrapped", [False, True])
 def test_scout_retry_records_real_sqlite_cause_without_changing_retry_or_forecast(
