@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T19:11:14.780113Z",
+  "id": "20261019T191114Z-fb3f8069feb34bf1ba5457cb2366aab3",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout retries exact market collection queue contention while preserving durable work and own-session failure distinctions."
+}

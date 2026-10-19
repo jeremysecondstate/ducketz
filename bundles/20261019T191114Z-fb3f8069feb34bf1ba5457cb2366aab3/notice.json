@@ -1,0 +1,53 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T190836Z-0510f002de9f42d08469067fdda5acd9",
+  "change_id": "20261019T190836Z-0510f002de9f42d08469067fdda5acd9",
+  "files": [
+    "ml/intraday/market_collection.py",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_live_session.py",
+    "tests/test_intraday_market_collection_lock_retry.py"
+  ],
+  "limitations": [
+    "Offline held-lock and durable-receipt fixtures; no production provider calls or live fitting.",
+    "The historical queue lock holder and acquisition/release timings were not recorded; no holder attribution is claimed.",
+    "Installed code requires a human manual trader restart; affected live contention recovery remains unobserved."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/243",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install reviewed collection and session code preserving local recipe and runtime bindings. Manual Scout trader restart required; no start or restart is performed by this task.",
+  "scope": "shared",
+  "source_commit": "b3136984344f1633c61a34e0458552c987a643f5",
+  "source_remote_verified": true,
+  "summary": "Scout retries exact market collection queue contention while preserving durable work and own-session failure distinctions.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T19:09:02.174626Z",
+      "exit_code": 0,
+      "output_sha256": "b2efe83d7fd79eb234ead2a5c5a2a1a63279fdbdcd4539061ba7437091ebf61a",
+      "passed": 184,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T19:09:58.969249Z",
+      "exit_code": 0,
+      "output_sha256": "238d858e12c7b1c847265cb44630c74cb8e2429c5938917aeacbae622782d26a",
+      "passed": 184,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T19:09:29.302680Z",
+      "exit_code": 0,
+      "output_sha256": "fd215688e9044f98f361c85da997bc8a5d814a1a7f2b4e3ac40ba602ff43a10f",
+      "passed": 184,
+      "scope": "installed release",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}
