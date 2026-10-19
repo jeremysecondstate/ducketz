@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T23:07:19.185543Z",
+  "id": "20261019T230719Z-e88e8b9a3c2a47eb803fff783f761133",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: persist permanent stock policy in Gameplan, Stats and nightly task instructions"
+}

@@ -1,0 +1,48 @@
+{
+  "author": "Atlas",
+  "base_sha": "98b5cfcf644c6776b1f598d5168a12ac4ee3acef",
+  "branch": "codex/atlas/20261019T230408Z-aa9d97e17c0b4564b7f1a2201d2d91c2",
+  "change_id": "20261019T230408Z-aa9d97e17c0b4564b7f1a2201d2d91c2",
+  "files": [
+    "AGENTS.md",
+    "app/ui/gameplan.py",
+    "app/ui/gameplan_data.py",
+    "app/ui/gameplan_stats.py",
+    "app/ui/gameplan_stats_data.py",
+    "docs/development/atlas-scheduled-tasks.md",
+    "docs/development/nightly-stock-policy.md",
+    "ml/gameplan_actuals_review.py",
+    "ml/gameplan_evaluation.py",
+    "ml/gameplan_stats_handoff.py",
+    "ml/gameplan_trade_review.py",
+    "ml/stock_direction_policy.py",
+    "tests/test_gameplan_actuals_review.py",
+    "tests/test_gameplan_data.py",
+    "tests/test_gameplan_evaluation.py",
+    "tests/test_gameplan_trade_review.py",
+    "tests/test_gameplan_ui.py",
+    "tests/test_oct19_stats_policy.py"
+  ],
+  "limitations": [
+    "Offline synthetic and saved-input checks only; no provider, broker, training, runtime restart or trade.",
+    "Native task definitions and memory are private local state, not included in shared source. Scout must perform its own native updates under standing authorization.",
+    "Three installed nightly runbooks are absent from the reviewed main base; the canonical document includes exact task-only compatibility patches instead of recreating unrelated documents."
+  ],
+  "links": [
+    "https://github.com/jeremysecondstate/ducketz/pull/259"
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Updated existing Atlas task prompts apply to subsequent runs without cadence/state changes. Changed Gameplan and Stats source loads through the normal application lifecycle. Preserve manual trader stops and starts; publication does not restart a trader or authorize an order. Scout installation and native prompt readback are separate unverified facts.",
+  "scope": "shared",
+  "source_sha": "eb6d2ae14561d6769ea9637705b36688c13d63fa",
+  "summary": "Atlas: persist permanent stock policy in Gameplan, Stats and nightly task instructions",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T23:06:24.243331Z",
+      "isolated_candidate": true,
+      "output_sha256": "0e147b2bcd89f3c1a987fc228f35dd86b14702b60bb37db2ff78fc7e9edf3559",
+      "result": "467 passed across 14 suites",
+      "started_at_utc": "2026-10-19T23:05:22.518578Z"
+    }
+  ]
+}
