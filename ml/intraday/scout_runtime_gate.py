@@ -23,6 +23,8 @@ import json
 import math
 import sqlite3
 
+from ml.stock_direction_policy import stock_action
+
 from ml.stock_trader.session import stock_execution_window
 
 from .execution_policy import submission_gate
@@ -192,7 +194,7 @@ def _local_gate(request, grant, *, forecast, forecast_path, session_id, session_
             or issued < reference + STEP or instant(saved["information_available_at"]) > issued):
         raise ContractError("Forecast fixed target or input availability changed")
     probability = number(saved["probability_not_down"])
-    if (probability > 1 or request.side != ("BUY" if probability >= Decimal("0.50") else "SELL")
+    if (probability > 1 or stock_action(probability) == "HOLD" or request.side != stock_action(probability)
             or request.snapshot_sha256 != saved["snapshot_hash"]
             or instant(request.reference_at) != reference or instant(request.target_close_at) != target
             or instant(request.issued_at) < issued or issued < started):

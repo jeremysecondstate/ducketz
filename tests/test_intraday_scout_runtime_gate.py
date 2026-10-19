@@ -95,13 +95,25 @@ def save_newer(case, *, pc="Scout", mode="live", session=None, cycle="newer", sy
     return case.store.save_forecast(value)
 
 
-@pytest.mark.parametrize("probability", [.72, .5, .2])
+@pytest.mark.parametrize("probability", [.72, .5001, .4999, .2])
 def test_exact_current_saved_scout_forecast_allows_capacity_reduction_without_store_construction(tmp_path, monkeypatch, probability):
     case = make_case(tmp_path, probability=probability)
     before = case.store.path.read_bytes()
     monkeypatch.setattr(ShadowStore, "__init__", lambda *a, **kw: pytest.fail("Production store constructed"))
     assert case.grant.quantity < case.request.quantity
     assert check(case) is True
+    assert case.store.path.read_bytes() == before
+
+
+@pytest.mark.parametrize("probability", [.499900001, .5, .500099999])
+def test_probability_between_exact_action_cutoffs_cannot_submit(tmp_path, probability):
+    case = make_case(tmp_path, probability=probability)
+    before = case.store.path.read_bytes()
+    # Forecast-scoring labels retain their binary target definition; execution
+    # alone uses the exact BUY/SELL cutoffs and explicitly holds between them.
+    assert case.forecast["classification"] == ("not-down" if probability >= .5 else "down")
+    with pytest.raises(ContractError, match="differs from its forecast"):
+        check(case)
     assert case.store.path.read_bytes() == before
 
 
