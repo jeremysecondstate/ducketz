@@ -1,0 +1,83 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T141638Z-81862a7f7a5e424f9946181a43761971",
+  "change_id": "20261019T143642Z-9f367f638037467b955fa3370b3c3acb",
+  "checks": [
+    {
+      "completed_at": "2026-10-19T14:37:05.132678Z",
+      "exit_code": 0,
+      "output_sha256": "e6b354ef7b8fda681019f3f67538cd90ac909080558d453ded33cba6fa4cd0ac",
+      "passed": 202,
+      "result": "........................................................................ [ 35%]\r\n........................................................................ [ 71%]\r\n..........................................................               [100%]\r\n202 passed in 20.83s\r\n\n",
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T14:39:03.849971Z",
+      "exit_code": 0,
+      "output_sha256": "4f7ff101c5f86eb789ab676fe0eabc08edf0203123c515e34ebcf04d6c648aa5",
+      "passed": 202,
+      "result": "........................................................................ [ 35%]\r\n........................................................................ [ 71%]\r\n..........................................................               [100%]\r\n202 passed in 20.49s\r\n\n",
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T14:39:36.485907Z",
+      "exit_code": 0,
+      "output_sha256": "2c5bb93970132af784edbb782dff83df863fe8478202f557b4987d4bf48e7818",
+      "passed": 202,
+      "result": "........................................................................ [ 35%]\r\n........................................................................ [ 71%]\r\n..........................................................               [100%]\r\n202 passed in 20.40s\r\n\n",
+      "scope": "installed immutable source",
+      "skipped": 0
+    }
+  ],
+  "files": [
+    "ml/intraday/market_context.py",
+    "tests/test_intraday_market_context.py"
+  ],
+  "limitations": [
+    "Original historical execution lock SQL location remains unavailable; no speculative locking policy change.",
+    "Installed handler requires manual reload; source tests do not establish live exception capture.",
+    "Preserve each PC local recipe; stacked on PR231, no main merge or peer runtime deployment claimed."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/231",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Save bounded basename/function/line frames and native SQLite codes without locals, source text, nested messages or SQL text. No retry, sizing, authority, target or model recipe changes. Manual reload loads handler.",
+  "scope": "shared",
+  "source_commit": "7425075a4ddcb01abf4bda33d2159d78b21f6e6a",
+  "source_remote_verified": true,
+  "summary": "Scout added bounded causal exception diagnostics to execution and recovery retries, preserving existing retry timing and trading behavior.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T14:17:23.083469Z",
+      "exit_code": 0,
+      "output_sha256": "0b263c48a7963b4a18dbaa499b55ab999707975b9d4d2111a879482aa1f37cd0",
+      "passed": 317,
+      "result": "........................................................................ [ 22%]\r\n........................................................................ [ 45%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 90%]\r\n.............................                                            [100%]\r\n317 passed in 42.79s\r\n\n",
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T14:19:20.168037Z",
+      "exit_code": 0,
+      "output_sha256": "59b0708d3625dc146e309274c0f4efabeccf4987408c218a11530703dc660d07",
+      "passed": 317,
+      "result": "........................................................................ [ 22%]\r\n........................................................................ [ 45%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 90%]\r\n.............................                                            [100%]\r\n317 passed in 42.21s\r\n\n",
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T14:18:03.846059Z",
+      "exit_code": 0,
+      "output_sha256": "c881596bc4914e7e97e6eaa584e678a7f1f65fb595bf2c64154d4d3e74724715",
+      "passed": 317,
+      "result": "........................................................................ [ 22%]\r\n........................................................................ [ 45%]\r\n........................................................................ [ 68%]\r\n........................................................................ [ 90%]\r\n.............................                                            [100%]\r\n317 passed in 42.67s\r\n\n",
+      "scope": "installed immutable source",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}

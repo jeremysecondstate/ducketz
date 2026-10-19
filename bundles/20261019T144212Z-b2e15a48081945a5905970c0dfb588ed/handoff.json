@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T14:42:12.410086Z",
+  "id": "20261019T144212Z-b2e15a48081945a5905970c0dfb588ed",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout added bounded causal exception diagnostics to execution and recovery retries, preserving existing retry timing and trading behavior."
+}
