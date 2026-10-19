@@ -23,6 +23,7 @@ from ml.stock_trader.state import capture_portfolio_state, validated_symbols
 
 from .capacity import clip_to_capacity
 from .commitment_clearance import load_clearance
+from .pretransport_clearance import load_clearance as load_pretransport_clearance
 from .exact_status import TERMINAL, retry_delay
 from .intentions import IntentionStore
 from .prediction import ContractError, digest, instant
@@ -142,6 +143,12 @@ class ScoutLocalAccountExecutor:
             symbols=frozenset(self.symbols), authority_epoch=record['grant']['authority_epoch'],
             maximum_evidence_age_seconds=self.maximum_evidence_age_seconds, clock=self.clock)
 
+    def _commitment_clearance(self, journal, record):
+        # Each proof retains the original UNKNOWN and permanent send fence.
+        # Pre-transport proof is separate from broker-history DAY expiration.
+        return (load_pretransport_clearance(self.books, journal, record, as_of=self.clock())
+                or load_clearance(self.books, journal, record, as_of=self.clock()))
+
     def _recover_record(self, journal, record):
         rid = record['request']['request_id']
         if record['state'] in {'PREPARED', 'GRANTED'}:
@@ -187,12 +194,14 @@ class ScoutLocalAccountExecutor:
                     forecast = forecasts.get(record['request']['forecast_id'])
                     if forecast is None or self.intents.get(forecast['forecast_id']) is None:
                         raise ContractError('Local order lacks its original immutable intention')
-                    clearance = (load_clearance(self.books, journal, record, as_of=self.clock())
+                    clearance = (self._commitment_clearance(journal, record)
                                  if record['state'] == 'UNKNOWN' else None)
                     if clearance:
                         # The receipt is durable. Do not append a historical
                         # intention with invented zero fills or acceptance.
-                        results.append(dict(disposition='historical_submission_unknown_no_open_commitment',
+                        results.append(dict(disposition=('historical_submission_unknown_no_transport_commitment'
+                            if clearance['commitment'] == 'no_order_transport_entered' else
+                            'historical_submission_unknown_no_open_commitment'),
                             forecast_id=forecast['forecast_id'], symbol=forecast['symbol'],
                             submission_status='UNKNOWN', submitted_quantity=None, filled_quantity=None,
                             realized_pnl=None, evidence={'commitment_clearance': clearance}))
@@ -306,9 +315,9 @@ class ScoutLocalAccountExecutor:
                     return self._project(journal, record, forecast, 'recover_existing_intention')
                 if record['state'] == 'UNKNOWN':
                     # The original send stays UNKNOWN and can never be replayed.
-                    # Reviewed complete post-expiry absence evidence can remove
-                    # only its blanket block on distinct new forecast requests.
-                    if load_clearance(self.books, journal, record, as_of=self.clock()) is not None:
+                    # Reviewed exact pre-transport proof or complete post-expiry
+                    # absence can remove only the block on distinct new requests.
+                    if self._commitment_clearance(journal, record) is not None:
                         continue
                     return self._record(forecast, 'submission_recovery_required',
                         evidence={'unresolved_request_id': record['request']['request_id'], 'retry_after_seconds': 3})
