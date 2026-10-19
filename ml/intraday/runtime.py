@@ -832,7 +832,12 @@ class LiveHistories:
             from .recovered_population import wrap_primary, recovery_candle
             if result.get("candle") is not None:
                 result = {**result, "candle": wrap_primary(result["candle"])}
-            elif result.get("final") and result.get("reason") == "source_empty":
+            elif ((result.get("final") and result.get("reason") == "source_empty")
+                  or (result.get("status") == "retry" and result.get("reason") == "unavailable_coverage")):
+                # Unpublished primary coverage does not prevent a genuine
+                # alternate observation under the selected recovery policy.
+                # It supplies no empty-response vote; if recovery has no
+                # candle, retain the primary retry instead of final emptiness.
                 from .gap_recovery import GapRecovery
                 recovered = GapRecovery(self.store.path.parent.parent, clock=self.clock,
                     stopped=self.stopped).recover(symbol, requested, previous, result)
