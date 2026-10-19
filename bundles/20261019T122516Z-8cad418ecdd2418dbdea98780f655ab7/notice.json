@@ -1,0 +1,125 @@
+{
+  "author": "Atlas",
+  "change_id": "20261019T121913Z-9cec9a541d134e19947bff9366eda3d8",
+  "changes": [
+    {
+      "branch": "codex/atlas/20261019T121913Z-9cec9a541d134e19947bff9366eda3d8",
+      "change_id": "20261019T121913Z-9cec9a541d134e19947bff9366eda3d8",
+      "commit_sha": "0c9fce4acbb7fed5dc22844e6d5d2473005a8dc3",
+      "files": [
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "ml/intraday/account_execution.py"
+        },
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "ml/intraday/live_session.py"
+        },
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "tests/test_intraday_recovery_latency.py"
+        },
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "tests/test_intraday_live_session.py"
+        }
+      ],
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/226",
+      "test": {
+        "completed_at_utc": "2026-10-19T12:20:57.760117Z",
+        "exit_code": 0,
+        "output_sha256": "3db76d3606ad00dc9bdb17cdb4fb413f9b4ff25ae8200ca23044f9ff4a668259",
+        "started_at_utc": "2026-10-19T12:20:31.510086Z"
+      },
+      "test_result": "79 offline checks passed"
+    },
+    {
+      "branch": "codex/atlas/20261019T121236Z-c2bf715d0f9f4c9b95b94ede85c61d4a",
+      "change_id": "20261019T121236Z-c2bf715d0f9f4c9b95b94ede85c61d4a",
+      "commit_sha": "9ab1dc3737279503130db3d920713a815f9e2499",
+      "files": [
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "ml/intraday/data.py"
+        },
+        {
+          "operation": "add",
+          "owned": true,
+          "path": "tests/test_intraday_acquisition_diagnostics.py"
+        }
+      ],
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/224",
+      "test": {
+        "completed_at_utc": "2026-10-19T12:14:04.810600Z",
+        "exit_code": 0,
+        "output_sha256": "d39c2592cfe8d5a26e17dca9e38e227be96306f578deead3a7b538ac85893960",
+        "started_at_utc": "2026-10-19T12:13:47.059269Z"
+      },
+      "test_result": "121 offline checks passed"
+    }
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_latency.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_live_session.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/data.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_acquisition_diagnostics.py"
+    }
+  ],
+  "limitations": [
+    "Draft dependency-stacked PRs preserve divergent reviewed source bases; no main integration or peer activation asserted.",
+    "Installed checkout with newer local startup code preserved passed178 offline checks.",
+    "Separate capture-expiry and provider failure incidents remain open; no live start, restart, order replay or validation request performed."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared fixes apply independently to either PC without changing symbols, model policy, manual controls, lease duration or freshness rules. Running processes retain loaded modules; source publication is separate from operations.",
+  "scope": "shared",
+  "summary": "Atlas independent fifteen-minute execution latency and diagnostic repairs installed and published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T12:20:57.760117Z",
+      "exit_code": 0,
+      "output_sha256": "3db76d3606ad00dc9bdb17cdb4fb413f9b4ff25ae8200ca23044f9ff4a668259",
+      "result": "79 passed",
+      "started_at_utc": "2026-10-19T12:20:31.510086Z",
+      "suite": "execution offline regressions"
+    },
+    {
+      "completed_at_utc": "2026-10-19T12:14:04.810600Z",
+      "exit_code": 0,
+      "output_sha256": "d39c2592cfe8d5a26e17dca9e38e227be96306f578deead3a7b538ac85893960",
+      "result": "121 passed",
+      "started_at_utc": "2026-10-19T12:13:47.059269Z",
+      "suite": "provider offline regressions"
+    }
+  ]
+}

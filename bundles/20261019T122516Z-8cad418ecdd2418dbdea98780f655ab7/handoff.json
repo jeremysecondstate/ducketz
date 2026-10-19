@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T12:25:16.130840Z",
+  "id": "20261019T122516Z-8cad418ecdd2418dbdea98780f655ab7",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independent fifteen-minute execution latency and diagnostic repairs installed and published"
+}
