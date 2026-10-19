@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T04:36:03.007791Z",
+  "id": "20261019T043603Z-da07993665df40538e645ed9e5633a41",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout published an additive manual launcher that waits from an evening human start until the next eligible operating session."
+}

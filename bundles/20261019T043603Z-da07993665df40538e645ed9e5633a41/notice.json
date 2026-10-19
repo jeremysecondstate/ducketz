@@ -1,0 +1,58 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T043032Z-39a6f418a6e347a9b10ab4c33bdbab1a",
+  "change_id": "20261019T043032Z-39a6f418a6e347a9b10ab4c33bdbab1a-evening-launcher",
+  "files": [
+    "ml/intraday/manual_launcher.py",
+    "tests/test_intraday_manual_launcher.py",
+    "Start-15m-Trader.cmd",
+    "docs/development/intraday-manual-wake.md",
+    "docs/development/scout-local-15m-manual-start.md"
+  ],
+  "limitations": [
+    "Offline checks establish launcher timing and control behavior; no actual trading session was started.",
+    "The narrow source PR is stacked on the previously published prospective prerequisite branch; source base is not an ancestor of current main.",
+    "Direct invocation of the old live-session entrypoint retains its historical evening cutoff behavior; use the command file or manual launcher for evening starts."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "preparation_rebound_verified": true,
+  "prospective_processes_unchanged": true,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/220",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The five reviewed launcher files are installed locally. Only the existing saved-preparation worker was rebound and reloaded, followed by a verified fresh saved-data cycle with fitting disabled. The trading engine, prospective configurations and source fingerprints, frozen models, recipes, recovery selections and manual-session state were preserved. The pending manual invocation remains human-started, bounded to one selected session and cancellable with Ctrl-C. No trader start or automatic daily restart occurred. Atlas retains its existing behavior and independently reviews adoption.",
+  "scope": "shared",
+  "source_commit": "7da3dc17d771274d4c674d077d98117afe55fda8",
+  "source_remote_verified": true,
+  "summary": "Scout published an additive manual launcher that waits from an evening human start until the next eligible operating session.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T04:30:44.764250Z",
+      "fingerprints": 80,
+      "import_violations": 0,
+      "output_sha256": "1f5e3bcdb020bb27267b7a745f1e1884c9490b0259a5a475b8cdb2eefed72d26",
+      "passed": 96,
+      "scope": "sealed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T04:31:18.314215Z",
+      "fingerprints": 80,
+      "import_violations": 0,
+      "output_sha256": "2de190d672b70d3382fccc4adf7a41898d1e389f7a62088d5d0348a7e550e6b1",
+      "passed": 96,
+      "scope": "isolated courier candidate",
+      "skipped": 0
+    },
+    {
+      "existing_prospective_processes_preserved": true,
+      "fresh_saved_preparation_cycle_verified": true,
+      "production_fitting": false,
+      "scope": "local installed source and preparation adoption",
+      "source_files_verified": 432,
+      "verified_at": "2026-10-19T04:35:38Z"
+    }
+  ],
+  "trader_started": false
+}
