@@ -655,6 +655,25 @@ class IntradayAccountExecutor:
             window = stock_execution_window(self.clock())
             if not window.executable:
                 return self._record(forecast, "market_session_closed", evidence={"reason":window.reason})
+            # Sizing and its durable write can outlive the preparation capture.
+            # Retain that first desired size, but use an actual current account
+            # observation for capacity and price. This boundary refreshes once;
+            # submission still enforces the unchanged final freshness checks.
+            at = instant(self.clock())
+            quote = self.portfolio.quotes[forecast["symbol"]]
+            ages = ((at - instant(self.portfolio.observed_at)).total_seconds(),
+                    (at - instant(quote.freshness_observed_at)).total_seconds())
+            if all(age >= 0 for age in ages) and max(ages) > self.ledger.maximum_evidence_age_seconds:
+                self._execution_stage("capacity_evidence_refresh")
+                self._capture()
+                self._execution_stage("execution_after_sizing")
+                disposition = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
+                                                   local_symbols=self.symbols, actor=self.actor)
+                if disposition != "eligible_for_account_checks":
+                    return self._record(forecast, disposition)
+                window = stock_execution_window(self.clock())
+                if not window.executable:
+                    return self._record(forecast, "market_session_closed", evidence={"reason":window.reason})
             quote = self.portfolio.quotes[forecast["symbol"]]
             side = original["side"]
             price = Decimal(str(quote.ask if side == "BUY" else quote.bid)).quantize(Decimal(".01"),

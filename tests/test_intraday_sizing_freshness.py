@@ -213,3 +213,155 @@ def test_initial_terminal_fill_is_preserved_when_refresh_no_longer_queries_it(en
     assert len(env.broker.submissions) == 2 and env.broker.cancellations == []
     with native(env)._transaction() as db:
         assert db.execute("SELECT COUNT(*) FROM fills WHERE reservation=?", (reservation.reservation_id,)).fetchone()[0] == 1
+
+
+def delay_sizing(env, monkeypatch, stage, *, seconds=65, worker=None, after_delay=None):
+    worker = worker or WorkerClock(env, monkeypatch)
+    owner, name = ((execution, "size_forecast") if stage == "calculation"
+                   else (env.executor.intents, "save_sizing"))
+    original = getattr(owner, name)
+    saved = []
+    def delayed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        saved.append(result)
+        if seconds == 65:
+            worker.slow_preparation()
+        else:
+            worker.tick(20)
+            worker.tick(seconds - 20)
+        if after_delay is not None:
+            after_delay()
+        return result
+    monkeypatch.setattr(owner, name, delayed)
+    return worker, saved
+
+
+@pytest.mark.parametrize("stage", ["calculation", "persistence"])
+@pytest.mark.parametrize("quote_age,seconds", [(0, 65), (30, 35)])
+def test_valid_signal_refreshes_aged_evidence_after_durable_sizing(env, monkeypatch, stage, quote_age, seconds):
+    forecast = env.forecast()
+    env.quote_age = quote_age
+    _, saved = delay_sizing(env, monkeypatch, stage, seconds=seconds)
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "submitted", result
+    assert env.captures == 2 and len(env.broker.submissions) == 1
+    assert len(saved) == 1
+    intention = env.executor.intents.get(forecast["forecast_id"])
+    if stage == "persistence":
+        assert intention == saved[0]
+    else:
+        assert intention["sizing_id"] == saved[0].result_id
+    reservation, = native(env).snapshot().reservations
+    assert reservation.forecast_id == forecast["forecast_id"]
+    assert env.store.forecasts()[0] == forecast
+
+
+def test_preparation_and_sizing_each_refresh_once_without_resizing(env, monkeypatch):
+    forecast = env.forecast()
+    worker, calls = delay_preparation(env, monkeypatch, "frozen_inputs")
+    _, saved = delay_sizing(env, monkeypatch, "persistence", worker=worker)
+    assert env.executor.step(forecast)["disposition"] == "submitted"
+    assert env.captures == 3 and calls == [True] and len(saved) == 1
+    assert env.executor.intents.get(forecast["forecast_id"]) == saved[0]
+    assert len(env.broker.submissions) == 1
+    assert len({row[1:4] for row in worker.records}) == 1
+
+
+def test_capacity_refresh_uses_changed_cash_and_quote_but_preserves_desired_size(env, monkeypatch):
+    forecast = env.forecast()
+    env.cash = 0
+    _, saved = delay_sizing(env, monkeypatch, "persistence")
+    capture = execution.capture_portfolio_state
+    def changed(*args, **kwargs):
+        if env.captures == 1:
+            env.cash = 150
+            env.equity *= 2
+        portfolio = capture(*args, **kwargs)
+        if env.captures == 2:
+            portfolio = replace(portfolio, quotes={symbol: replace(quote, bid=100., ask=100.)
+                for symbol, quote in portfolio.quotes.items()})
+        return portfolio
+    monkeypatch.setattr(execution, "capture_portfolio_state", changed)
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "submitted" and result["adjusted_quantity"] == 1
+    assert env.broker.submissions[0]["price"] == "100.00"
+    assert env.executor.intents.get(forecast["forecast_id"]) == saved[0]
+    assert env.executor.step(forecast)["disposition"] == "recover_existing_intention"
+    assert len(saved) == 1 and len(env.broker.submissions) == 1 and env.captures == 3
+
+
+@pytest.mark.parametrize("stop_at", ["sizing", "recapture"])
+def test_manual_stop_at_capacity_boundary_preserves_sizing_without_submission(env, monkeypatch, stop_at):
+    forecast = env.forecast()
+    _, saved = delay_sizing(env, monkeypatch, "persistence",
+        after_delay=(lambda: setattr(env, "active", False)) if stop_at == "sizing" else None)
+    capture = execution.capture_portfolio_state
+    def stopped(*args, **kwargs):
+        portfolio = capture(*args, **kwargs)
+        if env.captures == 2:
+            env.active = False
+        return portfolio
+    monkeypatch.setattr(execution, "capture_portfolio_state", stopped)
+    with pytest.raises(ContractError, match="Manual 15m session is no longer active"):
+        env.executor.step(forecast)
+    assert env.captures == (1 if stop_at == "sizing" else 2)
+    assert env.executor.intents.get(forecast["forecast_id"]) == saved[0]
+    assert env.broker.submissions == [] and env.broker.cancellations == []
+
+
+@pytest.mark.parametrize("expire_at", ["sizing", "recapture"])
+def test_target_expiry_at_capacity_boundary_never_replays(env, monkeypatch, expire_at):
+    forecast = env.forecast()
+    env.now = pd.Timestamp(forecast["target_close"]) - pd.Timedelta(seconds=30 if expire_at == "sizing" else 100)
+    worker, saved = delay_sizing(env, monkeypatch, "persistence")
+    capture = execution.capture_portfolio_state
+    def delayed(*args, **kwargs):
+        if env.captures == 1:
+            worker.slow_preparation()
+        return capture(*args, **kwargs)
+    monkeypatch.setattr(execution, "capture_portfolio_state", delayed)
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "fixed_target_already_elapsed"
+    assert env.captures == (1 if expire_at == "sizing" else 2)
+    assert env.executor.intents.get(forecast["forecast_id"]) == saved[0]
+    assert env.broker.submissions == [] and env.broker.cancellations == []
+
+
+def test_calendar_close_during_capacity_recapture_is_rechecked(env, monkeypatch):
+    forecast = env.forecast()
+    delay_sizing(env, monkeypatch, "persistence")
+    window = execution.stock_execution_window
+    def calendar(*args, **kwargs):
+        actual = window(*args, **kwargs)
+        return replace(actual, executable=False, time_in_force=None, reason="fixture_calendar_closed") if env.captures == 2 else actual
+    monkeypatch.setattr(execution, "stock_execution_window", calendar)
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "market_session_closed" and env.captures == 2
+    assert result["evidence"]["reason"] == "fixture_calendar_closed"
+    assert env.broker.submissions == [] and env.broker.cancellations == []
+
+
+@pytest.mark.parametrize("quote_age", [65, -1])
+def test_capacity_recapture_retains_genuine_quote_clock_and_final_gate(env, monkeypatch, quote_age):
+    forecast = env.forecast()
+    _, saved = delay_sizing(env, monkeypatch, "persistence",
+        after_delay=lambda: setattr(env, "quote_age", quote_age))
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "not_submitted" and env.captures == 2
+    assert result["evidence"]["root_cause"]["message"] == "Quote needs refresh before submission"
+    portfolio = env.executor.portfolio
+    assert instant(portfolio.observed_at) - instant(portfolio.quotes[forecast["symbol"]].freshness_observed_at) == pd.Timedelta(seconds=quote_age)
+    assert env.executor.intents.get(forecast["forecast_id"]) == saved[0]
+    assert env.broker.submissions == [] and env.broker.cancellations == []
+
+
+def test_capacity_recapture_failure_preserves_original_error_and_saved_size(env, monkeypatch):
+    forecast = env.forecast()
+    failure = TimeoutError("synthetic capacity recapture unavailable")
+    _, saved = delay_sizing(env, monkeypatch, "persistence",
+        after_delay=lambda: setattr(env, "capture_fail", failure))
+    with pytest.raises(TimeoutError) as raised:
+        env.executor.step(forecast)
+    assert raised.value is failure and env.captures == 1
+    assert env.executor.intents.get(forecast["forecast_id"]) == saved[0]
+    assert env.broker.submissions == [] and env.broker.cancellations == []
