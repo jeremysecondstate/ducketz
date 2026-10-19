@@ -1,0 +1,30 @@
+{
+  "author": "Atlas / Atlas 15m Trader Representative",
+  "change_id": "20261019T213910Z-0747f90ff2234ef0a94255063323307e",
+  "completion_record": "20261019T213910Z-0747f90ff2234ef0a94255063323307e",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/market_inputs.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_collection_failure_evidence.py"
+    }
+  ],
+  "limitations": [
+    "Offline fake providers and temporary SQLite only; no actual provider, broker, model-training or trader-control calls.",
+    "Historical causes already discarded by older manifests cannot be reconstructed. This repair preserves future failures; it does not claim historical live-operation recovery."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/256",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Exact source installation preserves running sessions and manual starts/stops. No restart, hot reload, shared ledger, compatibility condition or cross-trader dependency. Main integration and peer adoption remain separate.",
+  "scope": "shared",
+  "source_commit": "fdbb67caa40da32f203633a92ea6c19bf39d3caf",
+  "summary": "Atlas 15m: Preserve causes of partial market-input collection failures",
+  "tests": [
+    "Sealed 82 passed in 20.40s",
+    "Isolated 82 passed in 20.64s",
+    "Installed 82 passed in 20.40s; imported source and packages stable"
+  ]
+}

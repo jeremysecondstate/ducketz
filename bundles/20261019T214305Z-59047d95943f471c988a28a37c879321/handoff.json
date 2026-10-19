@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T21:43:05.985934Z",
+  "id": "20261019T214305Z-59047d95943f471c988a28a37c879321",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas 15m: Preserve causes of partial market-input collection failures"
+}
