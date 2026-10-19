@@ -10,6 +10,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 from urllib.parse import urlparse
 import json
+import sqlite3
 import threading
 import time
 import uuid
@@ -53,6 +54,14 @@ _SAFE_SUBMISSION_REASONS = frozenset({
     "EXACT_BROKER_ORDER_ID_AND_FINAL_GATE_REQUIRED",
 })
 
+# Only this call site's marker attributes a later latched/rethrown failure.
+# Arbitrary exception attributes cannot supply diagnostic text or provenance.
+_AUTHORITY_RENEWAL_FAILURE = object()
+_SQLITE_ERROR_CONSTANTS = {
+    name: value for name, value in vars(sqlite3).items()
+    if name.startswith("SQLITE_") and type(value) is int
+}
+
 
 def _submission_failure_evidence(exc, stage):
     """Keep bounded causes without copying provider messages or request secrets."""
@@ -65,6 +74,13 @@ def _submission_failure_evidence(exc, stage):
         # messages can contain account URLs, headers or credential material.
         if isinstance(current, (ContractError, AuthorityError)) and str(current) in _SAFE_SUBMISSION_REASONS:
             item["message"] = str(current)
+        if getattr(current, "intraday_authority_renewal_failure", None) is _AUTHORITY_RENEWAL_FAILURE:
+            item["local_operation"] = "authority.renew_lease"
+        if isinstance(current, sqlite3.Error):
+            code = getattr(current, "sqlite_errorcode", None)
+            name = getattr(current, "sqlite_errorname", None)
+            if type(code) is int and type(name) is str and _SQLITE_ERROR_CONSTANTS.get(name) == code:
+                item.update(sqlite_errorcode=code, sqlite_errorname=name)
         operation = getattr(current, "stock_trader_operation", None)
         if isinstance(operation, str) and operation in {"authentication", "account_identity", "account", "positions", "orders", "quotes"}:
             item["operation"] = operation
@@ -158,7 +174,11 @@ class _LeaseKeeper:
         with self._lock:
             try:
                 self._check()
-                renewed = self.authority.renew_lease(self.lease.token)
+                try:
+                    renewed = self.authority.renew_lease(self.lease.token)
+                except BaseException as exc:
+                    exc.intraday_authority_renewal_failure = _AUTHORITY_RENEWAL_FAILURE
+                    raise
                 if (renewed.token, renewed.epoch, renewed.holder_id) != self._identity:
                     raise AuthorityError("CURRENT_FENCED_LEASE_REQUIRED")
                 self.lease = renewed

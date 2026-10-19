@@ -17,7 +17,7 @@ execution-window checks, and invoke the supplied gate immediately before POST.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -312,9 +312,9 @@ class AccountAuthority:
     def _transaction(self):
         db = sqlite3.connect(self.path, timeout=30, isolation_level=None)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA synchronous=EXTRA")
-        db.execute("BEGIN IMMEDIATE")
         try:
+            db.execute("PRAGMA synchronous=EXTRA")
+            db.execute("BEGIN IMMEDIATE")
             yield db
             db.commit()
         except BaseException:
@@ -1079,8 +1079,18 @@ class AccountAuthority:
             return self._reservation(self._row(db,evidence.reservation_id))
 
     def read_state(self):
-        with self._transaction() as db:
-            return {"version":VERSION,"binding":json.loads(_json(self.binding)),
-                    "reservations":[asdict(self._reservation(row)) for row in db.execute("SELECT * FROM reservations ORDER BY created,id")],
-                    "snapshot_count":db.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0],
-                    "event_count":db.execute("SELECT COUNT(*) FROM events").fetchone()[0]}
+        # Read one coherent SQLite snapshot without taking the writer lock needed
+        # by this operation's lease renewal. Aggregate raw scalar rows in SQLite
+        # to avoid a GIL handoff per reservation. Close even the read transaction
+        # before Python decoding: a long reader can block commits in DELETE mode.
+        columns = ("id", "request", "status", "filled", "broker_id", "last_evidence")
+        with closing(sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True,
+                                     timeout=30, isolation_level=None)) as db:
+            rows, snapshot_count, event_count = db.execute("""SELECT
+                (SELECT json_group_array(json_array(id,request,status,filled,broker_id,last_evidence))
+                 FROM (SELECT id,request,status,filled,broker_id,last_evidence
+                       FROM reservations ORDER BY created,id)),
+                (SELECT COUNT(*) FROM snapshots), (SELECT COUNT(*) FROM events)""").fetchone()
+        return {"version":VERSION,"binding":json.loads(_json(self.binding)),
+                "reservations":[asdict(self._reservation(dict(zip(columns, row)))) for row in json.loads(rows)],
+                "snapshot_count":snapshot_count,"event_count":event_count}
