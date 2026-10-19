@@ -10,6 +10,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 from urllib.parse import urlparse
 import json
+import threading
 import time
 import uuid
 
@@ -120,6 +121,77 @@ class _ExecutionTrace:
         exc.intraday_execution_failure = _ExecutionFailure(evidence, self)
 
 
+class _LeaseKeeper:
+    """Maintain this operation's existing fence; never acquire a replacement."""
+    def __init__(self, authority, lease, *, active):
+        self.authority, self.lease, self.active = authority, lease, active
+        self.failure = None
+        self._identity = (lease.token, lease.epoch, lease.holder_id)
+        self._lock = threading.RLock()
+        self._stop = threading.Event()
+        self._finished = threading.Event()
+        self._thread = None
+
+    def _check(self):
+        if self.failure is not None:
+            raise self.failure
+        if self._stop.is_set() or not self.active():
+            raise ContractError("Manual 15m session is no longer active")
+        return self.lease
+
+    def check(self):
+        with self._lock:
+            try:
+                return self._check()
+            except BaseException as exc:
+                if self.failure is None:
+                    self.failure = exc
+                raise
+
+    def renew(self):
+        # Main-thread final gates and the worker share one renewal sequence.
+        # An older result cannot replace a newer expiry in diagnostics.
+        with self._lock:
+            try:
+                self._check()
+                renewed = self.authority.renew_lease(self.lease.token)
+                if (renewed.token, renewed.epoch, renewed.holder_id) != self._identity:
+                    raise AuthorityError("CURRENT_FENCED_LEASE_REQUIRED")
+                self.lease = renewed
+                return self._check()
+            except BaseException as exc:
+                if self.failure is None:
+                    self.failure = exc
+                raise
+
+    def _wait(self, seconds):
+        return self._stop.wait(seconds)
+
+    def _run(self):
+        try:
+            while not self._wait(15):
+                self.renew()
+        except BaseException as exc:
+            with self._lock:
+                if self.failure is None:
+                    self.failure = exc
+        finally:
+            self._finished.set()
+
+    def start(self):
+        self.check()
+        if self._thread is not None:
+            raise RuntimeError("Lease keeper already started")
+        self._thread = threading.Thread(target=self._run, name="intraday-lease-renewal", daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self):
+        self._stop.set()
+        if self._thread is not None and self._thread.ident is not None:
+            self._thread.join()
+
+
 
 def forecast_disposition(forecast, *, now, session_started_at, local_symbols, actor="Atlas"):
     """A current manual session cannot execute a replay or previously saved issue."""
@@ -160,6 +232,7 @@ class IntradayAccountExecutor:
         self.config = self.ledger = self.authority = self.lease = None
         self.portfolio = self.snapshot_id = None
         self._execution_trace = None
+        self._lease_keeper = None
 
     def _record(self, forecast, disposition, *, kind="execution_disposition", evidence=None, capacity=None, order=None):
         evidence = evidence or {"reason": disposition}
@@ -198,17 +271,49 @@ class IntradayAccountExecutor:
                 self.lease = self.authority.acquire_lease(coordinator_id=config.machine_id,
                     holder_id="manual-" + self.stream + ":" + uuid.uuid4().hex)
                 trace.lease_expires_at = self.lease.expires_at
+                keeper = self._lease_keeper = _LeaseKeeper(self.authority, self.lease,
+                    active=lambda: not self.stopped() and self.manual_authority())
                 failure = None
                 try:
+                    keeper.start()
                     self._execution_stage("pre_send_repair")
                     self._repair_pre_send()
                     self._execution_stage("account_work")
                     yield
                 except BaseException as exc:
                     failure = exc
+                    trace.lease_expires_at = keeper.lease.expires_at
                     trace.remember(exc)
                     raise
                 finally:
+                    # No renewal may outlive this operation or its local lock.
+                    self._execution_stage("lease_keeper_stop")
+                    stop_failure = None
+                    try:
+                        keeper.stop()
+                    except BaseException as cleanup:
+                        stop_failure = cleanup
+                        trace.remember(cleanup)
+                        cleanup_evidence = execution_failure_evidence(cleanup)
+                        keeper._stop.set()
+                        if keeper._thread is not None and keeper._thread.ident is not None:
+                            # Even an interrupted join cannot release ownership
+                            # while a renewal still has a database write pending.
+                            while not keeper._finished.is_set():
+                                try:
+                                    keeper._finished.wait()
+                                except BaseException as interrupted:
+                                    if "drain_wait_failure" not in cleanup_evidence:
+                                        cleanup_evidence["drain_wait_failure"] = _submission_failure_evidence(interrupted, "lease_keeper_drain")
+                            # No authority writes remain after the finished signal.
+                            try:
+                                keeper._thread.join()
+                            except BaseException as interrupted:
+                                cleanup_evidence["join_failure"] = _submission_failure_evidence(interrupted, "lease_keeper_join")
+                        if failure is not None:
+                            execution_failure_evidence(failure)["cleanup_failure"] = cleanup_evidence
+                    self.lease = keeper.lease
+                    trace.lease_expires_at = self.lease.expires_at
                     self._execution_stage("lease_release")
                     try:
                         self.authority.release_lease(self.lease.token)
@@ -216,15 +321,19 @@ class IntradayAccountExecutor:
                         pass
                     except Exception as cleanup:
                         trace.remember(cleanup)
-                        if failure is None:
+                        if failure is None and stop_failure is None:
                             raise
                         # Cleanup cannot hide the operation's original cause.
-                        execution_failure_evidence(failure)["cleanup_failure"] = execution_failure_evidence(cleanup)
+                        target = execution_failure_evidence(failure or stop_failure)
+                        target["release_cleanup_failure" if "cleanup_failure" in target else "cleanup_failure"] = execution_failure_evidence(cleanup)
+                    if failure is None and stop_failure is not None:
+                        raise stop_failure
         except BaseException as exc:
             trace.remember(exc)
             raise
         finally:
             self._execution_trace = None
+            self._lease_keeper = None
 
     def _execution_stage(self, stage):
         if self._execution_trace is not None:
@@ -232,9 +341,15 @@ class IntradayAccountExecutor:
 
     def _assert_current(self):
         self._binding()
+        self._lease_keeper.check()
         if self.broker.stable_account_fingerprint() != self.config.account_fingerprint:
             raise ContractError("Broker account differs from local 15m binding")
-        self.lease = self.authority.renew_lease(self.lease.token)
+        self._renew_current_lease()
+
+    def _renew_current_lease(self):
+        # Called after potentially slow preparation, immediately before effects.
+        self._binding()
+        self.lease = self._lease_keeper.renew()
         if self._execution_trace is not None:
             self._execution_trace.lease_expires_at = self.lease.expires_at
 
@@ -354,6 +469,7 @@ class IntradayAccountExecutor:
         accounted = {r["broker_order_id"]:r["filled_quantity"] for r in self.authority.read_state()["reservations"]
                      if r["broker_order_id"] and r["filled_quantity"]}
         self._execution_stage("capacity_publish")
+        self._renew_current_lease()
         self.authority.publish_intraday_snapshot(self.lease.token, IntradayCapacitySnapshot(
             snapshot_id, self.config.account_fingerprint, at.astimezone(PACIFIC).date().isoformat(),
             portfolio.observed_at, str(portfolio.available_cash),
@@ -451,6 +567,7 @@ class IntradayAccountExecutor:
                     self._assert_current()
                     self._assert_latest(forecast)
                     self.broker.verify_read_snapshot(context.identity_fingerprint)
+                    self._renew_current_lease()
                 service = CancellationService(broker=self.broker, ledger=self.ledger,
                     account_fingerprint=self.config.account_fingerprint, before_cancel=before_cancel,
                     apply_evidence=lambda evidence:self._capture((evidence,)),
@@ -581,6 +698,8 @@ class IntradayAccountExecutor:
                         stage = "prepared_context_identity"
                         if context.identity_fingerprint != self.portfolio.broker_identity_fingerprint:
                             raise ContractError("Prepared order context differs from account snapshot")
+                        stage = "current_manual_session_and_account"
+                        self._renew_current_lease()
                         current = instant(self.clock())
                         stage = "forecast_eligibility"
                         if forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
@@ -625,7 +744,17 @@ class IntradayAccountExecutor:
                                   "submission_receipt":receipt})
                 unsent = state is None or state.status in {"RESERVED", "NOT_SUBMITTED"}
                 if state and state.status == "RESERVED":
-                    self.authority.abandon_unsubmitted(self.lease.token, state.reservation_id)
+                    try:
+                        self.authority.abandon_unsubmitted(self.lease.token, state.reservation_id)
+                    except Exception as cleanup:
+                        # Keep both commitments for the next legitimate fence.
+                        # Cleanup cannot replace the originating no-send cause.
+                        diagnostics["cleanup_failure"] = _submission_failure_evidence(cleanup, "abandon_unsubmitted")
+                        from .cancellation import retry_delay
+                        return self._record(forecast, "not_submitted", order=self.ledger.lookup_reservation(native.reservation_id),
+                            evidence={**diagnostics, "error_type":type(exc).__name__,
+                                      "proven_unsent_retry_eligible":True, "awaiting_fresh_authority_fence":True,
+                                      "retry_after_seconds":retry_delay(exc,self.clock())})
                 if state and state.broker_order_id:
                     # Preserve the exact accepted identity even if native write
                     # failed. A later step repairs the local binding, never POSTs.
