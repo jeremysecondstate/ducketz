@@ -1,0 +1,31 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T204427Z-b4d805dffae64608ad05cc42311e5ee1",
+  "completion_record": "20261019T204427Z-b4d805dffae64608ad05cc42311e5ee1",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_authority_lease_acquisition.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic clocks, original order-response fixtures and independent SQLite connection tests; no broker/provider calls, actual orders or controls.",
+    "The recorded acquisition-stage duration supports this boundary; its internal CPU, scheduler or storage-delay cause is not established.",
+    "Arbitrary commit or scheduler delay after the final timestamp can still expire a real lease; strict published expiry and ordinary recovery remain required."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/251",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Installed shared authority source requires a future Jeremy-controlled manual start/restart of both Atlas Gameplan and Atlas 15-minute to load. Each invokes acquisition against its own execution state; no cross-trader dependency is added. No Scout restart inferred; no operating prerequisite or automatic control.",
+  "scope": "shared",
+  "source_commit": "2b324eaf97803dbb23eb0d7a53eb0b620ec2aeb6",
+  "summary": "Atlas: Grant the new lease lifetime after acquisition recovery completes",
+  "tests": [
+    "Sealed 298 passed in 34.21s",
+    "Isolated 298 passed in 34.50s",
+    "Installed 394 passed in 44.53s with stable source and package metadata"
+  ]
+}
