@@ -1,0 +1,43 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T233324Z-1fdb0b46d0dc4013ab1c19fcdb0b0b04",
+  "completion_record": "20261019T233324Z-1fdb0b46d0dc4013ab1c19fcdb0b0b04",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_runtime.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_trader/independent_session.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/stock_direction_policy.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_gameplan_batch_refresh.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_stock_direction_policy.py"
+    }
+  ],
+  "limitations": [
+    "Offline fake broker fixtures; no broker/provider calls or orders by repair checks.",
+    "Original unfinished tail completed naturally before this repair; source tests establish prevention/continuation semantics, not recovery of missing orders or live loading.",
+    "Stacked on published Gameplan calendar source; main integration and peer adoption remain separate."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/264",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas Gameplan requires a future Jeremy-controlled manual start or restart to load this new runtime/session correction. The carried policy module is byte-identical to current installation; Atlas fifteen-minute requires no restart for this change. No Scout restart inferred; no automatic controls.",
+  "scope": "shared",
+  "source_commit": "aa1812d6cead7843c3864408a5181e90eb93e7c4",
+  "summary": "Atlas: Refresh current evidence between slow Gameplan order batches",
+  "tests": [
+    "Sealed 152 passed in 121.08s (0:02:01)",
+    "Isolated 152 passed in 124.21s (0:02:04)",
+    "Installed 152 passed in 138.83s (0:02:18) with stable source and package metadata"
+  ]
+}

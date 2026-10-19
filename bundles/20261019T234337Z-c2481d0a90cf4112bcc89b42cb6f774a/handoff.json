@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T23:43:37.543852Z",
+  "id": "20261019T234337Z-c2481d0a90cf4112bcc89b42cb6f774a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Refresh current evidence between slow Gameplan order batches"
+}
