@@ -1,0 +1,105 @@
+{
+  "author": "Atlas",
+  "change_id": "20261019T111433Z-1dc5b7d1f757439c96f735b7b5c3cd5e",
+  "changes": [
+    {
+      "branch": "codex/atlas/20261019T111433Z-1dc5b7d1f757439c96f735b7b5c3cd5e",
+      "change_id": "20261019T111433Z-1dc5b7d1f757439c96f735b7b5c3cd5e",
+      "commit_sha": "dc5839964c6f948fe835da0f866d3dd3f33c7e00",
+      "files": [
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "ml/intraday/account_execution.py"
+        },
+        {
+          "operation": "add",
+          "owned": true,
+          "path": "tests/test_intraday_recovery_latency.py"
+        }
+      ],
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/222",
+      "test": {
+        "completed_at_utc": "2026-10-19T11:14:51.034554Z",
+        "exit_code": 0,
+        "output_sha256": "6c86eee38b8abcb74e754cc74b4a6050d6c0f4fdd4b3c033e87380b6c359364d",
+        "started_at_utc": "2026-10-19T11:14:33.657596Z"
+      },
+      "test_result": "......................................................                   [100%]\r\n54 passed in 16.09s"
+    },
+    {
+      "branch": "codex/atlas/20261019T111521Z-b99a486acdc1454999b0962860d4a3ff",
+      "change_id": "20261019T111521Z-b99a486acdc1454999b0962860d4a3ff",
+      "commit_sha": "b01c3630a33c6627c2f19c1527deb35015124780",
+      "files": [
+        {
+          "operation": "modify",
+          "owned": true,
+          "path": "ml/intraday/runtime.py"
+        },
+        {
+          "operation": "add",
+          "owned": true,
+          "path": "tests/test_intraday_unpublished_recovery.py"
+        }
+      ],
+      "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/223",
+      "test": {
+        "completed_at_utc": "2026-10-19T11:15:52.430013Z",
+        "exit_code": 0,
+        "output_sha256": "88161a6360282f16c5d503d6e54634cac492b31f274f38b77f7deea5ea2f3d0c",
+        "started_at_utc": "2026-10-19T11:15:22.943021Z"
+      },
+      "test_result": ".................................................................        [100%]\r\n65 passed in 28.26s"
+    }
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_recovery_latency.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/runtime.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_unpublished_recovery.py"
+    }
+  ],
+  "limitations": [
+    "Draft dependency-stacked PRs preserve divergent reviewed source bases; no main integration asserted.",
+    "Installed checkout passed54 recovery and66 acquisition checks with current dependencies.",
+    "Live activation is unproven; no trader was started, restarted or used to submit a validation order."
+  ],
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Source repairs apply independently to either PC without changing local model policy or trader controls. Existing manually started processes retain loaded code until a future human-controlled start.",
+  "scope": "shared",
+  "summary": "Atlas independent fifteen-minute recovery and unpublished data repairs installed and published",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T11:14:51.034554Z",
+      "exit_code": 0,
+      "output_sha256": "6c86eee38b8abcb74e754cc74b4a6050d6c0f4fdd4b3c033e87380b6c359364d",
+      "result": "......................................................                   [100%]\r\n54 passed in 16.09s",
+      "started_at_utc": "2026-10-19T11:14:33.657596Z",
+      "suite": "own recovery and acquisition regressions"
+    },
+    {
+      "completed_at_utc": "2026-10-19T11:15:52.430013Z",
+      "exit_code": 0,
+      "output_sha256": "88161a6360282f16c5d503d6e54634cac492b31f274f38b77f7deea5ea2f3d0c",
+      "result": ".................................................................        [100%]\r\n65 passed in 28.26s",
+      "started_at_utc": "2026-10-19T11:15:22.943021Z",
+      "suite": "own recovery and acquisition regressions"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T11:21:51.661801Z",
+  "id": "20261019T112151Z-9445f0e731d54bac934d2262f08fed15",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas independent fifteen-minute recovery and unpublished data repairs installed and published"
+}
