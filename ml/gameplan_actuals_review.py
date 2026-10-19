@@ -21,6 +21,7 @@ from ml.gameplan_probability_target import (
     RAW_DIRECTION_TARGET, observed_probability_target, probability_target_contract,
     probability_target_metadata,
 )
+from ml.gameplan_saved_direction import DIRECTION_POLICY_FIELDS, saved_gameplan_direction
 
 
 VERSION = "gameplan-actuals-review-v1"
@@ -28,7 +29,8 @@ TIMEZONE = "America/Los_Angeles"
 RUNS = "ml/gameplan-actuals-review-runs"
 IDENTITY_COLUMNS = ("id", "symbol", "route", "model_group", "model_status", "target_role",
                     "target_window_start", "target_window_end", "calibrated_probability",
-                    "direction", "target_price_source_contract", "probability_target_contract", "gameplan_variant")
+                    "direction", "target_price_source_contract", "probability_target_contract", "gameplan_variant",
+                    *DIRECTION_POLICY_FIELDS)
 
 
 def _json(path: Path) -> dict:
@@ -232,11 +234,12 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
         mature = end <= now
         scored = bool(mature and entry and finish and pd.Timestamp(entry[1]) < pd.Timestamp(finish[1]))
         change = finish[0] / entry[0] - 1 if scored else None
-        direction = str(row.get("direction", "NO_EDGE")).upper()
-        correct = (change > 0 if direction == "BULLISH" else change < 0) if scored and direction in {"BULLISH", "BEARISH"} else None
         probability = _number(row["calibrated_probability"])
         if probability is None or not 0 <= probability <= 1:
             raise ValueError("Frozen forecast has an invalid probability")
+        direction, direction_metadata = saved_gameplan_direction(row, probability, missing_legacy_direction="NO_EDGE")
+        row.update(direction=direction, **direction_metadata)
+        correct = (change > 0 if direction == "BULLISH" else change < 0) if scored and direction in {"BULLISH", "BEARISH"} else None
         cost = _number(row.get("assumed_round_trip_cost"))
         cost = 0.001 if cost is None else cost
         model_target = observed_probability_target(change, cost, target_contract) if scored else None

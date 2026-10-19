@@ -17,6 +17,7 @@ from datafetching.symbol_universe import normalize_symbol
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
 from ml.gameplan_actuals_review import RUNS, VERSION, _write_json, completed_session_context
 from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, probability_target_contract, probability_target_metadata
+from ml.gameplan_saved_direction import DIRECTION_POLICY_FIELDS
 from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
 
 
@@ -29,8 +30,9 @@ ROW_FIELDS = (
     "model_observed_target", "model_brier_score", "actual_return", "assumed_round_trip_cost",
     "target_window_start", "target_window_end", "actual_start_observed_at", "actual_end_observed_at",
     "probability_target_contract", "gameplan_variant",
+    *DIRECTION_POLICY_FIELDS,
 )
-REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at"}
+REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at", *DIRECTION_POLICY_FIELDS}
 PACKAGE_FIELDS = {"schema_version", "producer", "action_date", "symbols", "reviewed_at", "outcomes_through",
                   "probability_target_contract", "source_receipt_sha256", "source_manifest_sha256",
                   "source_results_sha256", "source_report_sha256", "coverage_status", "rows"}

@@ -1,7 +1,8 @@
 """Chronological, conditional stock Gameplan accounting; no broker authority.
 
-All views derive from one cash ledger. Holdings belong to separate horizon
-lots; only an explicit frozen fallback policy permits a bounded donor sale.
+All views derive from one cash ledger. Holdings retain their horizon lots;
+current 1h/4h authority can sell available stock across all owners, while daily
+and weekly instructions retain their saved ownership rules.
 """
 from __future__ import annotations
 
@@ -13,7 +14,10 @@ import pandas as pd
 from ml.stock_direction_policy import stock_direction
 from ml.stock_trader.contracts import StockTraderPolicy, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
-from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy, donor_horizons, slot_quota
+from ml.stock_trader.cross_horizon_fallback import (
+    validate_fallback_policy, donor_horizons, slot_quota, autonomous_horizon,
+    AUTONOMOUS_OWNERSHIP_POLICY_VERSION,
+)
 
 
 VERSION = "direction-based-gameplan-cash-ledger-v1"
@@ -67,7 +71,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                              ) -> tuple[pd.DataFrame, dict]:
     """Simulate saved directions with conditional fills and shared accounting.
 
-    SELL uses unallocated holdings plus that horizon's lots. BUY creates a lot
+    SELL uses available account holdings for autonomous 1h/4h instructions,
+    and unallocated holdings plus owned lots for other horizons. BUY creates a lot
     through its target end in the legacy policy. Signal-driven holdings instead
     accumulate on bullish forecasts and sell only on bearish forecasts, without
     model-promotion filtering or timed exits. Row balances are after the entire clock; events retain every
@@ -162,7 +167,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             pending_horizons.add((symbol, horizon))
         if reserved or (symbol, horizon) in pending_horizons:
             pending_any_horizons.add((symbol, horizon))
-        if reserved > quantity or horizon not in FIXED_HORIZON_WEIGHTS:
+        intraday = horizon == "15m" and allocation.get("stream") in {"atlas-15m", "scout-15m"}
+        if reserved > quantity or (horizon not in FIXED_HORIZON_WEIGHTS and not intraday):
             raise ValueError("Invalid active horizon allocation")
         free[symbol] -= quantity
         owned_reserved[symbol] += reserved
@@ -170,7 +176,9 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             lot = {"symbol": symbol, "horizon": horizon, "quantity": quantity - reserved,
                          "reserved": reserved, "end": _time(allocation.get("target_end")),
                          "forecast_id": str(allocation.get("prediction_id", "EXISTING_ALLOCATION"))}
-            if fallback_policy is not None:
+            if intraday:
+                lot["stream"] = allocation["stream"]
+            if fallback_policy is not None and not intraday:
                 identifier = allocation.get("allocation_id_sha256")
                 if (not isinstance(identifier, str) or len(identifier) != 64
                         or any(char not in "0123456789abcdef" for char in identifier) or identifier in initial_donors):
@@ -222,8 +230,11 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 if key in fallback_slots:
                     raise ValueError("Fallback planning requires unique symbol entry slots")
                 fallback_slots.add(key)
-                row["fallback_slot_quota"] = slot_quota(fallback_budgets[record["symbol"]],
-                    record["model_group"], timestamp, day)
+                if not autonomous_horizon(record["model_group"], day):
+                    row["fallback_slot_quota"] = slot_quota(fallback_budgets[record["symbol"]],
+                        record["model_group"], timestamp, day)
+            if signal_driven and autonomous_horizon(record["model_group"], day):
+                row["ownership_policy_version"] = AUTONOMOUS_OWNERSHIP_POLICY_VERSION
             if (snapshot.get("observed_at") is not None
                     and timestamp < _time(snapshot["observed_at"])):
                 row.update(direction_based_trade_quantity=0, direction_based_action="HOLD",
@@ -294,7 +305,12 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                          key=lambda row: (FIXED_HORIZON_WEIGHTS[row["model_group"]], row["symbol"], str(row["id"])))
         for row in sellers:
             symbol, horizon = row["symbol"], row["model_group"]
-            own = [lot for lot in lots if lot["symbol"] == symbol and lot["horizon"] == horizon and lot["quantity"] > 0]
+            autonomous = signal_driven and autonomous_horizon(horizon, day)
+            own = [lot for lot in lots if lot["symbol"] == symbol
+                   and (autonomous or lot["horizon"] == horizon) and lot["quantity"] > 0]
+            if autonomous:
+                own.sort(key=lambda lot: (lot["horizon"] != horizon,
+                         str(lot.get("allocation_id_sha256", "")), lot["horizon"], lot["forecast_id"]))
             quantity = Decimal(int(free[symbol] + sum((lot["quantity"] for lot in own), ZERO)))
             if not quantity:
                 row["direction_based_reason"] = "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON"
@@ -307,7 +323,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 taken = min(lot["quantity"], remaining)
                 lot["quantity"] -= taken
                 remaining -= taken
-            trade(timestamp, symbol, "SELL", quantity, "BEARISH_SELL", row=row)
+            trade(timestamp, symbol, "SELL", quantity,
+                  "BEARISH_ACCOUNT_WIDE_SELL" if autonomous else "BEARISH_SELL", row=row)
         if fallback_policy is not None:
             normal_selling_horizons = {(row["symbol"], row["model_group"]) for row in sellers
                                       if row["direction_based_action"] == "SELL"}
@@ -315,6 +332,10 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 if row["direction_based_reason"] != "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON":
                     continue
                 symbol, horizon = row["symbol"], row["model_group"]
+                if autonomous_horizon(horizon, day):
+                    # Account-wide inventory was already considered above;
+                    # legacy slot/donor quotas cannot turn that signal to HOLD.
+                    continue
                 quota = slot_quota(fallback_budgets[symbol], horizon, timestamp, day)
                 row["fallback_slot_quota"] = quota
                 row["fallback_symbol_used_after"] = fallback_used[symbol]
@@ -367,7 +388,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                     "trigger_forecast_id", "trigger_horizon", "donor_allocation_id_sha256", "donor_horizon",
                     "slot_quota", "symbol_daily_cap", "symbol_used_after", "donor_daily_cap", "donor_used_after")})
         for lot in ([] if signal_driven else sorted(lots, key=lambda item: (item["end"], item["symbol"], item["horizon"], item["forecast_id"]))):
-            if lot["symbol"] not in blocked and lot["end"] <= timestamp and lot["quantity"] >= 1:
+            if (lot["horizon"] in FIXED_HORIZON_WEIGHTS and lot["symbol"] not in blocked
+                    and lot["end"] <= timestamp and lot["quantity"] >= 1):
                 quantity = Decimal(int(lot["quantity"]))
                 lot["quantity"] -= quantity
                 trade(timestamp, lot["symbol"], "SELL", quantity, "HORIZON_EXIT", lot=lot)
@@ -452,7 +474,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     if signal_driven:
         report["holding_policy"] = SIGNAL_DRIVEN_HOLDING_POLICY
         report["assumptions"] = [
-            "Each new bullish forecast adds shares using current capacity; bearish forecasts sell eligible shares in their own horizon. An exact 50% holds.",
+            "P(up) >= 50.01% buys with current capacity; P(up) <= 49.99% sells eligible shares. Probabilities strictly between 49.99% and 50.01% hold.",
             "Research assessment is disclosed separately and does not veto saved manual Gameplan instructions.",
             "Forecast window ends are prediction measurement times, not sale instructions. There are no scheduled expiry sales, including at day end.",
             "Each hour processes bearish sales, then bullish purchases. Holdings remain separated by symbol and horizon; cash and exposure are shared.",
@@ -477,5 +499,17 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             "Fallback sales share a 50% symbol daily cap based on initial longer-horizon holdings and a separate 50% cap for each initial donor allocation. Normal own-horizon sales are not charged to these caps.",
             "The 18 fixed entry opportunities have weights 1 for hourly, 2 for four-hour and 3 for daily (24 weight units). Each receives its frozen integer quota; unused quota does not roll forward. Donors buying at that clock or having a pending order are excluded.",
             "Caps reset next session from then-confirmed remaining holdings; there is no lifetime cap. This saved scenario does not reserve real shares or cash and does not guarantee better results.",
+        ]
+    if signal_driven and autonomous_horizon("1h", day):
+        report["ownership_policy_version"] = AUTONOMOUS_OWNERSHIP_POLICY_VERSION
+        report["autonomous_horizons"] = ["1h", "4h"]
+        report["assumptions"] = [text for text in report["assumptions"] if not any(fragment in text for fragment in (
+            "another horizon's shares", "Normal bearish sales use their own horizon", "Only a bearish forecast",
+            "18 fixed entry opportunities", "Holdings remain separated by symbol and horizon"))]
+        report["assumptions"] += [
+            "Hourly and four-hour bearish instructions can sell actual available stock from every horizon owner, including intraday holdings. Same-clock bullish forecasts do not protect their lots from these instructions.",
+            "Account-wide hourly and four-hour sales have no fallback slot or daily quota. Actual pending sales remain reserved and every simulated share is debited once from its owner.",
+            "Daily and weekly ownership rules remain unchanged. Daily fallback keeps its original weighted entry quota, initial symbol and donor daily caps, and same-clock bullish donor protection; weekly forecasts have no donor.",
+            "Each hour processes bearish sales, then bullish purchases. Accounting retains every lot's original owner while cash and exposure are shared.",
         ]
     return pd.DataFrame([rows[str(identifier)] for identifier in trade_rows.id]), report

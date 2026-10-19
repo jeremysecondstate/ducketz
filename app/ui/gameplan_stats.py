@@ -582,9 +582,12 @@ class GameplanStatsTab:
         observed_start = outcome.observed_start.strftime("%b %d, %H:%M %Z") if outcome.observed_start else "Unavailable"
         observed_end = outcome.observed_end.strftime("%b %d, %H:%M %Z") if outcome.observed_end else "Unavailable"
         move = "Unavailable" if outcome.actual_return is None else f"{outcome.actual_return:+.3%}"
+        raw_probability = format((Decimal(str(outcome.probability)) * 100).normalize(), "f")
         text = (f"Saved call: {outcome.direction.replace('NO_EDGE', 'NEUTRAL').title()}\n"
                 f"Outcome: {CELL_STYLES[outcome.state][3]}\n\n"
                 f"Saved model probability: {outcome.probability:.2%}\n"
+                f"Original unrounded P(up): {raw_probability}% (the exact policy uses this value)\n"
+                f"Saved direction policy: {outcome.direction_policy_description}\n"
                 f"Probability target: return above {outcome.probability_target_threshold:.2%}\n"
                 f"Separate assumed round-trip cost: {outcome.target_cost:.2%}\n"
                 f"Observed return: {move}\nBrier score: {brier_text(outcome.brier)}\n\n"
@@ -603,6 +606,9 @@ class GameplanStatsTab:
 
     def show_definitions(self):
         self._text_dialog("Gameplan Stats · metric definitions",
+            "Current stock direction policy\nBUY at 50.01% or higher; SELL at 49.99% or lower; HOLD strictly between. "
+            "This applies to every stock trader, including both 15-minute traders. "
+            "Historical reviews score their original saved calls without relabeling them.\n\n"
             "Direction accuracy\nCorrect saved bullish/bearish calls divided by scored calls. "
             "A bullish call is correct when the actual return is positive; a bearish call when it is negative. "
             "Neutral calls are excluded. Zero-return moves are incorrect for either direction.\n\n"

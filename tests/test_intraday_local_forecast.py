@@ -58,6 +58,20 @@ def classify(case, forecast=None, **changes):
     return local_forecast.forecast_disposition(forecast or case.forecast, **arguments)
 
 
+@pytest.mark.parametrize("probability,expected", [
+    (.4999, "eligible_for_account_checks"), (.499900001, "probability_between_action_cutoffs"),
+    (.5, "probability_between_action_cutoffs"), (.500099999, "probability_between_action_cutoffs"),
+    (.5001, "eligible_for_account_checks"),
+])
+def test_execution_eligibility_uses_exact_current_cutoffs_without_reclassifying_saved_forecasts(tmp_path, probability, expected):
+    case = make_case(tmp_path)
+    value = rehashed(case.forecast, probability_not_down=probability, models=[
+        dict(name=name, status="success", probability_not_down=probability) for name in ("a", "b")])
+    before = dict(value)
+    assert classify(case, value) == expected
+    assert value == before
+
+
 def save_candidate(case, *, pc="Scout", mode="live", session=None, symbol="DOCU",
                    reference_offset=0, newer_reference=False, complete=True):
     original = case.forecast

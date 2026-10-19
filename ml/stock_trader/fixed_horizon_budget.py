@@ -64,7 +64,7 @@ def fixed_budget_forecast_readiness(
     active_policy = policy or StockTraderPolicy()
     active_policy.validate()
     probability = finite(signal.calibrated_probability)
-    threshold = max(BULLISH_PROBABILITY, active_policy.minimum_trade_probability)
+    threshold = BULLISH_PROBABILITY
     reason = None
     if forecast_promoted is not True:
         reason = "FORECAST_NOT_PROMOTED"

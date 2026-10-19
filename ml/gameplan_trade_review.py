@@ -188,6 +188,7 @@ def _plain_reason(value) -> str:
         "INSUFFICIENT_CASH": "Insufficient cash", "INSUFFICIENT_WHOLE_SHARE_CAPACITY": "Insufficient whole-share capacity",
         "HORIZON_EXPIRY": "Horizon expiry", "EXPIRY": "Horizon expiry", "EXPIRING_LOT": "Horizon expiry",
         "BULLISH_BUY": "Buy with available cash", "BEARISH_SELL": "Sell eligible held shares",
+        "BEARISH_ACCOUNT_WIDE_SELL": "Sell available shares across horizons",
         "BEARISH_SELL_HELD": "Sell eligible held shares", "PRICE_RANGE_UNAVAILABLE": "Price range unavailable",
         "MODEL_NOT_PROMOTED": "Model assessment not passed",
         "SYMBOL_ALLOCATION_UNRESOLVED": "Hold — position allocation needs checking",
@@ -248,12 +249,17 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
              for (symbol,reason,gap),count in missing.items()])
         return main, []
     signal_driven = projection.get("holding_policy") == "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
+    autonomous = set(projection.get("autonomous_horizons") or ())
     summary = _mapping(projection.get("summary"))
     ending = _mapping(projection.get("ending_positions"))
     main = ["## Projected end of day", "",
-            "Cash is estimated before fees and taxes using the planned transactions and estimated prices. "
-            "Price and cash ranges do not limit execution; each order uses the current quote and actual available cash and holdings. " +
-            ("Bullish instructions add shares; bearish instructions sell within their horizon. Holdings have no scheduled expiry sale." if signal_driven else "Holdings with later overnight or weekly expiries remain held at 17:00."), ""]
+            "Cash is projected before fees and taxes from the saved planned transactions. "
+            "Each order uses the current quote and actual available cash and holdings. " +
+            (("Bullish instructions add shares; 1h and 4h bearish signals can sell available shares across horizons. "
+              "1d and 1w retain their ownership rules. Holdings have no scheduled expiry sale."
+              if {"1h", "4h"} <= autonomous else
+              "Bullish instructions add shares; bearish instructions sell within their horizon. Holdings have no scheduled expiry sale.")
+             if signal_driven else "Holdings with later overnight or weekly expiries remain held at 17:00."), ""]
     main += _table(["Cash measure", "Low", "Base", "High"], [
         ("Starting available cash", *[_money(summary.get("starting_cash", snapshot.get("available_cash")))] * 3),
         ("End-of-day cash", _money(summary.get("ending_cash_low")), _money(summary.get("ending_cash_base")), _money(summary.get("ending_cash_high"))),
@@ -267,7 +273,9 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
     main += _table(["Stock", "Starting shares", "Projected closing shares"], position_rows)
     fallback = _mapping(projection.get("cross_horizon_fallback"))
     if fallback:
-        main += ["The frozen bearish fallback policy may trim one eligible longer horizon after normal sales. "
+        main += [("1h and 4h bearish sales use available shares across horizons. The saved fallback limits still apply to 1d. "
+                  if {"1h", "4h"} <= autonomous else "") +
+                 "The frozen bearish fallback policy may trim one eligible longer horizon after normal sales. "
                  "It shares a 50% daily symbol cap and a 50% cap per donor allocation. The 18 entry slots use "
                  "hourly/four-hour/daily weights of 1/2/3; unused quota does not roll forward. "
                  "Donors buying at the same clock or having pending orders stay protected.", ""]
@@ -300,13 +308,12 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
                   if attribution else _plain_reason(row.get("reason")))
         event_rows.append((_pacific(row.get("timestamp"), required=True), row.get("symbol"), row.get("horizon", "—"),
                            f"{str(row.get('action', 'Unavailable')).upper()} {_shares(row.get('quantity'))}",
-                           _cash_range(row.get("price_low"), row.get("price_high")),
                            _cash_range(row.get("cash_before_low"), row.get("cash_before_high")),
                            _signed_money(row.get("cash_change_low")), _signed_money(row.get("cash_change_base")),
                            _signed_money(row.get("cash_change_high")),
                            _cash_range(row.get("cash_low"), row.get("cash_high")), _shares(row.get("shares_after")),
                            reason))
-    details += _table(["Time, Pacific", "Stock", "Horizon", "Plan", "Price range", "Cash before, range", "Cash change low", "Cash change base", "Cash change high",
+    details += _table(["Time, Pacific", "Stock", "Horizon", "Plan", "Cash before, range", "Cash change low", "Cash change base", "Cash change high",
                        "Cash after, range", "Shares after", "Reason"], event_rows)
     assumptions = projection.get("assumptions") or []
     if isinstance(assumptions, Mapping):
@@ -374,6 +381,8 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     threshold = _policy_number(report, "direction_up_threshold", _policy_number(policy, "minimum_trade_probability", .5))
     down_threshold = _policy_number(report, "direction_down_threshold", 1 - threshold)
     direction_rule = (
+        f"BUY at {_percent(threshold)} P(up) or higher; SELL at {_percent(down_threshold)} or lower; HOLD between them. "
+        if threshold == .5001 and down_threshold == .4999 else
         f"Direction is Bullish above {_percent(threshold)} P(up), Bearish below {_percent(down_threshold)}, and Neutral only at exactly {_percent(threshold)}. "
         if threshold == down_threshold else
         f"Direction is Bullish at {_percent(threshold)} P(up) or higher, Bearish at {_percent(down_threshold)} or lower, and Neutral between them. "
@@ -384,7 +393,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     probability_meaning = ("P(up) predicts a strictly positive raw price move. Trading costs remain separate from the directional target."
                            if target_contract == RAW_DIRECTION_TARGET else
                            "The saved OG probability predicts a positive return after assumed round-trip costs; its original direction labels are retained for evaluation.")
-    lines = [f"# {_text(report.get('action_date'))} {plan_name} — quantities and planning prices", "",
+    lines = [f"# {_text(report.get('action_date'))} {plan_name}", "",
              probability_meaning, "",
              f"**{len(symbols)} stocks · {len(rows):,} forecasts · " + ("" if has_direction_plan else f"{positive} scheduled entries · ") +
              f"{_count(report.get('orders_placed'))} orders submitted**", "",
@@ -491,30 +500,28 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
         lines += [f"### {_text(symbol)}", ""]
         forecast_rows = []
         for row in stock_rows:
-            low, high = _number(row.get("trade_price_low")), _number(row.get("trade_price_high"))
-            price = f"{_money(low)}–{_money(high)}" if low is not None and high is not None else "—"
             values = (_route_label(row), f"{_pacific(row['target_window_start'], required=True)} → {_pacific(row['target_window_end'], required=True)}",
                       _percent(row["raw_probability"]), _percent(row["calibrated_probability"]),
                       _direction(row), _quantity(row, "projected_trade_quantity") if row["execution_eligible"] else "—")
             if has_direction_plan:
-                values += (_direction_quantity(row), price,
+                values += (_direction_quantity(row),
                            _cash_range(row.get("projected_cash_after_low"), row.get("projected_cash_after_high")) if row["execution_eligible"] else "—",
                            _remaining_shares(row), _plan_action(row))
             else:
-                values += (price, _entry_decision(row))
+                values += (_entry_decision(row),)
             forecast_rows.append(values)
         headers = ["Forecast", "Target window, Pacific", "Raw P(up)", "Published P(up)", "Direction", "Projected Trade Quantity"]
         if has_direction_plan:
-            headers += ["Direction Based Trade Qty", "Trade Price (planning range)", "Cash available after (range)",
+            headers += ["Direction Based Trade Qty", "Cash available after (range)",
                         "Shares remaining", "Plan action"]
         else:
-            headers += ["Trade Price (planning range)", "Entry decision"]
+            headers += ["Entry decision"]
         lines += _table(headers, forecast_rows)
-    lines += ["## How quantities and prices are planned", "",
+    lines += ["## How quantities are planned", "",
               f"Each projected size starts with `account value × min({symbol_cap:g} × horizon weight / 10, {order_cap:g})`, "
               "using weights 1, 2, 3 and 4 for hourly, four-hour, daily and weekly opportunities. "
               "Current cash, total exposure and the stock's existing investment can reduce that capacity. "
-              "Whole-share quantities use the upper end of the planning price range.", ""]
+              "Executable whole-share quantities use live quotes and actual available cash and holdings.", ""]
     scheduled_explanation = [
               f"Scheduled entries apply the forecast-confidence rule and share one cash budget, capped at {_percent(cash_cap)} of available cash, "
               f"{_percent(gross_cap)} gross account exposure and {_percent(symbol_cap)} per-stock exposure. "
@@ -527,23 +534,19 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
                              "This separate long-only preview retains its model and entry checks; it is not the direction-based buy/sell projection.", "",
                              *scheduled_explanation]
         scheduled_rows = [(row["symbol"], _route_label(row), _quantity(row, "scheduled_trade_quantity"),
-                           _cash_range(row.get("scheduled_trade_price_low", row.get("trade_price_low")),
-                                       row.get("scheduled_trade_price_high", row.get("trade_price_high"))) if row["execution_eligible"] else "—",
                            _entry_decision(row)) for row in rows]
-        scheduled_details += _table(["Stock", "Forecast", "Scheduled entry quantity", "Scheduled entry planning range", "Entry decision"], scheduled_rows)
+        scheduled_details += _table(["Stock", "Forecast", "Scheduled entry quantity", "Entry decision"], scheduled_rows)
         scheduled_details += ["</details>", ""]
     else:
         lines += scheduled_explanation
     if has_direction_plan:
+        autonomous = set(projection.get("autonomous_horizons") or ())
         lines += ["The direction projection instead carries its conditional sale proceeds and purchase costs through one chronological balance. "
-                  "Existing open-order reservations and allocations to later horizons remain protected. Shares remaining includes protected holdings; "
-                  "a smaller amount in parentheses is the total after open-order reservations. Only eligible shares may be sold.", "",
-                  "Planning prices follow the historical median move from the prior session's planning close to each clock, with a working range of "
-                  f"±{_policy_number(_mapping(report.get('planning_price_path')), 'working_half_width_bps', 20):g} basis points. "
-                  "Price and cash ranges are estimates only, never execution limits. Trades may proceed outside either range using the current "
-                  "tradable quote, actual available cash and shares held. The wider historical range is retained for stress analysis.", ""]
-    else:
-        lines += ["Planning prices use the middle 90% of observed historical moves from the prior session's close to the entry time.", ""]
+                  + ("1h and 4h bearish signals can sell available shares across horizons; 1d and 1w retain their ownership rules. "
+                     "Existing open-order reservations remain protected. " if {"1h", "4h"} <= autonomous else
+                     "Existing open-order reservations and allocations to later horizons remain protected. ") +
+                  "Shares remaining includes protected holdings; a smaller amount in parentheses is the total after open-order reservations. "
+                  "Only eligible shares may be sold.", ""]
     completion = _mapping(report.get("reference_completion"))
     filled_references = [item for item in _mapping(completion.get("references")).values()
                          if item.get("status") == "AVAILABLE_SYNTHETIC"]
@@ -573,7 +576,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
                          for symbol, count in sorted(counts.items())])
         lines += [""]
     lines += ["At order time, buys use the current ask and sells use the current bid to set their live limit prices; "
-              "quantities are recalculated from actual available cash and holdings. Estimated prices and balances do not veto an order.", "",
+              "quantities are recalculated from actual available cash and holdings.", "",
               *projection_details, *scheduled_details, *model_details]
     evaluation = _mapping(report.get("evaluation_summary"))
     if evaluation:

@@ -32,6 +32,7 @@ _FORECAST_FIELDS = frozenset({
     "target_price_source_contract", "target_price_dataset", "execution_authority", "broker_orders_enabled",
     "symbol_fitted_target_rows", "symbol_route_fitted_target_rows", "assumed_round_trip_cost",
     "probability_target_contract", "gameplan_variant",
+    "direction_policy_version", "direction_up_threshold", "direction_down_threshold",
 })
 _PRICE_FIELDS = frozenset({
     "contract_version", "observed_at", "price_source_contract", "price_dataset", "working_half_width_bps",
