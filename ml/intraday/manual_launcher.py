@@ -61,7 +61,7 @@ def _run_scout_engine(args, *, wake, stop, clock):
     result = live_session.run_manual(repository=args.repository, datastore=args.datastore,
         profile=args.profile or args.repository / "scratch/cross-pc/local-profile.json",
         watchlist=args.watchlist or args.repository / "datafetching/watchlist.local.txt",
-        scout_admission=args.scout_admission, clock=startup_clock,
+        scout_admission=args.scout_admission, clock=startup_clock, model_recipe=args.model_recipe,
         config=live_session.ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
             symbol_workers=args.symbol_workers, lookback_days=args.lookback_days, use_supervised_models=True))
     print(json.dumps(result, sort_keys=True))
@@ -144,6 +144,8 @@ def _arguments(argv):
     parser.add_argument("--publication-offset-seconds", type=float, default=30)
     parser.add_argument("--symbol-workers", type=int, default=1)
     parser.add_argument("--lookback-days", type=int)
+    parser.add_argument("--model-recipe", type=Path,
+        help="Explicit local manual model recipe; never replace the frozen study default")
     return parser.parse_args(argv)
 
 

@@ -365,7 +365,13 @@ class ShadowRunner:
             frame=_frame(history)
             available=pd.to_datetime(frame.available_at,utc=True)
             used=frame.loc[available.le(pd.Timestamp(cutoff)) & pd.to_datetime(frame.opened_at,utc=True).le(pd.Timestamp(reference))]
-            snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
+            if dataset.manifest.get("reference_fill_policy"):
+                # Carry proofs bind microsecond receipt clocks and exact prices;
+                # pandas' default JSON precision would invalidate that lineage.
+                from .forward_fill import _clean
+                snapshot["candles"] = _clean(used.to_dict(orient="records"))
+            else:
+                snapshot["candles"]=json.loads(used.to_json(orient="records",date_format="iso"))
             frozen=self.store.freeze_inputs(cycle_id,symbol,snapshot)
         snapshot_hash,snapshot=frozen
         if (snapshot.get("manifest", {}).get("preparation_only")
@@ -434,6 +440,9 @@ class ShadowRunner:
         if inf.get("native_interval_contract"):
             payload.update({key:inf[key] for key in
                 ("feature_version", "feature_policy", "label_provenance", "native_interval_contract")})
+        if inf.get("reference_fill_policy"):
+            payload["reference_fill_policy"] = inf["reference_fill_policy"]
+            payload["reference_price_basis"] = inf.get("reference_price_basis", "genuine_observation")
         reference_rows=[row for row in snapshot.get("candles", [])
                         if instant(row["opened_at"]) == reference]
         if reference_rows:
@@ -443,6 +452,15 @@ class ShadowRunner:
                 **{field:candle.get(field) for field in (
                     "observed_constituents", "synthetic_constituents", "synthetic",
                     "no_trade", "source_id", "availability_kind")}}
+            if isinstance(candle.get("forward_fill_contract"), str):
+                from .forward_fill import verified_reference
+                if not verified_reference(candle):
+                    raise ContractError("Frozen forward-filled reference provenance is invalid")
+                payload["reference_provenance"].update(
+                    forward_fill_contract=candle["forward_fill_contract"],
+                    price_basis="forward_filled_last_genuine_close",
+                    evidence=json.loads(candle["evidence_json"]),
+                    availability_basis_meaning="Actual receipt of source-empty response; prices are carried, not newly observed")
         persistence_start=time.perf_counter()
         forecast=self.store.save_forecast(payload,intent=intent)
         self.store.event(cycle_id,"forecast_persisted",{"forecast_id":forecast["forecast_id"],

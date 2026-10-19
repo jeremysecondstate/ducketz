@@ -49,6 +49,36 @@ It does not replace an ineligible reference with a nearby candle. Keep minimum
 rows, dates, classes and calibration support; insufficient symbols remain
 unavailable. More regularization does not manufacture missing evidence.
 
+A separately authorized local recipe may select the versioned genuine-close
+reference-fill policy. After two stable covered source-empty responses, it can
+project the latest genuine same-source close onto the completed reference:
+flat OHLC, zero observed volume, explicit synthetic status and original anchor
+timestamp, age, hash and receipt evidence. This is a derived price reference,
+not a native market observation or market-wide no-trade claim. Raw histories
+and issued snapshots are preserved; future genuine bars take priority.
+
+This policy retains genuine-history training features and labels. Only the
+current carried reference joins inference and sizing, so consecutive empty
+windows cannot multiply synthetic labels or replace the observed indicator
+history with zero-volume rows. Minimum support, calibration, held-out gates
+and model specifications stay frozen. Derived-reference outcomes are kept in
+the synthetic population, separate from genuine-reference accuracy. The opt-in
+is private to the authorizing PC and never activates through shared-source
+adoption alone.
+
+Each filled interval retains an immutable projection receipt with its source
+and anchor proof. Changes to a projection append linked revisions. On the next
+completed quarter, the feed requests fresh overlapping data for that interval
+after current acquisition; the original empty responses cannot satisfy this
+recheck. Real recovered candles enter future history without rewriting issued
+forecasts. Pending work survives manual sessions. If the provider's advertised
+live replay range has expired, retain an explicit historical-recovery
+requirement rather than reporting recovery or retrying forever.
+
+The manual entrypoints accept an explicit `--model-recipe` path so an isolated
+live runtime can select this policy while a separate study keeps its original
+recipe and protocol. A missing explicit selection fails without fallback.
+
 Compare probabilities with actual observed outcomes, proper probability scores
 and simple baselines. A 96% forecast is not 96% measured accuracy. Separate
 synthetic outcomes from genuinely missing outcomes and never count synthetic

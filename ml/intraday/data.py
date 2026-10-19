@@ -376,6 +376,9 @@ def synthetic_continuity_verified(candle: Mapping) -> bool:
             return False
         if not synthetic:
             return True
+        if isinstance(candle.get("forward_fill_contract"), str):
+            from .forward_fill import verified_reference
+            return verified_reference(candle)
         evidence = json.loads(candle.get("evidence_json", "{}"))
         from .no_trade import verified_omission_pair, response_rows
         def source_matches(responses, available_at):
