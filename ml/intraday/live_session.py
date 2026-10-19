@@ -361,7 +361,7 @@ def _scout_startup_proof(executor, session_id, *, clock):
 
 
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep,
-               scout_admission="broker-local"):
+               scout_admission="broker-local", model_recipe=None):
     from .data import AcquisitionJournal, load_local_history
     from .exact_status import retry_delay
     from app.services.schwab import SchwabSession
@@ -484,7 +484,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             # Read overnight-installed recipes and compatibility at wake, not
             # when the operator first launches the sleeping process.
             from .live_model_recipe import prepare_manual_models, native_interval_symbols_for_runtime
-            config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols)
+            config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols,
+                **({"recipe_path": model_recipe} if model_recipe is not None else {}))
             native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
             if pc == "Atlas":
                 proof = compatibility()
@@ -540,6 +541,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 pc=pc,symbols=symbols,session_id=session_id,clock=clock,
                 publication_offset_seconds=config.publication_offset_seconds,
                 native_interval_symbols=native_interval_symbols,
+                reference_fill_policy=getattr(model_runtime.get("dataset_builder"), "reference_fill_policy", None),
                 on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                                   stopped=should_stop,**model_runtime)
@@ -711,6 +713,8 @@ def main(argv=None):
     parser.add_argument("--publication-offset-seconds",type=float,default=30)
     parser.add_argument("--symbol-workers",type=int,default=1)
     parser.add_argument("--lookback-days",type=int)
+    parser.add_argument("--model-recipe",type=Path,
+        help="Explicit local manual model recipe; missing or incompatible selections fail")
     args = parser.parse_args(argv)
     profile = args.profile or args.repository / "scratch/cross-pc/local-profile.json"
     watchlist = args.watchlist or args.repository / "datafetching/watchlist.local.txt"
@@ -726,7 +730,8 @@ def main(argv=None):
         print(json.dumps(report,sort_keys=True))
         return 2
     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
-        scout_admission=args.scout_admission,config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
+        scout_admission=args.scout_admission,model_recipe=args.model_recipe,
+        config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
             symbol_workers=args.symbol_workers,lookback_days=args.lookback_days,use_supervised_models=True))
     print(json.dumps(result,sort_keys=True))
     return 1 if result["status"] == "FAILED" else 0

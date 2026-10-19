@@ -175,11 +175,21 @@ def _validate_recipe(value, *, pc, symbols):
             required.add("training_timing_contract")
             if timing_mode_from_metadata(value) not in {HISTORICAL_RESEARCH, OPERATIONAL_REPLAY}:
                 raise ContractError("A migrated recipe must explicitly select research or exact replay")
+        reference_fill_policy = value.get("reference_fill_policy")
+        native_feature_contract = _native_feature_contract()
+        if "reference_fill_policy" in value:
+            from .forward_fill import policy_contract, feature_contract as fill_feature_contract
+            required.add("reference_fill_policy")
+            if (value["schema_version"] not in {NATIVE_SCHEMA_VERSION, MARKET_SCHEMA_VERSION}
+                    or reference_fill_policy != policy_contract()):
+                raise ContractError("Reference filling requires an explicit supported local native recipe policy")
+            native_feature_contract = fill_feature_contract()
         if value["schema_version"] in {NATIVE_SCHEMA_VERSION, MARKET_SCHEMA_VERSION}:
             required.add("symbol_feature_contracts")
             selected = value.get("symbol_feature_contracts")
             if (not isinstance(selected, dict) or not selected or not set(selected).issubset(symbols)
-                    or any(contract != _native_feature_contract() for contract in selected.values())):
+                    or any(contract != native_feature_contract for contract in selected.values())
+                    or reference_fill_policy is not None and set(selected) != set(symbols)):
                 raise ContractError("Native manual recipe requires explicit local symbol feature contracts")
         if value["schema_version"] == MARKET_SCHEMA_VERSION:
             from .market_context import validate_market_context_contract
@@ -279,6 +289,26 @@ def migrate_native_interval_recipe(value, *, pc, symbols, native_symbols, instal
 def native_interval_symbols_for_runtime(model_runtime):
     """Read only the validated startup adapter, never mutable disk selection."""
     return tuple(getattr(model_runtime.get("dataset_builder"), "native_interval_symbols", ()))
+
+
+def migrate_forward_fill_recipe(value, *, pc, symbols, installed_at, authority_reference):
+    """Opt this PC into a derived current reference without inventing training labels.
+
+    The caller preserves and installs the private original separately. Model,
+    calibration, source, timing, market context and support choices stay frozen.
+    """
+    from .forward_fill import policy_contract, feature_contract as fill_feature_contract
+    original = _validate_recipe(value, pc=pc, symbols=symbols)
+    if (original["schema_version"] not in {NATIVE_SCHEMA_VERSION, MARKET_SCHEMA_VERSION}
+            or set(original.get("symbol_feature_contracts", {})) != set(symbols)):
+        raise ContractError("Reference filling requires a native feature contract for every local symbol")
+    revised = {**deepcopy(original), "installed_at": instant(installed_at).isoformat(),
+        "authority_reference": authority_reference, "migrated_from_sha256": original["sha256"],
+        "reference_fill_policy": policy_contract(),
+        "symbol_feature_contracts": {symbol: fill_feature_contract() for symbol in symbols}}
+    revised.pop("sha256", None)
+    revised["sha256"] = _sha(revised)
+    return _validate_recipe(revised, pc=pc, symbols=symbols)
 
 
 def migrate_market_context_recipe(value, *, pc, symbols, source_ids, collection_configuration_sha256,
@@ -494,19 +524,24 @@ def _persist_rejected(result, *, artifact_dir, run_id):
     return str(destination.resolve())
 
 
-def prepare_manual_models(config, *, datastore, pc, symbols):
+def prepare_manual_models(config, *, datastore, pc, symbols, recipe_path=None):
     """Read a local recipe once and return startup-only runner adapters.
 
-    Absence preserves the caller's original configuration and creates nothing.
+    Default-path absence preserves the caller's configuration and creates nothing.
+    An explicitly selected recipe must exist; it never falls back to a different
+    recipe or shared model defaults. This allows separate frozen study/live inputs.
     A malformed installed recipe fails explicitly instead of silently selecting
     old or partially configured models. Editing the file affects a later manual
     startup only; the returned adapters retain their own validated copy.
     """
     symbols = _scope(pc, symbols)
-    path = Path(datastore) / "intraday" / pc.lower() / "manual-model-recipe.json"
+    path = (Path(recipe_path) if recipe_path is not None else
+            Path(datastore) / "intraday" / pc.lower() / "manual-model-recipe.json")
     try:
         raw = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
+        if recipe_path is not None:
+            raise ContractError("Explicit manual model recipe is missing: " + str(path)) from exc
         return config, {}
     try:
         recipe = _validate_recipe(json.loads(raw, object_pairs_hook=_unique_object), pc=pc, symbols=symbols)
@@ -521,6 +556,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
     symbol_contracts = deepcopy(recipe.get("symbol_feature_contracts", {}))
     context_contract = deepcopy(recipe.get("market_context_contract"))
     recovery_contract = recipe.get("historical_recovery_contract")
+    reference_fill_policy = deepcopy(recipe.get("reference_fill_policy"))
     expected_features = (tuple(FEATURE_NAMES) + tuple(context_contract["feature_names"])
                          if context_contract is not None else tuple(FEATURE_NAMES))
     frozen_scope = deepcopy(recipe.get("dataset_scope"))
@@ -534,7 +570,7 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
         if _assessment and _preparation:
             raise ContractError("Assessment history and non-trading preparation are distinct modes")
         if synthetic_policy != "exclude":
-            raise ContractError("Observed manual recipe cannot admit synthetic labels or feature candles")
+            raise ContractError("Manual recipe cannot admit synthetic training labels")
         if feature_contract != _feature_contract():
             raise ContractError("Manual recipe feature contract changed after session startup")
         if frozen_scope is not None and lookback_days != frozen_scope["lookback_days"]:
@@ -547,8 +583,11 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
             symbol = next(iter(populations))
         selected_contract = symbol_contracts.get(symbol, feature_contract)
         if symbol in symbol_contracts:
-            from .native_interval import build_native_interval_dataset
-            dataset = build_native_interval_dataset(candles, cutoff=cutoff, reference_at=reference_at,
+            if reference_fill_policy is not None:
+                from .forward_fill import build_forward_fill_dataset as native_builder
+            else:
+                from .native_interval import build_native_interval_dataset as native_builder
+            dataset = native_builder(candles, cutoff=cutoff, reference_at=reference_at,
                 lookback_days=lookback_days, recovery_contract=recovery_contract, preparation_only=_preparation,
                 timing_mode=timing_mode)
         else:
@@ -687,12 +726,30 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
                     metadata.get("market_context", {}).get("contract") != context_contract)
                 or (context_contract is None and metadata.get("market_context") is not None)):
             raise ContractError("Manual recipe fit requires its own frozen observed-only dataset evidence")
+        inference_synthetic_fraction = 0.0
+        if reference_fill_policy is not None:
+            from .forward_fill import verified_reference
+            basis = metadata.get("reference_price_basis")
+            reference_fill = metadata.get("reference_fill_reference")
+            if (metadata.get("reference_fill_policy") != reference_fill_policy
+                    or basis not in {"observed_native", "forward_filled_last_genuine_close"}
+                    or basis == "observed_native" and reference_fill is not None):
+                raise ContractError("Manual recipe requires its frozen reference-fill input evidence")
+            if basis == "forward_filled_last_genuine_close":
+                if (not isinstance(reference_fill, dict) or not verified_reference(reference_fill)
+                        or reference_fill.get("symbol") != metadata.get("manual_recipe_symbol")
+                        or instant(reference_fill["available_at"]) > instant(kwargs.get("training_cutoff"))):
+                    raise ContractError("Manual recipe requires a verified available genuine-close reference")
+                inference_synthetic_fraction = 1 / 20
+        elif any(metadata.get(key) is not None for key in
+                 ("reference_fill_policy", "reference_fill_reference", "reference_price_basis")):
+            raise ContractError("Reference-fill evidence requires this session's explicit local recipe")
         features, inference = np.asarray(X), np.asarray(inference_X)
         if (features.ndim != 2 or features.shape != (len(y), len(expected_features))
                 or inference.shape != (1, len(expected_features))
                 or not np.isfinite(features).all() or not np.isfinite(inference).all()
                 or (features[:, FEATURE_NAMES.index("synthetic_input_fraction20")] != 0).any()
-                or inference[0, FEATURE_NAMES.index("synthetic_input_fraction20")] != 0):
+                or inference[0, FEATURE_NAMES.index("synthetic_input_fraction20")] != inference_synthetic_fraction):
             raise ContractError("Manual recipe fit requires finite observed-only feature matrices")
         _training_support(y, kwargs.get("reference_at", ()), kwargs.get("target_close_at", ()),
                           kwargs.get("label_available_at", ()), cutoff=kwargs.get("training_cutoff"),
@@ -719,5 +776,6 @@ def prepare_manual_models(config, *, datastore, pc, symbols):
     dataset_builder.native_interval_symbols = tuple(symbol for symbol in symbols if symbol in symbol_contracts)
     dataset_builder.market_context_contract = deepcopy(context_contract)
     dataset_builder.historical_recovery_contract = recovery_contract
+    dataset_builder.reference_fill_policy = deepcopy(reference_fill_policy)
     dataset_builder.market_collection_configuration_sha256 = recipe.get("market_collection_configuration_sha256")
     return selected_config, {"dataset_builder": dataset_builder, "trainer": trainer}

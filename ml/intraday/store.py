@@ -291,7 +291,8 @@ class ShadowStore:
             candle_id = self.record_candle(candle)
             label = number(candle["close"], positive=True) >= number(forecast["reference_open"], positive=True)
             price = str(candle["close"])
-            status = "synthetic" if candle.get("synthetic") else "scored"
+            derived_reference = isinstance(forecast.get("reference_provenance", {}).get("forward_fill_contract"), str)
+            status = "synthetic" if candle.get("synthetic") or derived_reference else "scored"
         market_return = None if price is None else str(number(price) / number(forecast["reference_open"]) - 1)
         evidence = {"forecast_id": key, "status": status, "target_not_down": label,
                     "reference_to_target_return": market_return,

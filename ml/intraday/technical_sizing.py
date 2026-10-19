@@ -404,9 +404,26 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
         value["reason"] = "original_completed_reference_unavailable"
     else:
         admitted = len(frame)
-        excluded_synthetic = int(frame.synthetic.sum()) if synthetic_policy == "exclude" else 0
+        fill_policy = (forecast_snapshot.get("manifest") or {}).get("reference_fill_policy")
+        carried = pd.Series(False, index=frame.index)
+        derived = frame["forward_fill_contract"].notna() if "forward_fill_contract" in frame else carried.copy()
+        if derived.any() and fill_policy is None:
+            value["reason"] = "undeclared_forward_filled_reference"
+            return IndicatorSnapshot(digest(value), encoded(value))
+        if fill_policy is not None:
+            from .forward_fill import policy_contract, verified_reference
+            recipe_policy = (forecast_snapshot.get("manifest", {}).get("manual_model_recipe") or {}).get("reference_fill_policy")
+            if fill_policy != policy_contract() or recipe_policy != fill_policy:
+                raise ContractError("Frozen sizing reference-fill policy differs from its manual recipe")
+            valid_derived = frame.apply(lambda row: verified_reference(row.to_dict()), axis=1)
+            if (derived & ~valid_derived).any():
+                value["reason"] = "invalid_forward_filled_reference"
+                return IndicatorSnapshot(digest(value), encoded(value))
+            carried = frame.opened_at.eq(pd.Timestamp(reference)) & valid_derived
+            value["input_population"]["reference_fill_policy"] = fill_policy
+        excluded_synthetic = int((frame.synthetic & ~carried).sum()) if synthetic_policy == "exclude" else 0
         if synthetic_policy == "exclude":
-            frame = frame.loc[~frame.synthetic].copy()
+            frame = frame.loc[~frame.synthetic | carried].copy()
             if frame.empty or frame.opened_at.iloc[-1] != pd.Timestamp(reference):
                 value["reason"] = "original_observed_reference_unavailable"
                 return IndicatorSnapshot(digest(value), encoded(value))
@@ -441,7 +458,7 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
                         "elapsed_minutes_previous": float(frame.opened_at.diff().dt.total_seconds().iloc[-1] / 60) if len(frame) > 1 else None,
                         "elapsed_minutes_total": float((frame.opened_at.iloc[-1] - frame.opened_at.iloc[0]).total_seconds() / 60),
                         "gaps_or_closures": int(frame.opened_at.diff().dropna().ne(pd.Timedelta(STEP)).sum()),
-                        "missing_policy": "no_filling", "synthetic_policy": (
+                        "missing_policy": "latest_genuine_close_current_reference_only" if carried.any() else "no_filling", "synthetic_policy": (
                             "exclude_before_indicators" if synthetic_policy == "exclude" else "include_validated_with_original_evidence"),
                         "synthetic_policy_basis": population_basis,
                         "derivative_basis": "first_and_second_differences_per_observed_step"})
