@@ -17,7 +17,8 @@ import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.account_gameplan.authority import (AccountAuthority, AuthorityBinding, AuthorityError,
-    IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted)
+    IntradayCapacitySnapshot, IntradayReservationRequest, Fill, OrderEvidence, OPEN, SubmissionNotStarted,
+    lease_acquisition_failure_evidence)
 from ml.stock_trader.horizon_broker import capture_order_evidence
 from ml.stock_trader.horizon_ledger import LedgerError, PortfolioEvidence
 from .local_execution import (load_local_binding, IntradayLedger as HorizonLedger, NATIVE_PATH, AUTHORITY_PATH, LOCK_PATH, broker_pending)
@@ -44,6 +45,9 @@ _SAFE_SUBMISSION_REASONS = frozenset({
     "Market session changed before submission",
     "Quote needs refresh before submission",
     "CURRENT_FENCED_LEASE_REQUIRED",
+    "LEASE_ACQUISITION_EXPIRED_BEFORE_RETURN",
+    "AUTHORITY_CLOCK_MOVED_BACKWARDS",
+    "LEASE_ALREADY_OWNED",
     "INTRADAY_CAPACITY_SNAPSHOT_REQUIRED",
     "LATEST_INTRADAY_CAPACITY_SNAPSHOT_REQUIRED",
     "INTRADAY_CAPACITY_SNAPSHOT_STALE_OR_FUTURE",
@@ -76,6 +80,9 @@ def _submission_failure_evidence(exc, stage):
             item["message"] = str(current)
         if getattr(current, "intraday_authority_renewal_failure", None) is _AUTHORITY_RENEWAL_FAILURE:
             item["local_operation"] = "authority.renew_lease"
+        acquisition = lease_acquisition_failure_evidence(current)
+        if acquisition is not None:
+            item["lease_acquisition"] = acquisition
         if isinstance(current, sqlite3.Error):
             code = getattr(current, "sqlite_errorcode", None)
             name = getattr(current, "sqlite_errorname", None)
