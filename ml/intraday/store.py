@@ -8,6 +8,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -147,7 +148,7 @@ class ShadowStore:
             row = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (cycle_id, symbol)).fetchone()
         return self._forecast_value(row) if row else None
 
-    def forecasts(self, *, pc=None, symbol=None):
+    def forecasts(self, *, pc=None, symbol=None, forecast_ids=None):
         # Execution chronology concerns one symbol. Use the existing index to
         # avoid decoding unrelated model payloads while account evidence ages.
         clauses, parameters = [], []
@@ -157,11 +158,80 @@ class ShadowStore:
         if symbol is not None:
             clauses.append("symbol=?")
             parameters.append(symbol)
+        if forecast_ids is not None:
+            identities = tuple(dict.fromkeys(forecast_ids))
+            if not identities:
+                return []
+            clauses.append("id IN (SELECT value FROM json_each(?))")
+            parameters.append(encoded(identities))
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
         with self.connect() as db:
             rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts" +
                               where + " ORDER BY rowid", parameters).fetchall()
         return [self._forecast_value(row) for row in rows]
+
+    def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
+        """Validate immutable bytes, decoding model payloads only for new work.
+
+        SQLite still reads forecast bytes. Canonical content written by this
+        store can be hashed without constructing its large Python model trees;
+        other encodings retain the existing full semantic validation path.
+        """
+        fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
+                  "mode", "target_open", "target_close", "population_contract", "source_dataset", "source_id")
+        paths = ",".join("'$." + field + "'" for field in fields)
+        now = instant(as_of)
+        selected = []
+        with self.connect() as db:
+            db.create_function("scoring_content_sha256", 1,
+                               lambda raw: hashlib.sha256(raw.encode()).hexdigest())
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,"
+                "CASE WHEN json_valid(payload) THEN scoring_content_sha256(json_remove(payload,'$.forecast_id')) END,"
+                "CASE WHEN json_valid(payload) THEN json_extract(payload," + paths + ") END "
+                "FROM forecasts WHERE pc=? ORDER BY rowid", (pc,))
+            for row in rows:
+                if stopped():
+                    return []
+                key, actor, symbol, cycle, reference, issued, fingerprint, raw_projection = row
+                full = None
+                projection = dict(zip(fields, json.loads(raw_projection))) if raw_projection else {}
+                if (fingerprint != key or any(projection.get(field) != indexed for field, indexed in
+                        zip(fields[:6], (key, actor, symbol, cycle, reference, issued)))
+                        or any(not isinstance(projection.get(field), str) for field in
+                               ("mode", "target_open", "target_close"))
+                        or any(projection.get(field) is not None and not isinstance(projection[field], str)
+                               for field in ("population_contract", "source_dataset", "source_id"))):
+                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                          "FROM forecasts WHERE id=?", (key,)).fetchone()
+                    full = self._forecast_value(original)
+                    projection = full
+                if projection["mode"] != "live" or instant(projection["target_close"]) > now:
+                    continue
+                # Retain validation of every prior revision, including a corrupt
+                # older outcome hidden behind a valid latest revision.
+                revisions = self.revisions(key)
+                latest = revisions[-1] if revisions else None
+                candidates = observed_candidates.get((symbol, instant(projection["target_open"])), [])
+                observed = next((value for value in reversed(candidates)
+                    if value.get("population_contract") == projection.get("population_contract")
+                    and instant(value["available_at"]) <= now
+                    and all(not projection.get(field) or value.get(field) == projection[field]
+                            for field in ("source_dataset", "source_id"))), None)
+                if observed is not None and instant(observed["available_at"]) <= now:
+                    if (latest is not None and latest["status"] in {"scored", "synthetic"}
+                            and latest.get("candle_id") == digest(observed)
+                            and instant(latest["observed_at"]) <= now):
+                        continue
+                elif latest is not None and latest["status"] in {"scored", "synthetic", "unscorable"}:
+                    continue
+                if full is None:
+                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                                          "FROM forecasts WHERE id=?", (key,)).fetchone()
+                    full = self._forecast_value(original)
+                selected.append(full)
+        # Release the read transaction before the caller acquires provider data
+        # or records an outcome on another connection.
+        return selected
 
     def save_forecast(self, payload, *, intent=None):
         # Return exactly the persisted JSON representation. Model metadata can

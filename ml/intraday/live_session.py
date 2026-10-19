@@ -93,7 +93,7 @@ class ExecutionQueue:
                 ORDER BY f.reference_at,q.symbol""",
                               (self.session_id,current)).fetchall()
         ids = {row[0] for row in rows}
-        return [f for f in self.store.forecasts(pc=self.actor) if f["forecast_id"] in ids]
+        return self.store.forecasts(pc=self.actor, forecast_ids=ids)
 
     def broker_due(self, now):
         with self.store.connect() as db:
@@ -221,7 +221,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             if not completed_15m_observation(candle) or instant(candle["available_at"]) > instant(clock()):
                 continue
             observed_candidates.setdefault((candle["symbol"],instant(candle["opened_at"])), []).append(candle)
-        for forecast in store.forecasts(pc=actor):
+        for forecast in store.scoring_forecasts(pc=actor, observed_candidates=observed_candidates,
+                as_of=clock(), stopped=lambda: stopped() or
+                (close_at is not None and instant(clock()) >= instant(close_at))):
             if stopped():
                 return
             if close_at is not None and instant(clock()) >= instant(close_at):

@@ -86,6 +86,7 @@ def test_final_pass_never_scores_other_session_actor_or_symbol(tmp_path):
 
 
 def test_verified_synthetic_final_target_retains_synthetic_outcome(tmp_path):
+    from tests.test_intraday_data import independent_absence
     store = ShadowStore(tmp_path / "synthetic.sqlite3")
     original = save_forecast(store)
     reference = CLOSE - STEP
@@ -96,7 +97,9 @@ def test_verified_synthetic_final_target_retains_synthetic_outcome(tmp_path):
     session = SessionBounds("same-session", (CLOSE - timedelta(hours=13)).isoformat(), CLOSE.isoformat())
     attempts = [IntervalResponse(str(index), "AAPL", SOURCE, "EQUS.MINI", reference.isoformat(), CLOSE.isoformat(),
         (CLOSE + timedelta(seconds=wait)).isoformat(), (CLOSE + timedelta(seconds=wait + 1)).isoformat(),
-        "success", (), session.opened_at, session.closed_at, "covered empty native fixture")
+        "success", (), session.opened_at, session.closed_at, "independent complete scope fixture",
+        no_trade_scope_evidence=independent_absence(symbol="AAPL",dataset="EQUS.MINI",opened_at=reference,
+            closed_at=CLOSE,verified_at=CLOSE+timedelta(seconds=wait+1)))
         for index, wait in enumerate((1, 6))]
     resolved = resolve_interval(attempts, session=session, previous=previous)
     assert resolved["status"] == "synthetic_no_trade"
@@ -144,7 +147,8 @@ def inert_manual(monkeypatch):
         value.__dict__.update(members)
         monkeypatch.setitem(sys.modules, name, value)
     module("ml.intraday.account_execution", IntradayAccountExecutor=lambda **kwargs: SimpleNamespace(
-        step=lambda *args: pytest.fail("Unexpected broker step"), recover=lambda: pytest.fail("Unexpected recovery")))
+        step=lambda *args: pytest.fail("Unexpected broker step"), recover=lambda: pytest.fail("Unexpected recovery")),
+        execution_failure_evidence=lambda *args: pytest.fail("Unexpected execution failure"))
     module("ml.intraday.local_execution", load_local_binding=lambda _: SimpleNamespace(actor="Atlas", symbols=("AAPL",)))
     module("ml.intraday.cancellation", retry_delay=lambda *args: pytest.fail("Unexpected broker retry"))
     module("app.services.schwab", SchwabSession=lambda: object())
