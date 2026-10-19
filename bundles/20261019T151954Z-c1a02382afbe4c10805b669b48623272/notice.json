@@ -1,0 +1,25 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261019T151245Z-767413ecf4cd4285a25df68904f100fc",
+  "change_id": "20261019T151245Z-767413ecf4cd4285a25df68904f100fc",
+  "commit_sha": "f5e47942b8ca310743c4053d6cac8f5c62e11feb",
+  "files": [
+    "ml/intraday/account_execution.py",
+    "tests/test_intraday_recovery_latency.py"
+  ],
+  "limitations": [
+    "Stacked draft PR depends on the existing lease diagnostics repair; no main merge or live recovery claimed."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/234",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed source installed locally. No process start/restart or trade. Existing process activation remains under human manual control.",
+  "scope": "shared independent diagnostics; applicable separately on each PC without model or symbol policy changes",
+  "summary": "Atlas published independent sizing-result phase diagnostics",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T15:16:18.089960Z",
+      "output_sha256": "04022e66915259f5f648565c9eeb86fb8705a2b5778b602434981d771d905b73",
+      "result": "118 offline tests passed"
+    }
+  ]
+}

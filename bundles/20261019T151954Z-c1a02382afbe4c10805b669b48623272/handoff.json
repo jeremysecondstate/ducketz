@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T15:19:54.142833Z",
+  "id": "20261019T151954Z-c1a02382afbe4c10805b669b48623272",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published independent sizing-result phase diagnostics"
+}
