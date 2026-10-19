@@ -34,6 +34,127 @@ def test_exact_cache_roundtrip_and_later_receipt_contract_cutoff_separation(tmp_
         assert (cache.hits, cache.misses) == (1, 3)
 
 
+def test_overlapping_cache_read_then_new_receipt_write_preserves_both_datasets(tmp_path):
+    """Preparation may commit while a live dataset is still reading hits."""
+    path = tmp_path / "overlapping.sqlite3"
+    first = sealed()
+    second = sealed(rows=[quote(bid=97)], snapshot_id="second")
+    third = sealed(rows=[quote(bid=96)], snapshot_id="third")
+    with ContextCache(path) as seed:
+        seed.build([first], symbol="DOCU", cutoff=CUTOFF)
+    with ContextCache(path) as live:
+        live.build([first], symbol="DOCU", cutoff=CUTOFF)
+        with ContextCache(path) as preparation:
+            assert preparation.build([second], symbol="DOCU", cutoff=CUTOFF) == build_market_context(
+                [second], symbol="DOCU", cutoff=CUTOFF)
+        assert live.build([third], symbol="DOCU", cutoff=CUTOFF) == build_market_context(
+            [third], symbol="DOCU", cutoff=CUTOFF)
+    with ContextCache(path) as verified:
+        for receipt in (first, second, third):
+            assert verified.build([receipt], symbol="DOCU", cutoff=CUTOFF) == build_market_context(
+                [receipt], symbol="DOCU", cutoff=CUTOFF)
+        assert verified.hits == 3
+
+
+def test_cache_contention_skips_only_optional_persistence(tmp_path):
+    path = tmp_path / "busy.sqlite3"
+    with ContextCache(path):
+        pass
+    locker = sqlite3.connect(path, timeout=0)
+    try:
+        locker.execute("BEGIN IMMEDIATE")
+        snapshot = sealed()
+        with ContextCache(path) as cache:
+            assert cache.connection.execute("PRAGMA busy_timeout").fetchone()[0] == 0
+            expected = build_market_context([snapshot], symbol="DOCU", cutoff=CUTOFF)
+            assert cache.build([snapshot], symbol="DOCU", cutoff=CUTOFF) == expected
+            assert cache.build([snapshot], symbol="DOCU", cutoff=CUTOFF) == expected
+            assert (cache.hits, cache.misses) == (1, 1)
+            assert not cache.connection.in_transaction
+        assert cache.write_skips == 1
+        assert locker.execute("SELECT count(*) FROM contexts").fetchone()[0] == 0
+    finally:
+        locker.close()
+    with ContextCache(path) as later:
+        assert later.build([snapshot], symbol="DOCU", cutoff=CUTOFF) == expected
+    with ContextCache(path) as hit:
+        hit.build([snapshot], symbol="DOCU", cutoff=CUTOFF)
+        assert hit.hits == 1
+
+
+@pytest.mark.parametrize("bound", ["bytes", "entries"])
+def test_pending_cache_is_bounded_without_changing_derived_values(tmp_path, monkeypatch, bound):
+    from ml.intraday import market_context_cache as module
+    path = tmp_path / "bounded.sqlite3"
+    monkeypatch.setattr(module, "MAX_PENDING_BYTES" if bound == "bytes" else "MAX_PENDING_ENTRIES", 1)
+    receipts = [sealed(), sealed(rows=[quote(bid=97)], snapshot_id="second")]
+    with ContextCache(path) as cache:
+        for snapshot in receipts:
+            assert cache.build([snapshot], symbol="DOCU", cutoff=CUTOFF) == build_market_context(
+                [snapshot], symbol="DOCU", cutoff=CUTOFF)
+        assert cache._pending_bytes <= module.MAX_PENDING_BYTES
+        assert len(cache._pending) <= module.MAX_PENDING_ENTRIES
+        assert cache.write_skips == (2 if bound == "bytes" else 1)
+    assert cache._pending == {} and cache._pending_bytes == 0
+
+
+def test_changed_receipt_at_exit_does_not_publish_staged_cache(tmp_path):
+    path = tmp_path / "changed-at-exit.sqlite3"
+    lazy = LazyFixture(sealed())
+    with pytest.raises(ContractError, match="receipt changed"):
+        with ContextCache(path) as cache:
+            cache.build([lazy], symbol="DOCU", cutoff=CUTOFF)
+            observer = sqlite3.connect(path)
+            try:
+                assert observer.execute("SELECT count(*) FROM contexts").fetchone()[0] == 0
+            finally:
+                observer.close()
+            lazy.changed = True
+    with sqlite3.connect(path) as connection:
+        assert connection.execute("SELECT count(*) FROM contexts").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("stage", ["initialization", "read", "write"])
+@pytest.mark.parametrize("code", [sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED, sqlite3.SQLITE_IOERR])
+def test_cache_bypasses_only_sqlite_contention_and_closes_connections(tmp_path, monkeypatch, stage, code):
+    from ml.intraday import market_context_cache as module
+    real_connect = sqlite3.connect
+    opened = []
+    class FailingConnection(sqlite3.Connection):
+        def fail(self):
+            error = sqlite3.OperationalError("database is locked" if code != sqlite3.SQLITE_IOERR else "disk I/O error")
+            error.sqlite_errorcode = code
+            raise error
+        def execute(self, sql, *args):
+            if stage == "initialization" and sql.startswith("PRAGMA journal_mode") or stage == "read" and sql.startswith("SELECT payload"):
+                self.fail()
+            return super().execute(sql, *args)
+        def executemany(self, sql, *args):
+            if stage == "write":
+                self.fail()
+            return super().executemany(sql, *args)
+    def connect(*args, **kwargs):
+        result = real_connect(*args, **kwargs, factory=FailingConnection)
+        opened.append(result)
+        return result
+    monkeypatch.setattr(module.sqlite3, "connect", connect)
+    snapshot = sealed()
+    def derive():
+        with ContextCache(tmp_path / "failure.sqlite3") as cache:
+            assert cache.build([snapshot], symbol="DOCU", cutoff=CUTOFF) == build_market_context(
+                [snapshot], symbol="DOCU", cutoff=CUTOFF)
+        assert cache.write_skips == (0 if stage == "read" else 1)
+        assert cache.read_skips == (1 if stage == "read" else 0)
+    if code == sqlite3.SQLITE_IOERR:
+        with pytest.raises(sqlite3.OperationalError, match="disk I/O error"):
+            derive()
+    else:
+        derive()
+    for connection in opened:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            connection.execute("SELECT 1")
+
+
 def test_cache_hit_never_accepts_changed_plain_receipt_bytes(tmp_path):
     snapshot = sealed()
     with ContextCache(tmp_path / "cache.sqlite3") as cache:
