@@ -136,6 +136,10 @@ class PredictionSignal:
     target_definition_version: str = ""
     target_price_source_contract: str = ""
     enrichment_feature_values: Mapping[str, float] = field(default_factory=dict)
+    planned_quantity: int | None = None
+    catchup_components: tuple[str, ...] = ()
+    timeout_retry_parent_id: str | None = None
+    timeout_retry_quantity: int | None = None
 
     @property
     def suggested_action(self) -> str:

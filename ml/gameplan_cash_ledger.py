@@ -10,7 +10,7 @@ from typing import Mapping
 
 import pandas as pd
 
-from ml.stock_direction_policy import stock_direction
+from ml.stock_direction_policy import stock_direction, stock_direction_for_policy, autonomous_horizon_sales
 from ml.stock_trader.contracts import StockTraderPolicy, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
 from ml.stock_trader.cross_horizon_fallback import validate_fallback_policy, donor_horizons, slot_quota
@@ -56,7 +56,9 @@ def _planning_direction(row: Mapping) -> str:
     if _saved_abstention(row):
         return "NO_EDGE"
     saved = str(row["direction"]).upper()
-    if saved != expected and not (saved == "NEUTRAL" and expected == "NO_EDGE"):
+    version = row.get("direction_policy_version")
+    saved_expected = stock_direction_for_policy(row["calibrated_probability"], None if version is None or pd.isna(version) else version)
+    if saved != saved_expected and not (saved == "NEUTRAL" and saved_expected == "NO_EDGE"):
         raise ValueError("Gameplan direction disagrees with its saved probability for " + str(row["id"]))
     return expected
 
@@ -294,7 +296,11 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                          key=lambda row: (FIXED_HORIZON_WEIGHTS[row["model_group"]], row["symbol"], str(row["id"])))
         for row in sellers:
             symbol, horizon = row["symbol"], row["model_group"]
-            own = [lot for lot in lots if lot["symbol"] == symbol and lot["horizon"] == horizon and lot["quantity"] > 0]
+            autonomous = signal_driven and autonomous_horizon_sales(horizon, day)
+            own = sorted((lot for lot in lots if lot["symbol"] == symbol and lot["quantity"] > 0
+                          and (autonomous or lot["horizon"] == horizon)),
+                         key=lambda lot: (lot["horizon"] != horizon,
+                                          FIXED_HORIZON_WEIGHTS[lot["horizon"]], lot["forecast_id"]))
             quantity = Decimal(int(free[symbol] + sum((lot["quantity"] for lot in own), ZERO)))
             if not quantity:
                 row["direction_based_reason"] = "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON"
@@ -315,6 +321,8 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 if row["direction_based_reason"] != "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON":
                     continue
                 symbol, horizon = row["symbol"], row["model_group"]
+                if autonomous_horizon_sales(horizon, day):
+                    continue
                 quota = slot_quota(fallback_budgets[symbol], horizon, timestamp, day)
                 row["fallback_slot_quota"] = quota
                 row["fallback_symbol_used_after"] = fallback_used[symbol]
@@ -437,7 +445,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                           "cash_change_low": float(cash[0] - starting_cash), "cash_change_high": float(cash[2] - starting_cash)},
               "no_fill_baseline": {"cash": float(starting_cash), "held_shares": {symbol: float(value) for symbol, value in initial_held.items()}},
               "assumptions": [
-                  "Promoted bullish probabilities above 50% buy; bearish below 50% sell; an exact 50% holds with zero direction quantity.",
+                  "P(up) at least 50.01% buys; at most 49.99% sells; the interval between holds with zero direction quantity.",
                   "One shared cash balance and separate symbol/horizon holdings; all row balances are after the entire hour's batch.",
                   "Each hour processes bearish sales, remaining due horizon exits, then bullish buys. Sales use shorter horizons first, then symbol order; buys use highest probability first, then shorter horizon and symbol.",
                   "Bearish sales use unallocated shares and that horizon's own shares only, never another horizon's allocation; pending sell shares remain reserved.",
@@ -452,11 +460,11 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     if signal_driven:
         report["holding_policy"] = SIGNAL_DRIVEN_HOLDING_POLICY
         report["assumptions"] = [
-            "Each new bullish forecast adds shares using current capacity; bearish forecasts sell eligible shares in their own horizon. An exact 50% holds.",
+            "P(up) at least 50.01% buys using current capacity; at most 49.99% sells; the interval between holds.",
             "Research assessment is disclosed separately and does not veto saved manual Gameplan instructions.",
             "Forecast window ends are prediction measurement times, not sale instructions. There are no scheduled expiry sales, including at day end.",
             "Each hour processes bearish sales, then bullish purchases. Holdings remain separated by symbol and horizon; cash and exposure are shared.",
-            "Unallocated shares may be assigned to bearish sales; another horizon's shares and pending sells remain protected.",
+            "From October 19, 1h and 4h bearish forecasts may sell any horizon's available shares, without fallback quotas or a bullish donor veto. The 1d and 1w ownership rules continue; pending sell shares remain reserved.",
             "These quantities assume fills at planning estimates and available sale proceeds. Live orders use current quotes, actual cash and confirmed holdings; no fill is guaranteed.",
             "Unfilled trades leave cash and shares unchanged. Subsequent projected quantities then require recalculation.",
         ]
@@ -473,7 +481,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                                  if "another horizon's shares" not in text]
         report["assumptions"] += [
             "Normal bearish sales use their own horizon and unallocated shares before any fallback sale. Reserved or pending inventory cannot activate a fallback.",
-            "Only a bearish forecast with genuinely no own or unallocated inventory may trim one eligible longer-horizon allocation, nearest first; weekly forecasts have no donor.",
+            "The historical bounded fallback applies to daily forecasts and pre-October-19 hourly forecasts with genuinely no own or unallocated inventory; weekly forecasts have no donor.",
             "Fallback sales share a 50% symbol daily cap based on initial longer-horizon holdings and a separate 50% cap for each initial donor allocation. Normal own-horizon sales are not charged to these caps.",
             "The 18 fixed entry opportunities have weights 1 for hourly, 2 for four-hour and 3 for daily (24 weight units). Each receives its frozen integer quota; unused quota does not roll forward. Donors buying at that clock or having a pending order are excluded.",
             "Caps reset next session from then-confirmed remaining holdings; there is no lifetime cap. This saved scenario does not reserve real shares or cash and does not guarantee better results.",

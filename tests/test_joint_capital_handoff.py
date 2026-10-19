@@ -341,3 +341,22 @@ def test_completed_reference_disclosures_survive_without_raw_reference_rows(save
     assert package["price_path"]["reference_completion"]["synthetic_bar_count"] == 3
     assert all(point["reference_is_synthetic"] for point in package["price_path"]["points"].values())
     assert "synthetic_bars" not in package["price_path"]["reference_completion"]
+
+
+def test_export_retains_current_direction_policy_and_neutral_interval(saved):
+    from ml.stock_direction_policy import STOCK_DIRECTION_POLICY_VERSION, BULLISH_PROBABILITY, BEARISH_PROBABILITY
+
+    saved.frame["calibrated_probability"] = .50005
+    saved.frame["direction"] = "NO_EDGE"
+    saved.frame["direction_policy_version"] = STOCK_DIRECTION_POLICY_VERSION
+    saved.frame["direction_up_threshold"] = BULLISH_PROBABILITY
+    saved.frame["direction_down_threshold"] = BEARISH_PROBABILITY
+    saved.frame.to_parquet(saved.game / "forecasts.parquet", index=False)
+    rebind(saved)
+    package = json.loads(export(saved).read_bytes())
+    assert len(package["forecasts"]) == 24
+    for row in package["forecasts"]:
+        assert row["direction_policy_version"] == STOCK_DIRECTION_POLICY_VERSION
+        assert row["direction_up_threshold"] == BULLISH_PROBABILITY
+        assert row["direction_down_threshold"] == BEARISH_PROBABILITY
+        assert row["calibrated_probability"] == .50005 and row["direction"] == "NO_EDGE"

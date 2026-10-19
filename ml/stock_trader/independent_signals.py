@@ -15,7 +15,7 @@ from typing import Mapping
 import pandas as pd
 
 from ml.artifacts import file_checksum
-from ml.stock_direction_policy import stock_direction
+from ml.stock_direction_policy import stock_direction_for_policy
 from ml.nightly_gameplan import ASSUMED_ROUND_TRIP_COST, EXECUTION_AUTHORITY, read_current_gameplan
 from ml.stock_trader.contracts import PredictionSignal, STOCK_TRADER_SYMBOLS, canonical_sha256, utc
 from ml.stock_trader.gameplan import GAMEPLAN_TIMEZONE, _entry_deadline, _gameplan_source_files
@@ -139,7 +139,8 @@ neither late predictions nor missing action slots are replayed.
             raise ValueError(f"{symbol}/{horizon} forecast promotion differs from its verified model report")
         if direction not in {"BULLISH", "BEARISH"}:
             raise ValueError(f"{symbol}/{horizon} has an invalid direction")
-        if direction != stock_direction(probability):
+        version = row.get("direction_policy_version")
+        if direction != stock_direction_for_policy(probability, None if version is None or pd.isna(version) else version):
             raise ValueError(f"{symbol}/{horizon} direction and probability disagree")
         signals[(symbol, horizon)] = PredictionSignal(
             symbol=symbol,

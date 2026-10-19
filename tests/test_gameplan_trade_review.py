@@ -49,8 +49,8 @@ def test_projection_survives_wait_and_model_assessment_without_becoming_a_schedu
                                 projected_trade_quantity=18, calibrated_probability=.61, planning_direction="BULLISH",
                                 target_window_end="2026-09-10T00:00:00Z")]
     text = render(tmp_path, rows)
-    assert "| Bullish | 6 | $313.54–$318.45 | Wait |" in text
-    assert "| Bullish | 18 | $313.54–$318.45 | Model assessment not passed |" in text
+    assert "| Bullish | 6 | Wait |" in text
+    assert "| Bullish | 18 | Model assessment not passed |" in text
     assert "0 scheduled entries" in text and "Scheduled capital reserved: **$0.00**" in text
     assert "Only scheduled entries commit shared cash" in text
     assert "54.00%" in text and "46.00%" in text and "54.71%" in text
@@ -84,7 +84,7 @@ def test_daily_dates_weekly_expiry_and_context_quantities_are_unambiguous(tmp_pa
     assert "| 1d@D+1 |" not in text and "| 1d@D+2 |" not in text
 
 
-def test_main_review_keeps_cash_and_prices_without_backend_status_or_repeated_qualifiers(tmp_path):
+def test_main_review_keeps_cash_and_recorded_prices_without_backend_status_or_repeated_qualifiers(tmp_path):
     text = render(tmp_path, [forecast()])
     main = text.split("<details>", 1)[0]
     assert "$112,081.48" in main and "$129,665.06" in main and "$17,583.58" in main
@@ -118,7 +118,7 @@ def test_renderer_rejects_fractional_projected_execution_quantity(tmp_path):
 def test_missing_projection_evidence_is_unavailable_without_inventing_zero_capacity(tmp_path):
     text = render(tmp_path, [forecast(projected_trade_quantity=None, projected_quantity_reason="PRICE_RANGE_UNAVAILABLE",
                                      trade_price_low=None, trade_price_high=None)])
-    assert "| Bullish | Unavailable | — | Wait |" in text
+    assert "| Bullish | Unavailable | Wait |" in text
 
 
 def test_model_assessment_displays_recorded_tolerance_without_claiming_baseline_outperformance(tmp_path):
@@ -204,10 +204,9 @@ def test_direction_plan_displays_signed_actions_and_the_same_post_hour_cash_with
     assert "| Bullish | — | — |" in context and context.endswith("| — | — | Outlook |")
     assert "0 scheduled entries" in text and "0 orders submitted" in text
     assert "projected purchases and sales are not submitted orders or actual fills" in text
-    assert "±25 basis points" in text
-    assert "Price and cash ranges are estimates only, never execution limits." in text
-    assert "Trades may proceed outside either range" in text
-    assert "Estimated prices and balances do not veto an order." in text
+    assert "Cash ranges are estimates only, never execution limits." in text
+    assert "Trades use the current tradable quote, actual available cash and shares held." in text
+    assert "Estimated cash balances do not veto an order." in text
     assert "checked again or skipped" not in text
     pd.testing.assert_frame_equal(data, before)
     assert details == original
@@ -238,3 +237,30 @@ def test_direction_quantity_does_not_invent_zero_when_evidence_is_missing(tmp_pa
     assert "| Bullish | 6 | Unavailable |" in text
     with pytest.raises(ValueError, match="signed whole shares"):
         render(tmp_path, [forecast(direction_based_trade_quantity=-1.25)])
+
+
+@pytest.mark.parametrize("direction_plan", [False, True])
+def test_report_omits_estimated_trade_prices_including_expandable_details(tmp_path, direction_plan):
+    rows, details = direction_rows() if direction_plan else [forecast()], report()
+    for row in rows:
+        row.update(trade_price_low=9123.11, trade_price_high=9124.22,
+                   scheduled_trade_price_low=9234.33, scheduled_trade_price_high=9235.44)
+    if direction_plan:
+        details["direction_based_projection"] = direction_projection()
+        for event in details["direction_based_projection"]["events"]:
+            event.update(price_low=9345.55, price_base=9346.66, price_high=9347.77)
+    before_rows, before_details = deepcopy(rows), deepcopy(details)
+    text = render(tmp_path, rows, details=details)
+    assert "— forecasts and actions" in text
+    assert "## How quantities are planned" in text
+    for removed in ("Trade Price", "Price range", "Scheduled entry planning range", "Planning price",
+                    "$9,123.11", "$9,124.22", "$9,234.33", "$9,235.44",
+                    "$9,345.55", "$9,346.66", "$9,347.77"):
+        assert removed not in text
+    assert "| AAPL | 1.25 | $396.98 | $316.34 | Sep 08, 2026 16:59 PDT |" in text
+    assert "current ask" in text and "current bid" in text
+    if direction_plan:
+        assert "| End-of-day cash | $1,101.00 | $1,106.00 | $1,111.00 |" in text
+        assert "Cash change low | Cash change base | Cash change high" in text
+        assert "Cash available after (range)" in text
+    assert rows == before_rows and details == before_details

@@ -218,8 +218,7 @@ same current cash being promised to several horizons or symbols.
                     else:
                         ceiling = equity * min(_money(policy.maximum_symbol_equity_fraction) * FIXED_HORIZON_WEIGHTS[horizon] / 10,
                                                _money(policy.maximum_single_order_equity_fraction))
-                        confidence = min(Decimal("0.5"), max(Decimal(0), 2 * Decimal(str(row["calibrated_probability"])) - 1))
-                        budget = ceiling * confidence
+                        budget = ceiling
                         result["trade_budget_before_cash_caps"] = float(budget)
                         quantity = int(max(Decimal(0), min(budget, available, remaining[symbol])) / ask)
                         batch = utc(row["target_window_start"]).isoformat()
