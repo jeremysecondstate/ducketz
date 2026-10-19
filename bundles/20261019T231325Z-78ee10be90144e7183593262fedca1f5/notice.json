@@ -1,0 +1,79 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T230800Z-79d145dce5d44d07822b06ddaf706c5f",
+  "completion_record": "20261019T230800Z-79d145dce5d44d07822b06ddaf706c5f",
+  "details": [
+    "Supersedes the original reviewed chronology completion while preserving its identity and the published permanent-policy source history.",
+    "Installed merged shared files locally with private originals and all unrelated local changes retained. Main integration remains separate."
+  ],
+  "files": [
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/intentions.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/starter_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/intraday/technical_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "ml/stock_direction_policy.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_intraday_intention_header_reuse.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_starter_sizing.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_intraday_technical_sizing.py"
+    },
+    {
+      "operation": "add",
+      "owned": true,
+      "path": "tests/test_oct19_intraday_direction.py"
+    },
+    {
+      "operation": "modify",
+      "owned": true,
+      "path": "tests/test_stock_direction_policy.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic execution checks and private retained-input timing comparisons; the historical long preparation delay is not reproduced or attributed.",
+    "The cache still reads and hashes original bytes and performs full semantic validation on first observation or any change.",
+    "Private source data, fitted models, account state and retained timing evidence remain local.",
+    "Main integration, local installation, process loading and live exercise are separate facts.",
+    "Original sealed record is retained as superseded; this successor supplies new exact-byte evidence for overlap resolution. Existing pushed policy history is retained."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/261",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas fifteen-minute requires a future Jeremy-controlled manual start or restart to load this optimization. Atlas Gameplan requires no restart for this change. No Scout restart inferred; nightly production continues independently.",
+  "scope": "shared",
+  "source_commit": "0a6311c9ecc8b8444c9a489cb2bf910c0820543b",
+  "summary": "Atlas: reuse intention headers with permanent direction policy retained",
+  "tests": [
+    "Sealed 299 passed in 68.90s (0:01:08)",
+    "Isolated 299 passed in 40.79s",
+    "Installed 299 passed in 39.18s"
+  ]
+}

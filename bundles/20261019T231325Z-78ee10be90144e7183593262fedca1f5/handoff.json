@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T23:13:25.511451Z",
+  "id": "20261019T231325Z-78ee10be90144e7183593262fedca1f5",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: reuse intention headers with permanent direction policy retained"
+}
