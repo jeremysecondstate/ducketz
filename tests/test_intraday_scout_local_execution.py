@@ -279,6 +279,70 @@ def test_failed_final_forecast_read_records_exact_operation_without_post(env, mo
     assert record(env)["state"] == "UNKNOWN" and env.broker.posts == []
 
 
+def test_transient_native_forecast_read_before_claim_sends_only_once(env, monkeypatch):
+    from ml.intraday import local_forecast as reader
+    original = reader._saved_forecast_once
+    failures = []
+    def busy_before_claim(*args, **kwargs):
+        current = record(env)
+        if current and current["state"] == "GRANTED" and not failures:
+            failures.append(current["state"])
+            error = sqlite3.OperationalError("database is locked")
+            error.sqlite_errorcode = 261  # Native SQLITE_BUSY_RECOVERY.
+            raise error
+        return original(*args, **kwargs)
+    monkeypatch.setattr(reader, "_saved_forecast_once", busy_before_claim)
+    value = env.executor.step(env.forecast)
+    assert failures == ["GRANTED"] and value["disposition"] == "submitted"
+    assert record(env)["state"] == "ACCEPTED" and len(env.broker.posts) == 1
+    env.executor.recover()
+    env.executor.step(env.forecast)
+    assert record(env)["state"] == "ACCEPTED" and len(env.broker.posts) == 1
+
+
+@pytest.mark.parametrize("change,reason", [
+    ("quote_expired", "Current local quote/account evidence expired"),
+    ("target_expired", "Local forecast eligibility expired"),
+    ("manual_stop", "Current manual Scout session authority required"),
+])
+def test_saved_read_retry_rechecks_current_effect_gates(env, monkeypatch, change, reason):
+    from ml.intraday import local_forecast as reader
+    if change == "target_expired":
+        env.state.now = instant(env.forecast["target_close"]) - timedelta(seconds=10)
+    original = reader._saved_forecast_once
+    submit = execution.ScoutClient.submit
+    failures, rejected = [], []
+    def capture_rejection(*args, **kwargs):
+        try:
+            return submit(*args, **kwargs)
+        except ContractError as exc:
+            rejected.append(str(exc))
+            raise
+    def busy_before_claim(*args, **kwargs):
+        current = record(env)
+        if current and current["state"] == "GRANTED" and not failures:
+            failures.append(1)
+            error = sqlite3.OperationalError("database is locked")
+            error.sqlite_errorcode = 261
+            raise error
+        return original(*args, **kwargs)
+    def change_during_retry(_):
+        if change == "manual_stop":
+            env.state.stop = True
+        else:
+            env.state.now += timedelta(seconds=61 if change == "quote_expired" else 11)
+    monkeypatch.setattr(reader, "_saved_forecast_once", busy_before_claim)
+    monkeypatch.setattr(reader.time, "sleep", change_during_retry)
+    monkeypatch.setattr(execution.ScoutClient, "submit", capture_rejection)
+    value = env.executor.step(env.forecast)
+    failure = value["evidence"]["submission_failure"]
+    assert failures == [1] and failure["stage"] == "outside_claimed_submit"
+    assert rejected == [reason]
+    assert failure["original"]["chain"][0]["type"] == "ContractError"
+    assert failure["original"]["chain"][0]["message"] == "Exception text withheld; inspect error type and stack locations"
+    assert record(env)["state"] == "GRANTED" and env.broker.posts == []
+
+
 @pytest.mark.parametrize("sender_succeeds", [False, True])
 def test_submission_activity_preserves_original_and_journal_failure_without_resend(env, monkeypatch, sender_succeeds):
     if not sender_succeeds:
@@ -322,6 +386,34 @@ def test_exact_partial_fill_cancel_ack_and_terminal_replacement(env):
     state = env.executor.journal.order_state(record(env, original)['request']['request_id'])
     assert state['evidence']['status'] == 'CANCELLED' and state['evidence']['cumulative_filled_quantity'] == 1
     assert len(env.broker.posts) == 2
+
+
+def test_cancellation_saved_read_retry_rechecks_manual_stop(env, monkeypatch):
+    from ml.intraday import local_forecast as reader
+    assert env.executor.step(env.forecast)["disposition"] == "submitted"
+    original_forecast = env.forecast
+    env.forecast = forecast(env, advance=True)
+    original = reader._saved_forecast_once
+    failures = []
+    def busy_during_cancellation(*args, **kwargs):
+        prior = record(env, original_forecast)
+        state = env.executor.journal.order_state(prior["request"]["request_id"])
+        if state["cancellation"] is not None and not failures:
+            failures.append(1)
+            error = sqlite3.OperationalError("database is locked")
+            error.sqlite_errorcode = 261
+            raise error
+        return original(*args, **kwargs)
+    def stop_during_retry(_):
+        env.state.stop = True
+    monkeypatch.setattr(reader, "_saved_forecast_once", busy_during_cancellation)
+    monkeypatch.setattr(reader.time, "sleep", stop_during_retry)
+    with pytest.raises(ContractError, match="Current manual Scout session authority required"):
+        env.executor.step(env.forecast)
+    prior = record(env, original_forecast)
+    state = env.executor.journal.order_state(prior["request"]["request_id"])
+    assert failures == [1] and env.broker.deletes == [] and len(env.broker.posts) == 1
+    assert not any(event["kind"] == "cancellation_send_claimed" for event in state["cancellation_events"])
 
 
 @pytest.mark.parametrize('change', ['stop', 'account', 'quote', 'receipt'])

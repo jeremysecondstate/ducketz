@@ -216,6 +216,7 @@ class ScoutLocalAccountExecutor:
             outer._controls()
             outer._binding_current()
             _saved_forecast(outer.store.path, forecast, session_id=outer.session_id, session_started=outer.session_started_at)
+            outer._controls()
             journal.observe_order(rid, evidence, as_of=outer.clock())
             current = journal.order_state(rid)
             marker = current['cancellation']
@@ -369,6 +370,9 @@ class ScoutLocalAccountExecutor:
                  'capacity_evidence_id', 'observed_at', 'calculated_at')})
             if checked != capacity or granted.quantity != capacity.adjusted_quantity:
                 raise ContractError('Local permitted quantity differs from account capacity')
+            _saved_forecast(self.store.path, forecast, session_id=self.session_id, session_started=self.session_started_at)
+            # Integrity validation can wait briefly for SQLite recovery. Check
+            # current freshness and eligibility after it, before any send gate.
             current = instant(self.clock())
             if any(not 0 <= (current - instant(at)).total_seconds() <= self.maximum_evidence_age_seconds
                    for at in (portfolio.observed_at, quote.freshness_observed_at)):
@@ -376,7 +380,6 @@ class ScoutLocalAccountExecutor:
             if forecast_disposition(forecast, now=current, session_started_at=self.session_started_at,
                     local_symbols=self.symbols) != 'eligible_for_account_checks':
                 raise ContractError('Local forecast eligibility expired')
-            _saved_forecast(self.store.path, forecast, session_id=self.session_id, session_started=self.session_started_at)
             self._controls()
             return True
 
