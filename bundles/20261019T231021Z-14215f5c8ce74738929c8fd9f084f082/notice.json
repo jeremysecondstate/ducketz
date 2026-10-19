@@ -1,0 +1,35 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T230802Z-1356b3495dad478d9d32d39941677c7f",
+  "completion_record": "20261019T230802Z-1356b3495dad478d9d32d39941677c7f",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_authority.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_account_gameplan_source_revisions.py"
+    }
+  ],
+  "limitations": [
+    "Offline SQLite and fake submission callbacks; no broker/provider requests or test orders.",
+    "Current main lacks the legacy installed account authority path, so a reviewed stacked source PR retains existing operating dependencies.",
+    "Installation, running-process loading and affected natural execution are separate facts."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/260",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "The Gameplan and Atlas 15-minute trader import shared account-authority code. Each requires a future Jeremy-controlled manual start or restart to load this source change; no automatic control action or Scout restart is inferred.",
+  "scope": "shared",
+  "source_commit": "a4989445d928c9e5a29b3d9140489b70fee66951",
+  "summary": "Atlas: Admit same-date Gameplan revisions without discarding account commitments",
+  "tests": [
+    "Sealed 77 passed in 8.20s",
+    "Isolated 77 passed in 4.24s",
+    "Installed 77 passed in 3.19s with stable source and package metadata"
+  ]
+}

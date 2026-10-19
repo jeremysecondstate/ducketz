@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T23:10:21.076464Z",
+  "id": "20261019T231021Z-14215f5c8ce74738929c8fd9f084f082",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Admit same-date Gameplan revisions without discarding account commitments"
+}
