@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T21:04:38.822718Z",
+  "id": "20261019T210438Z-e01a7c27d1d245df8c6cbbe6153a3ed8",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout records exact native pre-POST authorization failures so verified no-transport attempts do not block distinct future forecasts."
+}

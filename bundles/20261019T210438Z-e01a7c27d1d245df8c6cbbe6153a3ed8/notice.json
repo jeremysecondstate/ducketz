@@ -1,0 +1,59 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T205257Z-3eb870263c1b4292ae8e11dca8fd24bd",
+  "change_id": "20261019T205257Z-3eb870263c1b4292ae8e11dca8fd24bd",
+  "files": [
+    "app/services/schwab.py",
+    "ml/intraday/initial_gate_clearance.py",
+    "ml/intraday/pretransport_clearance.py",
+    "ml/intraday/scout_broker.py",
+    "ml/intraday/scout_local_execution.py",
+    "tests/test_intraday_initial_gate_clearance.py",
+    "tests/test_intraday_pretransport_clearance.py",
+    "tests/test_schwab_portfolio.py"
+  ],
+  "limitations": [
+    "Offline checks use synthetic broker contexts, temporary journals and stubbed HTTP with network access denied; no real broker or provider calls.",
+    "Exact native callback proof preserves original UNKNOWN records and consumed send tokens; arbitrary broker wrappers and uncertain transport outcomes remain blocked. No original request is replayed.",
+    "Retrospective proof requires complete exact original evidence and a cleanly ended original session and process; source hashes alone are insufficient.",
+    "A subsequent manual startup encountered a separate token-file ACL failure. Installation and passing offline checks do not establish affected runtime recovery.",
+    "Draft PR is stacked on PR 249. Main integration and peer installation remain separate."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/253",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install reviewed source while preserving local recipes, inputs, history and manual trader controls. A manual load is required for changed modules; successful affected operation observation remains pending. This source publication does not start or restart a trader, submit a trade or install private historical evidence.",
+  "scope": "shared",
+  "source_commit": "2f866b8c6e414a04d4b526b7013230436569bf3a",
+  "source_remote_verified": true,
+  "summary": "Scout records exact native pre-POST authorization failures so verified no-transport attempts do not block distinct future forecasts.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T20:54:29.609076Z",
+      "exit_code": 0,
+      "output_sha256": "586d664ef9fa1ba079f773a36f20fc43163756ed536f21e3165b45d2c91400e8",
+      "passed": 567,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T20:57:29.172439Z",
+      "exit_code": 0,
+      "output_sha256": "1c94abfafa9ec7d2067ebb9b8218a89e2970134cbc0e7e0701dc59681cbb774c",
+      "passed": 567,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T20:54:29.657033Z",
+      "exit_code": 0,
+      "output_sha256": "17acdc18c2f820425b38784136065170233fd3389207eac25f4455a2a0637f79",
+      "passed": 567,
+      "scope": "installed release",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}
