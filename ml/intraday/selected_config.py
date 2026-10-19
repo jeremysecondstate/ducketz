@@ -58,6 +58,10 @@ def _validated_entry(entry, as_of):
                       "synthetic_policy": entry.get("synthetic_policy", "include"),
                       "lookback_days": entry.get("lookback_days"),
                       "max_training_rows": entry.get("max_training_rows", 3000)}
+    from .coverage import check_population_contract
+    check_population_contract(entry.get("population_contract"))
+    scope.update({key:entry[key] for key in ("population_contract", "feature_version", "feature_contract", "market_input_version")
+                  if key in entry})
     if (scope["synthetic_policy"] not in {"include", "exclude"}
             or type(scope["max_training_rows"]) is not int or scope["max_training_rows"] < 1
             or (scope["lookback_days"] is not None and

@@ -15,7 +15,7 @@ import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
 from .prediction import ContractError, PACIFIC, STEP, digest, encoded, instant
-from .runtime import ResearchConfig, ShadowRunner, LiveHistories, local_symbols, recorded_symbol_failures
+from .runtime import ResearchConfig, ShadowRunner, LiveHistories, SourceIntervalEmpty, local_symbols, recorded_symbol_failures, with_local_data_policy
 from .store import ShadowStore, utcnow
 from .candle_collection import collection_loop, market_close_at
 
@@ -185,7 +185,7 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
         incoming = LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
                                 reference_at=reference,clock=clock,sleep=pause,bounded=True,
                                 stopped=lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at)),
-                                reuse_saved=True)
+                                reuse_saved=True,population_contract=getattr(runner.config,"population_contract",None))
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
         result = runner.run_cycle(incoming,reference_at=reference,mode="live",experiment=queue.session_id,
@@ -204,12 +204,12 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
     an issued prediction or writes corrections into its original input snapshot.
     Local copies of the history mapping keep scoring out of the training writer.
     """
-    from .data import synthetic_continuity_verified
+    from .data import completed_15m_observation, synthetic_continuity_verified
     audited = set()
     while not stopped():
         if close_at is not None and instant(clock()) >= instant(close_at):
             return
-        latest_observed = {}
+        observed_candidates = {}
         for candle in store.observed_candles():
             if not synthetic_continuity_verified(candle):
                 key=digest(candle)
@@ -218,7 +218,9 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
                                 {"candle_hash":key,"immutable_original_retained":True},symbol=candle["symbol"])
                     audited.add(key)
                 continue
-            latest_observed[(candle["symbol"],candle.get("source_id"),instant(candle["opened_at"]))] = candle
+            if not completed_15m_observation(candle) or instant(candle["available_at"]) > instant(clock()):
+                continue
+            observed_candidates.setdefault((candle["symbol"],instant(candle["opened_at"])), []).append(candle)
         for forecast in store.forecasts(pc=actor):
             if stopped():
                 return
@@ -227,7 +229,11 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             if forecast["mode"] != "live" or instant(forecast["target_close"]) > instant(clock()):
                 continue
             revisions = store.revisions(forecast["forecast_id"])
-            observed = latest_observed.get((forecast["symbol"],forecast.get("source_id"),instant(forecast["target_open"])))
+            candidates = observed_candidates.get((forecast["symbol"],instant(forecast["target_open"])), [])
+            observed = next((row for row in reversed(candidates)
+                if row.get("population_contract") == forecast.get("population_contract")
+                and all(not forecast.get(field) or row.get(field) == forecast[field]
+                       for field in ("source_dataset", "source_id"))), None)
             if observed is not None and instant(observed["available_at"]) <= instant(clock()):
                 store.observe(forecast,as_of=clock(),candle=observed)
                 continue
@@ -239,15 +245,29 @@ def scoring_loop(store, *, histories, provider, journal, session_id, stopped,
             incoming = LiveHistories(histories=dict(histories),provider=provider,store=store,journal=journal,
                 reference_at=forecast["target_open"],clock=clock,sleep=pause,bounded=True,
                 stopped=lambda: stopped() or (close_at is not None and instant(clock()) >= instant(close_at)),
-                reuse_saved=True)
+                reuse_saved=True,population_contract=forecast.get("population_contract") or "legacy")
             incoming.bind_cycle("score:" + forecast["forecast_id"])
             try:
                 history = incoming.get(symbol)
                 match = history.frame.loc[history.frame.opened_at.eq(instant(forecast["target_open"]))]
+                match = match.loc[[completed_15m_observation(row, from_frame=True) and synthetic_continuity_verified(row)
+                    and (row.get("population_contract") if isinstance(row.get("population_contract"), str) else None)
+                        == forecast.get("population_contract")
+                    and instant(row["available_at"]) <= instant(clock())
+                    and row.get("availability_kind") == "actual"
+                    and all(not forecast.get(field) or row.get(field) == forecast[field]
+                            for field in ("source_dataset", "source_id"))
+                    for row in match.to_dict("records")]]
                 if match.empty:
                     raise ContractError("Exact target interval unavailable after acquisition")
+                match = match.sort_values("available_at")
                 from .runtime import _jsonable
                 store.observe(forecast,as_of=clock(),candle=_jsonable(match.iloc[-1].to_dict()))
+            except SourceIntervalEmpty as exc:
+                store.event(session_id,"target_source_empty",{"forecast_id":forecast["forecast_id"],
+                    "evidence":exc.evidence,"no_market_wide_no_trade_claim":True},symbol=symbol)
+                store.observe(forecast,as_of=clock(),
+                    unavailable_reason="covered_source_empty; no observed outcome price or market-wide no-trade proof")
             except InterruptedError:
                 if stopped() or (close_at is not None and instant(clock()) >= instant(close_at)):
                     return
@@ -288,12 +308,12 @@ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, st
             if (instant(candle["available_at"]) <= now and completed_15m_observation(candle)
                     and synthetic_continuity_verified(candle)):
                 latest[(symbol, candle.get("source_id"), candle.get("source_dataset"),
-                        instant(candle["opened_at"]))] = candle
+                        candle.get("population_contract"), instant(candle["opened_at"]))] = candle
     for forecast in candidates:
         if stopped():
             break
         candle = latest.get((forecast["symbol"], forecast.get("source_id"), forecast.get("source_dataset"),
-                             instant(forecast["target_open"])))
+                             forecast.get("population_contract"), instant(forecast["target_open"])))
         if candle is None:
             result["unavailable"] += 1
             continue
@@ -306,11 +326,13 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     from .account_execution import IntradayAccountExecutor, execution_failure_evidence
     from .local_execution import load_local_binding
     from .data import AcquisitionJournal, load_local_history
+    from .coverage import RECOVERY_POPULATION_CONTRACT
     from .cancellation import retry_delay
     from app.services.schwab import SchwabSession
     from app.services.databento_market_data import DatabentoMarketDataProvider
     from dotenv import load_dotenv
     root, repository = Path(datastore),Path(repository)
+    config = with_local_data_policy(config, root)
     pc,symbols = local_symbols(profile,watchlist,root)
     binding = load_local_binding(root)
     if binding.actor != pc or set(binding.symbols) != set(symbols):
@@ -324,6 +346,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     stopped = threading.Event()
     final_collection_complete = threading.Event()
     worker_errors = []
+    market_collector = None
     store = ShadowStore(root / "intraday/shadow.sqlite3")
     queue = ExecutionQueue(store,session_id,actor=pc)
     status_path = root / "intraday/manual-session.json"
@@ -352,9 +375,12 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
         try:
             load_dotenv(repository / ".env")
             histories = {}
+            history_load_cutoff = instant(clock())
             for symbol in symbols:
                 try:
-                    histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset)
+                    histories[symbol] = load_local_history(root,symbol,source_dataset=config.source_dataset,
+                        **({"population_contract":config.population_contract} if config.population_contract else {}),
+                        **({"recovery_cutoff":history_load_cutoff} if config.population_contract == RECOVERY_POPULATION_CONTRACT else {}))
                 except Exception as exc:
                     store.event(session_id,"history_unavailable",{"error_type":type(exc).__name__,"message":str(exc)},symbol=symbol)
             provider = DatabentoMarketDataProvider()
@@ -363,9 +389,20 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                 stopped=lambda: stopped.is_set() or instant(clock()) >= close_at)
+            if config.market_inputs_enabled:
+                try:
+                    from .market_inputs import MarketInputCollector
+                    market_collector = MarketInputCollector(root, symbols)
+                    startup = market_collector.start()
+                    store.event(session_id,"market_input_streams_started",{"status_by_dataset":startup})
+                except Exception as exc:
+                    store.event(session_id,"market_inputs_start_error",{"error_type":type(exc).__name__,
+                        "core_forecasts_continue":True})
             executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
                 session_started_at=started,clock=clock,manual_authority=manual_authority,actor=pc,stopped=stopped.is_set)
         except BaseException as exc:
+            if market_collector is not None:
+                market_collector.close()
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) else "FAILED",
                    stop_reason="manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
@@ -375,6 +412,13 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 return {"session_id":session_id,"status":"STOPPED"}
             raise
         status("CLOSING" if instant(clock()) >= close_at else "RUNNING")
+        def market_input_work():
+            """Optional feeds run independently; missing inputs never stop core work."""
+            from .market_input_worker import run_market_input_worker
+            run_market_input_worker(market_collector, clock=clock, stopped=stopped.is_set, pause=sleep,
+                reference_for=lambda value: latest_completed_reference(value, publication_offset_seconds=config.publication_offset_seconds),
+                event=lambda kind, value: store.event(session_id, kind, value))
+        input_worker = threading.Thread(target=market_input_work,name="intraday-market-inputs",daemon=True)
         def forecast_work():
             try:
                 forecasting_loop(runner,histories=histories,provider=provider,journal=journal,queue=queue,
@@ -415,6 +459,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 collection_loop(store, histories=histories, provider=provider, journal=journal, symbols=symbols,
                     session_id=session_id, started_at=started, close_at=close_at,
                     publication_offset_seconds=config.publication_offset_seconds,
+                    population_contract=config.population_contract,
                     clock=clock, stopped=stopped.is_set, pause=pause, on_completed=collection_completed)
             except BaseException as exc:
                 if isinstance(exc, InterruptedError) and stopped.is_set():
@@ -423,6 +468,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 worker_errors.append({"worker":"collection","error_type":type(exc).__name__,"message":str(exc)})
                 stopped.set()
         collector = threading.Thread(target=collect_work,name="intraday-manual-candles",daemon=True)
+        if market_collector is not None:
+            input_worker.start()
         worker.start()
         scorer.start()
         collector.start()
@@ -493,15 +540,19 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             raise
         finally:
             stopped.set()
+            if market_collector is not None:
+                market_collector.close()
             stop_reason = ("worker_failure" if worker_errors else
                            "market_close" if final_collection_complete.is_set() and not manual_stop_requested else "manual_stop")
             status("STOPPING",broker_orders_automatically_cancelled=False,
                    stop_reason=stop_reason)
             print("15m order authority stopped. Waiting for active computation to finish; pending broker identities are retained.",flush=True)
-            while worker.is_alive() or scorer.is_alive() or collector.is_alive():
+            while worker.is_alive() or scorer.is_alive() or collector.is_alive() or input_worker.is_alive():
                 worker.join(timeout=1)
                 scorer.join(timeout=1)
                 collector.join(timeout=1)
+                if input_worker.is_alive():
+                    input_worker.join(timeout=1)
                 status("STOPPING",broker_orders_automatically_cancelled=False,
                        stop_reason=stop_reason)
             stop_reason = ("worker_failure" if worker_errors else
@@ -521,7 +572,7 @@ def main(argv=None):
     parser.add_argument("--watchlist",type=Path)
     parser.add_argument("--live",action="store_true")
     parser.add_argument("--publication-offset-seconds",type=float,default=30)
-    parser.add_argument("--symbol-workers",type=int,default=1)
+    parser.add_argument("--symbol-workers",type=int,default=None)
     parser.add_argument("--lookback-days",type=int)
     args = parser.parse_args(argv)
     profile = args.profile or args.repository / "scratch/cross-pc/local-profile.json"
@@ -532,9 +583,12 @@ def main(argv=None):
             profile=profile,watchlist=watchlist)
         print(json.dumps(result,sort_keys=True))
         return 0 if result.get("manual_live_start_ready") else 2
+    from .resource_policy import manual_symbol_workers
+    actor, _ = local_symbols(profile, watchlist, args.datastore)
+    workers = manual_symbol_workers(args.datastore, actor=actor, explicit=args.symbol_workers)
     result = run_manual(repository=args.repository,datastore=args.datastore,profile=profile,watchlist=watchlist,
         config=ResearchConfig(publication_offset_seconds=args.publication_offset_seconds,
-            symbol_workers=args.symbol_workers,lookback_days=args.lookback_days))
+            symbol_workers=workers,lookback_days=args.lookback_days))
     print(json.dumps(result,sort_keys=True))
     return 1 if result["status"] == "FAILED" else 0
 

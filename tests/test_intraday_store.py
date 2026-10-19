@@ -21,7 +21,7 @@ def forecast(**changes):
 
 def candle(**changes):
     value = dict(symbol="AAPL", opened_at="2026-10-08T17:30:00+00:00", available_at="2026-10-08T17:45:04+00:00",
-                 open="100", high="101", low="99", close="100", volume=100, source_id="source", availability_kind="actual", synthetic=False)
+                 open="100", high="101", low="99", close="100", volume=100, interval_seconds=900, source_id="source", availability_kind="actual", synthetic=False)
     value.update(changes)
     return value
 

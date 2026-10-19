@@ -24,7 +24,7 @@ from .prediction import ContractError, STEP, TARGET_VERSION, UnresolvedPolicy, d
 from .sizing import size
 
 
-VERSION = "intraday-transparent-technical-sizing-research-v1"
+VERSION = "intraday-transparent-technical-sizing-research-v2"
 
 
 def _finite(value, label):
@@ -374,6 +374,19 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
         return IndicatorSnapshot(digest(value), encoded(value))
     if _records(frame) != _records(frozen):
         raise ContractError("Sizing candles differ from the original forecast snapshot")
+    scope = forecast_snapshot.get("dataset_scope") or forecast_snapshot.get("manifest", {})
+    synthetic_policy = scope.get("synthetic_policy")
+    population_contract = scope.get("population_contract")
+    before_policy = len(frame)
+    if population_contract:
+        from .coverage import population_frame
+        frame = population_frame(frame, population_contract=population_contract)
+    if synthetic_policy == "exclude":
+        frame = frame.loc[~frame.synthetic].copy()
+    elif synthetic_policy != "include" and frame.synthetic.any():
+        value["reason"] = "frozen_synthetic_policy_missing"
+        return IndicatorSnapshot(digest(value), encoded(value))
+    excluded_policy = before_policy - len(frame)
     if frame.empty or frame.symbol.nunique() != 1 or frame.symbol.iloc[0] != symbol or frame.source_id.nunique() != 1:
         value["reason"] = "one_symbol_and_source_required"
     elif frame.opened_at.iloc[-1] != pd.Timestamp(reference):
@@ -402,13 +415,14 @@ def indicator_snapshot(candles, *, symbol, reference_at, data_cutoff, indicator_
                      source_id=str(frame.source_id.iloc[0]), source_dataset=str(frame.source_dataset.iloc[0]),
                      information_available_at=frame.available_at.max().isoformat(),
                      provenance={"used_rows": len(frame), "excluded_window_rows": admitted - len(frame),
+                        "excluded_policy_rows":excluded_policy,"population_contract":population_contract,
                         "synthetic_rows": int(frame.synthetic.sum()),
                         "availability_kinds": sorted(frame.availability_kind.unique().tolist()),
                         "session_ids": frame.session_id.drop_duplicates().tolist(),
                         "elapsed_minutes_previous": float(frame.opened_at.diff().dt.total_seconds().iloc[-1] / 60) if len(frame) > 1 else None,
                         "elapsed_minutes_total": float((frame.opened_at.iloc[-1] - frame.opened_at.iloc[0]).total_seconds() / 60),
                         "gaps_or_closures": int(frame.opened_at.diff().dropna().ne(pd.Timedelta(STEP)).sum()),
-                        "missing_policy": "no_filling", "synthetic_policy": "include_validated_with_original_evidence",
+                        "missing_policy": "no_filling", "synthetic_policy": synthetic_policy or "observed_only_legacy_snapshot",
                         "derivative_basis": "first_and_second_differences_per_observed_step"})
         value["candles_hash"] = digest(value["candles"])
     return IndicatorSnapshot(digest(value), encoded(value))
