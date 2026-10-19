@@ -1,0 +1,31 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T200746Z-79e1da66d15d487798447eb6f9e460dc",
+  "completion_record": "20261019T200746Z-79e1da66d15d487798447eb6f9e460dc",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_sizing_freshness.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures only; no real broker/provider calls, model fits, orders or trader controls.",
+    "Existing Atlas 15m process predates installation; no live recovery claim. No main integration or peer installation claim."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/248",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Independent 15m execution refreshes actual own expired observations once after durable sizing for an eligible signal, then rechecks target and calendar. Original desired sizing, order identity, provider timestamps and final expiry/manual controls remain. Local model policy and symbols unchanged. A future human manual start loads installed bytes; no peer restart inferred.",
+  "scope": "shared",
+  "source_commit": "6e333b4431d15af1c3af09e766b35a0bbeb03cab",
+  "summary": "Atlas installed current-capacity refresh after slow independent intraday sizing",
+  "tests": [
+    "Four baseline regressions reproduced",
+    "29 focused checks passed",
+    "165 sealed and 165 isolated publication checks passed",
+    "192 installed checks passed with unchanged source and package metadata"
+  ]
+}

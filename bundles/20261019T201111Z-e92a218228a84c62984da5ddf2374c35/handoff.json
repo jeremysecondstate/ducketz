@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T20:11:11.149013Z",
+  "id": "20261019T201111Z-e92a218228a84c62984da5ddf2374c35",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed current-capacity refresh after slow independent intraday sizing"
+}
