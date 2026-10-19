@@ -1,0 +1,35 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T195335Z-aaaa78e88da343a29a70c646045752a7",
+  "completion_record": "20261019T195335Z-aaaa78e88da343a29a70c646045752a7",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_sizing_freshness.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_recovery_latency.py"
+    }
+  ],
+  "limitations": [
+    "Offline fixtures only; no real broker/provider calls, model fits, orders or trader controls.",
+    "Existing Atlas15m process predates installation; no live recovery claim. No main integration or peer installation claim."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/247",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Independent15m execution refreshes actual own expired observations once after preparation for an eligible signal. Original desired sizing, order identity, provider timestamps and final expiry/manual controls remain. Local model policy and symbols unchanged. A future human manual start loads installed bytes; no peer restart inferred.",
+  "scope": "shared",
+  "source_commit": "75647a0fcc66ce323265cd52409867f5c3ce090d",
+  "summary": "Atlas installed bounded broker evidence refresh after independent intraday preparation",
+  "tests": [
+    "Three baseline regressions reproduced",
+    "16 focused checks passed",
+    "151 sealed and151 isolated publication checks passed",
+    "178 installed checks passed with unchanged source and package metadata"
+  ]
+}

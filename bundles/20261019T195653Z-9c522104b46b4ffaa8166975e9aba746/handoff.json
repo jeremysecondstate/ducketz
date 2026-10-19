@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T19:56:53.607471Z",
+  "id": "20261019T195653Z-9c522104b46b4ffaa8166975e9aba746",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas installed bounded broker evidence refresh after independent intraday preparation"
+}
