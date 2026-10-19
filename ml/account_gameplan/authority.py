@@ -312,6 +312,7 @@ class AccountAuthority:
                 "CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS lease(singleton INTEGER PRIMARY KEY CHECK(singleton=1),token TEXT NOT NULL,epoch INTEGER NOT NULL,holder TEXT NOT NULL,expires TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS plans(action_date TEXT PRIMARY KEY,generation TEXT UNIQUE NOT NULL,sources TEXT NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS plan_revisions(generation TEXT PRIMARY KEY,action_date TEXT NOT NULL,sources TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS snapshots(id TEXT PRIMARY KEY,observed TEXT NOT NULL,payload TEXT NOT NULL)",
                 "CREATE TABLE IF NOT EXISTS reservations(id TEXT PRIMARY KEY,key TEXT UNIQUE NOT NULL,native_id TEXT UNIQUE NOT NULL,forecast_key TEXT UNIQUE NOT NULL,request TEXT NOT NULL,status TEXT NOT NULL,filled INTEGER NOT NULL,broker_id TEXT UNIQUE,created TEXT NOT NULL,last_evidence TEXT)",
                 "CREATE TABLE IF NOT EXISTS order_evidence(id TEXT PRIMARY KEY,payload TEXT NOT NULL)",
@@ -320,6 +321,11 @@ class AccountAuthority:
                 "CREATE TABLE IF NOT EXISTS events(sequence INTEGER PRIMARY KEY AUTOINCREMENT,observed TEXT NOT NULL,kind TEXT NOT NULL,payload TEXT NOT NULL)",
             ):
                 db.execute(statement)
+            # Preserve the original date binding as historical evidence. A
+            # current plan revision has its own immutable generation; it does
+            # not replace earlier snapshots, reservations or order evidence.
+            db.execute("INSERT OR IGNORE INTO plan_revisions(generation,action_date,sources) "
+                       "SELECT generation,action_date,sources FROM plans")
             saved = db.execute("SELECT value FROM metadata WHERE key='binding'").fetchone()
             value = _json({"version":VERSION, **self.binding})
             if saved and saved[0] != value:
@@ -540,9 +546,11 @@ class AccountAuthority:
             reconciled = db.execute("SELECT MAX(last_evidence) FROM reservations").fetchone()[0]
             if reconciled and observed <= _time(reconciled):
                 raise AuthorityError("ACCOUNT_SNAPSHOT_MUST_FOLLOW_ORDER_RECONCILIATION")
-            plan = db.execute("SELECT * FROM plans WHERE action_date=?", (snapshot.action_date,)).fetchone()
-            if plan and (plan["generation"]!=snapshot.generation or plan["sources"]!=_json(sources)):
-                raise AuthorityError("ACTION_DATE_SOURCE_BINDING_IS_IMMUTABLE")
+            plan = db.execute("SELECT * FROM plan_revisions WHERE generation=?", (snapshot.generation,)).fetchone()
+            if plan and (plan["action_date"]!=snapshot.action_date or plan["sources"]!=_json(sources)):
+                raise AuthorityError("GENERATION_SOURCE_BINDING_IS_IMMUTABLE")
+            db.execute("INSERT OR IGNORE INTO plan_revisions VALUES(?,?,?)",
+                       (snapshot.generation,snapshot.action_date,_json(sources)))
             db.execute("INSERT OR IGNORE INTO plans VALUES(?,?,?)", (snapshot.action_date,snapshot.generation,_json(sources)))
             db.execute("INSERT INTO snapshots VALUES(?,?,?)", (snapshot.snapshot_id,observed.isoformat(),_json(payload)))
             self._event(db,now,"account-snapshot",{"snapshot_id":snapshot.snapshot_id,"fingerprint":_sha(payload)})
