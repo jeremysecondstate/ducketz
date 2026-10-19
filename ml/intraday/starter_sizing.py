@@ -12,6 +12,8 @@ from decimal import Decimal, ROUND_HALF_EVEN, localcontext
 import math
 from typing import Mapping
 
+from ml.stock_direction_policy import stock_direction
+
 from .prediction import ContractError, digest, encoded, identity, instant, number
 from .technical_sizing import (
     AvailableInput, IndicatorSpec, ScoreRecipe, ScoreTerm, SymbolReference,
@@ -111,7 +113,10 @@ def independent_reference(forecast, *, account_equity, quote, calculated_at, max
     probability = number(forecast["probability_not_down"])
     if probability > 1:
         raise ContractError("Forecast probability must be in [0,1]")
-    side = "BUY" if probability >= Decimal(".5") else "SELL"
+    direction = stock_direction(probability)
+    if direction == "NO_EDGE":
+        return None, "neutral_probability_no_direction"
+    side = "BUY" if direction == "BULLISH" else "SELL"
     price = ask if side == "BUY" else bid
     with localcontext() as arithmetic:
         arithmetic.prec = 34
