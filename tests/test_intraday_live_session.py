@@ -340,6 +340,9 @@ def test_broker_retry_after_fences_next_symbol_and_recovery_in_same_batch(tmp_pa
     response.status_code=429
     response.headers["Retry-After"]="120"
     error=requests.HTTPError("429 transport fixture",response=response)
+    trace=account_execution._ExecutionTrace()
+    trace.advance("portfolio_capture")
+    trace.remember(error)
     delay=cancellation.retry_delay(error,now[0])
     assert delay==120
     monkeypatch.setattr(live_session,"local_symbols",lambda *args:("Atlas",("AAPL","AMZN")))
@@ -379,6 +382,8 @@ def test_broker_retry_after_fences_next_symbol_and_recovery_in_same_batch(tmp_pa
             return dict(disposition="no_purchasing_capacity",kind="execution_disposition",evidence={"fixture":"completed"})
         def recover(self):
             events.append(("recover",None,(now[0]-started).total_seconds()))
+            if first_disposition=="exception":
+                raise error
     monkeypatch.setattr(account_execution,"IntradayAccountExecutor",lambda **kwargs:Executor())
     def sleep(seconds):
         if (now[0]-started).total_seconds()>=121:
@@ -395,6 +400,14 @@ def test_broker_retry_after_fences_next_symbol_and_recovery_in_same_batch(tmp_pa
     store=ShadowStore(tmp_path/"intraday/shadow.sqlite3")
     with store.connect() as db:
         wait=instant(db.execute("SELECT next_attempt_at FROM intraday_live_retry WHERE scope='broker'").fetchone()[0])
-        assert wait==started+timedelta(seconds=120)
+        assert wait==started+timedelta(seconds=240 if first_disposition=="exception" else 120)
         status=db.execute("SELECT status FROM intraday_live_queue WHERE symbol='AAPL'").fetchone()[0]
         assert status==("submission_recovery_required" if first_disposition=="submission_recovery_required" else "no_purchasing_capacity")
+        if first_disposition=="exception":
+            saved={kind:json.loads(payload) for kind,payload in db.execute(
+                "SELECT kind,payload FROM events WHERE kind IN ('execution_retry','order_recovery_retry')")}
+            assert set(saved)=={"execution_retry","order_recovery_retry"}
+            expected=account_execution.execution_failure_evidence(error)
+            assert all(item["diagnostics"]==expected for item in saved.values())
+            assert expected["execution_stage"]=="portfolio_capture"
+            assert expected["root_cause"]=={"error_type":"HTTPError","http_status":429}
