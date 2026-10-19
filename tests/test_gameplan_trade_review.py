@@ -264,3 +264,26 @@ def test_report_omits_estimated_trade_prices_including_expandable_details(tmp_pa
         assert "Cash change low | Cash change base | Cash change high" in text
         assert "Cash available after (range)" in text
     assert rows == before_rows and details == before_details
+
+
+@pytest.mark.parametrize("day,autonomous", [("2026-10-18", False), ("2026-10-19", True), ("2026-10-20", True)])
+def test_fallback_explanation_preserves_daily_rules_without_imposing_hourly_quotas(day, autonomous):
+    from ml.gameplan_trade_review import _projection_tables
+    projection = direction_projection()
+    projection["holding_policy"] = "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
+    projection["cross_horizon_fallback"] = {"action_date": day, "symbol_daily_caps": {"AAPL": 50}, "symbol_used": {"AAPL": 0}}
+    before = deepcopy(projection)
+    main, _ = _projection_tables(projection, ["AAPL"], report()["snapshot"], action_date=day)
+    text = "\n".join(main)
+    if autonomous:
+        assert "any Gameplan horizon without fallback quotas or a same-clock bullish donor veto" in text
+        assert "Daily forecasts retain the existing bounded longer-horizon fallback" in text
+        assert "50% daily symbol cap" in text and "50% donor cap" in text
+        assert "These fallback quotas do not cap 1h or 4h sales" in text
+        assert "Weekly ownership rules remain unchanged" in text
+        assert "The 18 entry slots" not in text
+    else:
+        assert "The 18 entry slots" in text
+        assert "bearish instructions sell within their horizon" in text
+        assert "without fallback quotas" not in text
+    assert projection == before

@@ -315,7 +315,8 @@ def test_publication_follows_successor_and_preserves_saved_artifacts(publication
     assert (c.root / "ml/gameplan-actuals-review-by-date/2026-09-09/run.json").is_file()
     assert (c.root / "ml/gameplan-actuals-review-by-date/2026-09-09/Gameplan-results.md").read_bytes() == (run / "Gameplan-results.md").read_bytes()
     rendered = (run / "Gameplan-results.md").read_text(encoding="utf-8")
-    assert "Saved price range" in rendered and "Actual price" in rendered and "No observed price" in rendered
+    assert "Saved price range" not in rendered and "Saved midpoint" not in rendered
+    assert "Actual start" in rendered and "Actual end" in rendered and "No observed price" in rendered
     assert "Pending target end" in rendered and "$999.00" not in rendered
 
 

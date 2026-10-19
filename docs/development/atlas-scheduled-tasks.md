@@ -152,3 +152,28 @@ The local Codex `automation.toml` definitions supplied names, statuses, recurren
 Explanatory Ducketz sources inspected at this snapshot include `docs/development/nightly-operations.md`, `docs/development/nightly-workflow.md`, `docs/development/nightly-exchange.md`, `docs/development/codex-chat-cleanup.md`, `tools/nightly_watchdog.py`, and the saved task prompts. The application checkout also contains other writers' uncommitted work; a Git HEAD alone is not the version of every inspected working file. [Official OpenAI scheduled-task documentation](https://learn.chatgpt.com/docs/automations) explains the general desktop distinction between local/project tasks and scheduled chat follow-ups; the local readbacks above establish Atlas's actual saved settings.
 
 Refresh this chapter after a new readback when statuses, cadence, models, responsibilities, or Windows registrations change. Preserve a dated snapshot and compare Atlas and Scout by logical purpose, state, prerequisites, ownership, and actual outcomes. Keep private native identities and evidence local. Documentation does not activate or pause a task.
+
+## October 19 permanent stock-policy instructions
+
+The [permanent stock policy](nightly-stock-policy.md) now forms an authoritative
+prefix on all twelve existing equity-related local task definitions: ten
+remain ACTIVE and two remain PAUSED. The original responsibility text remains
+an exact suffix. Native readback confirmed that only prompt text and update
+timestamps changed; schedules, models, reasoning effort, notification settings,
+targets, execution environment, workspace bindings and task identities were
+preserved. Task memories were unchanged at readback. The earlier table remains
+a dated October 13 inventory rather than a claim about October 19 timing.
+
+The update covers nightly catch-up and continuation, Gameplan synthesis and
+display, the overnight supervisor, source reconciliation, the Gameplan and
+15-minute representatives, 15-minute model supervision, and the two retained
+paused research/nightly definitions. It adds no task and enables none.
+
+Every future run retains inclusive 50.01% BUY and 49.99% SELL cutoffs for all
+symbols and all three traders; 1h/4h Gameplan sales can use eligible holdings
+across horizons without fallback quotas, while 1d/1w rules continue. Gameplan
+omits estimate-price columns, and Stats retain frozen policy provenance and
+score original labels against observed outcomes. These instructions introduce
+no peer approval, source-transition wait, cross-trader dependency or automatic
+trader start. Windows dispatch and trader processes were not changed or run by
+this prompt update. Scout records its own native adoption separately.

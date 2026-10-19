@@ -585,6 +585,7 @@ class GameplanStatsTab:
         text = (f"Saved call: {outcome.direction.replace('NO_EDGE', 'NEUTRAL').title()}\n"
                 f"Outcome: {CELL_STYLES[outcome.state][3]}\n\n"
                 f"Saved model probability: {outcome.probability:.2%}\n"
+                f"Saved direction policy: {outcome.direction_policy_version or 'Unrecorded historical policy'}\n"
                 f"Probability target: return above {outcome.probability_target_threshold:.2%}\n"
                 f"Separate assumed round-trip cost: {outcome.target_cost:.2%}\n"
                 f"Observed return: {move}\nBrier score: {brier_text(outcome.brier)}\n\n"

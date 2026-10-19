@@ -74,6 +74,7 @@ class PlanForecast:
     price: float | None
     fallback_donor_horizon: str | None = None
     fallback_donor_allocation_id_sha256: str | None = None
+    direction_policy_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -309,7 +310,9 @@ def _forecast(row: dict, *, projection_available: bool = True) -> PlanForecast:
     return PlanForecast(str(row["id"]), str(row["symbol"]), horizon, str(row["route"]),
                         str(row["target_role"]), eligible, str(row["model_status"]), probability,
                         direction, action, quantity, reason, start, end,
-                        price, donor_horizon, donor_allocation)
+                        price, donor_horizon, donor_allocation,
+                        direction_policy_version=(row.get("direction_policy_version")
+                            if isinstance(row.get("direction_policy_version"), str) else None))
 
 
 def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tuple[str, str]:

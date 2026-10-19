@@ -53,3 +53,28 @@ task, shared or symbol-specific scope and peer applicability in each commit.
 Immediately publish completed owned work through the reviewed source/artifact
 procedures. Preserve the pinned Drive/request/incoming-source helpers and their
 durable queues when upgrading the publication tools.
+
+# Permanent stock policy — direct human direction, October 19, 2026
+
+Follow `docs/development/nightly-stock-policy.md` in Gameplan, Gameplan Stats,
+nightly production and the existing scheduled tasks. For every configured stock
+symbol and all three traders, including both independent 15-minute traders,
+BUY at probability >= 50.01%, SELL at <= 49.99%, and HOLD strictly between.
+Additional confidence thresholds or probability-sized near-zero allocations
+must not suppress an otherwise valid direction. Keep each model's original
+probability and target definition.
+
+Gameplan 1h and 4h may sell eligible holdings across any Gameplan horizon in
+their own execution state without donor hierarchy, fallback quotas, daily
+donor caps or another horizon's bullish veto. The 1d and 1w ownership rules
+remain unchanged. Preserve each trader's independent state and manual controls.
+Current quotes, cash, holdings and order evidence determine execution capacity.
+
+Omit Planning price and Execution mid estimate columns from Gameplan. Save
+current direction-policy metadata with new outputs. Stats preserve and score
+original saved direction labels and observed outcomes under their recorded
+policy; absent historical policy metadata remains unrecorded. Preserve original
+publications and revision ancestry. Retain these rules in the applicable
+existing nightly task prompts without changing schedules, local bindings or
+active/paused settings. Continue unfinished nightly work under standing
+authorization; preparation never starts, restarts or trades through a trader.

@@ -6,6 +6,7 @@ from math import isfinite
 from pathlib import Path
 
 import pandas as pd
+from ml.stock_direction_policy import autonomous_horizon_sales
 
 
 _HORIZONS = ("1h", "4h", "1d", "1w")
@@ -230,7 +231,8 @@ def _remaining_shares(row: Mapping) -> str:
     return text
 
 
-def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mapping) -> tuple[list[str], list[str]]:
+def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mapping, *,
+                       action_date: str | None = None) -> tuple[list[str], list[str]]:
     """Present the supplied shared ledger once; never recompute fills or cash."""
     if not projection:
         return [], []
@@ -248,12 +250,17 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
              for (symbol,reason,gap),count in missing.items()])
         return main, []
     signal_driven = projection.get("holding_policy") == "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
+    fallback = _mapping(projection.get("cross_horizon_fallback"))
+    day = action_date or fallback.get("action_date")
+    autonomous = day is not None and autonomous_horizon_sales("1h", day)
     summary = _mapping(projection.get("summary"))
     ending = _mapping(projection.get("ending_positions"))
     main = ["## Projected end of day", "",
             "Cash is estimated before fees and taxes using the planned transactions. "
             "Cash ranges do not limit execution; each order uses the current quote and actual available cash and holdings. " +
-            ("Bullish instructions add shares; 1h and 4h can sell across horizons, while 1d and 1w keep their ownership rules. Holdings have no scheduled expiry sale." if signal_driven else "Holdings with later overnight or weekly expiries remain held at 17:00."), ""]
+            (("Bullish instructions add shares; 1h and 4h can sell across Gameplan horizons, while 1d and 1w keep their ownership rules. "
+              if autonomous else "Bullish instructions add shares; bearish instructions sell within their horizon. ")
+             + "Holdings have no scheduled expiry sale." if signal_driven else "Holdings with later overnight or weekly expiries remain held at 17:00."), ""]
     main += _table(["Cash measure", "Low", "Base", "High"], [
         ("Starting available cash", *[_money(summary.get("starting_cash", snapshot.get("available_cash")))] * 3),
         ("End-of-day cash", _money(summary.get("ending_cash_low")), _money(summary.get("ending_cash_base")), _money(summary.get("ending_cash_high"))),
@@ -265,12 +272,15 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
             value = value.get("shares", value.get("held_shares"))
         position_rows.append((symbol, _shares(_mapping(snapshot.get("held_shares")).get(symbol)), _shares(value)))
     main += _table(["Stock", "Starting shares", "Projected closing shares"], position_rows)
-    fallback = _mapping(projection.get("cross_horizon_fallback"))
     if fallback:
-        main += ["The frozen bearish fallback policy may trim one eligible longer horizon after normal sales. "
-                 "It shares a 50% daily symbol cap and a 50% cap per donor allocation. The 18 entry slots use "
-                 "hourly/four-hour/daily weights of 1/2/3; unused quota does not roll forward. "
-                 "Donors buying at the same clock or having pending orders stay protected.", ""]
+        main += [("From October 19, 1h and 4h may sell available shares from any Gameplan horizon without fallback quotas or a same-clock bullish donor veto. "
+                  "Daily forecasts retain the existing bounded longer-horizon fallback, including its frozen slot calculation, 50% daily symbol cap, "
+                  "50% donor cap and same-clock/pending-order donor protections. These fallback quotas do not cap 1h or 4h sales. "
+                  "Weekly ownership rules remain unchanged." if autonomous else
+                  "The frozen bearish fallback policy may trim one eligible longer horizon after normal sales. "
+                  "It shares a 50% daily symbol cap and a 50% cap per donor allocation. The 18 entry slots use "
+                  "hourly/four-hour/daily weights of 1/2/3; unused quota does not roll forward. "
+                  "Donors buying at the same clock or having pending orders stay protected."), ""]
         main += _table(["Stock", "Fallback daily cap, shares", "Projected fallback sales, shares"],
             [(symbol, _shares(_mapping(fallback.get("symbol_daily_caps")).get(symbol)),
               _shares(_mapping(fallback.get("symbol_used")).get(symbol))) for symbol in symbols])
@@ -436,7 +446,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
                              _pacific(quote.get("price_reference_time"))))
     lines += _table(["Stock", "Current shares", "Current investment / exposure", "Last recorded price", "Price time, Pacific"], account_rows)
     lines += ["Investment values include any options attributed to the stock. Price times show when the broker last observed the price.", ""]
-    projection_main, projection_details = _projection_tables(projection, symbols, snapshot)
+    projection_main, projection_details = _projection_tables(projection, symbols, snapshot, action_date=report.get("action_date"))
     lines += projection_main
     symbol_cap = _policy_number(policy, "maximum_symbol_equity_fraction", .15)
     order_cap = _policy_number(policy, "maximum_single_order_equity_fraction", .05)
@@ -530,9 +540,12 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     else:
         lines += scheduled_explanation
     if has_direction_plan:
+        autonomous = report.get("action_date") is not None and autonomous_horizon_sales("1h", report["action_date"])
         lines += ["The direction projection instead carries its conditional sale proceeds and purchase costs through one chronological balance. "
-                  "Existing open-order reservations remain protected. The 1h and 4h can sell available holdings from any horizon; "
-                  "1d and 1w keep their ownership rules. A smaller shares-remaining amount in parentheses is the total after open-order reservations. "
+                  "Existing open-order reservations remain protected. "
+                  + ("The 1h and 4h can sell available holdings from any Gameplan horizon; 1d and 1w keep their ownership rules. " if autonomous else
+                     "Allocations to other horizons retain this historical plan's ownership protections. ")
+                  + "A smaller shares-remaining amount in parentheses is the total after open-order reservations. "
                   "Only eligible shares may be sold.", "",
                   "Cash ranges are estimates only, never execution limits. Trades use the current tradable quote, actual available cash and shares held.", ""]
     completion = _mapping(report.get("reference_completion"))
