@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import sys
 import threading
 
 import pandas as pd
@@ -39,6 +40,113 @@ def collector(tmp_path, adapter, *, requests=None, clock=None, **kwargs):
     return QuarterHourMarketCollector(tmp_path, symbols=["SDGR", "GLOB"],
         requests=requests or [source()], adapters={"fmp": adapter},
         clock=clock or (lambda: NOW), **kwargs)
+
+
+@pytest.mark.parametrize("winerror", [5, 32, 33])
+def test_queue_publication_retries_same_receipt_without_provider_replay(tmp_path, monkeypatch, winerror):
+    import ml.intraday.market_collection as module
+    calls, attempts, sleeps = [], [], []
+    col = collector(tmp_path, lambda *args: calls.append(args) or CollectionResult([quote()]))
+    col.enqueue(START)
+    previous = col.state_path.read_bytes()
+    replace_path = Path.replace
+
+    def transient(source_path, destination):
+        assert destination == col.state_path
+        attempts.append(source_path)
+        assert len(json.loads(source_path.read_bytes())["tasks"]) == 1
+        if len(attempts) <= 2:
+            assert destination.read_bytes() == previous
+            exc = PermissionError("fixture reader holds destination")
+            exc.winerror = winerror
+            raise exc
+        return replace_path(source_path, destination)
+
+    monkeypatch.setattr(Path, "replace", transient)
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
+    result = col.step()
+    assert len(result) == len(calls) == 1
+    assert result[0]["status"] == "COMPLETE"
+    saved = next(iter(json.loads(col.state_path.read_bytes())["tasks"].values()))
+    assert saved["attempts"] == 1 and len(saved["snapshots"]) == 1
+    assert len(attempts) == 3 and len(set(attempts)) == 1
+    assert sleeps == [0.05, 0.1]
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("winerror,expected_attempts", [(5, 5), (32, 5), (33, 5), (None, 1), (2, 1)])
+def test_queue_publication_failure_preserves_destination_and_bounded_retry(
+        tmp_path, monkeypatch, winerror, expected_attempts):
+    import ml.intraday.market_collection as module
+    target = tmp_path / "queue.json"
+    target.write_bytes(b'{"generation":"old"}')
+    attempts, sleeps = [], []
+    error = PermissionError("fixture access denied")
+    error.winerror = winerror
+
+    def denied(source_path, destination):
+        attempts.append(source_path)
+        assert destination.read_bytes() == b'{"generation":"old"}'
+        assert json.loads(source_path.read_bytes()) == {"generation": "new"}
+        raise error
+
+    monkeypatch.setattr(Path, "replace", denied)
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
+    with pytest.raises(PermissionError) as caught:
+        module._atomic(target, {"generation": "new"})
+    assert caught.value is error
+    assert len(attempts) == expected_attempts and len(set(attempts)) == 1
+    assert sum(sleeps) <= 0.75
+    assert target.read_bytes() == b'{"generation":"old"}'
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_queue_cleanup_failure_keeps_original_publication_error(tmp_path, monkeypatch):
+    import ml.intraday.market_collection as module
+    target = tmp_path / "queue.json"
+    target.write_bytes(b'{"generation":"old"}')
+    original = PermissionError("fixture permanent publication denial")
+    cleanup = PermissionError("fixture cleanup denial")
+
+    def denied(*args, **kwargs):
+        raise original
+
+    def cleanup_denied(*args, **kwargs):
+        raise cleanup
+
+    monkeypatch.setattr(Path, "replace", denied)
+    monkeypatch.setattr(Path, "unlink", cleanup_denied)
+    with pytest.raises(PermissionError) as caught:
+        module._atomic(target, {"generation": "new"})
+    assert caught.value is original
+    assert target.read_bytes() == b'{"generation":"old"}'
+    pending = list(tmp_path.glob("*.tmp"))
+    assert len(pending) == 1 and json.loads(pending[0].read_bytes()) == {"generation": "new"}
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows file sharing behavior")
+def test_queue_publication_recovers_after_native_windows_reader_closes(tmp_path):
+    import ctypes
+    from ctypes import wintypes
+    from ml.intraday.market_collection import _atomic
+    target = tmp_path / "queue.json"
+    target.write_bytes(b'{"generation":"old"}')
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+        ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    handle = kernel32.CreateFileW(str(target), 0x80000000, 1, None, 3, 0x80, None)
+    assert handle != wintypes.HANDLE(-1).value
+    release = threading.Timer(0.12, kernel32.CloseHandle, args=(handle,))
+    release.start()
+    try:
+        _atomic(target, {"generation": "new"})
+    finally:
+        release.join()
+    assert json.loads(target.read_bytes()) == {"generation": "new"}
+    assert not list(tmp_path.glob("*.tmp"))
 
 
 def test_durable_resume_exact_duplicates_and_conflicts(tmp_path):

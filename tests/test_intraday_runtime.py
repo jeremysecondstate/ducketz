@@ -306,6 +306,18 @@ def test_symbol_exception_details_are_bounded_and_omit_private_paths_messages_an
     assert not _symbol_exception_diagnostics(cyclic)["chain_truncated"]
 
 
+@pytest.mark.parametrize("code,expected", [(5, 5), (32, 32), (33, 33), (-1, None),
+                                          (2 ** 31, None), (True, None), ("secret", None)])
+def test_os_diagnostics_record_only_bounded_numeric_codes(code, expected):
+    from ml.intraday.runtime import _symbol_exception_diagnostics
+    error = PermissionError(13, "https://provider.invalid/?token=PRIVATE_TOKEN", "PRIVATE_FILENAME")
+    error.winerror = code
+    item = _symbol_exception_diagnostics(error)["exception_chain"][0]
+    assert item["errno"] == 13
+    assert item.get("winerror") == expected
+    assert all(value not in json.dumps(item) for value in ["PRIVATE_TOKEN", "PRIVATE_FILENAME", "secret"])
+
+
 def test_symbol_failure_diagnostics_preserve_acquisition_retry_contract(tmp_path):
     from ml.intraday.data import AcquisitionPending
     def pending(*args, **kwargs):
