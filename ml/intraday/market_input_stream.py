@@ -89,6 +89,10 @@ class DatabentoMarketStreams:
         if self.maximum_records < 1:
             raise ValueError("Positive stream record bound required")
         self._lock = threading.RLock()
+        # SDK subscription/close calls can wait for its shared callback loop.
+        # Serialize each client's lifecycle separately from callback state.
+        self._lifecycle_locks = {dataset:threading.RLock() for dataset in SCHEMAS}
+        self._opening = set()
         self._clients, self._files, self._status = {}, {}, {}
         self._disabled_schemas = {dataset:set() for dataset in SCHEMAS}
         self._observed_schemas = {dataset:set() for dataset in SCHEMAS}
@@ -131,27 +135,38 @@ class DatabentoMarketStreams:
         return dict(self._status)
 
     def _open_dataset(self,dataset,key):
-        client = None
-        try:
+        with self._lifecycle_locks[dataset]:
             with self._lock:
-                if self._closed or dataset in self._terminal:
+                if self._closed or dataset in self._terminal or dataset in self._clients:
                     return
                 schemas=tuple(s for s in SCHEMAS[dataset] if s not in self._disabled_schemas[dataset])
                 if not schemas:
                     self._status[dataset]="all_schemas_rejected"
                     self._terminal.add(dataset)
                     return
-                # The SDK otherwise reconnects permanent authorization errors
-                # indefinitely. Own recovery removes denied schemas first.
-                client = self.factory(key=key,ts_out=True,reconnect_policy="none",slow_reader_behavior="warn")
-                client.add_callback(lambda record,d=dataset:self.ingest(d,record),lambda exc,d=dataset:self._error(d,"callback_error"))
-                client.add_reconnect_callback(lambda *args,d=dataset:self._error(d,"reconnected"),lambda exc,d=dataset:self._error(d,"reconnect_error"))
                 symbols = self.futures if dataset == "GLBX.MDP3" else tuple(s+".OPT" for s in self.symbols) if dataset == "OPRA.PILLAR" else self.symbols
                 stype = self.future_stype if dataset == "GLBX.MDP3" else "parent" if dataset == "OPRA.PILLAR" else "raw_symbol"
                 if not symbols:
                     self._status[dataset] = "no_configured_symbols"
                     return
+                self._opening.add(dataset)
+                self._status[dataset] = "starting"
+            client, retained = None, False
+            try:
+                # The SDK otherwise reconnects permanent authorization errors
+                # indefinitely. Own recovery removes denied schemas first.
+                # Never hold the callback lock while waiting for that SDK.
+                client = self.factory(key=key,ts_out=True,reconnect_policy="none",slow_reader_behavior="warn")
+                client.add_callback(lambda record,d=dataset:self.ingest(d,record),lambda exc,d=dataset:self._error(d,"callback_error"))
+                client.add_reconnect_callback(lambda *args,d=dataset:self._error(d,"reconnected"),lambda exc,d=dataset:self._error(d,"reconnect_error"))
+                with self._lock:
+                    if self._closed or dataset in self._terminal:
+                        return
+                    self._clients[dataset] = client
                 for schema in schemas:
+                    with self._lock:
+                        if self._closed or dataset in self._terminal:
+                            return
                     args = {"dataset":dataset,"schema":schema,"symbols":symbols,"stype_in":stype}
                     # Definition replay is bounded to the current service day;
                     # fresh market events begin now (no reconstructed receipts).
@@ -160,19 +175,27 @@ class DatabentoMarketStreams:
                     if schema == "mbo":
                         args["snapshot"] = True
                     client.subscribe(**args)
-                self._clients[dataset] = client
-                self._status[dataset] = "starting"
+                with self._lock:
+                    if self._closed or dataset in self._terminal:
+                        return
                 client.start()
-        except Exception as exc:
-            with self._lock:
-                self._status[dataset] = "start_unavailable"
-                self._diagnostic(dataset,"start_error",str(exc))
-                self._clients.pop(dataset,None)
-            if client is not None:
-                try:
-                    client.terminate()
-                except Exception:
-                    pass
+                with self._lock:
+                    retained = not self._closed and dataset not in self._terminal
+            except Exception as exc:
+                with self._lock:
+                    if not self._closed:
+                        self._status[dataset] = "start_unavailable"
+                        self._diagnostic(dataset,"start_error",str(exc))
+            finally:
+                with self._lock:
+                    self._opening.discard(dataset)
+                    if not retained and self._clients.get(dataset) is client:
+                        self._clients.pop(dataset,None)
+                if client is not None and not retained:
+                    try:
+                        client.terminate()
+                    except Exception:
+                        pass
 
     def _provider_error(self,dataset,record):
         message=str(_get(record,"err",""))
@@ -199,21 +222,22 @@ class DatabentoMarketStreams:
         # Each rejection permanently removes one schema from this owner. The
         # loop therefore has at most len(SCHEMAS[dataset]) recovery attempts.
         while True:
-            with self._lock:
-                if self._closed or dataset not in self._recovery_pending:
-                    self._recovering.discard(dataset)
-                    return
-                self._recovery_pending.discard(dataset)
-                client=self._clients.pop(dataset,None)
-            if client is not None:
-                try:
-                    # Consume the SDK's rejected-session future before cleanup;
-                    # immediate terminate loses that future and logs its error.
-                    client.block_for_close(timeout=2)
-                except Exception:
-                    try:client.terminate()
-                    except Exception:pass
-            self._open_dataset(dataset,os.getenv("DATABENTO_API_KEY", "").strip())
+            with self._lifecycle_locks[dataset]:
+                with self._lock:
+                    if self._closed or dataset not in self._recovery_pending:
+                        self._recovering.discard(dataset)
+                        return
+                    self._recovery_pending.discard(dataset)
+                    client=self._clients.pop(dataset,None)
+                if client is not None:
+                    try:
+                        # Consume the SDK's rejected-session future before cleanup;
+                        # immediate terminate loses that future and logs its error.
+                        client.block_for_close(timeout=2)
+                    except Exception:
+                        try:client.terminate()
+                        except Exception:pass
+                self._open_dataset(dataset,os.getenv("DATABENTO_API_KEY", "").strip())
 
     def _error(self,dataset,status):
         with self._lock:
@@ -396,10 +420,22 @@ class DatabentoMarketStreams:
         received = _utc(self.clock())
         result = []
         with self._lock:
+            clients = dict(self._clients)
+            opening = set(self._opening)
+        # is_connected takes the SDK's own lock, which a subscription may hold
+        # while waiting for a callback. Keep that wait outside our state lock.
+        connected = {}
+        for dataset, client in clients.items():
+            if dataset in opening:
+                continue
+            try:
+                connected[dataset] = not hasattr(client,"is_connected") or client.is_connected()
+            except Exception:
+                connected[dataset] = False
+        with self._lock:
             for dataset in self.datasets:
-                client=self._clients.get(dataset)
-                connected=client is not None and (not hasattr(client,"is_connected") or client.is_connected())
-                if self._start_requested and not self._closed and dataset not in self._terminal and dataset not in self._recovering and not connected:
+                same_client = self._clients.get(dataset) is clients.get(dataset)
+                if self._start_requested and not self._closed and dataset not in self._terminal and dataset not in self._recovering and dataset not in opening and dataset not in self._opening and same_client and not connected.get(dataset,False):
                     self._status[dataset]="disconnected"
                     self._recovery_pending.add(dataset)
                     self._recovering.add(dataset)
@@ -447,15 +483,20 @@ class DatabentoMarketStreams:
             if self._closed:
                 return
             self._closed = True
-        for client in list(self._clients.values()):
-            try:
-                client.stop()
-                client.block_for_close(timeout=2)
-            except Exception:
+        for dataset in self.datasets:
+            with self._lifecycle_locks[dataset]:
+                with self._lock:
+                    client = self._clients.pop(dataset,None)
+                if client is None:
+                    continue
                 try:
-                    client.terminate()
+                    client.stop()
+                    client.block_for_close(timeout=2)
                 except Exception:
-                    pass
+                    try:
+                        client.terminate()
+                    except Exception:
+                        pass
         with self._lock:
             for dataset in list(self._files):
                 try:
