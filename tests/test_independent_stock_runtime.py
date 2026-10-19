@@ -13,6 +13,7 @@ import requests
 from ml.stock_trader import independent_runtime as runtime
 from ml.stock_trader.contracts import ActivationIntent, EnrichmentOutput, PortfolioState, PredictionSignal, QuoteState
 from ml.stock_trader.horizon_ledger import FillEvidence, HorizonLedger, OrderEvidence, PortfolioEvidence
+from ml.stock_trader.publication import read_decision_run
 
 
 ACCOUNT = "a" * 64
@@ -585,3 +586,93 @@ def test_capture_crossing_normal_close_waits_without_orders_or_failure(environme
     assert env.broker.submissions == env.broker.cancellations == []
     assert _decisions(result)["prediction_handoff"]["execution_window_after_capture"] == {
         "mode": "CLOSED", "reason": reason}
+
+
+@pytest.mark.parametrize("before, after", [
+    ("2026-10-19T13:24:59.900000Z", "2026-10-19T13:25:00.363700Z"),
+    ("2026-10-19T19:59:59.900000Z", "2026-10-19T20:00:00.363700Z"),
+])
+@pytest.mark.parametrize("reason", ["OUTSIDE_US_EQUITY_ACTIONABLE_SESSION", "UNEXPECTED_WINDOW_FAILURE"])
+def test_window_closing_before_first_broker_read_preserves_exact_observation(environment, monkeypatch, before, after, reason):
+    env = environment
+    env.now = pd.Timestamp(before)
+    observed = pd.Timestamp(after)
+    original_window = runtime.stock_execution_window
+    def window(value):
+        result = original_window(value)
+        return replace(result, reason=reason) if not result.executable else result
+    monkeypatch.setattr(runtime, "stock_execution_window", window)
+    def inventory(_):
+        env.now = observed
+        return True
+    monkeypatch.setattr(runtime, "_has_inventory", inventory)
+    result = _run(env, entries=False)
+    assert result.status == "EXECUTION_WINDOW_CLOSED_DURING_BROKER_CAPTURE"
+    assert result.error == (None if reason == "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION" else reason)
+    assert result.broker_state_capture["status"] == "INTERRUPTED_EXECUTION_WINDOW_CLOSED"
+    assert result.broker_state_capture["attempts"] == 1
+    assert result.submitted_orders == result.selected_orders == env.captures == 0
+    assert env.broker.calls == env.broker.submissions == env.broker.cancellations == []
+    expected = {"mode": "CLOSED", "reason": reason, "observed_at": observed.isoformat()}
+    payload, receipt = read_decision_run(env.root, result.run_directory)
+    for document in (payload, receipt):
+        assert document["prediction_handoff"]["execution_window_during_capture"] == expected
+        assert document["broker_state_capture"] == result.broker_state_capture
+
+
+def test_signal_deadline_at_normal_close_remains_expired_read_failure(environment, monkeypatch):
+    env = environment
+    env.now = pd.Timestamp("2026-10-19T13:24:59.900000Z")
+    env.signals = {key: replace(signal, actionable_until="2026-10-19T13:25:00Z")
+                   for key, signal in _fixed_signals().items()}
+    def load(*args, **kwargs):
+        env.now = pd.Timestamp("2026-10-19T13:25:00.363700Z")
+        return env.signals, ()
+    monkeypatch.setattr(runtime, "load_current_independent_gameplan_signals", load)
+    result, sleeps = _retry_run(env)
+    assert result.status == "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE"
+    assert result.error == "ValueError: BROKER_READ_EXECUTION_WINDOW_CLOSED"
+    assert result.broker_state_capture["status"] == "UNAVAILABLE"
+    assert "execution_window_during_capture" not in _decisions(result)["prediction_handoff"]
+    assert sleeps == env.broker.calls == env.broker.submissions == env.broker.cancellations == []
+    assert result.submitted_orders == env.captures == 0
+
+
+def test_close_during_broker_retry_keeps_unrecovered_read_failure(environment, monkeypatch):
+    env = environment
+    env.now = pd.Timestamp("2026-10-19T13:24:59Z")
+    env.signals = {key: replace(signal, actionable_until="2026-10-20T00:00:00Z")
+                   for key, signal in _fixed_signals().items()}
+    attempts = []
+    def failed(*args, **kwargs):
+        attempts.append(env.now)
+        raise requests.ReadTimeout("synthetic timeout before scheduled close")
+    monkeypatch.setattr(runtime, "capture_portfolio_state", failed)
+    result, sleeps = _retry_run(env)
+    assert len(attempts) == 1 and sleeps == [3.]
+    assert result.status == "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE"
+    assert "BROKER_READ_EXECUTION_WINDOW_CLOSED" in result.error
+    assert result.broker_state_capture["status"] == "UNAVAILABLE_AFTER_RETRIES"
+    assert result.broker_state_capture["transient_failures"] == 1
+    assert result.broker_state_capture["attempts"] == 2
+    assert _decisions(result)["prediction_handoff"]["execution_window_during_capture"] == {
+        "mode": "CLOSED", "reason": "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION", "observed_at": env.now.isoformat()}
+    assert result.submitted_orders == 0
+    assert env.broker.submissions == env.broker.cancellations == []
+
+
+def test_real_broker_value_error_at_close_is_not_a_calendar_pause(environment, monkeypatch):
+    env = environment
+    env.now = pd.Timestamp("2026-10-19T13:24:59Z")
+    monkeypatch.setattr(runtime, "_has_inventory", lambda _: True)
+    def failed(*args, **kwargs):
+        env.now = pd.Timestamp("2026-10-19T13:25:00.363700Z")
+        raise ValueError("synthetic-invalid-portfolio")
+    monkeypatch.setattr(runtime, "capture_portfolio_state", failed)
+    result = _run(env, entries=False)
+    assert result.status == "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE"
+    assert result.error == "ValueError: synthetic-invalid-portfolio"
+    assert result.broker_state_capture["status"] == "UNAVAILABLE"
+    assert "execution_window_during_capture" not in _decisions(result)["prediction_handoff"]
+    assert result.submitted_orders == 0
+    assert env.broker.submissions == env.broker.cancellations == []
