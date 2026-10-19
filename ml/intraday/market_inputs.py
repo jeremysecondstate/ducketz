@@ -1291,22 +1291,34 @@ class MarketInputCollector:
             started = self.clock()
             self._deadline = time.monotonic()+self.request_budget_seconds
             self._deferred = []
-            records, errors = [], []
+            records, errors, error_details = [], [], []
+
+            def record_failure(exc, lane, stage):
+                from .market_input_worker import _failure_details
+                # Preserve the legacy error list and retain the cause that the
+                # outer worker cannot see after this collector catches it.
+                errors.append(type(exc).__name__)
+                recorded = self.clock()
+                error_details.append({"lane": lane, "stage": stage,
+                    "reference_at": _iso(reference_at), "recorded_at": _iso(recorded),
+                    **_failure_details(exc, recorded, secrets=(getattr(self.fmp, "api_key", None),))})
+
             # Only two bounded workers; each provider preserves its request order.
             with ThreadPoolExecutor(max_workers=2,thread_name_prefix="intraday-input") as pool:
-                futures = [pool.submit(self._schwab_collect),pool.submit(self._fmp_collect)]
-                for task in futures:
+                futures = [("schwab_rest", pool.submit(self._schwab_collect)),
+                           ("fmp_rest", pool.submit(self._fmp_collect))]
+                for lane, task in futures:
                     try:
                         records.extend(task.result())
                     except Exception as exc:
-                        errors.append(type(exc).__name__)
-            for stream in (self.streams, self.schwab_stream):
+                        record_failure(exc, lane, "provider_collection")
+            for lane, stream in (("databento_stream", self.streams), ("schwab_stream", self.schwab_stream)):
                 if stream is None:
                     continue
                 try:
                     items = stream.snapshot()
                 except Exception as exc:
-                    errors.append(type(exc).__name__)
+                    record_failure(exc, lane, "stream_snapshot")
                     continue
                 for item in items:
                     source, payload = item["source"], item["payload"]
@@ -1315,7 +1327,7 @@ class MarketInputCollector:
                     for symbol in targets:
                         records.append(self.store.append(symbol=symbol,source=source,started_at=item["started_at"],received_at=item["received_at"],payload=payload,features=item["features"],status=item["status"],request=item.get("request"),event_at=item.get("event_at")))
             manifest = {"version":VERSION,"reference_at":_iso(reference_at),"started_at":_iso(started),"completed_at":_iso(self.clock()),
-                        "symbols":list(self.symbols),"receipts":[{k:r[k] for k in ("id","symbol","source","received_at","status","object_path")} for r in records],"errors":errors,
+                        "symbols":list(self.symbols),"receipts":[{k:r[k] for k in ("id","symbol","source","received_at","status","object_path")} for r in records],"errors":errors,"error_details":error_details,
                         "request_launch_budget_seconds":self.request_budget_seconds,"fmp_fast_lane_budget_seconds":self.request_budget_seconds*.50,"fmp_technical_lane_deadline_seconds":self.request_budget_seconds*.75,"deferred":self._deferred,"refresh_seconds":{"quotes_bars_options":900,"corporate":21600,"news":900,"research_by_source":RESEARCH_REFRESH_SECONDS},
                         "scope":"Configured equities; bounded REST chains plus continuously recorded subscribed Schwab streams and full returned identity chains; configured futures roots; finite FMP research/technical/macro endpoints. Raw omitted contracts/pages remain explicit; not a claim of all provider products or market-wide coverage"}
             from ml.market_provenance import capture_runtime
