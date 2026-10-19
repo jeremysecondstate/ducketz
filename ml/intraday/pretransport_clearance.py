@@ -50,6 +50,31 @@ EXPECTED_FRAMES = [
 ]
 
 
+# This second retrospective profile is the complete sender used by the
+# observed first-gate freshness rejection. It does not generalize arbitrary
+# ContractError failures or permit clearance while the original process lives.
+EXPIRED_GATE_SOURCE = {
+    "ml/intraday/scout_client.py": "99afce435afd32ef27d148d0c46872ac4b1d9a5f6f4044ec567abf0db5bb4025",
+    "ml/intraday/scout_broker.py": "e2627a1ec521105822520322961fee72e97b34d6684267dfa959ab3ade2400a8",
+    "ml/intraday/scout_local_execution.py": "5f9a683d6de4e46e28887b1dad58e851a45ef41d03be924db1a38c8be032e7b2",
+    "ml/intraday/scout_journal.py": "a9da4c9b5735bf9f446f0449be451c3a4c82cb5674802fef5151728053c6cead",
+    "ml/intraday/local_forecast.py": "29af291cb125382ff05dcbbbc1e2cb0a7508ce01639dd0a21feb9a7b8daf5cb2",
+    "ml/intraday/live_session.py": "bdcb29f43e3356a9a0c5fc1764b9fcef5288cb60fb7872c6c786bcc9ef97a06d",
+    "app/services/schwab.py": "76d3d9adea02030e9b419aa032be882a6dcd3b2eb1438e613da6bc1da9258308",
+    "app/services/schwab_stock_orders.py": "9989209f1431b02cb43943cb8923d9463bfabd20cb8af6808445d3fb22104261",
+    "app/services/schwab_order_fields.py": "74ce11f6bad9e88601f6681cd19d62161659d0d1beecff4e36518ccd63421321",
+    "ml/stock_trader/session.py": "b7af001f9dc4bed9677cf66cd881e637b1f4d5c8a536dd3bb934b17d59019784"
+}
+EXPIRED_GATE_FRAMES = [
+    {"file": file, "function": function, "line": line} for file, function, line in (
+        ("scout_client.py", "submit", 186),
+        ("scout_local_execution.py", "<lambda>", 399),
+        ("scout_broker.py", "send", 182),
+        ("scout_broker.py", "gate", 177),
+        ("scout_local_execution.py", "local_authorization", 388),
+    )
+]
+
 def _require(condition, message):
     if not condition:
         raise ContractError("Pretransport clearance: " + message)
@@ -93,7 +118,9 @@ def _audit(books, journal, record):
     return control["journal_id"], own
 
 
-def _source(value):
+def _source(value, error_type):
+    _require(error_type in {"OperationalError", "ContractError"}, "unsupported reviewed error")
+    supported = SUPPORTED_SOURCE if error_type == "OperationalError" else EXPIRED_GATE_SOURCE
     _keys(value, {"manifest_text", "manifest_sha256", "files"}, "source proof fields differ")
     _require(type(value["manifest_text"]) is str, "manifest bytes missing")
     raw = value["manifest_text"].encode("utf-8")
@@ -101,8 +128,8 @@ def _source(value):
     manifest = json.loads(raw)
     _require(manifest.get("schema") == "scout-isolated-live-runtime-v1"
              and type(manifest.get("files")) is dict, "unsupported original manifest")
-    _keys(value["files"], SUPPORTED_SOURCE, "complete reviewed dependencies required")
-    for name, digest in SUPPORTED_SOURCE.items():
+    _keys(value["files"], supported, "complete reviewed dependencies required")
+    for name, digest in supported.items():
         contents = value["files"][name]
         _require(type(contents) is str and _sha(contents.encode("utf-8")) == digest
                  and manifest["files"].get(name) == digest, "unsupported or changed original source: " + name)
@@ -125,7 +152,8 @@ def _proof(evidence, record, *, journal_id, events, as_of):
              and evidence["original_record_sha256"] == canonical_sha256(record)
              and evidence["journal_id"] == journal_id and evidence["journal_events"] == events,
              "original record or single-claim history differs")
-    manifest = _source(evidence["source"])
+    error_type = evidence["execution_event"]["payload"]["evidence"]["error_type"]
+    manifest = _source(evidence["source"], error_type)
     request, permit = record["request"], record["grant"]
     session, rid = request["session_id"], request["request_id"]
     row = evidence["execution_event"]
@@ -143,7 +171,7 @@ def _proof(evidence, record, *, journal_id, events, as_of):
     _keys(detail, {"mode", "error_type", "local_state", "request_id", "retry_after_seconds", "submission_failure"},
           "execution diagnostic fields differ")
     _require(detail["mode"] == "scout-local-broker-account" and detail["request_id"] == rid
-             and detail["local_state"] == "UNKNOWN" and detail["error_type"] == "OperationalError",
+             and detail["local_state"] == "UNKNOWN" and detail["error_type"] == error_type,
              "diagnostic request differs")
     failure = detail["submission_failure"]
     _keys(failure, {"stage", "original"}, "submission diagnostics incomplete")
@@ -153,10 +181,17 @@ def _proof(evidence, record, *, journal_id, events, as_of):
     _require(original["chain_truncated"] is False and type(original["chain"]) is list
              and len(original["chain"]) == 1, "complete single exception required")
     error = original["chain"][0]
-    _keys(error, {"type", "message", "sqlite_errorcode", "frames"}, "exception fields differ")
-    _require(error["type"] == "OperationalError" and error["message"] == "database is locked"
-             and type(error["sqlite_errorcode"]) is int and error["sqlite_errorcode"] == 261
-             and error["frames"] == EXPECTED_FRAMES, "not the reviewed initial-gate SQLite failure")
+    if error_type == "OperationalError":
+        _keys(error, {"type", "message", "sqlite_errorcode", "frames"}, "exception fields differ")
+        _require(error["type"] == "OperationalError" and error["message"] == "database is locked"
+                 and type(error["sqlite_errorcode"]) is int and error["sqlite_errorcode"] == 261
+                 and error["frames"] == EXPECTED_FRAMES, "not the reviewed initial-gate SQLite failure")
+    else:
+        _keys(error, {"type", "message", "frames"}, "exception fields differ")
+        _require(error["type"] == "ContractError"
+                 and error["message"] == "Exception text withheld; inspect error type and stack locations"
+                 and error["frames"] == EXPIRED_GATE_FRAMES,
+                 "not the reviewed initial-gate freshness rejection")
     _require(instant(request["issued_at"]) <= instant(events[-2]["event"]["recorded_at"])
              <= instant(events[-1]["event"]["recorded_at"]) <= at
              and instant(payload["recorded_at"]) <= at
@@ -258,8 +293,8 @@ def create_clearance(books, journal, request_id, *, evidence_path, repository, r
     _require(record["request"]["request_id"] == request_id, "requested attempt differs")
     journal_id, events = _audit(books, journal, record)
     _proof(evidence, record, journal_id=journal_id, events=events, as_of=now)
-    for name, digest in SUPPORTED_SOURCE.items():
-        _require(_sha(_read(Path(repository) / name)) == digest, "reviewed original source changed: " + name)
+    for name, contents in evidence["source"]["files"].items():
+        _require(_sha(_read(Path(repository) / name)) == _sha(contents.encode("utf-8")), "reviewed original source changed: " + name)
     path = _path(books, record)
     with books.locked():
         books.inspect()

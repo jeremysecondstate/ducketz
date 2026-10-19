@@ -24,6 +24,8 @@ from ml.stock_trader.state import capture_portfolio_state, validated_symbols
 from .capacity import clip_to_capacity
 from .commitment_clearance import load_clearance
 from .pretransport_clearance import load_clearance as load_pretransport_clearance
+from .initial_gate_clearance import (load_clearance as load_initial_gate_clearance,
+                                     create_clearance as create_initial_gate_clearance)
 from .exact_status import TERMINAL, retry_delay
 from .intentions import IntentionStore
 from .prediction import ContractError, digest, instant
@@ -146,7 +148,8 @@ class ScoutLocalAccountExecutor:
     def _commitment_clearance(self, journal, record):
         # Each proof retains the original UNKNOWN and permanent send fence.
         # Pre-transport proof is separate from broker-history DAY expiration.
-        return (load_pretransport_clearance(self.books, journal, record, as_of=self.clock())
+        return (load_initial_gate_clearance(self.books, journal, record, as_of=self.clock())
+                or load_pretransport_clearance(self.books, journal, record, as_of=self.clock())
                 or load_clearance(self.books, journal, record, as_of=self.clock()))
 
     def _recover_record(self, journal, record):
@@ -394,18 +397,33 @@ class ScoutLocalAccountExecutor:
 
         client = ScoutClient(self.journal, None, account_fingerprint=self.account_fingerprint,
             session_id=self.session_id, symbols=frozenset(self.symbols), authority_epoch=1, clock=self.clock)
+        adapter = None
+        def send(req, granted):
+            nonlocal adapter
+            adapter = self._adapter(self.journal, self.journal.get(req.request_id))
+            return adapter.send(req, granted,
+                expected_snapshot_identity=portfolio.broker_identity_fingerprint,
+                authorization_gate=local_authorization, final_gate=local_authorization)
         try:
-            client.submit(request.request_id, final_gate=local_authorization,
-                send=lambda req, granted: self._adapter(self.journal, self.journal.get(req.request_id)).send(req, granted,
-                    expected_snapshot_identity=portfolio.broker_identity_fingerprint,
-                    authorization_gate=local_authorization, final_gate=local_authorization))
+            client.submit(request.request_id, final_gate=local_authorization, send=send)
             return self._record(forecast, 'submitted', capacity=capacity,
                 order=self.journal.lookup_reservation(permit.reservation_id), evidence={'request_id': request.request_id})
         except Exception as exc:
             record = self.journal.get(request.request_id)
+            clearance, clearance_failure = None, None
+            if adapter is not None and adapter.initial_gate_failure is not None and record['state'] == 'UNKNOWN':
+                try:
+                    clearance = create_initial_gate_clearance(self.books, self.journal, record,
+                        adapter=adapter, error=exc, as_of=self.clock())
+                except Exception as persistence_error:
+                    # Preserve the actual submission failure if proof storage
+                    # fails. An absent/invalid proof keeps the original block.
+                    clearance_failure = exception_details(persistence_error)
             return self._record(forecast, 'submission_recovery_required', capacity=capacity,
                 order=self._order(self.journal, record),
                 evidence={'request_id': request.request_id, 'local_state': record['state'],
                           'error_type': type(exc).__name__, 'retry_after_seconds': retry_delay(exc, self.clock()),
+                          **({'pretransport_clearance': clearance} if clearance is not None else {}),
+                          **({'clearance_persistence_failure': clearance_failure} if clearance_failure is not None else {}),
                           'submission_failure': getattr(exc, 'scout_submission_failure',
                               dict(stage='outside_claimed_submit', original=exception_details(exc)))})
