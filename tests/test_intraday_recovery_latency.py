@@ -293,3 +293,92 @@ def test_newer_order_scan_preserves_fresh_sizing_without_per_order_transactions(
     assert 0 < phase["charged_seconds"] < 60
     assert len(env.broker.submissions) == submissions + 1
     assert previous < set(env.orders) and len(set(env.orders) - previous) == 1
+    with env.store.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='sizing_unavailable_diagnostics'").fetchone()[0] == 0
+
+
+def test_normal_stale_sizing_persists_slow_phase_without_changing_intention(env, monkeypatch):
+    forecast = env.forecast()
+    original_scan = env.executor.intents.processed_at_or_after
+    monkeypatch.setattr(time, "monotonic", lambda: env.now.timestamp())
+
+    def slow_scan(value):
+        result = original_scan(value)
+        advance(env, 65)
+        return result
+
+    monkeypatch.setattr(env.executor.intents, "processed_at_or_after", slow_scan)
+    result = env.executor.step(forecast)
+    assert result["kind"] == "sizing_unavailable"
+    assert result["disposition"] == "quote_stale_or_future"
+    assert result == env.executor.intents.history(forecast["forecast_id"])[-1]
+    assert env.executor.intents.get(forecast["forecast_id"]) is None
+    assert env.store.forecasts()[0] == forecast
+    assert env.broker.submissions == [] and env.broker.cancellations == []
+    with env.store.connect() as db:
+        rows = db.execute("SELECT cycle_id,symbol,payload FROM events WHERE kind='sizing_unavailable_diagnostics'").fetchall()
+    assert len(rows) == 1
+    cycle_id, symbol, raw = rows[0]
+    saved = json.loads(raw)
+    assert (cycle_id, symbol) == (forecast["cycle_id"], forecast["symbol"])
+    assert saved["forecast_id"] == forecast["forecast_id"]
+    assert saved["sizing_id"] == execution.digest(result["evidence"]["sizing"])
+    assert saved["disposition"] == result["disposition"]
+    diagnostic = saved["diagnostics"]
+    assert diagnostic["execution_stage"] == "sizing"
+    assert diagnostic["execution_elapsed_seconds"] >= 65
+    assert next(phase for phase in diagnostic["execution_phases"]
+                if phase["stage"] == "newer_intention_scan")["elapsed_seconds"] >= 65
+    assert diagnostic["snapshot_observed_at"] == env.executor.portfolio.observed_at
+    assert len(diagnostic["execution_phases"]) <= 32
+    assert set(diagnostic) == {"execution_stage", "execution_elapsed_seconds",
+        "execution_stage_elapsed_seconds", "execution_phases", "lease_expires_at", "snapshot_observed_at"}
+    assert env.executor.lease.token not in raw and env.config.account_fingerprint not in raw
+    assert "account_equity" not in raw and "quote" not in json.dumps(diagnostic)
+
+
+def test_unavailable_sizing_diagnostics_survive_previous_intention_cancellation(env, monkeypatch):
+    from ml.intraday.technical_sizing import SizingResult
+    from ml.intraday.prediction import digest, encoded
+
+    old = env.forecast()
+    assert env.executor.step(old)["disposition"] == "submitted"
+    new = env.forecast(offset=15, probability=.25)
+    env.now = pd.Timestamp(new["issued_at"])
+
+    def unavailable(forecast, **kwargs):
+        value = dict(forecast_id=forecast["forecast_id"], symbol="AAPL", side="SELL", status="unavailable",
+            desired_quantity=None, calculated_at=env.clock(), reason="undefined_indicator_fixture")
+        return SizingResult(digest(value), encoded(value))
+
+    monkeypatch.setattr(execution, "size_forecast", unavailable)
+    result = env.executor.step(new)
+    assert result["disposition"] == "previous_intention_reconciliation"
+    assert env.broker.cancellations == ["1001"] and len(env.broker.submissions) == 1
+    history = env.executor.intents.history(new["forecast_id"])
+    unavailable_entry = next(entry for entry in history if entry["kind"] == "sizing_unavailable")
+    with env.store.connect() as db:
+        rows = db.execute("SELECT payload FROM events WHERE kind='sizing_unavailable_diagnostics'").fetchall()
+    assert len(rows) == 1
+    saved = json.loads(rows[0][0])
+    assert saved["forecast_id"] == new["forecast_id"]
+    assert saved["sizing_id"] == digest(unavailable_entry["evidence"]["sizing"])
+    assert saved["disposition"] == "undefined_indicator_fixture"
+    assert saved["diagnostics"]["execution_stage"] == "sizing"
+    assert "diagnostics" not in unavailable_entry["evidence"]
+
+
+def test_execution_timing_snapshot_is_bounded_and_detached(monkeypatch):
+    now = [0.]
+    monkeypatch.setattr(time, "monotonic", lambda: now[0])
+    trace = execution._ExecutionTrace()
+    for _ in range(40):
+        now[0] += 1
+        trace.advance("sizing")
+    saved = trace.snapshot()
+    assert len(saved["execution_phases"]) == 32
+    assert saved["execution_elapsed_seconds"] == 40
+    trace.advance("execution_after_sizing")
+    assert saved["execution_stage"] == "sizing"
+    saved["execution_phases"][-1]["elapsed_seconds"] = 999
+    assert trace.snapshot()["execution_phases"][-2]["elapsed_seconds"] == 1
