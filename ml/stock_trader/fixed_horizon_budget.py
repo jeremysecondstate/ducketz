@@ -18,9 +18,9 @@ from ml.stock_trader.contracts import (
 )
 
 
-FIXED_HORIZON_BUDGET_POLICY_VERSION = "independent-stock-fixed-confidence-budget-v1"
+FIXED_HORIZON_BUDGET_POLICY_VERSION = "independent-stock-fixed-direction-budget-v2"
 FIXED_HORIZON_WEIGHTS = {"1h": 1, "4h": 2, "1d": 3, "1w": 4}
-MAXIMUM_HORIZON_BUDGET_UTILIZATION = .5
+MAXIMUM_HORIZON_BUDGET_UTILIZATION = 1.
 
 
 @dataclass(frozen=True)
@@ -64,7 +64,7 @@ def fixed_budget_forecast_readiness(
     active_policy = policy or StockTraderPolicy()
     active_policy.validate()
     probability = finite(signal.calibrated_probability)
-    threshold = max(BULLISH_PROBABILITY, active_policy.minimum_trade_probability)
+    threshold = BULLISH_PROBABILITY
     reason = None
     if forecast_promoted is not True:
         reason = "FORECAST_NOT_PROMOTED"
@@ -90,7 +90,7 @@ def fixed_budget_forecast_readiness(
     if reason is not None:
         return {"status": "NOT_READY", "reason": reason, "entry_signal": False,
                 "forecast_probability": probability, "minimum_forecast_probability": threshold}
-    bullish = stock_direction(probability) == "BULLISH" and probability >= threshold
+    bullish = stock_direction(probability) == "BULLISH"
     return {"status": "READY" if bullish else "READY_WITH_NO_ENTRY_SIGNAL",
             "reason": "QUALIFIED_BULLISH_STOCK_FORECAST" if bullish else "NO_BULLISH_ENTRY_SIGNAL",
             "entry_signal": bullish, "forecast_probability": probability,
@@ -113,8 +113,8 @@ def size_fixed_horizon_budget(
     """Produce a whole-share LIMIT entry candidate within existing risk ceilings.
 
     The maximum horizon amount is the existing symbol ceiling weighted 1:2:3:4
-    and capped by the existing single-order ceiling. Confidence uses 2*p-1,
-    clipped to [0, 0.5], solely as an explicit capital-utilization rule.
+    and capped by the existing single-order ceiling. Every bullish probability
+    receives the full horizon amount; confidence does not shrink it to zero.
     Remaining cash/gross/symbol amounts are conservative single-candidate caps;
     the caller must reserve them jointly across the full batch before any POST.
     Existing owned allocations and bearish forecasts never become short sales.
@@ -124,7 +124,8 @@ def size_fixed_horizon_budget(
     probability = finite(signal.calibrated_probability)
     weight = FIXED_HORIZON_WEIGHTS.get(signal.primary_horizon, 0)
     fraction = weight / 10
-    utilization_decimal = min(Decimal("0.5"), max(Decimal(0), 2 * Decimal(str(probability)) - 1)) if probability is not None else Decimal(0)
+    utilization_decimal = (Decimal(1) if probability is not None and 0 <= probability <= 1
+                           and stock_direction(probability) == "BULLISH" else Decimal(0))
     utilization = float(utilization_decimal)
     ceiling = confidence_budget = available_budget = 0.
 
@@ -183,7 +184,7 @@ def size_fixed_horizon_budget(
         quantity = max(0, int(available_decimal / limit_decimal))
         if quantity < 1 or quantity * limit_decimal < as_decimal(active_policy.minimum_order_notional):
             return result("FIXED_BUDGET_TOO_SMALL", "The remaining budget cannot fund the minimum whole-share entry.")
-        return result("ELIGIBLE", "Qualified stock forecast with a deterministic confidence-scaled horizon budget.",
+        return result("ELIGIBLE", "Qualified bullish stock forecast with the full deterministic horizon budget.",
                       quantity=quantity, limit_price=limit_price)
     except (ArithmeticError, ValueError, TypeError) as exc:
         return result("FIXED_BUDGET_INPUT_INVALID", f"The policy input is invalid: {type(exc).__name__}.")

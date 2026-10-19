@@ -47,20 +47,57 @@ def test_heading_identifies_og_and_yg_without_changing_session_or_filters(tab):
     assert tab.plan.session == session and tab.visible_rows == tab.plan.rows()
 
 
-def test_planned_and_execution_mid_prices_are_adjacent_in_both_views(tab):
+def test_saved_price_columns_are_removed_without_losing_actions_or_probabilities(tab):
     from dataclasses import replace
     from app.ui.gameplan_data import ExecutionQuote
     tab.trade_button.invoke()
     forecast=tab.plan.forecast(tab.visible_rows[0].forecast_id)
     quote=ExecutionQuote(forecast.forecast_id,127.22,forecast.start,127.24,15.)
     tab.set_plan(replace(tab.plan,execution_quotes=(quote,)))
-    for view in ('trades','forecasts'):
+    expected_headers = {
+        'trades': ['Time', 'Company', 'Action', 'Horizon', 'Shares', 'Reason'],
+        'forecasts': ['Window (Pacific)', 'Company', 'Direction', 'Horizon', 'P(up)', 'Action', 'Reason'],
+    }
+    for view in ('trades', 'forecasts'):
         tab.view.set(view)
         tab.render()
         headers=[tab.table_header.itemcget(i,'text') for i in tab.table_header.find_all() if tab.table_header.type(i)=='text']
-        assert headers[headers.index('Planning price')+1] == 'Execution mid'
-        cells=[tab.table.itemcget(i,'text') for i in tab.table.find_all() if tab.table.type(i)=='text']
-        assert '$127.22' in cells
+        assert headers == expected_headers[view]
+        text_items = [i for i in tab.table.find_all() if tab.table.type(i) == 'text']
+        cells = [tab.table.itemcget(i, 'text') for i in text_items]
+        assert not any('$' in value for value in cells)
+        assert 'BUY' in cells
+        assert any(tab.table.itemcget(i, 'text') == 'BUY'
+                   and tab.table.itemcget(i, 'fill') == plan_ui.SUCCESS for i in text_items)
+        assert ('17' if view == 'trades' else '54.36%') in cells
+    assert tab.plan.execution_quote(forecast.forecast_id) == quote
+    assert tab.plan.forecast(forecast.forecast_id).price == forecast.price
+
+
+def test_selection_journey_and_details_omit_saved_price_estimates_and_comparisons(tab, monkeypatch):
+    from dataclasses import replace
+    from app.ui.gameplan_data import ExecutionQuote
+    forecast = next(row for row in tab.plan.forecasts if row.action == 'BUY')
+    quote = ExecutionQuote(forecast.forecast_id, 127.22, forecast.start, 127.24, 15.)
+    tab.set_plan(replace(tab.plan, execution_quotes=(quote,)))
+    shown = []
+    monkeypatch.setattr(tab, '_text_dialog', lambda title, text: shown.append(text))
+    for view in ('trades', 'forecasts'):
+        tab.view.set(view)
+        tab.render()
+        for row in tab.visible_rows:
+            tab.selected_key = tab._key(row)
+            tab._draw_selection()
+            journey = [tab.journey.itemcget(i, 'text') for i in tab.journey.find_all()
+                       if tab.journey.type(i) == 'text']
+            assert not any('$' in value or 'estimate' in value.lower() for value in journey)
+            assert 'Recorded midpoint' not in tab.selection_note.cget('text')
+            tab.show_details()
+            assert 'Planning price' not in shown[-1]
+            assert 'Execution mid' not in shown[-1]
+            assert '$' not in shown[-1]
+            assert 'live bid, ask and midpoint quotes' in shown[-1]
+    assert any('17 shares' in text for text in shown)
 
 
 def test_filtered_cards_table_and_forecasts_have_consistent_scope(tab):
@@ -168,7 +205,7 @@ def test_later_existing_expiry_never_borrows_a_current_forecast_or_price(tab, mo
     tab.show_details()
     assert "Sep 15, 2026 07:00 PDT" in shown[-1]
     assert "Unreserved allocation: 3 shares" in shown[-1]
-    assert "Planning price: —" in shown[-1]
+    assert "Planning price" not in shown[-1]
     assert "Published P(up)" not in shown[-1]
 
 

@@ -7,6 +7,8 @@ module has no broker connection and cannot create an order or a fill.
 import json
 from dataclasses import asdict
 
+from ml.stock_direction_policy import stock_direction
+
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
 
 VERSION = "intraday-independent-intentions-v1"
@@ -58,9 +60,13 @@ class IntentionStore:
         value = result.payload()
         if value["forecast_id"] != forecast["forecast_id"] or value["symbol"] != forecast["symbol"]:
             raise ContractError("Sizing belongs to another forecast")
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        existing = self.get(forecast["forecast_id"])
+        side = (existing["side"] if existing is not None else
+                {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD"))
         if value["side"] != side or instant(value["calculated_at"]) < instant(forecast["issued_at"]):
             raise ContractError("Sizing direction or availability differs from forecast")
+        if side == "HOLD" and value["status"] == "sized":
+            raise ContractError("A neutral forecast cannot request a trade")
         if value["status"] != "sized":
             return self.record(forecast, event_key="unavailable:" + result.result_id,
                 recorded_at=value["calculated_at"], disposition=value["reason"],
@@ -101,7 +107,11 @@ class IntentionStore:
             intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
                                                (forecast["forecast_id"],)).fetchone())
             desired = intention["desired_quantity"] if intention else None
-            side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+            # Recovery preserves the first immutable intention and its actual
+            # order side across later policy changes. New unsized forecasts
+            # still take their direction from the current cutoff.
+            side = (intention["side"] if intention is not None else
+                    {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD"))
             value = dict(version=VERSION, forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
                 side=side, kind=kind, desired_quantity=desired, adjusted_quantity=None,
                 disposition=disposition, evidence=evidence, submission_status="not_submitted",

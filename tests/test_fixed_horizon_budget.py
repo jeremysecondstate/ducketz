@@ -38,13 +38,14 @@ def size(prediction=None, **kwargs):
         decided_at=kwargs.pop("decided_at", NOW), **kwargs)
 
 
-@pytest.mark.parametrize("probability,utilization", [(.54, .08), (.55, .1), (.6, .2), (.7, .4), (.75, .5), (1., .5)])
-def test_confidence_fraction_is_explicit_conservative_policy(probability, utilization):
-    result = size(signal(probability=probability))
+@pytest.mark.parametrize("probability", [.5001, .54, .55, .6, .7, .75, 1.])
+def test_every_bullish_probability_uses_full_horizon_capacity(probability):
+    result = size(signal(probability=probability), policy=StockTraderPolicy(minimum_trade_probability=.99))
     assert result.status == "ELIGIBLE"
-    assert result.confidence_budget_fraction == utilization
+    assert result.confidence_budget_fraction == 1.
     assert result.horizon_notional_ceiling == 1500.
-    assert result.confidence_notional_budget == 1500 * utilization
+    assert result.confidence_notional_budget == 1500
+    assert result.quantity == 15
     assert result.quantity * result.limit_price <= result.available_notional_budget
     assert result.forecast_probability == probability
     audit = result.to_dict()
@@ -56,7 +57,7 @@ def test_horizon_weights_and_existing_order_cap_are_preserved():
     results = [size(signal(group)) for group in ("1h", "4h", "1d", "1w")]
     assert [item.horizon_weight for item in results] == [1, 2, 3, 4]
     assert [item.horizon_notional_ceiling for item in results] == [1500., 3000., 4500., 5000.]
-    assert [item.quantity for item in results] == [6, 12, 18, 20]
+    assert [item.quantity for item in results] == [15, 30, 45, 50]
     assert sum(item.order_notional for item in results) <= 15000.
 
 
@@ -74,11 +75,11 @@ def test_qualified_bearish_or_neutral_is_ready_without_an_entry_or_short(probabi
     assert result.reason_code == "NO_BULLISH_ENTRY_SIGNAL"
 
 
-@pytest.mark.parametrize("probability", [.500001, .51, .539999])
+@pytest.mark.parametrize("probability", [.5001, .51, .539999])
 def test_former_neutral_bullish_forecasts_are_entry_signals(probability):
     readiness = fixed_budget_forecast_readiness(signal(probability=probability), forecast_promoted=True)
     assert readiness["entry_signal"] is True
-    assert readiness["minimum_forecast_probability"] == .5
+    assert readiness["minimum_forecast_probability"] == .5001
 
 
 @pytest.mark.parametrize("kwargs,code", [
@@ -97,7 +98,7 @@ def test_existing_entry_authority_and_window_checks(kwargs, code):
 
 def test_policy_does_not_veto_using_another_horizons_forecast():
     prediction = replace(signal(), horizon_probabilities={"1h": .7, "4h": .1, "1d": .1, "1w": .1})
-    assert size(prediction).quantity == 6
+    assert size(prediction).quantity == 15
 
 
 def test_exact_overnight_target_is_retained():
@@ -132,7 +133,7 @@ def test_limit_uses_rounded_ask_and_whole_share_affordability():
     state, quote = portfolio(ask=100.123, bid=100.)
     result = size(portfolio=state, quote=quote)
     assert result.limit_price == 100.13
-    assert result.quantity == 5
+    assert result.quantity == 14
     assert result.quantity * result.limit_price <= result.available_notional_budget
 
 
@@ -145,7 +146,7 @@ def test_invalid_or_wide_quotes_do_not_make_orders(ask, bid, code):
 
 
 def test_missing_model_is_irrelevant_but_research_forecast_cannot_be_relabelled():
-    assert size().quantity == 6
+    assert size().quantity == 15
     assert size(forecast_promoted=False).quantity == 0
     assert fixed_budget_forecast_readiness(signal(), forecast_promoted="PROMOTED")["status"] == "NOT_READY"
     assert size(replace(signal(), target_definition_version="legacy-hourly")).quantity == 0
@@ -155,4 +156,4 @@ def test_existing_minimum_order_and_limit_offset_caps_still_apply():
     state, quote = portfolio(ask=10.001, bid=10.)
     result = size(portfolio=state, quote=quote, policy=StockTraderPolicy(maximum_limit_offset_bps=0.))
     assert result.reason_code == "LIMIT_PRICE_OFFSET_EXCEEDS_CAP"
-    assert size(policy=StockTraderPolicy(minimum_order_notional=1000.)).reason_code == "FIXED_BUDGET_TOO_SMALL"
+    assert size(policy=StockTraderPolicy(minimum_order_notional=1600.)).reason_code == "FIXED_BUDGET_TOO_SMALL"

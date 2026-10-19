@@ -73,8 +73,8 @@ def test_four_horizon_weights_share_the_existing_symbol_budget_without_fake_mode
     signals, state = inputs()
     decisions = build(signals, state)
     assert [item.prediction["primary_horizon"] for item in orders(decisions)] == list(HORIZONS)
-    assert [item.quantity for item in decisions] == [7, 15, 22, 25]
-    assert notional(orders(decisions)) == Decimal(6900)
+    assert [item.quantity for item in decisions] == [15, 30, 45, 50]
+    assert notional(orders(decisions)) == Decimal(14000)
     assert notional(orders(decisions)) <= Decimal(15000)
     for item in decisions:
         assert item.prediction["calibrated_probability"] == .75

@@ -500,7 +500,12 @@ def run_independent_stock_trader_once(
 
 
 def _direction_sell_capacities(signals, state, portfolio, exits):
-    """Partition current eligible shares once; never use projected inventory."""
+    """Admit actual stock; the builder and reservation bound the combined sale.
+
+    One-hour/four-hour forecasts may compete for every owned horizon from the
+    October 19 instruction onward. Longer horizons keep own/unallocated stock.
+    """
+    from ml.stock_direction_policy import autonomous_horizon_sales
     from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
     allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
     due_ids = {d.prediction.get("allocation_id") for d in exits}
@@ -514,7 +519,14 @@ def _direction_sell_capacities(signals, state, portfolio, exits):
     for key in sorted(signals, key=lambda item: (FIXED_HORIZON_WEIGHTS[item[1]], item[0])):
         if stock_direction(signals[key].calibrated_probability) != "BEARISH":
             continue
-        symbol, _ = key
+        symbol, horizon = key
+        day = utc(signals[key].target_window_start).tz_convert("America/Los_Angeles").date().isoformat()
+        if autonomous_horizon_sales(horizon, day):
+            due = sum(a.filled_shares - a.reserved_sell_shares for a in state.allocations
+                      if a.symbol == symbol and a.allocation_id in due_ids)
+            capacities[key] = max(0, int(portfolio.held_shares.get(symbol, 0)
+                - portfolio.pending_sell_shares.get(symbol, 0) - due))
+            continue
         allocation = allocations.get(key)
         if allocation and (allocation.reserved_buy_shares or allocation.allocation_id in due_ids):
             capacities[key] = 0
@@ -533,6 +545,7 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
     own/unallocated inventory before asking the ledger for a bounded donor.
     """
     from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+    from ml.stock_direction_policy import autonomous_horizon_sales
     allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
     reserved = {}
     normal_sales = set()
@@ -549,6 +562,9 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
         if stock_direction(signal.calibrated_probability) != "BEARISH":
             continue
         symbol, horizon = key
+        day = utc(signal.target_window_start).tz_convert("America/Los_Angeles").date().isoformat()
+        if autonomous_horizon_sales(horizon, day):
+            continue
         own = allocations.get(key)
         if own and (own.filled_shares or own.reserved_buy_shares or own.reserved_sell_shares):
             continue

@@ -56,8 +56,8 @@ def test_working_price_capacity_preserves_separate_scheduled_preview_and_history
     original = bands([row])
     result = _plan_working_price_rows(pd.DataFrame([row]), snapshot(), original,
                                      planning_path([row]), policy=StockTraderPolicy()).iloc[0]
-    assert result.trade_quantity == result.scheduled_trade_quantity == 6
-    assert result.trade_notional_reserved == 60
+    assert result.trade_quantity == result.scheduled_trade_quantity == 15
+    assert result.trade_notional_reserved == 150
     assert result.projected_trade_quantity == 14
     assert result.projected_trade_notional == pytest.approx(140.28)
     assert (result.trade_price_low, result.trade_price_mid, result.trade_price_high) == (9.98, 10, 10.02)
@@ -71,7 +71,7 @@ def test_unavailable_working_point_does_not_invent_projected_capacity():
     path["points"]["AAPL|2026-09-09|04:00"]["status"] = "UNAVAILABLE_MINIMUM_SAMPLES"
     result = _plan_working_price_rows(pd.DataFrame([row]), snapshot(), bands([row]), path,
                                      policy=StockTraderPolicy()).iloc[0]
-    assert result.trade_quantity == 6
+    assert result.trade_quantity == 15
     assert result.projected_trade_quantity is None
     assert result.trade_price_low is None and result.trade_price_high is None
     assert result.projected_quantity_reason == "PRICE_RANGE_UNAVAILABLE"
@@ -113,7 +113,7 @@ def test_zero_price_uncertainty_matches_existing_fixed_budget_arithmetic():
         ActivationIntent(True, "ACTIVE", "test only", "", "test"), forecast_promoted=True,
         ledger_ready=True, has_active_allocation=False, decided_at=quote.observed_at)
     proposed = plan_trade_rows(pd.DataFrame([row]), snapshot(), bands([row], low=10, high=10))
-    assert proposed.iloc[0].trade_quantity == actual.quantity == 6
+    assert proposed.iloc[0].trade_quantity == actual.quantity == 15
 
 
 @pytest.mark.parametrize("quote_at,expected", [
@@ -132,7 +132,7 @@ def test_synthetic_reference_does_not_relax_independent_quote_freshness(quote_at
     assert result.price_reference_observed_at == "2026-09-08T23:47:00Z"
 
 
-@pytest.mark.parametrize("probability,promoted", [(.3, True), (.5287, True), (.7, False)])
+@pytest.mark.parametrize("probability,promoted", [(.3, True), (.5, True), (.7, False)])
 def test_projected_capacity_is_available_even_without_a_scheduled_entry(probability, promoted):
     row = forecast(probability=probability, promoted=promoted)
     result = plan_trade_rows(pd.DataFrame([row]), snapshot(), bands([row])).iloc[0]
@@ -202,7 +202,7 @@ def test_unavailable_or_invalid_account_is_not_invented(cash):
 def test_existing_or_planned_horizon_does_not_assume_exit_fill():
     rows = [forecast(hour=4), forecast(hour=5)]
     result = plan_trade_rows(pd.DataFrame(rows), snapshot(), bands(rows))
-    assert result.trade_quantity.tolist() == [6, 0]
+    assert result.trade_quantity.tolist() == [15, 0]
     assert result.iloc[1].trade_planning_reason == "REQUIRES_PRIOR_EXIT_CONFIRMATION"
     state = snapshot(); state["ownership"]["active_allocations"] = [{"symbol": "AAPL", "horizon": "1h"}]
     assert plan_trade_rows(pd.DataFrame(rows), state, bands(rows)).trade_quantity.sum() == 0
@@ -219,7 +219,7 @@ def test_all_symbols_share_six_order_batch_cap():
 def test_missing_estimated_range_does_not_block_quote_based_scheduled_preview():
     row = forecast(); b = bands([row]); b["rows"][0]["price_band_status"] = "UNAVAILABLE_MINIMUM_SAMPLES"
     result = plan_trade_rows(pd.DataFrame([row]), snapshot(), b).iloc[0]
-    assert result.trade_quantity == 6 and result.trade_planning_reason == "PROVISIONAL_BUY"
+    assert result.trade_quantity == 15 and result.trade_planning_reason == "PROVISIONAL_BUY"
     assert result.projected_trade_quantity is None
 
 
@@ -227,9 +227,9 @@ def test_missing_estimated_range_does_not_block_quote_based_scheduled_preview():
 def test_current_quote_above_or_below_estimated_range_remains_eligible(low, high):
     row = forecast()
     result = plan_trade_rows(pd.DataFrame([row]), snapshot(), bands([row], low=low, high=high)).iloc[0]
-    assert result.trade_quantity == 6 and result.trade_planning_reason == "PROVISIONAL_BUY"
+    assert result.trade_quantity == 15 and result.trade_planning_reason == "PROVISIONAL_BUY"
     assert result.trade_limit_price_reference == 10
-    assert result.trade_notional_reserved == 60
+    assert result.trade_notional_reserved == 150
 
 
 def test_forecast_or_band_identity_tampering_fails():
@@ -250,9 +250,9 @@ def test_quote_freshness_remains_required_while_ask_above_estimate_changes_size(
     assert result.trade_quantity == 0 and result.trade_planning_reason == "QUOTE_REFERENCE_STALE_OR_FUTURE"
     state = snapshot(); state["quotes"]["AAPL"].update(bid=10.99, ask=11.01, price_reference=10.99)
     result = plan_trade_rows(pd.DataFrame([row]), state, bands([row])).iloc[0]
-    assert result.trade_quantity == 5 and result.trade_planning_reason == "PROVISIONAL_BUY"
+    assert result.trade_quantity == 13 and result.trade_planning_reason == "PROVISIONAL_BUY"
     assert result.trade_limit_price_reference == 11.01
-    assert result.trade_notional_reserved == pytest.approx(55.05)
+    assert result.trade_notional_reserved == pytest.approx(143.13)
 
 
 def test_nonuniverse_working_buys_consume_gross_headroom():

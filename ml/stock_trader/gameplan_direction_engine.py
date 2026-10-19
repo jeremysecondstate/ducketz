@@ -212,8 +212,9 @@ def build_gameplan_direction_trade_decisions(
     """Apply saved directions using actual capital, inventory, and current quotes.
 
     Bearish capacities are an explicit caller attestation of authorized,
-    disjoint inventory slices. They must exclude pending sells, protected other
-    horizons, and every allocation represented in ``exit_decisions``. The batch
+    inventory. They must exclude pending sells and every allocation represented
+    in ``exit_decisions``. One-hour and four-hour sales may use any owned horizon;
+    longer horizons retain their existing inventory policy. The batch
     additionally caps their sum at current held shares minus pending sells.
     Submitted sells never increase the cash or exposure budgets for this batch.
     """
@@ -298,7 +299,7 @@ def build_gameplan_direction_trade_decisions(
         elif not ready:
             code = "FORECAST_PROBABILITY_INVALID"
         elif direction == "NO_EDGE":
-            code, reason = "NEUTRAL_HOLD", "An exact 50% probability has no directional signal."
+            code, reason = "NEUTRAL_HOLD", "The probability is between 49.99% and 50.01% and has no directional signal."
         else:
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
             deadline = min(utc(signal.actionable_until), end)
