@@ -399,6 +399,12 @@ def run_independent_stock_trader_once(
                 if current_config.fingerprint != account_config.fingerprint:
                     raise ValueError("ACCOUNT_EXECUTION_CONFIG_CHANGED")
                 source_gameplan_run = account_plan.path
+                metadata["source_gameplan_run"] = source_gameplan_run.relative_to(root).as_posix()
+                if (source_gameplan_run / "accepted-plan.json").is_file():
+                    # Catch-up can create orders after an entry-disabled poll.
+                    # Retain the same immutable inputs as ordinary plan loading.
+                    sources = (source_gameplan_run / "accepted-plan.json",
+                               source_gameplan_run / "joint-plan.json")
         except (OSError, ValueError, RuntimeError) as exc:
             signals = {}
             metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
