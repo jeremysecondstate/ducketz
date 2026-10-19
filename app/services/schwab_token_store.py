@@ -405,9 +405,19 @@ def _protect_token_path(path: Path, *, directory: bool = False) -> None:
         owner_security_information = 0x00000001
         dacl_security_information = 0x00000004
         protected_dacl_security_information = 0x80000000
+        # A normal user's new file may inherit only Modify rights. Its owner
+        # can set the DACL, but cannot request WRITE_OWNER until this sole-user
+        # full-control ACE is installed. Set the protected DACL first; a combined
+        # owner/DACL request fails even when the requested owner is unchanged.
         if not set_file_security(
             str(path),
-            owner_security_information | dacl_security_information | protected_dacl_security_information,
+            dacl_security_information | protected_dacl_security_information,
+            security_descriptor,
+        ):
+            raise ctypes.WinError(ctypes.get_last_error())
+        if not set_file_security(
+            str(path),
+            owner_security_information,
             security_descriptor,
         ):
             raise ctypes.WinError(ctypes.get_last_error())
