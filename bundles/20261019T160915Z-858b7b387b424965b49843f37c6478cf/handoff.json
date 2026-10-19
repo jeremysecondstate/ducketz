@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T16:09:15.749082Z",
+  "id": "20261019T160915Z-858b7b387b424965b49843f37c6478cf",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Repair independent symbol concurrency and failed market-input retries"
+}

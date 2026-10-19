@@ -1,0 +1,62 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261019T160318Z-683a20600b4943b496cc70222d7e5649",
+  "change_id": "20261019T160318Z-683a20600b4943b496cc70222d7e5649",
+  "commit_sha": "9b53cd7ddf874080891d5ef99efae173519fb4aa",
+  "files": [
+    "app/services/databento_lifecycle.py",
+    "app/services/databento_market_data.py",
+    "ml/intraday/candle_collection.py",
+    "ml/intraday/coverage.py",
+    "ml/intraday/data.py",
+    "ml/intraday/feature_support.py",
+    "ml/intraday/gap_recovery.py",
+    "ml/intraday/historical_market_inputs.py",
+    "ml/intraday/live_session.py",
+    "ml/intraday/market_input_research.py",
+    "ml/intraday/market_input_schwab_stream.py",
+    "ml/intraday/market_input_stream.py",
+    "ml/intraday/market_input_worker.py",
+    "ml/intraday/market_inputs.py",
+    "ml/intraday/models.py",
+    "ml/intraday/provider_recovery.py",
+    "ml/intraday/recovered_population.py",
+    "ml/intraday/resource_policy.py",
+    "ml/intraday/runtime.py",
+    "ml/intraday/selected_config.py",
+    "ml/intraday/store.py",
+    "ml/intraday/technical_sizing.py",
+    "ml/market_gap_evidence.py",
+    "ml/market_provenance.py",
+    "tests/test_intraday_input_concurrency.py",
+    "tests/test_intraday_model_concurrency.py",
+    "tests/test_intraday_runtime.py",
+    "tests/test_intraday_store.py",
+    "tests/test_intraday_data.py"
+  ],
+  "limitations": [
+    "Offline fake-model and fake-provider checks only; no real fit, provider request, broker operation or trader activation.",
+    "Python global warning filters remain subject to third-party global mutations outside participating fit scopes.",
+    "Source publication includes exact existing installed dependency closure; no main integration or peer installation claimed.",
+    "Current running processes predate repair and cannot honor newly introduced sidecar locks until manual activation.",
+    "The historical market-input database exception omitted its exact SQLite cause; lock contention is suspected, not asserted as proven."
+  ],
+  "peer_applicability": "Common correctness applies independently; retain local symbols, operating bindings and human-controlled starts. No peer execution or acceptance dependency.",
+  "publication_status": "Source own branch pushed and remote SHA verified; draft PR pending review; no main merge or runtime activation claimed.",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/236",
+  "remote_sha": "9b53cd7ddf874080891d5ef99efae173519fb4aa",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Reviewed local installation supports a future human-started session; this task does not start, restart, hot reload or replay trades. Retry serialization creates adjacent local sidecar lock files without changing the original JSON schema.",
+  "scope": "shared",
+  "summary": "Atlas: Repair independent symbol concurrency and failed market-input retries",
+  "tests": [
+    {
+      "completed_at_utc": "2026-10-19T16:06:38.241411Z",
+      "exit_code": 0,
+      "name": "offline concurrency, retry, history, scoring and manual-control regressions",
+      "output_sha256": "134ea93d76ebcddf75e2e41f67f2c13bf04f8a3c0885ab27aa604ddfb2e6882d",
+      "passed": 207,
+      "started_at_utc": "2026-10-19T16:05:58.154461Z"
+    }
+  ]
+}
