@@ -1,0 +1,36 @@
+{
+  "author": "Atlas / Atlas 15m Trader Representative",
+  "change_id": "20261019T205210Z-97ff65dc30e64d0c9f83130b8aa062fe",
+  "completion_record": "20261019T205210Z-97ff65dc30e64d0c9f83130b8aa062fe",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/account_gameplan/authority.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_lease_acquisition.py"
+    }
+  ],
+  "limitations": [
+    "Offline synthetic clock, temporary SQLite and broker fixtures only. No providers, actual trades, process controls or private operational data are published.",
+    "The saved own acquisition duration establishes the affected boundary; the internal cause of its real 80-second delay remains unknown. Added phase diagnostics support a future own-session failure.",
+    "Arbitrary scheduling delay after the final post-commit clock check remains possible; normal strict lease-current checks still apply. Three repeated commit expirations fail with bounded diagnostics.",
+    "Source installation does not change already loaded modules. Live recovery of the original execution operation remains unproven until Jeremy independently starts a session with these bytes and it naturally exercises that operation."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/252",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared source; existing Atlas15m process predates this change. Jeremy retains exclusive manual start/stop control; no process restart, new prerequisite or trader reconciliation. Independent consumers use their own state. Main integration, peer installation and live execution recovery are separate facts.",
+  "scope": "shared",
+  "source_commit": "eecb9c6f450c4ff83d22599186d7db862e25b465",
+  "summary": "Atlas 15m: Recover an initial lease exhausted during database commit",
+  "tests": [
+    "Sealed 318 passed in 34.15s",
+    "Isolated 318 passed in 33.36s",
+    "Installed 318 passed in 33.13s with stable source and package metadata"
+  ]
+}
