@@ -19,14 +19,17 @@ from test_intraday_scout_local_execution import env, forecast, record
 REPOSITORY = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture
-def case(env, monkeypatch, tmp_path):
+@pytest.fixture(params=["sqlite", "expired"])
+def case(env, monkeypatch, tmp_path, request):
+    # Historical callers predate synchronous initial-gate proof capture.
+    monkeypatch.setattr(execution, "create_initial_gate_clearance", lambda *a, **kw: None)
     # Fixture source is the checked-out implementation. Only tests substitute
     # its hash map; production accepts the reviewed historical source constants.
     source_files = {name: (REPOSITORY / name).read_bytes().decode("utf-8")
                     for name in clearance.SUPPORTED_SOURCE}
     supported = {name: hashlib.sha256(raw.encode()).hexdigest() for name, raw in source_files.items()}
     monkeypatch.setattr(clearance, "SUPPORTED_SOURCE", supported)
+    monkeypatch.setattr(clearance, "EXPIRED_GATE_SOURCE", supported)
     manifest_text = json.dumps(dict(schema="scout-isolated-live-runtime-v1", files=supported, source_root=str(REPOSITORY)))
     source = dict(manifest_text=manifest_text, manifest_sha256=hashlib.sha256(manifest_text.encode()).hexdigest(),
                   files=source_files)
@@ -58,13 +61,18 @@ def case(env, monkeypatch, tmp_path):
     actual = value["evidence"]["submission_failure"]
     assert actual["stage"] == "send"
     assert any(f["file"] == "scout_broker.py" and f["function"] == "send"
-               and f["line"] == 182 for f in actual["original"]["chain"][0]["frames"])
+               for f in actual["original"]["chain"][0]["frames"])
     # Reconstitute the reviewed legacy diagnostic using synthetic identities;
     # the actual adapter failure above independently exercises the zero-POST path.
     value = deepcopy(value)
     value["evidence"]["submission_failure"] = dict(stage="send", original=dict(chain_truncated=False,
         chain=[dict(type="OperationalError", message="database is locked", sqlite_errorcode=261,
                     frames=deepcopy(clearance.EXPECTED_FRAMES))]))
+    if request.param == "expired":
+        value["evidence"]["error_type"] = "ContractError"
+        value["evidence"]["submission_failure"]["original"]["chain"] = [dict(
+            type="ContractError", message="Exception text withheld; inspect error type and stack locations",
+            frames=deepcopy(clearance.EXPIRED_GATE_FRAMES))]
     session = env.executor.session_id
     at = env.state.now + timedelta(seconds=1)
     event = dict(id=100, cycle_id=session, symbol=original["request"]["symbol"],
@@ -126,6 +134,19 @@ def test_initial_gate_failure_receipt_is_durable_idempotent_and_preserves_one_se
 def test_missing_receipt_is_read_only_none(case):
     assert load(case) is None
     assert not (case.env.executor.books.root / "pretransport-clearances").exists()
+
+
+def test_error_profile_cannot_borrow_other_profiles_reviewed_source(case, monkeypatch):
+    error_type = case.evidence["execution_event"]["payload"]["evidence"]["error_type"]
+    name = "SUPPORTED_SOURCE" if error_type == "OperationalError" else "EXPIRED_GATE_SOURCE"
+    wrong = dict(getattr(clearance, name))
+    wrong["ml/intraday/scout_broker.py"] = "0" * 64
+    # The other profile still matches every source byte. It cannot rescue this
+    # diagnostic, which is valid only against its own complete reviewed source.
+    monkeypatch.setattr(clearance, name, wrong)
+    with pytest.raises(ContractError, match="unsupported or changed original source"):
+        install(case)
+    assert record(case.env) == case.original and case.env.broker.posts == []
 
 
 @pytest.mark.parametrize("damage", ["extra", "record", "account", "request", "journal", "token", "events",

@@ -23,7 +23,7 @@ from ml.stock_trader.session import stock_execution_window
 from .exact_status import TERMINAL, read_exact_status
 from .prediction import PACIFIC, instant
 from .scout_journal import ScoutJournal
-from .scout_protocol import Grant, ProtocolError, Request
+from .scout_protocol import Grant, ProtocolError, Request, canonical_sha256
 
 
 class ScoutBrokerError(ValueError):
@@ -43,6 +43,15 @@ class _TrackedOrder:
 class ScoutCancellationObservation:
     evidence: OrderEvidence
     delete_acknowledged: bool
+
+
+@dataclass(frozen=True)
+class InitialGateFailure:
+    """This adapter's synchronous failure before entering order transport."""
+    request_sha256: str
+    grant_sha256: str
+    sending_record_sha256: str
+    error: Exception
 
 
 class ScoutBrokerAdapter:
@@ -86,6 +95,7 @@ class ScoutBrokerAdapter:
         self.account_fingerprint, self.session_id = account_fingerprint, session_id
         self.symbols, self.authority_epoch = frozenset(symbols), authority_epoch
         self.maximum_evidence_age_seconds, self.clock = maximum_evidence_age_seconds, clock
+        self.initial_gate_failure = None
 
     def _now(self):
         value = self.clock()
@@ -150,7 +160,9 @@ class ScoutBrokerAdapter:
 
     def send(self, request, grant, *, expected_snapshot_identity, authorization_gate, final_gate):
         """Perform one prepared POST for the exact locally claimed grant quantity."""
-        self._record(request, grant, "SENDING")
+        # Never carry an observation from an earlier invocation on this adapter.
+        self.initial_gate_failure = None
+        sending = self._record(request, grant, "SENDING")
         window = self._current(request, grant)
         context = self.broker.prepare_order_submission()
         payload = build_schwab_stock_order_payload(symbol=request.symbol, instruction=request.side,
@@ -179,7 +191,15 @@ class ScoutBrokerAdapter:
             if self._current(request, grant).time_in_force != window.time_in_force:
                 raise ScoutBrokerError("Stock execution session changed before POST")
 
-        gate()
+        try:
+            gate()
+        except Exception as error:
+            # Only this outer gate is proven to precede the transport call.
+            # Exceptions from its inner before_post callback or the transport
+            # itself remain ambiguous. This observation never rearms a send.
+            self.initial_gate_failure = InitialGateFailure(
+                request.sha256, grant.sha256, canonical_sha256(sending), error)
+            raise
         location = self.broker.submit_prepared_order(payload, context, before_post=gate)
         return self._accepted_id(location, context)
 
