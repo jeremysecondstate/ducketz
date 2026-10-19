@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T14:19:36.817364Z",
+  "id": "20261019T141936Z-b2021e30ed534d499b313e0692915cf1",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas repaired normal Gameplan execution-window closure before broker capture completes."
+}

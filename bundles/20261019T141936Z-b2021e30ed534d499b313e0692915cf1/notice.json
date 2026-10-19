@@ -1,0 +1,26 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261019T141439Z-45a1f5fe15c44bfc8ead2a019c9fbc05",
+  "change_id": "20261019T141439Z-45a1f5fe15c44bfc8ead2a019c9fbc05",
+  "commit_sha": "a62e5d62cf6a90236e46afcdc1998e8f80a06a6b",
+  "files": [
+    "ml/stock_trader/independent_runtime.py",
+    "tests/test_independent_stock_runtime.py",
+    "tests/test_independent_stock_session.py"
+  ],
+  "limitations": [
+    "Draft PR is stacked on its reviewed dependency branch; no main merge or peer installation is claimed.",
+    "Existing manual trader processes were not restarted; live activation is separate from local source installation."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/230",
+  "remote_sha": "a62e5d62cf6a90236e46afcdc1998e8f80a06a6b",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Expected calendar interruption preserves actual errors, signal deadlines, prior failures and manual controls. Eligible shared source can be reviewed for local installation; no action on trader controls is requested and nightly production is independent.",
+  "scope": "shared",
+  "summary": "Atlas repaired normal Gameplan execution-window closure before broker capture completes.",
+  "tests": [
+    "120 offline runtime, session and reporting tests passed on source, immutable publication candidate and installed Atlas context.",
+    "Independent replay of the scheduled-close race confirms a normal pause with zero broker calls or orders.",
+    "Exact publication SHA verified remotely; published files match sealed tested fingerprints and local installation."
+  ]
+}
