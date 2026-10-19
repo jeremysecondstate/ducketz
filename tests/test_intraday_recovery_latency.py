@@ -197,7 +197,8 @@ def test_expired_recovery_retains_slow_stage_and_exact_failure(env, monkeypatch,
     assert evidence["execution_stage"] == "capacity_publish"
     assert evidence["execution_elapsed_seconds"] >= 65
     assert next(item for item in evidence["execution_phases"] if item["stage"] == slow_stage)["elapsed_seconds"] >= 65
-    assert evidence["root_cause"] == {"error_type": "AuthorityError", "message": "CURRENT_FENCED_LEASE_REQUIRED"}
+    assert evidence["root_cause"] == {"error_type": "AuthorityError", "message": "CURRENT_FENCED_LEASE_REQUIRED",
+                                     "local_operation": "authority.renew_lease"}
     assert evidence["snapshot_observed_at"] and evidence["lease_expires_at"]
     assert env.executor.lease.token not in json.dumps(evidence)
     assert len(env.broker.submissions) == submissions
