@@ -866,10 +866,11 @@ def test_token_cache_and_lock_have_owner_only_windows_dacls(
         )
         return result.stdout.strip()
 
-    assert "D:P(A;;FA;;;OW)" in sddl(token_path)
-    assert "D:P(A;;FA;;;OW)" in sddl(
-        token_path.with_name(f"{token_path.name}.lock")
-    )
+    user_sid = schwab_token_store._windows_process_user_sid()
+    for path in (token_path, token_path.with_name(f"{token_path.name}.lock")):
+        descriptor = sddl(path)
+        assert descriptor.startswith(f"O:{user_sid}G:")
+        assert descriptor.split("D:", 1)[1] == f"P(A;;FA;;;{user_sid})"
 
 
 def test_connect_timeout_restores_cache_and_allows_later_refresh(

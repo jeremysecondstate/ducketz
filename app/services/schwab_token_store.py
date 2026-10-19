@@ -304,8 +304,58 @@ def _replace_file_durably(source: Path, destination: Path) -> None:
         os.close(directory_descriptor)
 
 
+def _windows_process_user_sid() -> str:
+    """Return the account SID, which is stable across normal and elevated UAC."""
+    from ctypes import wintypes
+
+    class SidAndAttributes(ctypes.Structure):
+        _fields_ = [("sid", ctypes.c_void_p), ("attributes", wintypes.DWORD)]
+
+    advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+    kernel32.LocalFree.restype = ctypes.c_void_p
+    advapi32.OpenProcessToken.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    advapi32.OpenProcessToken.restype = wintypes.BOOL
+    advapi32.GetTokenInformation.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, ctypes.c_void_p,
+        wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+    advapi32.GetTokenInformation.restype = wintypes.BOOL
+    advapi32.ConvertSidToStringSidW.argtypes = [
+        ctypes.c_void_p, ctypes.POINTER(wintypes.LPWSTR)]
+    advapi32.ConvertSidToStringSidW.restype = wintypes.BOOL
+
+    token = wintypes.HANDLE()
+    token_query, token_user = 0x8, 1
+    if not advapi32.OpenProcessToken(kernel32.GetCurrentProcess(), token_query, ctypes.byref(token)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        size = wintypes.DWORD()
+        if advapi32.GetTokenInformation(token, token_user, None, 0, ctypes.byref(size)):
+            raise RuntimeError("Windows token user query did not return a sized SID")
+        if ctypes.get_last_error() != 122:  # ERROR_INSUFFICIENT_BUFFER
+            raise ctypes.WinError(ctypes.get_last_error())
+        buffer = ctypes.create_string_buffer(size.value)
+        if not advapi32.GetTokenInformation(token, token_user, buffer, len(buffer), ctypes.byref(size)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        user = ctypes.cast(buffer, ctypes.POINTER(SidAndAttributes)).contents
+        sid_text = wintypes.LPWSTR()
+        if not advapi32.ConvertSidToStringSidW(user.sid, ctypes.byref(sid_text)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            return sid_text.value
+        finally:
+            kernel32.LocalFree(sid_text)
+    finally:
+        kernel32.CloseHandle(token)
+
+
 def _protect_token_path(path: Path, *, directory: bool = False) -> None:
-    """Restrict a credential file or directory to its owner."""
+    """Restrict credentials to this account, including across Windows UAC."""
 
     if os.name != "nt":
         os.chmod(path, 0o700 if directory else 0o600)
@@ -336,8 +386,14 @@ def _protect_token_path(path: Path, *, directory: bool = False) -> None:
     local_free.argtypes = [ctypes.c_void_p]
     local_free.restype = ctypes.c_void_p
 
-    # OW is Windows' OWNER RIGHTS SID. P disables inherited ACEs.
-    dacl = "D:P(A;OICI;FA;;;OW)" if directory else "D:P(A;;FA;;;OW)"
+    # An elevated process can create files owned by Administrators. An OW-only
+    # ACL then excludes this same user's filtered UAC token. Bind both owner
+    # and the sole protected ACE to TokenUser, never the token's default owner
+    # group. Existing access-denied failures remain explicit; do not broaden
+    # access or skip protection when an old cache needs authorized repair.
+    user_sid = _windows_process_user_sid()
+    inheritance = "OICI" if directory else ""
+    dacl = f"O:{user_sid}D:P(A;{inheritance};FA;;;{user_sid})"
     if not convert_descriptor(
         dacl,
         1,
@@ -346,11 +402,12 @@ def _protect_token_path(path: Path, *, directory: bool = False) -> None:
     ):
         raise ctypes.WinError(ctypes.get_last_error())
     try:
+        owner_security_information = 0x00000001
         dacl_security_information = 0x00000004
         protected_dacl_security_information = 0x80000000
         if not set_file_security(
             str(path),
-            dacl_security_information | protected_dacl_security_information,
+            owner_security_information | dacl_security_information | protected_dacl_security_information,
             security_descriptor,
         ):
             raise ctypes.WinError(ctypes.get_last_error())
