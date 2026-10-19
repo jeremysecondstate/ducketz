@@ -303,7 +303,7 @@ def score_saved_session_outcomes(store, *, session_id, actor, symbols, as_of, st
 
 
 def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcnow, sleep=time.sleep):
-    from .account_execution import IntradayAccountExecutor
+    from .account_execution import IntradayAccountExecutor, execution_failure_evidence
     from .local_execution import load_local_binding
     from .data import AcquisitionJournal, load_local_history
     from .cancellation import retry_delay
@@ -470,7 +470,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         delay = retry_delay(exc,clock())
                         queue.defer(forecast["forecast_id"],now=clock(),seconds=delay,broker_wait=True)
                         store.event(session_id,"execution_retry",{"forecast_id":forecast["forecast_id"],
-                            "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay},symbol=forecast["symbol"])
+                            "error_type":type(exc).__name__,"message":str(exc),"retry_after_seconds":delay,
+                            "diagnostics":execution_failure_evidence(exc)},symbol=forecast["symbol"])
                         break
                 if instant(clock()) < close_at and instant(clock()) >= next_recovery and queue.broker_due(clock()):
                     try:
@@ -480,7 +481,8 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                         delay = retry_delay(exc,clock())
                         queue.broker_wait(now=clock(),seconds=delay)
                         store.event(session_id,"order_recovery_retry",{"error_type":type(exc).__name__,
-                            "message":str(exc),"retry_after_seconds":delay})
+                            "message":str(exc),"retry_after_seconds":delay,
+                            "diagnostics":execution_failure_evidence(exc)})
                     next_recovery = instant(clock()) + timedelta(seconds=delay)
                 sleep(1)
         except KeyboardInterrupt:

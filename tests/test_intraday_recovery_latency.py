@@ -1,12 +1,13 @@
 """Own recovery stays within its existing fence without replaying broker writes."""
 from contextlib import contextmanager
 import json
+import time
 
 import pandas as pd
 import pytest
 
 from test_intraday_account_execution import env, advance
-from ml.account_gameplan.authority import AccountAuthority
+from ml.account_gameplan.authority import AccountAuthority, AuthorityError
 from ml.intraday import account_execution as execution
 from ml.intraday.prediction import ContractError
 from ml.stock_trader.horizon_ledger import LedgerError
@@ -161,3 +162,134 @@ def test_batch_history_keeps_every_native_authority_identity_check(env, monkeypa
     with pytest.raises(error, match=reason):
         env.executor.recover()
     assert len(env.broker.submissions) == submissions
+
+
+@pytest.mark.parametrize("slow_stage", ["native_reconcile", "native_identity_snapshot"])
+def test_expired_recovery_retains_slow_stage_and_exact_failure(env, monkeypatch, slow_stage):
+    """Delayed local work remains a real fence error, with its missing diagnosis."""
+    terminal_orders(env, 1)
+    submissions = len(env.broker.submissions)
+    original_reconcile = execution.HorizonLedger.reconcile
+    original_snapshot = execution.HorizonLedger.snapshot
+    after_reconcile = {"value": False}
+    monkeypatch.setattr(time, "monotonic", lambda: env.now.timestamp())
+
+    def reconcile(ledger, *args, **kwargs):
+        result = original_reconcile(ledger, *args, **kwargs)
+        after_reconcile["value"] = True
+        if slow_stage == "native_reconcile":
+            advance(env, 65)
+        return result
+
+    def snapshot(ledger):
+        result = original_snapshot(ledger)
+        if after_reconcile["value"] and slow_stage == "native_identity_snapshot":
+            after_reconcile["value"] = False
+            advance(env, 65)
+        return result
+
+    monkeypatch.setattr(execution.HorizonLedger, "reconcile", reconcile)
+    monkeypatch.setattr(execution.HorizonLedger, "snapshot", snapshot)
+    advance(env)
+    with pytest.raises(AuthorityError, match="CURRENT_FENCED_LEASE_REQUIRED") as failure:
+        env.executor.recover()
+    evidence = execution.execution_failure_evidence(failure.value)
+    assert evidence["execution_stage"] == "capacity_publish"
+    assert evidence["execution_elapsed_seconds"] >= 65
+    assert next(item for item in evidence["execution_phases"] if item["stage"] == slow_stage)["elapsed_seconds"] >= 65
+    assert evidence["root_cause"] == {"error_type": "AuthorityError", "message": "CURRENT_FENCED_LEASE_REQUIRED"}
+    assert evidence["snapshot_observed_at"] and evidence["lease_expires_at"]
+    assert env.executor.lease.token not in json.dumps(evidence)
+    assert len(env.broker.submissions) == submissions
+
+
+def test_capture_exception_and_cleanup_failure_retain_private_safe_original_cause(env, monkeypatch):
+    root = TimeoutError("https://private-account.example/?token=do-not-persist")
+    failure = AuthorityError("CURRENT_FENCED_LEASE_REQUIRED")
+    failure.__cause__ = root
+    env.capture_fail = failure
+
+    def failed_release(authority, token):
+        raise OSError("private-cleanup-path-and-token")
+
+    monkeypatch.setattr(AccountAuthority, "release_lease", failed_release)
+    with pytest.raises(AuthorityError) as raised:
+        env.executor.recover()
+    assert raised.value is failure and raised.value.__cause__ is root
+    evidence = execution.execution_failure_evidence(raised.value)
+    assert evidence["execution_stage"] == "portfolio_capture"
+    assert evidence["root_cause"] == {"error_type": "TimeoutError"}
+    assert evidence["cleanup_failure"]["execution_stage"] == "lease_release"
+    assert evidence["cleanup_failure"]["exception_chain"][0] == {"error_type": "OSError"}
+    encoded = json.dumps(evidence)
+    assert "private-account" not in encoded and "do-not-persist" not in encoded
+    assert "private-cleanup" not in encoded and env.executor.lease.token not in encoded
+    assert env.broker.submissions == []
+
+
+def test_unannotated_error_keeps_bounded_safe_chain_without_trusting_attributes():
+    error = TimeoutError("private provider text")
+    error.intraday_execution_failure = {"execution_stage": "private-token"}
+    evidence = execution.execution_failure_evidence(error)
+    assert evidence["execution_stage"] == "unclassified"
+    assert evidence["root_cause"] == {"error_type": "TimeoutError"}
+    assert "private" not in json.dumps(evidence)
+
+
+def test_reused_exception_gets_current_attempt_stage_and_bounded_timings(env, monkeypatch):
+    error = TimeoutError("private reused transport error")
+    env.capture_fail = error
+    with pytest.raises(TimeoutError):
+        env.executor.recover()
+    first = execution.execution_failure_evidence(error)
+    assert first["execution_stage"] == "portfolio_capture"
+
+    def fail_own_orders(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(execution, "capture_order_evidence", fail_own_orders)
+    advance(env)
+    with pytest.raises(TimeoutError):
+        env.executor.recover()
+    current = execution.execution_failure_evidence(error)
+    assert current is not first and current["execution_stage"] == "order_evidence_capture"
+    assert len(current["execution_phases"]) <= 32
+    assert env.broker.submissions == []
+
+
+def test_newer_order_scan_preserves_fresh_sizing_without_per_order_transactions(env, monkeypatch):
+    terminal_orders(env, 4)
+    previous = set(env.orders)
+    submissions = len(env.broker.submissions)
+    forecast = env.forecast(offset=60)
+    env.now = pd.Timestamp(forecast["issued_at"])
+    phase = {"active": False, "charged_seconds": 0}
+    original_transaction = execution.HorizonLedger._transaction
+    original_publish = AccountAuthority.publish_intraday_snapshot
+    original_sizing = execution.size_forecast
+
+    @contextmanager
+    def costly_transaction(ledger):
+        if phase["active"]:
+            advance(env, 17)
+            phase["charged_seconds"] += 17
+        with original_transaction(ledger) as db:
+            yield db
+
+    def publish(authority, *args, **kwargs):
+        result = original_publish(authority, *args, **kwargs)
+        phase["active"] = True
+        return result
+
+    def sizing(*args, **kwargs):
+        phase["active"] = False
+        return original_sizing(*args, **kwargs)
+
+    monkeypatch.setattr(execution.HorizonLedger, "_transaction", costly_transaction)
+    monkeypatch.setattr(AccountAuthority, "publish_intraday_snapshot", publish)
+    monkeypatch.setattr(execution, "size_forecast", sizing)
+    result = env.executor.step(forecast)
+    assert result["disposition"] == "submitted", result
+    assert 0 < phase["charged_seconds"] < 60
+    assert len(env.broker.submissions) == submissions + 1
+    assert previous < set(env.orders) and len(set(env.orders) - previous) == 1

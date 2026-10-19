@@ -10,6 +10,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 from urllib.parse import urlparse
 import json
+import time
 import uuid
 
 from datafetching.runtime_lock import exclusive_runtime_lock
@@ -44,6 +45,7 @@ _SAFE_SUBMISSION_REASONS = frozenset({
     "INTRADAY_CAPACITY_SNAPSHOT_REQUIRED",
     "LATEST_INTRADAY_CAPACITY_SNAPSHOT_REQUIRED",
     "INTRADAY_CAPACITY_SNAPSHOT_STALE_OR_FUTURE",
+    "ACCOUNT_SNAPSHOT_STALE_OR_FUTURE",
     "INTRADAY_FORECAST_NOT_CURRENT",
     "SUBMISSION_GATE_ALREADY_USED_OR_STATE_CHANGED",
     "SUBMISSION_OUTCOME_REQUIRES_RECONCILIATION",
@@ -72,6 +74,50 @@ def _submission_failure_evidence(exc, stage):
         current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
     return {"submission_stage": stage, "exception_chain": chain,
             "root_cause": chain[-1], "exception_chain_truncated": current is not None}
+
+
+class _ExecutionFailure:
+    """Only locally constructed diagnostics may cross the retry-event boundary."""
+    def __init__(self, evidence, trace):
+        self.evidence, self.trace = evidence, trace
+
+
+def execution_failure_evidence(exc):
+    saved = getattr(exc, "intraday_execution_failure", None)
+    if isinstance(saved, _ExecutionFailure):
+        return saved.evidence
+    evidence = _submission_failure_evidence(exc, "unclassified")
+    evidence["execution_stage"] = evidence.pop("submission_stage")
+    return evidence
+
+
+class _ExecutionTrace:
+    """Bounded monotonic stage timings, without account values or lease tokens."""
+    def __init__(self):
+        self.started = self.stage_started = time.monotonic()
+        self.stage = "account_entry"
+        self.phases = []
+        self.lease_expires_at = self.snapshot_observed_at = None
+
+    def advance(self, stage):
+        now = time.monotonic()
+        self.phases.append({"stage": self.stage, "elapsed_seconds": round(max(0, now-self.stage_started), 6)})
+        self.phases = self.phases[-32:]
+        self.stage, self.stage_started = stage, now
+
+    def remember(self, exc):
+        saved = getattr(exc, "intraday_execution_failure", None)
+        if isinstance(saved, _ExecutionFailure) and saved.trace is self:
+            return
+        now = time.monotonic()
+        evidence = _submission_failure_evidence(exc, self.stage)
+        evidence.pop("submission_stage")
+        evidence.update(execution_stage=self.stage,
+            execution_elapsed_seconds=round(max(0, now-self.started), 6),
+            execution_stage_elapsed_seconds=round(max(0, now-self.stage_started), 6),
+            execution_phases=list(self.phases), lease_expires_at=self.lease_expires_at,
+            snapshot_observed_at=self.snapshot_observed_at)
+        exc.intraday_execution_failure = _ExecutionFailure(evidence, self)
 
 
 
@@ -113,6 +159,7 @@ class IntradayAccountExecutor:
         self.intents = IntentionStore(store)
         self.config = self.ledger = self.authority = self.lease = None
         self.portfolio = self.snapshot_id = None
+        self._execution_trace = None
 
     def _record(self, forecast, disposition, *, kind="execution_disposition", evidence=None, capacity=None, order=None):
         evidence = evidence or {"reason": disposition}
@@ -135,28 +182,61 @@ class IntradayAccountExecutor:
     @contextmanager
     def _account(self):
         # This trader serializes only its own orders, capacity and receipts.
-        with exclusive_runtime_lock(self.root / LOCK_PATH, process_name="intraday-execution"):
-            config = self._binding()
-            self.ledger = HorizonLedger(self.root / NATIVE_PATH, config.account_fingerprint)
-            self.authority = AccountAuthority(self.root / AUTHORITY_PATH,
-                AuthorityBinding(config.account_fingerprint, config.coordinator_id, config.participants),
-                clock=lambda: instant(self.clock()))
-            self.lease = self.authority.acquire_lease(coordinator_id=config.machine_id,
-                holder_id="manual-" + self.stream + ":" + uuid.uuid4().hex)
-            try:
-                self._repair_pre_send()
-                yield
-            finally:
+        trace = self._execution_trace = _ExecutionTrace()
+        try:
+            self._execution_stage("execution_lock")
+            with exclusive_runtime_lock(self.root / LOCK_PATH, process_name="intraday-execution"):
+                self._execution_stage("local_binding")
+                config = self._binding()
+                self._execution_stage("native_ledger_open")
+                self.ledger = HorizonLedger(self.root / NATIVE_PATH, config.account_fingerprint)
+                self._execution_stage("authority_open")
+                self.authority = AccountAuthority(self.root / AUTHORITY_PATH,
+                    AuthorityBinding(config.account_fingerprint, config.coordinator_id, config.participants),
+                    clock=lambda: instant(self.clock()))
+                self._execution_stage("lease_acquire")
+                self.lease = self.authority.acquire_lease(coordinator_id=config.machine_id,
+                    holder_id="manual-" + self.stream + ":" + uuid.uuid4().hex)
+                trace.lease_expires_at = self.lease.expires_at
+                failure = None
                 try:
-                    self.authority.release_lease(self.lease.token)
-                except AuthorityError:
-                    pass
+                    self._execution_stage("pre_send_repair")
+                    self._repair_pre_send()
+                    self._execution_stage("account_work")
+                    yield
+                except BaseException as exc:
+                    failure = exc
+                    trace.remember(exc)
+                    raise
+                finally:
+                    self._execution_stage("lease_release")
+                    try:
+                        self.authority.release_lease(self.lease.token)
+                    except AuthorityError:
+                        pass
+                    except Exception as cleanup:
+                        trace.remember(cleanup)
+                        if failure is None:
+                            raise
+                        # Cleanup cannot hide the operation's original cause.
+                        execution_failure_evidence(failure)["cleanup_failure"] = execution_failure_evidence(cleanup)
+        except BaseException as exc:
+            trace.remember(exc)
+            raise
+        finally:
+            self._execution_trace = None
+
+    def _execution_stage(self, stage):
+        if self._execution_trace is not None:
+            self._execution_trace.advance(stage)
 
     def _assert_current(self):
         self._binding()
         if self.broker.stable_account_fingerprint() != self.config.account_fingerprint:
             raise ContractError("Broker account differs from local 15m binding")
         self.lease = self.authority.renew_lease(self.lease.token)
+        if self._execution_trace is not None:
+            self._execution_trace.lease_expires_at = self.lease.expires_at
 
     def _repair_pre_send(self):
         """Repair only provable no-send or exact accepted-ID crash boundaries."""
@@ -180,10 +260,12 @@ class IntradayAccountExecutor:
             # SUBMITTING/UNKNOWN without a reliable ID remains committed.
 
     def _capture(self, required_evidence=()):
+        self._execution_stage("capture_lease_current")
         self._assert_current()
         # The local authority may have persisted acceptance before its native
         # row reached terminal state (or vice versa). Recover those exact own
         # identities without consulting any other trader's authority.
+        self._execution_stage("own_pending_identity_read")
         pending = {r.reservation_id:r for r in self.ledger.pending_reservations()
                    if self.ledger.reservation_stream(r.reservation_id) == self.stream}
         for record in self.authority.read_state()["reservations"]:
@@ -201,6 +283,7 @@ class IntradayAccountExecutor:
             def pending_reservations(self):
                 return tuple(pending.values())
         owner = OwnEvidence()
+        self._execution_stage("order_evidence_capture")
         evidence = capture_order_evidence(self.broker, owner, account_fingerprint=self.config.account_fingerprint,
                                          as_of=self.clock(), observation_clock=self.clock)
         current_by_id = {item.reservation_id:item for item in evidence}
@@ -212,11 +295,15 @@ class IntradayAccountExecutor:
                     or any(new_fills[key] != value for key,value in old_fills.items())
                     or (prior.status in {"FILLED", "CANCELLED", "REJECTED"} and current.status != prior.status)):
                 raise ContractError("New account capture cannot discard observed order evidence")
+        self._execution_stage("portfolio_capture")
         portfolio = capture_portfolio_state(self.broker, observed_at=self.clock(), parallel=True,
             literal_cash_only=True, use_actual_quote_timestamps=True, symbols=self.config.symbols,
             include_order_identities=True)
+        self._execution_stage("capture_lease_refresh")
         self._assert_current()
+        self._execution_stage("broker_snapshot_identity")
         self.broker.verify_read_snapshot(portfolio.broker_identity_fingerprint)
+        self._execution_stage("native_snapshot_prepare")
         at = instant(self.clock())
         if not 0 <= (at - instant(portfolio.observed_at)).total_seconds() <= self.ledger.maximum_evidence_age_seconds:
             raise ContractError("Account snapshot is not fresh")
@@ -225,16 +312,23 @@ class IntradayAccountExecutor:
         portfolio = replace(portfolio, observed_at=at.isoformat(), source_fingerprint=digest({
             "provider_snapshot":portfolio.source_fingerprint, "request_started_at":portfolio.observed_at,
             "validated_at":at.isoformat()}))
+        if self._execution_trace is not None:
+            self._execution_trace.snapshot_observed_at = portfolio.observed_at
         snapshot_id = digest(["intraday-account", portfolio.source_fingerprint, at.isoformat()])
         native_evidence = PortfolioEvidence(snapshot_id, self.config.account_fingerprint, portfolio.observed_at,
             portfolio.held_shares, {s:q.ask for s,q in portfolio.quotes.items()},
             {s:portfolio.account_equity for s in self.config.symbols}, portfolio.source_fingerprint)
+        self._execution_stage("native_reconcile")
         reconciliation = self.ledger.reconcile(native_evidence, order_evidence=evidence)
         by_native = {item.reservation_id:item for item in evidence}
         # Validate every retained identity using one native transaction. Reopening
         # the database per historical order can outlive the unchanged 60s fence.
+        self._execution_stage("native_identity_snapshot")
         native_by_id = {item.reservation_id:item for item in self.ledger.snapshot().reservations}
-        for record in self.authority.read_state()["reservations"]:
+        self._execution_stage("authority_identity_read")
+        records = self.authority.read_state()["reservations"]
+        self._execution_stage("authority_identity_validation")
+        for record in records:
             native = native_by_id.get(record["request"]["native_reservation_id"])
             if native is None:
                 raise LedgerError("UNKNOWN_RESERVATION")
@@ -256,8 +350,10 @@ class IntradayAccountExecutor:
                 fill_time_provenance=observed.fill_time_provenance))
         if not reconciliation.ready:
             raise ContractError("Native account reconciliation: " + ",".join(reconciliation.reasons))
+        self._execution_stage("authority_accounted_read")
         accounted = {r["broker_order_id"]:r["filled_quantity"] for r in self.authority.read_state()["reservations"]
                      if r["broker_order_id"] and r["filled_quantity"]}
+        self._execution_stage("capacity_publish")
         self.authority.publish_intraday_snapshot(self.lease.token, IntradayCapacitySnapshot(
             snapshot_id, self.config.account_fingerprint, at.astimezone(PACIFIC).date().isoformat(),
             portfolio.observed_at, str(portfolio.available_cash),
@@ -265,6 +361,7 @@ class IntradayAccountExecutor:
             broker_pending(portfolio), accounted, portfolio.source_fingerprint,
             self.config.account_fingerprint, self.config.account_fingerprint, True))
         self.portfolio, self.snapshot_id = portfolio, snapshot_id
+        self._execution_stage("capture_complete")
         return evidence
 
     def _same_forecast(self, forecast):
@@ -310,16 +407,22 @@ class IntradayAccountExecutor:
             if existing and not self._proven_unsent(existing):
                 return self._record(forecast, "recover_existing_intention", order=existing,
                     evidence={"native_reservation_id":existing.reservation_id, "status":existing.status})
-            newer = [r for r in self.ledger.snapshot().reservations
-                     if self.ledger.reservation_stream(r.reservation_id) == self.stream
-                     and r.forecast_id != forecast["forecast_id"]
-                     and r.symbol == forecast["symbol"] and r.target_start is not None
-                     and instant(r.target_start) >= instant(forecast["reference_at"])]
+            self._execution_stage("newer_native_order_scan")
+            # Preserve all native/provenance checks in one transaction, as in
+            # recover(); historical terminal orders must not age a fresh quote.
+            with self.ledger._transaction() as db:
+                newer = [r for r in self.ledger._snapshot(db).reservations
+                         if self.ledger._stream(db, "reservation", r.reservation_id) == self.stream
+                         and r.forecast_id != forecast["forecast_id"]
+                         and r.symbol == forecast["symbol"] and r.target_start is not None
+                         and instant(r.target_start) >= instant(forecast["reference_at"])]
+            self._execution_stage("newer_intention_scan")
             processed = self.intents.processed_at_or_after(forecast)
             if newer or processed:
                 return self._record(forecast, "newer_or_same_reference_intention_already_processed",
                     evidence={"native_reservation_ids":[r.reservation_id for r in newer],
                               "processed_forecast_ids":processed})
+            self._execution_stage("sizing")
             original = self.intents.get(forecast["forecast_id"])
             unavailable = None
             if original is None:
@@ -338,6 +441,7 @@ class IntradayAccountExecutor:
                     unavailable = original
             # Supersession is independent of whether the new intention can trade.
             # A zero desired or elapsed forecast still retires an old intention.
+            self._execution_stage("execution_after_sizing")
             from .cancellation import CancellationService
             pending = [r for r in self.ledger.pending_reservations()
                        if self.ledger.reservation_stream(r.reservation_id) == self.stream
@@ -400,26 +504,31 @@ class IntradayAccountExecutor:
             # _snapshot retains the reservation/provenance validation used by
             # lookup_reservation; _stream retains the existing legacy fallback.
             # Both run in one transaction instead of reopening for every order.
+            self._execution_stage("recovery_native_read")
             with self.ledger._transaction() as db:
                 owned = tuple(native for native in self.ledger._snapshot(db).reservations
                     if self.ledger._stream(db, "reservation", native.reservation_id) == self.stream)
             if not owned:
                 return []
             identities = sorted({native.forecast_id for native in owned})
+            self._execution_stage("recovery_forecast_read")
             with self.store.connect() as db:
                 rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts "
                     "WHERE pc=? AND id IN (SELECT value FROM json_each(?)) ORDER BY rowid",
                     (self.actor, json.dumps(identities))).fetchall()
             # Selected rows still undergo the complete immutable/indexed-identity
             # validator. Unrelated historical model payloads need no decoding.
+            self._execution_stage("recovery_forecast_validate")
             forecasts = {row[0]:self.store._forecast_value(row) for row in rows}
             results = []
+            self._execution_stage("recovery_intention_record")
             for native in owned:
                 forecast = forecasts.get(native.forecast_id)
                 if forecast is None or self.intents.get(native.forecast_id) is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
                 results.append(self._record(forecast, "order_status_reconciled", order=native,
                     evidence={"native_reservation_id":native.reservation_id, "status":native.status}))
+            self._execution_stage("recovery_complete")
             return results
 
     def _submit(self, forecast, capacity, quote, window):
