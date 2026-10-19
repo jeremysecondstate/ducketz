@@ -237,10 +237,21 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
     pc = getattr(queue, "pc", "Atlas")
     saved = _session_cycles(runner.store, queue.session_id, pc=pc)
     last = max((instant(c["reference_at"]) for _, c in saved), default=None)
+    recovery_turn = False
     while not stopped():
         newest = latest_completed_reference(clock(), publication_offset_seconds=runner.config.publication_offset_seconds)
         retry_symbols = None
-        if last is None or newest > last:
+        fresh_due = last is None or newest > last
+        # One due recovery pass follows each fresh cycle, even when that
+        # cycle overran another quarter. Otherwise continuous overruns would
+        # starve saved acquisition failures despite their inputs arriving.
+        pending = (_pending_cycle_passes(runner.store, queue.session_id, clock(), pc=pc)
+                   if recovery_turn or not fresh_due else [])
+        recovery_turn = False
+        if pending:
+            _, cycle, retry_symbols = pending[0]
+            reference = instant(cycle["reference_at"])
+        elif fresh_due:
             reference = newest
             if last is not None and reference > last + STEP:
                 runner.store.event(queue.session_id, "missed_cycle_boundaries",
@@ -251,12 +262,9 @@ def forecasting_loop(runner, *, histories, provider, journal, queue, stopped,
                 runner.store.event(queue.session_id,"closed_or_unspecified_edge",
                                    {"reference_at":reference.isoformat(),"orders_submitted":0})
                 pause(1); continue
+            recovery_turn = True
         else:
-            pending = _pending_cycle_passes(runner.store, queue.session_id, clock(), pc=pc)
-            if not pending:
-                pause(1); continue
-            _, cycle, retry_symbols = pending[0]
-            reference = instant(cycle["reference_at"])
+            pause(1); continue
         incoming = (history_source(reference) if history_source is not None else
                     LiveHistories(histories=histories,provider=provider,store=runner.store,journal=journal,
                                   reference_at=reference,clock=clock,sleep=pause,bounded=True,stopped=stopped))
