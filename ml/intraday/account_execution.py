@@ -579,6 +579,21 @@ class IntradayAccountExecutor:
                 frozen = self.store.inputs(forecast["cycle_id"], forecast["symbol"])
                 if frozen is None or frozen[0] != forecast["snapshot_hash"]:
                     raise ContractError("Original forecasting inputs unavailable")
+            # Historical scans and frozen input decoding can consume an actual
+            # observation's lifetime. Refresh once after that work, retaining
+            # the real provider clocks and the original desired size, if any.
+            at = instant(self.clock())
+            quote = self.portfolio.quotes[forecast["symbol"]]
+            ages = ((at - instant(self.portfolio.observed_at)).total_seconds(),
+                    (at - instant(quote.freshness_observed_at)).total_seconds())
+            if (all(age >= 0 for age in ages)
+                    and max(ages) > self.ledger.maximum_evidence_age_seconds
+                    and forecast_disposition(forecast, now=at, session_started_at=self.session_started_at,
+                        local_symbols=self.symbols, actor=self.actor) == "eligible_for_account_checks"):
+                self._execution_stage("sizing_evidence_refresh")
+                self._capture()
+                self._execution_stage("sizing")
+            if original is None:
                 quote = self.portfolio.quotes[forecast["symbol"]]
                 result = size_forecast(forecast, forecast_snapshot=frozen[1],
                     account_equity=AvailableInput(self.portfolio.account_equity, self.portfolio.observed_at,
