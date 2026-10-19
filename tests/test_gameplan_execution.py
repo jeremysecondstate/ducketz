@@ -145,7 +145,8 @@ def test_consecutive_bullish_hours_accumulate_until_same_horizon_bearish_forecas
             {s: QuoteState(s, 99., 101., 100., 100., 1000.,
                 (env.now - pd.Timedelta(minutes=13)).isoformat(), received_at=env.now.isoformat(),
                 realtime=True, quote_type='NBBO') for s in STOCK_TRADER_SYMBOLS},
-            'snapshot-' + env.now.isoformat(), BROKER_ID)
+            'snapshot-' + env.now.isoformat(), BROKER_ID,
+            broker_working_orders=() if kwargs.get('include_order_identities', False) else None)
 
     monkeypatch.setattr('ml.stock_trader.horizon_broker.capture_order_evidence', fills)
     monkeypatch.setattr(runtime, 'capture_portfolio_state', capture)
