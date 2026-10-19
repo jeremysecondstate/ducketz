@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T20:37:14.240114Z",
+  "id": "20261019T203714Z-191112e0606e43f88babecb69395930a",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: Cache semantically validated forecast headers for execution and scoring"
+}

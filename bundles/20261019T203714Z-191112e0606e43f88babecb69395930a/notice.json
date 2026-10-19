@@ -1,0 +1,39 @@
+{
+  "author": "Atlas / Atlas Trader Representative",
+  "change_id": "20261019T203415Z-c91c8bec43fb4ecca3eb4c348c09030c",
+  "completion_record": "20261019T203415Z-c91c8bec43fb4ecca3eb4c348c09030c",
+  "files": [
+    {
+      "operation": "modify",
+      "path": "ml/intraday/store.py"
+    },
+    {
+      "operation": "modify",
+      "path": "ml/intraday/account_execution.py"
+    },
+    {
+      "operation": "add",
+      "path": "tests/test_intraday_execution_forecast_projection.py"
+    },
+    {
+      "operation": "modify",
+      "path": "tests/test_intraday_scoring_selection.py"
+    }
+  ],
+  "limitations": [
+    "Offline original-record comparison demonstrates reduced forecast-scan work, not the cause of a historical long delay.",
+    "No broker/provider calls, actual orders, trader controls or original record changes.",
+    "Publication, local installation, process loading and live branch exercise remain distinct."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/250",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Atlas 15-minute trader requires a future Jeremy-controlled manual start or restart to load this optimization. No additional Gameplan restart is needed; no Scout restart inferred. Preparation and trading continue independently of these development checks.",
+  "scope": "shared",
+  "source_commit": "3efab181252ea4c68ad73d918586ad5845be554c",
+  "summary": "Atlas: Cache semantically validated forecast headers for execution and scoring",
+  "tests": [
+    "Sealed 223 passed in 36.19s",
+    "Isolated 223 passed in 37.00s",
+    "Installed 223 passed in 33.77s with stable source and package metadata"
+  ]
+}
