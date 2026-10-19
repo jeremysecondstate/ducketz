@@ -37,7 +37,7 @@ from ml.stock_trader.runtime import (
     _capture_portfolio_state_with_retry,
     _submission_identity_safety_reason, _submission_safety_reason,
 )
-from ml.stock_trader.session import stock_execution_window
+from ml.stock_trader.session import StockExecutionWindow, stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
 from ml.stock_direction_policy import stock_direction
@@ -45,6 +45,15 @@ from ml.stock_direction_policy import stock_direction
 LEDGER_RELATIVE_PATH = Path("state/gameplan-trader/holdings.sqlite3")
 CLOSE_EXIT_LEAD_SECONDS = 60
 MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS = 5.
+
+
+class _BrokerReadWindowClosed(ValueError):
+    """Retain the calendar observation that interrupted a broker read attempt."""
+
+    def __init__(self, window: StockExecutionWindow, observed_at: object):
+        super().__init__("BROKER_READ_EXECUTION_WINDOW_CLOSED")
+        self.window = window
+        self.observed_at = utc(observed_at)
 
 
 def _defer_opposing_limit_orders(decisions, portfolio):
@@ -451,8 +460,11 @@ def run_independent_stock_trader_once(
             if not read_gameplan_stock_activation_intent(root).active:
                 raise ValueError("TRADER_INACTIVE_DURING_BROKER_CAPTURE")
             now = utc(clock())
-            if now >= read_deadline or not stock_execution_window(now).executable:
+            if now >= read_deadline:
                 raise ValueError("BROKER_READ_EXECUTION_WINDOW_CLOSED")
+            current_window = stock_execution_window(now)
+            if not current_window.executable:
+                raise _BrokerReadWindowClosed(current_window, now)
             identity = broker.stable_account_fingerprint()
             if account_config is not None and identity != account_config.account_fingerprint:
                 raise ValueError("BROKER_ACCOUNT_DIFFERS_FROM_REVIEWED_COORDINATOR_BINDING")
@@ -555,6 +567,19 @@ def run_independent_stock_trader_once(
             ), order_evidence=evidence)
         except _BrokerStateCaptureFailure as failure:
             broker_state_capture = failure.metadata
+            if isinstance(failure.cause, _BrokerReadWindowClosed):
+                closed = failure.cause
+                metadata["execution_window_during_capture"] = {
+                    "mode": closed.window.mode, "reason": closed.window.reason,
+                    "observed_at": closed.observed_at.isoformat(),
+                }
+                # An ordinary scheduled pause is not a failed broker read.
+                # Earlier read failures in this attempt remain unresolved when
+                # the window closes before a complete snapshot can recover.
+                if not broker_state_capture["transient_failures"]:
+                    broker_state_capture = {**broker_state_capture, "status": "INTERRUPTED_EXECUTION_WINDOW_CLOSED"}
+                    error = None if closed.window.reason == "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION" else closed.window.reason
+                    return finish("EXECUTION_WINDOW_CLOSED_DURING_BROKER_CAPTURE", error=error)
             return finish("HORIZON_BROKER_RECONCILIATION_UNAVAILABLE",
                           error=f"{type(failure.cause).__name__}: {failure.cause}")
         except Exception as exc:

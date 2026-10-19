@@ -706,7 +706,10 @@ def test_only_authentic_unacquired_shared_lock_errors_are_retried(tmp_path, monk
 
 
 @pytest.mark.parametrize("prior_failure", [False, True])
-def test_capture_crossing_close_is_normal_and_preserves_prior_failure(tmp_path, monkeypatch, prior_failure):
+@pytest.mark.parametrize("phase, capture_status", [
+    ("AFTER", "CURRENT"), ("DURING", "INTERRUPTED_EXECUTION_WINDOW_CLOSED"),
+])
+def test_capture_crossing_close_is_normal_and_preserves_prior_failure(tmp_path, monkeypatch, prior_failure, phase, capture_status):
     clock = Clock("2026-09-08T19:59:54Z" if prior_failure else "2026-09-08T19:59:59Z")
     reopened = pd.Timestamp("2026-09-08T20:05:00Z")
     monkeypatch.setattr(worker, "_has_inventory", lambda _: True)
@@ -722,8 +725,8 @@ def test_capture_crossing_close_is_normal_and_preserves_prior_failure(tmp_path, 
                        "broker_state_capture": {"status": "UNAVAILABLE"}}
         elif clock() < reopened:
             clock.now = pd.Timestamp("2026-09-08T20:00:01Z")
-            payload = {"status": "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", "error": None,
-                       "broker_state_capture": {"status": "CURRENT"}}
+            payload = {"status": f"EXECUTION_WINDOW_CLOSED_{phase}_BROKER_CAPTURE", "error": None,
+                       "broker_state_capture": {"status": capture_status}}
         else:
             payload = {"status": "NO_ORDERS_SUBMITTED", "broker_state_capture": {"status": "CURRENT"}}
         return SimpleNamespace(submitted_orders=0, to_dict=lambda: payload)
@@ -741,4 +744,4 @@ def test_capture_crossing_close_is_normal_and_preserves_prior_failure(tmp_path, 
     assert observed[-1][1]["failed_cycles"] == int(prior_failure)
     assert observed[-1][1]["consecutive_failures"] == 0
     assert not prior_failure or any("ATTENTION" in report for report in reports)
-    assert prior_failure or any("WAITING" in report and "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE" in report for report in reports)
+    assert prior_failure or any("WAITING" in report and f"EXECUTION_WINDOW_CLOSED_{phase}_BROKER_CAPTURE" in report for report in reports)
