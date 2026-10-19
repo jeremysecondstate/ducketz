@@ -7,6 +7,7 @@ import sqlite3
 import time
 from contextlib import closing
 from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
@@ -389,7 +390,13 @@ def run_independent_stock_trader_once(
                 qualified = {}
                 metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
                 metadata["gameplan_deployment_error"] = str(exc)
-        if fallback_policy is not None and reconciliation.ready and qualified:
+        from ml.stock_trader.cross_horizon_fallback import autonomous_horizon, donor_horizons
+        action_date = timestamp.tz_convert("America/Los_Angeles").date().isoformat()
+        needs_fallback = any(stock_direction(signal.calibrated_probability) == "BEARISH"
+                             and not autonomous_horizon(signal.primary_horizon, action_date)
+                             and donor_horizons(signal.primary_horizon)
+                             for signal in qualified.values())
+        if fallback_policy is not None and reconciliation.ready and needs_fallback:
             try:
                 current_policy, current_binding = _loaded_fallback_policy(root, source_gameplan_run,
                     timestamp.tz_convert("America/Los_Angeles").date().isoformat())
@@ -421,7 +428,7 @@ def run_independent_stock_trader_once(
                 metadata["entry_cancellations_requested"] = cancelled
                 return finish("ENTRY_CANCELLATION_AWAITING_RECONCILIATION", error=cancellation_error)
         # Manual Gameplan holdings persist across forecast boundaries. Only a
-        # new bearish instruction sells from that horizon's inventory.
+        # new bearish instruction sells eligible inventory under its horizon policy.
         exits = (() if sizing_policy == GAMEPLAN_SIZING_POLICY else
                  _exit_decisions(ledger, portfolio, activation, active_policy, timestamp, snapshot_id, window.time_in_force))
         if sizing_policy == GAMEPLAN_SIZING_POLICY:
@@ -433,7 +440,8 @@ def run_independent_stock_trader_once(
         )
         if sizing_policy == GAMEPLAN_SIZING_POLICY:
             from ml.stock_trader.gameplan_direction_engine import build_gameplan_direction_trade_decisions
-            capacities = _direction_sell_capacities(qualified, state, portfolio, exits)
+            capacities = _direction_sell_capacities(qualified, state, portfolio, exits,
+                action_date=action_date, policy=active_policy)
             metadata["planning_ranges_have_execution_authority"] = False
             metadata["direction_sell_capacities"] = {f"{s}/{h}": q for (s, h), q in capacities.items()}
             metadata["pricing_basis"] = "current_ask_buy_bid_sell_with_wide_spread_midpoint_v1"
@@ -499,29 +507,85 @@ def run_independent_stock_trader_once(
         return result
 
 
-def _direction_sell_capacities(signals, state, portfolio, exits):
+def _direction_inventory(state, portfolio):
+    """Mutable virtual stock for this batch; original ledger evidence stays put."""
+    owners = {a.allocation_id: [a, max(0, a.filled_shares-a.reserved_sell_shares)]
+              for a in state.allocations}
+    free, remaining = {}, {}
+    for symbol, held in portfolio.held_shares.items():
+        allocated = [a for a in state.allocations if a.symbol == symbol]
+        owned = sum(a.filled_shares for a in allocated)
+        reserved = sum(a.reserved_sell_shares for a in allocated)
+        pending = portfolio.pending_sell_shares.get(symbol, 0)
+        free[symbol] = max(0, int(held-owned-max(0, pending-reserved)))
+        remaining[symbol] = max(0, int(held-max(pending, reserved)))
+    return owners, free, remaining
+
+
+def _consume_direction_inventory(owners, free, symbol, horizon, quantity, *, autonomous):
+    """Mirror the ledger's own-first, stable-owner, then unallocated slices."""
+    selected = sorted((item for item in owners.values() if item[0].symbol == symbol
+                       and (autonomous or item[0].horizon == horizon)),
+                      key=lambda item: (item[0].horizon != horizon, item[0].allocation_id))
+    debited, left = {}, quantity
+    for item in selected:
+        taken = min(left, item[1])
+        if taken:
+            item[1] -= taken
+            left -= taken
+            key = symbol, item[0].horizon
+            debited[key] = debited.get(key, 0) + taken
+        if not left:
+            break
+    assigned = min(left, free.get(symbol, 0))
+    free[symbol] = free.get(symbol, 0)-assigned
+    return debited
+
+
+def _direction_sell_capacities(signals, state, portfolio, exits, *, action_date=None, policy=None):
     """Partition current eligible shares once; never use projected inventory."""
     from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+    from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
+    action_date = action_date or utc(portfolio.observed_at).tz_convert("America/Los_Angeles").date().isoformat()
     allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
     due_ids = {d.prediction.get("allocation_id") for d in exits}
-    free = {}
-    for symbol, held in portfolio.held_shares.items():
-        owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
-        reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
-        external_pending = max(0, portfolio.pending_sell_shares.get(symbol, 0) - reserved)
-        free[symbol] = max(0, int(held - owned - external_pending))
+    owners, free, remaining = _direction_inventory(state, portfolio)
+    for decision in exits:
+        if decision.action == "SELL" and decision.quantity > 0:
+            remaining[decision.symbol] = max(0, remaining.get(decision.symbol, 0) - decision.quantity)
+            owner = owners.get(decision.prediction.get("allocation_id"))
+            if owner is not None:
+                owner[1] = max(0, owner[1]-decision.quantity)
     capacities = {}
     for key in sorted(signals, key=lambda item: (FIXED_HORIZON_WEIGHTS[item[1]], item[0])):
         if stock_direction(signals[key].calibrated_probability) != "BEARISH":
             continue
-        symbol, _ = key
+        symbol, horizon = key
+        autonomous = autonomous_horizon(horizon, action_date)
         allocation = allocations.get(key)
-        if allocation and (allocation.reserved_buy_shares or allocation.allocation_id in due_ids):
+        if not autonomous and allocation and (allocation.reserved_buy_shares or allocation.allocation_id in due_ids):
             capacities[key] = 0
             continue
-        own = max(0, allocation.filled_shares - allocation.reserved_sell_shares) if allocation else 0
-        capacities[key] = int(own + free.get(symbol, 0))
-        free[symbol] = 0
+        own = owners[allocation.allocation_id][1] if allocation else 0
+        available = remaining.get(symbol, 0) if autonomous else int(own+free.get(symbol, 0))
+        capacity = min(available, remaining.get(symbol, 0))
+        # Partition only what this order could actually select. Reserving the
+        # full account before applying the order cap starves the next horizon.
+        if policy is not None:
+            quote = portfolio.quotes.get(symbol)
+            ask = Decimal(str(quote.ask)) if quote is not None else Decimal(0)
+            if not ask.is_finite() or ask <= 0:
+                capacity = 0
+            else:
+                order_cap = int(Decimal(str(portfolio.account_equity))
+                                * Decimal(str(policy.maximum_single_order_equity_fraction))/ask)
+                capacity = min(capacity, max(0, order_cap))
+        planned = getattr(signals[key], "planned_quantity", None)
+        if planned is not None:
+            capacity = min(capacity, planned)
+        capacities[key] = capacity
+        _consume_direction_inventory(owners, free, symbol, horizon, capacity, autonomous=autonomous)
+        remaining[symbol] = max(0, remaining.get(symbol, 0) - capacities[key])
     return capacities
 
 
@@ -533,15 +597,22 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
     own/unallocated inventory before asking the ledger for a bounded donor.
     """
     from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+    from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
+    action_date = timestamp.tz_convert("America/Los_Angeles").date().isoformat()
     allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
     reserved = {}
+    reserved_inventory = {}
     normal_sales = set()
+    owners, free, _ = _direction_inventory(state, portfolio)
     for decision in normal_decisions:
         if decision.action == "SELL" and decision.quantity > 0:
             key = (decision.symbol, decision.prediction["primary_horizon"])
+            debited = _consume_direction_inventory(owners, free, decision.symbol, key[1], decision.quantity,
+                autonomous=autonomous_horizon(key[1], action_date))
+            for owner_key, quantity in debited.items():
+                reserved_inventory[owner_key] = reserved_inventory.get(owner_key, 0)+quantity
             allocation = allocations.get(key)
             if allocation is not None:
-                reserved[key] = min(decision.quantity, allocation.filled_shares)
                 normal_sales.add(key)
     plans, draft_used = {}, {}
     for key in sorted(signals, key=lambda item: (FIXED_HORIZON_WEIGHTS[item[1]], item[0])):
@@ -549,6 +620,8 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
         if stock_direction(signal.calibrated_probability) != "BEARISH":
             continue
         symbol, horizon = key
+        if autonomous_horizon(horizon, action_date):
+            continue
         own = allocations.get(key)
         if own and (own.filled_shares or own.reserved_buy_shares or own.reserved_sell_shares):
             continue
@@ -570,7 +643,9 @@ def _direction_fallback_plans(signals, all_signals, state, portfolio, normal_dec
             as_of=timestamp.isoformat(), pending_sell_shares=portfolio.pending_sell_shares.get(symbol, 0),
             pending_buy_shares=portfolio.pending_buy_shares.get(symbol, 0),
             excluded_donor_horizons=excluded,
-            reserved_donor_shares={h:q for (s,h),q in reserved.items() if s == symbol}, preview=preview)
+            reserved_donor_shares={h:q for (s,h),q in reserved.items() if s == symbol},
+            reserved_inventory_shares={h:q for (s,h),q in reserved_inventory.items()
+                                       if s == symbol and h in FIXED_HORIZON_WEIGHTS}, preview=preview)
         if not plan["eligible"]:
             continue
         quantity = min(plan["maximum_quantity"], max(0, plan["symbol_remaining"] - draft_used.get(symbol, 0)))

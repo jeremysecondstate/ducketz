@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import sqlite3
 
+from ml.stock_direction_policy import stock_action
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
 
 
@@ -194,7 +195,6 @@ class ShadowStore:
         value.pop("forecast_id", None)
         key = digest(value)
         value["forecast_id"] = key
-        intent_value = self._intent(key, value, intent)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
@@ -203,13 +203,16 @@ class ShadowStore:
                 raise ContractError("Issued forecast is immutable")
             if old:
                 return previous
+            # A saved forecast and its original intention remain immutable on
+            # recovery, including when the current action policy has changed.
+            intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
         return value
 
     @staticmethod
     def _intent(key, forecast, supplied):
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        side = stock_action(forecast["probability_not_down"])
         value = dict(supplied or {})
         if value.get("side", side) != side:
             raise ContractError("Intent direction disagrees with the forecast")
@@ -224,6 +227,10 @@ class ShadowStore:
             disposition = value.get("disposition")
             if not disposition:
                 raise ContractError("Explicit execution disposition required")
+        if side == "HOLD":
+            if desired not in (None, 0):
+                raise ContractError("Neutral forecast cannot create a trade intention")
+            disposition = "probability_between_action_cutoffs"
         return {**value, "forecast_id": key, "side": side, "desired_quantity": desired,
                 "adjusted_quantity": adjusted, "disposition": disposition, "submission_status": "not_submitted_shadow",
                 "submitted_quantity": 0, "filled_quantity": 0, "realized_pnl": None}

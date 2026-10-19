@@ -16,6 +16,7 @@ from pathlib import Path
 import sqlite3
 import stat
 
+from ml.stock_direction_policy import stock_action
 from .prediction import ContractError, PACIFIC, TARGET_VERSION, digest, instant
 from .store import ShadowStore
 from .submission_time import submission_gate
@@ -39,6 +40,8 @@ def forecast_disposition(forecast, *, now, session_started_at, local_symbols):
         raise ContractError('Forecast issue lies in the future')
     if forecast['ensemble_status'] != 'full' or forecast['successful_count'] != forecast['configured_count']:
         return 'incomplete_ensemble'
+    if stock_action(forecast['probability_not_down']) == 'HOLD':
+        return 'probability_between_action_cutoffs'
     gate = submission_gate(as_of=now, eligible_session=instant(forecast['reference_at']).astimezone(PACIFIC).date())
     if gate.state != 'before_submission_cutoff':
         return gate.state

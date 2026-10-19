@@ -49,8 +49,8 @@ def test_projection_survives_wait_and_model_assessment_without_becoming_a_schedu
                                 projected_trade_quantity=18, calibrated_probability=.61, planning_direction="BULLISH",
                                 target_window_end="2026-09-10T00:00:00Z")]
     text = render(tmp_path, rows)
-    assert "| Bullish | 6 | $313.54–$318.45 | Wait |" in text
-    assert "| Bullish | 18 | $313.54–$318.45 | Model assessment not passed |" in text
+    assert "| Bullish | 6 | Wait |" in text
+    assert "| Bullish | 18 | Model assessment not passed |" in text
     assert "0 scheduled entries" in text and "Scheduled capital reserved: **$0.00**" in text
     assert "Only scheduled entries commit shared cash" in text
     assert "54.00%" in text and "46.00%" in text and "54.71%" in text
@@ -63,6 +63,34 @@ def test_fifty_percent_rule_is_rendered_without_ambiguous_inclusive_boundaries(t
     assert "Bullish above 50.00%" in text and "Bearish below 50.00%" in text
     assert "Neutral only at exactly 50.00%" in text
     assert "Neutral between them" not in text
+
+
+def test_current_rule_renders_exact_inclusive_buy_and_sell_cutoffs(tmp_path):
+    details = {**report(), "direction_up_threshold": .5001, "direction_down_threshold": .4999,
+               "direction_policy_version": "stock-direction-5001-4999-v3"}
+    text = render(tmp_path, [forecast()], details=details)
+    assert "BUY at 50.01% P(up) or higher; SELL at 49.99% or lower; HOLD between them." in text
+    assert "Bullish above 50.00%" not in text
+
+
+@pytest.mark.parametrize("direction_plan", [False, True])
+def test_report_omits_estimated_trade_prices_and_preserves_recorded_quote_and_inputs(tmp_path, direction_plan):
+    details = report()
+    if direction_plan:
+        details["direction_based_projection"] = direction_projection()
+    rows = direction_rows() if direction_plan else [forecast()]
+    rows[0].update(scheduled_trade_price_low=123.45, scheduled_trade_price_high=987.65)
+    data, original = pd.DataFrame(rows), deepcopy(details)
+    before = data.copy(deep=True)
+    text = render_trade_review(data, details, {}, source_gameplan=str(tmp_path))
+    for omitted in ("Trade Price (planning range)", "| Price range |", "Scheduled entry planning range",
+                    "quantities and planning prices", "How quantities and prices are planned",
+                    "$313.54", "$318.45", "$123.45", "$987.65"):
+        assert omitted not in text
+    assert "Last recorded price" in text and "$316.34" in text
+    assert "buys use the current ask and sells use the current bid" in text
+    pd.testing.assert_frame_equal(data, before)
+    assert details == original
 
 
 def test_daily_dates_weekly_expiry_and_context_quantities_are_unambiguous(tmp_path):
@@ -118,7 +146,7 @@ def test_renderer_rejects_fractional_projected_execution_quantity(tmp_path):
 def test_missing_projection_evidence_is_unavailable_without_inventing_zero_capacity(tmp_path):
     text = render(tmp_path, [forecast(projected_trade_quantity=None, projected_quantity_reason="PRICE_RANGE_UNAVAILABLE",
                                      trade_price_low=None, trade_price_high=None)])
-    assert "| Bullish | Unavailable | — | Wait |" in text
+    assert "| Bullish | Unavailable | Wait |" in text
 
 
 def test_model_assessment_displays_recorded_tolerance_without_claiming_baseline_outperformance(tmp_path):
@@ -204,10 +232,9 @@ def test_direction_plan_displays_signed_actions_and_the_same_post_hour_cash_with
     assert "| Bullish | — | — |" in context and context.endswith("| — | — | Outlook |")
     assert "0 scheduled entries" in text and "0 orders submitted" in text
     assert "projected purchases and sales are not submitted orders or actual fills" in text
-    assert "±25 basis points" in text
-    assert "Price and cash ranges are estimates only, never execution limits." in text
-    assert "Trades may proceed outside either range" in text
-    assert "Estimated prices and balances do not veto an order." in text
+    assert "Cash is projected before fees and taxes from the saved planned transactions." in text
+    assert "Each order uses the current quote and actual available cash and holdings." in text
+    assert "planning range" not in text and "±25 basis points" not in text
     assert "checked again or skipped" not in text
     pd.testing.assert_frame_equal(data, before)
     assert details == original
@@ -231,6 +258,23 @@ def test_hourly_and_end_of_day_balances_retain_weekly_holdings_and_list_each_eve
     assert "| +$104.00 | +$106.00 | +$108.00 | $1,101.00–$1,111.00 | 0 | Horizon expiry |" in events
     assert "| COST |" not in events
     assert "overnight or weekly expiries remain held at 17:00" in text
+
+
+def test_current_autonomous_horizons_are_described_without_changing_saved_ownership_evidence(tmp_path):
+    details = report()
+    details["direction_based_projection"] = {**direction_projection(),
+        "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+        "autonomous_horizons": ["1h", "4h"]}
+    rows = direction_rows()
+    rows[0]["direction_based_reason"] = "BEARISH_ACCOUNT_WIDE_SELL"
+    original = deepcopy(details)
+    text = render(tmp_path, rows, details=details)
+    assert "1h and 4h bearish signals can sell available shares across horizons" in text
+    assert "1d and 1w retain their ownership rules" in text
+    assert "Sell available shares across horizons" in text
+    assert "bearish instructions sell within their horizon" not in text
+    assert "allocations to later horizons remain protected" not in text
+    assert details == original
 
 
 def test_direction_quantity_does_not_invent_zero_when_evidence_is_missing(tmp_path):

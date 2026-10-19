@@ -106,15 +106,37 @@ def test_falling_and_rising_symbol_ta_produce_different_real_calculated_sizes():
         assert result["explanation"]["rounded_equality"] == "allow"
 
 
-def test_equal_probability_is_buy_and_side_orientation_has_no_confidence_gate():
+def test_equal_probability_holds_and_side_orientation_has_no_confidence_gate():
     half = run(fixture(probability=.5)).payload()
-    assert half["side"] == "BUY" and half["desired_quantity"] > 0
+    assert half["side"] == "HOLD" and half["desired_quantity"] is None
+    assert half["reason"] == "probability_between_action_cutoffs"
+    assert half["execution_disposition"] == "hold"
     buys = run(fixture(probability=.8)).payload()
     sells = run(fixture(probability=.2)).payload()
     buy_probability = next(x for x in buys["term_contributions"] if x["feature"] == "probability_not_down")
     sell_probability = next(x for x in sells["term_contributions"] if x["feature"] == "probability_not_down")
     assert buy_probability["contribution_decimal"] == sell_probability["contribution_decimal"]
     assert float(buys["score"]) > float(sells["score"])
+
+
+@pytest.mark.parametrize("probability,side", [
+    (0., "SELL"), (.48, "SELL"), (.4999, "SELL"),
+    (np.nextafter(.4999, 1.), "HOLD"), (.5, "HOLD"),
+    (np.nextafter(.5001, 0.), "HOLD"), (.5001, "BUY"), (.52, "BUY"), (1., "BUY"),
+])
+def test_exact_probability_cutoffs_flow_through_side_quote_and_sizing(probability, side):
+    bundle = fixture(probability=float(probability))
+    reference, reason = independent_reference(bundle[0], account_equity=bundle[2], quote=bundle[3],
+        calculated_at=bundle[0]["issued_at"], maximum_quote_age_seconds=60)
+    sized = run(bundle).payload()
+    assert sized["side"] == side
+    if side == "HOLD":
+        assert reference is None and reason == "probability_between_action_cutoffs"
+        assert sized["status"] == "unavailable" and sized["desired_quantity"] is None
+    else:
+        assert reason is None and reference.side == side
+        assert reference.evidence["price_side"] == ("ask" if side == "BUY" else "bid")
+        assert sized["status"] == "sized" and sized["desired_quantity"] > 0
 
 
 def test_cash_and_eligible_shares_never_shrink_or_gate_original_desired_quantity():

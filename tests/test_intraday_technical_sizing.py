@@ -172,7 +172,9 @@ def test_each_symbol_and_side_has_independent_recipe_and_periods():
     assert size_fixture(second).desired_quantity == 8
     assert first[1].payload()["features"]["ema.distance"] != second[1].payload()["features"]["ema.distance"]
     assert size_fixture(fixture(bars(symbol="IONQ"), probability=.49, config=ionq_config)).desired_quantity == 1
-    assert size_fixture(fixture(probability=.50)).payload()["side"] == "BUY"
+    neutral = size_fixture(fixture(probability=.50)).payload()
+    assert neutral["side"] == "HOLD" and neutral["desired_quantity"] is None
+    assert neutral["reason"] == "probability_between_action_cutoffs"
     assert size_fixture(first, symbol_policy=ionq_config).desired_quantity is None
 
 

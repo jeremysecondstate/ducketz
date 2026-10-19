@@ -7,6 +7,7 @@ module has no broker connection and cannot create an order or a fill.
 import json
 from dataclasses import asdict
 
+from ml.stock_direction_policy import stock_action
 from .prediction import ContractError, digest, encoded, identity, instant, quantity
 
 VERSION = "intraday-independent-intentions-v1"
@@ -58,13 +59,18 @@ class IntentionStore:
         value = result.payload()
         if value["forecast_id"] != forecast["forecast_id"] or value["symbol"] != forecast["symbol"]:
             raise ContractError("Sizing belongs to another forecast")
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        # Existing immutable intentions keep their saved side during recovery.
+        # The current direction policy applies when creating the next intention.
+        previous = self.get(forecast["forecast_id"])
+        side = previous["side"] if previous else stock_action(forecast["probability_not_down"])
         if value["side"] != side or instant(value["calculated_at"]) < instant(forecast["issued_at"]):
             raise ContractError("Sizing direction or availability differs from forecast")
         if value["status"] != "sized":
             return self.record(forecast, event_key="unavailable:" + result.result_id,
                 recorded_at=value["calculated_at"], disposition=value["reason"],
                 evidence={"sizing": value}, kind="sizing_unavailable")
+        if side == "HOLD":
+            raise ContractError("Neutral forecast cannot create a sized trade")
         desired = quantity(value["desired_quantity"])
         payload = {"version": VERSION, "forecast_id": forecast["forecast_id"], "symbol": forecast["symbol"],
                    "side": side, "desired_quantity": desired, "sizing_id": result.result_id, "sizing": value}
@@ -101,7 +107,7 @@ class IntentionStore:
             intention = self._value(db.execute("SELECT forecast_id,id,payload FROM intraday_intentions WHERE forecast_id=?",
                                                (forecast["forecast_id"],)).fetchone())
             desired = intention["desired_quantity"] if intention else None
-            side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+            side = intention["side"] if intention else stock_action(forecast["probability_not_down"])
             value = dict(version=VERSION, forecast_id=forecast["forecast_id"], symbol=forecast["symbol"],
                 side=side, kind=kind, desired_quantity=desired, adjusted_quantity=None,
                 disposition=disposition, evidence=evidence, submission_status="not_submitted",

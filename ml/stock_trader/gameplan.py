@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from ml.artifacts import file_checksum
-from ml.stock_direction_policy import stock_direction
+from ml.stock_direction_policy import stock_direction, saved_stock_direction
 from ml.nightly_gameplan import (
     ASSUMED_ROUND_TRIP_COST,
     EXECUTION_AUTHORITY,
@@ -192,7 +192,7 @@ def load_current_gameplan_prediction_signals(
         direction = str(row.get("direction") or "").upper()
         if not promoted or direction not in {"BULLISH", "BEARISH"}:
             continue
-        direction_probability_mismatch = direction != stock_direction(probability)
+        direction_probability_mismatch = direction != saved_stock_direction(probability, row.get("direction_policy_version"))
         if direction_probability_mismatch:
             raise ValueError(f"{symbol} gameplan direction and probability disagree")
         horizon_probabilities = {horizon: probability}

@@ -28,6 +28,7 @@ PACIFIC = ZoneInfo("America/Los_Angeles")
 HORIZONS = ("1h", "4h", "1d", "1w")
 REASONS = {
     "BULLISH_BUY": "Bullish entry", "BEARISH_SELL": "Bearish sale",
+    "BEARISH_ACCOUNT_WIDE_SELL": "Bearish sale from available shares across horizons",
     "HORIZON_EXIT": "Scheduled horizon exit", "LATER_EXPIRY": "Later horizon expiry",
     "UNRESOLVED_EXPIRY": "Unresolved horizon expiry", "NEUTRAL": "Neutral forecast",
     "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON": "No eligible shares in this horizon",
@@ -435,11 +436,16 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
         sequences.add(sequence)
         action, reason = event["action"], event["reason"]
         if (action, reason) not in {("BUY", "BULLISH_BUY"), ("SELL", "BEARISH_SELL"), ("SELL", "HORIZON_EXIT"),
-                                   ("SELL", "BEARISH_CROSS_HORIZON_FALLBACK")}:
+                                   ("SELL", "BEARISH_CROSS_HORIZON_FALLBACK"),
+                                   ("SELL", "BEARISH_ACCOUNT_WIDE_SELL")}:
             raise GameplanError("Unsupported projected trade action")
         symbol, horizon, identifier = str(event["symbol"]), event["horizon"], str(event["forecast_id"])
         if symbol not in symbols or horizon not in HORIZONS:
             raise GameplanError("Unknown trade company or horizon")
+        if reason == "BEARISH_ACCOUNT_WIDE_SELL":
+            from ml.stock_trader.cross_horizon_fallback import autonomous_horizon
+            if not autonomous_horizon(horizon, session):
+                raise GameplanError("Account-wide sale requires an autonomous horizon")
         quantity = _number(event["quantity"])
         if quantity <= 0:
             raise GameplanError("Projected trade quantities must be positive")
