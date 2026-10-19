@@ -298,18 +298,25 @@ def test_newer_order_scan_preserves_fresh_sizing_without_per_order_transactions(
         assert db.execute("SELECT COUNT(*) FROM events WHERE kind='sizing_unavailable_diagnostics'").fetchone()[0] == 0
 
 
-def test_normal_stale_sizing_persists_slow_phase_without_changing_intention(env, monkeypatch):
+def test_genuinely_stale_recapture_persists_slow_phase_without_changing_intention(env, monkeypatch):
+    from test_intraday_lease_maintenance import WorkerClock
+
     forecast = env.forecast()
+    worker = WorkerClock(env, monkeypatch)
     original_scan = env.executor.intents.processed_at_or_after
     monkeypatch.setattr(time, "monotonic", lambda: env.now.timestamp())
 
     def slow_scan(value):
         result = original_scan(value)
-        advance(env, 65)
+        worker.slow_preparation()
+        # The bounded recapture must retain an actually stale provider quote;
+        # it cannot fix stale evidence by assigning it the current clock.
+        env.quote_age = 65
         return result
 
     monkeypatch.setattr(env.executor.intents, "processed_at_or_after", slow_scan)
     result = env.executor.step(forecast)
+    assert env.captures == 2
     assert result["kind"] == "sizing_unavailable"
     assert result["disposition"] == "quote_stale_or_future"
     assert result == env.executor.intents.history(forecast["forecast_id"])[-1]
