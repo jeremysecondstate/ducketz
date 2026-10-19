@@ -1,0 +1,25 @@
+{
+  "author": "Atlas",
+  "change_id": "20261019T081333Z-9d10e5e6d9b84c6c8ba59705c6a60884",
+  "files": [
+    "ml/intraday/market_input_stream.py",
+    "tests/test_intraday_market_input_startup.py"
+  ],
+  "limitations": [
+    "Injected offline clients; no provider/broker or live-runtime verification.",
+    "Stacked on PR216; main integration and peer installation unverified.",
+    "Each PC retains local model tuning, private state, manual controls and runtime ownership."
+  ],
+  "predecessor_completion_record": "20261017T185321Z-aa36ddfd288d4e79bd1a80a96f47552b",
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/221",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "SDK waits occur outside callback state lock; per-dataset lifecycle serializes start/recovery/close. Source is installed locally for next manual process. No running trader was started, restarted or stopped.",
+  "scope": "shared",
+  "source_commit": "c04d86a18dcb93125214d1fb7b043aca054d1166",
+  "source_remote_verified": true,
+  "summary": "Atlas 15m supervisor: reviewed generic stream startup deadlock repair published in draft PR221.",
+  "tests": [
+    "368 local offline regressions passed.",
+    "8 focused exact-byte isolated tests passed with bound imports; original callback deadlock regression fails on predecessor source."
+  ]
+}
