@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import argparse
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 import json
 import math
 from pathlib import Path
+import re
+import sqlite3
 import time
 import uuid
 
@@ -119,6 +122,42 @@ def recorded_symbol_failures(store, cycle_id):
         rows=db.execute("SELECT symbol,payload FROM events WHERE cycle_id=? AND kind='symbol_failure' ORDER BY id",
                         (cycle_id,)).fetchall()
     return {symbol:json.loads(payload) for symbol,payload in rows}
+
+
+def _symbol_exception_diagnostics(exc):
+    """Bounded causal locations, never locals, source lines or nested messages."""
+    chain, seen = [], set()
+    current, relation = exc, "raised"
+    while current is not None and id(current) not in seen and len(chain) < 6:
+        seen.add(id(current))
+        frames, count = deque(maxlen=8), 0
+        trace = current.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            basename = code.co_filename.replace("\\", "/").rsplit("/", 1)[-1]
+            frames.append({"file": re.sub(r"[^A-Za-z0-9_.-]", "_", basename)[:96],
+                           "function": re.sub(r"[^A-Za-z0-9_<>.]", "_", code.co_name)[:96],
+                           "line": trace.tb_lineno})
+            count += 1
+            trace = trace.tb_next
+        item = {"type": re.sub(r"[^A-Za-z0-9_]", "_", type(current).__name__)[:96],
+                "relation": relation, "frames": list(frames), "frames_truncated": count > len(frames)}
+        if isinstance(current, sqlite3.Error):
+            code = getattr(current, "sqlite_errorcode", None)
+            name = getattr(current, "sqlite_errorname", None)
+            if type(code) is int and 0 <= code <= 0x7fffffff:
+                item["sqlite_errorcode"] = code
+            if isinstance(name, str) and re.fullmatch(r"SQLITE_[A-Z0-9_]{1,64}", name):
+                item["sqlite_errorname"] = name
+        chain.append(item)
+        if current.__cause__ is not None:
+            current, relation = current.__cause__, "cause"
+        elif not current.__suppress_context__:
+            current, relation = current.__context__, "context"
+        else:
+            current = None
+    return {"schema_version": "intraday-symbol-exception-v1", "exception_chain": chain,
+            "chain_truncated": current is not None}
 
 
 def _dataset_scope(value):
@@ -265,7 +304,8 @@ class ShadowRunner:
                     results[symbol] = future.result()
                 except Exception as exc:
                     from .data import AcquisitionPending
-                    error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat()}
+                    error = {"type":type(exc).__name__,"message":str(exc),"recorded_at":instant(self.clock()).isoformat(),
+                             "diagnostics":_symbol_exception_diagnostics(exc)}
                     if isinstance(exc, AcquisitionPending):
                         error.update(retryable=True, reason=exc.reason,
                                      retry_after_seconds=exc.retry_after_seconds,
