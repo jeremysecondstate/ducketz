@@ -47,6 +47,9 @@ class CandleCollector:
                 session_id TEXT NOT NULL,symbol TEXT NOT NULL,reference_at TEXT NOT NULL,
                 status TEXT NOT NULL,next_attempt_at TEXT NOT NULL,last_error TEXT,
                 PRIMARY KEY(session_id,symbol,reference_at))""")
+            db.execute("""CREATE TABLE IF NOT EXISTS intraday_candle_fairness(
+                session_id TEXT PRIMARY KEY,fresh_streak INTEGER NOT NULL,last_fresh_symbol TEXT)""")
+            db.execute("INSERT OR IGNORE INTO intraday_candle_fairness VALUES(?,0,NULL)", (self.session_id,))
 
     def _eligible(self, reference):
         reference = instant(reference)
@@ -97,6 +100,32 @@ class CandleCollector:
                                "population_contract":self.population_contract,
                                "history_policy": "missing_original_history_retained_no_invented_rows"})
 
+    @staticmethod
+    def _next_pending(pending, newest, now, fairness):
+        # Deferred rows remain inspectable for already-saved candles, but never
+        # displace due work or consume a fairness turn merely by being skipped.
+        due = [row for row in pending if instant(row[2]) <= now]
+        available = due or pending
+        fresh = [row for row in available if row[1] == newest]
+        older = [row for row in available if row[1] != newest]
+        streak, last_symbol = fairness
+        if older and (streak >= 2 or not fresh):
+            return min(older, key=lambda row: (instant(row[2]), row[1], row[0])), "older"
+        # Rotation survives quarter changes, including a request that consumes
+        # the entire quarter. Due timestamps keep same-quarter retries fair.
+        return min(fresh, key=lambda row: (instant(row[2]),
+            bool(last_symbol and row[0] <= last_symbol), row[0])), "fresh"
+
+    def _record_turn(self, lane, symbol, fairness):
+        streak, last_symbol = fairness
+        value = (min(2, streak + 1), symbol) if lane == "fresh" else (0, last_symbol)
+        # Persist before the bounded step: interruption retains the pending row
+        # but cannot reset every restart to the first fresh symbol.
+        with self.store.connect() as db:
+            db.execute("UPDATE intraday_candle_fairness SET fresh_streak=?,last_fresh_symbol=? WHERE session_id=?",
+                       (*value, self.session_id))
+        return value
+
     def pass_once(self):
         """Yield old work when a new quarter is due; retain every pending slot."""
         if self.stopped():
@@ -112,21 +141,32 @@ class CandleCollector:
             pending = db.execute("SELECT symbol,reference_at,next_attempt_at,last_error FROM intraday_candle_collection "
                                  "WHERE session_id=? AND status='pending' ORDER BY reference_at DESC,symbol",
                                  (self.session_id,)).fetchall()
+            fairness = db.execute("SELECT fresh_streak,last_fresh_symbol FROM intraday_candle_fairness WHERE session_id=?",
+                                  (self.session_id,)).fetchone()
+        newest = max((row[1] for row in pending), default=None)
         saved_count = 0
-        for symbol, raw_reference, retry_at, old_error in pending:
+        while pending:
             if self.stopped():
                 break
-            now, reference = instant(self.clock()), instant(raw_reference)
+            now = instant(self.clock())
             # The pending snapshot predates the next quarter. Finish the current
             # bounded step, then let the next pass schedule new slots first.
             # Yielding changes no stop flag, receipt, or durable pending work.
             if refresh_at is not None and now >= refresh_at:
                 break
+            row, lane = self._next_pending(pending, newest, now, fairness)
+            pending.remove(row)
+            symbol, raw_reference, retry_at, old_error = row
+            reference = instant(raw_reference)
             if now >= self.close_at and reference != self.final_reference:
                 continue
             candle = self._saved(symbol, reference, now)
             if candle is None and instant(retry_at) > now:
                 continue
+            if self.stopped():
+                break
+            if now < self.close_at:
+                fairness = self._record_turn(lane, symbol, fairness)
             history = self.histories.get(symbol)
             local = {symbol: history if history is not None else self._empty_history(symbol)}
             try:
