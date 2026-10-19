@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T16:49:41.123080Z",
+  "id": "20261019T164941Z-ed07d93b1dae4047aacc12de90416758",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repaired transient Windows collection-state publication conflicts and retained bounded private worker causes while preserving provider requests, manual controls and local recipes."
+}
