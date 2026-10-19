@@ -5,6 +5,7 @@ cycle summaries may advance; every transition also has an append-only event.
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -170,41 +171,62 @@ class ShadowStore:
                               where + " ORDER BY rowid", parameters).fetchall()
         return [self._forecast_value(row) for row in rows]
 
-    def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
-        """Validate immutable bytes, decoding model payloads only for new work.
-
-        SQLite still reads forecast bytes. Canonical content written by this
-        store can be hashed without constructing its large Python model trees;
-        other encodings retain the existing full semantic validation path.
-        """
+    def _forecast_projection(self, row):
+        """Cache only scalar headers of exact semantically validated evidence."""
         fields = ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at",
-                  "mode", "target_open", "target_close", "population_contract", "source_dataset", "source_id")
-        paths = ",".join("'$." + field + "'" for field in fields)
+                  "mode", "ensemble_status", "target_open", "target_close",
+                  "population_contract", "source_dataset", "source_id")
+        cache = getattr(self, "_forecast_header_cache", None)
+        if cache is None:
+            cache = self._forecast_header_cache = OrderedDict()
+        # A hash of unsorted JSON is not proof of the semantic digest. New
+        # payloads and indexed identities always take the full validator.
+        # BLOB/irregular SQLite values retain its original behavior too.
+        signature = (*row[:6], hashlib.sha256(row[6].encode()).digest()) if isinstance(row[6], str) else None
+        previous = cache.get(row[0])
+        if signature is not None and previous is not None and previous[0] == signature:
+            return dict(previous[1]), None
+        value = self._forecast_value(row)
+        projection = {field: value[field] for field in fields if field in value}
+        if signature is not None and all(item is None or isinstance(item, str) for item in projection.values()):
+            cache[row[0]] = (signature, tuple(projection.items()))
+            if len(cache) > 4096:
+                cache.popitem(last=False)
+        return dict(projection), value
+
+    def execution_forecast_headers(self, *, pc, symbol):
+        """Validate own history, reusing unchanged headers on repeated scans.
+
+        All bytes are still read and hashed. The bounded cache belongs to this
+        store instance, not a database or another trader, and does not survive
+        a process restart. Every changed row is fully validated again.
+        """
+        headers = []
+        with self.connect() as db:
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
+                "FROM forecasts WHERE pc=? AND symbol=? ORDER BY rowid", (pc, symbol))
+            for row in rows:
+                projection, _ = self._forecast_projection(row)
+                headers.append(projection)
+        return headers
+
+    def scoring_forecasts(self, *, pc, observed_candidates, as_of, stopped=lambda: False):
+        """Validate immutable bytes, reusing unchanged history after first read.
+
+        First reads and changed rows take the full semantic validator. Repeated
+        scans still read/hash all bytes but decode model trees only for selected
+        work; small validated headers retain the original selection behavior.
+        """
         now = instant(as_of)
         selected = []
         with self.connect() as db:
-            db.create_function("scoring_content_sha256", 1,
-                               lambda raw: hashlib.sha256(raw.encode()).hexdigest())
-            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,"
-                "CASE WHEN json_valid(payload) THEN scoring_content_sha256(json_remove(payload,'$.forecast_id')) END,"
-                "CASE WHEN json_valid(payload) THEN json_extract(payload," + paths + ") END "
+            rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
                 "FROM forecasts WHERE pc=? ORDER BY rowid", (pc,))
             for row in rows:
                 if stopped():
                     return []
-                key, actor, symbol, cycle, reference, issued, fingerprint, raw_projection = row
-                full = None
-                projection = dict(zip(fields, json.loads(raw_projection))) if raw_projection else {}
-                if (fingerprint != key or any(projection.get(field) != indexed for field, indexed in
-                        zip(fields[:6], (key, actor, symbol, cycle, reference, issued)))
-                        or any(not isinstance(projection.get(field), str) for field in
-                               ("mode", "target_open", "target_close"))
-                        or any(projection.get(field) is not None and not isinstance(projection[field], str)
-                               for field in ("population_contract", "source_dataset", "source_id"))):
-                    original = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                                          "FROM forecasts WHERE id=?", (key,)).fetchone()
-                    full = self._forecast_value(original)
-                    projection = full
+                key, _, symbol = row[:3]
+                projection, full = self._forecast_projection(row)
                 if projection["mode"] != "live" or instant(projection["target_close"]) > now:
                     continue
                 # Retain validation of every prior revision, including a corrupt

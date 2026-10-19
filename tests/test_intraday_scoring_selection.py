@@ -1,5 +1,6 @@
 """Bound scoring decodes while retaining immutable evidence and corrections."""
 import json
+import hashlib
 import time
 from types import SimpleNamespace
 
@@ -50,6 +51,9 @@ def test_large_terminal_history_decodes_only_unresolved_and_corrected(tmp_path, 
     assert decoded == [value["forecast_id"] for value in saved]
     decoded.clear()
     assert selection(store, targets) == [saved[-1]]
+    assert decoded == [value["forecast_id"] for value in saved]
+    decoded.clear()
+    assert selection(store, targets) == [saved[-1]]
     assert decoded == [saved[-1]["forecast_id"]]
     corrected = candle(symbol="S2", close="99", available_at="2026-10-08T17:58:00+00:00")
     decoded.clear()
@@ -73,9 +77,9 @@ def test_alternate_json_encodings_fall_back_without_losing_validation(tmp_path, 
             db.execute("UPDATE forecasts SET payload=? WHERE id=?", (raw, value["forecast_id"]))
     decoded = spy_decodes(store, monkeypatch)
     assert selection(store, [target]) == []
-    # SQLite removes insignificant whitespace; reordered keys and alternate
-    # Unicode encodings retain the existing semantic validation fallback.
-    assert len(decoded) == (0 if encoding in {"canonical", "indent"} else 1)
+    assert decoded == [value["forecast_id"]]  # Every cold encoding is validated.
+    decoded.clear()
+    assert selection(store, [target]) == [] and decoded == []
 
 
 @pytest.mark.parametrize("damage", ["body", "index", "forecast_id", "old_outcome"])
@@ -84,6 +88,7 @@ def test_terminal_selection_does_not_hide_corrupted_evidence(tmp_path, damage):
     value = store.save_forecast(forecast(mode="live"))
     initial = store.observe(value, as_of="2026-10-08T17:46:00Z")
     store.observe(value, as_of=NOW, candle=candle())
+    assert selection(store, [candle()]) == []  # Warm cached headers cannot hide damage.
     with store.connect() as db:
         if damage == "body":
             db.execute("UPDATE forecasts SET payload=json_set(payload,'$.reference_open','999')")
@@ -138,6 +143,32 @@ def test_malformed_json_uses_existing_full_validation_error(tmp_path):
         db.execute("UPDATE forecasts SET payload='not json'")
     with pytest.raises(json.JSONDecodeError):
         selection(store)
+
+
+def test_noncanonical_raw_hash_is_not_a_semantic_forecast_identity(tmp_path):
+    store = ShadowStore(tmp_path / "raw-hash.sqlite3")
+    invalid = dict(reversed(list(forecast(mode="live", target_close="2026-10-08T18:45:00Z").items())))
+    invalid["forecast_id"] = hashlib.sha256(json.dumps(invalid, separators=(",", ":")).encode()).hexdigest()
+    with store.connect() as db:
+        db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)",
+            (*(invalid[k] for k in ("forecast_id", "pc", "symbol", "cycle_id", "reference_at", "issued_at")),
+             json.dumps(invalid, separators=(",", ":"))))
+    with pytest.raises(ContractError, match="hash or indexed identity"):
+        store.forecasts(pc="Atlas")
+    with pytest.raises(ContractError, match="hash or indexed identity"):
+        selection(store)
+
+
+def test_scoring_changed_valid_blob_revalidates_and_preserves_selection(tmp_path, monkeypatch):
+    store = ShadowStore(tmp_path / "blob.sqlite3")
+    value = store.save_forecast(forecast(mode="live"))
+    store.observe(value, as_of=NOW, candle=candle())
+    assert selection(store, [candle()]) == []
+    with store.connect() as db:
+        db.execute("UPDATE forecasts SET payload=CAST(payload AS BLOB)")
+    decoded = spy_decodes(store, monkeypatch)
+    assert selection(store, [candle()]) == []
+    assert decoded == [value["forecast_id"]]
 
 
 def test_scoring_loop_matches_full_inventory_outcomes_events_and_acquisition(tmp_path, monkeypatch):
