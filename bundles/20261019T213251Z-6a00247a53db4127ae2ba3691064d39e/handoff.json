@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T21:32:51.704298Z",
+  "id": "20261019T213251Z-6a00247a53db4127ae2ba3691064d39e",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout repairs normal Windows token refresh by protecting temporary-file access before normalizing ownership."
+}

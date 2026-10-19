@@ -1,0 +1,53 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T212719Z-f12819873a0c4937896fbce769a07db5",
+  "change_id": "20261019T212719Z-f12819873a0c4937896fbce769a07db5",
+  "files": [
+    "app/services/schwab_token_store.py",
+    "tests/test_schwab_token_windows_user.py"
+  ],
+  "limitations": [
+    "Offline checks use dummy credential files, actual same-account limited-token impersonation and stubbed HTTP with network denied; no real broker or provider calls.",
+    "The final native regressions reproduce three WinError 5 failures against the exact prior source and pass with the protected DACL applied before ownership.",
+    "All prior unowned installed source and the private model recipe remain preserved. Credential contents and live controls were not changed.",
+    "The current session retains its earlier imported module. Successful affected refresh and account operation recovery remains unconfirmed until a manual restart and observation.",
+    "Draft PR is stacked on PR 253; main integration and peer installation remain separate."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/255",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Manual trader restart required for Scout to load changed token protection code. Preserve each PC's own authenticated cache, private recipe, bindings and manual trader authority. This shared source publication performs no trader start, restart, stop or trade.",
+  "scope": "shared",
+  "source_commit": "fc4451015548f2ea4f92365b130298e940e1b5a3",
+  "source_remote_verified": true,
+  "summary": "Scout repairs normal Windows token refresh by protecting temporary-file access before normalizing ownership.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T21:27:47.555817Z",
+      "exit_code": 0,
+      "output_sha256": "d3a3d3a334174737dd157d9f96fc4181a193e259061a72b36b79ac333c87565b",
+      "passed": 159,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T21:30:13.728872Z",
+      "exit_code": 0,
+      "output_sha256": "6b530a7ffbfaa0e6648608baadd84dec9c9fe116d9c14cb9eb367abcfeac59cd",
+      "passed": 159,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T21:28:31.698036Z",
+      "exit_code": 0,
+      "output_sha256": "5079a574a0d87ffd7bb11864ec914f3d351945f591f4f39c2fe66097b676da57",
+      "passed": 159,
+      "scope": "installed release",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}
