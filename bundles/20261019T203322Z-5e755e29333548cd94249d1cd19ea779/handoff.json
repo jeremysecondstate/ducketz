@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T20:33:22.243417Z",
+  "id": "20261019T203322Z-5e755e29333548cd94249d1cd19ea779",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout preserves private Windows token-cache access across normal/elevated launches and records bounded startup exception causes."
+}

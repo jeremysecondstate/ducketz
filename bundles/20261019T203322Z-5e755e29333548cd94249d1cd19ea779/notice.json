@@ -1,0 +1,54 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T202834Z-bae63233fb724208806a382e92c5d1d6",
+  "change_id": "20261019T202834Z-bae63233fb724208806a382e92c5d1d6",
+  "files": [
+    "app/services/schwab_token_store.py",
+    "ml/intraday/live_session.py",
+    "tests/test_intraday_live_session.py",
+    "tests/test_schwab_token_windows_user.py",
+    "tests/test_schwab_portfolio.py"
+  ],
+  "limitations": [
+    "Native Windows tests use dummy files and actual UAC linked-token AccessCheck; no real broker/provider calls or live training.",
+    "Original startup traceback was not saved, so exact historical frame cannot be recovered; original failure and current ACL evidence retained separately from native reproduction.",
+    "An already-running process retains earlier token protection code; durable prevention needs manual reload. Installed files and current ACL access do not establish affected runtime recovery."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/249",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install reviewed source with private recipe and authenticated cache preserved. Migrate only existing credential ACL/owner under its native lock without content changes. Human manual restart required to load durable protection; no trader controls changed.",
+  "scope": "shared",
+  "source_commit": "89d32363acaf0ae046f4b34c52eab1784f645966",
+  "source_remote_verified": true,
+  "summary": "Scout preserves private Windows token-cache access across normal/elevated launches and records bounded startup exception causes.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T20:29:03.650313Z",
+      "exit_code": 0,
+      "output_sha256": "24a2089c16ddd21b756e0ff933f89cea925b9e2b3ac5515bf79f402cbb7d0014",
+      "passed": 152,
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T20:30:17.720946Z",
+      "exit_code": 0,
+      "output_sha256": "316567de08ab091f9fb4f3b85e7852e68c801a99db54404a4feb9d8c543329da",
+      "passed": 152,
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T20:29:03.551875Z",
+      "exit_code": 0,
+      "output_sha256": "caf075abddb539af0b97679a4f8b79a70b3e3bb2854cb5d37524e805e656e4f5",
+      "passed": 152,
+      "scope": "installed release",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}
