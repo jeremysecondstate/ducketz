@@ -359,8 +359,16 @@ class AccountAuthority:
             self._event(db,now,"lease-acquired",{"epoch":lease.epoch,"holder":holder})
             # An earlier sender may have received an exact ID after its lease
             # expired. Promote that immutable evidence only under this new fence.
-            current, owner = self._lease(db,lease.token)
-            self._recover_submission_receipts(db,current,owner["epoch"])
+            # This new fence is still unpublished inside BEGIN IMMEDIATE;
+            # no competing owner can commit while receipt recovery runs.
+            # Grant its TTL after that work, rather than returning a lease
+            # already consumed by acquisition. Published expiry remains strict.
+            current = self._now(db)
+            self._recover_submission_receipts(db,current,lease.epoch)
+            granted = self._now(db)
+            lease = Lease(lease.token,lease.epoch,holder,
+                          (granted+timedelta(seconds=self._ttl(ttl_seconds))).isoformat())
+            db.execute("UPDATE lease SET expires=? WHERE singleton=1", (lease.expires_at,))
             return lease
 
     def renew_lease(self, token: str, *, ttl_seconds=60) -> Lease:
