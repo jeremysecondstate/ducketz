@@ -6,6 +6,7 @@ has a failure record, never a stale-model or constant-probability substitute.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -16,6 +17,7 @@ from pathlib import Path
 import os
 import re
 import tempfile
+import threading
 import time
 from typing import Mapping
 import warnings
@@ -39,6 +41,68 @@ from sklearn.tree import DecisionTreeClassifier
 from threadpoolctl import threadpool_limits
 
 from ml.intraday.prediction import ContractError, TARGET_VERSION, instant
+
+_FIT_RESOURCE_LOCK = threading.RLock()
+_FIT_RESOURCE_USERS = 0
+_FIT_RESOURCE_STACK = None
+_FIT_WARNING_LOCAL = threading.local()
+
+
+@contextmanager
+def _fit_resources():
+    """Share native limits while attributing emitted warnings to their fit thread.
+
+    Native library limits and Python 3.13 warning hooks are process-wide. No
+    overlapping fit restores them while another fit is using them. Each entry
+    discovers newly loaded native libraries; all limits unwind in reverse order
+    only after the final user exits. The lock never covers numerical fitting.
+
+    Warnings emitted outside a participating thread keep the original handler.
+    Third-party code that independently replaces global warning hooks or filters
+    remains subject to Python's own concurrent catch_warnings limitations.
+    """
+    global _FIT_RESOURCE_USERS, _FIT_RESOURCE_STACK
+    observed = []
+    with _FIT_RESOURCE_LOCK:
+        first = _FIT_RESOURCE_USERS == 0
+        if first:
+            _FIT_RESOURCE_STACK = ExitStack()
+        try:
+            _FIT_RESOURCE_STACK.enter_context(threadpool_limits(limits=1))
+            if first:
+                _FIT_RESOURCE_STACK.enter_context(warnings.catch_warnings())
+                forward = warnings.showwarning
+
+                def showwarning(message, category, filename, lineno, file=None, line=None):
+                    captures = getattr(_FIT_WARNING_LOCAL, "captures", ())
+                    if captures:
+                        captures[-1].append(warnings.WarningMessage(
+                            message, category, filename, lineno, file, line))
+                    else:
+                        forward(message, category, filename, lineno, file=file, line=line)
+
+                warnings.simplefilter("always")
+                warnings.showwarning = showwarning
+            captures = getattr(_FIT_WARNING_LOCAL, "captures", None)
+            if captures is None:
+                captures = _FIT_WARNING_LOCAL.captures = []
+            captures.append(observed)
+            _FIT_RESOURCE_USERS += 1
+        except BaseException:
+            if first:
+                stack, _FIT_RESOURCE_STACK = _FIT_RESOURCE_STACK, None
+                stack.close()
+            raise
+    try:
+        yield observed
+    finally:
+        with _FIT_RESOURCE_LOCK:
+            captures.pop()
+            _FIT_RESOURCE_USERS -= 1
+            if _FIT_RESOURCE_USERS == 0:
+                stack, _FIT_RESOURCE_STACK = _FIT_RESOURCE_STACK, None
+                stack.close()
+
 
 REGISTRY_VERSION = "intraday-independent-tabular-v2"
 
@@ -274,7 +338,7 @@ class ChronologicalSigmoid(ClassifierMixin, BaseEstimator):
 
 
 def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=None,
-                             label_available_at=None, training_cutoff=None):
+                             label_available_at=None, training_cutoff=None, feature_names=None):
     """Fit a new pipeline and, when requested, a disjoint probability calibrator.
 
     The base estimator's preprocessing fits only its own earlier partition.
@@ -344,6 +408,8 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
     else:
         base_rows = len(features)
     estimator = build_estimator(spec)
+    from .feature_support import attach_market_support
+    estimator = attach_market_support(estimator, feature_names)
     if spec.family == "knn":
         requested = evidence["effective_parameters"]["n_neighbors"]
         effective = min(requested, base_rows)
@@ -355,6 +421,9 @@ def fit_calibrated_estimator(spec, X, y, *, reference_at=None, target_close_at=N
         evidence["calibration"]["score_interface"] = estimator.score_interface_
     else:
         estimator.fit(features, labels)
+    base = estimator.base if calibrated else estimator
+    if "market_support" in base.named_steps:
+        evidence["market_feature_support"] = base.named_steps["market_support"].evidence()
     return estimator, evidence
 
 
@@ -454,6 +523,9 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                                       "reference_at": [v.isoformat() for v in references] if reference_at is not None else None,
                                       "target_close_at": [v.isoformat() for v in target_closes] if target_close_at is not None else None}).encode()).hexdigest()
     outputs = []
+    from ml.market_provenance import capture_runtime
+    from . import feature_support
+    loaded_runtime = capture_runtime([__name__, feature_support.__name__])
     for spec in specs:
         start = time.perf_counter()
         output = {"name": spec.name, "family": spec.family, "status": "failed", "probability_not_down": None,
@@ -464,6 +536,8 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                   "artifact_persistence_started_at": None, "artifact_persisted_at": None,
                   "artifact_persistence_seconds": 0.0, "failed_at": None}
         metadata = {"registry_version": REGISTRY_VERSION, "adapter_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    "adapter_source_hash_basis": "current_disk_bytes; see loaded_runtime for executable evidence",
+                    "loaded_runtime": loaded_runtime,
                     "spec": asdict(spec), "target_version": TARGET_VERSION,
                     "training_cutoff": cutoff.isoformat(), "latest_label_available_at": max(available).isoformat(),
                     "training_rows": len(features), "class_counts": {str(i): int((labels == i).sum()) for i in (0, 1)},
@@ -477,11 +551,10 @@ def fit_ensemble(X, y, inference_X, *, config=None, target_version=TARGET_VERSIO
                 raise ContractError("Training requires both target classes; no constant model substitution")
             metadata["effective_parameters"] = _parameters(spec)
             output["version"] = _sha(metadata)
-            with threadpool_limits(limits=1), warnings.catch_warnings(record=True) as observed_warnings:
-                warnings.simplefilter("always")
+            with _fit_resources() as observed_warnings:
                 estimator, fitting_evidence = fit_calibrated_estimator(spec, features, labels,
                     reference_at=reference_at, target_close_at=target_close_at,
-                    label_available_at=available, training_cutoff=cutoff)
+                    label_available_at=available, training_cutoff=cutoff, feature_names=names)
                 metadata.update(fitting_evidence)
                 output["training_seconds"] = time.perf_counter() - start
                 output["training_completed_at"] = _now()

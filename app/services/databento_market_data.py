@@ -265,6 +265,8 @@ class DatabentoMarketDataProvider:
 
     def _client(self) -> Any:
         import databento as db
+        from .databento_lifecycle import register_databento_cleanup
+        register_databento_cleanup()
         return db.Historical(self.api_key)
 
     def _validate_config(self) -> None:
