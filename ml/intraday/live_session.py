@@ -476,6 +476,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
     with exclusive_runtime_lock(root / "locks/intraday-manual-session.lock",process_name="intraday-manual-session"):
         session_root.mkdir(parents=True,exist_ok=False)
         status("STARTING")
+        startup_stage = "wake"
         try:
             waiting = instant(clock()) < wake_at
             if waiting:
@@ -493,6 +494,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             # Read overnight-installed recipes and compatibility at wake, not
             # when the operator first launches the sleeping process.
             from .live_model_recipe import prepare_manual_models, native_interval_symbols_for_runtime
+            startup_stage = "model_recipe"
             config, model_runtime = prepare_manual_models(config, datastore=root, pc=pc, symbols=symbols,
                 **({"recipe_path": model_recipe} if model_recipe is not None else {}))
             native_interval_symbols = native_interval_symbols_for_runtime(model_runtime)
@@ -500,6 +502,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 proof = compatibility()
                 if not proof["ready"]:
                     raise ContractError("Live startup requires compatible loaded Gameplan or verified absence: " + ",".join(proof["reason_codes"]))
+            startup_stage = "local_configuration"
             load_dotenv(repository / ".env")
             if pc == "Scout":
                 if scout_admission == "broker-local":
@@ -508,9 +511,13 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 else:
                     from .scout_execution import ScoutAccountExecutor
                     executor_type = ScoutAccountExecutor
+                startup_stage = "broker_session"
+                broker = SchwabSession()
+                startup_stage = "local_executor"
                 executor = executor_type(repository=repository,profile=profile,datastore=root,store=store,
-                    broker=SchwabSession(),local_symbols=symbols,session_started_at=started,session_id=session_id,
+                    broker=broker,local_symbols=symbols,session_started_at=started,session_id=session_id,
                     clock=clock,manual_authority=manual_authority,stopped=execution_should_stop)
+                startup_stage = "broker_preflight"
                 if scout_admission == "broker-local":
                     startup = executor.preflight()
                     if (not isinstance(startup,Mapping) or startup.get("session_id") != session_id
@@ -525,6 +532,7 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 evidence_paths.update({"executor_" + key:value for key,value in executor_paths.items()})
                 emit({"event":"authority_ready",**startup})
             startup_in_progress[0] = False
+            startup_stage = "historical_inputs"
             histories = {}
             for symbol in symbols:
                 if should_stop():
@@ -541,10 +549,13 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
             if should_stop():
                 raise InterruptedError("Scout manual session reached its 5pm Pacific stop")
             from .minute_feed import QuarterHourMinuteFeed
+            startup_stage = "minute_provider"
             provider = prepare_minute_provider(model_runtime, datastore=root, pc=pc,
                 symbols=symbols, source_dataset=config.source_dataset, clock=clock)
+            startup_stage = "market_collection"
             market_collector = prepare_market_collection(model_runtime, datastore=root,
                                                         pc=pc, symbols=symbols, clock=clock)
+            startup_stage = "minute_feed"
             journal = AcquisitionJournal(root / "intraday/acquisition.sqlite3")
             minute_feed = QuarterHourMinuteFeed(provider=provider,store=store,journal=journal,histories=histories,
                 pc=pc,symbols=symbols,session_id=session_id,clock=clock,
@@ -552,18 +563,23 @@ def run_manual(*, repository, datastore, profile, watchlist, config, clock=utcno
                 native_interval_symbols=native_interval_symbols,
                 reference_fill_policy=getattr(model_runtime.get("dataset_builder"), "reference_fill_policy", None),
                 on_closed=lambda result: emit({"event":"minute_data_day_complete",**result}))
+            startup_stage = "forecast_runner"
             runner = ShadowRunner(store=store,pc=pc,symbols=symbols,config=config,clock=clock,
                                   stopped=should_stop,**model_runtime)
             if pc == "Atlas":
+                startup_stage = "local_executor"
                 executor = IntradayAccountExecutor(datastore=root,store=store,broker=SchwabSession(),local_symbols=symbols,
                     session_started_at=started,clock=clock,manual_authority=manual_authority,compatibility=compatibility,stopped=should_stop)
         except BaseException as exc:
             scheduled_stop = isinstance(exc,InterruptedError) and automatic_stop_requested_at[0] is not None
+            diagnostics = _symbol_exception_diagnostics(exc)
             stopped.set()
             status("STOPPED" if isinstance(exc,KeyboardInterrupt) or scheduled_stop else "FAILED",
                    stop_reason=stop_reason() if scheduled_stop else "manual_stop" if isinstance(exc,KeyboardInterrupt) else "startup_failure",
-                   error_type=type(exc).__name__,error_message=str(exc),broker_orders_automatically_cancelled=False)
-            store.event(session_id,"manual_startup_stopped",{"error_type":type(exc).__name__,"message":str(exc)})
+                   error_type=type(exc).__name__,error_message=str(exc),broker_orders_automatically_cancelled=False,
+                   startup_stage=startup_stage,diagnostics=diagnostics)
+            store.event(session_id,"manual_startup_stopped",{"error_type":type(exc).__name__,"message":str(exc),
+                        "startup_stage":startup_stage,"diagnostics":diagnostics})
             if isinstance(exc,KeyboardInterrupt) or scheduled_stop:
                 return {"session_id":session_id,"status":"STOPPED"}
             raise

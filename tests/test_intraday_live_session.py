@@ -1037,6 +1037,51 @@ def test_scout_local_preflight_exception_stays_startup_failure_without_fallback(
     assert not executors[0].kwargs["manual_authority"]()
 
 
+@pytest.mark.parametrize("stage", ["broker_session", "broker_preflight"])
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_scout_startup_failure_retains_cause_without_diagnostic_secrets(tmp_path, monkeypatch, stage, wrapped):
+    kwargs, calls, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    from app.services import schwab
+
+    def denied_operation():
+        try:
+            error = PermissionError(13, "PRIVATE_STARTUP_TOKEN", "PRIVATE_STARTUP_PATH")
+            error.winerror = 5
+            raise error
+        except PermissionError as exc:
+            if wrapped:
+                raise RuntimeError("PRIVATE_STARTUP_WRAPPER") from exc
+            raise
+
+    if stage == "broker_session":
+        monkeypatch.setattr(schwab, "SchwabSession", denied_operation)
+    else:
+        executor_type = sys.modules["ml.intraday.scout_local_execution"].ScoutLocalAccountExecutor
+        monkeypatch.setattr(executor_type, "preflight", lambda self: denied_operation())
+    with pytest.raises(RuntimeError if wrapped else PermissionError):
+        live_session.run_manual(**kwargs)
+    status = json.loads((tmp_path / "intraday/manual-session.json").read_text())
+    assert status["status"] == "FAILED" and status["stop_reason"] == "startup_failure"
+    assert status["startup_stage"] == stage
+    assert status["broker_orders_automatically_cancelled"] is False
+    assert calls == []
+    assert len(executors) == (0 if stage == "broker_session" else 1)
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        rows = db.execute("SELECT payload FROM events WHERE kind='manual_startup_stopped'").fetchall()
+    assert len(rows) == 1
+    event = json.loads(rows[0][0])
+    assert event["startup_stage"] == stage
+    assert event["diagnostics"] == status["diagnostics"]
+    chain = status["diagnostics"]["exception_chain"]
+    assert [x["relation"] for x in chain] == (["raised", "cause"] if wrapped else ["raised"])
+    assert chain[-1]["type"] == "PermissionError"
+    assert chain[-1]["winerror"] == 5 and chain[-1]["errno"] == 13
+    assert chain[-1]["frames"][-1]["function"] == "denied_operation"
+    diagnostic_text = json.dumps(status["diagnostics"])
+    assert "PRIVATE_STARTUP" not in diagnostic_text and str(tmp_path) not in diagnostic_text
+
+
 @pytest.mark.parametrize("started,expected", [
     ("2026-10-14T22:31:00Z", "2026-10-15T00:00:00Z"),
     ("2026-12-14T23:31:00Z", "2026-12-15T01:00:00Z"),
