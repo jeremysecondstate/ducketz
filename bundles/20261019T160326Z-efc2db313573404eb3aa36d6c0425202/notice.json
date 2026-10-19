@@ -1,0 +1,54 @@
+{
+  "author": "Scout",
+  "branch": "codex/scout/20261019T155744Z-65b0f7ce3b384466a6627633064e4e7c",
+  "change_id": "20261019T155744Z-65b0f7ce3b384466a6627633064e4e7c",
+  "files": [
+    "ml/intraday/scout_local_execution.py",
+    "ml/intraday/pretransport_clearance.py",
+    "tests/test_intraday_pretransport_clearance.py"
+  ],
+  "limitations": [
+    "Offline proof validation and fake order transport; live behavior requires manual reload and affected runtime evidence.",
+    "Existing historical DAY clearance remains separate; absent or ambiguous transport evidence cannot be cleared."
+  ],
+  "local_installation_verified": true,
+  "main_integrated": false,
+  "peer_installed": false,
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/235",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Install isolated reviewed source and exact private incident proof; requires manual trader restart. No automatic process control or replay of original requests.",
+  "scope": "shared",
+  "source_commit": "4fc7af47c5995d2a3d313c52d2d5f1cd7f27f26d",
+  "source_remote_verified": true,
+  "summary": "Scout added exact reviewed pretransport clearance that preserves original UNKNOWN history and prevents replay while allowing distinct future forecasts through fresh account and manual gates.",
+  "tests": [
+    {
+      "completed_at": "2026-10-19T15:58:30.214416Z",
+      "exit_code": 0,
+      "output_sha256": "b154ed0f074cb7ef7ba70624c54c7e29e0b3653662affcb76a0b1500473f34fd",
+      "passed": 436,
+      "result": "........................................................................ [ 16%]\r\n........................................................................ [ 33%]\r\n........................................................................ [ 49%]\r\n........................................................................ [ 66%]\r\n........................................................................ [ 82%]\r\n........................................................................ [ 99%]\r\n....                                                                     [100%]\r\n436 passed in 44.04s\r\n\n",
+      "scope": "reviewed source",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T16:01:45.744218Z",
+      "exit_code": 0,
+      "output_sha256": "fe7016ae92101f7c3773d20933f26fb44501a4049317daf9f3d3ef7b6ba5aee4",
+      "passed": 436,
+      "result": "........................................................................ [ 16%]\r\n........................................................................ [ 33%]\r\n........................................................................ [ 49%]\r\n........................................................................ [ 66%]\r\n........................................................................ [ 82%]\r\n........................................................................ [ 99%]\r\n....                                                                     [100%]\r\n436 passed in 43.53s\r\n\n",
+      "scope": "publication candidate",
+      "skipped": 0
+    },
+    {
+      "completed_at": "2026-10-19T16:00:00.266183Z",
+      "exit_code": 0,
+      "output_sha256": "c0d1911ea6ca7fb2bc2614cbb7d0cf04e13621c14c2205b424d27ceb9d402ae8",
+      "passed": 436,
+      "result": "........................................................................ [ 16%]\r\n........................................................................ [ 33%]\r\n........................................................................ [ 49%]\r\n........................................................................ [ 66%]\r\n........................................................................ [ 82%]\r\n........................................................................ [ 99%]\r\n....                                                                     [100%]\r\n436 passed in 43.18s\r\n\n",
+      "scope": "installed immutable source",
+      "skipped": 0
+    }
+  ],
+  "trader_adoption": false
+}

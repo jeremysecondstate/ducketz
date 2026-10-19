@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T16:03:26.026867Z",
+  "id": "20261019T160326Z-efc2db313573404eb3aa36d6c0425202",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-original",
+  "schema_version": 2,
+  "sender": "pc-new",
+  "summary": "Scout added exact reviewed pretransport clearance that preserves original UNKNOWN history and prevents replay while allowing distinct future forecasts through fresh account and manual gates."
+}
