@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-19T18:06:56.267401Z",
+  "id": "20261019T180656Z-84cc8afa500e4bc38f892df68f4599a4",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas published and installed catalog recovery, native snapshot and dataset-preparation repairs plus the Gameplan order-evidence fixture correction."
+}

@@ -1,0 +1,31 @@
+{
+  "author": "Atlas",
+  "branch": "codex/atlas/20261019T180152Z-72489f535a8c4c3dab8ff85024d49514",
+  "change_id": "20261019T180152Z-72489f535a8c4c3dab8ff85024d49514",
+  "commit_sha": "693826de3c96e13521fac5738f61fb1b2a012967",
+  "files": [
+    "ml/intraday/market_inputs.py",
+    "ml/intraday/data.py",
+    "ml/stock_trader/horizon_ledger.py",
+    "tests/test_intraday_market_input_catalog_concurrency.py",
+    "tests/test_intraday_native_snapshot_performance.py",
+    "tests/test_intraday_dataset_provenance_performance.py",
+    "tests/test_gameplan_execution.py"
+  ],
+  "limitations": [
+    "Draft PR239 stacks on PR236 and test-only PR240 stacks on PR239; no main merge or peer installation is claimed.",
+    "Installation is separate from loaded/exercised runtime evidence. No trader was started/restarted and no broker order or provider probe was made."
+  ],
+  "pull_request": "https://github.com/jeremysecondstate/ducketz/pull/240",
+  "remote_sha": "693826de3c96e13521fac5738f61fb1b2a012967",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Shared source applies independently on each PC while retaining local symbols, bindings and execution state. Existing processes require a future human manual start to load the production changes. Source review/publication never gates nightly preparation. Private input recovery evidence and operating originals remain local.",
+  "scope": "shared",
+  "summary": "Atlas published and installed catalog recovery, native snapshot and dataset-preparation repairs plus the Gameplan order-evidence fixture correction.",
+  "tests": [
+    "Production repair completion20261019T175116Z-060a9b7504dd45f7bf721ed8e27c8067 passed587checks on sealed and isolated bytes; source51975ceffea8df47c7ff0a325f34c179863a0ed1 is the parent of this notice commit.",
+    "Fixture correction completion20261019T180152Z-72489f535a8c4c3dab8ff85024d49514 passed69focused checks on sealed and isolated bytes; both stale fixture failures reproduced before the production repair.",
+    "All 730 installed-context offline checks passed with stable source and package metadata, including working-order rejection cases.",
+    "Offline comparisons preserve dataset outputs, receipt clocks/producer identity, ledger quantities/order identities and duplicate protection."
+  ]
+}
