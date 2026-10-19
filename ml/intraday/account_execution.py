@@ -530,6 +530,17 @@ class IntradayAccountExecutor:
         if self._newer_forecasts(forecast):
             raise ContractError("Newer current-session forecast supersedes this intention")
 
+    def _owned_native_reservations(self, db):
+        """Keep full native validation and classify history in bounded SQL work."""
+        reservations = self.ledger._snapshot(db).reservations
+        streams = {}
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='intraday_streams'").fetchone():
+            streams = dict(self.ledger._read_rows(db,
+                "SELECT id,stream FROM intraday_streams WHERE kind=?", ("id", "stream"), ("reservation",)))
+        # Match _stream's legacy fallback and retain the snapshot's exact order.
+        return tuple(row for row in reservations
+                     if streams.get(row.reservation_id, "gameplan") == self.stream)
+
     def step(self, forecast):
         """One bounded execution/recovery step; the outer session owns retries."""
         initial = forecast_disposition(forecast, now=self.clock(), session_started_at=self.session_started_at,
@@ -551,9 +562,8 @@ class IntradayAccountExecutor:
             # Preserve all native/provenance checks in one transaction, as in
             # recover(); historical terminal orders must not age a fresh quote.
             with self.ledger._transaction() as db:
-                newer = [r for r in self.ledger._snapshot(db).reservations
-                         if self.ledger._stream(db, "reservation", r.reservation_id) == self.stream
-                         and r.forecast_id != forecast["forecast_id"]
+                newer = [r for r in self._owned_native_reservations(db)
+                         if r.forecast_id != forecast["forecast_id"]
                          and r.symbol == forecast["symbol"] and r.target_start is not None
                          and instant(r.target_start) >= instant(forecast["reference_at"])]
             self._execution_stage("newer_intention_scan")
@@ -650,13 +660,11 @@ class IntradayAccountExecutor:
         """Reconcile tracked orders even after cutoff; never submit from history."""
         with self._account():
             self._capture()
-            # _snapshot retains the reservation/provenance validation used by
-            # lookup_reservation; _stream retains the existing legacy fallback.
-            # Both run in one transaction instead of reopening for every order.
+            # Retain the full snapshot validation and stream fallback while
+            # avoiding per-order SQLite calls during model preparation.
             self._execution_stage("recovery_native_read")
             with self.ledger._transaction() as db:
-                owned = tuple(native for native in self.ledger._snapshot(db).reservations
-                    if self.ledger._stream(db, "reservation", native.reservation_id) == self.stream)
+                owned = self._owned_native_reservations(db)
             if not owned:
                 return []
             identities = sorted({native.forecast_id for native in owned})
