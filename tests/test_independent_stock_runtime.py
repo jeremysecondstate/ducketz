@@ -591,6 +591,7 @@ def test_capture_crossing_normal_close_waits_without_orders_or_failure(environme
 @pytest.mark.parametrize("before, after", [
     ("2026-10-19T13:24:59.900000Z", "2026-10-19T13:25:00.363700Z"),
     ("2026-10-19T19:59:59.900000Z", "2026-10-19T20:00:00.363700Z"),
+    ("2026-10-19T23:59:59.900000Z", "2026-10-20T00:00:00.363700Z"),
 ])
 @pytest.mark.parametrize("reason", ["OUTSIDE_US_EQUITY_ACTIONABLE_SESSION", "UNEXPECTED_WINDOW_FAILURE"])
 def test_window_closing_before_first_broker_read_preserves_exact_observation(environment, monkeypatch, before, after, reason):
@@ -636,6 +637,39 @@ def test_signal_deadline_at_normal_close_remains_expired_read_failure(environmen
     assert "execution_window_during_capture" not in _decisions(result)["prediction_handoff"]
     assert sleeps == env.broker.calls == env.broker.submissions == env.broker.cancellations == []
     assert result.submitted_orders == env.captures == 0
+
+
+@pytest.mark.parametrize("signal_deadline, expired", [
+    ("2026-10-20T00:05:00Z", False),
+    ("2026-10-20T00:00:00Z", True),
+])
+def test_final_calendar_close_distinguishes_actual_signal_expiry(environment, monkeypatch, signal_deadline, expired):
+    env = environment
+    env.now = pd.Timestamp("2026-10-19T23:59:59.900000Z")
+    observed = pd.Timestamp("2026-10-20T00:00:00.363700Z")
+    env.signals = {key: replace(signal, actionable_until=signal_deadline)
+                   for key, signal in _fixed_signals().items()}
+    def load(*args, **kwargs):
+        env.now = observed
+        return env.signals, ()
+    monkeypatch.setattr(runtime, "load_current_independent_gameplan_signals", load)
+    result, sleeps = _retry_run(env)
+    assert result.status == ("HORIZON_BROKER_RECONCILIATION_UNAVAILABLE" if expired
+                             else "EXECUTION_WINDOW_CLOSED_DURING_BROKER_CAPTURE")
+    assert result.error == ("ValueError: BROKER_READ_EXECUTION_WINDOW_CLOSED" if expired else None)
+    assert result.broker_state_capture["status"] == ("UNAVAILABLE" if expired
+                                                     else "INTERRUPTED_EXECUTION_WINDOW_CLOSED")
+    assert result.broker_state_capture["attempts"] == 1
+    metadata = _decisions(result)["prediction_handoff"]
+    assert metadata["qualified_entry_signals"] == len(env.signals)
+    if expired:
+        assert "execution_window_during_capture" not in metadata
+    else:
+        assert metadata["execution_window_during_capture"] == {
+            "mode": "CLOSED", "reason": "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION",
+            "observed_at": observed.isoformat()}
+    assert sleeps == env.broker.calls == env.broker.submissions == env.broker.cancellations == []
+    assert result.selected_orders == result.submitted_orders == env.captures == 0
 
 
 def test_close_during_broker_retry_keeps_unrecovered_read_failure(environment, monkeypatch):
