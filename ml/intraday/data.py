@@ -1524,6 +1524,11 @@ def build_dataset(candles: pd.DataFrame, *, cutoff, reference_at, lookback_days:
     from .coverage import population_frame, check_population_contract
     population_contract = population_contract or attrs.get("population_contract")
     check_population_contract(population_contract)
+    # Provenance belongs in the final manifest. Pandas otherwise deep-copies
+    # bulky history attrs into every intermediate Series and per-row slice.
+    # Detach the working frame while preserving the caller's data and attrs.
+    candles = candles.copy(deep=False)
+    candles.attrs = {}
     admitted = population_frame(candles, population_contract)
     frame = validate_candles(admitted)
     frame = frame.loc[frame.available_at.le(cutoff) & (frame.opened_at + STEP).le(cutoff)].reset_index(drop=True)
