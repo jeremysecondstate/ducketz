@@ -27,6 +27,7 @@ from pathlib import Path
 import re
 import secrets
 import sqlite3
+import time
 from typing import Callable, Mapping
 from zoneinfo import ZoneInfo
 
@@ -43,6 +44,40 @@ ZERO = Decimal(0)
 
 class AuthorityError(ValueError):
     pass
+
+
+class _LeaseAcquisitionFailure:
+    """Only acquisition's locally constructed timings cross diagnostic boundaries."""
+    def __init__(self, evidence):
+        self.evidence = evidence
+
+
+def lease_acquisition_failure_evidence(exc):
+    saved = getattr(exc, "lease_acquisition_failure", None)
+    if isinstance(saved, _LeaseAcquisitionFailure):
+        return {**saved.evidence, "phases": [dict(item) for item in saved.evidence["phases"]]}
+    return None
+
+
+class _LeaseAcquisitionTrace:
+    def __init__(self):
+        self.started = self.stage_started = time.monotonic()
+        self.stage, self.attempt, self.phases = "validation", 0, []
+
+    def advance(self, stage, attempt):
+        now = time.monotonic()
+        self.phases.append({"attempt": self.attempt, "stage": self.stage,
+                            "elapsed_seconds": round(max(0, now-self.stage_started), 6)})
+        self.phases = self.phases[-20:]
+        self.stage, self.attempt, self.stage_started = stage, attempt, now
+
+    def remember(self, exc):
+        now = time.monotonic()
+        exc.lease_acquisition_failure = _LeaseAcquisitionFailure({
+            "attempt": self.attempt, "stage": self.stage,
+            "elapsed_seconds": round(max(0, now-self.started), 6),
+            "stage_elapsed_seconds": round(max(0, now-self.stage_started), 6),
+            "phases": [dict(item) for item in self.phases]})
 
 
 class SubmissionNotStarted(AuthorityError):
@@ -345,31 +380,52 @@ class AccountAuthority:
         return seconds
 
     def acquire_lease(self, *, coordinator_id: str, holder_id: str, ttl_seconds=60) -> Lease:
-        if coordinator_id != self.binding["coordinator_id"]:
-            raise AuthorityError("HOST_IS_NOT_THE_REVIEWED_COORDINATOR")
-        holder = _name(holder_id)
-        with self._transaction() as db:
-            now = self._now(db)
-            previous = db.execute("SELECT * FROM lease WHERE singleton=1").fetchone()
-            if previous and now < _time(previous["expires"]):
-                raise AuthorityError("LEASE_ALREADY_OWNED")
-            lease = Lease(secrets.token_hex(32), 1 if not previous else previous["epoch"]+1,
-                          holder, (now+timedelta(seconds=self._ttl(ttl_seconds))).isoformat())
-            db.execute("INSERT OR REPLACE INTO lease VALUES(1,?,?,?,?)", (lease.token,lease.epoch,holder,lease.expires_at))
-            self._event(db,now,"lease-acquired",{"epoch":lease.epoch,"holder":holder})
-            # An earlier sender may have received an exact ID after its lease
-            # expired. Promote that immutable evidence only under this new fence.
-            # This new fence is still unpublished inside BEGIN IMMEDIATE;
-            # no competing owner can commit while receipt recovery runs.
-            # Grant its TTL after that work, rather than returning a lease
-            # already consumed by acquisition. Published expiry remains strict.
-            current = self._now(db)
-            self._recover_submission_receipts(db,current,lease.epoch)
-            granted = self._now(db)
-            lease = Lease(lease.token,lease.epoch,holder,
-                          (granted+timedelta(seconds=self._ttl(ttl_seconds))).isoformat())
-            db.execute("UPDATE lease SET expires=? WHERE singleton=1", (lease.expires_at,))
-            return lease
+        trace = _LeaseAcquisitionTrace()
+        try:
+            if coordinator_id != self.binding["coordinator_id"]:
+                raise AuthorityError("HOST_IS_NOT_THE_REVIEWED_COORDINATOR")
+            holder, ttl = _name(holder_id), self._ttl(ttl_seconds)
+            for attempt in range(1, 4):
+                trace.advance("transaction_enter", attempt)
+                with self._transaction() as db:
+                    now = self._now(db)
+                    previous = db.execute("SELECT * FROM lease WHERE singleton=1").fetchone()
+                    if previous and now < _time(previous["expires"]):
+                        raise AuthorityError("LEASE_ALREADY_OWNED")
+                    lease = Lease(secrets.token_hex(32), 1 if not previous else previous["epoch"]+1,
+                                  holder, (now+timedelta(seconds=ttl)).isoformat())
+                    db.execute("INSERT OR REPLACE INTO lease VALUES(1,?,?,?,?)",
+                               (lease.token,lease.epoch,holder,lease.expires_at))
+                    trace.advance("lease_event", attempt)
+                    self._event(db,now,"lease-acquired",{"epoch":lease.epoch,"holder":holder})
+                    # An earlier sender may have received an exact ID after its lease
+                    # expired. Promote that immutable evidence only under this new fence.
+                    # This new fence is still unpublished inside BEGIN IMMEDIATE;
+                    # no competing owner can commit while receipt recovery runs.
+                    # Grant its TTL after that work, rather than returning a lease
+                    # already consumed by acquisition. Published expiry remains strict.
+                    trace.advance("receipt_recovery", attempt)
+                    current = self._now(db)
+                    self._recover_submission_receipts(db,current,lease.epoch)
+                    trace.advance("grant_timestamp", attempt)
+                    granted = self._now(db)
+                    lease = Lease(lease.token,lease.epoch,holder,
+                                  (granted+timedelta(seconds=ttl)).isoformat())
+                    db.execute("UPDATE lease SET expires=? WHERE singleton=1", (lease.expires_at,))
+                    trace.advance("transaction_commit", attempt)
+                trace.advance("post_commit_clock", attempt)
+                observed = _time(self.clock())
+                if observed < granted:
+                    raise AuthorityError("AUTHORITY_CLOCK_MOVED_BACKWARDS")
+                if observed < _time(lease.expires_at):
+                    return lease
+                # This token has never escaped acquire_lease. A slow commit
+                # may consume its entire TTL: try a new epoch, using normal
+                # owner exclusion again. Never revive an expired token.
+            raise AuthorityError("LEASE_ACQUISITION_EXPIRED_BEFORE_RETURN")
+        except BaseException as exc:
+            trace.remember(exc)
+            raise
 
     def renew_lease(self, token: str, *, ttl_seconds=60) -> Lease:
         with self._transaction() as db:
