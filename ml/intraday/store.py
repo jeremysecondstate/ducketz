@@ -14,6 +14,8 @@ import json
 from pathlib import Path
 import sqlite3
 
+from ml.stock_direction_policy import stock_direction
+
 from .prediction import ContractError, STEP, TARGET_VERSION, digest, encoded, instant, number
 
 
@@ -194,17 +196,24 @@ class ShadowStore:
                 cache.popitem(last=False)
         return dict(projection), value
 
-    def execution_forecast_headers(self, *, pc, symbol):
+    def execution_forecast_headers(self, *, pc, symbol, forecast_ids=None):
         """Validate own history, reusing unchanged headers on repeated scans.
 
         All bytes are still read and hashed. The bounded cache belongs to this
         store instance, not a database or another trader, and does not survive
         a process restart. Every changed row is fully validated again.
         """
+        clauses, parameters = ["pc=?", "symbol=?"], [pc, symbol]
+        if forecast_ids is not None:
+            identities = tuple(dict.fromkeys(forecast_ids))
+            if not identities:
+                return []
+            clauses.append("id IN (SELECT value FROM json_each(?))")
+            parameters.append(encoded(identities))
         headers = []
         with self.connect() as db:
             rows = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload "
-                "FROM forecasts WHERE pc=? AND symbol=? ORDER BY rowid", (pc, symbol))
+                "FROM forecasts WHERE " + " AND ".join(clauses) + " ORDER BY rowid", parameters)
             for row in rows:
                 projection, _ = self._forecast_projection(row)
                 headers.append(projection)
@@ -297,7 +306,6 @@ class ShadowStore:
         value.pop("forecast_id", None)
         key = digest(value)
         value["forecast_id"] = key
-        intent_value = self._intent(key, value, intent)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT id,pc,symbol,cycle_id,reference_at,issued_at,payload FROM forecasts WHERE cycle_id=? AND symbol=?", (value["cycle_id"], value["symbol"])).fetchone()
@@ -306,17 +314,20 @@ class ShadowStore:
                 raise ContractError("Issued forecast is immutable")
             if old:
                 return previous
+            intent_value = self._intent(key, value, intent)
             db.execute("INSERT INTO forecasts VALUES(?,?,?,?,?,?,?)", (key, value["pc"], value["symbol"], value["cycle_id"], value["reference_at"], value["issued_at"], encoded(value)))
             db.execute("INSERT INTO intents VALUES(?,?,?,?)", (digest(intent_value), key, value["issued_at"], encoded(intent_value)))
         return value
 
     @staticmethod
     def _intent(key, forecast, supplied):
-        side = "BUY" if float(forecast["probability_not_down"]) >= .5 else "SELL"
+        side = {"BULLISH": "BUY", "BEARISH": "SELL"}.get(stock_direction(forecast["probability_not_down"]), "HOLD")
         value = dict(supplied or {})
         if value.get("side", side) != side:
             raise ContractError("Intent direction disagrees with the forecast")
         desired, adjusted = value.get("desired_quantity"), value.get("adjusted_quantity")
+        if side == "HOLD" and (desired not in (None, 0) or adjusted not in (None, 0)):
+            raise ContractError("A neutral forecast cannot request a trade")
         if desired is None:
             if adjusted is not None:
                 raise ContractError("Adjusted quantity needs a desired quantity")

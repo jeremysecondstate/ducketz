@@ -52,7 +52,7 @@ def policy(symbol="AAPL", *, buy=None, sell=None, indicators=None, window=None):
         window or WindowPolicy("observed_history"), buy or recipe(), sell or recipe(score=.16))
 
 
-def fixture(frame=None, *, probability=.72, config=None, reference=None, cutoff=None):
+def fixture(frame=None, *, probability=.72, config=None, reference=None, cutoff=None, synthetic_policy=None):
     frame = bars() if frame is None else frame
     config = policy(str(frame.symbol.iloc[0])) if config is None else config
     reference = pd.Timestamp(frame.opened_at.iloc[-1]) if reference is None else pd.Timestamp(reference)
@@ -65,6 +65,8 @@ def fixture(frame=None, *, probability=.72, config=None, reference=None, cutoff=
     frame["available_at"] = pd.to_datetime(frame.available_at, utc=True)
     snapshot = {"cutoff": cutoff.isoformat(), "inference": {"symbol": str(frame.symbol.iloc[0]),
         "reference_at": reference.isoformat()}, "candles": frozen_rows, "manifest": {"fixture": True}}
+    if synthetic_policy is not None:
+        snapshot["manifest"]["synthetic_policy"] = synthetic_policy
     frozen_hash = digest(snapshot)
     forecast = {"symbol": str(frame.symbol.iloc[0]), "reference_at": reference.isoformat(),
         "reference_open": str(frame.loc[frame.opened_at.eq(reference), "open"].iloc[0]),
@@ -172,7 +174,8 @@ def test_each_symbol_and_side_has_independent_recipe_and_periods():
     assert size_fixture(second).desired_quantity == 8
     assert first[1].payload()["features"]["ema.distance"] != second[1].payload()["features"]["ema.distance"]
     assert size_fixture(fixture(bars(symbol="IONQ"), probability=.49, config=ionq_config)).desired_quantity == 1
-    assert size_fixture(fixture(probability=.50)).payload()["side"] == "BUY"
+    neutral = size_fixture(fixture(probability=.50)).payload()
+    assert neutral["side"] == "HOLD" and neutral["desired_quantity"] is None
     assert size_fixture(first, symbol_policy=ionq_config).desired_quantity is None
 
 
@@ -235,7 +238,7 @@ def test_account_availability_evidence_and_contributions_are_recorded():
         size_fixture(bundle, account_inputs={"probability_not_down": item})
 
 
-def test_confirmed_synthetic_provenance_survives_snapshot_and_immutable_copies():
+def test_explicit_synthetic_policy_preserves_snapshot_and_immutable_copies():
     frame = bars()
     prior = frame.close.iloc[-2]
     frame.loc[len(frame)-1, ["open", "high", "low", "close"]] = prior
@@ -245,7 +248,10 @@ def test_confirmed_synthetic_provenance_survives_snapshot_and_immutable_copies()
     evidence = {"covered": True, "successful_empty_attempts": ["a", "b"],
                 "prior_price": prior, "prior_opened_at": frame.opened_at.iloc[-2].isoformat()}
     frame.loc[len(frame)-1, "evidence_json"] = encoded(evidence)
-    bundle = fixture(frame)
+    # A sizing snapshot must retain the explicitly selected model policy.
+    # This fixture exercises representation only, not provider certification.
+    assert fixture(frame)[1].payload()["reason"] == "frozen_synthetic_policy_missing"
+    bundle = fixture(frame, synthetic_policy="include")
     snapshot = bundle[1].payload()
     last = snapshot["candles"][-1]
     assert last["synthetic"] is True and last["volume"] == 0 and last["synthetic_constituents"] == 15
