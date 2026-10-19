@@ -29,6 +29,20 @@ def test_plan_report_cannot_disagree_with_forecast_target(tmp_path):
         load_gameplan(tmp_path)
 
 
+def test_saved_direction_policy_versions_remain_recorded_or_unrecorded_without_reclassification(tmp_path):
+    rows, ledger = plan_payload()
+    rows[0]["direction_policy_version"] = "stock-direction-50-v2"
+    rows[1]["direction_policy_version"] = "stock-direction-50-01-v3"
+    run = write_plan(tmp_path, rows=rows, ledger=ledger)
+    original = (run / "trade-plan.parquet").read_bytes()
+    loaded = load_gameplan(tmp_path)
+    assert loaded.forecast(rows[0]["id"]).direction_policy_version == "stock-direction-50-v2"
+    assert loaded.forecast(rows[1]["id"]).direction_policy_version == "stock-direction-50-01-v3"
+    assert loaded.forecast(rows[2]["id"]).direction_policy_version is None
+    assert all(loaded.forecast(row["id"]).direction == row["direction"] for row in rows)
+    assert (run / "trade-plan.parquet").read_bytes() == original
+
+
 def test_recorded_midpoint_is_joined_by_forecast_without_changing_saved_planning_price(tmp_path):
     run=write_plan(tmp_path)
     before=(run/'trade-plan.parquet').read_bytes()

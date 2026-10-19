@@ -17,6 +17,7 @@ from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestam
 from ml.gameplan_probability_target import (
     observed_probability_target, probability_target_contract, probability_target_metadata,
 )
+from ml.stock_direction_policy import saved_direction_policy_summary, stock_direction_for_policy
 
 FIRST_GAMEPLAN_ACTION_DATE = "2026-09-04"
 EVALUATION_VERSION = "saved-gameplan-evaluations-v1"
@@ -27,7 +28,7 @@ EVALUATION_COLUMNS = (
     "direction_correct", "evaluation_status", "evaluated_at",
     "probability_target_contract", "gameplan_variant", "direction", "raw_direction_correct",
     "assumed_round_trip_cost", "observed_cost_adjusted_positive", "cost_adjusted_return",
-    "target_price_source_contract", "target_price_dataset",
+    "target_price_source_contract", "target_price_dataset", "direction_policy_version",
 )
 
 
@@ -143,14 +144,17 @@ def evaluate_forecasts(
         cost = .001 if pd.isna(cost) else float(cost)
         observed_probability_target(0., cost, contract)  # Validate costs even for pending forecasts.
         direction = forecast.get("direction")
+        saved_policy = forecast.get("direction_policy_version")
+        saved_policy = None if saved_policy is None or pd.isna(saved_policy) else str(saved_policy)
         if pd.isna(direction):
-            direction = "BULLISH" if probability > .5 else "BEARISH" if probability < .5 else "NO_EDGE"
+            direction = (stock_direction_for_policy(probability, saved_policy) if saved_policy is not None else
+                         "BULLISH" if probability > .5 else "BEARISH" if probability < .5 else "NO_EDGE")
         if direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
             raise RuntimeError("Saved Gameplan contains an invalid direction")
 
         def evidence(change):
             known = change is not None and pd.notna(change)
-            return {**metadata, "direction": direction, "assumed_round_trip_cost": cost,
+            return {**metadata, "direction": direction, "direction_policy_version": saved_policy, "assumed_round_trip_cost": cost,
                     "raw_direction_correct": (bool(change > 0) if direction == "BULLISH" else bool(change < 0))
                     if known and direction != "NO_EDGE" else None,
                     "observed_cost_adjusted_positive": int(change > cost) if known else None,
@@ -163,6 +167,7 @@ def evaluate_forecasts(
             if (float(old["predicted_probability"]) != probability or utc_timestamp(old["target_window_end"]) != end
                     or probability_target_contract(old) != contract
                     or (pd.notna(old.get("assumed_round_trip_cost")) and float(old["assumed_round_trip_cost"]) != cost)
+                    or (pd.notna(old.get("direction_policy_version")) and old["direction_policy_version"] != saved_policy)
                     or (pd.notna(old.get("direction")) and old["direction"] != direction)):
                 raise RuntimeError("An evaluated immutable forecast changed")
             # Retain the original scored target and errors. New descriptive
@@ -285,6 +290,7 @@ def evaluate_saved_gameplans(
             },
             "broker_orders_enabled": False, "orders_placed": 0,
             "scope": "Directional forecasts from saved Gameplans only; no inferred trade or options P/L",
+            **saved_direction_policy_summary(frame.to_dict("records")),
         }
         run = create_timestamp_directory(root / "ml/gameplan-evaluation-runs", timestamp=utc_timestamp())
         frame.to_parquet(run / "evaluations.parquet", index=False)

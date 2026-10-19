@@ -18,6 +18,10 @@ from app.ui.gameplan_data import (
 )
 from app.ui.gameplan_widgets import Tooltip, label, panel
 from app.ui.theme import BACKGROUND, BORDER, DANGER, MUTED_TEXT, SUCCESS, SURFACE, SURFACE_ALT, TEXT, WARNING
+from ml.stock_direction_policy import (
+    BULLISH_PROBABILITY, BEARISH_PROBABILITY, autonomous_horizon_sales,
+    saved_direction_policy_summary,
+)
 
 CYAN = "#32d4ec"
 TABLE = "#0c1929"
@@ -48,6 +52,18 @@ def window_text(row: PlanForecast, session: str) -> str:
     if row.start.date().isoformat() == session and row.end.date().isoformat() == session:
         return f"{row.start:%H:%M}–{row.end:%H:%M}"
     return f"{row.start:%b %d %H:%M} →\n{row.end:%b %d %H:%M}"
+
+
+def saved_direction_rule(version: str | None) -> str:
+    if version is None:
+        return "Unrecorded; the original saved direction is retained."
+    cutoffs = saved_direction_policy_summary([{"direction_policy_version": version}])["direction_policy_cutoffs"].get(version)
+    if not cutoffs:
+        return f"{version}; the original saved direction is retained."
+    upper, lower = cutoffs["bullish_probability"], cutoffs["bearish_probability"]
+    if cutoffs["boundaries"] == "inclusive":
+        return f"{version}: Bullish at {upper:.2%} or higher; Bearish at {lower:.2%} or lower; Neutral strictly between."
+    return f"{version}: Bullish above {upper:.2%}; Bearish below {lower:.2%}; Neutral at exactly {upper:.2%}."
 
 
 class GameplanTab:
@@ -104,6 +120,13 @@ class GameplanTab:
         self.status_label = label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                   background=BACKGROUND, wraplength=1100, justify="left")
         self.status_label.pack(fill="x", pady=(0, 9))
+        self.current_policy = label(self.page,
+            f"Current rule · All 22 symbols · Gameplan, Atlas 15m and Scout 15m: BUY at P(up) ≥ {BULLISH_PROBABILITY:.2%}; "
+            f"SELL at P(up) ≤ {BEARISH_PROBABILITY:.2%}; HOLD strictly between.\n"
+            "Gameplan 1h and 4h may sell available shares from any Gameplan horizon without fallback quotas or a bullish donor veto. "
+            "1d and 1w keep their ownership rules. Execution uses live quotes, cash, holdings and pending orders.",
+            size=9, color=MUTED_TEXT, background=BACKGROUND, wraplength=1100, justify="left")
+        self.current_policy.pack(fill="x", pady=(0, 9))
 
         viewport = tk.Frame(self.page, background=BACKGROUND)
         viewport.pack(fill="both", expand=True)
@@ -280,6 +303,7 @@ class GameplanTab:
         self.controls.grid(row=1 if width < 850 else 0, column=0 if width < 850 else 1,
                            columnspan=2 if width < 850 else 1, sticky="w" if width < 850 else "e", pady=(5 if width < 850 else 0, 0))
         self.status_label.configure(wraplength=width-12)
+        self.current_policy.configure(wraplength=width-12)
         self.footer.configure(wraplength=width-12)
 
     def _resize_filters(self, event):
@@ -448,7 +472,10 @@ class GameplanTab:
             kind = "Upcoming session" if self.plan.session > datetime.now(PACIFIC).date().isoformat() else "Saved session"
             self.heading.configure(text=self.plan.display_name)
             self.subtitle.configure(text=f"{kind} · {date.fromisoformat(self.plan.session):%A, %b %d, %Y} · All times Pacific")
-            self.footer.configure(text=("Bullish adds shares · 1h and 4h can sell across horizons · 1d and 1w keep their ownership rules · No automatic expiry sales."
+            ownership_note = ("1h and 4h can sell across Gameplan horizons; 1d and 1w keep their ownership rules."
+                              if autonomous_horizon_sales("1h", self.plan.session) else
+                              "This historical plan retains its saved horizon ownership rules.")
+            self.footer.configure(text=(f"Bullish adds shares · {ownership_note} No automatic expiry sales."
                 if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else
                 f"Saved {self.plan.saved_at:%b %d, %H:%M %Z} · Projected trades; quantities and exits depend on actual fills."))
             if unavailable:
@@ -459,7 +486,7 @@ class GameplanTab:
                 self.table_note.configure(text=f"{len(actions)} of {len(self.plan.actions)} saved actions shown. "
                     + f"{company_count} of {forecast_company_count} companies have projected actions. "
                     + ("All forecasts includes companies with no trades. " if company_count < forecast_company_count else "")
-                    + ("1h and 4h can sell across horizons; 1d and 1w keep their ownership rules. No automatic expiry sales. " if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else "EXIT means a scheduled horizon close. ")
+                    + (ownership_note + " No automatic expiry sales. " if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else "EXIT means a scheduled horizon close. ")
                     + ("Expiries include remaining allocations; reserved shares are disclosed in details." if expiries else
                        "Quantities follow the direction ledger; execution uses live quotes and actual holdings."))
                 if unavailable:
@@ -625,7 +652,10 @@ class GameplanTab:
                     "Measurement boundary only; holdings continue until a bearish instruction"
                     if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else
                     "No separate exit saved for this forecast", MUTED_TEXT))
-            note = ("Bullish buys add shares; 1h and 4h can sell across horizons. 1d and 1w keep their ownership rules." if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else "Exit quantity follows actual filled shares.") if entry and entry.action == "BUY" else reason_text(forecast.reason, forecast.fallback_donor_horizon)
+            note = (("Bullish buys add shares; 1h and 4h can sell across Gameplan horizons. 1d and 1w keep their ownership rules."
+                     if autonomous_horizon_sales("1h", self.plan.session) else
+                     "This historical plan retains its saved horizon ownership rules.")
+                    if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else "Exit quantity follows actual filled shares.") if entry and entry.action == "BUY" else reason_text(forecast.reason, forecast.fallback_donor_horizon)
             if closing and closing.reason == "HORIZON_EXIT":
                 note += (f" The {forecast.start:%H:%M} position closes at its scheduled {forecast.end:%H:%M} end."
                          " Consecutive bullish windows can schedule a new buy at the same time.")
@@ -710,6 +740,7 @@ class GameplanTab:
                 "Projected action: Unavailable" if forecast.eligible else "Forecast context only")
             lines += [f"Published P(up): {forecast.probability:.2%}" if forecast.probability is not None else "Published probability: unavailable",
                       f"Saved direction: {forecast.direction.replace('NO_EDGE', 'NEUTRAL')}",
+                      f"Saved direction policy: {saved_direction_rule(forecast.direction_policy_version)}",
                       f"{action_text} · Direction-based shares: {shares(forecast.quantity)}",
                       f"Reason: {reason_text(forecast.reason, forecast.fallback_donor_horizon)}", f"Model status: {forecast.model_status}",
                       f"Window start: {forecast.start:%a, %b %d, %Y %H:%M %Z}",

@@ -51,6 +51,7 @@ class PredictionOutcome:
     observed_start: datetime | None
     observed_end: datetime | None
     probability_target_contract: str = LEGACY_COST_TARGET
+    direction_policy_version: str | None = None
 
     @property
     def probability_target_threshold(self) -> float:
@@ -245,10 +246,12 @@ def _outcome(row: dict) -> PredictionOutcome:
         elif not pd.isna(row["direction_correct"]):
             raise GameplanStatsError("A neutral forecast cannot have a directional score")
     # Do not score pending/missing rows, even if they contain partial observations.
+    saved_version = row.get("direction_policy_version")
+    saved_version = None if saved_version is None or pd.isna(saved_version) else str(saved_version)
     return PredictionOutcome(
         str(row["id"]), str(row["symbol"]), str(row["model_group"]), str(row["route"]),
         str(row["target_role"]), direction, status, probability, correct, brier,
-        actual_return, cost, start, end, *observed, contract,
+        actual_return, cost, start, end, *observed, contract, saved_version,
     )
 
 

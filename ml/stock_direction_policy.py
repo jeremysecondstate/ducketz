@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 from datetime import date
+from typing import Iterable, Mapping
 
 STOCK_DIRECTION_POLICY_VERSION = "stock-direction-50-01-v3"
 BULLISH_PROBABILITY = 0.5001
@@ -36,3 +37,29 @@ def stock_direction_for_policy(probability: float, policy_version: object = None
     if policy_version != STOCK_DIRECTION_POLICY_VERSION:
         raise ValueError("Unsupported saved stock direction policy")
     return current
+
+
+def saved_direction_policy_summary(records: Iterable[Mapping]) -> dict:
+    """Describe recorded forecast cutoffs without changing historical labels.
+
+    A missing version is deliberately left unrecorded. Older publications may
+    predate either named policy, so today's default supplies no historical rule.
+    """
+    versions, unrecorded = set(), 0
+    for row in records:
+        version = row.get("direction_policy_version")
+        if version is None or (isinstance(version, float) and math.isnan(version)):
+            unrecorded += 1
+        else:
+            versions.add(str(version))
+    known = {
+        "stock-direction-50-v2": {"bullish_probability": .5, "bearish_probability": .5,
+                                  "boundaries": "exclusive", "neutral": "exactly_0.5"},
+        STOCK_DIRECTION_POLICY_VERSION: {"bullish_probability": BULLISH_PROBABILITY,
+            "bearish_probability": BEARISH_PROBABILITY, "boundaries": "inclusive",
+            "neutral": "strictly_between_bearish_and_bullish"},
+    }
+    return {"direction_policy_evaluation": "saved_frozen_direction_labels",
+            "direction_policy_versions": sorted(versions),
+            "unrecorded_direction_policy_forecasts": unrecorded,
+            "direction_policy_cutoffs": {version: known[version] for version in sorted(versions) if version in known}}

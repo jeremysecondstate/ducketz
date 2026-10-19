@@ -47,6 +47,40 @@ def test_heading_identifies_og_and_yg_without_changing_session_or_filters(tab):
     assert tab.plan.session == session and tab.visible_rows == tab.plan.rows()
 
 
+def test_current_rule_covers_every_trader_without_relabeling_the_saved_plan(tab):
+    original = tab.plan.forecasts
+    text = tab.current_policy.cget("text")
+    assert "All 22 symbols" in text
+    assert "Gameplan, Atlas 15m and Scout 15m" in text
+    assert "BUY at P(up) ≥ 50.01%" in text and "SELL at P(up) ≤ 49.99%" in text
+    assert "HOLD strictly between" in text
+    assert "any Gameplan horizon without fallback quotas or a bullish donor veto" in text
+    assert "1d and 1w keep their ownership rules" in text
+    assert tab.plan.forecasts == original
+
+
+@pytest.mark.parametrize("version,expected", [
+    ("stock-direction-50-v2", "Bullish above 50.00%; Bearish below 50.00%; Neutral at exactly 50.00%"),
+    ("stock-direction-50-01-v3", "Bullish at 50.01% or higher; Bearish at 49.99% or lower; Neutral strictly between"),
+    ("earlier-recorded-rule", "earlier-recorded-rule; the original saved direction is retained"),
+    (None, "Unrecorded; the original saved direction is retained"),
+])
+def test_details_distinguish_saved_policy_from_the_current_rule(tab, monkeypatch, version, expected):
+    from dataclasses import replace
+    forecast = next(row for row in tab.plan.forecasts if row.action == "BUY")
+    saved = replace(forecast, direction_policy_version=version)
+    tab.set_plan(replace(tab.plan, forecasts=tuple(saved if row == forecast else row for row in tab.plan.forecasts)))
+    tab.selected_key = tab._key(saved)
+    tab.render()
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab.show_details()
+    assert expected in shown[-1]
+    assert f"Saved direction: {forecast.direction}" in shown[-1]
+    assert tab.plan.forecast(saved.forecast_id).probability == forecast.probability
+    assert "BUY at P(up) ≥ 50.01%" in tab.current_policy.cget("text")
+
+
 def test_saved_price_columns_are_removed_without_losing_actions_or_probabilities(tab):
     from dataclasses import replace
     from app.ui.gameplan_data import ExecutionQuote

@@ -18,6 +18,7 @@ from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestam
 from ml.gameplan_actuals_review import RUNS, VERSION, _write_json, completed_session_context
 from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, probability_target_contract, probability_target_metadata
 from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
+from ml.stock_direction_policy import saved_direction_policy_summary
 
 
 PACKAGE_VERSION = "cross-pc-gameplan-stats-v1"
@@ -28,9 +29,9 @@ ROW_FIELDS = (
     "direction", "actuals_status", "direction_correct", "calibrated_probability",
     "model_observed_target", "model_brier_score", "actual_return", "assumed_round_trip_cost",
     "target_window_start", "target_window_end", "actual_start_observed_at", "actual_end_observed_at",
-    "probability_target_contract", "gameplan_variant",
+    "probability_target_contract", "gameplan_variant", "direction_policy_version",
 )
-REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at"}
+REQUIRED_ROW_FIELDS = set(ROW_FIELDS) - {"assumed_round_trip_cost", "actual_start_observed_at", "actual_end_observed_at", "direction_policy_version"}
 PACKAGE_FIELDS = {"schema_version", "producer", "action_date", "symbols", "reviewed_at", "outcomes_through",
                   "probability_target_contract", "source_receipt_sha256", "source_manifest_sha256",
                   "source_results_sha256", "source_report_sha256", "coverage_status", "rows"}
@@ -194,9 +195,16 @@ def _combined_report(frame: pd.DataFrame, report: dict) -> str:
     lines = [f"# Combined Gameplan Stats · {report['action_date']}", "",
              "Verified Atlas and Scout prediction outcomes. Original probabilities and targets are retained. "
              "These statistics measure forecasts, not broker fills or trading profit.", "",
-             f"Probability target: `{report['probability_target_contract']}`. All window times are Pacific.", "",
-             "| Symbol | Correct / scored | Direction accuracy | Brier | Evaluated | Pending | Awaiting data |",
-             "| --- | --- | --- | --- | --- | --- | --- |"]
+             f"Probability target: `{report['probability_target_contract']}`. All window times are Pacific.", ""]
+    policy_summary = saved_direction_policy_summary(frame.to_dict("records"))
+    policy_lines = ["Direction accuracy scores each original saved call; later cutoffs do not relabel historical forecasts.", ""]
+    for version, cutoffs in policy_summary["direction_policy_cutoffs"].items():
+        above, below = ("≥", "≤") if cutoffs["boundaries"] == "inclusive" else (">", "<")
+        policy_lines += [f"Saved direction policy `{version}`: BUY/Bullish at P(up) {above} {cutoffs['bullish_probability']:.2%}; "
+                         f"SELL/Bearish at P(up) {below} {cutoffs['bearish_probability']:.2%}.", ""]
+    lines += policy_lines
+    lines += ["| Symbol | Correct / scored | Direction accuracy | Brier | Evaluated | Pending | Awaiting data |",
+              "| --- | --- | --- | --- | --- | --- | --- |"]
     for symbol in ("All", *sorted(frame.symbol.unique())):
         metrics = prediction_metrics(tuple(row for row in outcomes if symbol == "All" or row.symbol == symbol))
         accuracy = "—" if metrics.accuracy is None else f"{metrics.accuracy:.1%}"
@@ -255,13 +263,14 @@ def adopt_combined_stats(root: Path, *, packages: Mapping[str, Path], expected_s
                                     "probability_target_contract": verified[actor]["probability_target_contract"]}
                             for actor in sorted(PRODUCERS)},
               "orders_placed": 0, "broker_orders_enabled": False}
+    report.update(saved_direction_policy_summary(frame.to_dict("records")))
     run = create_timestamp_directory(root / RUNS, timestamp=now)
     frame.to_parquet(run / "forecast-results.parquet", index=False)
     _write_json(run / "report.json", report)
     (run / "Gameplan-results.md").write_text(_combined_report(frame, report), encoding="utf-8")
     write_manifest(run, run_timestamp=now, input_files=[],
                    output_files=["forecast-results.parquet", "report.json", "Gameplan-results.md"],
-                   configuration={key: report[key] for key in ("schema_version", "action_date", "probability_target_contract", "review_mode", "producers", "coverage_status")})
+                   configuration={key: report[key] for key in ("schema_version", "action_date", "probability_target_contract", "review_mode", "producers", "coverage_status", "direction_policy_evaluation", "direction_policy_versions", "direction_policy_cutoffs", "unrecorded_direction_policy_forecasts")})
     verify_manifest(run)
     receipt = {"schema_version": VERSION, "status": "COMPLETE", "action_date": report["action_date"],
                "run_path": run.relative_to(root).as_posix(), "manifest_sha256": file_checksum(run / "manifest.json"),
