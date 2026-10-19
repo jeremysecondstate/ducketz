@@ -730,6 +730,99 @@ def test_scout_manual_start_preflight_and_history_never_use_atlas_owner(tmp_path
     assert (session_root/"status.json").read_bytes() == prior_bytes
 
 
+@pytest.mark.parametrize("operation", ["execution", "recovery"])
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_scout_retry_records_real_sqlite_cause_without_changing_retry_or_forecast(
+        tmp_path, monkeypatch, operation, wrapped):
+    """Inject real private-database contention through both retry handlers."""
+    import sqlite3
+    from contextlib import closing
+
+    kwargs, _, executors = scout_manual_fixture(tmp_path, monkeypatch)
+    executor_type = sys.modules["ml.intraday.scout_local_execution"].ScoutLocalAccountExecutor
+    original_step, original_recover = executor_type.step, executor_type.recover
+    now = [instant("2026-10-08T17:17:00Z")]
+    started, attempts, supplied = now[0], [], []
+
+    def fail_locked_write():
+        private_diagnostic_value = "PRIVATE_DIAGNOSTIC_VALUE"
+        path = tmp_path / "independent-contention.sqlite3"
+        with closing(sqlite3.connect(path, timeout=0, isolation_level=None)) as writer:
+            writer.execute("PRAGMA journal_mode=WAL")
+            writer.execute("CREATE TABLE fixture(value TEXT)")
+            writer.execute("BEGIN IMMEDIATE")
+            with closing(sqlite3.connect(path, timeout=0, isolation_level=None)) as blocked:
+                try:
+                    blocked.execute("BEGIN IMMEDIATE")
+                except sqlite3.OperationalError as exc:
+                    if wrapped:
+                        raise RuntimeError("fixture operation failed") from exc
+                    raise
+            pytest.fail("Expected real SQLite contention")
+
+    def step(self, value):
+        attempts.append(("execution", (now[0] - started).total_seconds()))
+        supplied.append(json.loads(json.dumps(value)))
+        if operation == "execution" and len(supplied) == 1:
+            fail_locked_write()
+        return original_step(self, value)
+
+    def recover(self):
+        previous = [item for item in attempts if item[0] == "recovery"]
+        attempts.append(("recovery", (now[0] - started).total_seconds()))
+        if operation == "recovery" and not previous:
+            fail_locked_write()
+        return original_recover(self)
+
+    def sleep(seconds):
+        if (now[0] - started).total_seconds() >= 4:
+            raise KeyboardInterrupt()
+        now[0] += timedelta(seconds=seconds)
+
+    monkeypatch.setattr(executor_type, "step", step)
+    monkeypatch.setattr(executor_type, "recover", recover)
+    kwargs.update(clock=lambda: now[0], sleep=sleep)
+    result = live_session.run_manual(**kwargs)
+    assert result["status"] == "STOPPED" and len(executors) == 1
+    if operation == "execution":
+        assert attempts == [("execution", 0), ("execution", 3), ("recovery", 3)]
+        assert supplied[0] == supplied[1]
+    else:
+        assert attempts == [("execution", 0), ("recovery", 0), ("recovery", 3)]
+        assert len(supplied) == 1
+
+    store = ShadowStore(tmp_path / "intraday/shadow.sqlite3")
+    with store.connect() as db:
+        rows = db.execute("SELECT kind,symbol,payload FROM events WHERE kind IN "
+            "('execution_retry','order_recovery_retry')").fetchall()
+        assert len(rows) == 1
+        kind, symbol, raw = rows[0]
+        payload = json.loads(raw)
+        assert kind == ("execution_retry" if operation == "execution" else "order_recovery_retry")
+        assert symbol == ("DOCU" if operation == "execution" else None)
+        if operation == "execution":
+            assert payload["forecast_id"] == supplied[0]["forecast_id"]
+        assert payload["error_type"] == ("RuntimeError" if wrapped else "OperationalError")
+        assert payload["message"] == ("fixture operation failed" if wrapped else "database is locked")
+        assert payload["retry_after_seconds"] == 3
+        chain = payload["diagnostics"]["exception_chain"]
+        assert [entry["relation"] for entry in chain] == (["raised", "cause"] if wrapped else ["raised"])
+        assert chain[-1]["type"] == "OperationalError"
+        assert chain[-1]["sqlite_errorcode"] == sqlite3.SQLITE_BUSY
+        assert chain[-1]["sqlite_errorname"] == "SQLITE_BUSY"
+        assert chain[-1]["frames"][-1]["function"] == "fail_locked_write"
+        assert chain[-1]["frames"][-1]["file"] == "test_intraday_live_session.py"
+        assert chain[-1]["frames"][-1]["line"] > 0
+        assert not payload["diagnostics"]["chain_truncated"]
+        diagnostic_text = json.dumps(payload["diagnostics"])
+        assert str(tmp_path) not in diagnostic_text and "PRIVATE_DIAGNOSTIC_VALUE" not in diagnostic_text
+        wait = db.execute("SELECT next_attempt_at FROM intraday_live_retry WHERE scope='broker'").fetchone()[0]
+        assert instant(wait) == started + timedelta(seconds=3)
+        queued = db.execute("SELECT forecast_id,status FROM intraday_live_queue").fetchall()
+        assert queued == [(supplied[0]["forecast_id"], "no_purchasing_capacity")]
+    assert store.forecasts(pc="Scout") == [supplied[0]]
+
+
 # Historical receipt authentication, writer compatibility and expiry checks belong
 # to the retained remote API. The independent caller validates its executor's
 # local mode, exact manual session and literal success before history or workers.
