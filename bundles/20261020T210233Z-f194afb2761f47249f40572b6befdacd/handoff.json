@@ -1,0 +1,13 @@
+{
+  "contract_version": "cross-pc-v2",
+  "created_at_utc": "2026-10-20T21:02:33.413302Z",
+  "id": "20261020T210233Z-f194afb2761f47249f40572b6befdacd",
+  "kind": "change_notice",
+  "payloads": [
+    "notice.json"
+  ],
+  "recipient": "pc-new",
+  "schema_version": 2,
+  "sender": "pc-original",
+  "summary": "Atlas: fix Windows credential protection for Modify-only temporary files"
+}

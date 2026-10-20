@@ -1,0 +1,33 @@
+{
+  "author": "Atlas",
+  "change_id": "20261020T210008Z-b643147158824b229eafd61b78ec4849",
+  "files": [
+    "app/services/schwab_token_store.py",
+    "tests/test_schwab_token_windows_owner.py"
+  ],
+  "limitations": [
+    "Draft PR290 against main; main integration and peer installation not claimed.",
+    "Existing loaded runtime retains original helper; live affected-operation recovery remains open at manual runtime-control boundary.",
+    "No observer broker/provider call, training, start/restart or order."
+  ],
+  "local_installation": "Reviewed exact source and regression bytes installed in Atlas checkout; no hotpatch or process restart.",
+  "peer_applicability": "Shared Windows file-security correctness; review locally and preserve symbols, models, private state and manual trader controls.",
+  "pr_url": "https://github.com/jeremysecondstate/ducketz/pull/290",
+  "repository": "jeremysecondstate/ducketz",
+  "runtime_implications": "Protected owner-only DACL is applied before TokenUser ownership, preserving atomic credential writes. Future normal imports adopt this source; preserve all manual trader controls and independent state.",
+  "scope": "shared",
+  "source_branch": "codex/atlas/20261020T210008Z-b643147158824b229eafd61b78ec4849",
+  "source_sha": "a8a137a4021d2bbbf4a53ab3327bd41ffd3e8d14",
+  "summary": "Atlas: fix Windows credential protection for Modify-only temporary files",
+  "tests": [
+    {
+      "at": "2026-10-20T21:02:33.071708+00:00",
+      "kind": "local targeted and adjacent offline cases",
+      "result": "4 Windows cases and39 portfolio cases passed"
+    },
+    {
+      "kind": "network-denied exact source and current-main isolated candidate",
+      "result": "4 passed each with reviewed hashes/imports"
+    }
+  ]
+}
