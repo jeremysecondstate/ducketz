@@ -567,3 +567,54 @@ def test_render_explains_verified_missing_boundary_and_preserves_legacy_rows():
     legacy_clocks = clocks.drop(columns=[name for name in clocks if name.startswith("actual_")
                                         and name not in {"actual_price", "actual_observed_at"}])
     assert "Waiting for data" in render_actuals_review(legacy, legacy_clocks, report)
+
+
+def test_late_received_actuals_use_review_clock_without_extending_outcome_horizon():
+    bars = prices().assign(observation_recorded_at=pd.Timestamp("2026-09-10T04:00Z"))
+    frozen = bars.copy(deep=True)
+    before = compare_forecasts(forecasts(), bars, observed_at="2026-09-10T00:00Z")
+    assert not before.actuals_status.eq("EVALUATED").any()
+    result = compare_forecasts(forecasts(), bars, observed_at="2026-09-10T00:00Z",
+                              evidence_available_at="2026-09-10T05:00Z").set_index("route")
+    assert result.loc["1h@04:00", "actuals_status"] == "EVALUATED"
+    assert result.loc["1h@04:00", "actual_return"] == pytest.approx(.05)
+    assert result.loc["4h@16:00", "actuals_status"] == "PENDING_MATURITY"
+    assert result.loc["1d@D+1", "actual_end_price"] == 110
+    clocks = compare_price_points(forecasts(), bars, action_date="2026-09-09",
+        observed_at="2026-09-10T00:00Z", evidence_available_at="2026-09-10T05:00Z", planning_path=path())
+    assert clocks.iloc[-1].actual_price == 110  # The next-session 999 minute remains excluded.
+    pd.testing.assert_frame_equal(bars, frozen)
+
+
+def test_actuals_reject_receipts_after_review_or_before_native_completion():
+    bars = prices().assign(observation_recorded_at=pd.Timestamp("2026-09-10T06:00Z"))
+    result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-10T00:00Z",
+                              evidence_available_at="2026-09-10T05:00Z").iloc[0]
+    assert result.actuals_status == "MATURE_AWAITING_DATA"
+    bars["observation_recorded_at"] = pd.Timestamp("2026-09-09T11:30Z")
+    result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-10T00:00Z",
+                              evidence_available_at="2026-09-10T05:00Z").iloc[0]
+    assert result.actual_start_price == 100 and result.actual_end_price is None
+    assert result.actuals_status == "MATURE_AWAITING_DATA"
+
+
+@pytest.mark.parametrize("evidence_cutoff", ["2026-09-09T23:00Z", "2026-09-10T05:00", "NaT"])
+def test_actuals_require_valid_separate_evidence_clock(evidence_cutoff):
+    with pytest.raises(ValueError, match="cutoffs"):
+        compare_forecasts(forecasts(), prices(), observed_at="2026-09-10T00:00Z",
+                          evidence_available_at=evidence_cutoff)
+
+
+def test_completed_stats_publisher_binds_late_receipts_to_actual_review(publication_case):
+    c = publication_case
+    bars = prices().assign(observation_recorded_at=pd.Timestamp("2026-09-10T04:00Z"))
+    run = publish_completed_session_review(c.root, action_date="2026-09-09",
+        clock=lambda: pd.Timestamp("2026-09-10T05:00Z"), price_loader=lambda *a, **kw: (bars, (), {}))
+    report = json.loads((run / "report.json").read_text())
+    results = pd.read_parquet(run / "forecast-results.parquet")
+    assert report["outcomes_through"] == "2026-09-10T00:00:00+00:00"
+    assert report["price_evidence_available_at"] == "2026-09-10T05:00:00+00:00"
+    assert report["forecasts"]["evaluated"] > 0
+    assert results.loc[results.route.eq("1h@04:00"), "actual_end_price"].iloc[0] == 105
+    assert results.loc[results.route.eq("4h@16:00"), "actuals_status"].iloc[0] == "PENDING_MATURITY"
+    verify_manifest(run)
