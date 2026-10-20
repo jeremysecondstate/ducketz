@@ -431,6 +431,7 @@ class IntradayAccountExecutor:
         self._execution_stage("own_pending_identity_read")
         pending = {r.reservation_id:r for r in self.ledger.pending_reservations()
                    if self.ledger.reservation_stream(r.reservation_id) == self.stream}
+        uncertain = {}
         for record in self.authority.read_state()["reservations"]:
             if record["request"].get("stream") != self.stream:
                 raise ContractError("Foreign stream in local 15m authority")
@@ -440,11 +441,51 @@ class IntradayAccountExecutor:
                     raise ContractError("Foreign stream in local 15m native ledger")
                 if native.broker_order_id != record["broker_order_id"] or native.allocation_id != record["request"]["native_allocation_id"]:
                     raise ContractError("Local order acceptance identities differ")
+                if not native.broker_order_id:
+                    request = record["request"]
+                    with self.ledger._transaction() as db:
+                        native_request = json.loads(db.execute(
+                            "SELECT request FROM reservations WHERE id=?", (native.reservation_id,)).fetchone()[0])
+                    if (record["status"] not in {"SUBMITTING", "UNKNOWN"}
+                            or native.status not in {"RESERVED", "UNKNOWN"}
+                            or native.filled_quantity or record["filled_quantity"]
+                            or type(request["quantity"]) is not int
+                            or type(native_request["quantity"]) is not int
+                            or Decimal(str(request["limit_price"])) != Decimal(str(native.limit_price))
+                            or Decimal(str(request["exposure_price"])) != Decimal(str(native.limit_price))
+                            or Decimal(str(native_request["price"])) != Decimal(str(native.limit_price))
+                            or request["account_fingerprint"] != self.config.account_fingerprint
+                            or request["participant_id"] != self.config.machine_id
+                            or request["local_symbols"] != sorted(self.symbols)
+                            or request["horizon"] != "15m"
+                            or native_request.get("kind") != "intraday-account-intention"
+                            or native_request.get("stream") != self.stream
+                            or native_request.get("local_symbols") != sorted(self.symbols)
+                            or any(native_request[field] != value for field, value in (
+                                ("symbol", native.symbol), ("side", native.side),
+                                ("quantity", native.quantity), ("forecast", native.forecast_id),
+                                ("forecast_sha256", native.forecast_id)))
+                            or any(request[field] != value for field, value in (
+                                ("symbol", native.symbol), ("side", native.side),
+                                ("quantity", native.quantity), ("forecast_id", native.forecast_id),
+                                ("idempotency_key", native.idempotency_key),
+                                ("forecast_sha256", native_request["forecast_sha256"]),
+                                ("forecast_snapshot_sha256", native_request["forecast_snapshot_sha256"]),
+                                ("snapshot_id", native_request["snapshot"]),
+                                ("reference_at", native.target_start), ("target_close_at", native.target_end)))):
+                        raise ContractError("Uncertain local commitment identities differ")
+                    # No ID means no history matching, cancellation, release or
+                    # resend. Both own ledgers continue withholding this full
+                    # commitment while exact-ID orders and other symbols proceed.
+                    uncertain[native.reservation_id] = (native, record)
                 pending[native.reservation_id] = native
+        if any(not native.broker_order_id and identity not in uncertain
+               for identity, native in pending.items()):
+            raise ContractError("Uncertain native commitment lacks matching local authority")
         class OwnEvidence:
             account_fingerprint = self.config.account_fingerprint
             def pending_reservations(self):
-                return tuple(pending.values())
+                return tuple(native for native in pending.values() if native.broker_order_id)
         owner = OwnEvidence()
         self._execution_stage("order_evidence_capture")
         evidence = capture_order_evidence(self.broker, owner, account_fingerprint=self.config.account_fingerprint,
@@ -500,7 +541,9 @@ class IntradayAccountExecutor:
             observed = by_native.get(native.reservation_id)
             if observed is None:
                 if record["status"] in OPEN:
-                    raise ContractError("Local commitment lacks complete status evidence")
+                    retained = uncertain.get(native.reservation_id)
+                    if retained is None or asdict(native) != asdict(retained[0]) or record != retained[1]:
+                        raise ContractError("Local commitment lacks complete status evidence")
                 continue
             if record["last_evidence_at"] and instant(observed.observed_at) <= instant(record["last_evidence_at"]):
                 if observed.cumulative_filled_quantity != record["filled_quantity"] or observed.status != record["status"]:
@@ -511,7 +554,10 @@ class IntradayAccountExecutor:
                 observed.order_quantity, observed.cumulative_filled_quantity, observed.remaining_quantity,
                 tuple(Fill(f.fill_id,f.quantity,f.price,f.executed_at) for f in observed.fills), complete=True,
                 fill_time_provenance=observed.fill_time_provenance))
-        if not reconciliation.ready:
+        retained_reasons = {f"{native.symbol}:UNRECONCILED_{native.status}:{identity}"
+                           for identity, (native, _) in uncertain.items()}
+        if not reconciliation.ready and (not reconciliation.reasons
+                or any(reason not in retained_reasons for reason in reconciliation.reasons)):
             raise ContractError("Native account reconciliation: " + ",".join(reconciliation.reasons))
         self._execution_stage("authority_accounted_read")
         accounted = {r["broker_order_id"]:r["filled_quantity"] for r in self.authority.read_state()["reservations"]
@@ -741,8 +787,11 @@ class IntradayAccountExecutor:
                 forecast = forecasts.get(native.forecast_id)
                 if forecast is None or self.intents.get(native.forecast_id) is None:
                     raise ContractError("Native 15m order lacks original persisted intention")
-                results.append(self._record(forecast, "order_status_reconciled", order=native,
-                    evidence={"native_reservation_id":native.reservation_id, "status":native.status}))
+                uncertain = not native.broker_order_id and native.status in {"RESERVED", "UNKNOWN"}
+                results.append(self._record(forecast,
+                    "unresolved_submission_retained" if uncertain else "order_status_reconciled", order=native,
+                    evidence={"native_reservation_id":native.reservation_id, "status":native.status,
+                              **({"commitment_retained":True, "complete_broker_order_evidence":False} if uncertain else {})}))
             self._execution_stage("recovery_complete")
             return results
 
