@@ -183,6 +183,109 @@ def _native_outputs(run: Path) -> dict:
     return {"native_run": str(run), "files": files}
 
 
+def _recipe_metadata(action_date):
+    from ml.gameplan_execution_policy import current_gameplan_policy_metadata
+    metadata = current_gameplan_policy_metadata(action_date)
+    return {key: metadata[key] for key in ("gameplan_recipe_version", "execution_quantity_basis")}
+
+
+def _current_planning_publication(root, state, pinned):
+    """A completed native attempt cannot stand in for the current recipe."""
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    pointer = Path(root) / "ml/gameplan-trade-plan-latest/run.json"
+    if not pointer.is_file():
+        return False
+    selected = _json(pointer).get("current", {})
+    run = (Path(root) / str(selected.get("run_path", ""))).resolve()
+    if run.parent != (Path(root) / "ml/gameplan-trade-plan-runs").resolve():
+        raise ValueError("Current planning publication escapes its immutable root")
+    receipt = _json(run / "receipt.json")
+    matches = (receipt.get("status") == "COMPLETE"
+            and selected.get("receipt_sha256") == file_checksum(run / "receipt.json")
+            and receipt.get("action_date") == state["action_date"]
+            and receipt.get("source_receipt_sha256") == pinned["receipt_sha256"]
+            and is_current_gameplan_recipe(receipt))
+    if not matches:
+        return False
+    from ml.artifacts import verify_manifest
+    if receipt.get("manifest_sha256") != file_checksum(run / "manifest.json"):
+        raise ValueError("Current planning receipt differs from its manifest")
+    return is_current_gameplan_recipe(verify_manifest(run).get("configuration", {}))
+
+
+def _verify_planning_recipe(state, *publications):
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    if is_current_gameplan_recipe(state) and not all(is_current_gameplan_recipe(item) for item in publications):
+        raise ValueError("Planning publication uses an older Gameplan producing recipe")
+
+
+def _refresh_planning_recipe(config, state, path, observed, save):
+    """Resume a changed planning tail without repeating data, review or fits.
+
+    Preserve the exact earlier workflow state before updating its mutable
+    progress record. Existing model/forecast receipts remain scientific inputs;
+    only the trade plan, display and handoff must be published under this recipe.
+    """
+    from ml.nightly_dispatch import LAYOUT, recipe_refresh_required, intended_session
+    if not recipe_refresh_required(state, intended_action_date=intended_session(observed)["action_date"]):
+        return False
+    _verify_configuration_binding(config, state)
+    _verify_symbol_binding(config, state)
+    for entry in state.get("steps", {}).values():
+        if entry.get("status") == "COMPLETE":
+            _verify_outputs(entry["output"])
+    before = path.read_bytes()
+    metadata = _recipe_metadata(state["action_date"])
+    identity = sha256(before + json.dumps(metadata, sort_keys=True).encode()).hexdigest()
+    history = path.parent / "recipe-history" / identity / "state.json"
+    history.parent.mkdir(parents=True, exist_ok=True)
+    if history.exists():
+        if history.read_bytes() != before:
+            raise ValueError("Original recipe history differs from its immutable bytes")
+    else:
+        with history.open("xb") as stream:
+            stream.write(before)
+            stream.flush()
+            os.fsync(stream.fileno())
+    training = state.get("steps", {}).get("train_and_plan", {})
+    # Recover a completed fit whose outer save was interrupted, rather than
+    # running that model again merely because the planning recipe changed.
+    if training.get("status") != "COMPLETE" and training.get("native_run"):
+        from ml.overnight_runtime import _validated_run
+        native = _validated_run(Path(config["datastore"]).resolve(), Path(training["native_run"]))
+        if (native / "receipt.json").is_file() and _json(native / "receipt.json").get("status") == "COMPLETE":
+            output = _native_outputs(native)
+            pinned = _json(native / "stage-report.json").get("enrichment_gameplan", {})
+            if pinned.get("action_date") != state["action_date"]:
+                raise ValueError("Completed fit has no matching frozen forecast publication")
+            training.update(status="COMPLETE", output=output, completed_at=observed.isoformat())
+    reset = []
+    if training.get("status") == "COMPLETE":
+        if state.get("workflow_layout") != LAYOUT:
+            # The old combined stage already completed catch-up and Stats.
+            # Promote only its planning tail to the existing split layout.
+            state["workflow_layout"] = LAYOUT
+            state["steps"]["datastore_catchup"] = json.loads(json.dumps(state["steps"]["prepare_stats"]))
+        reset = ["local_gameplan", "verify_display", "local_handoff"]
+        for step in reset:
+            state["steps"][step] = {}
+        state.update(status="READY", current_step="local_gameplan", owner_pid=None,
+                     next_responsibility="gameplan", joint_ready=False)
+        state.pop("completed_at", None)
+        state.pop("joint_status", None)
+        if state.get("failure", {}).get("step") in reset:
+            state["failure"].update(disposition="RESOLVED", resolved_at=observed.isoformat(),
+                                    resolution="Planning recipe changed; original failure retained in history")
+    state.update(metadata)
+    state.setdefault("recipe_transitions", []).append({
+        "id": identity, "at": observed.isoformat(), "before_state": str(history),
+        "before_state_sha256": sha256(before).hexdigest(), **metadata,
+        "reset_steps": reset, "preserved_model_and_data_outputs": True,
+    })
+    save()
+    return True
+
+
 @contextmanager
 def _supervision(root: Path):
     from ml.overnight_runtime import claim_supervision, overnight_status, request_stage_stop
@@ -254,14 +357,23 @@ def _run_native(config: dict, state: dict, step: str, save) -> dict:
             recover_interrupted_run(root, run, "Previous workflow worker exited before its native receipt")
         receipt = _json(run / "receipt.json")
         if receipt.get("status") == "COMPLETE":
-            return _native_outputs(run)
-        arguments["resume_run"] = run
-    elif step in ("prepare_stats", "datastore_catchup"):
+            if (step != "local_gameplan"
+                    or _current_planning_publication(root, state, arguments["pinned_gameplan"])):
+                return _native_outputs(run)
+            _native_outputs(run)
+            retained = entry.setdefault("retained_recipe_native_runs", [])
+            if str(run) not in retained:
+                retained.append(str(run))
+            # Reuse its pinned forecasts in a new planning-only native attempt.
+            previous = None
+        else:
+            arguments["resume_run"] = run
+    if not previous and step in ("prepare_stats", "datastore_catchup"):
         arguments["stop_after"] = ("stock_target_history" if config.get("stock_price_source", "xnas-itch-archive-v1") == "xnas-itch-archive-v1"
                                    else "loop_a_close_fetch") if step == "datastore_catchup" else "gameplan_stats"
         if step == "prepare_stats" and state.get("workflow_layout"):
             arguments["start_at"] = "gameplan_stats"
-    else:
+    elif not previous:
         arguments["start_at"] = "gameplan_trade_planning" if step == "local_gameplan" else "loop_b_directional_generation"
         if state.get("workflow_layout") and step == "train_and_plan":
             arguments["stop_after"] = "stock_enrichment_training"
@@ -356,7 +468,7 @@ def _review_outputs(feedback: Path, saved: Path, reviewed_by: str, *, reused: bo
 
 
 def _research_display(root, state, source, pinned, reviewed, stats):
-    """Verify Scout's price-only preparation; account display follows synthesis."""
+    """Verify Scout's direction preparation; combined display follows synthesis."""
     from ml.artifacts import verify_manifest
     from ml.gameplan_trade_planning import RESEARCH_PRODUCER_MODE
     pointer = _json(root / "ml/gameplan-trade-plan-latest/run.json")["current"]
@@ -365,6 +477,7 @@ def _research_display(root, state, source, pinned, reviewed, stats):
         raise ValueError("Research plan escapes its immutable run directory")
     receipt, manifest = _json(run / "receipt.json"), verify_manifest(run)
     metadata = manifest["configuration"]
+    _verify_planning_recipe(state, receipt, metadata)
     if (receipt.get("status") != "COMPLETE"
             or pointer.get("receipt_sha256") != file_checksum(run / "receipt.json")
             or receipt.get("manifest_sha256") != file_checksum(run / "manifest.json")
@@ -435,6 +548,7 @@ def _display(config: dict, state: dict) -> dict:
         raise ValueError("Local Stats differ from the exact reviewed publication")
     receipt = _json(plan.run_directory / "receipt.json")
     configuration = _json(plan.run_directory / "manifest.json").get("configuration", {})
+    _verify_planning_recipe(state, receipt, configuration)
     source_ref = receipt.get("source_gameplan_run") or configuration.get("source_gameplan_run")
     if (not source_ref or (root / str(source_ref)).resolve() != source
             or receipt.get("source_receipt_sha256") != pinned["receipt_sha256"]
@@ -539,6 +653,7 @@ def _verify_local_preparation(config: dict, state: dict) -> dict:
         raise ValueError("Frozen local Gameplan differs from its training source")
     receipt, manifest = _json(plan / "receipt.json"), verify_manifest(plan)
     metadata = manifest.get("configuration", {})
+    _verify_planning_recipe(state, receipt, metadata)
     if (receipt.get("schema_version") != TRADE_VERSION or receipt.get("status") != "COMPLETE"
             or receipt.get("manifest_sha256") != file_checksum(plan / "manifest.json")
             or (root / str(receipt.get("run_path", ""))).resolve() != plan
@@ -557,6 +672,7 @@ def _handoff(config: dict, state: dict) -> dict:
     _verify_outputs(display)
     trade = Path(display["plan_run"])
     receipt = _json(trade / "receipt.json")
+    _verify_planning_recipe(state, receipt, _json(trade / "manifest.json").get("configuration", {}))
     source = receipt.get("source_gameplan_run")
     if not source:
         source = _json(trade / "manifest.json")["configuration"]["source_gameplan_run"]
@@ -780,6 +896,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     "action_date": selection["action_date"], "deadline_at": selection["deadline_at"],
                     "source_identity": identity(repository), "configuration_binding": _configuration_binding(config),
                     "symbols": binding["symbols"], "symbol_binding": binding,
+                    **_recipe_metadata(selection["action_date"]),
                     "workflow_layout": LAYOUT, "steps": {}, "status": "READY",
                     "orders_placed": 0, "broker_orders_enabled": False}
         elif resume_action_date:
@@ -832,6 +949,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
                     "deadline_at": deadline.isoformat(), "source_identity": identity(repository),
                     "configuration_binding": _configuration_binding(config),
                     "symbols": symbol_binding["symbols"], "symbol_binding": symbol_binding,
+                    **_recipe_metadata(action),
                     "steps": {}, "status": "READY", "orders_placed": 0, "broker_orders_enabled": False}
                 if responsibility is not None:
                     state["workflow_layout"] = LAYOUT
@@ -842,6 +960,7 @@ def run_workflow(config: dict, *, resume_action_date: str | None = None,
             _write(state_root / "latest.json", {"state_path": str(path), "run_id": state["run_id"]})
         if state.get("schema_version") != VERSION or state.get("actor") != config["actor"]:
             raise ValueError("Workflow state identity differs")
+        _refresh_planning_recipe(config, state, path, observed, save)
         def resolve_repository_repair():
             nonlocal repository_repair_owner
             if (repository_repair_owner is not None
@@ -1008,7 +1127,8 @@ def status(config: dict, *, action_date: str | None = None, now=None, current_se
 
 def dispatch_status(config, *, now=None):
     """Read-only dispatch decision; expensive jobs run only after prerequisites."""
-    from ml.nightly_dispatch import intended_session, next_responsibility, TERMINAL, authority, retry_disposition
+    from ml.nightly_dispatch import (intended_session, next_responsibility, TERMINAL, authority,
+                                    retry_disposition, recipe_refresh_required)
     authority(config)
     selection = intended_session(now)
     current = status(config, action_date=selection["action_date"])
@@ -1018,7 +1138,8 @@ def dispatch_status(config, *, now=None):
     # Even a terminal read consults the shared owner. It remains read-only and
     # does not reopen completed preparation for an exchange-domain repair.
     repair_registry.read(root)
-    if current["status"] in TERMINAL:
+    refresh = recipe_refresh_required(current, intended_action_date=intended_session(now)["action_date"])
+    if current["status"] in TERMINAL and not refresh:
         return {**result, "dispatch": False, "reason": "Retain completed session and its original receipts"}
     if not selection["eligible"]:
         return {**result, "status": "WAITING_KICKOFF", "dispatch": False}
@@ -1034,7 +1155,7 @@ def dispatch_status(config, *, now=None):
                 return {**result, **gate, "dispatch": False}
     except Timeout:
         return {**result, "status": "RUNNING", "dispatch": False}
-    blocked = retry_disposition(config, current, now)
+    blocked = None if refresh else retry_disposition(config, current, now)
     if blocked:
         return {**result, "status": blocked, "dispatch": False, "failure": current["failure"]}
     cutoff = current.get("effective_deadline_at", current.get("recovery_deadline_at"))
@@ -1044,8 +1165,11 @@ def dispatch_status(config, *, now=None):
     if cutoff and utc_timestamp(now) >= utc_timestamp(cutoff):
         return {**result, "status": "RECOVERY_EXPIRED", "dispatch": False,
                 "reason": "Retain the fixed cutoff; reviewed planning-tail continuation or human input is required"}
-    owner = next_responsibility(current) if current["status"] != "NOT_STARTED" else "datastore"
+    owner = ("gameplan" if current.get("steps", {}).get("train_and_plan", {}).get("status") == "COMPLETE"
+             else next_responsibility({**current, "status": "READY"})) if refresh else (
+             next_responsibility(current) if current["status"] != "NOT_STARTED" else "datastore")
     return {**result, "dispatch": bool(owner), "responsibility": owner,
+            **({"recipe_refresh_required": True} if refresh else {}),
             "owner": config.get("responsibility_owners", {}).get(owner, owner)}
 
 

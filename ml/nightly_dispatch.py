@@ -23,6 +23,19 @@ OWNERS = {"datastore_catchup": "datastore", "prepare_stats": "stats",
           "local_handoff": "display"}
 RESPONSIBILITIES = tuple(dict.fromkeys(OWNERS.values()))
 TERMINAL = {"LOCAL_COMPLETE_PEER_SETUP_PENDING", "COMPLETE", "HANDOFF_VERIFIED_LOCAL"}
+RECIPE_EFFECTIVE_ACTION_DATE = "2026-10-19"
+
+
+def recipe_refresh_required(state, *, intended_action_date=None):
+    """Rebuild operating instructions, keeping completed historical nights."""
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    day = state.get("action_date", "")
+    if state.get("status") == "NOT_STARTED" or day < RECIPE_EFFECTIVE_ACTION_DATE or is_current_gameplan_recipe(state):
+        return False
+    if (state.get("status") in TERMINAL and intended_action_date is not None
+            and day < intended_action_date):
+        return False
+    return True
 
 
 def intended_session(now=None):

@@ -1,3 +1,17 @@
+# Canonical publisher tests use direction-live-quote-v1. Pure historical
+# price arithmetic and immutable historical reader fixtures remain tested.
+# Retired estimated-publisher cases have these current-contract replacements:
+# test_publisher_uses_bounded_history_for_sparse_late_clock:
+#   test_gameplan_direction_recipe.py::test_producer_does_not_load_price_history_or_capture_scout_account
+# test_direction_ledger_failure_preserves_previous_pointer_without_raw_error:
+#   test_gameplan_direction_recipe.py::test_current_pointer_selection_revalidates_inputs_and_preserves_other_writers
+# test_review_refresh_does_not_override_a_changed_latest_plan:
+#   test_gameplan_direction_recipe.py::test_current_pointer_selection_revalidates_inputs_and_preserves_other_writers
+# test_known_missing_reference_publishes_explicitly_unavailable_cash_projection:
+#   test_gameplan_direction_recipe.py::test_producer_does_not_load_price_history_or_capture_scout_account
+# test_missing_account_retains_previous_review_and_audits_failure:
+#   test_gameplan_direction_recipe.py::test_current_refresh_without_account_observation_reuses_source_and_records_provenance
+
 import pandas as pd
 import pytest
 
@@ -321,70 +335,6 @@ def publication_case(tmp_path, monkeypatch):
              native_entry_bands=native_entry_bands, native_price_path=native_price_path)
 
 
-@pytest.mark.parametrize("older_sample_sessions", [200, 505])
-def test_publisher_uses_bounded_history_for_sparse_late_clock(publication_case, monkeypatch, older_sample_sessions):
-    import json
-    import exchange_calendars as xcals
-    from ml import gameplan_price_bands
-    from ml.artifacts import file_checksum, verify_manifest
-    from ml.gameplan_trade_planning import publish_trade_plan
-
-    c = publication_case
-    monkeypatch.setattr(gameplan_price_bands, "build_entry_price_bands", c.native_entry_bands)
-    monkeypatch.setattr(gameplan_price_bands, "build_planning_price_path", c.native_price_path)
-    calendar = xcals.get_calendar("XNYS", start="2023-01-01", end="2026-09-10")
-    sessions = calendar.sessions[calendar.sessions < pd.Timestamp("2026-09-09")]
-    bars = []
-
-    def bar(day, clock, price):
-        bars.append({"symbol": "AAPL", "timestamp": pd.Timestamp(f"{day.date()} {clock}", tz="America/Los_Angeles").tz_convert("UTC"),
-                     "open": price, "close": price})
-
-    # Every required clock has recent genuine pairs except 16:00, which has
-    # one recent pair and one older pair on the requested side of the bound.
-    for index, day in enumerate(sessions[-4:]):
-        bar(day, "16:59", 10.)
-        if index:
-            for hour in range(4, 16):
-                bar(day, f"{hour:02d}:00", 10. + index / 100)
-        if index == 3:
-            bar(day, "16:00", 10.2)
-    older = sessions[-older_sample_sessions]
-    bar(calendar.previous_session(older), "16:59", 10.)
-    bar(older, "16:00", 10.4)
-    prices = pd.DataFrame(bars)
-    prices.attrs["stock_price_source"] = {"source_contract": "xnas-itch-archive-v1", "dataset": "XNAS.ITCH"}
-    frozen = pd.read_parquet(c.source / "forecasts.parquet")
-    narrow = c.native_entry_bands(prices, frozen, observed_at=c.clock(),
-                                 allow_reference_forward_fill=True, allow_sparse_session_references=True)
-    key = "AAPL|2026-09-09|16:00"
-    assert narrow["lookback_sessions"] == 120
-    assert narrow["statistics"][key]["sample_count"] == 1
-    assert narrow["statistics"][key]["status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
-    preserved = {p.name: file_checksum(p) for p in c.source.iterdir()}
-    run = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
-                             price_loader=lambda *a, **kw: (prices, (), prices.attrs["stock_price_source"]), clock=c.clock)
-    verify_manifest(run)
-    saved_bands = json.loads((run / "price-bands.json").read_text())
-    saved_path = json.loads((run / "planning-price-path.json").read_text())
-    report = json.loads((run / "report.json").read_text())
-    receipt = json.loads((run / "receipt.json").read_text())
-    assert saved_bands["lookback_sessions"] == saved_path["lookback_sessions"] == 504
-    assert saved_bands["minimum_samples"] == saved_path["minimum_samples"] == 2
-    assert saved_bands["boundary_tolerance_seconds"] == 300
-    point = saved_path["points"][key]
-    if older_sample_sessions <= 504:
-        assert point["sample_count"] == 2 and point["status"] == "AVAILABLE"
-        assert {sample["session"] for sample in point["samples"]} == {str(older.date()), str(sessions[-1].date())}
-        assert point["planned_price_mid"] == 10.3
-        assert report["direction_projection_status"] == "COMPLETE"
-    else:
-        assert point["sample_count"] == 1 and point["status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
-        assert point["planned_price_low"] is point["planned_price_mid"] is point["planned_price_high"] is None
-        assert report["direction_projection_status"] == "UNAVAILABLE_PRICE_REFERENCES"
-    assert receipt["status"] == "COMPLETE" and receipt["orders_placed"] == 0
-    assert receipt["broker_orders_enabled"] is False
-    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == preserved
 
 
 def test_publication_binds_source_and_outputs_without_changing_gameplan(publication_case):
@@ -403,19 +353,16 @@ def test_publication_binds_source_and_outputs_without_changing_gameplan(publicat
     pointer = json.loads((c.root / "ml/gameplan-trade-plan-latest/run.json").read_text())
     assert pointer["current"]["receipt_sha256"] == file_checksum(run / "receipt.json")
     assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
-    assert "Trade Quantity" in (run / "Gameplan.md").read_text(encoding="utf-8")
-    assert c.calls[0][1] == c.calls[1][1]
+    assert "Directional instructions only" in (run / "Gameplan.md").read_text(encoding="utf-8")
+    assert c.calls == []
     report = json.loads((run / "report.json").read_text())
     assert report["direction_based_projection"] == json.loads((run / "direction-ledger.json").read_text())
-    assert report["planning_price_path"]["working_half_width_bps"] == 20
-    assert "points" not in report["planning_price_path"]
+    assert report["direction_projection_status"] == "DIRECTION_ONLY"
     rows = pd.read_parquet(run / "trade-plan.parquet")
-    assert rows.direction_based_trade_quantity.gt(0).any()
-    assert rows.historical_price_high.eq(11).all()
-    assert rows.scheduled_trade_price_high.eq(11).all()
-    assert rows.loc[rows.execution_eligible, "trade_price_high"].eq(10.02).all()
-    # Both new evidence artifacts are verified outputs, not unbound side files.
-    for name in ("planning-price-path.json", "direction-ledger.json", "planning-reference-completion.json", "synthetic-reference-bars.parquet"):
+    assert rows.direction_based_trade_quantity.isna().all()
+    assert not any(name.startswith(("trade_price_", "historical_price_", "planning_price_")) for name in rows)
+    assert not (run / "planning-price-path.json").exists()
+    for name in ("trade-plan.parquet", "direction-ledger.json", "report.json", "Gameplan.md"):
         path = run / name
         original = path.read_bytes()
         path.write_text("tampered")
@@ -451,8 +398,8 @@ def test_publication_keeps_saved_no_history_abstention_neutral(publication_case,
     rows = pd.read_parquet(run / "trade-plan.parquet")
     row = rows.loc[rows.id.eq(identifier)].iloc[0]
     ledger = json.loads((run / "direction-ledger.json").read_text())
-    assert ledger["status"] == "COMPLETE"
-    assert row.direction == row.planning_direction == "NO_EDGE"
+    assert ledger["status"] == "DIRECTION_ONLY"
+    assert row.direction == row.source_saved_direction == "NO_EDGE"
     assert row.calibrated_probability == probability
     assert row.direction_based_action == "HOLD" and row.direction_based_trade_quantity == 0
     assert _direction(row.to_dict()) == "Neutral"
@@ -467,27 +414,6 @@ def test_planning_label_rejects_unexplained_saved_direction_mismatch(direction):
         plan_trade_rows(pd.DataFrame([row]), snapshot(), bands([row]))
 
 
-def test_direction_ledger_failure_preserves_previous_pointer_without_raw_error(publication_case, monkeypatch):
-    import json
-    from ml import gameplan_cash_ledger
-    from ml.gameplan_trade_planning import publish_trade_plan
-    c = publication_case
-    pointer = c.root / "ml/gameplan-trade-plan-latest/run.json"
-    pointer.parent.mkdir(parents=True); pointer.write_text("previous-valid-pointer")
-    def fail(*a, **kw):
-        raise ValueError("RAW_PRIVATE_FAILURE_SENTINEL")
-    monkeypatch.setattr(gameplan_cash_ledger, "project_direction_trades", fail)
-    with pytest.raises(RuntimeError, match="Trade planning failed"):
-        publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
-                           price_loader=c.prices, clock=c.clock)
-    assert pointer.read_text() == "previous-valid-pointer"
-    run = next((c.root / "ml/gameplan-trade-plan-runs").iterdir())
-    report = json.loads((run / "report.json").read_text())
-    assert report["status"] == "FAILED"
-    assert report["failure_phase"] == "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
-    assert report["failure_code"] == "TRADE_PLANNING_VALIDATION_FAILED"
-    assert "RAW_PRIVATE_FAILURE_SENTINEL" not in (run / "report.json").read_text()
-    assert "RAW_PRIVATE_FAILURE_SENTINEL" not in (run / "receipt.json").read_text()
 
 
 def test_informational_refresh_preserves_snapshot_cutoff_forecasts_and_previous_artifacts(publication_case, monkeypatch):
@@ -506,15 +432,15 @@ def test_informational_refresh_preserves_snapshot_cutoff_forecasts_and_previous_
                                    price_loader=c.prices, clock=lambda: pd.Timestamp("2026-09-09T12:30Z"))
     verify_manifest(refreshed)
     report = json.loads((refreshed / "report.json").read_text())
-    assert report["publication_mode"] == "INFORMATIONAL_REFRESH"
+    assert report["gameplan_recipe_version"] == "direction-live-quote-v1"
     assert report["review_refresh"]["base_receipt_sha256"] == before[prior / "receipt.json"]
-    assert report["review_refresh"]["planning_price_asof"] == c.clock().isoformat()
+    assert report["review_refresh"]["account_snapshot_observed_at"] == c.state["observed_at"]
     assert report["observed_at"] == "2026-09-09T12:30:00+00:00"
     assert json.loads((refreshed / "account-snapshot.json").read_text()) == c.state
-    assert c.calls[-1][1] == c.clock()
+    assert c.calls == []
     assert {p: file_checksum(p) for p in before} == before
     assert report["orders_placed"] == 0 and report["broker_orders_enabled"] is False
-    assert "informational recalculation" in (refreshed / "Gameplan.md").read_text(encoding="utf-8")
+    assert "Directional instructions only" in (refreshed / "Gameplan.md").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("damage", ["outside", "not_current", "source_hash", "tampered", "new_snapshot", "next_day", "session_closed"])
@@ -542,71 +468,10 @@ def test_review_refresh_cannot_bypass_pinned_source_or_publication_scope(publica
     assert pointer.read_bytes() == before
 
 
-def test_review_refresh_does_not_override_a_changed_latest_plan(publication_case):
-    import json
-    from ml.gameplan_trade_planning import publish_trade_plan
-    c = publication_case
-    prior = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
-                               price_loader=c.prices, clock=c.clock)
-    pointer = c.root / "ml/gameplan-trade-plan-latest/run.json"
-    def changed(*args, **kwargs):
-        pointer.write_text("newer-plan-published")
-        return c.prices(*args, **kwargs)
-    with pytest.raises(RuntimeError, match="Trade planning failed"):
-        publish_trade_plan(c.root, gameplan_run=c.source, refresh_plan=prior,
-                           price_loader=changed, clock=lambda: pd.Timestamp("2026-09-09T12:30Z"))
-    assert pointer.read_text() == "newer-plan-published"
-    reports = [json.loads(path.read_text()) for path in (c.root / "ml/gameplan-trade-plan-runs").glob("*/report.json")]
-    assert any(report.get("failure_code") == "REFRESH_PLAN_CHANGED" for report in reports)
 
 
-def test_known_missing_reference_publishes_explicitly_unavailable_cash_projection(publication_case, monkeypatch):
-    import json
-    from ml import gameplan_price_bands
-    from ml.artifacts import file_checksum, verify_manifest
-    from ml.gameplan_trade_planning import publish_trade_plan
-    c = publication_case
-    build_path = gameplan_price_bands.build_planning_price_path
-    def missing(*args, **kwargs):
-        result = build_path(*args, **kwargs)
-        result['points']['AAPL|2026-09-09|04:00'].update(
-            status='UNAVAILABLE_REFERENCE_PRICE', reference_gap_minutes=143,
-            planned_price_low=None, planned_price_mid=None, planned_price_high=None)
-        return result
-    monkeypatch.setattr(gameplan_price_bands, 'build_planning_price_path', missing)
-    before = {p.name: file_checksum(p) for p in c.source.iterdir()}
-    run = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
-                             price_loader=c.prices, clock=c.clock)
-    verify_manifest(run)
-    report = json.loads((run/'report.json').read_text())
-    projection = report['direction_based_projection']
-    assert report['direction_projection_status'] == projection['status'] == 'UNAVAILABLE_PRICE_REFERENCES'
-    assert projection['events'] == projection['hourly'] == []
-    assert projection['summary'] == projection['ending_positions'] == {}
-    assert projection['orders_placed'] == 0 and projection['broker_orders_enabled'] is False
-    rows = pd.read_parquet(run/'trade-plan.parquet')
-    assert len(rows) == 24 and 'direction_based_trade_quantity' not in rows
-    assert 'projected_cash_after_low' not in rows
-    text = (run/'Gameplan.md').read_text(encoding='utf-8')
-    assert 'Cash projection unavailable' in text and '143' in text
-    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
 
 
-def test_missing_account_retains_previous_review_and_audits_failure(publication_case):
-    import json
-    from ml.gameplan_trade_planning import publish_trade_plan
-    c = publication_case
-    pointer = c.root / "ml/gameplan-trade-plan-latest/run.json"
-    pointer.parent.mkdir(parents=True); pointer.write_text("previous-valid-pointer")
-    state = {**c.state, "status": "UNAVAILABLE", "available_cash": None}
-    with pytest.raises(RuntimeError, match="Trade planning failed"):
-        publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: state,
-                           price_loader=c.prices, clock=c.clock)
-    assert pointer.read_text() == "previous-valid-pointer"
-    receipt_path = next((c.root / "ml/gameplan-trade-plan-runs").glob("*/receipt.json"))
-    receipt = json.loads(receipt_path.read_text())
-    assert receipt["status"] == "FAILED" and receipt["failure_code"] == "ACCOUNT_SNAPSHOT_UNAVAILABLE"
-    assert receipt["orders_placed"] == 0
 
 
 def test_publication_after_original_deadline_and_source_swap_fail_closed(publication_case):
@@ -620,7 +485,7 @@ def test_publication_after_original_deadline_and_source_swap_fail_closed(publica
     def changed(*a, **kw):
         (c.source / "receipt.json").write_text("changed source")
         return c.state
-    with pytest.raises(RuntimeError, match="Trade planning failed"):
+    with pytest.raises(ValueError, match="changed"):
         publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=changed, price_loader=c.prices, clock=c.clock)
     assert not (c.root / "ml/gameplan-trade-plan-latest/run.json").exists()
 
@@ -665,7 +530,7 @@ def test_recovered_trade_plan_keeps_deadlines_and_forecasts(publication_case):
     assert report['deadline_at'] == '2026-09-09T11:00:00+00:00'
     assert report['effective_deadline_at'] == '2026-09-09T19:00:00+00:00'
     assert report['observed_at'] == '2026-09-09T16:00:00+00:00'
-    assert report['publication_mode'] == 'LATE_RECOVERY'
+    assert report['preparation_mode'] == 'LATE_RECOVERY'
     assert report['orders_placed'] == 0 and report['broker_orders_enabled'] is False
     assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
 
@@ -728,7 +593,7 @@ def test_recovery_expiring_during_trade_publication_keeps_old_pointer(publicatio
     ticks = iter([pd.Timestamp('2026-09-09T18:59Z'), pd.Timestamp('2026-09-09T19:00Z')])
     def clock():
         return next(ticks, pd.Timestamp('2026-09-09T19:00Z'))
-    with pytest.raises(RuntimeError, match='Trade planning failed'):
+    with pytest.raises(ValueError, match='changed'):
         publish_trade_plan(c.root, gameplan_run=c.source, deadline='2026-09-09T19:00Z',
             late_action_date='2026-09-09', snapshot_loader=lambda *a, **kw: c.state,
             price_loader=c.prices, clock=clock)

@@ -22,6 +22,14 @@ def adopt(root, plan=None, actor="atlas"):
         account_scope_sha256=SCOPE, local_actor=actor, executor_owner="atlas", action_date=DAY, accepted_at=NOW)
 
 
+def legacy_compose(monkeypatch, *args, **kwargs):
+    """Reproduce an already-published historical ledger for reader tests."""
+    from ml.joint_capital_plan import _compose_legacy_joint_plan
+    with monkeypatch.context() as original_publisher:
+        original_publisher.setattr("test_joint_capital_plan.compose_joint_plan", _compose_legacy_joint_plan)
+        return compose(*args, **kwargs)
+
+
 def test_adoption_cli_requires_local_profile():
     from ml.joint_capital_adoption import main
     with pytest.raises(SystemExit) as error:
@@ -78,7 +86,7 @@ def test_scout_can_display_both_universes_without_executing(tmp_path):
     ui = load_gameplan(tmp_path)
     assert ui.run_directory == run
     assert set(ui.symbols) == {"AAPL", "ABCL"}
-    assert ui.actions[0].quantity == 1
+    assert ui.actions and all(action.quantity is None for action in ui.actions)
     assert plan_sessions(tmp_path) == (DAY,)
     assert set(execution_symbols(tmp_path, DAY)) == {"AAPL", "ABCL"}
     assert STOCK_RESEARCH_SYMBOLS == research
@@ -111,7 +119,7 @@ def test_scout_displays_original_unversioned_joint_gap_calls_without_rewriting_a
         if mixed_policy_metadata:
             next(row for row in scout_rows if row["calibrated_probability"] == .5).update(
                 direction_policy_version="stock-direction-5001-4999-v3")
-        plan = compose([package(rows=scout_rows), package("atlas", "AAPL", .7, hour=5)], state)
+        plan = legacy_compose(monkeypatch, [package(rows=scout_rows), package("atlas", "AAPL", .7, hour=5)], state)
         run = adopt(tmp_path, plan, actor="scout")
     assert any("direction_policy_version" not in row for row in plan["forecasts"])
     paths = [run / "joint-plan.json", run / "accepted-plan.json",
@@ -153,6 +161,8 @@ def test_historical_display_still_rejects_current_policy_and_legacy_label_corrup
     row.update(calibrated_probability=probability, direction=direction)
     if policy is not None:
         row["direction_policy_version"] = policy
+    else:
+        row.pop("direction_policy_version", None)
     invalid["plan_id"] = "joint-capital:" + content_sha256({key: value for key, value in invalid.items()
         if key not in {"plan_id", "plan_sha256", "owner_views"}})
     for view in invalid["owner_views"].values():
@@ -191,13 +201,14 @@ def test_full_twenty_two_symbol_handoff_keeps_research_membership_local(tmp_path
     assert len(STOCK_RESEARCH_SYMBOLS) == 11
 
 
-def test_atlas_reads_accepted_quantities_and_overdue_same_session(tmp_path):
+def test_atlas_reads_original_forecasts_instead_of_accepted_projected_quantities(tmp_path):
     run = adopt(tmp_path)
-    signals, sources = load_execution_signals(tmp_path, as_of=f"{DAY}T12:15:00Z")
-    assert set(signals) == {("AAPL", "1h")}
+    signals, sources = load_execution_signals(tmp_path, as_of=f"{DAY}T11:15:00Z")
+    assert set(signals) == {(symbol, horizon) for symbol in ("AAPL", "ABCL") for horizon in ("1h", "4h", "1d", "1w")}
     signal = signals["AAPL", "1h"]
-    assert signal.planned_quantity == 1
-    assert pd.Timestamp(signal.actionable_until) > pd.Timestamp(f"{DAY}T12:15:00Z")
+    assert signal.planned_quantity is None and signal.calibrated_probability == .7
+    assert not signal.prediction_id.startswith("catchup:")
+    assert pd.Timestamp(signal.actionable_until) > pd.Timestamp(f"{DAY}T11:15:00Z")
     assert run / "accepted-plan.json" in sources
     assert assert_accepted_execution(tmp_path, run, action_date=DAY, account_scope_sha256=SCOPE)
     with pytest.raises(ValueError, match="account fingerprints"):
@@ -221,13 +232,13 @@ def test_session_binding_digest_and_immutable_selection(tmp_path):
         read_accepted_joint_plan(tmp_path, DAY)
 
 
-def test_native_completed_direction_ledger_is_used_for_late_catchup(tmp_path, monkeypatch):
+def test_native_historical_ledger_remains_verifiable_but_does_not_supply_fresh_order_sizes(tmp_path, monkeypatch):
     from gameplan_fixture import write_plan
     from ml.artifacts import file_checksum, write_manifest
     from ml.stock_trader.catchup import native_catchup_plan
     from ml.stock_trader import gameplan_execution
 
-    plan = compose()
+    plan = legacy_compose(monkeypatch)
     native = tmp_path / "ml/nightly-gameplan-runs/native"
     native.mkdir(parents=True)
     (native / "receipt.json").write_text(json.dumps({"action_date": DAY}))
@@ -257,12 +268,14 @@ def test_native_completed_direction_ledger_is_used_for_late_catchup(tmp_path, mo
     pointer.write_text(json.dumps(value))
     monkeypatch.setattr(gameplan_execution, "STOCK_TRADER_SYMBOLS", ("AAPL", "ABCL"))
     signals, sources = load_execution_signals(tmp_path, as_of=f"{DAY}T12:15:00Z")
-    assert signals["AAPL", "1h"].planned_quantity == 1
-    assert run / "receipt.json" in sources
+    assert signals["AAPL", "1h"].planned_quantity is None
+    assert signals["AAPL", "1h"].calibrated_probability == .5
+    assert not signals["AAPL", "1h"].prediction_id.startswith("catchup:")
+    assert sources == ()
     assert native_catchup_plan(tmp_path, action_date=DAY, source_run=native)[1] == native
     (native / "receipt.json").write_text('{"changed":true}')
     with pytest.raises(ValueError, match="forecast source"):
-        load_execution_signals(tmp_path, as_of=f"{DAY}T12:15:00Z")
+        native_catchup_plan(tmp_path, action_date=DAY, source_run=native)
 
 
 def test_owner_package_retry_accepts_only_identical_bytes(tmp_path):
@@ -277,7 +290,7 @@ def test_owner_package_retry_accepts_only_identical_bytes(tmp_path):
 
 
 @pytest.mark.parametrize("later_opposite", [False, True])
-def test_native_runtime_executes_overdue_combined_quantity_once_with_mock_broker(environment, monkeypatch, later_opposite):
+def test_runtime_sizes_current_combined_forecasts_from_live_capacity_once_with_mock_broker(environment, monkeypatch, later_opposite):
     from ml.stock_trader import independent_runtime as runtime
     from ml.stock_trader.independent_signals import load_current_independent_gameplan_signals
     from ml.stock_trader.contracts import PortfolioState, QuoteState
@@ -294,7 +307,7 @@ def test_native_runtime_executes_overdue_combined_quantity_once_with_mock_broker
         later.update(calibrated_probability=.4, direction="BEARISH")
         combined = compose([package(), package("atlas", "AAPL", rows=rows)])
     adopt(env.root, combined)
-    env.now = pd.Timestamp(f"{DAY}T{'11' if later_opposite else '12'}:15:00Z")
+    env.now = pd.Timestamp(f"{DAY}T11:15:00Z")
     env.held = {"AAPL": 0, "ABCL": 0}
     monkeypatch.setattr(runtime, "load_current_independent_gameplan_signals", load_current_independent_gameplan_signals)
     observed_universes = []
@@ -323,16 +336,17 @@ def test_native_runtime_executes_overdue_combined_quantity_once_with_mock_broker
                    session_managed=True, sizing_policy=GAMEPLAN_SIZING_POLICY)
     result = runtime.run_independent_stock_trader_once(env.root, **options)
     assert result.status == "ORDERS_SUBMITTED", result.error
-    assert result.submitted_orders == 1
-    leg = env.broker.submissions[0]["orderLegCollection"][0]
-    assert leg["quantity"] == 1 and leg["instrument"]["symbol"] == "AAPL"
+    assert result.submitted_orders == 2
+    legs = [order["orderLegCollection"][0] for order in env.broker.submissions]
+    assert {leg["instrument"]["symbol"] for leg in legs} == {"AAPL", "ABCL"}
+    assert all(leg["quantity"] == 15 for leg in legs)  # Live equity/quote, rather than the old projected one-share order.
     env.now = env.now + (pd.Timedelta(hours=1) if later_opposite else pd.Timedelta(seconds=30))
     repeated = runtime.run_independent_stock_trader_once(env.root, **options)
     assert not repeated.error, repeated.error
-    assert repeated.submitted_orders == int(later_opposite) and len(env.broker.submissions) == 1 + int(later_opposite)
+    assert repeated.submitted_orders == int(later_opposite) and len(env.broker.submissions) == 2 + int(later_opposite)
     if later_opposite:
         assert env.broker.submissions[-1]["orderLegCollection"][0]["instruction"] == "SELL"
         env.now += pd.Timedelta(seconds=30)
         final = runtime.run_independent_stock_trader_once(env.root, **options)
-        assert final.submitted_orders == 0 and len(env.broker.submissions) == 2
+        assert final.submitted_orders == 0 and len(env.broker.submissions) == 3
     assert all(set(symbols) == {"AAPL", "ABCL"} for symbols in observed_universes)

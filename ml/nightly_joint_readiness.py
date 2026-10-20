@@ -106,8 +106,10 @@ def _verify_local_contribution(root: Path, state: dict, receipt: dict, plan: dic
         raise ValueError("Joint readiness owner package differs from local preparation")
     expected_source = {"receipt_sha256": file_checksum(source / "receipt.json"),
                        "manifest_sha256": file_checksum(source / "manifest.json"),
-                       "forecasts_sha256": file_checksum(source / "forecasts.parquet"),
-                       "price_path_sha256": file_checksum(trade / "planning-price-path.json")}
+                       "forecasts_sha256": file_checksum(source / "forecasts.parquet")}
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe
+    if not is_current_gameplan_recipe(package):
+        expected_source["price_path_sha256"] = file_checksum(trade / "planning-price-path.json")
     source_fields = ("run_id", "source_revision", "source_revision_status", "source_reference",
                      "frozen_symbols", "created_at", "source_hashes", "content_sha256", "package_sha256")
     if (package["source_hashes"] != expected_source

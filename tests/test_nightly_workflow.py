@@ -395,6 +395,56 @@ def test_native_attempt_identity_is_durable_before_stage_work_can_run(setup, mon
     assert snapshots[0]["steps"]["prepare_stats"]["native_run"] == str(native)
 
 
+@pytest.mark.parametrize("already_current", [False, True])
+def test_old_completed_planner_cannot_skip_current_recipe_but_reuses_forecasts(setup, monkeypatch, already_current):
+    from ml import nightly_dispatch as dispatch
+    from ml.gameplan_execution_policy import current_gameplan_policy_metadata
+    root = Path(setup["datastore"])
+    def native(name, pinned):
+        run = root / "ml/overnight-runs" / name
+        run.mkdir(parents=True)
+        report = run / "stage-report.json"
+        report.write_text(json.dumps({"status": "COMPLETE", "enrichment_gameplan": pinned}))
+        (run / "receipt.json").write_text(json.dumps({"status": "COMPLETE",
+            "stage_report_checksum_sha256": file_checksum(report), "logs": {}}))
+        return run
+    pinned = {"action_date": "2026-10-20", "run_path": "ml/nightly-gameplan-runs/unchanged-scientific-source",
+              "receipt_sha256": "a" * 64}
+    training, old, new = (native(name, pinned) for name in ("training", "old-planner", "new-planner"))
+    if already_current:
+        plan = root / "ml/gameplan-trade-plan-runs/current-recipe"
+        plan.mkdir(parents=True)
+        receipt = plan / "receipt.json"
+        write_manifest(plan, run_timestamp="2026-10-20T04:00Z", input_files=[], output_files=[],
+            configuration=current_gameplan_policy_metadata("2026-10-20"))
+        receipt.write_text(json.dumps({"status": "COMPLETE", "action_date": "2026-10-20",
+            "manifest_sha256": file_checksum(plan / "manifest.json"),
+            "source_receipt_sha256": pinned["receipt_sha256"], **current_gameplan_policy_metadata("2026-10-20")}))
+        pointer = root / "ml/gameplan-trade-plan-latest/run.json"
+        pointer.parent.mkdir()
+        pointer.write_text(json.dumps({"current": {"run_path": plan.relative_to(root).as_posix(),
+            "receipt_sha256": file_checksum(receipt)}}))
+    state = {"action_date": "2026-10-20", "source_session": "2026-10-19",
+        "deadline_at": "2026-10-20T11:00Z", "workflow_layout": dispatch.LAYOUT,
+        "steps": {"model_review": {"output": {"proposal": str(root / "original-review.json")}},
+                  "train_and_plan": {"output": {"native_run": str(training)}},
+                  "local_gameplan": {"native_run": str(old)}}}
+    calls = []
+    monkeypatch.setattr("ml.overnight_runtime.run_overnight_pipeline", lambda root, **kw: calls.append(kw) or new)
+    monkeypatch.setattr("ml.overnight_runtime.overnight_status", lambda root: {})
+    old_files = {p: p.read_bytes() for run in (training, old) for p in run.iterdir()}
+    output = _run_native(setup, state, "local_gameplan", lambda: None)
+    if already_current:
+        assert not calls and output["native_run"] == str(old)
+    else:
+        assert len(calls) == 1
+        assert calls[0]["start_at"] == "gameplan_trade_planning"
+        assert calls[0]["pinned_gameplan"] == pinned and "resume_run" not in calls[0]
+        assert output["native_run"] == str(new)
+        assert state["steps"]["local_gameplan"]["retained_recipe_native_runs"] == [str(old)]
+    assert all(path.read_bytes() == raw for path, raw in old_files.items())
+
+
 def _display_fixture(root):
     from gameplan_fixture import write_plan
     stats, feedback, saved = _feedback(root)
@@ -433,6 +483,16 @@ def test_display_uses_real_ui_readers_and_exact_review_training_artifacts(tmp_pa
     assert output["plan_run"] == str(trade) and output["stats_run"] == str(stats)
     assert output["source_gameplan_run"] == str(source)
     assert str(source / "receipt.json") in output["files"]
+
+
+def test_current_producing_recipe_cannot_accept_an_old_projection_as_completed_display(tmp_path):
+    from ml.gameplan_execution_policy import current_gameplan_policy_metadata
+    state, trade, _, _ = _display_fixture(tmp_path)
+    original = {path: path.read_bytes() for path in trade.iterdir() if path.is_file()}
+    state.update(current_gameplan_policy_metadata(state["action_date"]))
+    with pytest.raises(ValueError, match="older Gameplan producing recipe"):
+        _display({"datastore": str(tmp_path)}, state)
+    assert all(path.read_bytes() == raw for path, raw in original.items())
 
 
 def test_same_session_plan_replacement_cannot_pass_display_verification(tmp_path):

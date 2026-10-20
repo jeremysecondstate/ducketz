@@ -1,5 +1,47 @@
 # Overnight immutable gameplan
 
+## Current stock rules and nightly authority (October 19, 2026)
+
+This section is the current stock policy for every configured symbol on Atlas
+and Scout. It takes precedence over conflicting dated ownership, cutoff and
+handoff descriptions retained below. The exact source of truth is
+[Stock direction and horizon autonomy](STOCK_DIRECTION_AND_HORIZON_AUTONOMY.md).
+
+- Use the unrounded probability: **50.01% or higher is BUY** (`p >= 0.5001`);
+  **49.99% or lower is SELL** (`p <= 0.4999`). HOLD is strictly between those
+  cutoffs. Do not restore a wider probability threshold in any stock trader.
+- The 15m, 1h and 4h horizons may sell available stock belonging to any horizon.
+  From October 19, 1h and 4h have no longer-horizon-only donor rule, same-clock
+  bullish veto, fallback slot quota or fallback daily percentage cap. Preserve
+  real working or uncertain sell reservations and attribute fills to the owners.
+  The 1d and 1w ownership rules remain unchanged.
+- Gameplan uses current live broker bid/ask/midpoint quotes for execution.
+  Effective tonight and every subsequent night until Jeremy changes it,
+  `direction-live-quote-v1` replaces estimated-price Gameplan creation. Do not
+  generate or require planning price paths, bands or estimated Execution mid
+  values. Never use estimated projected quantities to gate, size or cap new
+  orders. Use `execution_quantity_basis=live_broker_capacity`.
+  Model selection, calibration, hyperparameters and data recipes stay local to
+  each PC's own symbols and evidence.
+- An old completed Gameplan cannot complete tonight's new recipe or become the
+  current display, synthesis or delivery selection. Reuse compatible data,
+  fitted models and probabilities; replace obsolete policy-dependent outputs.
+  Preserve original historical bytes and known-order recovery.
+- Preserve immutable saved forecasts, Stats, labels, receipts and completed
+  outputs. New artifacts record the current direction policy and thresholds;
+  completed-session Stats evaluates the policy saved with each forecast.
+- Continue the standing nightly preparation and recovery through completion:
+  Atlas Gameplan plus Scout Gameplan, Scout synthesis, then delivery to Atlas.
+  Sending the completed result finishes the handoff. No third account snapshot,
+  peer acceptance, cross-trader check or extra human confirmation is required.
+  Actual human trader starts remain manual and independent.
+
+For native tasks, reuse the portable
+[nightly stock-policy instruction block](NIGHTLY_STOCK_POLICY_INSTRUCTIONS.md).
+Its metadata describes the existing rules; it adds no nightly prerequisite,
+model recipe, broker action or runtime deployment authority. Historical sections
+and historical artifacts retain their recorded dates and original identities.
+
 ## September 30 prospective cross-horizon fallback
 
 New independent Gameplans for October 1 or later bind the operator-approved

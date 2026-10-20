@@ -60,7 +60,15 @@ def _verify(plan, binding, *, historical_display=False):
     # This also verifies event/forecast quantities, clocks, horizons and fallback
     # attribution using the same contract that the existing Gameplan tab uses.
     from app.ui.gameplan_data import _forecast, _actions
-    if plan.get("composition_mode") == PLAN_ONLY_MODE:
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe, DIRECTION_ONLY_STATUS
+    if is_current_gameplan_recipe(plan):
+        if (plan.get("composition_mode") != PLAN_ONLY_MODE or plan.get("cash_basis") != "LIVE_BROKER_CAPACITY_AT_EXECUTION"
+                or plan["ledger"].get("status") != DIRECTION_ONLY_STATUS or plan["ledger"].get("events") != []
+                or any(not is_current_gameplan_recipe(row) for row in plan["forecasts"])):
+            raise ValueError("Current directional plan cannot contain estimated fill instructions")
+        for row in plan["forecasts"]:
+            _forecast(row)
+    elif plan.get("composition_mode") == PLAN_ONLY_MODE:
         if (plan.get("account_snapshot_sha256") is not None or plan.get("account_snapshot_observed_at") is not None
                 or plan.get("cash_basis") != "SIZED_AT_EXECUTION"
                 or plan["ledger"].get("status") != "NOT_PROJECTED" or plan["ledger"].get("events") != []

@@ -187,11 +187,22 @@ def _match_trade_rows(forecasts: pd.DataFrame, trades: pd.DataFrame) -> None:
         raise ValueError("Saved trade plan changed the frozen probability target")
     if trades.id.duplicated().any() or set(trades.id) != set(forecasts.id):
         raise ValueError("Saved trade plan differs from the frozen forecast identities")
+    from ml.gameplan_execution_policy import is_current_gameplan_recipe, direction_only_rows
+    markers = [is_current_gameplan_recipe(row) for row in trades.to_dict("records")]
+    expected = forecasts
     columns = [column for column in IDENTITY_COLUMNS if column in forecasts]
+    if any(markers):
+        if not all(markers) or "action_date" not in trades or trades.action_date.nunique() != 1:
+            raise ValueError("Current trade plan has inconsistent recipe metadata")
+        expected, _ = direction_only_rows(forecasts, action_date=trades.action_date.iloc[0])
+        columns = list(dict.fromkeys([*columns, "gameplan_recipe_version", "execution_quantity_basis",
+            "source_saved_direction", "source_saved_direction_policy_version", "direction_policy_version",
+            "direction_up_threshold", "direction_down_threshold", "direction_based_action",
+            "direction_based_trade_quantity", "direction_based_reason"]))
     if not set(columns).issubset(trades):
         raise ValueError("Saved trade plan is missing frozen forecast fields")
     try:
-        pd.testing.assert_frame_equal(forecasts[columns].sort_values("id").reset_index(drop=True),
+        pd.testing.assert_frame_equal(expected[columns].sort_values("id").reset_index(drop=True),
                                       trades[columns].sort_values("id").reset_index(drop=True),
                                       check_dtype=False, check_exact=True)
     except AssertionError as exc:
@@ -216,6 +227,15 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
     rows = []
     for forecast in forecasts.to_dict("records"):
         row = {**planned.get(forecast["id"], {}), **forecast}
+        from ml.gameplan_execution_policy import is_current_gameplan_recipe
+        saved_trade = planned.get(forecast["id"], {})
+        if is_current_gameplan_recipe(saved_trade):
+            # Scientific accuracy keeps the original saved call and policy.
+            # The independently derived execution instruction remains explicit.
+            row["execution_direction"] = saved_trade["direction"]
+            for field in ("direction_policy_version", "direction_up_threshold", "direction_down_threshold"):
+                row["execution_" + field] = saved_trade[field]
+                row[field] = forecast.get(field)
         start = _aware_timestamp(row["target_window_start"], "target_window_start")
         end = _aware_timestamp(row["target_window_end"], "target_window_end")
         if end <= start:

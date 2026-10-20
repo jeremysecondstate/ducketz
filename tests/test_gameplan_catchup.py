@@ -36,7 +36,8 @@ def test_opposite_missed_instructions_cancel_and_starting_inventory_sale_nets():
     portfolio = replace(portfolio, observed_at=NOW, held_shares={"AAPL": 10},
         quotes={"AAPL": QuoteState("AAPL", 100, 100, 100, 100, 100, NOW)})
     decision, = build(signals, portfolio, bearish_sell_capacities={("AAPL", "1h"): 10}, decided_at=NOW)
-    assert (decision.action, decision.quantity) == ("SELL", 1)
+    assert decision.quantity == 0
+    assert decision.decision_reason_code == "LEGACY_PROJECTED_INTENTION"
 
 
 def test_partial_fill_working_quantity_and_cancelled_residual_are_exact():
@@ -76,10 +77,11 @@ def test_future_intentions_wait_and_past_hours_remain_due_until_close():
     assert catchup_signals(source, as_of="2026-09-09T12:15:00Z", source_fingerprint="run") == {}
 
 
-def test_current_cash_still_bounds_a_synthesized_quantity():
+def test_historical_projected_delta_cannot_authorize_a_fresh_current_market_order():
     signals = catchup_signals(plan(buy=5, sell=1), as_of=NOW, source_fingerprint="run")
     _, portfolio = inputs()
     portfolio = replace(portfolio, available_cash=200, observed_at=NOW,
         quotes={"AAPL": QuoteState("AAPL", 100, 100, 100, 100, 100, NOW)})
     decision, = build(signals, portfolio, decided_at=NOW)
-    assert decision.action == "BUY" and decision.quantity <= 2
+    assert decision.quantity == 0
+    assert decision.decision_reason_code == "LEGACY_PROJECTED_INTENTION"
